@@ -919,12 +919,16 @@ class LowLevelKnitDataTests(TestCase):
 
 class LowLevelKnitIndexTests(TestCase):
 
+    @property
+    def _load_data(self):
+        from ..bzr._knit_load_data_py import _load_data_py
+        return _load_data_py
+
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        from ..bzr._knit_load_data_py import _load_data_py
-        self.overrideAttr(knit, '_load_data', _load_data_py)
+        self.overrideAttr(knit, '_load_data', self._load_data)
         allow_writes = lambda: 'w' in mode
-        return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
+        return _KndxIndex(transport, mapper, lambda: None, allow_writes, lambda: True)
 
     def test_create_file(self):
         transport = MockTransport()
@@ -961,7 +965,7 @@ class LowLevelKnitIndexTests(TestCase):
             b"version option 0 1 .%s :" % (utf8_revision_id,)
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual({("version",):((utf8_revision_id,),)},
+        self.assertEqual({(b"version",): ((utf8_revision_id,),)},
             index.get_parent_map(index.keys()))
 
     def test_read_ignore_corrupted_lines(self):
@@ -973,7 +977,7 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual(1, len(index.keys()))
-        self.assertEqual({("version",)}, index.keys())
+        self.assertEqual({(b"version",)}, index.keys())
 
     def test_read_corrupted_header(self):
         transport = MockTransport([b'not a bzr knit index header\n'])
@@ -992,11 +996,11 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual(2, len(index.keys()))
         # check that the index used is the first one written. (Specific
         # to KnitIndex style indices.
-        self.assertEqual("1", index._dictionary_compress([("version",)]))
-        self.assertEqual((("version",), 3, 4), index.get_position(("version",)))
-        self.assertEqual(["options3"], index.get_options(("version",)))
-        self.assertEqual({("version",):(("parent",), ("other",))},
-            index.get_parent_map([("version",)]))
+        self.assertEqual(b"1", index._dictionary_compress([(b"version",)]))
+        self.assertEqual(((b"version",), 3, 4), index.get_position((b"version",)))
+        self.assertEqual([b"options3"], index.get_options((b"version",)))
+        self.assertEqual({(b"version",): ((b"parent",), (b"other",))},
+            index.get_parent_map([(b"version",)]))
 
     def test_read_compressed_parents(self):
         transport = MockTransport([
@@ -1184,8 +1188,8 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = self.get_knit_index(transport, "filename", "r")
 
-        self.assertEqual(b"fulltext", index.get_method(b"a"))
-        self.assertEqual(b"line-delta", index.get_method(b"b"))
+        self.assertEqual("fulltext", index.get_method(b"a"))
+        self.assertEqual("line-delta", index.get_method(b"b"))
         self.assertRaises(knit.KnitIndexUnknownMethod, index.get_method, b"c")
 
     def test_get_options(self):
@@ -1305,13 +1309,10 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     _test_needs_features = [compiled_knit_feature]
 
-    def get_knit_index(self, transport, name, mode):
-        mapper = ConstantMapper(name)
+    @property
+    def _load_data(self):
         from ..bzr._knit_load_data_pyx import _load_data_c
-        self.overrideAttr(knit, '_load_data', _load_data_c)
-        allow_writes = lambda: mode == 'w'
-        return _KndxIndex(transport, mapper, lambda:None,
-                          allow_writes, lambda:True)
+        return _load_data_c
 
 
 class Test_KnitAnnotator(TestCaseWithMemoryTransport):

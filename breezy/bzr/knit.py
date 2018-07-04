@@ -2837,6 +2837,9 @@ class _KndxIndex(object):
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
+        # GZ 2018-07-03: This is intentionally either a sequence or bytes?
+        if isinstance(key, bytes):
+            return key[:-1], key[-1:]
         return key[:-1], key[-1]
 
 
