@@ -165,7 +165,7 @@ class _TreeShim(object):
             yield change
 
 
-class AbstractRevisionStore(object):
+class RevisionStore(object):
 
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
@@ -450,21 +450,6 @@ class AbstractRevisionStore(object):
             entries = iter([ie for path, ie in path_entries])
         return entries
 
-    def _load_texts(self, revision_id, entries, text_provider,
-        parents_provider):
-        """Load texts to a repository for inventory entries.
-        
-        This method is provided for subclasses to use or override.
-
-        :param revision_id: the revision identifier
-        :param entries: iterator over the inventory entries
-        :param text_provider: a callable expecting a file_id parameter
-            that returns the text for that file-id
-        :param parents_provider: a callable expecting a file_id parameter
-            that return the list of parent-ids for that file-id
-        """
-        raise NotImplementedError(self._load_texts)
-
     def _add_inventory(self, revision_id, inv, parents, parent_invs):
         """Add the inventory inv to the repository as revision_id.
         
@@ -537,73 +522,24 @@ class AbstractRevisionStore(object):
             inventories.append(rev_tree.root_inventory)
         return present, inventories
 
-
-class RevisionStore1(AbstractRevisionStore):
-    """A RevisionStore that uses the old breezy Repository API.
-    
-    The old API was present until bzr.dev rev 3510.
-    """
-
     def _load_texts(self, revision_id, entries, text_provider, parents_provider):
-        """See RevisionStore._load_texts()."""
-        # Add the texts that are not already present
-        tx = self.repo.get_transaction()
-        for ie in entries:
-            # This test is *really* slow: over 50% of import time
-            #w = self.repo.weave_store.get_weave_or_empty(ie.file_id, tx)
-            #if ie.revision in w:
-            #    continue
-            # Try another way, realising that this assumes that the
-            # version is not already there. In the general case,
-            # a shared repository might already have the revision but
-            # we arguably don't need that check when importing from
-            # a foreign system.
-            if ie.revision != revision_id:
-                continue
-            file_id = ie.file_id
-            text_parents = [(file_id, p) for p in parents_provider(file_id)]
-            lines = text_provider(file_id)
-            vfile = self.repo.weave_store.get_weave_or_empty(file_id,  tx)
-            import pdb; pdb.set_trace()
-            vfile.add_lines(revision_id, text_parents, lines)
+        """Load texts to a repository for inventory entries.
 
-    def get_file_lines(self, revision_id, file_id):
-        tx = self.repo.get_transaction()
-        w = self.repo.weave_store.get_weave(file_id, tx)
-        return w.get_lines(revision_id)
+        This method is provided for subclasses to use or override.
 
-    def _add_revision(self, rev, inv):
-        # There's no need to do everything repo.add_revision does and
-        # doing so (since bzr.dev 3392) can be pretty slow for long
-        # delta chains on inventories. Just do the essentials here ...
-        _mod_revision.check_not_reserved_id(rev.revision_id)
-        self.repo._revision_store.add_revision(rev, self.repo.get_transaction())
-
-
-class RevisionStore2(AbstractRevisionStore):
-    """A RevisionStore that uses the new breezy Repository API."""
-
-    def _load_texts(self, revision_id, entries, text_provider, parents_provider):
-        """See RevisionStore._load_texts()."""
-        text_keys = {}
-        for ie in entries:
-            text_keys[(ie.file_id, ie.revision)] = ie
-        text_parent_map = self.repo.texts.get_parent_map(text_keys)
-        missing_texts = set(text_keys) - set(text_parent_map)
-        self._load_texts_for_file_rev_ids(missing_texts, text_provider,
-            parents_provider)
-
-    def _load_texts_for_file_rev_ids(self, file_rev_ids, text_provider,
-        parents_provider):
-        """Load texts to a repository for file-ids, revision-id tuples.
-        
-        :param file_rev_ids: iterator over the (file_id, revision_id) tuples
+        :param revision_id: the revision identifier
+        :param entries: iterator over the inventory entries
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
         :param parents_provider: a callable expecting a file_id parameter
             that return the list of parent-ids for that file-id
         """
-        for file_id, revision_id in file_rev_ids:
+        text_keys = {}
+        for ie in entries:
+            text_keys[(ie.file_id, ie.revision)] = ie
+        text_parent_map = self.repo.texts.get_parent_map(text_keys)
+        missing_texts = set(text_keys) - set(text_parent_map)
+        for file_id, revision_id in missing_texts:
             text_key = (file_id, revision_id)
             text_parents = [(file_id, p) for p in parents_provider(file_id)]
             lines = text_provider(file_id)
@@ -624,128 +560,3 @@ class RevisionStore2(AbstractRevisionStore):
     #    # delta chains on inventories. Just do the essentials here ...
     #    _mod_revision.check_not_reserved_id(rev.revision_id)
     #    self.repo._add_revision(rev)
- 
-
-class ImportRevisionStore1(RevisionStore1):
-    """A RevisionStore (old Repository API) optimised for importing.
-
-    This implementation caches serialised inventory texts and provides
-    fine-grained control over when inventories are stored as fulltexts.
-    """
-
-    def __init__(self, repo, parent_texts_to_cache=1, fulltext_when=None,
-        random_ids=True):
-        """See AbstractRevisionStore.__init__.
-
-        :param repository: the target repository
-        :param parent_text_to_cache: the number of parent texts to cache
-        :para fulltext_when: if non None, a function to call to decide
-          whether to fulltext the inventory or not. The revision count
-          is passed as a parameter and the result is treated as a boolean.
-        """
-        RevisionStore1.__init__(self, repo)
-        self.inv_parent_texts = lru_cache.LRUCache(parent_texts_to_cache)
-        self.fulltext_when = fulltext_when
-        self.random_ids = random_ids
-        self.revision_count = 0
-
-    def _add_inventory(self, revision_id, inv, parents, parent_invs):
-        """See RevisionStore._add_inventory."""
-        # Code taken from breezy.repository.add_inventory
-        assert self.repo.is_in_write_group()
-        _mod_revision.check_not_reserved_id(revision_id)
-        assert inv.revision_id is None or inv.revision_id == revision_id, \
-            "Mismatch between inventory revision" \
-            " id and insertion revid (%r, %r)" % (inv.revision_id, revision_id)
-        assert inv.root is not None
-        inv_lines = self.repo._serialise_inventory_to_lines(inv)
-        inv_vf = self.repo.get_inventory_weave()
-        sha1, num_bytes, parent_text = self._inventory_add_lines(inv_vf,
-            revision_id, parents, inv_lines, self.inv_parent_texts)
-        self.inv_parent_texts[revision_id] = parent_text
-        return sha1
-
-    def _inventory_add_lines(self, inv_vf, version_id, parents, lines,
-            parent_texts):
-        """See Repository._inventory_add_lines()."""
-        # setup parameters used in original code but not this API
-        self.revision_count += 1
-        if self.fulltext_when is not None:
-            delta = not self.fulltext_when(self.revision_count)
-        else:
-            delta = inv_vf.delta
-        left_matching_blocks = None
-        random_id = self.random_ids
-        check_content = False
-
-        # breezy.knit.add_lines() but error checking optimised
-        inv_vf._check_add(version_id, lines, random_id, check_content)
-
-        ####################################################################
-        # breezy.knit._add() but skip checking if fulltext better than delta
-        ####################################################################
-
-        line_bytes = b''.join(lines)
-        digest = osutils.sha_string(line_bytes)
-        present_parents = []
-        for parent in parents:
-            if inv_vf.has_version(parent):
-                present_parents.append(parent)
-        if parent_texts is None:
-            parent_texts = {}
-
-        # can only compress against the left most present parent.
-        if (delta and
-            (len(present_parents) == 0 or
-             present_parents[0] != parents[0])):
-            delta = False
-
-        text_length = len(line_bytes)
-        options = []
-        if lines:
-            if not lines[-1].endswith(b'\n'):
-                # copy the contents of lines.
-                lines = lines[:]
-                options.append(b'no-eol')
-                lines[-1] = lines[-1] + b'\n'
-                line_bytes += b'\n'
-
-        #if delta:
-        #    # To speed the extract of texts the delta chain is limited
-        #    # to a fixed number of deltas.  This should minimize both
-        #    # I/O and the time spend applying deltas.
-        #    delta = inv_vf._check_should_delta(present_parents)
-
-        assert isinstance(version_id, str)
-        content = inv_vf.factory.make(lines, version_id)
-        if delta or (inv_vf.factory.annotated and len(present_parents) > 0):
-            # Merge annotations from parent texts if needed.
-            delta_hunks = inv_vf._merge_annotations(content, present_parents,
-                parent_texts, delta, inv_vf.factory.annotated,
-                left_matching_blocks)
-
-        if delta:
-            options.append(b'line-delta')
-            store_lines = inv_vf.factory.lower_line_delta(delta_hunks)
-            size, bytes = inv_vf._data._record_to_data(version_id, digest,
-                store_lines)
-        else:
-            options.append(b'fulltext')
-            # isinstance is slower and we have no hierarchy.
-            if inv_vf.factory.__class__ == knit.KnitPlainFactory:
-                # Use the already joined bytes saving iteration time in
-                # _record_to_data.
-                size, bytes = inv_vf._data._record_to_data(version_id, digest,
-                    lines, [line_bytes])
-            else:
-                # get mixed annotation + content and feed it into the
-                # serialiser.
-                store_lines = inv_vf.factory.lower_fulltext(content)
-                size, bytes = inv_vf._data._record_to_data(version_id, digest,
-                    store_lines)
-
-        access_memo = inv_vf._data.add_raw_records([size], bytes)[0]
-        inv_vf._index.add_versions(
-            ((version_id, options, access_memo, parents),),
-            random_id=random_id)
-        return digest, text_length, content

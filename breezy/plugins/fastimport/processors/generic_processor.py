@@ -265,27 +265,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def _revision_store_factory(self):
         """Make a RevisionStore based on what the repository supports."""
-        new_repo_api = hasattr(self.repo, 'revisions')
-        if new_repo_api:
-            return revision_store.RevisionStore2(self.repo)
-        elif not self._experimental:
-            return revision_store.RevisionStore1(self.repo)
-        else:
-            def fulltext_when(count):
-                total = self.total_commits
-                if total is not None and count == total:
-                    fulltext = True
-                else:
-                    # Create an inventory fulltext every 200 revisions
-                    fulltext = count % 200 == 0
-                if fulltext:
-                    self.note("%d commits - storing inventory as full-text",
-                        count)
-                return fulltext
-
-            return revision_store.ImportRevisionStore1(
-                self.repo, self.inventory_cache_size,
-                fulltext_when=fulltext_when)
+        return revision_store.RevisionStore(self.repo)
 
     def process(self, command_iter):
         """Import data into Bazaar by processing a stream of commands.
