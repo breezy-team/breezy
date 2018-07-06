@@ -121,8 +121,19 @@ class BundleSerializerV08(BundleSerializer):
             with ui.ui_factory.nested_progress_bar() as pb:
                 self._write_revisions(pb)
 
-    def write_bundle(self, repository, target, base, fileobj):
-        return self._write_bundle(repository, target, base, fileobj)
+    def write_bundle(self, repository, revision_id, base_revision_id, out):
+        """Helper function for translating write_bundle to write"""
+        forced_bases = {revision_id:base_revision_id}
+        if base_revision_id is NULL_REVISION:
+            base_revision_id = None
+        graph = repository.get_graph()
+        revision_ids = graph.find_unique_ancestors(revision_id,
+            [base_revision_id])
+        revision_ids = list(repository.get_graph().iter_topo_order(
+            revision_ids))
+        revision_ids.reverse()
+        self.write(repository, revision_ids, forced_bases, out)
+        return revision_ids
 
     def _write_main_header(self):
         """Write the header for the changes"""

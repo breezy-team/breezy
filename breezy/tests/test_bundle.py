@@ -469,8 +469,7 @@ class BundleTester(object):
                              len(bundle_rev.parent_ids))
         self.assertEqual(rev_ids,
                          [r.revision_id for r in bundle.real_revisions])
-        self.valid_apply_bundle(base_rev_id, bundle,
-                                   checkout_dir=checkout_dir)
+        self.valid_apply_bundle(base_rev_id, bundle, checkout_dir=checkout_dir)
 
         return bundle
 
@@ -1662,7 +1661,7 @@ class V4_2aBundleTester(V4BundleTester):
                                        revision_id=b'a@cset-0-2a').open_branch()
         bundle_txt, rev_ids = self.create_bundle_text(b'a@cset-0-2a',
                                                       b'a@cset-0-3')
-        self.assertEqual([b'a@cset-0-2b', b'a@cset-0-3'], rev_ids)
+        self.assertEqual(set([b'a@cset-0-2b', b'a@cset-0-3']), set(rev_ids))
         bundle = read_bundle(bundle_txt)
         target.lock_write()
         self.addCleanup(target.unlock)
