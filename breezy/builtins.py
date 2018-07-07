@@ -84,6 +84,7 @@ from .revisionspec import (
     )
 from .sixish import (
     BytesIO,
+    PY3,
     text_type,
     viewitems,
     viewvalues,
@@ -1581,7 +1582,7 @@ class cmd_branches(Command):
                 else:
                     prefix = " "
                 self.outf.write("%s %s\n" % (
-                    prefix, name.encode(self.outf.encoding)))
+                    prefix, (name if PY3 else name.encode(self.outf.encoding))))
 
 
 class cmd_checkout(Command):

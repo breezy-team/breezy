@@ -126,7 +126,7 @@ class ListDirRequest(VfsRequest):
             relpath += b'/'
         relpath = self.translate_client_path(relpath)
         filenames = self._backing_transport.list_dir(relpath)
-        return request.SuccessfulSmartServerResponse((b'names',) + tuple(filenames))
+        return request.SuccessfulSmartServerResponse((b'names',) + tuple([filename.encode('utf-8') for filename in filenames]))
 
 
 class MkdirRequest(VfsRequest):
