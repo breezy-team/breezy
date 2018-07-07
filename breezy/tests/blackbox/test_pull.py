@@ -320,9 +320,9 @@ class TestPull(tests.TestCaseWithTransport):
         tree_a.commit('bar')
         tree_b = self.make_branch_and_tree('tree_b')
         out = self.run_bzr('pull --verbose -d tree_b tree_a')[0]
-        self.assertContainsRe(out, b'bar')
-        self.assertNotContainsRe(out, b'added:')
-        self.assertNotContainsRe(out, b'foo')
+        self.assertContainsRe(out, 'bar')
+        self.assertNotContainsRe(out, 'added:')
+        self.assertNotContainsRe(out, 'foo')
 
     def test_pull_quiet(self):
         """Check that brz pull --quiet does not print anything"""
@@ -363,17 +363,17 @@ class TestPull(tests.TestCaseWithTransport):
         target = self.make_branch_and_tree('target')
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out,
-                              br'revno: 1\ncommitter: .*\nbranch nick: source')
-        self.assertNotContainsRe(out, br'\n {4}1 .*\n {6}setup\n')
+                              r'revno: 1\ncommitter: .*\nbranch nick: source')
+        self.assertNotContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
 
     def test_pull_verbose_uses_default_log(self):
         tree = self.example_branch('source')
         target = self.make_branch_and_tree('target')
         target.branch.get_config_stack().set('log_format', 'short')
         out = self.run_bzr('pull -v source -d target')[0]
-        self.assertContainsRe(out, br'\n {4}1 .*\n {6}setup\n')
+        self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(
-            out, br'revno: 1\ncommitter: .*\nbranch nick: source')
+            out, r'revno: 1\ncommitter: .*\nbranch nick: source')
 
     def test_pull_smart_bound_branch(self):
         self.setup_smart_server_with_call_log()
@@ -425,7 +425,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            b"(?m)Doing on-the-fly conversion")
+            "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_warning_no_IDS(self):
         """You get a warning for probably slow cross-format pulls.
@@ -441,7 +441,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            b"(?m)Doing on-the-fly conversion")
+            "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_from_network(self):
         self.setup_smart_server_with_call_log()
@@ -452,7 +452,7 @@ class TestPull(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['pull', '-d', 'to',
             from_tree.branch.controldir.root_transport.base])
         self.assertContainsRe(err,
-            b"(?m)Doing on-the-fly conversion")
+            "(?m)Doing on-the-fly conversion")
 
     def test_pull_to_experimental_format_warning(self):
         """You get a warning for pulling into experimental formats.
@@ -462,7 +462,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            b"(?m)Fetching into experimental format")
+            "(?m)Fetching into experimental format")
 
     def test_pull_cross_to_experimental_format_warning(self):
         """You get a warning for pulling into experimental formats.
@@ -472,7 +472,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            b"(?m)Fetching into experimental format")
+            "(?m)Fetching into experimental format")
 
     def test_pull_show_base(self):
         """brz pull supports --show-base

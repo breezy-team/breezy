@@ -112,7 +112,7 @@ class TestCommands(TestCaseWithTransport):
         reference_set = set(ignores.USER_DEFAULTS)
         output_set = set(out.rstrip().split('\n'))
         self.assertEqual(reference_set, output_set)
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
 
     def test_ignore_versioned_file(self):
         tree = self.make_branch_and_tree('.')
@@ -170,9 +170,9 @@ class TestCommands(TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('.')
         out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
-        self.assertEqual(out, b'')
+        self.assertEqual(out, '')
         self.assertContainsRe(err,
-            br'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
-        self.assertNotContainsRe(err, b'foo', re.DOTALL)
+            r'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
+        self.assertNotContainsRe(err, 'foo', re.DOTALL)
         self.assertFalse(os.path.isfile('.bzrignore'))
 

@@ -1934,9 +1934,14 @@ class TestCase(testtools.TestCase):
 
         self.log('run brz: %r', args)
 
-        stdout = ui_testing.BytesIOWithEncoding()
-        stderr = ui_testing.BytesIOWithEncoding()
-        stdout.encoding = stderr.encoding = encoding
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
 
         # FIXME: don't call into logging here
         handler = trace.EncodedStreamHandler(
@@ -2044,12 +2049,12 @@ class TestCase(testtools.TestCase):
         Examples of use::
 
             # Make sure that commit is failing because there is nothing to do
-            self.run_bzr_error([b'no changes to commit'],
+            self.run_bzr_error(['no changes to commit'],
                                ['commit', '-m', 'my commit comment'])
             # Make sure --strict is handling an unknown file, rather than
             # giving us the 'nothing to do' error
             self.build_tree(['unknown'])
-            self.run_bzr_error([b'Commit refused because there are unknown files'],
+            self.run_bzr_error(['Commit refused because there are unknown files'],
                                ['commit', --strict', '-m', 'my commit comment'])
         """
         kwargs.setdefault('retcode', 3)

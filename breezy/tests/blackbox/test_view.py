@@ -41,7 +41,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertEqual(out, "Using 'my' view: r, s\n")
         # Check attempts to define the 'off' view are prevented
         out, err = self.run_bzr('view a --name off', retcode=3)
-        self.assertContainsRe(err, b"Cannot change the 'off' pseudo view")
+        self.assertContainsRe(err, "Cannot change the 'off' pseudo view")
 
     def test_list_view(self):
         wt = self.make_branch_and_tree('.')
@@ -60,38 +60,38 @@ class TestViewUI(TestCaseWithTransport):
         # Check list of all views
         out, err = self.run_bzr('view --all')
         self.assertEqual(out.splitlines(), [
-            b"Views defined:",
-            b"=> foo                  e, f",
-            b"   my                   a, b, c",
+            "Views defined:",
+            "=> foo                  e, f",
+            "   my                   a, b, c",
             ])
         # Check list of an unknown view
         out, err = self.run_bzr('view --name bar', retcode=3)
-        self.assertContainsRe(err, b"No such view")
+        self.assertContainsRe(err, "No such view")
 
     def test_delete_view(self):
         wt = self.make_branch_and_tree('.')
         # Check delete of the current view
         out, err = self.run_bzr('view --delete', retcode=3)
-        self.assertContainsRe(err, b"No current view to delete")
+        self.assertContainsRe(err, "No current view to delete")
         self.run_bzr('view a b c')
         out, err = self.run_bzr('view --delete')
-        self.assertEqual(out, b"Deleted 'my' view.\n")
+        self.assertEqual(out, "Deleted 'my' view.\n")
         # Check delete of a named view
         self.run_bzr('view e f --name foo')
         out, err = self.run_bzr('view --name foo --delete')
-        self.assertEqual(out, b"Deleted 'foo' view.\n")
+        self.assertEqual(out, "Deleted 'foo' view.\n")
         # Check delete of all views
         out, err = self.run_bzr('view --delete --all')
-        self.assertEqual(out, b"Deleted all views.\n")
+        self.assertEqual(out, "Deleted all views.\n")
         # Check delete of an unknown view
         out, err = self.run_bzr('view --delete --name bar', retcode=3)
-        self.assertContainsRe(err, b"No such view")
+        self.assertContainsRe(err, "No such view")
         # Check bad usage is reported to the user
         out, err = self.run_bzr('view --delete --switch x', retcode=3)
         self.assertContainsRe(err,
             b"Both --delete and --switch specified")
         out, err = self.run_bzr('view --delete a b c', retcode=3)
-        self.assertContainsRe(err, b"Both --delete and a file list specified")
+        self.assertContainsRe(err, "Both --delete and a file list specified")
 
     def test_switch_view(self):
         wt = self.make_branch_and_tree('.')
@@ -105,7 +105,7 @@ class TestViewUI(TestCaseWithTransport):
         self.assertEqual(out, "Disabled 'my' view.\n")
         # Check error reporting when attempt to switch off again
         out, err = self.run_bzr('view --switch off', retcode=3)
-        self.assertContainsRe(err, b"No current view to disable")
+        self.assertContainsRe(err, "No current view to disable")
         # Check bad usage is reported to the user
         out, err = self.run_bzr('view --switch x --all', retcode=3)
-        self.assertContainsRe(err, b"Both --switch and --all specified")
+        self.assertContainsRe(err, "Both --switch and --all specified")

@@ -32,32 +32,32 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
 
     def test_config_all(self):
         out, err = self.run_bzr(['config'])
-        self.assertEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_remove_unknown_option(self):
-        self.run_bzr_error([b'The "file" configuration option does not exist',],
+        self.run_bzr_error(['The "file" configuration option does not exist',],
                            ['config', '--remove', 'file'])
 
     def test_all_remove_exclusive(self):
-        self.run_bzr_error([b'--all and --remove are mutually exclusive.',],
+        self.run_bzr_error(['--all and --remove are mutually exclusive.',],
                            ['config', '--remove', '--all'])
 
     def test_all_set_exclusive(self):
-        self.run_bzr_error([b'Only one option can be set.',],
+        self.run_bzr_error(['Only one option can be set.',],
                            ['config', '--all', 'hello=world'])
 
     def test_remove_no_option(self):
-        self.run_bzr_error([b'--remove expects an option to remove.',],
+        self.run_bzr_error(['--remove expects an option to remove.',],
                            ['config', '--remove'])
 
     def test_unknown_option(self):
-        self.run_bzr_error([b'The "file" configuration option does not exist',],
+        self.run_bzr_error(['The "file" configuration option does not exist',],
                            ['config', 'file'])
 
     def test_unexpected_regexp(self):
         self.run_bzr_error(
-            [b'The "\\*file" configuration option does not exist',],
+            ['The "\\*file" configuration option does not exist',],
             ['config', '*file'])
 
     def test_wrong_regexp(self):
@@ -239,7 +239,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
         _t_config.create_configs(self)
 
     def test_unknown_config(self):
-        self.run_bzr_error([b'The "moon" configuration does not exist'],
+        self.run_bzr_error(['The "moon" configuration does not exist'],
                            ['config', '--scope', 'moon', 'hello=world'])
 
     def test_breezy_config_outside_branch(self):
@@ -293,7 +293,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
         _t_config.create_configs_with_file_option(self)
 
     def test_unknown_config(self):
-        self.run_bzr_error([b'The "moon" configuration does not exist'],
+        self.run_bzr_error(['The "moon" configuration does not exist'],
                            ['config', '--scope', 'moon', '--remove', 'file'])
 
     def test_breezy_config_outside_branch(self):
@@ -393,4 +393,4 @@ class TestConfigDirectory(tests.TestCaseWithTransport):
         clone.get_config_stack().set('test', 'clone')
         out, err = self.run_bzr(['config', '-d', ':parent', 'test'],
                                 working_dir='clone')
-        self.assertEqual(b'base\n', out)
+        self.assertEqual('base\n', out)

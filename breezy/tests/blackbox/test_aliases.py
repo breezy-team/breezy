@@ -41,8 +41,8 @@ c1=cat -r 1
 c2=cat -r 1 -r2
 ''', save=True)
 
-        str1 = b'foo\n'
-        str2 = b'bar\n'
+        str1 = 'foo\n'
+        str2 = 'bar\n'
 
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', str1)])

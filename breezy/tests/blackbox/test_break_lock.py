@@ -67,7 +67,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
     def test_break_lock_help(self):
         out, err = self.run_bzr('break-lock --help')
         # shouldn't fail and should not produce error output
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
 
     def test_break_lock_no_interaction(self):
         """With --force, the user isn't asked for confirmation"""

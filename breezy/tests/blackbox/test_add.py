@@ -51,15 +51,15 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree_contents([('.bzrignore', b'CVS\n')])
         out = self.run_bzr('add')[0]
         # the ordering is not defined at the moment
-        results = sorted(out.rstrip(b'\n').split(b'\n'))
-        self.assertEqual([b'adding .bzrignore',
-                          b'adding dir',
-                          b'adding dir/sub.txt',
-                          b'adding top.txt'],
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEqual(['adding .bzrignore',
+                          'adding dir',
+                          'adding dir/sub.txt',
+                          'adding top.txt'],
                           results)
         out = self.run_bzr('add -v')[0]
-        results = sorted(out.rstrip(b'\n').split(b'\n'))
-        self.assertEqual([b'ignored CVS matching "CVS"'],
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEqual(['ignored CVS matching "CVS"'],
                           results)
 
     def test_add_quiet_is(self):
@@ -68,8 +68,8 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr('add -q')[0]
         # the ordering is not defined at the moment
-        results = sorted(out.rstrip(b'\n').split(b'\n'))
-        self.assertEqual([b''], results)
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEqual([''], results)
 
     def test_add_in_unversioned(self):
         """Try to add a file in an unversioned directory.
@@ -78,28 +78,28 @@ class TestAdd(tests.TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEqual(self.run_bzr('unknowns')[0], b'inertiatic\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add inertiatic/esp')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
 
         # Multiple unversioned parents
         self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
-        self.assertEqual(self.run_bzr('unknowns')[0], b'veil\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'veil\n')
         self.run_bzr('add veil/cerpin/taxt')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
 
         # Check whacky paths work
         self.build_tree(['cicatriz/', 'cicatriz/esp'])
-        self.assertEqual(self.run_bzr('unknowns')[0], b'cicatriz\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'cicatriz\n')
         self.run_bzr('add inertiatic/../cicatriz/esp')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
 
     def test_add_no_recurse(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEqual(self.run_bzr('unknowns')[0], b'inertiatic\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add -N inertiatic')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'inertiatic/esp\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'inertiatic/esp\n')
 
     def test_add_in_versioned(self):
         """Try to add a file in a versioned directory.
@@ -108,11 +108,11 @@ class TestAdd(tests.TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEqual(self.run_bzr('unknowns')[0], b'inertiatic\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'inertiatic\n')
         self.run_bzr('add --no-recurse inertiatic')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'inertiatic/esp\n')
+        self.assertEqual(self.run_bzr('unknowns')[0], 'inertiatic/esp\n')
         self.run_bzr('add inertiatic/esp')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
@@ -133,7 +133,7 @@ class TestAdd(tests.TestCaseWithTransport):
         # add with no arguments in a subdirectory gets only files below that
         # subdirectory
         self.run_bzr('add', working_dir='src')
-        self.assertEqual(b'README\n',
+        self.assertEqual('README\n',
                           self.run_bzr('unknowns', working_dir='src')[0])
         # reopen to see the new changes
         t = t.controldir.open_workingtree('src')
@@ -142,7 +142,7 @@ class TestAdd(tests.TestCaseWithTransport):
 
         # add from the parent directory should pick up all file names
         self.run_bzr('add')
-        self.assertEqual(self.run_bzr('unknowns')[0], b'')
+        self.assertEqual(self.run_bzr('unknowns')[0], '')
         self.run_bzr('check')
 
     def test_add_missing(self):
@@ -161,10 +161,10 @@ class TestAdd(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr('add --file-ids-from ../base',
                                 working_dir='new')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'adding a w/ file id from a\n'
-                             b'adding b w/ file id from b\n'
-                             b'adding b/c w/ file id from b/c\n',
+        self.assertEqual('', err)
+        self.assertEqualDiff('adding a w/ file id from a\n'
+                             'adding b w/ file id from b\n'
+                             'adding b/c w/ file id from b/c\n',
                              out)
         new_tree = new_tree.controldir.open_workingtree()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
@@ -182,9 +182,9 @@ class TestAdd(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr('add --file-ids-from ../base/b',
                                 working_dir='new')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'adding c w/ file id from b/c\n'
-                             b'adding d w/ file id from b/d\n',
+        self.assertEqual('', err)
+        self.assertEqualDiff('adding c w/ file id from b/c\n'
+                             'adding d w/ file id from b/d\n',
                              out)
 
         new_tree = new_tree.controldir.open_workingtree('new')
@@ -203,12 +203,12 @@ class TestAdd(tests.TestCaseWithTransport):
         """The control dir and its content should be refused."""
         self.make_branch_and_tree('.')
         err = self.run_bzr('add .bzr', retcode=3)[1]
-        self.assertContainsRe(err, br'ERROR:.*\.bzr.*control file')
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
         err = self.run_bzr('add .bzr/README', retcode=3)[1]
-        self.assertContainsRe(err, br'ERROR:.*\.bzr.*control file')
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
         self.build_tree(['.bzr/crescent'])
         err = self.run_bzr('add .bzr/crescent', retcode=3)[1]
-        self.assertContainsRe(err, br'ERROR:.*\.bzr.*control file')
+        self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
 
     def test_add_via_symlink(self):
         self.requireFeature(features.SymlinkFeature)
@@ -216,14 +216,14 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree(['source/top.txt'])
         os.symlink('source', 'link')
         out = self.run_bzr(['add', 'link/top.txt'])[0]
-        self.assertEqual(out, b'adding top.txt\n')
+        self.assertEqual(out, 'adding top.txt\n')
 
     def test_add_symlink_to_abspath(self):
         self.requireFeature(features.SymlinkFeature)
         self.make_branch_and_tree('tree')
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
-        self.assertEqual(out, b'adding link\n')
+        self.assertEqual(out, 'adding link\n')
 
     def test_add_not_child(self):
         # https://bugs.launchpad.net/bzr/+bug/98735
@@ -242,8 +242,8 @@ class TestAdd(tests.TestCaseWithTransport):
         self.make_branch_and_tree(u"\xA7")
         self.build_tree([u"\xA7/a", u"\xA7/b"])
         out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
-        self.assertEqual(out, b"adding a\n" b"adding b\n")
-        self.assertEqual(err, b"")
+        self.assertEqual(out, "adding a\n" "adding b\n")
+        self.assertEqual(err, "")
 
     def test_add_skip_large_files(self):
         """Test skipping files larger than add.maximum_file_size"""
@@ -254,14 +254,14 @@ class TestAdd(tests.TestCaseWithTransport):
         self.build_tree_contents([('big2.txt', b'01234567890123456789\n')])
         tree.branch.get_config_stack().set('add.maximum_file_size', 5)
         out = self.run_bzr('add')[0]
-        results = sorted(out.rstrip(b'\n').split(b'\n'))
-        self.assertEqual([b'adding small.txt'], results)
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEqual(['adding small.txt'], results)
         # named items never skipped, even if over max
         out, err = self.run_bzr(["add", "big2.txt"])
-        results = sorted(out.rstrip(b'\n').split(b'\n'))
-        self.assertEqual([b'adding big2.txt'], results)
-        self.assertEqual(b"", err)
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEqual(['adding big2.txt'], results)
+        self.assertEqual("", err)
         tree.branch.get_config_stack().set('add.maximum_file_size', 30)
         out = self.run_bzr('add')[0]
-        results = sorted(out.rstrip(b'\n').split(b'\n'))
-        self.assertEqual([b'adding big.txt'], results)
+        results = sorted(out.rstrip('\n').split('\n'))
+        self.assertEqual(['adding big.txt'], results)

@@ -69,8 +69,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_cmd(self):
         out, err = self.run_bzr('annotate hello.txt')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
 3   user@te | your helicopter
 4   user@te | all of
@@ -79,8 +79,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_cmd_full(self):
         out, err = self.run_bzr('annotate hello.txt --all')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
 3   user@te | your helicopter
 4   user@te | all of
@@ -89,8 +89,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_cmd_long(self):
         out, err = self.run_bzr('annotate hello.txt --long')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@user 20061212 | my helicopter
 3   user@test 20061213 | your helicopter
 4   user@test 20061213 | all of
@@ -102,37 +102,37 @@ class TestAnnotate(tests.TestCaseWithTransport):
         max_len = max([len(self.revision_id_1),
                        len(self.revision_id_3),
                        len(self.revision_id_4)])
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 %*s | my helicopter
 %*s | your helicopter
 %*s | all of
 %*s | our helicopters
-''' % (max_len, self.revision_id_1,
-       max_len, self.revision_id_3,
-       max_len, self.revision_id_4,
-       max_len, b'',
+''' % (max_len, self.revision_id_1.decode('utf-8'),
+       max_len, self.revision_id_3.decode('utf-8'),
+       max_len, self.revision_id_4.decode('utf-8'),
+       max_len, '',
       )
 , out)
 
     def test_no_mail(self):
         out, err = self.run_bzr('annotate nomail.txt')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 2   no mail | nomail
 ''', out)
 
     def test_annotate_cmd_revision(self):
         out, err = self.run_bzr('annotate hello.txt -r1')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
 ''', out)
 
     def test_annotate_cmd_revision3(self):
         out, err = self.run_bzr('annotate hello.txt -r3')
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b'''\
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
 3   user@te | your helicopter
 ''', out)
@@ -140,15 +140,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_cmd_unknown_revision(self):
         out, err = self.run_bzr('annotate hello.txt -r 10',
                                 retcode=3)
-        self.assertEqual(b'', out)
-        self.assertContainsRe(err, b"Requested revision: '10' does not exist")
+        self.assertEqual('', out)
+        self.assertContainsRe(err, "Requested revision: '10' does not exist")
 
     def test_annotate_cmd_two_revisions(self):
         out, err = self.run_bzr('annotate hello.txt -r1..2',
                                 retcode=3)
-        self.assertEqual(b'', out)
-        self.assertEqual(b'brz: ERROR: brz annotate --revision takes'
-                         b' exactly one revision identifier\n',
+        self.assertEqual('', out)
+        self.assertEqual('brz: ERROR: brz annotate --revision takes'
+                         ' exactly one revision identifier\n',
                          err)
 
 
@@ -170,10 +170,10 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.branch.create_checkout(self.get_url('work'), lightweight=True)
         out, err = self.run_bzr(['annotate', 'file', '-r', 'branch:../trunk'],
                                 working_dir='work')
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
         self.assertEqual(
-            b'1   test@ho | foo\n'
-            b'            | gam\n',
+            '1   test@ho | foo\n'
+            '            | gam\n',
             out)
 
     def test_annotate_edited_file(self):
@@ -260,7 +260,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add('empty')
         tree.commit('add empty file')
         out, err = self.run_bzr(['annotate', 'empty'])
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_annotate_removed_file(self):
         tree = self.make_branch_and_tree('.')
@@ -271,7 +271,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.remove('empty')
         tree.commit('remove empty file')
         out, err = self.run_bzr(['annotate', '-r1', 'empty'])
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_annotate_empty_file_show_ids(self):
         tree = self.make_branch_and_tree('.')
@@ -279,7 +279,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add('empty')
         tree.commit('add empty file')
         out, err = self.run_bzr(['annotate', '--show-ids', 'empty'])
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_annotate_nonexistant_file(self):
         tree = self.make_branch_and_tree('.')
@@ -287,8 +287,8 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.add(['file'])
         tree.commit('add a file')
         out, err = self.run_bzr(['annotate', 'doesnotexist'], retcode=3)
-        self.assertEqual(b'', out)
-        self.assertEqual(b"brz: ERROR: doesnotexist is not versioned.\n", err)
+        self.assertEqual('', out)
+        self.assertEqual("brz: ERROR: doesnotexist is not versioned.\n", err)
 
     def test_annotate_without_workingtree(self):
         tree = self.make_branch_and_tree('.')
@@ -299,7 +299,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         bzrdir.destroy_workingtree()
         self.assertFalse(bzrdir.has_workingtree())
         out, err = self.run_bzr(['annotate', 'empty'])
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_annotate_directory(self):
         """Test --directory option"""

@@ -93,7 +93,7 @@ class TestLogWithLogCatcher(TestLog):
         return self.log_catcher.revisions
 
     def assertLogRevnos(self, args, expected_revnos, working_dir='.',
-                        out=b'', err=b''):
+                        out='', err=''):
         actual_out, actual_err = self.run_bzr(['log'] + args,
                                               working_dir=working_dir)
         self.assertEqual(out, actual_out)
@@ -236,25 +236,25 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
     def test_n0(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4'],
-                             [b'1.1.4', b'4', b'1.1.3', b'1.1.2', b'3', b'1.1.1'])
+                             ['1.1.4', '4', '1.1.3', '1.1.2', '3', '1.1.1'])
 
     def test_n0_forward(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4', '--forward'],
-                             [b'3', b'1.1.1', b'4', b'1.1.2', b'1.1.3', b'1.1.4'])
+                             ['3', '1.1.1', '4', '1.1.2', '1.1.3', '1.1.4'])
 
     def test_n1(self):
         # starting from 1.1.4 we follow the left-hand ancestry
         self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4'],
-                             [b'1.1.4', b'1.1.3', b'1.1.2', b'1.1.1'])
+                             ['1.1.4', '1.1.3', '1.1.2', '1.1.1'])
 
     def test_n1_forward(self):
         self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4', '--forward'],
-                             [b'1.1.1', b'1.1.2', b'1.1.3', b'1.1.4'])
+                             ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
     def test_fallback_when_end_rev_is_not_on_mainline(self):
         self.assertLogRevnos(['-n1', '-r1.1.1..5.1.1'],
                              # We don't get 1.1.1 because we say -n1
-                             [b'5.1.1', b'5', b'4', b'3'])
+                             ['5.1.1', '5', '4', '3'])
 
 
 class Test_GenerateAllRevisions(TestLogWithLogCatcher):
@@ -344,52 +344,52 @@ class TestLogErrors(TestLog):
 
     def test_log_zero_revspec(self):
         self.make_minimal_branch()
-        self.run_bzr_error([b'brz: ERROR: Logging revision 0 is invalid.'],
+        self.run_bzr_error(['brz: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0'])
 
     def test_log_zero_begin_revspec(self):
         self.make_linear_branch()
-        self.run_bzr_error([b'brz: ERROR: Logging revision 0 is invalid.'],
+        self.run_bzr_error(['brz: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0..2'])
 
     def test_log_zero_end_revspec(self):
         self.make_linear_branch()
-        self.run_bzr_error([b'brz: ERROR: Logging revision 0 is invalid.'],
+        self.run_bzr_error(['brz: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r-2..0'])
 
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error([b"brz: ERROR: Requested revision: '1234' "
-                            b"does not exist in branch:"],
+        self.run_bzr_error(["brz: ERROR: Requested revision: '1234' "
+                            "does not exist in branch:"],
                            ['log', '-r1234'])
 
     def test_log_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error([b"brz: ERROR: Requested revision: '123.123' "
-                            b"does not exist in branch:"],
+        self.run_bzr_error(["brz: ERROR: Requested revision: '123.123' "
+                            "does not exist in branch:"],
                            ['log',  '-r123.123'])
 
     def test_log_change_nonexistent_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error([b"brz: ERROR: Requested revision: '1234' "
-                            b"does not exist in branch:"],
+        self.run_bzr_error(["brz: ERROR: Requested revision: '1234' "
+                            "does not exist in branch:"],
                            ['log',  '-c1234'])
 
     def test_log_change_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error([b"brz: ERROR: Requested revision: '123.123' "
-                            b"does not exist in branch:"],
+        self.run_bzr_error(["brz: ERROR: Requested revision: '123.123' "
+                            "does not exist in branch:"],
                            ['log', '-c123.123'])
 
     def test_log_change_single_revno_only(self):
         self.make_minimal_branch()
-        self.run_bzr_error([b'brz: ERROR: Option --change does not'
-                           b' accept revision ranges'],
+        self.run_bzr_error(['brz: ERROR: Option --change does not'
+                            ' accept revision ranges'],
                            ['log', '--change', '2..3'])
 
     def test_log_change_incompatible_with_revision(self):
-        self.run_bzr_error([b'brz: ERROR: --revision and --change'
-                           b' are mutually exclusive'],
+        self.run_bzr_error(['brz: ERROR: --revision and --change'
+                            ' are mutually exclusive'],
                            ['log', '--change', '2', '--revision', '3'])
 
     def test_log_nonexistent_file(self):
@@ -398,19 +398,19 @@ class TestLogErrors(TestLog):
         # should give an error
         out, err = self.run_bzr('log does-not-exist', retcode=3)
         self.assertContainsRe(err,
-                              b'Path unknown at end or start of revision range: '
-                              b'does-not-exist')
+                              'Path unknown at end or start of revision range: '
+                              'does-not-exist')
 
     def test_log_reversed_revspecs(self):
         self.make_linear_branch()
-        self.run_bzr_error((b'brz: ERROR: Start revision must be older than '
-                            b'the end revision.\n',),
+        self.run_bzr_error(('brz: ERROR: Start revision must be older than '
+                            'the end revision.\n',),
                            ['log', '-r3..1'])
 
     def test_log_reversed_dotted_revspecs(self):
         self.make_merged_branch()
-        self.run_bzr_error((b'brz: ERROR: Start revision not found in '
-                            b'history of end revision.\n',),
+        self.run_bzr_error(('brz: ERROR: Start revision not found in '
+                            'history of end revision.\n',),
                            "log -r 1.1.1..1")
 
     def test_log_bad_message_re(self):
@@ -420,26 +420,26 @@ class TestLogErrors(TestLog):
         """
         self.make_minimal_branch()
         out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
-        self.assertContainsRe(err, b"ERROR.*Invalid pattern.*nothing to repeat")
-        self.assertNotContainsRe(err, b"Unprintable exception")
-        self.assertEqual(out, b'')
+        self.assertContainsRe(err, "ERROR.*Invalid pattern.*nothing to repeat")
+        self.assertNotContainsRe(err, "Unprintable exception")
+        self.assertEqual(out, '')
 
     def test_log_unsupported_timezone(self):
         self.make_linear_branch()
-        self.run_bzr_error([b'brz: ERROR: Unsupported timezone format "foo", '
-                            b'options are "utc", "original", "local".'],
+        self.run_bzr_error(['brz: ERROR: Unsupported timezone format "foo", '
+                            'options are "utc", "original", "local".'],
                            ['log', '--timezone', 'foo'])
 
     def test_log_exclude_ancestry_no_range(self):
         self.make_linear_branch()
-        self.run_bzr_error([b'brz: ERROR: --exclude-common-ancestry'
-                            b' requires -r with two revisions'],
+        self.run_bzr_error(['brz: ERROR: --exclude-common-ancestry'
+                            ' requires -r with two revisions'],
                            ['log', '--exclude-common-ancestry'])
 
     def test_log_exclude_ancestry_single_revision(self):
         self.make_merged_branch()
-        self.run_bzr_error([b'brz: ERROR: --exclude-common-ancestry'
-                            b' requires two different revisions'],
+        self.run_bzr_error(['brz: ERROR: --exclude-common-ancestry'
+                            ' requires two different revisions'],
                            ['log', '--exclude-common-ancestry',
                             '-r1.1.1..1.1.1'])
 
@@ -471,9 +471,9 @@ class TestLogTags(TestLog):
         self.run_bzr('merge ../branch1', working_dir='branch2')
         branch2_tree.commit(message='merge branch 1')
         log = self.run_bzr("log -n0 -r-1", working_dir='branch2')[0]
-        self.assertContainsRe(log, br'    tags: tag1')
+        self.assertContainsRe(log, r'    tags: tag1')
         log = self.run_bzr("log -n0 -r3.1.1", working_dir='branch2')[0]
-        self.assertContainsRe(log, br'tags: tag1')
+        self.assertContainsRe(log, r'tags: tag1')
 
 
 class TestLogSignatures(TestLog):
@@ -504,14 +504,14 @@ class TestLogVerbose(TestLog):
     def assertUseShortDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the short status format
-        self.assertContainsRe(log, b'(?m)^\\s*A  hello.txt$')
-        self.assertNotContainsRe(log, b'(?m)^\\s*added:$')
+        self.assertContainsRe(log, '(?m)^\\s*A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^\\s*added:$')
 
     def assertUseLongDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the long status format
-        self.assertNotContainsRe(log, b'(?m)^\\s*A  hello.txt$')
-        self.assertContainsRe(log, b'(?m)^\\s*added:$')
+        self.assertNotContainsRe(log, '(?m)^\\s*A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^\\s*added:$')
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
@@ -721,14 +721,14 @@ class TestLogUnicodeDiff(TestLog):
         # check that command won't fail with unicode error
         # don't care about exact output because we have other tests for this
         out, err = self.run_bzr('log -p --long')
-        self.assertNotEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
         out, err = self.run_bzr('log -p --short')
-        self.assertNotEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
         out, err = self.run_bzr('log -p --line')
-        self.assertNotEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
 
 
 class TestLogEncodings(tests.TestCaseInTempDir):
@@ -988,7 +988,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
     def setUp(self):
         super(MainlineGhostTests, self).setUp()
         tree = self.make_branch_and_tree('')
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
         tree.commit('msg1', rev_id=b'rev1')
         tree.commit('msg2', rev_id=b'rev2')

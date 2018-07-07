@@ -24,10 +24,10 @@ class TestLSProf(tests.TestCaseInTempDir):
 
     def test_file(self):
         out, err = self.run_bzr('--lsprof-file output.callgrind rocks')
-        self.assertNotContainsRe(out, b'Profile data written to')
-        self.assertContainsRe(err, b'Profile data written to')
+        self.assertNotContainsRe(out, 'Profile data written to')
+        self.assertContainsRe(err, 'Profile data written to')
 
     def test_stdout(self):
         out, err = self.run_bzr('--lsprof rocks')
         self.assertContainsRe(out, b'CallCount')
-        self.assertNotContainsRe(err, b'Profile data written to')
+        self.assertNotContainsRe(err, 'Profile data written to')

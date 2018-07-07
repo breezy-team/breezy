@@ -24,8 +24,8 @@ class TestCatRevision(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.commit('This revision', rev_id=b'abcd')
         output, errors = self.run_bzr(['cat-revision', u'abcd'])
-        self.assertContainsRe(output, b'This revision')
-        self.assertEqual(b'', errors)
+        self.assertContainsRe(output, 'This revision')
+        self.assertEqual('', errors)
 
     def test_cat_revision(self):
         """Test brz cat-revision.
@@ -56,20 +56,20 @@ class TestCatRevision(TestCaseWithTransport):
     def test_cat_no_such_revid(self):
         tree = self.make_branch_and_tree('.')
         err = self.run_bzr('cat-revision abcd', retcode=3)[1]
-        self.assertContainsRe(err, b'The repository .* contains no revision abcd.')
+        self.assertContainsRe(err, 'The repository .* contains no revision abcd.')
 
     def test_cat_revision_directory(self):
         """Test --directory option"""
         tree = self.make_branch_and_tree('a')
         tree.commit('This revision', rev_id=b'abcd')
         output, errors = self.run_bzr(['cat-revision', '-d', 'a', u'abcd'])
-        self.assertContainsRe(output, b'This revision')
-        self.assertEqual(b'', errors)
+        self.assertContainsRe(output, 'This revision')
+        self.assertEqual('', errors)
 
     def test_cat_tree_less_branch(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('This revision', rev_id=b'abcd')
         tree.controldir.destroy_workingtree()
         output, errors = self.run_bzr(['cat-revision', '-d', 'a', u'abcd'])
-        self.assertContainsRe(output, b'This revision')
-        self.assertEqual(b'', errors)
+        self.assertContainsRe(output, 'This revision')
+        self.assertEqual('', errors)

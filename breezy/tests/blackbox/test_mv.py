@@ -80,7 +80,7 @@ class TestMove(TestCaseWithTransport):
             'mv doesnotexist somewhereelse')
 
     def test_mv_unqualified(self):
-        self.run_bzr_error([b'^brz: ERROR: missing file argument$'], 'mv')
+        self.run_bzr_error(['^brz: ERROR: missing file argument$'], 'mv')
 
     def test_mv_invalid(self):
         tree = self.make_branch_and_tree('.')
@@ -169,9 +169,9 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['foo/', 'bar'])
         tree.add(['foo', 'bar'])
         out, err = self.run_bzr('mv bar Foo', retcode=3)
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
         self.assertEqual(
-            b'brz: ERROR: Could not move to Foo: Foo is not versioned.\n',
+            'brz: ERROR: Could not move to Foo: Foo is not versioned.\n',
             err)
 
     def test_mv_smoke_aliases(self):
@@ -450,8 +450,8 @@ class TestMove(TestCaseWithTransport):
     def test_mv_auto(self):
         self.make_abcd_tree()
         out, err = self.run_bzr('mv --auto', working_dir='tree')
-        self.assertEqual(out, b'')
-        self.assertEqual(err, b'a => b\nc => d\n')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
         self.assertTrue(tree.is_versioned('b'))
         self.assertTrue(tree.is_versioned('d'))
@@ -459,8 +459,8 @@ class TestMove(TestCaseWithTransport):
     def test_mv_auto_one_path(self):
         self.make_abcd_tree()
         out, err = self.run_bzr('mv --auto tree')
-        self.assertEqual(out, b'')
-        self.assertEqual(err, b'a => b\nc => d\n')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
         self.assertTrue(tree.is_versioned('b'))
         self.assertTrue(tree.is_versioned('d'))
@@ -468,14 +468,14 @@ class TestMove(TestCaseWithTransport):
     def test_mv_auto_two_paths(self):
         self.make_abcd_tree()
         out, err = self.run_bzr('mv --auto tree tree2', retcode=3)
-        self.assertEqual(b'brz: ERROR: Only one path may be specified to'
-                         b' --auto.\n', err)
+        self.assertEqual('brz: ERROR: Only one path may be specified to'
+                         ' --auto.\n', err)
 
     def test_mv_auto_dry_run(self):
         self.make_abcd_tree()
         out, err = self.run_bzr('mv --auto --dry-run', working_dir='tree')
-        self.assertEqual(out, b'')
-        self.assertEqual(err, b'a => b\nc => d\n')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
         self.assertTrue(tree.is_versioned('a'))
         self.assertTrue(tree.is_versioned('c'))
@@ -484,22 +484,22 @@ class TestMove(TestCaseWithTransport):
         self.make_abcd_tree()
         out, err = self.run_bzr('mv c d --dry-run',
                                 working_dir='tree', retcode=3)
-        self.assertEqual(b'brz: ERROR: --dry-run requires --auto.\n', err)
+        self.assertEqual('brz: ERROR: --dry-run requires --auto.\n', err)
 
     def test_mv_auto_after(self):
         self.make_abcd_tree()
         out, err = self.run_bzr('mv --auto --after', working_dir='tree',
                                 retcode=3)
-        self.assertEqual(b'brz: ERROR: --after cannot be specified with'
-                         b' --auto.\n', err)
+        self.assertEqual('brz: ERROR: --after cannot be specified with'
+                         ' --auto.\n', err)
 
     def test_mv_quiet(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['aaa'])
         tree.add(['aaa'])
         out, err = self.run_bzr('mv --quiet aaa bbb')
-        self.assertEqual(out, b'')
-        self.assertEqual(err, b'')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
 
     def test_mv_readonly_lightweight_checkout(self):
         branch = self.make_branch('foo')
@@ -516,7 +516,7 @@ class TestMove(TestCaseWithTransport):
         self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
-        out, err = self.run_bzr_error([b"Could not rename", b"not versioned"],
+        out, err = self.run_bzr_error(["Could not rename", b"not versioned"],
             ["mv", u"\xA7", "b"])
 
     def test_mv_removed_non_ascii(self):
@@ -527,5 +527,5 @@ class TestMove(TestCaseWithTransport):
         tree.add([u"\xA7"])
         tree.commit(u"Adding \xA7")
         os.remove(u"\xA7")
-        out, err = self.run_bzr_error([b"Could not rename", b"not exist"],
+        out, err = self.run_bzr_error(["Could not rename", b"not exist"],
             ["mv", u"\xA7", "b"])

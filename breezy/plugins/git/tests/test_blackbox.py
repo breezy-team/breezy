@@ -54,18 +54,18 @@ class TestGitBlackBox(ExternalBase):
         dir = ControlDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
-        self.assertEqual(b"master\n", output)
+        self.assertEqual("master\n", output)
 
     def test_branches(self):
         self.simple_commit()
         output, error = self.run_bzr(['branches'])
-        self.assertEqual(b"* master\n", output)
+        self.assertEqual("* master\n", output)
 
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
-        self.assertEqual(error, b'')
-        self.assertTrue(b"Standalone tree (format: git)" in output)
+        self.assertEqual(error, '')
+        self.assertTrue("Standalone tree (format: git)" in output)
 
     def test_branch(self):
         os.mkdir("gitbranch")
@@ -79,8 +79,8 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
         self.assertTrue(
-            (error == b'Branched 1 revision(s).\n') or
-            (error == b'Branched 1 revision.\n'),
+            (error == 'Branched 1 revision(s).\n') or
+            (error == 'Branched 1 revision.\n'),
             error)
 
     def test_checkout(self):
@@ -95,15 +95,15 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['checkout', 'gitbranch', 'bzrbranch'])
         self.assertEqual(error,
-                b'Fetching from Git to Bazaar repository. '
-                b'For better performance, fetch into a Git repository.\n')
-        self.assertEqual(output, b'')
+                'Fetching from Git to Bazaar repository. '
+                'For better performance, fetch into a Git repository.\n')
+        self.assertEqual(output, '')
 
     def test_branch_ls(self):
         self.simple_commit()
         output, error = self.run_bzr(['ls', '-r-1'])
-        self.assertEqual(error, b'')
-        self.assertEqual(output, b"a\n")
+        self.assertEqual(error, '')
+        self.assertEqual(output, "a\n")
 
     def test_init(self):
         self.run_bzr("init --format=git repo")
@@ -112,11 +112,11 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
 
         output, error = self.run_bzr(['info', '-v'])
-        self.assertEqual(error, b'')
-        self.assertTrue(b"Standalone tree (format: git)" in output)
-        self.assertTrue(b"control: Local Git Repository" in output)
-        self.assertTrue(b"branch: Local Git Branch" in output)
-        self.assertTrue(b"repository: Git Repository" in output)
+        self.assertEqual(error, '')
+        self.assertTrue("Standalone tree (format: git)" in output)
+        self.assertTrue("control: Local Git Repository" in output)
+        self.assertTrue("branch: Local Git Branch" in output)
+        self.assertTrue("repository: Git Repository" in output)
 
     def test_push_roundtripping(self):
         self.knownFailure("roundtripping is not yet supported")
@@ -136,10 +136,10 @@ class TestGitBlackBox(ExternalBase):
 
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log'])
-        self.assertEqual(error, b'')
+        self.assertEqual(error, '')
         self.assertTrue(
-            b'<The commit message>' in output,
-            b"Commit message was not found in output:\n%s" % (output,))
+            '<The commit message>' in output,
+            "Commit message was not found in output:\n%s" % (output,))
 
     def test_log_verbose(self):
         # Smoke test for "bzr log -v" in a git repository.
@@ -153,8 +153,8 @@ class TestGitBlackBox(ExternalBase):
         git_repo.refs[b"refs/tags/foo"] = commit_sha1
 
         output, error = self.run_bzr(['tags'])
-        self.assertEqual(error, b'')
-        self.assertEqual(output, b"foo                  1\n")
+        self.assertEqual(error, '')
+        self.assertEqual(output, "foo                  1\n")
 
     def test_tag(self):
         self.simple_commit()
@@ -163,28 +163,28 @@ class TestGitBlackBox(ExternalBase):
 
         # bzr <= 2.2 emits this message in the output stream
         # bzr => 2.3 emits this message in the error stream
-        self.assertEqual(error + output, b'Created tag bar.\n')
+        self.assertEqual(error + output, 'Created tag bar.\n')
 
     def test_init_repo(self):
         output, error = self.run_bzr(["init", "--format=git", "bla.git"])
-        self.assertEqual(error, b'')
-        self.assertEqual(output, b'Created a standalone tree (format: git)\n')
+        self.assertEqual(error, '')
+        self.assertEqual(output, 'Created a standalone tree (format: git)\n')
 
     def test_diff_format(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
-        self.assertEqual(error, b'')
+        self.assertEqual(error, '')
         self.assertEqual(output,
-            b'diff --git /dev/null b/a\n'
-            b'old mode 0\n'
-            b'new mode 100644\n'
-            b'index 0000000..c197bd8 100644\n'
-            b'--- /dev/null\n'
-            b'+++ b/a\n'
-            b'@@ -0,0 +1 @@\n'
-            b'+contents of a\n')
+            'diff --git /dev/null b/a\n'
+            'old mode 0\n'
+            'new mode 100644\n'
+            'index 0000000..c197bd8 100644\n'
+            '--- /dev/null\n'
+            '+++ b/a\n'
+            '@@ -0,0 +1 @@\n'
+            '+contents of a\n')
 
     def test_git_import_uncolocated(self):
         r = GitRepo.init("a", mkdir=True)
@@ -249,10 +249,10 @@ class TestGitBlackBox(ExternalBase):
         cid = r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
         r[b"refs/tags/atag"] = cid
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
-        self.assertEqual(stderr, b"")
+        self.assertEqual(stderr, "")
         self.assertEqual(stdout,
-            b'refs/heads/abranch -> ' + cid + b'\n'
-            b'refs/tags/atag -> ' + cid + b'\n')
+            'refs/heads/abranch -> ' + cid.decode('ascii') + '\n'
+            'refs/tags/atag -> ' + cid.decode('ascii') + '\n')
 
     def test_git_refs_from_bzr(self):
         tree = self.make_branch_and_tree('a')
@@ -261,9 +261,9 @@ class TestGitBlackBox(ExternalBase):
         revid = tree.commit(committer=b"Joe <joe@example.com>", message=b"Dummy")
         tree.branch.tags.set_tag("atag", revid)
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
-        self.assertEqual(stderr, b"")
-        self.assertTrue(b"refs/tags/atag -> " in stdout)
-        self.assertTrue(b"HEAD -> " in stdout)
+        self.assertEqual(stderr, "")
+        self.assertTrue("refs/tags/atag -> " in stdout)
+        self.assertTrue("HEAD -> " in stdout)
 
     def test_check(self):
         r = GitRepo.init("gitr", mkdir=True)
@@ -272,8 +272,8 @@ class TestGitBlackBox(ExternalBase):
         r.do_commit(b"message", committer=b"Somebody <user@example.com>")
         out, err = self.run_bzr(["check", "gitr"])
         self.maxDiff = None
-        self.assertEqual(out, b'')
-        self.assertTrue(err.endswith, b'3 objects\n')
+        self.assertEqual(out, '')
+        self.assertTrue(err.endswith, '3 objects\n')
 
 
 class ShallowTests(ExternalBase):
@@ -293,36 +293,36 @@ class ShallowTests(ExternalBase):
     def test_log_shallow(self):
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log', 'gitr'], retcode=3)
-        self.assertEqual(error, b'brz: ERROR: Further revision history missing.\n')
+        self.assertEqual(error, 'brz: ERROR: Further revision history missing.\n')
         self.assertEqual(output,
-                b'------------------------------------------------------------\n'
-                b'revision-id: git-v1:' + self.repo.head() + b'\n'
-                b'git commit: ' + self.repo.head() + b'\n'
-                b'committer: Somebody <user@example.com>\n'
-                b'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
-                b'message:\n'
-                b'  message\n')
+                '------------------------------------------------------------\n'
+                'revision-id: git-v1:' + self.repo.head().decode('ascii') + '\n'
+                'git commit: ' + self.repo.head().decode('ascii') + '\n'
+                'committer: Somebody <user@example.com>\n'
+                'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
+                'message:\n'
+                '  message\n')
 
     def test_version_info_rio(self):
         output, error = self.run_bzr(['version-info', '--rio', 'gitr'])
-        self.assertEqual(error, b'')
-        self.assertNotIn(b'revno:', output)
+        self.assertEqual(error, '')
+        self.assertNotIn('revno:', output)
 
     def test_version_info_python(self):
         output, error = self.run_bzr(['version-info', '--python', 'gitr'])
-        self.assertEqual(error, b'')
-        self.assertNotIn(b'revno:', output)
+        self.assertEqual(error, '')
+        self.assertNotIn('revno:', output)
 
     def test_version_info_custom_with_revno(self):
         output, error = self.run_bzr(
                 ['version-info', '--custom',
                  '--template=VERSION_INFO r{revno})\n', 'gitr'], retcode=3)
-        self.assertEqual(error, b'brz: ERROR: Variable {revno} is not available.\n')
-        self.assertEqual(output, b'VERSION_INFO r')
+        self.assertEqual(error, 'brz: ERROR: Variable {revno} is not available.\n')
+        self.assertEqual(output, 'VERSION_INFO r')
 
     def test_version_info_custom_without_revno(self):
         output, error = self.run_bzr(
                 ['version-info', '--custom', '--template=VERSION_INFO \n',
                  'gitr'])
-        self.assertEqual(error, b'')
-        self.assertEqual(output, b'VERSION_INFO \n')
+        self.assertEqual(error, '')
+        self.assertEqual(output, 'VERSION_INFO \n')

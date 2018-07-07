@@ -24,6 +24,7 @@ from breezy import (
     tests,
     urlutils,
     )
+from breezy.sixish import PY3
 from breezy.tests import EncodingAdapter
 from breezy.tests.scenarios import load_tests_apply_scenarios
 
@@ -62,7 +63,10 @@ class TestNonAscii(tests.TestCaseWithTransport):
         try:
             out = self.run_bzr(args, encoding=encoding,
                                retcode=retcode, working_dir=working_dir)[0]
-            return out.decode(encoding)
+            if PY3:
+                return out
+            else:
+                return out.decode(encoding)
         except UnicodeError as e:
             if not fail:
                 raise

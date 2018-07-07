@@ -57,9 +57,9 @@ class TestRepairWorkingTree(TestCaseWithTransport):
         # user to let them know that:
         # a) they may want to use 'brz revert' instead of repair-workingtree
         # b) they can use --force if they really want to do this
-        self.run_bzr_error([b'The tree does not appear to be corrupt',
-                            b'"brz revert"',
-                            b'--force'],
+        self.run_bzr_error(['The tree does not appear to be corrupt',
+                            '"brz revert"',
+                            '--force'],
                            'repair-workingtree -d tree')
 
     def test_repair_forced(self):
@@ -82,7 +82,7 @@ class TestRepairWorkingTree(TestCaseWithTransport):
     def test_repair_naive_destroyed_fails(self):
         tree = self.make_initial_tree()
         self.break_dirstate(tree, completely=True)
-        self.run_bzr_error([b'the header appears corrupt, try passing'],
+        self.run_bzr_error(['the header appears corrupt, try passing'],
                            'repair-workingtree -d tree')
 
     def test_repair_destroyed_with_revs_passes(self):

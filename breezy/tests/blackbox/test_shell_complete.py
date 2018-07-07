@@ -25,18 +25,18 @@ class ShellCompleteTests(TestCaseWithTransport):
 
     def test_list(self):
         out, err = self.run_bzr('shell-complete')
-        self.assertEqual(b'', err)
-        self.assertIn(b"version:show version of brz\n", out)
+        self.assertEqual('', err)
+        self.assertIn("version:show version of brz\n", out)
 
     def test_specific_command_missing(self):
         out, err = self.run_bzr('shell-complete missing-command', retcode=3)
-        self.assertEqual(b'brz: ERROR: unknown command "missing-command"\n', err)
-        self.assertEqual(b'', out)
+        self.assertEqual('brz: ERROR: unknown command "missing-command"\n', err)
+        self.assertEqual('', out)
 
     def test_specific_command(self):
         out, err = self.run_bzr('shell-complete shell-complete')
-        self.assertEqual(b'', err)
-        self.assertEqual(b"""\
+        self.assertEqual('', err)
+        self.assertEqual("""\
 --usage
 "(--quiet -q)"{--quiet,-q}
 "(--verbose -v)"{--verbose,-v}

@@ -62,13 +62,13 @@ class TestRevno(tests.TestCaseWithTransport):
 
         # Make sure revno says we're on 1
         out, err = self.run_bzr('revno checkout')
-        self.assertEqual(b'', err)
-        self.assertEqual(b'1\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('1\n', out)
 
         # Make sure --tree knows it's still on 0
         out, err = self.run_bzr('revno --tree checkout')
-        self.assertEqual(b'', err)
-        self.assertEqual(b'0\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('0\n', out)
 
     def test_revno_tree_no_tree(self):
         # Make treeless branch
@@ -76,8 +76,8 @@ class TestRevno(tests.TestCaseWithTransport):
 
         # Try getting it's --tree revno
         out, err = self.run_bzr('revno --tree branch', retcode=3)
-        self.assertEqual(b'', out)
-        self.assertEqual(b'brz: ERROR: No WorkingTree exists for "branch".\n',
+        self.assertEqual('', out)
+        self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)
 
     def test_dotted_revno_tree(self):
@@ -94,11 +94,11 @@ class TestRevno(tests.TestCaseWithTransport):
         co_b = b.create_checkout('checkout_b', lightweight=True,
                                  revision_id=b'B-id')
         out, err = self.run_bzr('revno checkout_b')
-        self.assertEqual(b'', err)
-        self.assertEqual(b'2\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('2\n', out)
         out, err = self.run_bzr('revno --tree checkout_b')
-        self.assertEqual(b'', err)
-        self.assertEqual(b'1.1.1\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('1.1.1\n', out)
 
     def test_stale_revno_tree(self):
         builder = self.make_branch_builder('branch')
@@ -116,11 +116,11 @@ class TestRevno(tests.TestCaseWithTransport):
         co_b = b.create_checkout('checkout_b', lightweight=True,
                                  revision_id=b'B-id')
         out, err = self.run_bzr('revno checkout_b')
-        self.assertEqual(b'', err)
-        self.assertEqual(b'2\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('2\n', out)
         out, err = self.run_bzr('revno --tree checkout_b')
-        self.assertEqual(b'', err)
-        self.assertEqual(b'???\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('???\n', out)
 
     def test_revno_with_revision(self):
         wt = self.make_branch_and_tree('.')
@@ -128,17 +128,17 @@ class TestRevno(tests.TestCaseWithTransport):
         revid2 = wt.commit('rev2')
 
         out, err = self.run_bzr('revno -r-2 .')
-        self.assertEqual(b'1\n', out)
+        self.assertEqual('1\n', out)
 
         out, err = self.run_bzr('revno -rrevid:%s .' % revid1)
-        self.assertEqual(b'1\n', out)
+        self.assertEqual('1\n', out)
 
     def test_revno_and_tree_mutually_exclusive(self):
         wt = self.make_branch_and_tree('.')
         out, err = self.run_bzr('revno -r-2 --tree .', retcode=3)
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
         self.assertEqual(
-            b'brz: ERROR: --tree and --revision can not be used together\n',
+            'brz: ERROR: --tree and --revision can not be used together\n',
             err)
 
 

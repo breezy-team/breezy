@@ -50,7 +50,7 @@ class TestCopy(TestCaseWithTransport):
             'cp doesnotexist somewhereelse')
 
     def test_cp_unqualified(self):
-        self.run_bzr_error([b'^brz: ERROR: missing file argument$'], 'cp')
+        self.run_bzr_error(['^brz: ERROR: missing file argument$'], 'cp')
 
     def test_cp_invalid(self):
         tree = self.make_branch_and_tree('.')

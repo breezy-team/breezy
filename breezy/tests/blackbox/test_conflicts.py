@@ -111,7 +111,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         self.assertEqual(out.decode(self.encoding),
             u"\xA7_other_file\n"
             u"\xA7file\n")
-        self.assertEqual(err, "")
+        self.assertEqual(err, b"")
 
 
 class TestUnicodePathsOnAsciiTerminal(TestUnicodePaths):
