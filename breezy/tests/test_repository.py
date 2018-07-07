@@ -255,19 +255,19 @@ class TestFormatKnit1(TestCaseWithTransport):
         tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
         tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
-        self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
-            '\nfoo fulltext 0 81  :')
+        self.assertHasKnit(t, b'knits/e8/%254easty-%2549d%2543%253a',
+            b'\nfoo fulltext 0 81  :')
 
-    def assertHasKnit(self, t, knit_name, extra_content=''):
+    def assertHasKnit(self, t, knit_name, extra_content=b''):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 8\n' + extra_content,
+        self.assertEqualDiff(b'# bzr knit index 8\n' + extra_content,
                              t.get(knit_name + '.kndx').read())
 
     def check_knits(self, t):
         """check knit content for a repository."""
-        self.assertHasKnit(t, 'inventory')
-        self.assertHasKnit(t, 'revisions')
-        self.assertHasKnit(t, 'signatures')
+        self.assertHasKnit(t, b'inventory')
+        self.assertHasKnit(t, b'revisions')
+        self.assertHasKnit(t, b'signatures')
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -300,12 +300,12 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+        self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
                              t.get('format').read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        self.assertEqualDiff(b'', t.get('shared-storage').read())
+        self.assertEqualDiff(b'', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
@@ -579,7 +579,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [
             ('modify', ('file', b'content-2\n'))],
@@ -603,7 +603,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [
             ('modify', ('file', b'content-2\n'))],
@@ -699,7 +699,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             for j in 'abcdefghijklmnopqrstuvwxyz123456789':
                 fname = i + j
                 fid = fname.encode('utf-8') + b'-id'
-                content = 'content for %s\n' % (fname,)
+                content = b'content for %s\n' % (fname,)
                 entries.append(('add', (fname, fid, 'file', content)))
         source_builder.start_series()
         source_builder.build_snapshot(None, entries, revision_id=b'rev-1')
@@ -1012,11 +1012,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test__clear_obsolete_packs(self):
         packs = self.get_packs()
         obsolete_pack_trans = packs.transport.clone('obsolete_packs')
-        obsolete_pack_trans.put_bytes('a-pack.pack', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.rix', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
-        obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
-        obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
+        obsolete_pack_trans.put_bytes('a-pack.pack', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.rix', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.iix', b'content\n')
+        obsolete_pack_trans.put_bytes('another-pack.pack', b'foo\n')
+        obsolete_pack_trans.put_bytes('not-a-pack.rix', b'foo\n')
         res = packs._clear_obsolete_packs()
         self.assertEqual(['a-pack', 'another-pack'], sorted(res))
         self.assertEqual([], obsolete_pack_trans.list_dir('.'))
@@ -1024,11 +1024,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test__clear_obsolete_packs_preserve(self):
         packs = self.get_packs()
         obsolete_pack_trans = packs.transport.clone('obsolete_packs')
-        obsolete_pack_trans.put_bytes('a-pack.pack', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.rix', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
-        obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
-        obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
+        obsolete_pack_trans.put_bytes('a-pack.pack', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.rix', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.iix', b'content\n')
+        obsolete_pack_trans.put_bytes('another-pack.pack', b'foo\n')
+        obsolete_pack_trans.put_bytes('not-a-pack.rix', b'foo\n')
         res = packs._clear_obsolete_packs(preserve={'a-pack'})
         self.assertEqual(['a-pack', 'another-pack'], sorted(res))
         self.assertEqual(['a-pack.iix', 'a-pack.pack', 'a-pack.rix'],
@@ -1287,7 +1287,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         r.start_write_group()
         self.addCleanup(r.abort_write_group)
         r.texts.insert_record_stream([versionedfile.FulltextContentFactory(
-            ('text', 'rev'), (), None, 'content\n')])
+            (b'text', b'rev'), (), None, b'content\n')])
         new_pack = packs._new_pack
         self.assertTrue(new_pack.data_inserted())
         new_pack.finish()

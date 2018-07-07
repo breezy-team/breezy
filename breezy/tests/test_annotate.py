@@ -181,7 +181,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.addCleanup(builder.finish_series)
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None)),
-            ('add', ('a', b'a-id', 'file', 'first\n')),
+            ('add', ('a', b'a-id', 'file', b'first\n')),
             ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com",
             revision_id=b'rev-1')
         builder.build_snapshot([b'rev-1'], [
@@ -456,7 +456,6 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.assertBranchAnnotate(b'1   committ | hello\n', tree1.branch,
             'a', b'rev-1')
 
-        to_file = BytesIO()
         self.assertBranchAnnotate(b'2   author@ | bye\n', tree1.branch,
             'b', b'rev-2')
 

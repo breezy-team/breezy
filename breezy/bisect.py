@@ -172,7 +172,7 @@ class BisectLog(object):
         if spread < 2:
             middle_index = 0
         else:
-            middle_index = (spread / 2) - 1
+            middle_index = (spread // 2) - 1
 
         if len(between_revs) > 0:
             self._middle_revid = between_revs[middle_index]

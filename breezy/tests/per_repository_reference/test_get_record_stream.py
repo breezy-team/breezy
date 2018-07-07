@@ -122,7 +122,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
 
     def test_unordered_fetch_complex_split(self):
         self.make_complex_split()
-        keys = [(b'f-id', int2byte(r)) for r in bytearray('ABCDEG')]
+        keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDEG')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(

@@ -344,7 +344,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     3 Joe Foo\t2005-11-22
       single line with trailing newline
 
@@ -361,7 +361,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_short_log_with_merges(self):
         wt = self._prepare_tree_with_merges()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -373,7 +373,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_short_log_with_merges_and_advice(self):
         wt = self._prepare_tree_with_merges()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -391,7 +391,7 @@ Use --include-merged or -n0 to see merged revisions.
         wt.branch.set_last_revision_info(2, b'rev-2b')
         wt.set_parent_ids([b'rev-2b', b'rev-3a'])
         self.wt_commit(wt, 'rev-3b', rev_id=b'rev-3b')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     3 Joe Foo\t2005-11-22 [merge]
       rev-3b
 
@@ -404,7 +404,7 @@ Use --include-merged or -n0 to see merged revisions.
 
     def test_short_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     3 Joe Foo\t2005-11-22 {v1.0, v1.0rc1}
       rev-3
 
@@ -421,7 +421,7 @@ Use --include-merged or -n0 to see merged revisions.
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
       1.1.1 Joe Foo\t2005-11-22
             rev-merged
 
@@ -438,7 +438,7 @@ Use --include-merged or -n0 to see merged revisions.
         self.wt_commit(child_wt, 'branch 1 changes', rev_id=b'b')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1', rev_id=b'c')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       revision-id:c
       merge branch 1
@@ -463,7 +463,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         # Note that the 1.1.1 indenting is in fact correct given that
         # the revision numbers are right justified within 5 characters
         # for mainline revnos and 9 characters for dotted revnos.
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -481,7 +481,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
       1.1.1 Joe Foo\t2005-11-22
             rev-merged
 
@@ -499,7 +499,7 @@ class TestLongLogFormatter(TestCaseForLogFormatter):
         bug #4676
         """
         wt = self.make_standard_commit('test_verbose_log', authors=[])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -524,7 +524,7 @@ added:
         self.wt_commit(child_wt, 'merge branch 2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 committer: Joe Foo <joe@foo.com>
@@ -576,7 +576,7 @@ message:
         self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 committer: Joe Foo <joe@foo.com>
@@ -617,7 +617,7 @@ added:
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 3
 committer: Joe Foo <joe@foo.com>
@@ -651,7 +651,7 @@ message:
         wt = self.make_standard_commit('test_author_log',
             authors=['John Doe <jdoe@example.com>',
                      'Jane Rey <jrey@example.com>'])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -675,7 +675,7 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 test_prop: test_value
@@ -699,7 +699,7 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     1 John Doe\t2005-11-22
       test_prop: test_value
       add a
@@ -752,7 +752,7 @@ message:
         self.wt_commit(child_wt, 'branch 1 changes', rev_id=b'b')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1', rev_id=b'c')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 revision-id: c
@@ -793,7 +793,7 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
         bug #4676
         """
         wt = self.make_standard_commit('test_long_verbose_log', authors=[])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -819,7 +819,7 @@ added:
         self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 committer: Joe Foo <joe@foo.com>
@@ -849,7 +849,7 @@ added:
     def test_long_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 3
 committer: Joe Foo <joe@foo.com>
@@ -882,7 +882,7 @@ message:
         the revision properties
         """
         wt = self.make_standard_commit('test_author_log')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>
@@ -906,7 +906,7 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 test_prop: test_value
@@ -931,7 +931,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
         wt = self.make_standard_commit('test-line-log',
                 committer='Line-Log-Formatter Tester <test@line.log>',
                 authors=[])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1: Line-Log-Formatte... 2005-11-22 add a
 """,
             wt.branch, log.LineLogFormatter)
@@ -939,7 +939,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 3: Joe Foo 2005-11-22 single line with trailing newline
 2: Joe Foo 2005-11-22 multiline
 1: Joe Foo 2005-11-22 simple log message
@@ -950,7 +950,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
             wt.branch, log.LineLogFormatter,
@@ -958,7 +958,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
 
     def test_line_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 3: Joe Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
 2: Joe Foo 2005-11-22 [merge] {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
@@ -976,7 +976,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt = self.make_standard_commit('test-line-log',
                 committer='Line-Log-Formatter Tester <test@line.log>',
                 authors=[])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1: Line-Log-Formatte... 2005-11-22 add a
 """,
             wt.branch, log.LineLogFormatter)
@@ -985,7 +985,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
             wt.branch, log.LineLogFormatter,
@@ -994,7 +994,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
     def test_line_merge_revs_log_with_merges(self):
         wt = self._prepare_tree_with_merges()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
 1: Joe Foo 2005-11-22 rev-1
@@ -1007,7 +1007,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
     def test_gnu_changelog(self):
         wt = self.make_standard_commit('nicky', authors=[])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  Lorem Ipsum  <test@example.com>
 
 \tadd a
@@ -1019,7 +1019,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
         wt = self.make_standard_commit('nicky',
             authors=['Fooa Fooz <foo@example.com>',
                      'Bari Baro <bar@example.com>'])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  Fooa Fooz  <foo@example.com>
 
 \tadd a
@@ -1029,7 +1029,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
     def test_verbose(self):
         wt = self.make_standard_commit('nicky')
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \t* a:
@@ -1302,7 +1302,7 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         tree = self.setup_ab_tree()
         start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revision-id: 3a
 committer: Joe Foo <joe@foo.com>
@@ -1333,7 +1333,7 @@ message:
         tree = self.setup_ab_tree()
         start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
       Joe Foo\t2005-11-22
       revision-id:3a
       commit 3a
@@ -1354,7 +1354,7 @@ message:
         tree = self.setup_ab_tree()
         start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 Joe Foo 2005-11-22 commit 3a
 Joe Foo 2005-11-22 commit 2a
 1: Joe Foo 2005-11-22 commit 1a
@@ -1389,7 +1389,7 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
 
     def test_long_bugs(self):
         tree = self.make_commits_with_bugs()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2
 fixes bugs: test://bug/id test://bug/2
@@ -1414,7 +1414,7 @@ message:
 
     def test_short_bugs(self):
         tree = self.make_commits_with_bugs()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Bar\t2005-11-22
       fixes bugs: test://bug/id test://bug/2
       multiline
@@ -1433,7 +1433,7 @@ message:
         self.build_tree(['foo'])
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
                        revprops={u'bugs': 'test://bug/id invalid_value'})
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     1 Joe Foo\t2005-11-22
       simple log message
 
@@ -1461,56 +1461,56 @@ class TestLogForAuthors(TestCaseForLogFormatter):
             self.wt.branch, formatter, formatter_kwargs=formatter_kwargs)
 
     def test_line_default(self):
-        self.assertFormatterResult(log.LineLogFormatter, None, """\
+        self.assertFormatterResult(log.LineLogFormatter, None, b"""\
 1: John Doe 2005-11-22 add a
 """)
 
     def test_line_committer(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'committer', b"""\
 1: Lorem Ipsum 2005-11-22 add a
 """)
 
     def test_line_first(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'first', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'first', b"""\
 1: John Doe 2005-11-22 add a
 """)
 
     def test_line_all(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'all', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'all', b"""\
 1: John Doe, Jane Rey 2005-11-22 add a
 """)
 
 
     def test_short_default(self):
-        self.assertFormatterResult(log.ShortLogFormatter, None, """\
+        self.assertFormatterResult(log.ShortLogFormatter, None, b"""\
     1 John Doe\t2005-11-22
       add a
 
 """)
 
     def test_short_committer(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'committer', b"""\
     1 Lorem Ipsum\t2005-11-22
       add a
 
 """)
 
     def test_short_first(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'first', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'first', b"""\
     1 John Doe\t2005-11-22
       add a
 
 """)
 
     def test_short_all(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'all', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'all', b"""\
     1 John Doe, Jane Rey\t2005-11-22
       add a
 
 """)
 
     def test_long_default(self):
-        self.assertFormatterResult(log.LongLogFormatter, None, """\
+        self.assertFormatterResult(log.LongLogFormatter, None, b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -1522,7 +1522,7 @@ message:
 """)
 
     def test_long_committer(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'committer', b"""\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -1533,7 +1533,7 @@ message:
 """)
 
     def test_long_first(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'first', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'first', b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>
@@ -1545,7 +1545,7 @@ message:
 """)
 
     def test_long_all(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'all', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'all', b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -1557,7 +1557,7 @@ message:
 """)
 
     def test_gnu_changelog_default(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, b"""\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \tadd a
@@ -1565,7 +1565,7 @@ message:
 """)
 
     def test_gnu_changelog_committer(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', b"""\
 2005-11-22  Lorem Ipsum  <test@example.com>
 
 \tadd a
@@ -1573,7 +1573,7 @@ message:
 """)
 
     def test_gnu_changelog_first(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', b"""\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \tadd a
@@ -1581,7 +1581,7 @@ message:
 """)
 
     def test_gnu_changelog_all(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', b"""\
 2005-11-22  John Doe  <jdoe@example.com>, Jane Rey  <jrey@example.com>
 
 \tadd a

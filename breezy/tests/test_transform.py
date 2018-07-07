@@ -384,7 +384,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertRaises(ReusingTransform, transform.find_conflicts)
         with open(self.wt.abspath('name'), 'r') as f:
             self.assertEqual('contents', f.read())
-        self.assertEqual(self.wt.path2id('name'), 'my_pretties')
+        self.assertEqual(self.wt.path2id('name'), b'my_pretties')
         self.assertIs(self.wt.is_executable('name'), True)
         self.assertEqual(self.wt.path2id('oz'), b'oz-id')
         self.assertEqual(self.wt.path2id('oz/dorothy'), b'dorothy-id')
@@ -398,7 +398,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         tree = transform._tree
         trans_id = transform.new_directory('reference', root, b'subtree-id')
-        transform.set_tree_reference('subtree-revision', trans_id)
+        transform.set_tree_reference(b'subtree-revision', trans_id)
         transform.apply()
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -602,11 +602,11 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def test_add_del(self):
         start, root = self.get_transform()
-        start.new_directory('a', root, 'a')
+        start.new_directory('a', root, b'a')
         start.apply()
         transform, root = self.get_transform()
         transform.delete_versioned(transform.trans_id_tree_path('a'))
-        transform.new_directory('a', root, 'a')
+        transform.new_directory('a', root, b'a')
         transform.apply()
 
     def test_unversioning(self):
@@ -654,7 +654,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         mangle_tree.adjust_path('mfile', root, mfile)
 
         #tests for adding parent directories
-        newdir = mangle_tree.new_directory('new_directory', root, 'newdir')
+        newdir = mangle_tree.new_directory('new_directory', root, b'newdir')
         mfile2 = mangle_tree.trans_id_tree_path('moving_file2')
         mangle_tree.adjust_path('mfile2', newdir, mfile2)
         mangle_tree.new_file('newfile', newdir, [b'hello3'], b'dfile')
@@ -735,7 +735,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         delete_contents.apply()
         move_id, root = self.get_transform()
         name1 = move_id.trans_id_tree_path('name1')
-        newdir = move_id.new_directory('dir', root, 'newdir')
+        newdir = move_id.new_directory('dir', root, b'newdir')
         move_id.adjust_path('name2', newdir, name1)
         move_id.apply()
 
@@ -2312,8 +2312,8 @@ class TestCommitTransform(tests.TestCaseWithTransport):
 
     def test_merge_parents(self):
         branch, tt = self.get_branch_and_transform()
-        rev = tt.commit(branch, 'my message', ['rev1b', 'rev1c'])
-        self.assertEqual(['rev1b', 'rev1c'],
+        rev = tt.commit(branch, 'my message', [b'rev1b', b'rev1c'])
+        self.assertEqual([b'rev1b', b'rev1c'],
                          branch.basis_tree().get_parent_ids()[1:])
 
     def test_first_commit(self):
@@ -2335,7 +2335,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt = TransformPreview(branch.basis_tree())
         self.addCleanup(tt.finalize)
         e = self.assertRaises(ValueError, tt.commit, branch,
-                          'my message', ['rev1b-id'])
+                          'my message', [b'rev1b-id'])
         self.assertEqual('Cannot supply merge parents for first commit.',
                          str(e))
         self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
@@ -3055,7 +3055,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_tree_content_summary(self):
         preview = self.get_empty_preview()
         path = preview.new_directory('path', preview.root, b'path-id')
-        preview.set_tree_reference('rev-1', path)
+        preview.set_tree_reference(b'rev-1', path)
         summary = preview.get_preview_tree().path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('tree-reference', summary[0])
@@ -3103,7 +3103,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.adjust_path('newname', preview.root, file_trans_id)
         preview_tree = preview.get_preview_tree()
         expected = [
-            ('one', 'a\n'),
+            (b'one', b'a\n'),
         ]
         annotation = preview_tree.annotate_iter('file', default_revision=b'me:')
         self.assertEqual(expected, annotation)
@@ -3156,12 +3156,12 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree_a = preview.get_preview_tree()
         tree_a.set_parent_ids([base_id])
         self.assertEqual([
-            ('killed-a', 'a\n'),
-            ('killed-b', 'b\n'),
-            ('unchanged', 'c\n'),
-            ('unchanged', 'd\n'),
-            ('new-a', 'e\n'),
-            ('new-b', 'f\n'),
+            ('killed-a', b'a\n'),
+            ('killed-b', b'b\n'),
+            ('unchanged', b'c\n'),
+            ('unchanged', b'd\n'),
+            ('new-a', b'e\n'),
+            ('new-b', b'f\n'),
         ], list(tree_a.plan_file_merge(b'file-id', tree_b)))
 
     def test_plan_file_merge_revision_tree(self):
@@ -3179,12 +3179,12 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree_a = preview.get_preview_tree()
         tree_a.set_parent_ids([base_id])
         self.assertEqual([
-            ('killed-a', 'a\n'),
-            ('killed-b', 'b\n'),
-            ('unchanged', 'c\n'),
-            ('unchanged', 'd\n'),
-            ('new-a', 'e\n'),
-            ('new-b', 'f\n'),
+            ('killed-a', b'a\n'),
+            ('killed-b', b'b\n'),
+            ('unchanged', b'c\n'),
+            ('unchanged', b'd\n'),
+            ('new-a', b'e\n'),
+            ('new-b', b'f\n'),
         ], list(tree_a.plan_file_merge(b'file-id', tree_b)))
 
     def test_walkdirs(self):

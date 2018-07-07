@@ -442,7 +442,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         fp = t.get('foo/bar')
         self.assertEqualDiff(
             fp.read(),
-            'contents of foo/bar\n')
+            b'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/%s'

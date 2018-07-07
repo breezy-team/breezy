@@ -289,7 +289,7 @@ class TestWithStuff(TestCaseWithTransport):
         b = self.make_repository('foo')
         null_tree = b.revision_tree(_mod_revision.NULL_REVISION)
         tt = transform.TransformPreview(null_tree)
-        root = tt.new_directory('', transform.ROOT_PARENT, 'tree-root')
+        root = tt.new_directory('', transform.ROOT_PARENT, b'tree-root')
         tt.fixup_new_roots()
         self.addCleanup(tt.finalize)
         return tt
@@ -298,9 +298,9 @@ class TestWithStuff(TestCaseWithTransport):
         self.requireFeature(UnicodeFilenameFeature)
         tt = self.get_empty_tt()
         encoded_file = tt.new_file(
-            u'\u1234file', tt.root, 'contents', 'new-file')
+            u'\u1234file', tt.root, [b'contents'], b'new-file')
         encoded_file = tt.new_file(
-            'other', tt.root, 'contents', 'other-file')
+            'other', tt.root, [b'contents'], b'other-file')
         tarfile = self.transform_to_tar(tt)
         tarfile.seek(0)
         tree = self.make_branch_and_tree('bar')

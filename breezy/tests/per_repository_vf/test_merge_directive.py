@@ -47,7 +47,7 @@ class TestMergeDirective(TestCaseWithRepository):
             ('add', ('', b'root-id', 'directory', None)),
             ('add', ('f', b'f-id', 'file', b'initial content\n')),
             ], revision_id=b'A')
-        builder.build_snapshot('A', [
+        builder.build_snapshot([b'A'], [
             ('modify', ('f', b'new content\n')),
             ], revision_id=b'B')
         builder.finish_series()

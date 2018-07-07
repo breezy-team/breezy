@@ -61,7 +61,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
         # parents first, and then grab the ordered requests.
         needed_ids = [k[-1] for k in self.present_parents]
         needed_ids.extend([k[-1] for k in self.ordered_keys])
-        inv_to_str = self.repo._serializer.write_inventory_to_string
+        inv_to_bytes = self.repo._serializer.write_inventory_to_string
         for inv in self.repo.iter_inventories(needed_ids):
             revision_id = inv.revision_id
             key = (revision_id,)
@@ -71,7 +71,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
                 parent_ids = None
             else:
                 parent_ids = [k[-1] for k in self.parent_map[key]]
-            as_bytes = inv_to_str(inv)
+            as_bytes = inv_to_bytes(inv)
             self._process_one_record(key, (as_bytes,))
             if parent_ids is None:
                 continue
@@ -399,12 +399,12 @@ class BundleWriteOperation(object):
 
     def _add_revision_texts(self, revision_order):
         parent_map = self.repository.get_parent_map(revision_order)
-        revision_to_str = self.repository._serializer.write_revision_to_string
+        revision_to_bytes = self.repository._serializer.write_revision_to_string
         revisions = self.repository.get_revisions(revision_order)
         for revision in revisions:
             revision_id = revision.revision_id
             parents = parent_map.get(revision_id, None)
-            revision_text = revision_to_str(revision)
+            revision_text = revision_to_bytes(revision)
             self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id)
             try:

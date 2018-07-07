@@ -40,6 +40,7 @@ from . import (
     plugin as _mod_plugin,
     help,
     )
+from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -48,26 +49,26 @@ from .i18n import gettext
 
 
 def _escape(s):
-    s = (s.replace('\\', '\\\\')
-        .replace('\n', '\\n')
-        .replace('\r', '\\r')
-        .replace('\t', '\\t')
-        .replace('"', '\\"')
+    s = (s.replace(b'\\', b'\\\\')
+        .replace(b'\n', b'\\n')
+        .replace(b'\r', b'\\r')
+        .replace(b'\t', b'\\t')
+        .replace(b'"', b'\\"')
         )
     return s
 
 def _normalize(s):
     # This converts the various Python string types into a format that
     # is appropriate for .po files, namely much closer to C style.
-    lines = s.split('\n')
+    lines = s.split(b'\n')
     if len(lines) == 1:
-        s = '"' + _escape(s) + '"'
+        s = b'"' + _escape(s) + b'"'
     else:
         if not lines[-1]:
             del lines[-1]
             lines[-1] = lines[-1] + '\n'
         lineterm = '\\n"\n"'
-        s = '""\n"' + lineterm.join(map(_escape, lines)) + '"'
+        s = b'""\n"' + lineterm.join(map(_escape, lines)) + b'"'
     return s
 
 
@@ -157,7 +158,9 @@ class _PotExporter(object):
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
-        self.outf.write(line.encode('utf-8'))
+        if not PY3:
+            line = line.decode('utf-8')
+        self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
         context = context.from_string(string)

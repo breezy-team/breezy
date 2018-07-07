@@ -424,7 +424,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         """Test we can create dummies."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         dir = controldir.ControlDir.open("d")
-        self.assertEqual("A Dummy VCS Dir", dir._format.get_format_string())
+        self.assertEqual(b"A Dummy VCS Dir", dir._format.get_format_string())
         dir.open_repository()
         dir.open_branch()
         dir.open_workingtree()
@@ -434,7 +434,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         dir = controldir.ControlDir.open("d")
         newdir = dir.sprout("e")
-        self.assertNotEqual("A Dummy VCS Dir",
+        self.assertNotEqual(b"A Dummy VCS Dir",
                             newdir._format.get_format_string())
 
     def test_push_not_supported(self):

@@ -151,14 +151,11 @@ class NormalizedFilename(TestCaseWithTransport):
             self.assertEqual(path, fname)
             self.assertTrue(can_access)
 
-            f = open(path, 'rb')
-            try:
+            with open(path, 'rb') as f:
                 # Check the contents
-                shouldbe = 'contents of %s%s' % (path.encode('utf8'),
-                                                 os.linesep)
+                shouldbe = b'contents of %s%s' % (path.encode('utf8'),
+                                                  os.linesep)
                 actual = f.read()
-            finally:
-                f.close()
             self.assertEqual(shouldbe, actual,
                              'contents of %r is incorrect: %r != %r'
                              % (path, shouldbe, actual))

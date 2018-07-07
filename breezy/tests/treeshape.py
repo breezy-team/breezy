@@ -53,7 +53,7 @@ def build_tree_contents(template):
         elif name[-1] == '@':
             os.symlink(tt[1], tt[0][:-1])
         else:
-            with open(name, 'wb') as f:
+            with open(name, 'wb' if isinstance(tt[1], bytes) else 'wt') as f:
                 f.write(tt[1])
 
 
