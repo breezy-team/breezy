@@ -246,7 +246,7 @@ class TestMerge(TestCaseWithTransport):
         # tree
         tree2.commit('changed file text')
         tree.merge_from_branch(tree2.branch)
-        self.assertFileEqual('text2', 'tree/sub-tree/file')
+        self.assertFileEqual(b'text2', 'tree/sub-tree/file')
 
     def test_merge_with_missing(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -557,7 +557,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         mapper = versionedfile.PrefixMapper()
         factory = knit.make_file_factory(True, mapper)
         self.vf = factory(self.get_transport())
-        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root')
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile(b'root')
         self.plan_merge_vf.fallback_versionedfiles.append(self.vf)
 
     def add_version(self, key, parents, text):
@@ -569,7 +569,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def add_uncommitted_version(self, key, parents, text):
         self.plan_merge_vf.add_lines(key, parents,
-                                     [c+'\n' for c in text])
+                                     [int2byte(c)+b'\n' for c in bytearray(text)])
 
     def setup_plan_merge(self):
         self.add_rev(b'root', b'A', [], b'abc')
@@ -2890,7 +2890,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
         root_id = b'a-root-id'
-        self.assertEqual([('sub-tree-root', False,
+        self.assertEqual([(b'sub-tree-root', False,
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),

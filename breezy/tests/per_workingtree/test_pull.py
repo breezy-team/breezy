@@ -55,7 +55,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
     def test_pull_merges_tree_content(self):
         tree_a, tree_b, rev_a = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
-        self.assertFileEqual('contents of from/file\n', 'to/file')
+        self.assertFileEqual(b'contents of from/file\n', 'to/file')
 
     def test_pull_changes_root_id(self):
         tree = self.make_branch_and_tree('from')

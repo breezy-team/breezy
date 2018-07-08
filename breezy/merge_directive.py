@@ -455,6 +455,8 @@ class MergeDirective(BaseMergeDirective):
             except KeyError:
                 pass
         kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
+        if 'testament_sha1' in kwargs:
+            kwargs['testament_sha1'] = kwargs['testament_sha1'].encode('ascii')
         return MergeDirective(time=time, timezone=timezone,
                               patch_type=patch_type, patch=patch, **kwargs)
 

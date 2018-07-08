@@ -204,7 +204,10 @@ def remote_refs_dict_to_tag_refs(refs_dict):
         else:
             base[k] = v
             peeled[k] = v
-    for n in set(base.keys() + peeled.keys()):
+    all_keys = set()
+    all_keys.update(base.keys())
+    all_keys.update(peeled.keys())
+    for n in all_keys:
         try:
             tag_name = ref_to_tag_name(n)
         except ValueError:

@@ -1493,16 +1493,16 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
         old_path, new_path = diff_obj._prepare_files(
-                'oldname', 'newname', file_id='file-id')
+                'oldname', 'newname', file_id=b'file-id')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
-        self.assertFileEqual('oldcontent', old_path)
-        self.assertFileEqual('newcontent', new_path)
+        self.assertFileEqual(b'oldcontent', old_path)
+        self.assertFileEqual(b'newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('oldname2', 'newname2', file_id='file2-id')
+        diff_obj._prepare_files('oldname2', 'newname2', file_id=b'file2-id')
 
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):

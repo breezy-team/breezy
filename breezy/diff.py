@@ -483,9 +483,9 @@ def _patch_header_date(tree, file_id, path):
 
 
 def get_executable_change(old_is_x, new_is_x):
-    descr = { True:"+x", False:"-x", None:"??" }
+    descr = { True:b"+x", False:b"-x", None:b"??" }
     if old_is_x != new_is_x:
-        return ["%s to %s" % (descr[old_is_x], descr[new_is_x],)]
+        return [b"%s to %s" % (descr[old_is_x], descr[new_is_x],)]
     else:
         return []
 
