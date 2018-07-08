@@ -23,11 +23,15 @@ from breezy import (
     errors,
     ui,
     )
-from breezy.bundle.serializer import (BundleSerializer,
-                                      _get_bundle_header,
-                                     )
+from breezy.bundle.serializer import (
+    BundleSerializer,
+    _get_bundle_header,
+    )
 from breezy.bundle.serializer import binary_diff
-from breezy.bundle.bundle_data import (RevisionInfo, BundleInfo)
+from breezy.bundle.bundle_data import (
+    RevisionInfo,
+    BundleInfo,
+    )
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
 from breezy.sixish import text_type
@@ -69,17 +73,17 @@ class Action(object):
 
     def write(self, to_file):
         """Write action as to a file"""
-        p_texts = [b' '.join([self.name]+self.parameters)]
+        p_texts = [' '.join([self.name]+self.parameters)]
         for prop in self.properties:
             if len(prop) == 1:
                 p_texts.append(prop[0])
             else:
                 try:
-                    p_texts.append(b'%s:%s' % prop)
+                    p_texts.append('%s:%s' % prop)
                 except:
                     raise repr(prop)
-        text = [b'=== ']
-        text.append(b' // '.join(p_texts))
+        text = ['=== ']
+        text.append(' // '.join(p_texts))
         text_line = ''.join(text).encode('utf-8')
         available = 79
         while len(text_line) > available:
@@ -91,6 +95,7 @@ class Action(object):
 
 
 class BundleSerializerV08(BundleSerializer):
+
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
@@ -236,7 +241,7 @@ class BundleSerializerV08(BundleSerializer):
                             trailing_space_when_empty=True)
 
         # Add an extra blank space at the end
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
     def _write_action(self, name, parameters, properties=None):
         if properties is None:
@@ -393,9 +398,9 @@ class BundleReader(object):
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
-            if line is None or line == '\n':
+            if line is None or line == b'\n':
                 break
-            if not line.startswith('#'):
+            if not line.startswith(b'#'):
                 continue
             found_something = True
             self._handle_next(line)
@@ -407,7 +412,7 @@ class BundleReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
-        if not line.startswith('#'):
+        if not line.startswith(b'#'):
             raise errors.MalformedHeader('Bzr header did not start with #')
         line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
@@ -462,14 +467,14 @@ class BundleReader(object):
         does not start properly indented.
         """
         values = []
-        start = '#' + (' '*indent)
+        start = b'#' + (b' '*indent)
 
-        if self._next_line is None or self._next_line[:len(start)] != start:
+        if self._next_line is None or not self._next_line.startswith(start):
             return values
 
         for line in self._next():
             values.append(line[len(start):-1].decode('utf-8'))
-            if self._next_line is None or self._next_line[:len(start)] != start:
+            if self._next_line is None or not self._next_line.startswith(start):
                 break
         return values
 
@@ -481,7 +486,7 @@ class BundleReader(object):
         """
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
-        if self._next_line is None or self._next_line.startswith('#'):
+        if self._next_line is None or self._next_line.startswith(b'#'):
             return None, [], False
 
         first = True
@@ -530,7 +535,7 @@ class BundleReader(object):
             self._handle_next(line)
             if self._next_line is None:
                 break
-            if not self._next_line.startswith('#'):
+            if not self._next_line.startswith(b'#'):
                 # Consume the trailing \n and stop processing
                 next(self._next())
                 break

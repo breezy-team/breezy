@@ -157,16 +157,16 @@ class TestMergeDirective(object):
         time = 500000.0
         timezone = 5 * 3600
         self.assertRaises(errors.NoMergeSource, self.make_merge_directive,
-            'example:', 'sha', time, timezone, 'http://example.com')
+            'example:', b'sha', time, timezone, 'http://example.com')
         self.assertRaises(errors.NoMergeSource, self.make_merge_directive,
-            'example:', 'sha', time, timezone, 'http://example.com',
+            'example:', b'sha', time, timezone, 'http://example.com',
             patch_type='diff')
-        self.make_merge_directive('example:', 'sha', time, timezone,
+        self.make_merge_directive('example:', b'sha', time, timezone,
             'http://example.com', source_branch='http://example.org')
-        md = self.make_merge_directive('null:', 'sha', time, timezone,
+        md = self.make_merge_directive('null:', b'sha', time, timezone,
             'http://example.com', patch='blah', patch_type='bundle')
         self.assertIs(None, md.source_branch)
-        md2 = self.make_merge_directive('null:', 'sha', time, timezone,
+        md2 = self.make_merge_directive('null:', b'sha', time, timezone,
             'http://example.com', patch='blah', patch_type='bundle',
             source_branch='bar')
         self.assertEqual('bar', md2.source_branch)
@@ -174,10 +174,10 @@ class TestMergeDirective(object):
     def test_serialization(self):
         time = 453
         timezone = 120
-        md = self.make_merge_directive('example:', 'sha', time, timezone,
+        md = self.make_merge_directive('example:', b'sha', time, timezone,
             'http://example.com', patch='booga', patch_type='bundle')
         self.assertEqualDiff(self.OUTPUT1, b''.join(md.to_lines()))
-        md = self.make_merge_directive('example:', 'sha', time, timezone,
+        md = self.make_merge_directive('example:', b'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff', message="Hi mom!")
         self.assertEqualDiff(self.OUTPUT2, b''.join(md.to_lines()))
@@ -193,20 +193,20 @@ class TestMergeDirective(object):
 
     def test_deserialize_leading_junk(self):
         md = merge_directive.MergeDirective.from_lines(self.INPUT1)
-        self.assertEqual('example:', md.revision_id)
+        self.assertEqual(b'example:', md.revision_id)
         self.assertEqual('sha', md.testament_sha1)
         self.assertEqual('http://example.com', md.target_branch)
         self.assertEqual('http://example.org', md.source_branch)
         self.assertEqual(453, md.time)
         self.assertEqual(120, md.timezone)
-        self.assertEqual('booga', md.patch)
+        self.assertEqual(b'booga', md.patch)
         self.assertEqual('diff', md.patch_type)
         self.assertEqual('Hi mom!', md.message)
 
     def test_roundtrip(self):
         time = 500000
         timezone = 7.5 * 3600
-        md = self.make_merge_directive('example:', 'sha', time, timezone,
+        md = self.make_merge_directive('example:', b'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')
         md2 = merge_directive.MergeDirective.from_lines(md.to_lines())
@@ -259,9 +259,9 @@ class TestMergeDirective1(tests.TestCase, TestMergeDirective):
         time = 500.0
         timezone = 120
         self.assertRaises(errors.PatchMissing, merge_directive.MergeDirective,
-            'example:', 'sha', time, timezone, 'http://example.com',
+            'example:', b'sha', time, timezone, 'http://example.com',
             patch_type='bundle')
-        md = merge_directive.MergeDirective('example:', 'sha1', time, timezone,
+        md = merge_directive.MergeDirective('example:', b'sha1', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='', patch_type='diff')
         self.assertEqual(md.patch, '')
@@ -454,7 +454,7 @@ class TestMergeDirectiveBranch(object):
         md1 = self.from_objects(tree_a.branch.repository, b'rev2a', 500, 120,
             tree_b.branch.base, public_branch=branch_c.base)
         lines = md1.to_lines()
-        lines = [l.replace('\n', '\r\n') for l in lines]
+        lines = [l.replace(b'\n', b'\r\n') for l in lines]
         md2 = merge_directive.MergeDirective.from_lines(lines)
         self.assertEqual(b'rev2a', md2.revision_id)
 
@@ -464,7 +464,7 @@ class TestMergeDirectiveBranch(object):
         class FakeBranch(object):
             def get_config_stack(self):
                 return self
-        md = self.make_merge_directive('example:', 'sha', time, timezone,
+        md = self.make_merge_directive('example:', b'sha', time, timezone,
             'http://example.com', source_branch="http://example.org",
             patch='booga', patch_type='diff')
         old_strategy = gpg.GPGStrategy
@@ -694,7 +694,7 @@ class TestParseOldMergeDirective2(tests.TestCase):
         self.assertEqual('http://example.org', md.source_branch)
         self.assertEqual(453, md.time)
         self.assertEqual(120, md.timezone)
-        self.assertEqual('booga', md.patch)
+        self.assertEqual(b'booga', md.patch)
         self.assertEqual('diff', md.patch_type)
         self.assertEqual('Hi mom!', md.message)
 
@@ -734,7 +734,7 @@ class TestBodyHook(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('foo')
         tree.commit('foo')
         directive = merge_directive.MergeDirective2(
-            tree.branch.last_revision(), 'sha', 0, 0, 'sha',
+            tree.branch.last_revision(), b'sha', 0, 0, b'sha',
             source_branch=tree.branch.base,
             base_revision_id=tree.branch.last_revision(),
             message='This code rox')
