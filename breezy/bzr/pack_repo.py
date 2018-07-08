@@ -216,6 +216,15 @@ class Pack(object):
             index._leaf_factory = btree_index._gcchk_factory
         setattr(self, index_type + '_index', index)
 
+    def __lt__(self, other):
+        if not isinstance(other, Pack):
+            raise TypeError(other)
+        return (id(self) < id(other))
+
+    def __hash__(self):
+        return hash((type(self), self.revision_index, self.inventory_index,
+            self.text_index, self.signature_index, self.chk_index))
+
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
