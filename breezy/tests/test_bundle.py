@@ -1411,7 +1411,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.commit('changed file', rev_id=b'rev2')
         s = BytesIO()
         serializer = BundleSerializerV4('1.0')
-        serializer.write(tree.branch.repository, [b'rev1', b'rev2'], {}, s)
+        with tree.lock_read():
+            serializer.write_bundle(tree.branch.repository, b'rev2', b'null:', s)
         s.seek(0)
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
@@ -1470,7 +1471,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         repo_b = tree_b.branch.repository
         s = BytesIO()
         serializer = BundleSerializerV4('4')
-        serializer.write(tree_a.branch.repository, [b'A', b'B'], {}, s)
+        with tree_a.lock_read():
+            serializer.write_bundle(tree_a.branch.repository, b'B', b'null:', s)
         s.seek(0)
         install_bundle(repo_b, serializer.read(s))
         self.assertTrue(repo_b.has_signature_for_revision_id(b'B'))

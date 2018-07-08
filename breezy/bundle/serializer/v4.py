@@ -276,7 +276,7 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
             at.
         :param fileobj: The file-like object to write to
         """
-        write_op =  BundleWriteOperation(base, target, repository, fileobj)
+        write_op = BundleWriteOperation(base, target, repository, fileobj)
         return write_op.do_write()
 
     def read(self, file):

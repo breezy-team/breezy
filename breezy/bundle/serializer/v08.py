@@ -69,17 +69,17 @@ class Action(object):
 
     def write(self, to_file):
         """Write action as to a file"""
-        p_texts = [b' '.join([self.name]+self.parameters)]
+        p_texts = [' '.join([self.name]+self.parameters)]
         for prop in self.properties:
             if len(prop) == 1:
                 p_texts.append(prop[0])
             else:
                 try:
-                    p_texts.append(b'%s:%s' % prop)
+                    p_texts.append('%s:%s' % prop)
                 except:
                     raise repr(prop)
-        text = [b'=== ']
-        text.append(b' // '.join(p_texts))
+        text = ['=== ']
+        text.append(' // '.join(p_texts))
         text_line = ''.join(text).encode('utf-8')
         available = 79
         while len(text_line) > available:
