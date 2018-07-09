@@ -247,16 +247,16 @@ class BundleSerializerV08(BundleSerializer):
                             trailing_space_when_empty=True)
 
         # Add an extra blank space at the end
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
     def _write_action(self, name, parameters, properties=None):
         if properties is None:
             properties = []
         p_texts = ['%s:%s' % v for v in properties]
-        self.to_file.write('=== ')
+        self.to_file.write(b'=== ')
         self.to_file.write(' '.join([name]+parameters).encode('utf-8'))
         self.to_file.write(' // '.join(p_texts).encode('utf-8'))
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
     def _write_delta(self, new_tree, old_tree, default_revision_id,
                      force_binary):
@@ -404,9 +404,9 @@ class BundleReader(object):
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
-            if line is None or line == '\n':
+            if line is None or line == b'\n':
                 break
-            if not line.startswith('#'):
+            if not line.startswith(b'#'):
                 continue
             found_something = True
             self._handle_next(line)
@@ -418,13 +418,13 @@ class BundleReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
-        if not line.startswith('#'):
+        if not line.startswith(b'#'):
             raise errors.MalformedHeader('Bzr header did not start with #')
         line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
             line = line[indent:]
         if not line:
-            return None, None# Ignore blank lines
+            return None, None # Ignore blank lines
 
         loc = line.find(': ')
         if loc != -1:
@@ -458,6 +458,8 @@ class BundleReader(object):
                     value = value.encode('utf8')
                 elif key in ('parent_ids'):
                     value = [v.encode('utf8') for v in value]
+                elif key in ('testament_sha1'):
+                    value = value.encode('ascii')
                 setattr(revision_info, key, value)
             else:
                 raise errors.MalformedHeader('Duplicated Key: %s' % key)
@@ -473,7 +475,7 @@ class BundleReader(object):
         does not start properly indented.
         """
         values = []
-        start = '#' + (' '*indent)
+        start = b'#' + (b' '*indent)
 
         if self._next_line is None or self._next_line[:len(start)] != start:
             return values
@@ -492,30 +494,30 @@ class BundleReader(object):
         """
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
-        if self._next_line is None or self._next_line.startswith('#'):
+        if self._next_line is None or self._next_line.startswith(b'#'):
             return None, [], False
 
         first = True
         lines = []
         for line in self._next():
             if first:
-                if not line.startswith('==='):
+                if not line.startswith(b'==='):
                     raise errors.MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = line[4:-1].decode('utf-8')
-            elif line.startswith('... '):
-                action += line[len('... '):-1].decode('utf-8')
+            elif line.startswith(b'... '):
+                action += line[len(b'... '):-1].decode('utf-8')
 
             if (self._next_line is not None and
-                self._next_line.startswith('===')):
+                self._next_line.startswith(b'===')):
                 return action, lines, True
-            elif self._next_line is None or self._next_line.startswith('#'):
+            elif self._next_line is None or self._next_line.startswith(b'#'):
                 return action, lines, False
 
             if first:
                 first = False
-            elif not line.startswith('... '):
+            elif not line.startswith(b'... '):
                 lines.append(line)
 
         return action, lines, False
@@ -541,7 +543,7 @@ class BundleReader(object):
             self._handle_next(line)
             if self._next_line is None:
                 break
-            if not self._next_line.startswith('#'):
+            if not self._next_line.startswith(b'#'):
                 # Consume the trailing \n and stop processing
                 next(self._next())
                 break
