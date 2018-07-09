@@ -18366,6 +18366,7 @@ breezy.tests.test_bundle.V4_2aBundleTester.test_bundle_sorted_properties
 breezy.tests.test_bundle.V4_2aBundleTester.test_bundle_unicode_properties
 breezy.tests.test_bundle.V4_2aBundleTester.test_bundle_with_ghosts
 breezy.tests.test_bundle.V4_2aBundleTester.test_copy_signatures
+breezy.tests.test_bundle.V4_2aBundleTester.test_creating_bundle_preserves_chk_pages
 breezy.tests.test_bundle.V4_2aBundleTester.test_creation
 breezy.tests.test_bundle.V4_2aBundleTester.test_crlf_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_get_merge_request
