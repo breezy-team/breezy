@@ -47,6 +47,7 @@ from breezy.i18n import gettext
 from .registry import (
     Registry,
     )
+from .sixish import text_type
 from .trace import mutter, note, warning
 from .tree import FileTimestampUnavailable
 
@@ -73,7 +74,7 @@ class _PrematchedMatcher(difflib.SequenceMatcher):
         self.opcodes = None
 
 
-def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
+def internal_diff(old_label, oldlines, new_label, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
                   path_encoding='utf8', context_lines=DEFAULT_CONTEXT_AMOUNT):
     # FIXME: difflib is wrong if there is no trailing newline.
@@ -92,9 +93,9 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
     if sequence_matcher is None:
         sequence_matcher = patiencediff.PatienceSequenceMatcher
-    ud = patiencediff.unified_diff(oldlines, newlines,
-                      fromfile=old_filename.encode(path_encoding, 'replace'),
-                      tofile=new_filename.encode(path_encoding, 'replace'),
+    ud = patiencediff.unified_diff_bytes(oldlines, newlines,
+                      fromfile=old_label.encode(path_encoding, 'replace'),
+                      tofile=new_label.encode(path_encoding, 'replace'),
                       n=context_lines, sequencematcher=sequence_matcher)
 
     ud = list(ud)
@@ -103,15 +104,15 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     # work-around for difflib being too smart for its own good
     # if /dev/null is "1,0", patch won't recognize it as /dev/null
     if not oldlines:
-        ud[2] = ud[2].replace('-1,0', '-0,0')
+        ud[2] = ud[2].replace(b'-1,0', b'-0,0')
     elif not newlines:
-        ud[2] = ud[2].replace('+1,0', '+0,0')
+        ud[2] = ud[2].replace(b'+1,0', b'+0,0')
 
     for line in ud:
         to_file.write(line)
-        if not line.endswith('\n'):
-            to_file.write("\n\\ No newline at end of file\n")
-    to_file.write('\n')
+        if not line.endswith(b'\n'):
+            to_file.write(b"\n\\ No newline at end of file\n")
+    to_file.write(b'\n')
 
 
 def _spawn_external_diff(diffcmd, capture_errors=True):
@@ -185,7 +186,7 @@ def default_style_unified(diff_opts):
     return diff_opts
 
 
-def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
+def external_diff(old_label, oldlines, new_label, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
     # make sure our own output is properly ordered before the diff
@@ -215,12 +216,12 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if sys.platform == 'win32':
             # Popen doesn't do the proper encoding for external commands
             # Since we are dealing with an ANSI api, use mbcs encoding
-            old_filename = old_filename.encode('mbcs')
-            new_filename = new_filename.encode('mbcs')
+            old_label = old_label.encode('mbcs')
+            new_label = new_label.encode('mbcs')
         diffcmd = ['diff',
-                   '--label', old_filename,
+                   '--label', old_label,
                    old_abspath,
-                   '--label', new_filename,
+                   '--label', new_label,
                    new_abspath,
                    '--binary',
                   ]
@@ -235,7 +236,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         rc = pipe.returncode
 
         # internal_diff() adds a trailing newline, add one here for consistency
-        out += '\n'
+        out += b'\n'
         if rc == 2:
             # 'diff' gives retcode == 2 for all sorts of errors
             # one of those is 'Binary files differ'.
@@ -248,7 +249,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             out, err = pipe.communicate()
 
             # Write out the new i18n diff response
-            to_file.write(out+'\n')
+            to_file.write(out+b'\n')
             if pipe.returncode != 2:
                 raise errors.BzrError(
                                'external diff failed with exit code 2'
@@ -257,7 +258,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
             first_line = lang_c_out.split('\n', 1)[0]
             # Starting with diffutils 2.8.4 the word "binary" was dropped.
-            m = re.match('^(binary )?files.*differ$', first_line, re.I)
+            m = re.match(b'^(binary )?files.*differ$', first_line, re.I)
             if m is None:
                 raise errors.BzrError('external diff failed with exit code 2;'
                                       ' command: %r' % (diffcmd,))
@@ -483,9 +484,9 @@ def _patch_header_date(tree, file_id, path):
 
 
 def get_executable_change(old_is_x, new_is_x):
-    descr = { True:"+x", False:"-x", None:"??" }
+    descr = { True:b"+x", False:b"-x", None:b"??" }
     if old_is_x != new_is_x:
-        return ["%s to %s" % (descr[old_is_x], descr[new_is_x],)]
+        return [b"%s to %s" % (descr[old_is_x], descr[new_is_x],)]
     else:
         return []
 
@@ -611,12 +612,15 @@ class DiffSymlink(DiffPath):
 
     def diff_symlink(self, old_target, new_target):
         if old_target is None:
-            self.to_file.write('=== target is %r\n' % new_target)
+            self.to_file.write(b'=== target is \'%s\'\n' %
+                new_target.encode(self.path_encoding, 'replace'))
         elif new_target is None:
-            self.to_file.write('=== target was %r\n' % old_target)
+            self.to_file.write(b'=== target was \'%s\'\n' %
+                old_target.encode(self.path_encoding, 'replace'))
         else:
-            self.to_file.write('=== target changed %r => %r\n' %
-                              (old_target, new_target))
+            self.to_file.write(b'=== target changed \'%s\' => \'%s\'\n' %
+                              (old_target.encode(self.path_encoding, 'replace'),
+                               new_target.encode(self.path_encoding, 'replace')))
         return self.CHANGED
 
 
@@ -662,8 +666,10 @@ class DiffText(DiffPath):
             to_file_id = None
         else:
             return self.CANNOT_DIFF
-        from_label = '%s%s\t%s' % (self.old_label, old_path, old_date)
-        to_label = '%s%s\t%s' % (self.new_label, new_path, new_date)
+        from_label = '%s%s\t%s' % (self.old_label, old_path,
+                old_date)
+        to_label = '%s%s\t%s' % (self.new_label, new_path,
+                new_date)
         return self.diff_text(old_path, new_path, from_label, to_label,
             from_file_id, to_file_id)
 
@@ -1037,7 +1043,7 @@ class DiffTree(object):
 
     def _diff(self, old_path, new_path, old_kind, new_kind, file_id):
         result = DiffPath._diff_many(self.differs, file_id, old_path,
-                                       new_path, old_kind, new_kind)
+                                     new_path, old_kind, new_kind)
         if result is DiffPath.CANNOT_DIFF:
             error_path = new_path
             if error_path is None:

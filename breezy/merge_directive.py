@@ -236,7 +236,7 @@ class BaseMergeDirective(object):
         tree_1 = repository.revision_tree(ancestor_id)
         tree_2 = repository.revision_tree(revision_id)
         s = BytesIO()
-        diff.show_diff_trees(tree_1, tree_2, s, old_label='', new_label='')
+        diff.show_diff_trees(tree_1, tree_2, s, old_label=b'', new_label=b'')
         return s.getvalue()
 
     @staticmethod

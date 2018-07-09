@@ -1409,7 +1409,7 @@ class TestCase(testtools.TestCase):
     def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack, flags):
-            if '\n' in haystack or len(haystack) > 60:
+            if ('\n' if isinstance(haystack, str) else b'\n') in haystack or len(haystack) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
                         'pattern "%s" not found in\n"""\\\n%s"""\n'
