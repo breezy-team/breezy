@@ -551,6 +551,8 @@ class MergeDirective2(BaseMergeDirective):
         kwargs['revision_id'] = kwargs['revision_id'].encode('utf-8')
         kwargs['base_revision_id'] =\
             kwargs['base_revision_id'].encode('utf-8')
+        if 'testament_sha1' in kwargs:
+            kwargs['testament_sha1'] = kwargs['testament_sha1'].encode('ascii')
         return klass(time=time, timezone=timezone, patch=patch, bundle=bundle,
                      **kwargs)
 
