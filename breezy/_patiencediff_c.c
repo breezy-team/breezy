@@ -46,12 +46,6 @@
 #define SENTINEL -1
 
 
-/* malloc returns NULL on some platforms if you try to allocate nothing,
- * causing <https://bugs.launchpad.net/bzr/+bug/511267> and
- * <https://bugs.launchpad.net/bzr/+bug/331095>.  On glibc it passes, but
- * let's make it fail to aid testing. */
-#define guarded_malloc(x) ( (x) ? malloc(x) : NULL )
-
 enum {
     OP_EQUAL = 0,
     OP_INSERT,
@@ -190,7 +184,7 @@ equate_lines(struct hashtable *result,
         hsize *= 2;
 
     /* can't be 0 */
-    hashtable = (struct bucket *) guarded_malloc(sizeof(struct bucket) * hsize);
+    hashtable = (struct bucket *)malloc(sizeof(struct bucket) * hsize);
     if (hashtable == NULL) {
         PyErr_NoMemory();
         return 0;
@@ -467,7 +461,7 @@ recurse_matches(struct matching_blocks *answer, struct hashtable *hashtable,
     last_a_pos = alo - 1;
     last_b_pos = blo - 1;
 
-    lcs = (struct matching_line *)guarded_malloc(sizeof(struct matching_line) * (bhi - blo));
+    lcs = (struct matching_line *)malloc(sizeof(struct matching_line) * (bhi - blo));
     if (lcs == NULL)
         return 0;
 
@@ -628,11 +622,11 @@ py_unique_lcs(PyObject *self, PyObject *args)
         goto error;
 
     if (bsize > 0) {
-        matches = (struct matching_line *)guarded_malloc(sizeof(struct matching_line) * bsize);
+        matches = (struct matching_line *)malloc(sizeof(struct matching_line) * bsize);
         if (matches == NULL)
             goto error;
 
-        backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
+        backpointers = (Py_ssize_t *)malloc(sizeof(Py_ssize_t) * bsize * 4);
         if (backpointers == NULL)
             goto error;
     }
@@ -694,11 +688,11 @@ py_recurse_matches(PyObject *self, PyObject *args)
     matches.count = 0;
 
     if (bsize > 0) {
-        matches.matches = (struct matching_block *)guarded_malloc(sizeof(struct matching_block) * bsize);
+        matches.matches = (struct matching_block *)malloc(sizeof(struct matching_block) * bsize);
         if (matches.matches == NULL)
             goto error;
 
-        backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
+        backpointers = (Py_ssize_t *)malloc(sizeof(Py_ssize_t) * bsize * 4);
         if (backpointers == NULL)
             goto error;
     } else {
@@ -767,7 +761,7 @@ PatienceSequenceMatcher_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         }
 
         if (self->bsize > 0) {
-            self->backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * self->bsize * 4);
+            self->backpointers = (Py_ssize_t *)malloc(sizeof(Py_ssize_t) * self->bsize * 4);
             if (self->backpointers == NULL) {
                 Py_DECREF(self);
                 PyErr_NoMemory();
@@ -819,7 +813,7 @@ PatienceSequenceMatcher_get_matching_blocks(PatienceSequenceMatcher* self)
     matches.count = 0;
     if (self->bsize > 0) {
         matches.matches = (struct matching_block *)
-            guarded_malloc(sizeof(struct matching_block) * self->bsize);
+            malloc(sizeof(struct matching_block) * self->bsize);
         if (matches.matches == NULL)
             return PyErr_NoMemory();
     } else
@@ -900,7 +894,7 @@ PatienceSequenceMatcher_get_opcodes(PatienceSequenceMatcher* self)
     struct matching_blocks matches;
 
     matches.count = 0;
-    matches.matches = (struct matching_block *)guarded_malloc(sizeof(struct matching_block) * (self->bsize + 1));
+    matches.matches = (struct matching_block *)malloc(sizeof(struct matching_block) * (self->bsize + 1));
     if (matches.matches == NULL)
         return PyErr_NoMemory();
 
@@ -1005,7 +999,7 @@ PatienceSequenceMatcher_get_grouped_opcodes(PatienceSequenceMatcher* self,
         return NULL;
 
     matches.count = 0;
-    matches.matches = (struct matching_block *)guarded_malloc(sizeof(struct matching_block) * (self->bsize + 1));
+    matches.matches = (struct matching_block *)malloc(sizeof(struct matching_block) * (self->bsize + 1));
     if (matches.matches == NULL)
         return PyErr_NoMemory();
 
@@ -1023,7 +1017,7 @@ PatienceSequenceMatcher_get_grouped_opcodes(PatienceSequenceMatcher* self,
     matches.count++;
 
     ncodes = 0;
-    codes = (struct opcode *)guarded_malloc(sizeof(struct opcode) * matches.count * 2);
+    codes = (struct opcode *)malloc(sizeof(struct opcode) * matches.count * 2);
     if (codes == NULL) {
         free(matches.matches);
         return PyErr_NoMemory();
