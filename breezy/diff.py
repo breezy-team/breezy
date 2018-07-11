@@ -256,7 +256,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
                                ' when run with LANG=C and LC_ALL=C,'
                                ' but not when run natively: %r' % (diffcmd,))
 
-            first_line = lang_c_out.split('\n', 1)[0]
+            first_line = lang_c_out.split(b'\n', 1)[0]
             # Starting with diffutils 2.8.4 the word "binary" was dropped.
             m = re.match(b'^(binary )?files.*differ$', first_line, re.I)
             if m is None:
