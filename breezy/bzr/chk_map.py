@@ -190,17 +190,17 @@ class CHKMap(object):
     def _dump_tree(self, include_keys=False, encoding='utf-8'):
         """Return the tree in a string representation."""
         self._ensure_root()
-        res = self._dump_tree_node(self._root_node, prefix=b'', indent='',
-                                   encoding=encoding, include_keys=include_keys)
-        res.append('') # Give a trailing '\n'
-        return '\n'.join(res)
-
-    def _dump_tree_node(self, node, prefix, indent, encoding, include_keys=True):
-        """For this node and all children, generate a string representation."""
         if PY3:
             decode = lambda x: x.decode(encoding)
         else:
             decode = lambda x: x
+        res = self._dump_tree_node(self._root_node, prefix=b'', indent='',
+                                   decode=decode, include_keys=include_keys)
+        res.append('') # Give a trailing '\n'
+        return '\n'.join(res)
+
+    def _dump_tree_node(self, node, prefix, indent, decode, include_keys=True):
+        """For this node and all children, generate a string representation."""
         result = []
         if not include_keys:
             key_str = ''
@@ -217,7 +217,7 @@ class CHKMap(object):
             list(node._iter_nodes(self._store))
             for prefix, sub in sorted(viewitems(node._items)):
                 result.extend(self._dump_tree_node(sub, prefix, indent + '  ',
-                                                   encoding=encoding, include_keys=include_keys))
+                                                   decode=decode, include_keys=include_keys))
         else:
             for key, value in sorted(viewitems(node._items)):
                 # Don't use prefix nor indent here to line up when used in
