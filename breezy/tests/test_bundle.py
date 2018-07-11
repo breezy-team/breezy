@@ -469,8 +469,7 @@ class BundleTester(object):
                              len(bundle_rev.parent_ids))
         self.assertEqual(rev_ids,
                          [r.revision_id for r in bundle.real_revisions])
-        self.valid_apply_bundle(base_rev_id, bundle,
-                                   checkout_dir=checkout_dir)
+        self.valid_apply_bundle(base_rev_id, bundle, checkout_dir=checkout_dir)
 
         return bundle
 
@@ -1412,7 +1411,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.commit('changed file', rev_id=b'rev2')
         s = BytesIO()
         serializer = BundleSerializerV4('1.0')
-        serializer.write(tree.branch.repository, [b'rev1', b'rev2'], {}, s)
+        with tree.lock_read():
+            serializer.write_bundle(tree.branch.repository, b'rev2', b'null:', s)
         s.seek(0)
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
@@ -1471,7 +1471,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         repo_b = tree_b.branch.repository
         s = BytesIO()
         serializer = BundleSerializerV4('4')
-        serializer.write(tree_a.branch.repository, [b'A', b'B'], {}, s)
+        with tree_a.lock_read():
+            serializer.write_bundle(tree_a.branch.repository, b'B', b'null:', s)
         s.seek(0)
         install_bundle(repo_b, serializer.read(s))
         self.assertTrue(repo_b.has_signature_for_revision_id(b'B'))
@@ -1662,7 +1663,7 @@ class V4_2aBundleTester(V4BundleTester):
                                        revision_id=b'a@cset-0-2a').open_branch()
         bundle_txt, rev_ids = self.create_bundle_text(b'a@cset-0-2a',
                                                       b'a@cset-0-3')
-        self.assertEqual([b'a@cset-0-2b', b'a@cset-0-3'], rev_ids)
+        self.assertEqual(set([b'a@cset-0-2b', b'a@cset-0-3']), set(rev_ids))
         bundle = read_bundle(bundle_txt)
         target.lock_write()
         self.addCleanup(target.unlock)
