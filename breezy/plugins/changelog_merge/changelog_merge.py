@@ -108,7 +108,7 @@ class EntryConflict(Exception):
     pass
 
 
-def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
+def default_guess_edits(new_entries, deleted_entries, entry_as_str=b''.join):
     """Default implementation of guess_edits param of merge_entries.
 
     This algorithm does O(N^2 * logN) SequenceMatcher.ratio() calls, which is
