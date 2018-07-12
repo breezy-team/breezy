@@ -59,7 +59,6 @@ cdef extern from "_dirstate_helpers_pyx.h":
     ctypedef int intptr_t
 
 
-
 cdef extern from "stdlib.h":
     unsigned long int strtoul(char *nptr, char **endptr, int base)
 
@@ -117,27 +116,20 @@ cdef extern from "string.h":
     int strncmp(char *s1, char *s2, int len)
     void *memchr(void *s, int c, size_t len)
     int memcmp(void *b1, void *b2, size_t len)
-    # ??? memrchr is a GNU extension :(
-    # void *memrchr(void *s, int c, size_t len)
 
-# cimport all of the definitions we will need to access
-from .._static_tuple_c cimport import_static_tuple_c, StaticTuple, \
-    StaticTuple_New, StaticTuple_SET_ITEM
+from ._str_helpers cimport (
+    _my_memrchr,
+    safe_string_from_size,
+    )
+
+from .._static_tuple_c cimport (
+    import_static_tuple_c,
+    StaticTuple,
+    StaticTuple_New,
+    StaticTuple_SET_ITEM
+    )
 
 import_static_tuple_c()
-
-cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
-    # memrchr seems to be a GNU extension, so we have to implement it ourselves
-    cdef char *pos
-    cdef char *start
-
-    start = <char*>s
-    pos = start + n - 1
-    while pos >= start:
-        if pos[0] == c:
-            return <void*>pos
-        pos = pos - 1
-    return NULL
 
 
 def _py_memrchr(s, c):
@@ -152,24 +144,15 @@ def _py_memrchr(s, c):
     cdef int length
     cdef char *_c
 
+    assert PyString_Size(c) == 1, 'Expected single character string not %r' % c
+    _c = PyString_AsString(c)
     _s = PyString_AsString(s)
     length = PyString_Size(s)
 
-    _c = PyString_AsString(c)
-    assert PyString_Size(c) == 1,\
-        'Must be a single character string, not %s' % (c,)
     found = _my_memrchr(_s, _c[0], length)
     if found == NULL:
         return None
     return <char*>found - <char*>_s
-
-
-cdef object safe_string_from_size(char *s, Py_ssize_t size):
-    if size < 0:
-        raise AssertionError(
-            'tried to create a string with an invalid size: %d'
-            % (size))
-    return PyString_FromStringAndSize(s, size)
 
 
 cdef int _is_aligned(void *ptr): # cannot_raise

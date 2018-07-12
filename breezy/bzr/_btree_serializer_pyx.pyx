@@ -66,6 +66,12 @@ cdef extern from "string.h":
     long long strtoll(char *s1, char **out, int base)
 
 
+from ._str_helpers cimport (
+    _my_memrchr,
+    safe_interned_string_from_size,
+    safe_string_from_size,
+    )
+
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
 from .._static_tuple_c cimport StaticTuple, \
@@ -75,51 +81,11 @@ from .._static_tuple_c cimport StaticTuple, \
 # This tells the test infrastructure that StaticTuple is a class, so we don't
 # have to worry about exception checking.
 ## extern cdef class StaticTuple
-import sys
-
-
-# TODO: Find some way to import this from _dirstate_helpers
-cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
-    # memrchr seems to be a GNU extension, so we have to implement it ourselves
-    # It is not present in any win32 standard library
-    cdef char *pos
-    cdef char *start
-
-    start = <char*>s
-    pos = start + n - 1
-    while pos >= start:
-        if pos[0] == c:
-            return <void*>pos
-        pos = pos - 1
-    return NULL
-
-
-# TODO: Import this from _dirstate_helpers when it is merged
-cdef object safe_string_from_size(char *s, Py_ssize_t size):
-    if size < 0:
-        raise AssertionError(
-            'tried to create a string with an invalid size: %d @0x%x'
-            % (size, <int>s))
-    return PyString_FromStringAndSize(s, size)
-
-
-cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
-    cdef PyObject *py_str
-    if size < 0:
-        raise AssertionError(
-            'tried to create a string with an invalid size: %d @0x%x'
-            % (size, <int>s))
-    py_str = PyString_FromStringAndSize_ptr(s, size)
-    PyString_InternInPlace(&py_str)
-    result = <object>py_str
-    # Casting a PyObject* to an <object> triggers an INCREF from Pyrex, so we
-    # DECREF it to avoid geting immortal strings
-    Py_DECREF_ptr(py_str)
-    return result
 
 # This sets up the StaticTuple C_API functionality
 import_static_tuple_c()
 
+import sys
 
 cdef class BTreeLeafParser:
     """Parse the leaf nodes of a BTree index.
