@@ -282,7 +282,7 @@ def grep_diff(opts):
             old_tree = repo.revision_tree(ancestor_id)
             s = BytesIO()
             diff.show_diff_trees(old_tree, new_tree, s,
-                old_label='', new_label='')
+                old_label=b'', new_label=b'')
             display_revno = True
             display_file = False
             file_header = None

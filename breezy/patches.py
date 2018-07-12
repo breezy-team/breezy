@@ -157,9 +157,8 @@ class HunkLine(object):
             terminator = b''
         return leadchar + self.contents + terminator
 
-    if sys.version_info[0] == 2:
-        def __str__(self):
-            return self.__bytes__()
+    def as_bytes(self):
+        raise NotImplementedError
 
 
 class ContextLine(HunkLine):
@@ -167,7 +166,7 @@ class ContextLine(HunkLine):
     def __init__(self, contents):
         HunkLine.__init__(self, contents)
 
-    def __bytes__(self):
+    def as_bytes(self):
         return self.get_str(b" ")
 
 
@@ -175,7 +174,7 @@ class InsertLine(HunkLine):
     def __init__(self, contents):
         HunkLine.__init__(self, contents)
 
-    def __bytes__(self):
+    def as_bytes(self):
         return self.get_str(b"+")
 
 
@@ -183,7 +182,7 @@ class RemoveLine(HunkLine):
     def __init__(self, contents):
         HunkLine.__init__(self, contents)
 
-    def __bytes__(self):
+    def as_bytes(self):
         return self.get_str(b"-")
 
 NO_NL = b'\\ No newline at end of file\n'
@@ -238,14 +237,11 @@ class Hunk(object):
         else:
             return b"%i,%i" % (pos, range)
 
-    def __bytes__(self):
+    def as_bytes(self):
         lines = [self.get_header()]
         for line in self.lines:
-            lines.append(bytes(line))
+            lines.append(line.as_bytes())
         return b"".join(lines)
-
-    if sys.version_info[0] == 2:
-        __str__ = __bytes__
 
     def shift_to_mod(self, pos):
         if pos < self.orig_pos-1:
@@ -317,12 +313,8 @@ class BinaryPatch(object):
         self.oldname = oldname
         self.newname = newname
 
-    def __bytes__(self):
+    def as_bytes(self):
         return b'Binary files %s and %s differ\n' % (self.oldname, self.newname)
-
-    if sys.version_info[0] == 2:
-        def __str__(self):
-            return self.__bytes__()
 
 
 class Patch(BinaryPatch):
@@ -331,9 +323,9 @@ class Patch(BinaryPatch):
         BinaryPatch.__init__(self, oldname, newname)
         self.hunks = []
 
-    def __bytes__(self):
+    def as_bytes(self):
         ret = self.get_header()
-        ret += b"".join([bytes(h) for h in self.hunks])
+        ret += b"".join([h.as_bytes() for h in self.hunks])
         return ret
 
     def get_header(self):

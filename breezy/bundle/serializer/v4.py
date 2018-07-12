@@ -267,15 +267,6 @@ class BundleReader(object):
 class BundleSerializerV4(bundle_serializer.BundleSerializer):
     """Implement the high-level bundle interface"""
 
-    def write(self, repository, revision_ids, forced_bases, fileobj):
-        """Write a bundle to a file-like object
-
-        For backwards-compatibility only
-        """
-        write_op = BundleWriteOperation.from_old_args(repository, revision_ids,
-                                                      forced_bases, fileobj)
-        return write_op.do_write()
-
     def write_bundle(self, repository, target, base, fileobj):
         """Write a bundle to a file object
 
@@ -285,7 +276,7 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
             at.
         :param fileobj: The file-like object to write to
         """
-        write_op =  BundleWriteOperation(base, target, repository, fileobj)
+        write_op = BundleWriteOperation(base, target, repository, fileobj)
         return write_op.do_write()
 
     def read(self, file):
@@ -301,14 +292,6 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
 
 class BundleWriteOperation(object):
     """Perform the operation of writing revisions to a bundle"""
-
-    @classmethod
-    def from_old_args(cls, repository, revision_ids, forced_bases, fileobj):
-        """Create a BundleWriteOperation from old-style arguments"""
-        base, target = cls.get_base_target(revision_ids, forced_bases,
-                                           repository)
-        return BundleWriteOperation(base, target, repository, fileobj,
-                                    revision_ids)
 
     def __init__(self, base, target, repository, fileobj, revision_ids=None):
         self.base = base

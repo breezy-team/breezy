@@ -102,7 +102,7 @@ class PatchesTester(TestCase):
         self.assertEqual(hunk.orig_range, 11)
         self.assertEqual(hunk.mod_pos, 50)
         self.assertEqual(hunk.mod_range, 6)
-        self.assertEqual(bytes(hunk), header)
+        self.assertEqual(hunk.as_bytes(), header)
 
     def testValidHunkHeader2(self):
         """Parse a tricky, valid hunk header"""
@@ -112,14 +112,14 @@ class PatchesTester(TestCase):
         self.assertEqual(hunk.orig_range, 1)
         self.assertEqual(hunk.mod_pos, 0)
         self.assertEqual(hunk.mod_range, 0)
-        self.assertEqual(bytes(hunk), header)
+        self.assertEqual(hunk.as_bytes(), header)
 
     def testPDiff(self):
         """Parse a hunk header produced by diff -p"""
         header = b"@@ -407,7 +292,7 @@ bzr 0.18rc1  2007-07-10\n"
         hunk = hunk_from_header(header)
         self.assertEqual(b'bzr 0.18rc1  2007-07-10', hunk.tail)
-        self.assertEqual(header, bytes(hunk))
+        self.assertEqual(header, hunk.as_bytes())
 
     def makeMalformed(self, header):
         self.assertRaises(MalformedHunkHeader, hunk_from_header, header)
@@ -139,7 +139,7 @@ class PatchesTester(TestCase):
     def lineThing(self, text, type):
         line = parse_line(text)
         self.assertIsInstance(line, type)
-        self.assertEqual(bytes(line), text)
+        self.assertEqual(line.as_bytes(), text)
 
     def makeMalformedLine(self, text):
         self.assertRaises(MalformedLine, parse_line, text)
@@ -161,11 +161,11 @@ class PatchesTester(TestCase):
     def compare_parsed(self, patchtext):
         lines = patchtext.splitlines(True)
         patch = parse_patch(lines.__iter__())
-        pstr = bytes(patch)
+        pstr = patch.as_bytes()
         i = difference_index(patchtext, pstr)
         if i is not None:
             print("%i: \"%s\" != \"%s\"" % (i, patchtext[i], pstr[i]))
-        self.assertEqual(patchtext, bytes(patch))
+        self.assertEqual(patchtext, patch.as_bytes())
 
     def testAll(self):
         """Test parsing a whole patch"""
@@ -180,7 +180,7 @@ class PatchesTester(TestCase):
         self.assertIs(Patch, patches[1].__class__)
         self.assertContainsRe(patches[0].oldname, b'^bar\t')
         self.assertContainsRe(patches[0].newname, b'^qux\t')
-        self.assertContainsRe(bytes(patches[0]),
+        self.assertContainsRe(patches[0].as_bytes(),
                               b'Binary files bar\t.* and qux\t.* differ\n')
 
     def test_parse_binary_after_normal(self):
@@ -189,13 +189,13 @@ class PatchesTester(TestCase):
         self.assertIs(Patch, patches[0].__class__)
         self.assertContainsRe(patches[1].oldname, b'^bar\t')
         self.assertContainsRe(patches[1].newname, b'^qux\t')
-        self.assertContainsRe(bytes(patches[1]),
+        self.assertContainsRe(patches[1].as_bytes(),
                               b'Binary files bar\t.* and qux\t.* differ\n')
 
     def test_roundtrip_binary(self):
         patchtext = b''.join(self.data_lines("binary.patch"))
         patches = parse_patches(patchtext.splitlines(True))
-        self.assertEqual(patchtext, b''.join(bytes(p) for p in patches))
+        self.assertEqual(patchtext, b''.join(p.as_bytes() for p in patches))
 
     def testInit(self):
         """Handle patches missing half the position, range tuple"""
