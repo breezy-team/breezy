@@ -145,7 +145,7 @@ static inline int
 compare_lines(struct line *a, struct line *b)
 {
     return ((a->hash != b->hash)
-            || PyObject_RichCompareBool(a->data, b->data, Py_LT));
+            || PyObject_RichCompareBool(a->data, b->data, Py_EQ) == 0);
 }
 
 
