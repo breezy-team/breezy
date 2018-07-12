@@ -274,7 +274,7 @@ class BTreeTester(tests.TestCase):
 
     def unified_diff(self, old, new):
         out = BytesIO()
-        diff.internal_diff("old", old, "new", new, out)
+        diff.internal_diff(b"old", old, b"new", new, out)
         out.seek(0, 0)
         return out.read()
 
@@ -290,7 +290,7 @@ class BTreeTester(tests.TestCase):
     def test_adds(self):
         """File/inventory adds"""
         btree = self.make_tree_2()
-        add_patch = self.unified_diff([], ["Extra cheese\n"])
+        add_patch = self.unified_diff([], [b"Extra cheese\n"])
         btree.note_patch("grandparent/parent/file", add_patch)
         btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
         btree.note_target('grandparent/parent/symlink', 'venus')
@@ -308,7 +308,7 @@ class BTreeTester(tests.TestCase):
         """File/inventory adds, with patch-compatibile renames"""
         btree = self.make_tree_2()
         btree.contents_by_id = False
-        add_patch = self.unified_diff(["Hello\n"], ["Extra cheese\n"])
+        add_patch = self.unified_diff([b"Hello\n"], [b"Extra cheese\n"])
         btree.note_patch("grandparent/parent/file", add_patch)
         btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
         btree.note_target('grandparent/parent/symlink', 'venus')
@@ -332,7 +332,7 @@ class BTreeTester(tests.TestCase):
     def test_get_file(self):
         """Get file contents"""
         btree = self.make_tree_3()
-        mod_patch = self.unified_diff(["Anchovies\n"], ["Lemon\n"])
+        mod_patch = self.unified_diff([b"Anchovies\n"], [b"Lemon\n"])
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
         self.get_file_test(btree)
 
@@ -340,9 +340,9 @@ class BTreeTester(tests.TestCase):
         """Get file contents, with patch-compatible renames"""
         btree = self.make_tree_3()
         btree.contents_by_id = False
-        mod_patch = self.unified_diff([], ["Lemon\n"])
+        mod_patch = self.unified_diff([], [b"Lemon\n"])
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        mod_patch = self.unified_diff([], ["Hello\n"])
+        mod_patch = self.unified_diff([], [b"Hello\n"])
         btree.note_patch("grandparent/alt_parent/file", mod_patch)
         self.get_file_test(btree)
 
@@ -1247,7 +1247,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
                              )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
                          rev.properties)
@@ -1273,7 +1273,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
                              )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'a':'4', 'b':'3', 'c':'2',
                           'd':'1'}, rev.properties)
