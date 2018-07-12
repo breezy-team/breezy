@@ -1447,7 +1447,7 @@ class TestMapSearchKeys(TestCaseWithStore):
         # We can get the values back correctly
         self.assertEqual([((b'1',), b'foo')],
                          list(chkmap.iteritems([(b'1',)])))
-        self.assertEqualDiff("'' InteralNode\n"
+        self.assertEqualDiff("'' InternalNode\n"
                              "  '\\x1a' LeafNode\n"
                              "      ('2',) 'bar'\n"
                              "  'm' LeafNode\n"
@@ -1989,7 +1989,7 @@ class TestInternalNode(TestCaseWithStore):
         child_key = child._key
         k22_key = child._items[b'k22']._key
         k23_key = child._items[b'k23']._key
-        self.assertEqual([k22_key, k23_key, child_key, node.key()], keys)
+        self.assertEqual({k22_key, k23_key, child_key, node.key()}, set(keys))
         self.assertEqualDiff("'' InternalNode\n"
                              "  'k1' LeafNode\n"
                              "      ('k1',) 'foo'\n"
@@ -2219,10 +2219,10 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual(sorted([key2, key3]), sorted(root_results))
         # We should have queued up key2_a, and key3_c, but not key2_c or key3_c
-        self.assertEqual([key2_a, key3_c], diff._new_queue)
+        self.assertEqual({key2_a, key3_c}, set(diff._new_queue))
         self.assertEqual([], diff._new_item_queue)
         # And we should have queued up both a and c for the old set
-        self.assertEqual([key1_a, key1_c], diff._old_queue)
+        self.assertEqual({key1_a, key1_c}, set(diff._old_queue))
 
     def test__read_all_roots_different_depths(self):
         c_map = self.make_two_deep_map(chk_map._search_key_plain)
@@ -2244,15 +2244,15 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
         # present
         self.assertEqual([key1_a], diff._old_queue)
-        self.assertEqual([key2_aa, key2_ad], diff._new_queue)
+        self.assertEqual({key2_aa, key2_ad}, set(diff._new_queue))
         self.assertEqual([], diff._new_item_queue)
 
         diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key1], root_results)
 
-        self.assertEqual([key2_aa, key2_ad], diff._old_queue)
-        self.assertEqual([key1_a, key1_c, key1_d], diff._new_queue)
+        self.assertEqual({key2_aa, key2_ad}, set(diff._old_queue))
+        self.assertEqual({key1_a, key1_c, key1_d}, set(diff._new_queue))
         self.assertEqual([], diff._new_item_queue)
 
     def test__read_all_roots_different_depths_16(self):
