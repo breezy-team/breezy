@@ -29,6 +29,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    unichr,
     )
 
 
@@ -302,7 +303,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         merger.commit('merged trunk into merger')           # 1.2.1
         # Commits are processed in increments of 200 revisions, so
         # make sure the two merges into trunk are in different chunks.
-        for i in xrange(200):
+        for i in range(200):
             trunk.commit('intermediate commit %d' % i)      # 3-202
         trunk.merge_from_branch(merger.branch)
         trunk.commit('merged merger into trunk')            # 203

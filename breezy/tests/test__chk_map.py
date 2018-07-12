@@ -22,6 +22,7 @@ from .. import (
 from ..bzr import (
     chk_map,
     )
+from ..sixish import int2byte
 from ..static_tuple import StaticTuple
 stuple = StaticTuple
 
@@ -44,27 +45,27 @@ class TestSearchKeys(tests.TestCase):
         self.assertEqual(expected, actual, 'actual: %r' % (actual,))
 
     def test_simple_16(self):
-        self.assertSearchKey16(b'8C736521', stuple('foo',))
-        self.assertSearchKey16(b'8C736521\x008C736521', stuple('foo', 'foo'))
-        self.assertSearchKey16(b'8C736521\x0076FF8CAA', stuple('foo', 'bar'))
-        self.assertSearchKey16(b'ED82CD11', stuple('abcd',))
+        self.assertSearchKey16(b'8C736521', stuple(b'foo',))
+        self.assertSearchKey16(b'8C736521\x008C736521', stuple(b'foo', b'foo'))
+        self.assertSearchKey16(b'8C736521\x0076FF8CAA', stuple(b'foo', b'bar'))
+        self.assertSearchKey16(b'ED82CD11', stuple(b'abcd',))
 
     def test_simple_255(self):
-        self.assertSearchKey255(b'\x8cse!', stuple('foo',))
-        self.assertSearchKey255(b'\x8cse!\x00\x8cse!', stuple('foo', 'foo'))
-        self.assertSearchKey255(b'\x8cse!\x00v\xff\x8c\xaa', stuple('foo', 'bar'))
+        self.assertSearchKey255(b'\x8cse!', stuple(b'foo',))
+        self.assertSearchKey255(b'\x8cse!\x00\x8cse!', stuple(b'foo', b'foo'))
+        self.assertSearchKey255(b'\x8cse!\x00v\xff\x8c\xaa', stuple(b'foo', b'bar'))
         # The standard mapping for these would include '\n', so it should be
         # mapped to '_'
-        self.assertSearchKey255(b'\xfdm\x93_\x00P_\x1bL', stuple('<', 'V'))
+        self.assertSearchKey255(b'\xfdm\x93_\x00P_\x1bL', stuple(b'<', b'V'))
 
     def test_255_does_not_include_newline(self):
         # When mapping via _search_key_255, we should never have the '\n'
         # character, but all other 255 values should be present
         chars_used = set()
         for char_in in range(256):
-            search_key = self.module._search_key_255(stuple(chr(char_in),))
+            search_key = self.module._search_key_255(stuple(int2byte(char_in),))
             chars_used.update(search_key)
-        all_chars = {chr(x) for x in range(256)}
+        all_chars = {int2byte(x) for x in range(256)}
         unused_chars = all_chars.symmetric_difference(chars_used)
         self.assertEqual(set(b'\n'), unused_chars)
 
@@ -120,7 +121,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
             b"quux\x00\x001\nblarh\n",
             (b"sha1:1234",))
         self.assertEqual(2, len(node))
-        self.assertEqual([((b"foo", "1"), b"bar\x00baz"), ((b"quux", ""), b"blarh")],
+        self.assertEqual([((b"foo", b"1"), b"bar\x00baz"), ((b"quux", b""), b"blarh")],
             sorted(node.iteritems(None)))
 
     def test_iteritems_selected_one_of_two_items(self):
