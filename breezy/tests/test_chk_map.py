@@ -2357,9 +2357,9 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         # we should have enqued all of the chk pages to be walked, so that we
         # can find the keys if they are present
         self.assertEqual([key1_a], diff._old_queue)
-        self.assertEqual([((b'acc',), b'initial acc content'),
+        self.assertEqual({((b'acc',), b'initial acc content'),
                           ((b'ace',), b'initial ace content'),
-                         ], diff._new_item_queue)
+                         }, set(diff._new_item_queue))
 
     def test__read_all_roots_multiple_targets(self):
         c_map = self.make_root_only_map()
