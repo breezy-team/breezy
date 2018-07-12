@@ -1082,7 +1082,7 @@ class TransportTests(TestTransportImplementation):
 
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
-        self.assertIsInstance(names[0], str)
+        self.assertIsInstance(names[0], bytes)
 
     def test_clone_preserve_info(self):
         t1 = self.get_transport()

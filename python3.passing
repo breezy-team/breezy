@@ -1084,7 +1084,6 @@ breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_last_modified
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_malformed
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_non_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_revision_id_with_slash
-breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_skip_file
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_symlink_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_unicode_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_unicode_symlink_bundle
@@ -2061,18 +2060,6 @@ breezy.tests.blackbox.test_tags.TestTagging.test_tag_quiet
 breezy.tests.blackbox.test_tags.TestTagging.test_tag_same_revision
 breezy.tests.blackbox.test_tags.TestTagging.test_tags_with_mainline_ghosts
 breezy.tests.blackbox.test_too_much.HTTPTests.test_push
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_branch
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_check
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_log
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_push
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_branch
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_check
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_log
-breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_push
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_branch
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_check
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_log
-breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_push
 breezy.tests.blackbox.test_too_much.TestCommands.test_external_command
 breezy.tests.blackbox.test_too_much.TestCommands.test_invalid_commands
 breezy.tests.blackbox.test_too_much.TestCommands.test_locations
@@ -18862,7 +18849,6 @@ breezy.tests.test_bundle.V4_2aBundleTester.test_non_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_revision_id_with_slash
 breezy.tests.test_bundle.V4_2aBundleTester.test_single_inventory_multiple_parents_as_xml
 breezy.tests.test_bundle.V4_2aBundleTester.test_single_inv_no_parents_as_xml
-breezy.tests.test_bundle.V4_2aBundleTester.test_skip_file
 breezy.tests.test_bundle.V4_2aBundleTester.test_symlink_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_unicode_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_unicode_symlink_bundle
@@ -24019,7 +24005,6 @@ breezy.tests.test_sftp_transport.SFTPLatencyKnob.test_default
 breezy.tests.test_sftp_transport.SFTPLatencyKnob.test_latency_knob_slows_transport
 breezy.tests.test_sftp_transport.SFTPLockTests.test_sftp_locks
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_abspath_root_sibling_server
-breezy.tests.test_sftp_transport.SFTPNonServerTest.test_get_paramiko_vendor
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_parse_url_with_home_dir
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_relpath
 breezy.tests.test_sftp_transport.SFTPTransportTestRelativeRoot.test__remote_path_relative_root
