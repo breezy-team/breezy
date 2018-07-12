@@ -1686,10 +1686,10 @@ class WeaveMerger(Merge3Merger):
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%11s|%s' % l for l in plan)
+            contents = (b'%11s|%s' % l for l in plan)
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-                                                 '>>>>>>> MERGE-SOURCE\n')
+        textmerge = versionedfile.PlanWeaveMerge(plan, b'<<<<<<< TREE\n',
+                                                 b'>>>>>>> MERGE-SOURCE\n')
         lines, conflicts = textmerge.merge_lines(self.reprocess)
         if conflicts:
             base_lines = textmerge.base_from_plan()

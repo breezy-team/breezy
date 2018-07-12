@@ -731,7 +731,7 @@ class TestBodyHook(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('foo')
         tree.commit('foo')
         directive = merge_directive.MergeDirective2(
-            tree.branch.last_revision(), 'sha', 0, 0, 'sha',
+            tree.branch.last_revision(), b'sha', 0, 0, b'sha',
             source_branch=tree.branch.base,
             base_revision_id=tree.branch.last_revision(),
             message='This code rox')

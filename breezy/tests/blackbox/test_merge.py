@@ -230,17 +230,17 @@ class TestMerge(tests.TestCaseWithTransport):
         tree, other = self.create_conflicting_branches()
         self.run_bzr('merge ../other', working_dir='tree',
                      retcode=1)
-        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
-        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
-        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+        self.assertFileEqual(b'a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual(b'a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual(b'a\nB\nC\n', 'tree/fname.THIS')
 
     def test_weave_conflict_leaves_base_this_other_files(self):
         tree, other = self.create_conflicting_branches()
         self.run_bzr('merge ../other --weave', working_dir='tree',
                      retcode=1)
-        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
-        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
-        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+        self.assertFileEqual(b'a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual(b'a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual(b'a\nB\nC\n', 'tree/fname.THIS')
 
     def test_merge_remember(self):
         """Merge changes from one branch to another, test submit location."""
@@ -523,7 +523,7 @@ class TestMerge(tests.TestCaseWithTransport):
         for f in ('a', 'b', 'c', 'd'):
             self.build_tree(['source/'+f])
             source.add(f)
-            source.commit('added '+f, rev_id=b'rev_'+f)
+            source.commit('added '+f, rev_id=b'rev_'+f.encode('ascii'))
         # target branch
         target = source.controldir.sprout('target', b'rev_a').open_workingtree()
         self.assertDirectoryContent('target', ['.bzr', 'a'])
@@ -612,7 +612,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.build_tree_contents([('other/file', b"c\na\nb\n")])
         other_tree.commit('rev3b')
         self.run_bzr('merge --weave -d this other -r -2..-1')
-        self.assertFileEqual('c\na\n', 'this/file')
+        self.assertFileEqual(b'c\na\n', 'this/file')
 
     def test_lca_merge_criss_cross(self):
         tree_a = self.make_branch_and_tree('a')
@@ -637,9 +637,9 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.commit('', rev_id=b'rev3a')
         tree_b.commit('', rev_id=b'rev3b')
         out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)
-        self.assertFileEqual('base-contents\n<<<<<<< TREE\nthis-contents\n'
-                             '=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
-                             'a/file')
+        self.assertFileEqual(b'base-contents\n<<<<<<< TREE\nthis-contents\n'
+                             b'=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
+                             b'a/file')
 
     def test_merge_preview(self):
         this_tree = self.make_branch_and_tree('this')

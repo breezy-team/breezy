@@ -178,7 +178,7 @@ class TestPull(per_branch.TestCaseWithBranch):
         except errors.TagsNotSupported:
             raise TestNotApplicable('format does not support tags.')
         source.get_config_stack().set('branch.fetch_tags', True)
-        target.pull(source, rev_2_again)
+        target.pull(source, stop_revision=rev_2_again)
         # The tag is present, and so is its revision.
         self.assertEqual(rev2, target.tags.lookup_tag('tag-a'))
         target.repository.get_revision(rev2)

@@ -396,7 +396,7 @@ class TestSwitch(TestCaseWithTransport):
 
         self.run_bzr('checkout --lightweight a checkout')
         self.run_bzr('switch --directory checkout b')
-        self.assertFileEqual('initial\nmore\n', 'checkout/a')
+        self.assertFileEqual(b'initial\nmore\n', 'checkout/a')
 
 
 class TestSwitchParentLocationBase(TestCaseWithTransport):

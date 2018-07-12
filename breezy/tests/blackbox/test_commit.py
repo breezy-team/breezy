@@ -333,7 +333,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr('commit -m added', working_dir='this')
         self.assertEqual(b'', out)
         self.assertEqual({
-            b'Committing to: %s/' % osutils.pathjoin(osutils.getcwd(), 'this'),
+            b'Committing to: %s/' % osutils.pathjoin(osutils.getcwd().encode('utf-8'), 'this'),
             b'modified filetomodify',
             b'added newdir',
             b'added newfile',
@@ -421,7 +421,7 @@ brz: ERROR: No changes to commit.\
         # work as a merge
         # retcode 1 as we expect a text conflict
         self.run_bzr('update u1', retcode=1)
-        self.assertFileEqual('''\
+        self.assertFileEqual(b'''\
 <<<<<<< TREE
 first offline change in u1
 =======

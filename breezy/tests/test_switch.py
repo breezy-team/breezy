@@ -198,7 +198,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         bar = foo.controldir.sprout('bar').open_workingtree()
         self.build_tree_contents([('bar/file', b'b')])
         bar.commit('b')
-        self.build_tree_contents([('checkout/file', 'c')])
+        self.build_tree_contents([('checkout/file', b'c')])
         switch.switch(checkout.controldir, bar.branch)
 
 

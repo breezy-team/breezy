@@ -300,14 +300,14 @@ class InventoryTree(Tree):
         from . import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(
-                self.id2path(file_id), file_id, vf, 'this:')
+                self.id2path(file_id), file_id, vf, b'this:')
         last_revision_b = other._get_file_revision(
-                other.id2path(file_id), file_id, vf, 'other:')
+                other.id2path(file_id), file_id, vf, b'other:')
         if base is None:
             last_revision_base = None
         else:
             last_revision_base = base._get_file_revision(
-                    base.id2path(file_id), file_id, vf, 'base:')
+                    base.id2path(file_id), file_id, vf, b'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
     def plan_file_merge(self, file_id, other, base=None):

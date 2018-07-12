@@ -623,13 +623,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         this.lock_write()
         self.addCleanup(this.unlock)
         merge_inner(this.branch, other, base, this_tree=this)
-        a = open('b1/a', 'rb')
-        try:
+        with open('b1/a', 'rb') as a:
             self.assertNotEqual(a.read(), 'a test\n')
-        finally:
-            a.close()
         this.revert()
-        self.assertFileEqual('a test\n', 'b1/a')
+        self.assertFileEqual(b'a test\n', 'b1/a')
         self.assertPathExists('b1/b.~1~')
         if this.supports_merge_modified():
             self.assertPathDoesNotExist('b1/c')
@@ -695,7 +692,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # when adding 'update -r' we should make sure all wt formats support
         # it
         conflicts = wt.update(revision=rev1)
-        self.assertFileEqual('old content', 'wt/a')
+        self.assertFileEqual(b'old content', 'wt/a')
         self.assertEqual([rev1], wt.get_parent_ids())
 
     def test_merge_modified_detects_corruption(self):
@@ -705,7 +702,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable("merge-hashes is specific to bzr "
                 "working trees")
-        tree._transport.put_bytes('merge-hashes', 'asdfasdf')
+        tree._transport.put_bytes('merge-hashes', b'asdfasdf')
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
     def test_merge_modified(self):
@@ -742,10 +739,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
-        tree2._transport.put_bytes('conflicts', '')
+        tree2._transport.put_bytes('conflicts', b'')
         self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
-        tree2._transport.put_bytes('conflicts', 'a')
+        tree2._transport.put_bytes('conflicts', b'a')
         self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
 
