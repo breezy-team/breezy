@@ -64,10 +64,10 @@ class TestSearchKeys(tests.TestCase):
         chars_used = set()
         for char_in in range(256):
             search_key = self.module._search_key_255(stuple(int2byte(char_in),))
-            chars_used.update(search_key)
+            chars_used.update(map(int2byte, bytearray(search_key)))
         all_chars = {int2byte(x) for x in range(256)}
         unused_chars = all_chars.symmetric_difference(chars_used)
-        self.assertEqual(set(b'\n'), unused_chars)
+        self.assertEqual({b'\n'}, unused_chars)
 
 
 class TestDeserialiseLeafNode(tests.TestCase):
