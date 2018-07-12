@@ -699,7 +699,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             for j in 'abcdefghijklmnopqrstuvwxyz123456789':
                 fname = i + j
                 fid = fname.encode('utf-8') + b'-id'
-                content = b'content for %s\n' % (fname,)
+                content = b'content for %s\n' % (fname.encode('utf-8'),)
                 entries.append(('add', (fname, fid, 'file', content)))
         source_builder.start_series()
         source_builder.build_snapshot(None, entries, revision_id=b'rev-1')
@@ -731,19 +731,19 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                 for _ in substream:
                     continue
         # 3 pages, the root (InternalNode), + 2 pages which actually changed
-        self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
-                          ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
-                          ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
-                          ('sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
+        self.assertEqual([(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+                          (b'sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
+                          (b'sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
+                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
                          simple_chk_records)
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
-        missing = [('inventories', 'rev-2')]
+        missing = [('inventories', b'rev-2')]
         full_chk_records = []
         for vf_name, substream in source.get_stream_for_missing_keys(missing):
             if vf_name == 'inventories':
                 for record in substream:
-                    self.assertEqual(('rev-2',), record.key)
+                    self.assertEqual((b'rev-2',), record.key)
             elif vf_name == 'chk_bytes':
                 for record in substream:
                     full_chk_records.append(record.key)
