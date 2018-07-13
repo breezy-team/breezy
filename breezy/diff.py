@@ -757,6 +757,7 @@ class DiffFromTool(DiffPath):
             else:
                 raise
         self.to_file.write(proc.stdout.read())
+        proc.stdout.close()
         return proc.wait()
 
     def _try_symlink_root(self, tree, prefix):

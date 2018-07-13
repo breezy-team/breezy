@@ -29,6 +29,7 @@ from breezy import (
     osutils,
     tests,
     )
+from breezy.sixish import PY3
 from breezy.tests import (
     test_log,
     features,
@@ -782,8 +783,11 @@ class TestLogEncodings(tests.TestCaseInTempDir):
             out, err = brz('log', encoding=encoding)
             if not fail:
                 # Make sure we wrote mu as we expected it to exist
-                self.assertNotEqual(-1, out.find(encoded_msg))
-                out_unicode = out.decode(encoding)
+                if not PY3:
+                    self.assertNotEqual(-1, out.find(encoded_msg))
+                    out_unicode = out.decode(encoding)
+                else:
+                    out_unicode = out
                 self.assertNotEqual(-1, out_unicode.find(self._message))
             else:
                 self.assertNotEqual(-1, out.find('Message with ?'))

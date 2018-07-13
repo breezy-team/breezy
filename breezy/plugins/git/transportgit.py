@@ -675,7 +675,7 @@ class TransportObjectStore(PackBasedObjectStore):
         f.seek(0)
         p = PackData("", f, len(f.getvalue()))
         entries = p.sorted_entries()
-        basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
+        basename = "pack-%s" % iter_sha1(entry[0] for entry in entries).decode('ascii')
         p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
@@ -708,14 +708,14 @@ class TransportObjectStore(PackBasedObjectStore):
         pack_sha = p.index.objects_sha1()
 
         datafile = self.pack_transport.open_write_stream(
-                "pack-%s.pack" % pack_sha)
+                "pack-%s.pack" % pack_sha.decode('ascii'))
         try:
             entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
         finally:
             datafile.close()
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         idxfile = self.pack_transport.open_write_stream(
-            "pack-%s.idx" % pack_sha)
+            "pack-%s.idx" % pack_sha.decode('ascii'))
         try:
             write_pack_index_v2(idxfile, entries, data_sum)
         finally:
