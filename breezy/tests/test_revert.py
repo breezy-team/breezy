@@ -86,12 +86,9 @@ class TestRevert(tests.TestCaseWithTransport):
         tt = transform.TreeTransform(tree)
         tt.new_file('newfile', tt.root, [b'helooo!'], b'newfile-id', True)
         tt.apply()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             self.assertTrue(tree.is_executable('newfile'))
             tree.commit('added newfile')
-        finally:
-            tree.unlock()
         return tree
 
     def test_preserve_execute(self):
@@ -99,7 +96,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tt = transform.TreeTransform(tree)
         newfile = tt.trans_id_tree_path('newfile')
         tt.delete_contents(newfile)
-        tt.create_file('Woooorld!', newfile)
+        tt.create_file([b'Woooorld!'], newfile)
         tt.apply()
         tree = workingtree.WorkingTree.open('tree')
         tree.lock_write()
@@ -138,7 +135,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         tree.add(['dir', 'dir/file1', 'dir/file2'],
-                 ['dir-id', 'file1-id', 'file2-id'])
+                 [b'dir-id', b'file1-id', b'file2-id'])
         tree.commit("Added files")
         os.unlink('dir/file1')
         os.unlink('dir/file2')
@@ -156,6 +153,6 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.add(['file1'])
         tree.commit('first')
         tree.set_root_id(b'temp-root-id')
-        self.assertEqual('temp-root-id', tree.get_root_id())
+        self.assertEqual(b'temp-root-id', tree.get_root_id())
         tree.revert()
-        self.assertEqual('initial-root-id', tree.get_root_id())
+        self.assertEqual(b'initial-root-id', tree.get_root_id())

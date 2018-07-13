@@ -36,7 +36,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_same_as_parent(self):
         tree, revid = self.make_single_rev_tree()
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid, 'initial content\n')],
+        self.assertEqual([(revid, b'initial content\n')],
                          annotations)
 
     def test_annotate_mod_from_parent(self):
@@ -44,8 +44,8 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid, 'initial content\n'),
-                          (b'current:', 'new content\n'),
+        self.assertEqual([(revid, b'initial content\n'),
+                          (b'current:', b'new content\n'),
                          ], annotations)
 
     def test_annotate_merge_parents(self):

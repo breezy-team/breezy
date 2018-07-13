@@ -134,7 +134,7 @@ class TestSprout(TestCaseWithBranch):
         target_bzrdir = self.make_repository('target').controldir
         new_branch = source.sprout(target_bzrdir)
         # The tag is present in the target
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_from_any_repo_revision(self):
         """We should be able to sprout from any revision."""

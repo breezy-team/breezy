@@ -97,42 +97,42 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
             my_config, _smtp_factory=smtp_factory)
 
     def test_defaults(self):
-        conn = self.get_connection('')
+        conn = self.get_connection(b'')
         self.assertEqual('localhost', conn._smtp_server)
         self.assertEqual(None, conn._smtp_username)
         self.assertEqual(None, conn._smtp_password)
 
     def test_smtp_server(self):
-        conn = self.get_connection('smtp_server=host:10')
+        conn = self.get_connection(b'smtp_server=host:10')
         self.assertEqual('host:10', conn._smtp_server)
 
     def test_missing_server(self):
-        conn = self.get_connection('', smtp_factory=connection_refuser)
+        conn = self.get_connection(b'', smtp_factory=connection_refuser)
         self.assertRaises(smtp_connection.DefaultSMTPConnectionRefused,
                           conn._connect)
-        conn = self.get_connection('smtp_server=smtp.example.com',
+        conn = self.get_connection(b'smtp_server=smtp.example.com',
                                    smtp_factory=connection_refuser)
         self.assertRaises(smtp_connection.SMTPConnectionRefused, conn._connect)
 
     def test_smtp_username(self):
-        conn = self.get_connection('')
+        conn = self.get_connection(b'')
         self.assertIs(None, conn._smtp_username)
 
-        conn = self.get_connection('smtp_username=joebody')
+        conn = self.get_connection(b'smtp_username=joebody')
         self.assertEqual(u'joebody', conn._smtp_username)
 
     def test_smtp_password_from_config(self):
-        conn = self.get_connection('')
+        conn = self.get_connection(b'')
         self.assertIs(None, conn._smtp_password)
 
-        conn = self.get_connection('smtp_password=mypass')
+        conn = self.get_connection(b'smtp_password=mypass')
         self.assertEqual(u'mypass', conn._smtp_password)
 
     def test_smtp_password_from_user(self):
         user = 'joe'
         password = 'hispass'
         factory = WideOpenSMTPFactory()
-        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
+        conn = self.get_connection(b'[DEFAULT]\nsmtp_username=%s\n' % user,
                                    smtp_factory=factory)
         self.assertIs(None, conn._smtp_password)
 
@@ -144,7 +144,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         user = 'joe'
         password = 'hispass'
         factory = WideOpenSMTPFactory()
-        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
+        conn = self.get_connection(b'[DEFAULT]\nsmtp_username=%s\n' % user,
                                    smtp_factory=factory)
         self.assertEqual(user, conn._smtp_username)
         self.assertIs(None, conn._smtp_password)
@@ -164,7 +164,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
-            '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
+            b'[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
             % (user, utf8_pass), smtp_factory=factory)
         self.assertEqual(unicode_pass, conn._smtp_password)
         conn._connect()
@@ -178,7 +178,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_create_connection(self):
         factory = StubSMTPFactory()
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -187,7 +187,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_create_connection_ehlo_fails(self):
         # Check that we call HELO if EHLO failed.
         factory = StubSMTPFactory(fail_on=['ehlo'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -197,7 +197,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_create_connection_ehlo_helo_fails(self):
         # Check that we raise an exception if both EHLO and HELO fail.
         factory = StubSMTPFactory(fail_on=['ehlo', 'helo'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -207,7 +207,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         # Check that STARTTLS plus a second EHLO are called if the
         # server says it supports the feature.
         factory = StubSMTPFactory(smtp_features=['starttls'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -220,7 +220,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         # support STARTTLS, but then fails when we try to activate it.
         factory = StubSMTPFactory(fail_on=['starttls'],
                                   smtp_features=['starttls'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),

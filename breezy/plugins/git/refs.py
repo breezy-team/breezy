@@ -107,7 +107,7 @@ class BazaarRefsContainer(RefsContainer):
         return {}
 
     def set_symbolic_ref(self, name, other):
-        if name == "HEAD":
+        if name == b"HEAD":
             pass # FIXME: Switch default branch
         else:
             raise NotImplementedError(

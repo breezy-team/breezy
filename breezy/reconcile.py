@@ -463,7 +463,7 @@ class KnitReconciler(RepoReconciler):
         mutter('fixing text parent: %r (%d versions)', file_id,
                 len(versions_with_bad_parents))
         mutter('(%d are unused)', len(unused_versions))
-        new_file_id = 'temp:%s' % file_id
+        new_file_id = b'temp:%s' % file_id
         new_parents = {}
         needed_keys = set()
         for version in all_versions:

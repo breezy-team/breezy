@@ -500,7 +500,7 @@ class TestLongLogFormatter(TestCaseForLogFormatter):
         bug #4676
         """
         wt = self.make_standard_commit('test_verbose_log', authors=[])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -1008,7 +1008,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
     def test_gnu_changelog(self):
         wt = self.make_standard_commit('nicky', authors=[])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  Lorem Ipsum  <test@example.com>
 
 \tadd a
@@ -1020,7 +1020,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
         wt = self.make_standard_commit('nicky',
             authors=['Fooa Fooz <foo@example.com>',
                      'Bari Baro <bar@example.com>'])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  Fooa Fooz  <foo@example.com>
 
 \tadd a
@@ -1030,7 +1030,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
     def test_verbose(self):
         wt = self.make_standard_commit('nicky')
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \t* a:
@@ -1462,56 +1462,56 @@ class TestLogForAuthors(TestCaseForLogFormatter):
             self.wt.branch, formatter, formatter_kwargs=formatter_kwargs)
 
     def test_line_default(self):
-        self.assertFormatterResult(log.LineLogFormatter, None, """\
+        self.assertFormatterResult(log.LineLogFormatter, None, b"""\
 1: John Doe 2005-11-22 add a
 """)
 
     def test_line_committer(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'committer', b"""\
 1: Lorem Ipsum 2005-11-22 add a
 """)
 
     def test_line_first(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'first', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'first', b"""\
 1: John Doe 2005-11-22 add a
 """)
 
     def test_line_all(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'all', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'all', b"""\
 1: John Doe, Jane Rey 2005-11-22 add a
 """)
 
 
     def test_short_default(self):
-        self.assertFormatterResult(log.ShortLogFormatter, None, """\
+        self.assertFormatterResult(log.ShortLogFormatter, None, b"""\
     1 John Doe\t2005-11-22
       add a
 
 """)
 
     def test_short_committer(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'committer', b"""\
     1 Lorem Ipsum\t2005-11-22
       add a
 
 """)
 
     def test_short_first(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'first', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'first', b"""\
     1 John Doe\t2005-11-22
       add a
 
 """)
 
     def test_short_all(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'all', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'all', b"""\
     1 John Doe, Jane Rey\t2005-11-22
       add a
 
 """)
 
     def test_long_default(self):
-        self.assertFormatterResult(log.LongLogFormatter, None, """\
+        self.assertFormatterResult(log.LongLogFormatter, None, b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -1523,7 +1523,7 @@ message:
 """)
 
     def test_long_committer(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'committer', b"""\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -1534,7 +1534,7 @@ message:
 """)
 
     def test_long_first(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'first', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'first', b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>
@@ -1546,7 +1546,7 @@ message:
 """)
 
     def test_long_all(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'all', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'all', b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -1558,7 +1558,7 @@ message:
 """)
 
     def test_gnu_changelog_default(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, b"""\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \tadd a
@@ -1566,7 +1566,7 @@ message:
 """)
 
     def test_gnu_changelog_committer(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', b"""\
 2005-11-22  Lorem Ipsum  <test@example.com>
 
 \tadd a
@@ -1574,7 +1574,7 @@ message:
 """)
 
     def test_gnu_changelog_first(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', b"""\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \tadd a
@@ -1582,7 +1582,7 @@ message:
 """)
 
     def test_gnu_changelog_all(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', b"""\
 2005-11-22  John Doe  <jdoe@example.com>, Jane Rey  <jrey@example.com>
 
 \tadd a

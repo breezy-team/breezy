@@ -181,7 +181,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
         switch.switch(checkout.controldir, tree2.branch)
-        self.assertEqual('custom-root-id', tree2.get_root_id())
+        self.assertEqual(b'custom-root-id', tree2.get_root_id())
 
     def test_switch_configurable_file_merger(self):
         class DummyMerger(_mod_merge.ConfigurableFileMerger):

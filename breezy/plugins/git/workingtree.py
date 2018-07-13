@@ -309,7 +309,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         :param force: Delete files and directories, even if they are changed
             and even if the directories are not empty.
         """
-        if isinstance(files, basestring):
+        if not isinstance(files, list):
             files = [files]
 
         if to_file is None:

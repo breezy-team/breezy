@@ -2655,11 +2655,11 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         self.disable_missing_extensions_warning()
         process = self.start_bzr_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
-        self.assertEqual('running\n', process.stdout.readline())
+        self.assertEqual(b'running\n', process.stdout.readline())
         result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
-        self.assertEqual('', result[0])
-        self.assertEqual('brz: interrupted\n', result[1])
+        self.assertEqual(b'', result[0])
+        self.assertEqual(b'brz: interrupted\n', result[1])
 
 
 class TestSelftestFiltering(tests.TestCase):

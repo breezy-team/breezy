@@ -181,22 +181,22 @@ class TestUserEncoding(TestCase):
         fake_codec.add('user_encoding')
         self.assertEqual('iso8859-1', # fake_codec maps to latin-1
                           osutils.get_user_encoding())
-        self.assertEqual('', sys.stderr.getvalue())
+        self.assertEqual(b'', sys.stderr.getvalue())
 
     def test_user_cp0(self):
         self._encoding = 'cp0'
         self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual('', sys.stderr.getvalue())
+        self.assertEqual(b'', sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
         self._encoding = 'cp-unknown'
         self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual('brz: warning: unknown encoding cp-unknown.'
-                          ' Continuing with ascii encoding.\n',
+        self.assertEqual(b'brz: warning: unknown encoding cp-unknown.'
+                          b' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
 
     def test_user_empty(self):
         """Running bzr from a vim script gives '' for a preferred locale"""
         self._encoding = ''
         self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual('', sys.stderr.getvalue())
+        self.assertEqual(b'', sys.stderr.getvalue())
