@@ -445,7 +445,6 @@ breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_dir_becomes_s
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_empty
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_executable
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_incremental
-breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_into_stacked_on
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_non_ascii_characters
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_single_rev
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_single_rev_specific
@@ -1314,9 +1313,7 @@ breezy.tests.blackbox.test_clean_tree.TestBzrTools.test_clean_tree_directory
 breezy.tests.blackbox.test_clean_tree.TestBzrTools.test_clean_tree_nested_bzrdir
 breezy.tests.blackbox.test_command_encoding.TestCommandEncoding.test_exact
 breezy.tests.blackbox.test_command_encoding.TestCommandEncoding.test_replace_ascii
-breezy.tests.blackbox.test_command_encoding.TestCommandEncoding.test_replace_utf8
 breezy.tests.blackbox.test_command_encoding.TestCommandEncoding.test_strict_ascii
-breezy.tests.blackbox.test_command_encoding.TestCommandEncoding.test_strict_utf8
 breezy.tests.blackbox.test_commit.TestCommit.test_05_empty_commit
 breezy.tests.blackbox.test_commit.TestCommit.test_10_verbose_commit
 breezy.tests.blackbox.test_commit.TestCommit.test_author_no_email
@@ -1355,7 +1352,6 @@ breezy.tests.blackbox.test_commit.TestCommit.test_set_commit_message
 breezy.tests.blackbox.test_commit.TestCommit.test_strict_commit
 breezy.tests.blackbox.test_commit.TestCommit.test_strict_commit_no_changes
 breezy.tests.blackbox.test_commit.TestCommit.test_strict_commit_unknown
-breezy.tests.blackbox.test_commit.TestCommit.test_unicode_commit_message_is_filename
 breezy.tests.blackbox.test_commit.TestCommit.test_verbose_commit_includes_master_location
 breezy.tests.blackbox.test_commit.TestCommit.test_verbose_commit_modified
 breezy.tests.blackbox.test_commit.TestCommit.test_verbose_commit_moved
@@ -1544,7 +1540,6 @@ breezy.tests.blackbox.test_log.TestLogEncodings.test_log_handles_bad_encoding
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_no_start_rev_id_with_end_rev_id_being_a_merge
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_not_an_ancestor
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_wrong_order
-breezy.tests.blackbox.test_log.TestLogEncodings.test_log_handles_encoding
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_bad_message_re
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_change_incompatible_with_revision
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_change_nonexistent_dotted_revno
@@ -1604,8 +1599,6 @@ breezy.tests.blackbox.test_log.TestLogRevSpecs.test_log_positive_revspecs
 breezy.tests.blackbox.test_log.TestLogRevSpecsWithPaths.test_log_revno_n_path
 breezy.tests.blackbox.test_log.TestLogRevSpecsWithPaths.test_log_revno_n_path_correct_order
 breezy.tests.blackbox.test_log.TestLogRevSpecsWithPaths.test_log_revno_n_path_wrong_namespace
-breezy.tests.blackbox.test_log.TestLogSignatures.test_log_without_signatures
-breezy.tests.blackbox.test_log.TestLogSignatures.test_log_with_signatures
 breezy.tests.blackbox.test_log.TestLogVerbose.test_log_long_verbose
 breezy.tests.blackbox.test_log.TestLogVerbose.test_log_long_verbose_verbose
 breezy.tests.blackbox.test_log.TestLogVerbose.test_log_short_verbose
@@ -2002,7 +1995,6 @@ breezy.tests.blackbox.test_status.CheckoutStatus.test_status_out_of_date
 breezy.tests.blackbox.test_status.CheckoutStatus.test_status_write_lock
 breezy.tests.blackbox.test_status.CheckoutStatus.test_tree_status_ignores
 breezy.tests.blackbox.test_status.TestStatusEncodings.test_stdout_ascii
-breezy.tests.blackbox.test_status.TestStatusEncodings.test_stdout_latin1
 breezy.tests.blackbox.test_status.TestStatus.test_kind_change_plain
 breezy.tests.blackbox.test_status.TestStatus.test_kind_change_short
 breezy.tests.blackbox.test_status.TestStatus.test_pending_specific_files
@@ -2128,7 +2120,6 @@ breezy.tests.blackbox.test_version_info.TestVersionInfo.test_clean
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_custom_without_template
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_invalid_format
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_no_branch
-breezy.tests.blackbox.test_version_info.TestVersionInfo.test_non_ascii
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_no_working_tree
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_python
 breezy.tests.blackbox.test_version_info.TestVersionInfo.test_revision
@@ -21078,7 +21069,6 @@ breezy.tests.test_ignores.TestUserIgnores.test_create_if_missing
 breezy.tests.test_ignores.TestUserIgnores.test_set
 breezy.tests.test_ignores.TestUserIgnores.test_use_empty
 breezy.tests.test_ignores.TestUserIgnores.test_use_existing
-breezy.tests.test_import_tariff.TestImportTariffs.test_simple_serve
 breezy.tests.test_index.ErrorTests.test_bad_index_data
 breezy.tests.test_index.ErrorTests.test_bad_index_duplicate_key
 breezy.tests.test_index.ErrorTests.test_bad_index_format_signature
@@ -24010,7 +24000,6 @@ breezy.tests.test_sftp_transport.SFTPNonServerTest.test_relpath
 breezy.tests.test_sftp_transport.SFTPTransportTestRelativeRoot.test__remote_path_relative_root
 breezy.tests.test_sftp_transport.SFTPTransportTestRelative.test__remote_path
 breezy.tests.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_paramiko
-breezy.tests.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
 breezy.tests.test_sftp_transport.SSHVendorConnection.test_connection_paramiko
 breezy.tests.test_sftp_transport.SSHVendorConnection.test_connection_vendor
 breezy.tests.test_sftp_transport.Test_SFTPReadvHelper.test__get_requests

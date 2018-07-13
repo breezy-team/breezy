@@ -24,6 +24,7 @@ from breezy import (
 from breezy.branch import (
     Branch,
     )
+from breezy.sixish import PY3
 from breezy.tests import (
     script,
     TestCaseWithTransport,
@@ -364,12 +365,19 @@ class TestTagging(TestCaseWithTransport):
         b2.tags.set_tag(tagname, b'revid2')
         # push should give a warning about the tags
         out, err = self.run_bzr('push -d one two', encoding='utf-8')
-        self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        if PY3:
+            self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname)
+        else:
+            self.assertContainsRe(out, 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # pull should give a warning about the tags
         out, err = self.run_bzr('pull -d one two', encoding='utf-8',
             retcode=1)
-        self.assertContainsRe(out,
-                'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+        if PY3:
+            self.assertContainsRe(out,
+                    'Conflicting tags:\n.*' + tagname)
+        else:
+            self.assertContainsRe(out,
+                    'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # merge should give a warning about the tags -- not implemented yet
         ## out, err = self.run_bzr('merge -d one two', encoding='utf-8')
         ## self.assertContainsRe(out,
