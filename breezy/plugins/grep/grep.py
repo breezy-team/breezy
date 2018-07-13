@@ -132,7 +132,7 @@ def compile_pattern(pattern, flags=0):
 
 
 def is_fixed_string(s):
-    if re.match("^([A-Za-z0-9_]|\s)*$", s):
+    if re.match("^([A-Za-z0-9_]|\\s)*$", s):
         return True
     return False
 
@@ -260,7 +260,7 @@ def grep_diff(opts):
             start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
         repo = branch.repository
-        diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
+        diff_pattern = re.compile("^[+\\-].*(" + opts.pattern + ")")
         file_pattern = re.compile("=== (modified|added|removed) file '.*'", re.UNICODE)
         outputter = _GrepDiffOutputter(opts)
         writeline = outputter.get_writer()
@@ -272,7 +272,7 @@ def grep_diff(opts):
                 # with level=1 show only top level
                 continue
 
-            rev_spec = RevisionSpec_revid.from_string("revid:"+revid)
+            rev_spec = RevisionSpec_revid.from_string("revid:"+revid.decode('utf-8'))
             new_rev = repo.get_revision(revid)
             new_tree = rev_spec.as_tree(branch)
             if len(new_rev.parent_ids) == 0:
@@ -353,12 +353,12 @@ def versioned_grep(opts):
                 # with level=1 show only top level
                 continue
 
-            rev = RevisionSpec_revid.from_string("revid:"+revid)
+            rev = RevisionSpec_revid.from_string("revid:"+revid.decode('utf-8'))
             tree = rev.as_tree(branch)
             for path in opts.path_list:
                 tree_path = osutils.pathjoin(relpath, path)
                 if not tree.has_filename(tree_path):
-                    trace.warning("Skipped unknown file '%s'." % path)
+                    trace.warning("Skipped unknown file '%s'.", path)
                     continue
 
                 if osutils.isdir(path):
@@ -387,7 +387,8 @@ def workingtree_grep(opts):
                 path_prefix = path
                 dir_grep(tree, path, relpath, opts, revno, path_prefix)
             else:
-                _file_grep(open(path).read(), path, opts, revno)
+                with open(path, 'rb') as f:
+                    _file_grep(f.read(), path, opts, revno)
 
 
 def _skip_file(include, exclude, path):
@@ -445,16 +446,16 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 if opts.files_with_matches or opts.files_without_match:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
-                    file = open(path_for_file, 'r', buffering=4096)
-                    _file_grep_list_only_wtree(file, fp, opts, path_prefix)
+                    with open(path_for_file, 'r', buffering=4096) as file:
+                        _file_grep_list_only_wtree(file, fp, opts, path_prefix)
                 else:
-                    file_text = open(path_for_file, 'r').read()
-                    _file_grep(file_text, fp, opts, revno, path_prefix)
+                    with open(path_for_file, 'rb') as f:
+                        _file_grep(f.read(), fp, opts, revno, path_prefix)
 
     if revno is not None: # grep versioned files
         for (path, tree_path), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            _file_grep(''.join(chunks), path, opts, revno, path_prefix,
+            _file_grep(b''.join(chunks), path, opts, revno, path_prefix,
                 tree.get_file_revision(tree_path))
 
 
@@ -493,7 +494,7 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
     # test and skip binary files
     if '\x00' in file.read(1024):
         if opts.verbose:
-            trace.warning("Binary file '%s' skipped." % path)
+            trace.warning("Binary file '%s' skipped.", path)
         return
 
     file.seek(0) # search from beginning
@@ -627,7 +628,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
     # test and skip binary files
     if b'\x00' in file_text[:1024]:
         if opts.verbose:
-            trace.warning("Binary file '%s' skipped." % path)
+            trace.warning("Binary file '%s' skipped.", path)
         return
 
     if path_prefix and path_prefix != '.':
@@ -665,9 +666,9 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         i = file_text.find(pattern)
         if i == -1:
             return
-        b = file_text.rfind("\n", 0, i) + 1
+        b = file_text.rfind(b"\n", 0, i) + 1
         if opts.line_number:
-            start = file_text.count("\n", 0, b) + 1
+            start = file_text.count(b"\n", 0, b) + 1
         file_text = file_text[b:]
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
@@ -691,9 +692,9 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             m = search(file_text)
             if m is None:
                 return
-            b = file_text.rfind("\n", 0, m.start()) + 1
+            b = file_text.rfind(b"\n", 0, m.start()) + 1
             if opts.line_number:
-                start = file_text.count("\n", 0, b) + 1
+                start = file_text.count(b"\n", 0, b) + 1
             file_text = file_text[b:]
         else:
             start = 1

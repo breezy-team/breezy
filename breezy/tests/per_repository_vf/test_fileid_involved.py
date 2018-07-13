@@ -120,7 +120,7 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         repo = stacked.repository
         keys = {'file-id': {b'A-id'}}
         if stacked.repository.supports_rich_root():
-            keys['root-id'] = {b'A-id'}
+            keys[b'root-id'] = {b'A-id'}
         self.assertEqual(keys, repo.fileids_altered_by_revision_ids([b'A-id']))
 
 

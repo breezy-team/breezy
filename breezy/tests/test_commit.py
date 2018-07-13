@@ -266,7 +266,7 @@ class TestCommit(TestCaseWithTransport):
         tree1 = b.repository.revision_tree(b'test@rev-1')
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
-        eq(tree1.id2path(b'hello-id'), b'hello')
+        eq(tree1.id2path(b'hello-id'), 'hello')
         eq(tree1.get_file_text('hello'), b'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
         self.check_tree_shape(tree1, ['hello'])

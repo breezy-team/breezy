@@ -781,7 +781,7 @@ class TestRelpath(tests.TestCase):
 class TestSafeUnicode(tests.TestCase):
 
     def test_from_ascii_string(self):
-        self.assertEqual(u'foobar', osutils.safe_unicode('foobar'))
+        self.assertEqual(u'foobar', osutils.safe_unicode(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
         self.assertEqual(u'bargam', osutils.safe_unicode(u'bargam'))
@@ -790,39 +790,39 @@ class TestSafeUnicode(tests.TestCase):
         self.assertEqual(u'bargam\xae', osutils.safe_unicode(u'bargam\xae'))
 
     def test_from_utf8_string(self):
-        self.assertEqual(u'foo\xae', osutils.safe_unicode('foo\xc2\xae'))
+        self.assertEqual(u'foo\xae', osutils.safe_unicode(b'foo\xc2\xae'))
 
     def test_bad_utf8_string(self):
         self.assertRaises(errors.BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
-                          '\xbb\xbb')
+                          b'\xbb\xbb')
 
 
 class TestSafeUtf8(tests.TestCase):
 
     def test_from_ascii_string(self):
-        f = 'foobar'
-        self.assertEqual('foobar', osutils.safe_utf8(f))
+        f = b'foobar'
+        self.assertEqual(b'foobar', osutils.safe_utf8(f))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_utf8(u'bargam'))
+        self.assertEqual(b'bargam', osutils.safe_utf8(u'bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual('bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
+        self.assertEqual(b'bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
 
     def test_from_utf8_string(self):
-        self.assertEqual('foo\xc2\xae', osutils.safe_utf8('foo\xc2\xae'))
+        self.assertEqual(b'foo\xc2\xae', osutils.safe_utf8(b'foo\xc2\xae'))
 
     def test_bad_utf8_string(self):
         self.assertRaises(errors.BzrBadParameterNotUnicode,
-                          osutils.safe_utf8, '\xbb\xbb')
+                          osutils.safe_utf8, b'\xbb\xbb')
 
 
 class TestSafeRevisionId(tests.TestCase):
 
     def test_from_ascii_string(self):
         # this shouldn't give a warning because it's getting an ascii string
-        self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
+        self.assertEqual(b'foobar', osutils.safe_revision_id(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
         self.assertRaises(TypeError,
@@ -833,8 +833,8 @@ class TestSafeRevisionId(tests.TestCase):
                          osutils.safe_revision_id, u'bargam\xae')
 
     def test_from_utf8_string(self):
-        self.assertEqual('foo\xc2\xae',
-                         osutils.safe_revision_id('foo\xc2\xae'))
+        self.assertEqual(b'foo\xc2\xae',
+                         osutils.safe_revision_id(b'foo\xc2\xae'))
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -844,7 +844,7 @@ class TestSafeRevisionId(tests.TestCase):
 class TestSafeFileId(tests.TestCase):
 
     def test_from_ascii_string(self):
-        self.assertEqual('foobar', osutils.safe_file_id('foobar'))
+        self.assertEqual(b'foobar', osutils.safe_file_id(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
         self.assertRaises(TypeError, osutils.safe_file_id, u'bargam')
@@ -854,8 +854,8 @@ class TestSafeFileId(tests.TestCase):
                           osutils.safe_file_id, u'bargam\xae')
 
     def test_from_utf8_string(self):
-        self.assertEqual('foo\xc2\xae',
-                         osutils.safe_file_id('foo\xc2\xae'))
+        self.assertEqual(b'foo\xc2\xae',
+                         osutils.safe_file_id(b'foo\xc2\xae'))
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -1625,7 +1625,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # using the comparison routine shoudl work too:
         self.assertEqual(
             dir_sorted_paths,
-            sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
+            sorted(original_paths, key=osutils.path_prefix_key))
 
 
 class TestCopyTree(tests.TestCaseInTempDir):

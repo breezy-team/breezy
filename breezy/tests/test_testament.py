@@ -222,21 +222,21 @@ properties:
 """
 
 
-REV_1_SHORT = """\
+REV_1_SHORT = b"""\
 bazaar-ng testament short form 1
 revision-id: test@user-1
 sha1: %s
 """ % osutils.sha_string(REV_1_TESTAMENT)
 
 
-REV_1_SHORT_STRICT = """\
+REV_1_SHORT_STRICT = b"""\
 bazaar-ng testament short form 2.1
 revision-id: test@user-1
 sha1: %s
 """ % osutils.sha_string(REV_1_STRICT_TESTAMENT)
 
 
-REV_1_SHORT_STRICT3 = """\
+REV_1_SHORT_STRICT3 = b"""\
 bazaar testament short form 3 strict
 revision-id: test@user-1
 sha1: %s
@@ -304,21 +304,21 @@ properties:
 """
 
 
-REV_2_SHORT = """\
+REV_2_SHORT = b"""\
 bazaar-ng testament short form 1
 revision-id: test@user-2
 sha1: %s
 """ % osutils.sha_string(REV_2_TESTAMENT)
 
 
-REV_2_SHORT_STRICT = """\
+REV_2_SHORT_STRICT = b"""\
 bazaar-ng testament short form 2.1
 revision-id: test@user-2
 sha1: %s
 """ % osutils.sha_string(REV_2_STRICT_TESTAMENT)
 
 
-REV_2_SHORT_STRICT3 = """\
+REV_2_SHORT_STRICT3 = b"""\
 bazaar testament short form 3 strict
 revision-id: test@user-2
 sha1: %s

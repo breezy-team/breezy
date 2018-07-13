@@ -81,7 +81,7 @@ class TestBranchReconcile(TestCaseWithBranch):
         tree = self.make_branch_and_tree('test')
         if not tree.branch.repository._format.supports_ghosts:
             raise TestNotApplicable("repository format does not support ghosts")
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         r1 = tree.commit('one')
         r2 = tree.commit('two')
         tree.branch.set_last_revision_info(2, r2)

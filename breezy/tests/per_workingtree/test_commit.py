@@ -237,7 +237,7 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.controldir.transport.put_bytes('branch-format', 'garbage')
+        master.controldir.transport.put_bytes('branch-format', b'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,

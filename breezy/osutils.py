@@ -2226,7 +2226,7 @@ def resource_string(package, resource_name):
     base = dirname(breezy.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    with open(pathjoin(base, resource_relpath), "rU") as f:
+    with open(pathjoin(base, resource_relpath), "rt") as f:
         return f.read()
 
 def file_kind_from_stat_mode_thunk(mode):

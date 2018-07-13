@@ -51,4 +51,4 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
             except errors.InventoryModified:
                 pass
             else:
-                self.assertEqual('new-root', tree.path2id(''))
+                self.assertEqual(b'new-root', tree.path2id(''))

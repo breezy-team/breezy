@@ -278,30 +278,30 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
     """
 
     def all_versions_after_reconcile(self):
-        return ('rev1a', 'rev2c', 'rev4', 'rev5')
+        return (b'rev1a', b'rev2c', b'rev4', b'rev5')
 
     def populated_parents(self):
         return [
-            (('rev1a',), 'rev2'),
-            (('rev1a',), 'rev2b'),
-            (('rev2',), 'rev3'),
-            (('rev2',), 'rev4'),
-            (('rev2', 'rev2c'), 'rev5')]
+            ((b'rev1a',), b'rev2'),
+            ((b'rev1a',), b'rev2b'),
+            ((b'rev2',), b'rev3'),
+            ((b'rev2',), b'rev4'),
+            ((b'rev2', b'rev2c'), b'rev5')]
 
     def corrected_parents(self):
         return (
             # rev2 and rev2b have been removed.
-            (None, 'rev2'),
-            (None, 'rev2b'),
+            (None, b'rev2'),
+            (None, b'rev2b'),
             # rev3's accessible parent inventories all have rev1a as the last
             # modifier.
-            (('rev1a',), 'rev3'),
+            ((b'rev1a',), b'rev3'),
             # rev1a features in both rev4's parents but should only appear once
             # in the result
-            (('rev1a',), 'rev4'),
+            ((b'rev1a',), b'rev4'),
             # rev2c is the head of rev1a and rev2c, the inventory provided
             # per-file last-modified revisions.
-            (('rev2c',), 'rev5'))
+            ((b'rev2c',), b'rev5'))
 
     def check_regexes(self, repo):
         if repo.supports_rich_root():
@@ -582,7 +582,7 @@ class TooManyParentsScenario(BrokenRepoScenario):
         return {(b'a-file-id', b'bad-parent'): [NULL_REVISION],
                 (b'a-file-id', b'broken-revision'):
                     [(b'a-file-id', b'good-parent')],
-                (b'a-file-id', b'good-parent'): [('a-file-id', 'bad-parent')]}
+                (b'a-file-id', b'good-parent'): [('a-file-id', b'bad-parent')]}
 
     def versioned_repository_text_keys(self):
         return {(b'TREE_ROOT', b'bad-parent'): [NULL_REVISION],

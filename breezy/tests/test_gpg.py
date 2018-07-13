@@ -414,8 +414,8 @@ class TestDisabled(TestCase):
 
     def test_sign(self):
         self.assertRaises(gpg.SigningFailed,
-                          gpg.DisabledGPGStrategy(None).sign, 'content', gpg.MODE_CLEAR)
+                          gpg.DisabledGPGStrategy(None).sign, b'content', gpg.MODE_CLEAR)
 
     def test_verify(self):
         self.assertRaises(gpg.SignatureVerificationFailed,
-                          gpg.DisabledGPGStrategy(None).verify, 'content')
+                          gpg.DisabledGPGStrategy(None).verify, b'content')

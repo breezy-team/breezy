@@ -307,8 +307,7 @@ class TestsNeedingReweave(TestReconcile):
                                        committer="Foo Bar <foo@example.com>",
                                        message="Message",
                                        revision_id=b'final-revid')
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             repo.start_write_group()
             try:
                 repo.add_revision(b'final-revid', rev, inv)
@@ -324,8 +323,6 @@ class TestsNeedingReweave(TestReconcile):
                         [], [])
             finally:
                 repo.commit_write_group()
-        finally:
-            repo.unlock()
         repo.reconcile(thorough=True)
 
 
