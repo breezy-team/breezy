@@ -198,12 +198,12 @@ class TestRevert(TestCaseWithTransport):
         self.build_tree_contents([('file', b'new content')])
         existing_parents = tree.get_parent_ids()
         self.assertEqual([first_rev_id], existing_parents)
-        merged_parents = existing_parents + ['merged-in-rev']
+        merged_parents = existing_parents + [b'merged-in-rev']
         tree.set_parent_ids(merged_parents)
         self.assertEqual(merged_parents, tree.get_parent_ids())
         self.run_bzr(['revert', '--forget-merges'])
         self.assertEqual([first_rev_id], tree.get_parent_ids())
         # changed files are not reverted
-        self.assertFileEqual('new content', 'file')
+        self.assertFileEqual(b'new content', 'file')
         # you can give it the path of a tree
         self.run_bzr(['revert', '--forget-merges', tree.abspath('.')])

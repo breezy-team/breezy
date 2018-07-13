@@ -306,7 +306,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
             else:
                 match['message'] = [message_search]
         else:
-            match={ 'message': [message_search] }
+            match= {'message': [message_search]}
     return {
         'direction': direction,
         'specific_fileids': specific_fileids,
@@ -1585,7 +1585,7 @@ class LongLogFormatter(LogFormatter):
             lines.append('revno: %s%s' % (revision.revno,
                 self.merge_marker(revision)))
         if revision.tags:
-            lines.append('tags: %s' % (', '.join(revision.tags)))
+            lines.append('tags: %s' % (', '.join(sorted(revision.tags))))
         if self.show_ids or revision.revno is None:
             lines.append('revision-id: %s' % (revision.rev.revision_id,))
         if self.show_ids:
@@ -1672,7 +1672,7 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         tags = ''
         if revision.tags:
-            tags = ' {%s}' % (', '.join(revision.tags))
+            tags = ' {%s}' % (', '.join(sorted(revision.tags)))
         to_file.write(indent + "%*s %s\t%s%s%s\n" % (revno_width,
                 revision.revno or "", self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
@@ -1761,7 +1761,7 @@ class LineLogFormatter(LogFormatter):
         if len(rev.parent_ids) > 1:
             out.append('[merge]')
         if tags:
-            tag_str = '{%s}' % (', '.join(tags))
+            tag_str = '{%s}' % (', '.join(sorted(tags)))
             out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)

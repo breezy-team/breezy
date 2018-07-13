@@ -23,11 +23,15 @@ from breezy import (
     errors,
     ui,
     )
-from breezy.bundle.serializer import (BundleSerializer,
-                                      _get_bundle_header,
-                                     )
+from breezy.bundle.serializer import (
+    BundleSerializer,
+    _get_bundle_header,
+    )
 from breezy.bundle.serializer import binary_diff
-from breezy.bundle.bundle_data import (RevisionInfo, BundleInfo)
+from breezy.bundle.bundle_data import (
+    RevisionInfo,
+    BundleInfo,
+    )
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
 from breezy.sixish import text_type
@@ -91,6 +95,7 @@ class Action(object):
 
 
 class BundleSerializerV08(BundleSerializer):
+
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
@@ -477,12 +482,12 @@ class BundleReader(object):
         values = []
         start = b'#' + (b' '*indent)
 
-        if self._next_line is None or self._next_line[:len(start)] != start:
+        if self._next_line is None or not self._next_line.startswith(start):
             return values
 
         for line in self._next():
             values.append(line[len(start):-1].decode('utf-8'))
-            if self._next_line is None or self._next_line[:len(start)] != start:
+            if self._next_line is None or not self._next_line.startswith(start):
                 break
         return values
 

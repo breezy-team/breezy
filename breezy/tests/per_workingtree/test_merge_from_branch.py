@@ -112,7 +112,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         this.commit('content -> baz')
         class QuxMerge(merge.Merge3Merger):
             def text_merge(self, trans_id, paths, file_id):
-                self.tt.create_file(b'qux', trans_id)
+                self.tt.create_file([b'qux'], trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
         self.assertEqual(b'qux', this.get_file_text('foo'))
 

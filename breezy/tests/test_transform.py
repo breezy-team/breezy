@@ -1742,7 +1742,7 @@ class TestTransformMerge(TestCaseInTempDir):
             self.assertEqual(f.read(), b'y\nb\nc\nd\bz\n')
         # three-way text conflict
         with this.wt.get_file(this.wt.id2path(b'b')) as f:
-            self.assertEqual(f.read(), conflict_text('b', 'b2'))
+            self.assertEqual(f.read(), conflict_text(b'b', b'b2'))
         # OTHER wins
         self.assertEqual(this.wt.get_file(this.wt.id2path(b'c')).read(), b'c2')
         # THIS wins
@@ -1798,7 +1798,7 @@ class TestTransformMerge(TestCaseInTempDir):
             for link, target in (('e', e_target), ('f', f_target),
                                  ('g', g_target), ('h', h_target)):
                 if target is not None:
-                    tg.tt.new_symlink(link, tg.root, target, link)
+                    tg.tt.new_symlink(link, tg.root, target, link.encode('ascii'))
 
         for tg in this, base, other:
             tg.tt.apply()
@@ -1827,25 +1827,25 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, 'a')
+        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, b'a')
                                    for t in [base, this, other]]
-        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, 'b')
+        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, b'b')
                                    for t in [base, this, other]]
-        base.tt.new_directory('c', base_a, 'c')
-        this.tt.new_directory('c1', this_a, 'c')
-        other.tt.new_directory('c', other_b, 'c')
+        base.tt.new_directory('c', base_a, b'c')
+        this.tt.new_directory('c1', this_a, b'c')
+        other.tt.new_directory('c', other_b, b'c')
 
-        base.tt.new_directory('d', base_a, 'd')
-        this.tt.new_directory('d1', this_b, 'd')
-        other.tt.new_directory('d', other_a, 'd')
+        base.tt.new_directory('d', base_a, b'd')
+        this.tt.new_directory('d1', this_b, b'd')
+        other.tt.new_directory('d', other_a, b'd')
 
-        base.tt.new_directory('e', base_a, 'e')
-        this.tt.new_directory('e', this_a, 'e')
-        other.tt.new_directory('e1', other_b, 'e')
+        base.tt.new_directory('e', base_a, b'e')
+        this.tt.new_directory('e', this_a, b'e')
+        other.tt.new_directory('e1', other_b, b'e')
 
-        base.tt.new_directory('f', base_a, 'f')
-        this.tt.new_directory('f1', this_b, 'f')
-        other.tt.new_directory('f1', other_b, 'f')
+        base.tt.new_directory('f', base_a, b'f')
+        this.tt.new_directory('f1', this_b, b'f')
+        other.tt.new_directory('f1', other_b, b'f')
 
         for tg in [this, base, other]:
             tg.tt.apply()
@@ -1860,9 +1860,9 @@ class TestTransformMerge(TestCaseInTempDir):
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
-        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, 'a')
+        base_a, this_a, other_a = [t.tt.new_directory('a', t.root, b'a')
                                    for t in [base, this, other]]
-        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, 'b')
+        base_b, this_b, other_b = [t.tt.new_directory('b', t.root, b'b')
                                    for t in [base, this, other]]
 
         base.tt.new_file('g', base_a, [b'g'], b'g')
@@ -3156,12 +3156,12 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree_a = preview.get_preview_tree()
         tree_a.set_parent_ids([base_id])
         self.assertEqual([
-            ('killed-a', 'a\n'),
-            ('killed-b', 'b\n'),
-            ('unchanged', 'c\n'),
-            ('unchanged', 'd\n'),
-            ('new-a', 'e\n'),
-            ('new-b', 'f\n'),
+            ('killed-a', b'a\n'),
+            ('killed-b', b'b\n'),
+            ('unchanged', b'c\n'),
+            ('unchanged', b'd\n'),
+            ('new-a', b'e\n'),
+            ('new-b', b'f\n'),
         ], list(tree_a.plan_file_merge(b'file-id', tree_b)))
 
     def test_plan_file_merge_revision_tree(self):
@@ -3179,12 +3179,12 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree_a = preview.get_preview_tree()
         tree_a.set_parent_ids([base_id])
         self.assertEqual([
-            ('killed-a', 'a\n'),
-            ('killed-b', 'b\n'),
-            ('unchanged', 'c\n'),
-            ('unchanged', 'd\n'),
-            ('new-a', 'e\n'),
-            ('new-b', 'f\n'),
+            ('killed-a', b'a\n'),
+            ('killed-b', b'b\n'),
+            ('unchanged', b'c\n'),
+            ('unchanged', b'd\n'),
+            ('new-a', b'e\n'),
+            ('new-b', b'f\n'),
         ], list(tree_a.plan_file_merge(b'file-id', tree_b)))
 
     def test_walkdirs(self):
