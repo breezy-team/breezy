@@ -26,9 +26,6 @@ from .. import (
     registry,
     tests,
     )
-from ..sixish import (
-    BytesIO,
-    )
 
 
 class TestEscape(tests.TestCase):
@@ -330,19 +327,19 @@ class TestPotExporter(tests.TestCase):
 
     # This test duplicates test_duplicates below
     def test_duplicates(self):
-        exporter = export_pot._PotExporter(BytesIO())
+        exporter = export_pot._PotExporter(StringIO())
         context = export_pot._ModuleContext("mod.py", 1)
-        exporter.poentry_in_context(context, b"Common line.")
+        exporter.poentry_in_context(context, "Common line.")
         context.lineno = 3
-        exporter.poentry_in_context(context, b"Common line.")
-        self.assertEqual(1, exporter.outf.getvalue().count(b"Common line."))
+        exporter.poentry_in_context(context, "Common line.")
+        self.assertEqual(1, exporter.outf.getvalue().count("Common line."))
 
     def test_duplicates_included(self):
-        exporter = export_pot._PotExporter(BytesIO(), True)
+        exporter = export_pot._PotExporter(StringIO(), True)
         context = export_pot._ModuleContext("mod.py", 1)
-        exporter.poentry_in_context(context, b"Common line.")
+        exporter.poentry_in_context(context, "Common line.")
         context.lineno = 3
-        exporter.poentry_in_context(context, b"Common line.")
+        exporter.poentry_in_context(context, "Common line.")
         self.assertEqual(2, exporter.outf.getvalue().count("Common line."))
 
 
@@ -449,22 +446,22 @@ class TestExportCommandHelp(PoEntryTestCase):
         export_pot._write_command_help(self.exporter, cmd_Demo())
         result = self.exporter.outf.getvalue()
         # We don't care about filename and lineno here.
-        result = re.sub(br'(?m)^#: [^\n]+\n', b'', result)
+        result = re.sub(r'(?m)^#: [^\n]+\n', '', result)
 
         self.assertEqualDiff(
-                b'msgid "A sample command."\n'
-                b'msgstr ""\n'
-                b'\n'                # :Usage: should not be translated.
-                b'msgid ""\n'
-                b'":Examples:\\n"\n'
-                b'"    Example 1::"\n'
-                b'msgstr ""\n'
-                b'\n'
-                b'msgid "        cmd arg1"\n'
-                b'msgstr ""\n'
-                b'\n'
-                b'msgid "Blah Blah Blah"\n'
-                b'msgstr ""\n'
-                b'\n',
+                'msgid "A sample command."\n'
+                'msgstr ""\n'
+                '\n'                # :Usage: should not be translated.
+                'msgid ""\n'
+                '":Examples:\\n"\n'
+                '"    Example 1::"\n'
+                'msgstr ""\n'
+                '\n'
+                'msgid "        cmd arg1"\n'
+                'msgstr ""\n'
+                '\n'
+                'msgid "Blah Blah Blah"\n'
+                'msgstr ""\n'
+                '\n',
                 result
                 )

@@ -49,35 +49,35 @@ from .i18n import gettext
 
 
 def _escape(s):
-    s = (s.replace(b'\\', b'\\\\')
-        .replace(b'\n', b'\\n')
-        .replace(b'\r', b'\\r')
-        .replace(b'\t', b'\\t')
-        .replace(b'"', b'\\"')
+    s = (s.replace('\\', '\\\\')
+        .replace('\n', '\\n')
+        .replace('\r', '\\r')
+        .replace('\t', '\\t')
+        .replace('"', '\\"')
         )
     return s
 
 def _normalize(s):
     # This converts the various Python string types into a format that
     # is appropriate for .po files, namely much closer to C style.
-    lines = s.split(b'\n')
+    lines = s.split('\n')
     if len(lines) == 1:
-        s = b'"' + _escape(s) + b'"'
+        s = '"' + _escape(s) + '"'
     else:
         if not lines[-1]:
             del lines[-1]
             lines[-1] = lines[-1] + '\n'
         lineterm = '\\n"\n"'
-        s = b'""\n"' + lineterm.join(map(_escape, lines)) + b'"'
+        s = '""\n"' + lineterm.join(map(_escape, lines)) + '"'
     return s
 
 
-def _parse_source(source_text):
+def _parse_source(source_text, filename='<unknown>'):
     """Get object to lineno mappings from given source_text"""
     import ast
     cls_to_lineno = {}
     str_to_lineno = {}
-    for node in ast.walk(ast.parse(source_text)):
+    for node in ast.walk(ast.parse(source_text, filename)):
         # TODO: worry about duplicates?
         if isinstance(node, ast.ClassDef):
             # TODO: worry about nesting?
@@ -107,7 +107,7 @@ class _ModuleContext(object):
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
         return cls(relpath,
-            _source_info=_parse_source("".join(inspect.findsource(module)[0])))
+            _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
 
     def from_class(self, cls):
         """Get new context with same details but lineno of class in source"""

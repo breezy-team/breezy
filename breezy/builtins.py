@@ -947,7 +947,7 @@ class cmd_cp(Command):
                         % (src, dst, src))
             if src_kind is None:
                 raise errors.BzrCommandError(
-                    gettext('Could not copy %s => %s . %s is not versioned\.'
+                    gettext('Could not copy %s => %s . %s is not versioned\\.'
                         % (src, dst, src)))
             if src_kind == 'directory':
                 raise errors.BzrCommandError(
