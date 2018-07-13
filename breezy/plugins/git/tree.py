@@ -477,7 +477,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 specific_files = None
             else:
                 specific_files = set([p.encode('utf-8') for p in specific_files])
-        todo = set([(self.store, "", self.tree, None)])
+        todo = [(self.store, "", self.tree, None)]
         while todo:
             store, path, tree_sha, parent_id = todo.pop()
             ie = self._get_dir_ie(path, parent_id)
@@ -491,7 +491,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if stat.S_ISDIR(mode):
                     if (specific_files is None or
                         any(filter(lambda p: p.startswith(child_path), specific_files))):
-                        todo.add((store, child_path, hexsha, ie.file_id))
+                        todo.append((store, child_path, hexsha, ie.file_id))
                 elif specific_files is None or child_path in specific_files:
                     yield (child_path.decode("utf-8"),
                             self._get_file_ie(store, child_path, name, mode, hexsha,
@@ -1017,7 +1017,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             root_ie = self._get_dir_ie(u"", None)
             ret = {}
             if specific_files is None or u"" in specific_files:
-                ret[(None, u"")] = root_ie
+                ret[(u"", u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
             for path, value in self._recurse_index_entries():
                 if self.mapping.is_special_file(path):
@@ -1036,7 +1036,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
                 file_ie.parent_id = self.path2id(parent)
                 ret[(posixpath.dirname(path), path)] = file_ie
-            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
+            return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
 
     def iter_references(self):
         # TODO(jelmer): Implement a more efficient version of this

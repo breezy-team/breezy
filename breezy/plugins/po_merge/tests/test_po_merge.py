@@ -102,14 +102,14 @@ def make_adduser_branch(test, relpath):
                                      _Adduser['base_po'])),
             ], revision_id=b'base')
     # The 'other' branch
-    builder.build_snapshot(['base'],
+    builder.build_snapshot([b'base'],
                            [('modify', ('po/adduser.pot',
                                         _Adduser['other_pot'])),
                             ('modify', ('po/fr.po',
                                         _Adduser['other_po'])),
                             ], revision_id=b'other')
     # The 'this' branch
-    builder.build_snapshot(['base'],
+    builder.build_snapshot([b'base'],
                            [('modify', ('po/adduser.pot', _Adduser['this_pot'])),
                             ('modify', ('po/fr.po', _Adduser['this_po'])),
                             ], revision_id=b'this')
@@ -150,7 +150,7 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # beginning of the file.
 
 _Adduser = dict(
-    base_pot = r"""# SOME DESCRIPTIVE TITLE.
+    base_pot = br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -178,7 +178,7 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
 """,
-    this_pot = r"""# SOME DESCRIPTIVE TITLE.
+    this_pot = br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -213,7 +213,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """,
-    other_pot = r"""# SOME DESCRIPTIVE TITLE.
+    other_pot = br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -248,7 +248,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """,
-    resolved_pot = r"""# SOME DESCRIPTIVE TITLE.
+    resolved_pot = br"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -283,7 +283,7 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
 """,
-    base_po = r"""# adduser's manpages translation to French
+    base_po = br"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -319,7 +319,7 @@ msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
 """,
-    this_po = r"""# adduser's manpages translation to French
+    this_po = br"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -362,7 +362,7 @@ msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
 """,
-    other_po = r"""# adduser's manpages translation to French
+    other_po = br"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -405,7 +405,7 @@ msgstr ""
 "indiqué (%s) : %s.\n"
 
 """,
-    resolved_po = r"""# adduser's manpages translation to French
+    resolved_po = br"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #

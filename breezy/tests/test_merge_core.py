@@ -261,12 +261,12 @@ class MergeTest(TestCaseWithTransport):
         builder = MergeBuilder(getcwd())
         builder.add_dir(b"1", builder.tree_root, "dir1")
         builder.add_dir(b"2", builder.tree_root, "dir2")
-        builder.add_file(b"3", "1", "file1", b"hello1", True)
-        builder.add_file(b"4", "1", "file2", b"hello2", True)
-        builder.add_file(b"5", "1", "file3", b"hello3", True)
-        builder.change_parent(b"3", other="2")
-        builder.change_parent(b"4", this="2")
-        builder.change_parent(b"5", base="2")
+        builder.add_file(b"3", b"1", "file1", b"hello1", True)
+        builder.add_file(b"4", b"1", "file2", b"hello2", True)
+        builder.add_file(b"5", b"1", "file3", b"hello3", True)
+        builder.change_parent(b"3", other=b"2")
+        builder.change_parent(b"4", this=b"2")
+        builder.change_parent(b"5", base=b"2")
         builder.merge()
         builder.cleanup()
 
@@ -274,8 +274,8 @@ class MergeTest(TestCaseWithTransport):
         builder.add_dir(b"1", builder.tree_root, "dir1")
         builder.add_dir(b"2", builder.tree_root, "dir2")
         builder.add_dir(b"3", builder.tree_root, "dir3")
-        builder.add_file(b"4", "1", "file1", b"hello1", False)
-        builder.change_parent(b"4", other="2", this="3")
+        builder.add_file(b"4", b"1", "file1", b"hello1", False)
+        builder.change_parent(b"4", other=b"2", this=b"3")
         conflicts = builder.merge()
         path2 = pathjoin('dir2', 'file1')
         path3 = pathjoin('dir3', 'file1')
@@ -361,9 +361,9 @@ y
     def contents_test_conflicts(self, merge_factory):
         builder = MergeBuilder(getcwd())
         builder.add_file(b"1", builder.tree_root, "name1", b"text1", True)
-        builder.change_contents("1", other=b"text4", this=b"text3")
+        builder.change_contents(b"1", other=b"text4", this=b"text3")
         builder.add_file(b"2", builder.tree_root, "name2", b"text1", True)
-        builder.change_contents("2", other=b"\x00", this="text3")
+        builder.change_contents(b"2", other=b"\x00", this=b"text3")
         builder.add_file(b"3", builder.tree_root, "name3", b"text5", False)
         builder.change_perms(b"3", this=True)
         builder.change_contents(b'3', this=b'moretext')
@@ -372,9 +372,8 @@ y
         self.assertEqual(conflicts, [TextConflict('name1', file_id=b'1'),
                                      ContentsConflict('name2', file_id=b'2'),
                                      ContentsConflict('name3', file_id=b'3')])
-        self.assertEqual(
-            builder.this.get_file(builder.this.id2path(b'2')).read(),
-            '\x00')
+        with builder.this.get_file(builder.this.id2path(b'2')) as f:
+            self.assertEqual(f.read(), b'\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -393,9 +392,9 @@ y
             builder.add_symlink(b"1", builder.tree_root, "name1", "target1")
             builder.add_symlink(b"2", builder.tree_root, "name2", "target1")
             builder.add_symlink(b"3", builder.tree_root, "name3", "target1")
-            builder.change_target(b"1", this="target2")
-            builder.change_target(b"2", base="target2")
-            builder.change_target(b"3", other="target2")
+            builder.change_target(b"1", this=b"target2")
+            builder.change_target(b"2", base=b"target2")
+            builder.change_target(b"3", other=b"target2")
             builder.merge()
             self.assertEqual(builder.this.get_symlink_target("name1"), "target2")
             self.assertEqual(builder.this.get_symlink_target("name2"), "target1")
@@ -469,23 +468,23 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.build_tree(("mary/",))
         branch.controldir.clone("mary")
         # Now John commits a change
-        file = open("original/file1", "wt")
-        file.write("John\n")
-        file.close()
+        with open("original/file1", "wt") as f:
+            f.write("John\n")
         tree.commit("change file1")
         # Mary does too
         mary_tree = WorkingTree.open('mary')
         mary_branch = mary_tree.branch
-        file = open("mary/file2", "wt")
-        file.write("Mary\n")
-        file.close()
+        with open("mary/file2", "wt") as f:
+            f.write("Mary\n")
         mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
         base = [None, None]
         other = ("mary", -1)
         tree.merge_from_branch(mary_tree.branch)
-        self.assertEqual("John\n", open("original/file1", "rt").read())
-        self.assertEqual("Mary\n", open("original/file2", "rt").read())
+        with open("original/file1", "rt") as f:
+            self.assertEqual("John\n", f.read())
+        with open("original/file2", "rt") as f:
+            self.assertEqual("Mary\n", f.read())
 
     def test_conflicts(self):
         wta = self.make_branch_and_tree('a')

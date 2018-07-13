@@ -240,7 +240,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         except errors.NoSuchRevision as e:
             raise errors.GhostRevisionUnusableHere(e.revision)
         if merges:
-            self.control_transport.put_bytes('MERGE_HEAD', '\n'.join(merges),
+            self.control_transport.put_bytes('MERGE_HEAD', b'\n'.join(merges),
                 mode=self.controldir._get_file_mode())
         else:
             try:
@@ -292,7 +292,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
-                revision_id = l.rstrip('\n')
+                revision_id = l.rstrip(b'\n')
                 parents.append(self.branch.lookup_foreign_revision_id(revision_id))
         return parents
 

@@ -26,6 +26,12 @@ from . import (
     )
 
 
+class CantReprocessAndShowBase(errors.BzrError):
+
+    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
+           "the relationship of conflicting lines to the base")
+
+
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
 
@@ -58,8 +64,6 @@ def compare_range(a, astart, aend, b, bstart, bend):
             return False
     else:
         return True
-
-
 
 
 class Merge3(object):
@@ -109,7 +113,7 @@ class Merge3(object):
             elif self.a[0].endswith(b'\r'):
                 newline = b'\r'
         if base_marker and reprocess:
-            raise errors.CantReprocessAndShowBase()
+            raise CantReprocessAndShowBase()
         if name_a:
             start_marker = start_marker + b' ' + name_a
         if name_b:
