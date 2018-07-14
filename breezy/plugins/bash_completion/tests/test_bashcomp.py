@@ -17,7 +17,7 @@
 import sys
 
 import breezy
-from breezy import commands, tests
+from breezy import commands, osutils, tests
 from breezy.tests import features
 from breezy.plugins.bash_completion.bashcomp import *
 
@@ -45,29 +45,30 @@ class BashCompletionMixin(object):
                                 stderr=subprocess.PIPE)
         if cword < 0:
             cword = len(words) + cword
-        input = '%s\n' % self.script
-        input += ('COMP_WORDS=( %s )\n' %
-                  ' '.join(["'"+w.replace("'", "'\\''")+"'" for w in words]))
-        input += 'COMP_CWORD=%d\n' % cword
-        input += '%s\n' % getattr(self, 'script_name', '_brz')
-        input += 'echo ${#COMPREPLY[*]}\n'
-        input += "IFS=$'\\n'\n"
-        input += 'echo "${COMPREPLY[*]}"\n'
+        encoding = osutils.get_user_encoding()
+        input = b'%s\n' % self.script.encode(encoding)
+        input += (b'COMP_WORDS=( %s )\n' %
+                  b' '.join([b"'"+w.replace("'", "'\\''").encode(encoding)+b"'" for w in words]))
+        input += b'COMP_CWORD=%d\n' % cword
+        input += b'%s\n' % getattr(self, 'script_name', '_brz').encode(encoding)
+        input += b'echo ${#COMPREPLY[*]}\n'
+        input += b"IFS=$'\\n'\n"
+        input += b'echo "${COMPREPLY[*]}"\n'
         (out, err) = proc.communicate(input)
         if b'' != err:
             raise AssertionError('Unexpected error message:\n%s' % err)
         self.assertEqual(b'', err, 'No messages to standard error')
         #import sys
         #print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
-        lines = out.split('\n')
+        lines = out.split(b'\n')
         nlines = int(lines[0])
         del lines[0]
-        self.assertEqual('', lines[-1], 'Newline at end')
+        self.assertEqual(b'', lines[-1], 'Newline at end')
         del lines[-1]
-        if nlines == 0 and len(lines) == 1 and lines[0] == '':
+        if nlines == 0 and len(lines) == 1 and lines[0] == b'':
             del lines[0]
         self.assertEqual(nlines, len(lines), 'No newlines in generated words')
-        self.completion_result = set(lines)
+        self.completion_result = {l.decode(encoding) for l in lines}
         return self.completion_result
 
     def assertCompletionEquals(self, *words):
