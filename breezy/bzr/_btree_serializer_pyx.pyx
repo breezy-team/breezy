@@ -58,17 +58,11 @@ from cpython.ref cimport (
     )
 from cpython.tuple cimport (
     PyTuple_CheckExact,
+    PyTuple_GET_ITEM,
     PyTuple_GET_SIZE,
     PyTuple_New,
     PyTuple_SET_ITEM,
     )
-
-cdef extern from "Python.h":
-    int PyBytes_CheckExact_ptr "PyBytes_CheckExact" (PyObject *)
-    Py_ssize_t PyBytes_GET_SIZE_ptr "PyBytes_GET_SIZE" (PyObject *)
-    char * PyBytes_AS_STRING_ptr "PyBytes_AS_STRING" (PyObject *)
-    PyObject *PyTuple_GET_ITEM_ptr_object "PyTuple_GET_ITEM" (object tpl, int index)
-
 
 from ._str_helpers cimport (
     _my_memrchr,
@@ -401,13 +395,14 @@ cdef int _key_to_sha1(key, char *sha1): # cannot_raise
 
     if StaticTuple_CheckExact(key) and StaticTuple_GET_SIZE(key) == 1:
         p_val = <PyObject *>StaticTuple_GET_ITEM(key, 0)
-    elif (PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1):
-        p_val = PyTuple_GET_ITEM_ptr_object(key, 0)
+    elif PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1:
+        p_val = PyTuple_GET_ITEM(key, 0)
     else:
         # Not a tuple or a StaticTuple
         return 0
-    if (PyBytes_CheckExact_ptr(p_val) and PyBytes_GET_SIZE_ptr(p_val) == 45):
-        c_val = PyBytes_AS_STRING_ptr(p_val)
+    if (PyBytes_CheckExact(<object>p_val)
+            and PyBytes_GET_SIZE(<object>p_val) == 45):
+        c_val = PyBytes_AS_STRING(<object>p_val)
     else:
         return 0
     if strncmp(c_val, b'sha1:', 5) != 0:
