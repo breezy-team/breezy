@@ -21,6 +21,9 @@ import binascii
 import bisect
 
 from .. import tests
+from ..sixish import (
+    int2byte,
+    )
 
 from .test_btree_index import compiled_btreeparser_feature
 
@@ -29,9 +32,9 @@ class TestBtreeSerializer(tests.TestCase):
 
     _test_needs_features = [compiled_btreeparser_feature]
 
-    def setUp(self):
-        super(TestBtreeSerializer, self).setUp()
-        self.module = compiled_btreeparser_feature.module
+    @property
+    def module(self):
+        return compiled_btreeparser_feature.module
 
 
 class TestHexAndUnhex(TestBtreeSerializer):
@@ -45,11 +48,11 @@ class TestHexAndUnhex(TestBtreeSerializer):
         mod_unhex = self.module._py_unhexlify(as_hex)
         if ba_unhex != mod_unhex:
             if mod_unhex is None:
-                mod_hex = '<None>'
+                mod_hex = b'<None>'
             else:
                 mod_hex = binascii.hexlify(mod_unhex)
             self.fail('_py_unhexlify returned a different answer'
-                      ' from binascii:\n    %s\n != %s'
+                      ' from binascii:\n    %r\n != %r'
                       % (binascii.hexlify(ba_unhex), mod_hex))
 
     def assertFailUnhexlify(self, as_hex):
@@ -57,27 +60,31 @@ class TestHexAndUnhex(TestBtreeSerializer):
         self.assertIs(None, self.module._py_unhexlify(as_hex))
 
     def test_to_hex(self):
-        raw_bytes = ''.join(map(chr, range(256)))
+        raw_bytes = b''.join(map(int2byte, range(256)))
         for i in range(0, 240, 20):
             self.assertHexlify(raw_bytes[i:i+20])
         self.assertHexlify(raw_bytes[240:]+raw_bytes[0:4])
 
     def test_from_hex(self):
-        self.assertUnhexlify('0123456789abcdef0123456789abcdef01234567')
-        self.assertUnhexlify('123456789abcdef0123456789abcdef012345678')
-        self.assertUnhexlify('0123456789ABCDEF0123456789ABCDEF01234567')
-        self.assertUnhexlify('123456789ABCDEF0123456789ABCDEF012345678')
-        hex_chars = binascii.hexlify(''.join(map(chr, range(256))))
+        self.assertUnhexlify(b'0123456789abcdef0123456789abcdef01234567')
+        self.assertUnhexlify(b'123456789abcdef0123456789abcdef012345678')
+        self.assertUnhexlify(b'0123456789ABCDEF0123456789ABCDEF01234567')
+        self.assertUnhexlify(b'123456789ABCDEF0123456789ABCDEF012345678')
+        hex_chars = binascii.hexlify(b''.join(map(int2byte, range(256))))
         for i in range(0, 480, 40):
             self.assertUnhexlify(hex_chars[i:i+40])
         self.assertUnhexlify(hex_chars[480:]+hex_chars[0:8])
 
     def test_from_invalid_hex(self):
-        self.assertFailUnhexlify('123456789012345678901234567890123456789X')
-        self.assertFailUnhexlify('12345678901234567890123456789012345678X9')
+        self.assertFailUnhexlify(b'123456789012345678901234567890123456789X')
+        self.assertFailUnhexlify(b'12345678901234567890123456789012345678X9')
+
+    def test_bad_argument(self):
+        self.assertRaises(ValueError, self.module._py_unhexlify, u'1a')
+        self.assertRaises(ValueError, self.module._py_unhexlify, b'1b')
 
 
-_hex_form = '123456789012345678901234567890abcdefabcd'
+_hex_form = b'123456789012345678901234567890abcdefabcd'
 
 class Test_KeyToSha1(TestBtreeSerializer):
 
@@ -95,11 +102,11 @@ class Test_KeyToSha1(TestBtreeSerializer):
                       % (actual_sha1, expected))
 
     def test_simple(self):
-        self.assertKeyToSha1(_hex_form, ('sha1:' + _hex_form,))
+        self.assertKeyToSha1(_hex_form, (b'sha1:' + _hex_form,))
 
     def test_invalid_not_tuple(self):
         self.assertKeyToSha1(None, _hex_form)
-        self.assertKeyToSha1(None, 'sha1:' + _hex_form)
+        self.assertKeyToSha1(None, b'sha1:' + _hex_form)
 
     def test_invalid_empty(self):
         self.assertKeyToSha1(None, ())
@@ -110,11 +117,11 @@ class Test_KeyToSha1(TestBtreeSerializer):
 
     def test_invalid_not_sha1(self):
         self.assertKeyToSha1(None, (_hex_form,))
-        self.assertKeyToSha1(None, ('sha2:' + _hex_form,))
+        self.assertKeyToSha1(None, (b'sha2:' + _hex_form,))
 
     def test_invalid_not_hex(self):
         self.assertKeyToSha1(None,
-            ('sha1:abcdefghijklmnopqrstuvwxyz12345678901234',))
+            (b'sha1:abcdefghijklmnopqrstuvwxyz12345678901234',))
 
 
 class Test_Sha1ToKey(TestBtreeSerializer):
@@ -122,23 +129,23 @@ class Test_Sha1ToKey(TestBtreeSerializer):
     def assertSha1ToKey(self, hex_sha1):
         bin_sha1 = binascii.unhexlify(hex_sha1)
         key = self.module._py_sha1_to_key(bin_sha1)
-        self.assertEqual(('sha1:' + hex_sha1,), key)
+        self.assertEqual((b'sha1:' + hex_sha1,), key)
 
     def test_simple(self):
         self.assertSha1ToKey(_hex_form)
 
 
-_one_key_content = """type=leaf
+_one_key_content = b"""type=leaf
 sha1:123456789012345678901234567890abcdefabcd\x00\x001 2 3 4
 """
 
-_large_offsets = """type=leaf
+_large_offsets = b"""type=leaf
 sha1:123456789012345678901234567890abcdefabcd\x00\x0012345678901 1234567890 0 1
 sha1:abcd123456789012345678901234567890abcdef\x00\x002147483648 2147483647 0 1
 sha1:abcdefabcd123456789012345678901234567890\x00\x004294967296 4294967295 4294967294 1
 """
 
-_multi_key_content = """type=leaf
+_multi_key_content = b"""type=leaf
 sha1:c80c881d4a26984ddce795f6f71817c9cf4480e7\x00\x000 0 0 0
 sha1:c86f7e437faa5a7fce15d1ddcb9eaeaea377667b\x00\x001 1 1 1
 sha1:c8e240de74fb1ed08fa08d38063f6a6a91462a81\x00\x002 2 2 2
@@ -149,7 +156,7 @@ sha1:ce93b4e3c464ffd51732fbd6ded717e9efda28aa\x00\x006 6 6 6
 sha1:cf7a9e24777ec23212c54d7a350bc5bea5477fdb\x00\x007 7 7 7
 """
 
-_multi_key_same_offset = """type=leaf
+_multi_key_same_offset = b"""type=leaf
 sha1:080c881d4a26984ddce795f6f71817c9cf4480e7\x00\x000 0 0 0
 sha1:c86f7e437faa5a7fce15d1ddcb9eaeaea377667b\x00\x001 1 1 1
 sha1:cd0c9035898dd52fc65c41454cec9c4d2611bfb3\x00\x002 2 2 2
@@ -160,7 +167,7 @@ sha1:ce7a9e24777ec23212c54d7a350bc5bea5477fdb\x00\x006 6 6 6
 sha1:ce93b4e3c464ffd51732fbd6ded717e9efda28aa\x00\x007 7 7 7
 """
 
-_common_32_bits = """type=leaf
+_common_32_bits = b"""type=leaf
 sha1:123456784a26984ddce795f6f71817c9cf4480e7\x00\x000 0 0 0
 sha1:1234567874fb1ed08fa08d38063f6a6a91462a81\x00\x001 1 1 1
 sha1:12345678777ec23212c54d7a350bc5bea5477fdb\x00\x002 2 2 2
@@ -174,22 +181,22 @@ sha1:12345678e5e6b4b0d3255bfef95601890afd8070\x00\x007 7 7 7
 
 class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
 
-    def assertInvalid(self, bytes):
+    def assertInvalid(self, data):
         """Ensure that we get a proper error when trying to parse invalid bytes.
 
         (mostly this is testing that bad input doesn't cause us to segfault)
         """
-        self.assertRaises((ValueError, TypeError), 
-                          self.module._parse_into_chk, bytes, 1, 0)
+        self.assertRaises(
+            (ValueError, TypeError), self.module._parse_into_chk, data, 1, 0)
 
-    def test_non_str(self):
+    def test_non_bytes(self):
         self.assertInvalid(u'type=leaf\n')
 
     def test_not_leaf(self):
-        self.assertInvalid('type=internal\n')
+        self.assertInvalid(b'type=internal\n')
 
     def test_empty_leaf(self):
-        leaf = self.module._parse_into_chk('type=leaf\n', 1, 0)
+        leaf = self.module._parse_into_chk(b'type=leaf\n', 1, 0)
         self.assertEqual(0, len(leaf))
         self.assertEqual([], leaf.all_items())
         self.assertEqual([], leaf.all_keys())
@@ -199,16 +206,16 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
     def test_one_key_leaf(self):
         leaf = self.module._parse_into_chk(_one_key_content, 1, 0)
         self.assertEqual(1, len(leaf))
-        sha_key = ('sha1:' + _hex_form,)
+        sha_key = (b'sha1:' + _hex_form,)
         self.assertEqual([sha_key], leaf.all_keys())
-        self.assertEqual([(sha_key, ('1 2 3 4', ()))], leaf.all_items())
+        self.assertEqual([(sha_key, (b'1 2 3 4', ()))], leaf.all_items())
         self.assertTrue(sha_key in leaf)
 
     def test_large_offsets(self):
         leaf = self.module._parse_into_chk(_large_offsets, 1, 0)
-        self.assertEqual(['12345678901 1234567890 0 1',
-                          '2147483648 2147483647 0 1',
-                          '4294967296 4294967295 4294967294 1',
+        self.assertEqual([b'12345678901 1234567890 0 1',
+                          b'2147483648 2147483647 0 1',
+                          b'4294967296 4294967295 4294967294 1',
                          ], [x[1][0] for x in leaf.all_items()])
 
     def test_many_key_leaf(self):
@@ -217,7 +224,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         all_keys = leaf.all_keys()
         self.assertEqual(8, len(leaf.all_keys()))
         for idx, key in enumerate(all_keys):
-            self.assertEqual(str(idx), leaf[key][0].split()[0])
+            self.assertEqual(b'%d' % idx, leaf[key][0].split()[0])
 
     def test_common_shift(self):
         # The keys were deliberately chosen so that the first 5 bits all
@@ -235,7 +242,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         for idx, val in enumerate(lst):
             self.assertEqual(idx, offsets[val])
         for idx, key in enumerate(leaf.all_keys()):
-            self.assertEqual(str(idx), leaf[key][0].split()[0])
+            self.assertEqual(b'%d' % idx, leaf[key][0].split()[0])
 
     def test_multi_key_same_offset(self):
         # there is no common prefix, though there are some common bits
@@ -249,7 +256,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         for val in lst:
             self.assertEqual(lst.index(val), offsets[val])
         for idx, key in enumerate(leaf.all_keys()):
-            self.assertEqual(str(idx), leaf[key][0].split()[0])
+            self.assertEqual(b'%d' % idx, leaf[key][0].split()[0])
 
     def test_all_common_prefix(self):
         # The first 32 bits of all hashes are the same. This is going to be
@@ -263,19 +270,19 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         for val in lst:
             self.assertEqual(lst.index(val), offsets[val])
         for idx, key in enumerate(leaf.all_keys()):
-            self.assertEqual(str(idx), leaf[key][0].split()[0])
+            self.assertEqual(b'%d' % idx, leaf[key][0].split()[0])
 
     def test_many_entries(self):
         # Again, this is almost impossible, but we should still work
         # It would be hard to fit more that 120 entries in a 4k page, much less
         # more than 256 of them. but hey, weird stuff happens sometimes
-        lines = ['type=leaf\n']
+        lines = [b'type=leaf\n']
         for i in range(500):
-            key_str = 'sha1:%04x%s' % (i, _hex_form[:36])
+            key_str = b'sha1:%04x%s' % (i, _hex_form[:36])
             key = (key_str,)
-            lines.append('%s\0\0%d %d %d %d\n' % (key_str, i, i, i, i))
-        bytes = ''.join(lines)
-        leaf = self.module._parse_into_chk(bytes, 1, 0)
+            lines.append(b'%s\0\0%d %d %d %d\n' % (key_str, i, i, i, i))
+        data = b''.join(lines)
+        leaf = self.module._parse_into_chk(data, 1, 0)
         self.assertEqual(24-7, leaf.common_shift)
         offsets = leaf._get_offsets()
         # This is the interesting bits for each entry
@@ -290,13 +297,13 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         for val in lst:
             self.assertEqual(lst.index(val), offsets[val])
         for idx, key in enumerate(leaf.all_keys()):
-            self.assertEqual(str(idx), leaf[key][0].split()[0])
+            self.assertEqual(b'%d' % idx, leaf[key][0].split()[0])
 
     def test__sizeof__(self):
         # We can't use the exact numbers because of platform variations, etc.
         # But what we really care about is that it does get bigger with more
         # content.
-        leaf0 = self.module._parse_into_chk('type=leaf\n', 1, 0)
+        leaf0 = self.module._parse_into_chk(b'type=leaf\n', 1, 0)
         leaf1 = self.module._parse_into_chk(_one_key_content, 1, 0)
         leafN = self.module._parse_into_chk(_multi_key_content, 1, 0)
         sizeof_1 = leaf1.__sizeof__() - leaf0.__sizeof__()
