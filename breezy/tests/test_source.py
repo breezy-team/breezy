@@ -367,10 +367,9 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
+        common_classes = ('StaticTuple',)
         class_re = re.compile(r'^(cdef\s+)?(public\s+)?'
                               r'(api\s+)?class (\w+).*:', re.MULTILINE)
-        extern_class_re = re.compile(r'## extern cdef class (\w+)',
-                                     re.MULTILINE)
         except_re = re.compile(
             r'cdef\s+'        # start with cdef
             r'([\w *]*?)\s*'  # this is the return signature
@@ -381,7 +380,7 @@ class TestSource(TestSourceHelper):
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
             known_classes = {m[-1] for m in class_re.findall(text)}
-            known_classes.update(extern_class_re.findall(text))
+            known_classes.update(common_classes)
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:
                 if sig.startswith('api '):
