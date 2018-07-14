@@ -145,14 +145,13 @@ class _GrepDiffOutputter(object):
         self.opts = opts
         self.outf = opts.outf
         if opts.show_color:
-            pat = opts.pattern.encode(_user_encoding, 'replace')
             if opts.fixed_string:
-                self._old = pat
-                self._new = color_string(pat, FG.BOLD_RED)
+                self._old = opts.pattern
+                self._new = color_string(opts.pattern, FG.BOLD_RED)
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
+                self._sub = re.compile(opts.pattern.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
         else:
@@ -260,8 +259,8 @@ def grep_diff(opts):
             start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
         repo = branch.repository
-        diff_pattern = re.compile("^[+\\-].*(" + opts.pattern + ")")
-        file_pattern = re.compile("=== (modified|added|removed) file '.*'", re.UNICODE)
+        diff_pattern = re.compile(b"^[+\\-].*(" + opts.pattern.encode(_user_encoding) + b")")
+        file_pattern = re.compile(b"=== (modified|added|removed) file '.*'")
         outputter = _GrepDiffOutputter(opts)
         writeline = outputter.get_writer()
         writerevno = outputter.get_revision_header_writer()
@@ -282,7 +281,7 @@ def grep_diff(opts):
             old_tree = repo.revision_tree(ancestor_id)
             s = BytesIO()
             diff.show_diff_trees(old_tree, new_tree, s,
-                old_label=b'', new_label=b'')
+                old_label='', new_label='')
             display_revno = True
             display_file = False
             file_header = None
@@ -296,7 +295,7 @@ def grep_diff(opts):
                         writerevno("=== revno:%s ===" % (revno,))
                         display_revno = False
                     if display_file:
-                        writefileheader("  %s" % (file_header,))
+                        writefileheader("  %s" % (file_header.decode(file_encoding, 'replace'),))
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
                     writeline("    %s" % (line,))
@@ -446,7 +445,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 if opts.files_with_matches or opts.files_without_match:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
-                    with open(path_for_file, 'r', buffering=4096) as file:
+                    with open(path_for_file, 'rb', buffering=4096) as file:
                         _file_grep_list_only_wtree(file, fp, opts, path_prefix)
                 else:
                     with open(path_for_file, 'rb') as f:
@@ -492,7 +491,7 @@ def _path_in_glob_list(path, glob_list):
 
 def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
     # test and skip binary files
-    if '\x00' in file.read(1024):
+    if b'\x00' in file.read(1024):
         if opts.verbose:
             trace.warning("Binary file '%s' skipped.", path)
         return
@@ -540,16 +539,15 @@ class _Outputter(object):
         no_line = opts.files_with_matches or opts.files_without_match
 
         if opts.show_color:
-            pat = opts.pattern.encode(_user_encoding, 'replace')
             if no_line:
                 self.get_writer = self._get_writer_plain
             elif opts.fixed_string:
-                self._old = pat
-                self._new = color_string(pat, FG.BOLD_RED)
+                self._old = opts.pattern
+                self._new = color_string(opts.pattern, FG.BOLD_RED)
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:", ")+)")), flags).sub
+                self._sub = re.compile(opts.pattern.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
             path_start = FG.MAGENTA
@@ -648,7 +646,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             found = pattern in file_text
         else:
             search = opts.patternc.search
-            if "$" not in pattern:
+            if b"$" not in pattern:
                 found = search(file_text) is not None
             else:
                 for line in file_text.splitlines():
@@ -685,7 +683,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         # standard cases, but perhaps could try and detect backtracking
         # patterns here and avoid whole text search in those cases
         search = opts.patternc.search
-        if "$" not in pattern:
+        if b"$" not in pattern:
             # GZ 2010-06-05: Grr, re.MULTILINE can't save us when searching
             #                through revisions as bazaar returns binary mode
             #                and trailing \r breaks $ as line ending match
