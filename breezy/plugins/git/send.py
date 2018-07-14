@@ -75,7 +75,8 @@ class GitDiffTree(_mod_diff.DiffTree):
             return object_mode(kind, executable)
         def get_blob(present, tree, path):
             if present:
-                return Blob.from_string(tree.get_file(path).read())
+                with tree.get_file(path) as f:
+                    return Blob.from_string(f.read())
             else:
                 return None
         trees = (self.old_tree, self.new_tree)

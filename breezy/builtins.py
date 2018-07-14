@@ -84,6 +84,7 @@ from .revisionspec import (
     )
 from .sixish import (
     BytesIO,
+    PY3,
     text_type,
     viewitems,
     viewvalues,
@@ -1581,7 +1582,7 @@ class cmd_branches(Command):
                 else:
                     prefix = " "
                 self.outf.write("%s %s\n" % (
-                    prefix, name.encode(self.outf.encoding)))
+                    prefix, (name if PY3 else name.encode(self.outf.encoding))))
 
 
 class cmd_checkout(Command):
@@ -5461,7 +5462,7 @@ class cmd_uncommit(Command):
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write(gettext('You can restore the old tip by running:\n'
-             '  brz pull . -r revid:%s\n') % last_rev_id)
+             '  brz pull . -r revid:%s\n') % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):

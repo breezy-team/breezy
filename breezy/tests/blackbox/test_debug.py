@@ -33,7 +33,7 @@ class TestDebugOption(tests.TestCaseInTempDir):
         # error output should contain a traceback; we used to look for code in
         # here but it may be missing if the source is not in sync with the
         # pyc file.
-        self.assertContainsRe(err, b"Traceback \\(most recent call last\\)")
+        self.assertContainsRe(err, "Traceback \\(most recent call last\\)")
 
     def test_dash_dlock(self):
         # With -Dlock, locking and unlocking is recorded into the log

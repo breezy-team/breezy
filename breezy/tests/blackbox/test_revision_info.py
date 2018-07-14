@@ -47,9 +47,9 @@ class TestRevisionInfo(TestCaseWithTransport):
 
         # Expected return values
         values = {
-            '1'    : b'1 a@r-0-1\n',
-            '1.1.1': b'1.1.1 a@r-0-1.1.1\n',
-            '2'    : b'2 a@r-0-2\n'
+            '1'    : '1 a@r-0-1\n',
+            '1.1.1': '1.1.1 a@r-0-1.1.1\n',
+            '2'    : '2 a@r-0-2\n'
         }
 
         # Make sure with no arg it defaults to the head
@@ -60,10 +60,10 @@ class TestRevisionInfo(TestCaseWithTransport):
         self.check_output(values['1.1.1'], 'revision-info 1.1.1')
         self.check_output(values['2'], 'revision-info 2')
         self.check_output(values['1']+values['2'], 'revision-info 1 2')
-        self.check_output(b'    '+values['1']+
-                                  values['1.1.1']+
-                          b'    '+values['2'],
-                          b'revision-info 1 1.1.1 2')
+        self.check_output('    '+values['1']+
+                                 values['1.1.1']+
+                          '    '+values['2'],
+                          'revision-info 1 1.1.1 2')
         self.check_output(values['2']+values['1'], 'revision-info 2 1')
 
         # Check as above, only using the '--revision' syntax
@@ -72,10 +72,10 @@ class TestRevisionInfo(TestCaseWithTransport):
         self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
         self.check_output(values['2'], 'revision-info -r 2')
         self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
-        self.check_output(b'    '+values['1']+
-                                  values['1.1.1']+
-                          b'    '+values['2'],
-                          b'revision-info -r 1..1.1.1..2')
+        self.check_output('    '+values['1']+
+                                 values['1.1.1']+
+                          '    '+values['2'],
+                          'revision-info -r 1..1.1.1..2')
         self.check_output(values['2']+values['1'], 'revision-info -r 2..1')
 
         # Now try some more advanced revision specifications
@@ -89,7 +89,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         wt = self.make_branch_and_tree('branch')
 
         wt.commit('Commit one', rev_id=b'a@r-0-1')
-        self.check_output(b'1 a@r-0-1\n', 'revision-info -d branch')
+        self.check_output('1 a@r-0-1\n', 'revision-info -d branch')
 
     def test_revision_info_tree(self):
         # Make branch and checkout
@@ -102,8 +102,8 @@ class TestRevisionInfo(TestCaseWithTransport):
 
         # Make sure the checkout gives the right answer for branch and
         # tree
-        self.check_output(b'2 a@r-0-2\n', 'revision-info -d checkout')
-        self.check_output(b'1 a@r-0-1\n', 'revision-info --tree -d checkout')
+        self.check_output('2 a@r-0-2\n', 'revision-info -d checkout')
+        self.check_output('1 a@r-0-1\n', 'revision-info --tree -d checkout')
 
     def test_revision_info_tree_no_working_tree(self):
         # Make branch with no tree
@@ -111,8 +111,8 @@ class TestRevisionInfo(TestCaseWithTransport):
 
         # Try getting the --tree revision-info
         out, err = self.run_bzr('revision-info --tree -d branch', retcode=3)
-        self.assertEqual(b'', out)
-        self.assertEqual(b'brz: ERROR: No WorkingTree exists for "branch".\n',
+        self.assertEqual('', out)
+        self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
             err)
 
     def test_revision_info_not_in_history(self):
@@ -124,6 +124,6 @@ class TestRevisionInfo(TestCaseWithTransport):
         builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
         builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.finish_series()
-        self.check_output(b'  1 A-id\n??? B-id\n  2 C-id\n',
-                          b'revision-info -d branch'
-                          b' revid:A-id revid:B-id revid:C-id')
+        self.check_output('  1 A-id\n??? B-id\n  2 C-id\n',
+                          'revision-info -d branch'
+                          ' revid:A-id revid:B-id revid:C-id')

@@ -759,6 +759,8 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
                 # Oops, a ghost.
                 yield e.revision_id, None, None
                 break
+            except StopIteration:
+                break
             else:
                 yield revision_id, str(cur_revno) if cur_revno is not None else None, 0
                 if cur_revno is not None:

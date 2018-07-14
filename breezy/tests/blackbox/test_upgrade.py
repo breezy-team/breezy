@@ -263,8 +263,8 @@ class SFTPTests(TestCaseWithSFTPServer):
         display_url = urlutils.unescape_for_display(url,
             'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
-        backup_dir = b'backup.bzr.~1~'
-        self.assertEqualDiff(b"""Upgrading branch %s ...
+        backup_dir = 'backup.bzr.~1~'
+        self.assertEqualDiff("""Upgrading branch %s ...
 starting upgrade of %s
 making backup of %s.bzr
   to %s%s
@@ -272,7 +272,7 @@ starting repository conversion
 repository converted
 finished
 """ % (display_url, display_url, display_url, display_url, backup_dir), out)
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
 
 
 class UpgradeRecommendedTests(TestCaseWithTransport):
@@ -281,7 +281,7 @@ class UpgradeRecommendedTests(TestCaseWithTransport):
         # using a deprecated format gives a warning
         self.run_bzr('init --format=knit a')
         out, err = self.run_bzr('status a')
-        self.assertContainsRe(err, b'brz upgrade .*[/\\\\]a')
+        self.assertContainsRe(err, 'brz upgrade .*[/\\\\]a')
 
     def test_no_upgrade_recommendation_from_bzrdir(self):
         # we should only get a recommendation to upgrade when we're accessing

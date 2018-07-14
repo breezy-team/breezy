@@ -514,29 +514,29 @@ class BranchStatus(TestCaseWithTransport):
 
         self.build_tree(['test1.c', 'test1.c~', 'test2.c~'])
         result = self.run_bzr('status')[0]
-        self.assertContainsRe(result, b"unknown:\n  test1.c\n")
+        self.assertContainsRe(result, "unknown:\n  test1.c\n")
         short_result = self.run_bzr('status --short')[0]
-        self.assertContainsRe(short_result, b"\\?   test1.c\n")
+        self.assertContainsRe(short_result, "\\?   test1.c\n")
 
         result = self.run_bzr('status test1.c')[0]
-        self.assertContainsRe(result, b"unknown:\n  test1.c\n")
+        self.assertContainsRe(result, "unknown:\n  test1.c\n")
         short_result = self.run_bzr('status --short test1.c')[0]
-        self.assertContainsRe(short_result, b"\\?   test1.c\n")
+        self.assertContainsRe(short_result, "\\?   test1.c\n")
 
         result = self.run_bzr('status test1.c~')[0]
-        self.assertContainsRe(result, b"ignored:\n  test1.c~\n")
+        self.assertContainsRe(result, "ignored:\n  test1.c~\n")
         short_result = self.run_bzr('status --short test1.c~')[0]
-        self.assertContainsRe(short_result, b"I   test1.c~\n")
+        self.assertContainsRe(short_result, "I   test1.c~\n")
 
         result = self.run_bzr('status test1.c~ test2.c~')[0]
-        self.assertContainsRe(result, b"ignored:\n  test1.c~\n  test2.c~\n")
+        self.assertContainsRe(result, "ignored:\n  test1.c~\n  test2.c~\n")
         short_result = self.run_bzr('status --short test1.c~ test2.c~')[0]
-        self.assertContainsRe(short_result, b"I   test1.c~\nI   test2.c~\n")
+        self.assertContainsRe(short_result, "I   test1.c~\nI   test2.c~\n")
 
         result = self.run_bzr('status test1.c test1.c~ test2.c~')[0]
-        self.assertContainsRe(result, b"unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
+        self.assertContainsRe(result, "unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
         short_result = self.run_bzr('status --short test1.c test1.c~ test2.c~')[0]
-        self.assertContainsRe(short_result, b"\\?   test1.c\nI   test1.c~\nI   test2.c~\n")
+        self.assertContainsRe(short_result, "\\?   test1.c\nI   test1.c~\nI   test2.c~\n")
 
     def test_status_write_lock(self):
         """Test that status works without fetching history and
@@ -551,7 +551,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2 = b.controldir.sprout('branch2').open_workingtree()
         wt2.commit('Empty commit 2')
         out, err = self.run_bzr('status branch1 -rbranch:branch2')
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_status_with_shelves(self):
         """Ensure that _show_shelve_summary handler works.
@@ -608,23 +608,23 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
-        self.assertContainsRe(result, b"unknown:\n  hello.txt\n")
+        self.assertContainsRe(result, "unknown:\n  hello.txt\n")
 
         tree.add("hello.txt")
         result = self.run_bzr("status")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         tree.commit(message="added")
         result = self.run_bzr("status -r 0..1")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         result = self.run_bzr("status -c 1")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -r 0")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n" \
-                                      b"unknown:\n  world.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n" \
+                                      "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -633,20 +633,20 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --short")[0]
-        self.assertContainsRe(result, b"[?]   hello.txt\n")
+        self.assertContainsRe(result, "[?]   hello.txt\n")
 
         tree.add("hello.txt")
         result = self.run_bzr("status --short")[0]
-        self.assertContainsRe(result, b"[+]N  hello.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         tree.commit(message="added")
         result = self.run_bzr("status --short -r 0..1")[0]
-        self.assertContainsRe(result, b"[+]N  hello.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -S -r 0")[0]
-        self.assertContainsRe(result, b"[+]N  hello.txt\n" \
-                                      b"[?]   world.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n" \
+                                      "[?]   world.txt\n")
         result2 = self.run_bzr("status -S -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -655,20 +655,20 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status --versioned")[0]
-        self.assertNotContainsRe(result, b"unknown:\n  hello.txt\n")
+        self.assertNotContainsRe(result, "unknown:\n  hello.txt\n")
 
         tree.add("hello.txt")
         result = self.run_bzr("status --versioned")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         tree.commit("added")
         result = self.run_bzr("status --versioned -r 0..1")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status --versioned -r 0")[0]
-        self.assertContainsRe(result, b"added:\n  hello.txt\n")
-        self.assertNotContainsRe(result, b"unknown:\n  world.txt\n")
+        self.assertContainsRe(result, "added:\n  hello.txt\n")
+        self.assertNotContainsRe(result, "unknown:\n  world.txt\n")
         result2 = self.run_bzr("status --versioned -r 0..")[0]
         self.assertEqual(result2, result)
 
@@ -677,19 +677,19 @@ class TestStatus(TestCaseWithTransport):
 
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status -SV")[0]
-        self.assertNotContainsRe(result, b"hello.txt")
+        self.assertNotContainsRe(result, "hello.txt")
 
         tree.add("hello.txt")
         result = self.run_bzr("status -SV")[0]
-        self.assertContainsRe(result, b"[+]N  hello.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         tree.commit(message="added")
         result = self.run_bzr("status -SV -r 0..1")[0]
-        self.assertContainsRe(result, b"[+]N  hello.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         self.build_tree(['world.txt'])
         result = self.run_bzr("status -SV -r 0")[0]
-        self.assertContainsRe(result, b"[+]N  hello.txt\n")
+        self.assertContainsRe(result, "[+]N  hello.txt\n")
 
         result2 = self.run_bzr("status -SV -r 0..")[0]
         self.assertEqual(result2, result)
@@ -734,7 +734,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_status_illegal_revision_specifiers(self):
         out, err = self.run_bzr('status -r 1..23..123', retcode=3)
-        self.assertContainsRe(err, b'one or two revision specifiers')
+        self.assertContainsRe(err, 'one or two revision specifiers')
 
     def test_status_no_pending(self):
         a_tree = self.make_branch_and_tree('a')
@@ -764,7 +764,7 @@ class TestStatus(TestCaseWithTransport):
         show_tree_status(tree, to_file=output)
         self.assertContainsRe(output.getvalue(), b'pending merge')
         out, err = self.run_bzr('status tree/a')
-        self.assertNotContainsRe(out, b'pending merge')
+        self.assertNotContainsRe(out, 'pending merge')
 
 
 class TestStatusEncodings(TestCaseWithTransport):

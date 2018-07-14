@@ -31,21 +31,21 @@ class TestAlias(tests.TestCaseWithTransport):
     def test_list_alias_with_none(self):
         """Calling alias with no parameters lists existing aliases."""
         out, err = self.run_bzr('alias')
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_list_unknown_alias(self):
         out, err = self.run_bzr('alias commit')
-        self.assertEqual(b'brz alias: commit: not found\n', out)
+        self.assertEqual('brz alias: commit: not found\n', out)
 
     def test_add_alias_outputs_nothing(self):
         out, err = self.run_bzr('alias commit="commit --strict"')
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
 
     def test_add_alias_visible(self):
         """Adding an alias makes it ..."""
         self.run_bzr('alias commit="commit --strict"')
         out, err = self.run_bzr('alias commit')
-        self.assertEqual(b'brz alias commit="commit --strict"\n', out)
+        self.assertEqual('brz alias commit="commit --strict"\n', out)
 
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
@@ -63,8 +63,8 @@ class TestAlias(tests.TestCaseWithTransport):
             u'[ALIASES]\nust=st %s\n' % (file_name,), save=True)
 
         out, err = self.run_bzr('ust')
-        self.assertEqual(err, b'')
-        self.assertEqual(out, b'')
+        self.assertEqual(err, '')
+        self.assertEqual(out, '')
 
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')
@@ -73,23 +73,23 @@ class TestAlias(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr('alias')
         self.assertEqual(
-            b'brz alias add="add -q"\n'
-            b'brz alias commit="commit --strict"\n'
-            b'brz alias ll="log --short"\n',
+            'brz alias add="add -q"\n'
+            'brz alias commit="commit --strict"\n'
+            'brz alias ll="log --short"\n',
             out)
 
     def test_remove_unknown_alias(self):
         out, err = self.run_bzr('alias --remove fooix', retcode=3)
-        self.assertEqual(b'brz: ERROR: The alias "fooix" does not exist.\n',
-                          err)
+        self.assertEqual('brz: ERROR: The alias "fooix" does not exist.\n',
+                         err)
 
     def test_remove_known_alias(self):
         self.run_bzr('alias commit="commit --strict"')
         out, err = self.run_bzr('alias commit')
-        self.assertEqual(b'brz alias commit="commit --strict"\n', out)
+        self.assertEqual('brz alias commit="commit --strict"\n', out)
         # No output when removing an existing alias.
         out, err = self.run_bzr('alias --remove commit')
-        self.assertEqual(b'', out)
+        self.assertEqual('', out)
         # Now its not.
         out, err = self.run_bzr('alias commit')
-        self.assertEqual(b"brz alias: commit: not found\n", out)
+        self.assertEqual("brz alias: commit: not found\n", out)

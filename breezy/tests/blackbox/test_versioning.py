@@ -118,8 +118,8 @@ class TestMkdir(TestCaseWithTransport):
 
         self.make_branch_and_tree('.')
         out, err = self.run_bzr(['mkdir', '--quiet', 'foo'])
-        self.assertEqual(b'', err)
-        self.assertEqual(b'', out)
+        self.assertEqual('', err)
+        self.assertEqual('', out)
 
 
 class SubdirCommit(TestCaseWithTransport):

@@ -45,9 +45,9 @@ class TestAncestry(TestCaseWithTransport):
         else:
             # A2 and B1 can be in either order, because they are parallel, and
             # thus their topological order is not defined
-            result = b"A1\nB1\nA2\nA3\n"
+            result = "A1\nB1\nA2\nA3\n"
             if result != out:
-                result = b"A1\nA2\nB1\nA3\n"
+                result = "A1\nA2\nB1\nA3\n"
             self.assertEqualDiff(result, out)
 
     def test_ancestry(self):
@@ -97,7 +97,7 @@ class TestAncestry(TestCaseWithTransport):
         repo_branch = a_tree.controldir.sprout('repo/A').open_branch()
         repo_branch.create_checkout('A-checkout',
                                     revision_id=repo_branch.get_rev_id(2))
-        self._check_ancestry('A-checkout', b"A1\nA2\n")
+        self._check_ancestry('A-checkout', "A1\nA2\n")
 
     def test_ancestry_with_truncated_lightweight_checkout(self):
         """Tests 'ancestry' command with a location that is a lightweight
@@ -108,4 +108,4 @@ class TestAncestry(TestCaseWithTransport):
         repo_branch.create_checkout('A-checkout',
                                     revision_id=repo_branch.get_rev_id(2),
                                     lightweight=True)
-        self._check_ancestry('A-checkout', b"A1\nA2\n")
+        self._check_ancestry('A-checkout', "A1\nA2\n")

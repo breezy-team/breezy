@@ -103,7 +103,7 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_repeatedly(self):
         self.run_bzr('remove-tree branch1')
         self.assertPathDoesNotExist('branch1/foo')
-        output = self.run_bzr_error([b"No working tree to remove"],
+        output = self.run_bzr_error(["No working tree to remove"],
                                     'remove-tree branch1', retcode=3)
 
     def test_remove_tree_remote_path(self):
@@ -113,7 +113,7 @@ class TestRemoveTree(TestCaseWithTransport):
     def test_remove_tree_uncommitted_changes(self):
         self.build_tree(['branch1/bar'])
         self.tree.add('bar')
-        output = self.run_bzr_error([b"Working tree .* has uncommitted changes"],
+        output = self.run_bzr_error(["Working tree .* has uncommitted changes"],
                                     'remove-tree branch1', retcode=3)
 
     def test_remove_tree_uncommitted_changes_force(self):
@@ -133,7 +133,7 @@ class TestRemoveTree(TestCaseWithTransport):
         self.assertPathExists('branch2/bar')
         self.run_bzr(['revert', '.'], working_dir='branch2')
         self.assertPathDoesNotExist('branch2/bar')
-        output = self.run_bzr_error([b"Working tree .* has uncommitted changes"],
+        output = self.run_bzr_error(["Working tree .* has uncommitted changes"],
                                     'remove-tree branch2', retcode=3)
 
     def test_remove_tree_pending_merges_force(self):
@@ -156,7 +156,7 @@ class TestRemoveTree(TestCaseWithTransport):
         creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
         self.addCleanup(creator.finalize)
         shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
-        output = self.run_bzr_error([b"Working tree .* has shelved changes"],
+        output = self.run_bzr_error(["Working tree .* has shelved changes"],
                                     'remove-tree', retcode=3)
 
     def test_remove_tree_shelved_changes_force(self):

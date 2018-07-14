@@ -37,7 +37,7 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         self.assertContainsRe(info, b'file: [12] .0 multiparent.')
         self.assertContainsRe(info, b'nicks: source')
         self.assertNotContainsRe(info, b'foo')
-        self.run_bzr_error([b'--verbose requires a merge directive'],
+        self.run_bzr_error(['--verbose requires a merge directive'],
                            'bundle-info -v bundle')
         target = self.make_branch('target')
         md = merge_directive.MergeDirective2.from_objects(

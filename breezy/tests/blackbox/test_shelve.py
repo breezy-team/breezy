@@ -26,7 +26,7 @@ class TestShelveList(TestCaseWithTransport):
     def test_no_shelved_changes(self):
         tree = self.make_branch_and_tree('.')
         err = self.run_bzr('shelve --list')[1]
-        self.assertEqual(b'No shelved changes.\n', err)
+        self.assertEqual('No shelved changes.\n', err)
 
     def make_creator(self, tree):
         creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
@@ -38,24 +38,24 @@ class TestShelveList(TestCaseWithTransport):
         creator = self.make_creator(tree)
         shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
         out, err = self.run_bzr('shelve --list', retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqual(b'  1: Foo\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('  1: Foo\n', out)
 
     def test_shelve_list_via_directory(self):
         tree = self.make_branch_and_tree('tree')
         creator = self.make_creator(tree)
         shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
         out, err = self.run_bzr('shelve -d tree --list', retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqual(b'  1: Foo\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('  1: Foo\n', out)
 
     def test_shelve_no_message(self):
         tree = self.make_branch_and_tree('.')
         creator = self.make_creator(tree)
         shelf_id = tree.get_shelf_manager().shelve_changes(creator)
         out, err = self.run_bzr('shelve --list', retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqual(b'  1: <no message>\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('  1: <no message>\n', out)
 
     def test_shelf_order(self):
         tree = self.make_branch_and_tree('.')
@@ -64,8 +64,8 @@ class TestShelveList(TestCaseWithTransport):
         creator = self.make_creator(tree)
         tree.get_shelf_manager().shelve_changes(creator, 'Bar')
         out, err = self.run_bzr('shelve --list', retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqual(b'  2: Bar\n  1: Foo\n', out)
+        self.assertEqual('', err)
+        self.assertEqual('  2: Bar\n  1: Foo\n', out)
 
     def test_shelve_destroy(self):
         tree = self.make_branch_and_tree('.')

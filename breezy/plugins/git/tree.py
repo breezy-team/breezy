@@ -946,7 +946,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 file = BytesIO()
                 stat_val = os.stat_result(
                     (stat.S_IFREG | 0o644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(file.read())
+            with file:
+                blob.set_raw_string(file.read())
             # Add object to the repository if it didn't exist yet
             if not blob.id in self.store:
                 self.store.add_object(blob)

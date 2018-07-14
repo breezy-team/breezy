@@ -129,7 +129,7 @@ class TestBzrServe(TestBzrServeBase):
             'test_server_except_hook hook')
         args = ['--listen', 'localhost', '--port', '0', '--quiet']
         out, err = self.run_bzr_serve_then_func(args, retcode=0)
-        self.assertEqual(b'catching KeyboardInterrupt\n', err)
+        self.assertEqual('catching KeyboardInterrupt\n', err)
 
     def test_server_exception_no_hook(self):
         """test exception without hook returns error"""
@@ -207,8 +207,8 @@ class TestBzrServe(TestBzrServeBase):
         self.make_branch('.')
         args = ['--listen', 'localhost', '--port', '0', '--quiet']
         out, err = self.run_bzr_serve_then_func(args, retcode=3)
-        self.assertEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_bzr_serve_inet_readonly(self):
         """brz server should provide a read only filesystem by default."""

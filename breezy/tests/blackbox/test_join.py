@@ -38,7 +38,7 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def check_success(self, path):
         base_tree = workingtree.WorkingTree.open(path)
-        self.assertEqual('file1-id', base_tree.path2id('subtree/file1'))
+        self.assertEqual(b'file1-id', base_tree.path2id('subtree/file1'))
 
     def test_join(self):
         base_tree, sub_tree = self.make_trees()
@@ -91,5 +91,5 @@ class TestJoin(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree/subtree')
         out, err = self.run_bzr('join --reference tree/subtree',
                                 retcode=3)
-        self.assertContainsRe(err, br"Can't join trees")
-        self.assertContainsRe(err, br"use brz upgrade")
+        self.assertContainsRe(err, r"Can't join trees")
+        self.assertContainsRe(err, r"use brz upgrade")

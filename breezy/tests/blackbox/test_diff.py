@@ -163,7 +163,7 @@ class TestDiff(DiffBase):
         self.make_example_branch()
         self.build_tree(['unversioned-file'])
         out, err = self.run_bzr('diff unversioned-file', retcode=3)
-        self.assertContainsRe(err, b'not versioned.*unversioned-file')
+        self.assertContainsRe(err, 'not versioned.*unversioned-file')
 
     # TODO: What should diff say for a file deleted in working tree?
 
@@ -182,32 +182,32 @@ class TestDiff(DiffBase):
     def check_b2_vs_b1(self, cmd):
         # Compare branch2 vs branch1 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqual(b"=== modified file 'file'\n"
-                         b"--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                         b"+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                         b"@@ -1,1 +1,1 @@\n"
-                         b"-new content\n"
-                         b"+contents of branch1/file\n"
-                         b"\n", subst_dates(out))
+        self.assertEqual('', err)
+        self.assertEqual("=== modified file 'file'\n"
+                         "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "@@ -1,1 +1,1 @@\n"
+                         "-new content\n"
+                         "+contents of branch1/file\n"
+                         "\n", subst_dates(out))
 
     def check_b1_vs_b2(self, cmd):
         # Compare branch1 vs branch2 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b"=== modified file 'file'\n"
-                             b"--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                             b"+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                             b"@@ -1,1 +1,1 @@\n"
-                             b"-contents of branch1/file\n"
-                             b"+new content\n"
-                             b"\n", subst_dates(out))
+        self.assertEqual('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-contents of branch1/file\n"
+                             "+new content\n"
+                             "\n", subst_dates(out))
 
     def check_no_diffs(self, cmd):
         # Check that running cmd returns an empty diff
         out, err = self.run_bzr(cmd, retcode=0)
-        self.assertEqual(b'', err)
-        self.assertEqual(b'', out)
+        self.assertEqual('', err)
+        self.assertEqual('', out)
 
     def test_diff_branches(self):
         self.example_branches()
@@ -255,18 +255,18 @@ class TestDiff(DiffBase):
 
         out, err = self.run_bzr('diff -r revno:1:branch2..revno:1:branch1',
                                 )
-        self.assertEqual(b'', err)
-        self.assertEqual(b'', out)
+        self.assertEqual('', err)
+        self.assertEqual('', out)
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1:branch1',
                                 retcode=1)
-        self.assertEqual(b'', err)
-        self.assertEqualDiff(b"=== modified file 'file'\n"
-                             b"--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                             b"+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                             b"@@ -1,1 +1,1 @@\n"
-                             b"-new content\n"
-                             b"+contents of branch1/file\n"
-                             b"\n", subst_dates(out))
+        self.assertEqual('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-new content\n"
+                             "+contents of branch1/file\n"
+                             "\n", subst_dates(out))
 
     def example_branch2(self):
         branch1_tree = self.make_branch_and_tree('branch1')
@@ -394,16 +394,16 @@ class TestExternalDiff(DiffBase):
             retcode=None)
         if 'Diff is not installed on this machine' in err:
             raise tests.TestSkipped("No external 'diff' is available")
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
         self.assertStartsWith(
             out,
-            b"=== added file 'goodbye'\n"
-            b"--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
-            b"+++ new/goodbye\t")
-        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n"
-                                 b"+baz\n\n")
+            "=== added file 'goodbye'\n"
+            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            "+++ new/goodbye\t")
+        self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
+                                 "+baz\n\n")
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process"""
@@ -412,8 +412,8 @@ class TestExternalDiff(DiffBase):
         self.build_tree_contents([('hello', b'Foo\n')])
         out, err = self.run_bzr('diff --diff-options -i --using diff',
                                     retcode=1)
-        self.assertEqual(b"=== modified file 'hello'\n", out)
-        self.assertEqual(b'', err)
+        self.assertEqual("=== modified file 'hello'\n", out)
+        self.assertEqual('', err)
 
 
 class TestDiffOutput(DiffBase):

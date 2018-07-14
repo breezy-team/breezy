@@ -220,7 +220,7 @@ class TransportRefsContainer(RefsContainer):
             f = transport.get(name)
         except NoSuchFile:
             return None
-        try:
+        with f:
             header = f.read(len(SYMREF))
             if header == SYMREF:
                 # Read only the first line
@@ -228,8 +228,6 @@ class TransportRefsContainer(RefsContainer):
             else:
                 # Read only the first 40 bytes
                 return header + f.read(40-len(SYMREF))
-        finally:
-            f.close()
 
     def _remove_packed_ref(self, name):
         if self._packed_refs is None:
@@ -485,7 +483,8 @@ class TransportRepo(BaseRepo):
     def get_config(self):
         from dulwich.config import ConfigFile
         try:
-            return ConfigFile.from_file(self._controltransport.get('config'))
+            with self._controltransport.get('config') as f:
+                return ConfigFile.from_file(f)
         except NoSuchFile:
             return ConfigFile()
 
@@ -568,16 +567,14 @@ class TransportObjectStore(PackBasedObjectStore):
         except NoSuchFile:
             return []
         ret = []
-        try:
+        with f:
             for l in f.read().splitlines():
-                if l[0] == "#":
+                if l[0] == b"#":
                     continue
                 if os.path.isabs(l):
                     continue
                 ret.append(l)
             return ret
-        finally:
-            f.close()
 
     @property
     def packs(self):
@@ -596,15 +593,16 @@ class TransportObjectStore(PackBasedObjectStore):
         except NoSuchFile:
             return self.pack_transport.list_dir(".")
         else:
-            ret = []
-            for line in f.read().splitlines():
-                if not line:
-                    continue
-                (kind, name) = line.split(" ", 1)
-                if kind != "P":
-                    continue
-                ret.append(name)
-            return ret
+            with f:
+                ret = []
+                for line in f.read().splitlines():
+                    if not line:
+                        continue
+                    (kind, name) = line.split(b" ", 1)
+                    if kind != b"P":
+                        continue
+                    ret.append(name)
+                return ret
 
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
@@ -646,7 +644,8 @@ class TransportObjectStore(PackBasedObjectStore):
     def _get_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
         try:
-            return ShaFile.from_file(self.transport.get(path))
+            with self.transport.get(path) as f:
+                return ShaFile.from_file(f)
         except NoSuchFile:
             return None
 
@@ -676,7 +675,7 @@ class TransportObjectStore(PackBasedObjectStore):
         f.seek(0)
         p = PackData("", f, len(f.getvalue()))
         entries = p.sorted_entries()
-        basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
+        basename = "pack-%s" % iter_sha1(entry[0] for entry in entries).decode('ascii')
         p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
@@ -709,14 +708,14 @@ class TransportObjectStore(PackBasedObjectStore):
         pack_sha = p.index.objects_sha1()
 
         datafile = self.pack_transport.open_write_stream(
-                "pack-%s.pack" % pack_sha)
+                "pack-%s.pack" % pack_sha.decode('ascii'))
         try:
             entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
         finally:
             datafile.close()
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
         idxfile = self.pack_transport.open_write_stream(
-            "pack-%s.idx" % pack_sha)
+            "pack-%s.idx" % pack_sha.decode('ascii'))
         try:
             write_pack_index_v2(idxfile, entries, data_sum)
         finally:

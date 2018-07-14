@@ -78,7 +78,7 @@ class TestHelp(tests.TestCaseWithTransport):
         out, err = self.run_bzr('help repositories')
         from breezy.help_topics import help_as_plain_text, _repositories
         expected = help_as_plain_text(_repositories)
-        self.assertEqual(expected, out)
+        self.assertEqual(expected.encode('utf-8'), out)
 
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'"""
@@ -188,16 +188,16 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
 
     def test_help_command_utf8(self):
         out, err = self.run_bzr(["help", "push"], encoding="utf-8")
-        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+        self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_switch_utf8(self):
         out, err = self.run_bzr(["push", "--help"], encoding="utf-8")
-        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+        self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_command_ascii(self):
         out, err = self.run_bzr(["help", "push"], encoding="ascii")
-        self.assertContainsRe(out, "zz\\?{{:See also:")
+        self.assertContainsRe(out, b"zz\\?{{:See also:")
 
     def test_help_switch_ascii(self):
         out, err = self.run_bzr(["push", "--help"], encoding="ascii")
-        self.assertContainsRe(out, "zz\\?{{:See also:")
+        self.assertContainsRe(out, b"zz\\?{{:See also:")

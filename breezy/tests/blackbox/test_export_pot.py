@@ -26,17 +26,17 @@ class TestExportPot(TestCaseWithMemoryTransport):
 
     def test_export_pot(self):
         out, err = self.run_bzr("export-pot")
-        self.assertContainsRe(err, b'Exporting messages from builtin command: add')
-        self.assertContainsRe(out, b"help of 'change' option\n"\
-                                   b"msgid \"Select changes introduced by the specified revision.")
+        self.assertContainsRe(err, 'Exporting messages from builtin command: add')
+        self.assertContainsRe(out, "help of 'change' option\n"\
+                                   "msgid \"Select changes introduced by the specified revision.")
 
     def test_export_pot_plugin_unknown(self):
         out, err = self.run_bzr("export-pot --plugin=lalalala", retcode=3)
         self.assertContainsRe(
-             err, b'ERROR: Plugin lalalala is not loaded')
+             err, 'ERROR: Plugin lalalala is not loaded')
 
     def test_export_pot_plugin(self):
         self.requireFeature(PluginLoadedFeature('launchpad'))
         out, err = self.run_bzr("export-pot --plugin=launchpad")
-        self.assertContainsRe(err, b'Exporting messages from plugin command: launchpad-login in launchpad')
-        self.assertContainsRe(out, b'msgid "Show or set the Launchpad user ID."')
+        self.assertContainsRe(err, 'Exporting messages from plugin command: launchpad-login in launchpad')
+        self.assertContainsRe(out, 'msgid "Show or set the Launchpad user ID."')

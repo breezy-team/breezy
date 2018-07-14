@@ -22,6 +22,7 @@ import os
 from ... import (
     commands,
     )
+from ...sixish import PY3
 from ..test_plugins import (
     BaseTestPlugins,
     )
@@ -31,7 +32,10 @@ class TestPluginHelp(BaseTestPlugins):
 
     def run_bzr_utf8_out(self, *args, **kwargs):
         out, _ = self.run_bzr(*args, **kwargs)
-        return out.decode('utf-8')
+        if PY3:
+            return out
+        else:
+            return out.decode('utf-8')
 
     def split_help_commands(self):
         help = {}

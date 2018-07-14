@@ -104,7 +104,7 @@ class TestMerge(tests.TestCaseWithTransport):
         run_merge_then_revert(['--merge-type', 'merge3'])
         run_merge_then_revert(['--merge-type', 'weave'])
         run_merge_then_revert(['--merge-type', 'lca'])
-        self.run_bzr_error([b'Show-base is not supported for this merge type'],
+        self.run_bzr_error(['Show-base is not supported for this merge type'],
                            'merge ../b -r last:1..last:1 --merge-type weave'
                            ' --show-base', working_dir='a')
         a_tree.revert(backups=False)
@@ -153,7 +153,7 @@ class TestMerge(tests.TestCaseWithTransport):
     def test_merge_explicit_reprocess_show_base(self):
         tree, other = self.create_conflicting_branches()
         # Explicitly setting --reprocess, and --show-base is an error
-        self.run_bzr_error([b'Cannot do conflict reduction and show base'],
+        self.run_bzr_error(['Cannot do conflict reduction and show base'],
                            'merge ../other --reprocess --show-base',
                            working_dir='tree')
 
@@ -271,7 +271,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # test uncommitted changes
         self.build_tree(['branch_b/d'])
         tree_b.add('d')
-        self.run_bzr_error([b'Working tree ".*" has uncommitted changes'],
+        self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
                            'merge', working_dir='branch_b')
 
         # merge should now pass and implicitly remember merge location
@@ -279,7 +279,7 @@ class TestMerge(tests.TestCaseWithTransport):
         out, err = self.run_bzr('merge ../branch_a', working_dir='branch_b')
 
         base = urlutils.local_path_from_url(branch_a.base)
-        self.assertEndsWith(err, b'+N  b\nAll changes applied successfully.\n')
+        self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
         # re-open branch as external run_brz modified it
         branch_b = branch_b.controldir.open_branch()
         self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
@@ -290,15 +290,15 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('commit e')
         out, err = self.run_bzr('merge', working_dir='branch_b')
         self.assertStartsWith(
-            err, b'Merging from remembered submit location %s\n' % (base,))
+            err, 'Merging from remembered submit location %s\n' % (base,))
         # re-open tree as external run_brz modified it
         tree_b = branch_b.controldir.open_workingtree()
         tree_b.commit('merge branch_a')
         # test explicit --remember
         out, err = self.run_bzr('merge ../branch_c --remember',
                                 working_dir='branch_b')
-        self.assertEqual(out, b'')
-        self.assertEqual(err, b'+N  c\nAll changes applied successfully.\n')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '+N  c\nAll changes applied successfully.\n')
         # re-open branch as external run_brz modified it
         branch_b = branch_b.controldir.open_branch()
         self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
@@ -334,7 +334,7 @@ class TestMerge(tests.TestCaseWithTransport):
         err = self.run_bzr('merge ../bundle', working_dir='branch_a')[1]
         # but it does nothing
         self.assertFalse(tree_a.changes_from(tree_a.basis_tree()).has_changed())
-        self.assertEqual(b'Nothing to do.\n', err)
+        self.assertEqual('Nothing to do.\n', err)
 
     def test_merge_uncommitted(self):
         """Check that merge --uncommitted behaves properly"""
@@ -390,7 +390,7 @@ class TestMerge(tests.TestCaseWithTransport):
     def test_merge_pull(self):
         self.pullable_branch()
         (out, err) = self.run_bzr('merge --pull ../b', working_dir='a')
-        self.assertContainsRe(out, b'Now on revision 2\\.')
+        self.assertContainsRe(out, 'Now on revision 2\\.')
         tree_a = workingtree.WorkingTree.open('a')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
 
@@ -449,7 +449,7 @@ class TestMerge(tests.TestCaseWithTransport):
         out, err = self.run_bzr('merge -d target directive')
         self.assertPathDoesNotExist('target/a')
         self.assertPathExists('target/b')
-        self.assertContainsRe(err, b'Performing cherrypick')
+        self.assertContainsRe(err, 'Performing cherrypick')
 
     def write_directive(self, filename, source, target, revision_id,
                         base_revision_id=None, mangle_patch=False):
@@ -469,12 +469,12 @@ class TestMerge(tests.TestCaseWithTransport):
         target.commit('empty commit')
         self.write_directive('directive', source.branch, 'target', b'rev1')
         err = self.run_bzr('merge -d target directive')[1]
-        self.assertNotContainsRe(err, b'Preview patch does not match changes')
+        self.assertNotContainsRe(err, 'Preview patch does not match changes')
         target.revert()
         self.write_directive('directive', source.branch, 'target', b'rev1',
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
-        self.assertContainsRe(err, b'Preview patch does not match changes')
+        self.assertContainsRe(err, 'Preview patch does not match changes')
 
     def test_merge_arbitrary(self):
         target = self.make_branch_and_tree('target')
@@ -551,7 +551,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('', rev_id=b'rev3b')
         graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
-        self.assertContainsRe(err, b'Warning: criss-cross merge encountered.')
+        self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
 
     def test_merge_from_submit(self):
         tree_a = self.make_branch_and_tree('a')
@@ -560,12 +560,12 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_c = tree_a.controldir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
-                              b'Merging from remembered parent location .*a\\/')
+                              'Merging from remembered parent location .*a\\/')
         with tree_c.branch.lock_write():
             tree_c.branch.set_submit_branch(tree_b.controldir.root_transport.base)
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
-                              b'Merging from remembered submit location .*b\\/')
+                              'Merging from remembered submit location .*b\\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')
@@ -650,8 +650,8 @@ class TestMerge(tests.TestCaseWithTransport):
         other_tree.commit('rev2a')
         this_tree.commit('rev2b')
         out, err = self.run_bzr(['merge', '-d', 'this', 'other', '--preview'])
-        self.assertContainsRe(out, b'\\+new line')
-        self.assertNotContainsRe(err, b'\\+N  file\n')
+        self.assertContainsRe(out, '\\+new line')
+        self.assertNotContainsRe(err, '\\+N  file\n')
         this_tree.lock_read()
         self.addCleanup(this_tree.unlock)
         self.assertEqual([],
@@ -752,11 +752,11 @@ class TestMergeForce(tests.TestCaseWithTransport):
 
 
     def test_merge_with_uncommitted_changes(self):
-        self.run_bzr_error([b'Working tree .* has uncommitted changes'],
+        self.run_bzr_error(['Working tree .* has uncommitted changes'],
                            ['merge', '../a'], working_dir='b')
 
     def test_merge_with_pending_merges(self):
         # Revert the changes keeping the pending merge
         self.run_bzr(['revert', 'b'])
-        self.run_bzr_error([b'Working tree .* has uncommitted changes'],
+        self.run_bzr_error(['Working tree .* has uncommitted changes'],
                            ['merge', '../a'], working_dir='b')

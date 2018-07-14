@@ -71,7 +71,7 @@ class OptionTests(TestCase):
     def test_option_help_global_hidden(self):
         """Hidden global options have no help strings."""
         out, err = self.run_bzr('help log')
-        self.assertNotContainsRe(out, br'--message')
+        self.assertNotContainsRe(out, r'--message')
 
     def test_option_arg_help(self):
         """Help message shows option arguments."""
