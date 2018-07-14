@@ -93,8 +93,8 @@ class TestLaunchpadMirror(TestCaseWithTransport):
 
     def test_command_exists(self):
         out, err = self.run_bzr(['launchpad-mirror', '--help'], retcode=0)
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
 
     def test_alias_exists(self):
         out, err = self.run_bzr(['lp-mirror', '--help'], retcode=0)
-        self.assertEqual(b'', err)
+        self.assertEqual('', err)
