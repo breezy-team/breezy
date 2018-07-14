@@ -477,7 +477,7 @@ altered in u2
                               working_dir='dir-a')[1]
         self.assertNotContainsRe(result, 'file-a')
         result = self.run_bzr('status', working_dir='dir-a')[0]
-        self.assertContainsRe(result, b'removed:\n  file-a')
+        self.assertContainsRe(result, 'removed:\n  file-a')
 
     def test_strict_commit(self):
         """Commit with --strict works if everything is known"""
@@ -546,7 +546,7 @@ altered in u2
             encoding='utf-8', retcode=3)
         self.assertEqual('', output)
         self.assertContainsRe(err,
-            b'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
+            'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
@@ -778,7 +778,7 @@ altered in u2
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
             retcode=3)
         self.assertContainsRe(err,
-            br'^brz: ERROR: Cannot lock.*readonly transport')
+            r'^brz: ERROR: Cannot lock.*readonly transport')
 
     def setup_editor(self):
         # Test that commit template hooks work

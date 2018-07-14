@@ -468,7 +468,7 @@ class cmd_cat_revision(Command):
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
                     msg = gettext("The repository {0} contains no revision {1}.").format(
-                        b.repository.base, revision_id)
+                        b.repository.base, revision_id.decode('utf-8'))
                     raise errors.BzrCommandError(msg)
             elif revision is not None:
                 for rev in revision:
