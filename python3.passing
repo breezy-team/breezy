@@ -18937,9 +18937,13 @@ breezy.tests.test_btree_index.TestBTreeIndex.test_with_large_offset
 breezy.tests.test_btree_index.TestBTreeIndex.test_with_offset_no_size
 breezy.tests.test_btree_index.TestBTreeIndex.test_with_size_constructor
 breezy.tests.test_btree_index.TestBTreeIndex.test_with_small_offset
+breezy.tests.test_btree_index.TestBTreeNodes.test__flatten_node(C)
 breezy.tests.test_btree_index.TestBTreeNodes.test__flatten_node(python)
+breezy.tests.test_btree_index.TestBTreeNodes.test_InternalNode_1(C)
 breezy.tests.test_btree_index.TestBTreeNodes.test_InternalNode_1(python)
+breezy.tests.test_btree_index.TestBTreeNodes.test_LeafNode_1_0(C)
 breezy.tests.test_btree_index.TestBTreeNodes.test_LeafNode_1_0(python)
+breezy.tests.test_btree_index.TestBTreeNodes.test_LeafNode_2_2(C)
 breezy.tests.test_btree_index.TestBTreeNodes.test_LeafNode_2_2(python)
 breezy.tests.test_btree_index.TestCompiledBtree.test_exists
 breezy.tests.test_btree_index.TestExpandOffsets.test_cannot_fully_expand
@@ -18968,10 +18972,11 @@ breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_large_offsets
 breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_many_entries
 breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_many_key_leaf
 breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_multi_key_same_offset
-breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_non_str
+breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_non_bytes
 breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_not_leaf
 breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test_one_key_leaf
 breezy.tests.test__btree_serializer.TestGCCKHSHA1LeafNode.test__sizeof__
+breezy.tests.test__btree_serializer.TestHexAndUnhex.test_bad_argument
 breezy.tests.test__btree_serializer.TestHexAndUnhex.test_from_hex
 breezy.tests.test__btree_serializer.TestHexAndUnhex.test_from_invalid_hex
 breezy.tests.test__btree_serializer.TestHexAndUnhex.test_to_hex
