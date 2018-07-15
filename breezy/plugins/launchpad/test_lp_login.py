@@ -27,8 +27,8 @@ class TestLaunchpadLogin(TestCaseWithTransport):
         # lp-login without a 'name' parameter returns the user ID of the
         # logged in user. If no one is logged in, we tell the user as much.
         out, err = self.run_bzr(['launchpad-login', '--no-check'], retcode=1)
-        self.assertEqual(b'No Launchpad user ID configured.\n', out)
-        self.assertEqual(b'', err)
+        self.assertEqual('No Launchpad user ID configured.\n', out)
+        self.assertEqual('', err)
 
     def test_login_with_name_sets_login(self):
         # lp-login with a 'name' parameter sets the Launchpad login.
@@ -40,34 +40,34 @@ class TestLaunchpadLogin(TestCaseWithTransport):
         # logged in user.
         account.set_lp_login('foo')
         out, err = self.run_bzr(['launchpad-login', '--no-check'])
-        self.assertEqual(b'foo\n', out)
-        self.assertEqual(b'', err)
+        self.assertEqual('foo\n', out)
+        self.assertEqual('', err)
 
     def test_login_with_name_no_output_by_default(self):
         # lp-login with a 'name' parameter produces no output by default.
         out, err = self.run_bzr(['launchpad-login', '--no-check', 'foo'])
-        self.assertEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_login_with_name_verbose(self):
         # lp-login with a 'name' parameter and a verbose flag produces some
         # information about what Bazaar just did.
         out, err = self.run_bzr(
             ['launchpad-login', '-v', '--no-check', 'foo'])
-        self.assertEqual(b"Launchpad user ID set to 'foo'.\n", out)
-        self.assertEqual(b'', err)
+        self.assertEqual("Launchpad user ID set to 'foo'.\n", out)
+        self.assertEqual('', err)
 
     def test_logout(self):
         out, err = self.run_bzr(
             ['launchpad-login', '-v', '--no-check', 'foo'])
-        self.assertEqual(b"Launchpad user ID set to 'foo'.\n", out)
-        self.assertEqual(b'', err)
+        self.assertEqual("Launchpad user ID set to 'foo'.\n", out)
+        self.assertEqual('', err)
 
         out, err = self.run_bzr(['launchpad-logout', '-v'])
-        self.assertEqual(b"Launchpad user ID foo logged out.\n", out)
-        self.assertEqual(b'', err)
+        self.assertEqual("Launchpad user ID foo logged out.\n", out)
+        self.assertEqual('', err)
 
     def test_logout_not_logged_in(self):
         out, err = self.run_bzr(['launchpad-logout', '-v'], retcode=1)
-        self.assertEqual(b'Not logged into Launchpad.\n', out)
-        self.assertEqual(b"", err)
+        self.assertEqual('Not logged into Launchpad.\n', out)
+        self.assertEqual("", err)
