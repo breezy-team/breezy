@@ -962,7 +962,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 # everything is missing
                 direction = -1
             else:
-                direction = cmp(current_inv[0][0], cur_disk_dir_relpath)
+                direction = ((current_inv[0][0] > cur_disk_dir_relpath) -
+                             (current_inv[0][0] < cur_disk_dir_relpath))
             if direction > 0:
                 # disk is before inventory - unknown
                 dirblock = [(relpath, basename, kind, stat, None, None) for
@@ -1020,15 +1021,15 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 except StopIteration:
                     disk_finished = True
 
-    def _walkdirs(self, prefix=""):
-        if prefix != "":
-            prefix += "/"
+    def _walkdirs(self, prefix=u""):
+        if prefix != u"":
+            prefix += u"/"
         prefix = prefix.encode('utf-8')
         per_dir = defaultdict(set)
-        if prefix == "":
-            per_dir[('', self.get_root_id())] = set()
+        if prefix == b"":
+            per_dir[(u'', self.get_root_id())] = set()
         def add_entry(path, kind):
-            if path == '' or not path.startswith(prefix):
+            if path == b'' or not path.startswith(prefix):
                 return
             (dirname, child_name) = posixpath.split(path)
             add_entry(dirname, 'directory')

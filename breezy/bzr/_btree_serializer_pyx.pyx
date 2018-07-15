@@ -23,48 +23,46 @@ from __future__ import absolute_import
 cdef extern from "python-compat.h":
     pass
 
-cdef extern from "stdlib.h":
-    ctypedef unsigned size_t
+from libc.stdlib cimport (
+    strtoul,
+    strtoull,
+    )
+from libc.string cimport (
+    memcmp,
+    memcpy,
+    memchr,
+    strncmp,
+    )
 
-cdef extern from "Python.h":
-    ctypedef struct PyObject:
-        pass
-    int PyList_Append(object lst, object item) except -1
-
-    char *PyString_AsString(object p) except NULL
-    object PyString_FromStringAndSize(char *, Py_ssize_t)
-    PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
-    object PyString_FromFormat(char *, ...)
-    int PyString_CheckExact(object s)
-    int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *)
-    Py_ssize_t PyString_Size(object p)
-    Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *)
-    char * PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *)
-    char * PyString_AS_STRING(object)
-    Py_ssize_t PyString_GET_SIZE(object)
-    int PyString_AsStringAndSize_ptr(PyObject *, char **buf, Py_ssize_t *len)
-    void PyString_InternInPlace(PyObject **)
-    int PyTuple_CheckExact(object t)
-    object PyTuple_New(Py_ssize_t n_entries)
-    void PyTuple_SET_ITEM(object, Py_ssize_t offset, object) # steals the ref
-    Py_ssize_t PyTuple_GET_SIZE(object t)
-    PyObject *PyTuple_GET_ITEM_ptr_object "PyTuple_GET_ITEM" (object tpl, int index)
-    void Py_INCREF(object)
-    void Py_DECREF_ptr "Py_DECREF" (PyObject *)
-    void *PyMem_Malloc(size_t nbytes)
-    void PyMem_Free(void *)
-    void memset(void *, int, size_t)
-
-cdef extern from "string.h":
-    void *memcpy(void *dest, void *src, size_t n)
-    void *memchr(void *s, int c, size_t n)
-    int memcmp(void *s1, void *s2, size_t n)
-    # GNU extension
-    # void *memrchr(void *s, int c, size_t n)
-    int strncmp(char *s1, char *s2, size_t n)
-    unsigned long strtoul(char *s1, char **out, int base)
-    long long strtoll(char *s1, char **out, int base)
-
+from cpython.bytes cimport (
+    PyBytes_AsString,
+    PyBytes_AS_STRING,
+    PyBytes_CheckExact,
+    PyBytes_FromFormat,
+    PyBytes_FromStringAndSize,
+    PyBytes_GET_SIZE,
+    PyBytes_Size,
+    )
+from cpython.list cimport (
+    PyList_Append,
+    )
+from cpython.object cimport (
+    PyObject,
+    )
+from cpython.mem cimport (
+    PyMem_Malloc,
+    PyMem_Free,
+    )
+from cpython.ref cimport (
+    Py_INCREF,
+    )
+from cpython.tuple cimport (
+    PyTuple_CheckExact,
+    PyTuple_GET_ITEM,
+    PyTuple_GET_SIZE,
+    PyTuple_New,
+    PyTuple_SET_ITEM,
+    )
 
 from ._str_helpers cimport (
     _my_memrchr,
@@ -72,25 +70,28 @@ from ._str_helpers cimport (
     safe_string_from_size,
     )
 
-# It seems we need to import the definitions so that the pyrex compiler has
-# local names to access them.
-from .._static_tuple_c cimport StaticTuple, \
-    import_static_tuple_c, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
-    StaticTuple_GET_SIZE, StaticTuple_GET_ITEM
-# This tells the test infrastructure that StaticTuple is a class, so we don't
-# have to worry about exception checking.
-## extern cdef class StaticTuple
+from .._static_tuple_c cimport (
+    import_static_tuple_c,
+    StaticTuple,
+    StaticTuple_New,
+    StaticTuple_Intern,
+    StaticTuple_SET_ITEM,
+    StaticTuple_CheckExact,
+    StaticTuple_GET_SIZE,
+    StaticTuple_GET_ITEM,
+    )
+
+import sys
+
 
 # This sets up the StaticTuple C_API functionality
 import_static_tuple_c()
 
-import sys
 
 cdef class BTreeLeafParser:
     """Parse the leaf nodes of a BTree index.
 
-    :ivar bytes: The PyString object containing the uncompressed text for the
+    :ivar data: The PyBytes object containing the uncompressed text for the
         node.
     :ivar key_length: An integer describing how many pieces the keys have for
         this index.
@@ -105,7 +106,7 @@ cdef class BTreeLeafParser:
     :ivar _header_found: True when we have parsed the header for this node
     """
 
-    cdef object bytes
+    cdef object data
     cdef int key_length
     cdef int ref_list_length
     cdef object keys
@@ -117,8 +118,8 @@ cdef class BTreeLeafParser:
 
     cdef int _header_found
 
-    def __init__(self, bytes, key_length, ref_list_length):
-        self.bytes = bytes
+    def __init__(self, data, key_length, ref_list_length):
+        self.data = data
         self.key_length = key_length
         self.ref_list_length = ref_list_length
         self.keys = []
@@ -154,7 +155,7 @@ cdef class BTreeLeafParser:
             # capture the key string
             if (self.key_length == 1
                 and (temp_ptr - self._start) == 45
-                and strncmp(self._start, 'sha1:', 5) == 0):
+                and strncmp(self._start, b'sha1:', 5) == 0):
                 key_element = safe_string_from_size(self._start,
                                                     temp_ptr - self._start)
             else:
@@ -196,7 +197,7 @@ cdef class BTreeLeafParser:
             raise AssertionError("last < self._start")
         if 0 == self._header_found:
             # The first line in a leaf node is the header "type=leaf\n"
-            if strncmp("type=leaf", self._start, last - self._start) == 0:
+            if strncmp(b"type=leaf", self._start, last - self._start) == 0:
                 self._header_found = 1
                 return 0
             else:
@@ -218,7 +219,7 @@ cdef class BTreeLeafParser:
             # of memory, just for those strings.
             str_len = last - temp_ptr - 1
             if (str_len > 4
-                and strncmp(" 0 0", last - 4, 4) == 0):
+                and strncmp(b" 0 0", last - 4, 4) == 0):
                 # This drops peak mem for bzr.dev from 87.4MB => 86.2MB
                 # For Launchpad 236MB => 232MB
                 value = safe_interned_string_from_size(temp_ptr + 1, str_len)
@@ -278,10 +279,10 @@ cdef class BTreeLeafParser:
 
     def parse(self):
         cdef Py_ssize_t byte_count
-        if not PyString_CheckExact(self.bytes):
-            raise AssertionError('self.bytes is not a string.')
-        byte_count = PyString_Size(self.bytes)
-        self._cur_str = PyString_AsString(self.bytes)
+        if not PyBytes_CheckExact(self.data):
+            raise AssertionError('self.data is not a byte string.')
+        byte_count = PyBytes_GET_SIZE(self.data)
+        self._cur_str = PyBytes_AS_STRING(self.data)
         # This points to the last character in the string
         self._end_str = self._cur_str + byte_count
         while self._cur_str < self._end_str:
@@ -289,8 +290,8 @@ cdef class BTreeLeafParser:
         return self.keys
 
 
-def _parse_leaf_lines(bytes, key_length, ref_list_length):
-    parser = BTreeLeafParser(bytes, key_length, ref_list_length)
+def _parse_leaf_lines(data, key_length, ref_list_length):
+    parser = BTreeLeafParser(data, key_length, ref_list_length)
     return parser.parse()
 
 
@@ -302,7 +303,7 @@ def _parse_leaf_lines(bytes, key_length, ref_list_length):
 #       One slightly ugly option would be to cache block offsets in a global.
 #       However, that leads to thread-safety issues, etc.
 ctypedef struct gc_chk_sha1_record:
-    long long block_offset
+    unsigned long long block_offset
     unsigned int block_length
     unsigned int record_start
     unsigned int record_end
@@ -311,7 +312,7 @@ ctypedef struct gc_chk_sha1_record:
 
 cdef int _unhexbuf[256]
 cdef char *_hexbuf
-_hexbuf = '0123456789abcdef'
+_hexbuf = b'0123456789abcdef'
 
 cdef _populate_unhexbuf():
     cdef int i
@@ -328,14 +329,14 @@ _populate_unhexbuf()
 
 cdef int _unhexlify_sha1(char *as_hex, char *as_bin): # cannot_raise
     """Take the hex sha1 in as_hex and make it binary in as_bin
-    
+
     Same as binascii.unhexlify, but working on C strings, not Python objects.
     """
     cdef int top
     cdef int bot
     cdef int i, j
     cdef char *cur
-    
+
     # binascii does this using isupper() and tolower() and ?: syntax. I'm
     # guessing a simple lookup array should be faster.
     j = 0
@@ -352,10 +353,10 @@ cdef int _unhexlify_sha1(char *as_hex, char *as_bin): # cannot_raise
 
 def _py_unhexlify(as_hex):
     """For the test infrastructure, just thunks to _unhexlify_sha1"""
-    if len(as_hex) != 40 or not PyString_CheckExact(as_hex):
+    if not PyBytes_CheckExact(as_hex) or PyBytes_GET_SIZE(as_hex) != 40:
         raise ValueError('not a 40-byte hex digest')
-    as_bin = PyString_FromStringAndSize(NULL, 20)
-    if _unhexlify_sha1(PyString_AS_STRING(as_hex), PyString_AS_STRING(as_bin)):
+    as_bin = PyBytes_FromStringAndSize(NULL, 20)
+    if _unhexlify_sha1(PyBytes_AS_STRING(as_hex), PyBytes_AS_STRING(as_bin)):
         return as_bin
     return None
 
@@ -375,10 +376,10 @@ cdef void _hexlify_sha1(char *as_bin, char *as_hex): # cannot_raise
 
 def _py_hexlify(as_bin):
     """For test infrastructure, thunk to _hexlify_sha1"""
-    if len(as_bin) != 20 or not PyString_CheckExact(as_bin):
+    if len(as_bin) != 20 or not PyBytes_CheckExact(as_bin):
         raise ValueError('not a 20-byte binary digest')
-    as_hex = PyString_FromStringAndSize(NULL, 40)
-    _hexlify_sha1(PyString_AS_STRING(as_bin), PyString_AS_STRING(as_hex))
+    as_hex = PyBytes_FromStringAndSize(NULL, 40)
+    _hexlify_sha1(PyBytes_AS_STRING(as_bin), PyBytes_AS_STRING(as_hex))
     return as_hex
 
 
@@ -394,16 +395,17 @@ cdef int _key_to_sha1(key, char *sha1): # cannot_raise
 
     if StaticTuple_CheckExact(key) and StaticTuple_GET_SIZE(key) == 1:
         p_val = <PyObject *>StaticTuple_GET_ITEM(key, 0)
-    elif (PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1):
-        p_val = PyTuple_GET_ITEM_ptr_object(key, 0)
+    elif PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1:
+        p_val = PyTuple_GET_ITEM(key, 0)
     else:
         # Not a tuple or a StaticTuple
         return 0
-    if (PyString_CheckExact_ptr(p_val) and PyString_GET_SIZE_ptr(p_val) == 45):
-        c_val = PyString_AS_STRING_ptr(p_val)
+    if (PyBytes_CheckExact(<object>p_val)
+            and PyBytes_GET_SIZE(<object>p_val) == 45):
+        c_val = PyBytes_AS_STRING(<object>p_val)
     else:
         return 0
-    if strncmp(c_val, 'sha1:', 5) != 0:
+    if strncmp(c_val, b'sha1:', 5) != 0:
         return 0
     if not _unhexlify_sha1(c_val + 5, sha1):
         return 0
@@ -415,8 +417,8 @@ def _py_key_to_sha1(key):
 
     This is a testing thunk to the C function.
     """
-    as_bin_sha = PyString_FromStringAndSize(NULL, 20)
-    if _key_to_sha1(key, PyString_AS_STRING(as_bin_sha)):
+    as_bin_sha = PyBytes_FromStringAndSize(NULL, 20)
+    if _key_to_sha1(key, PyBytes_AS_STRING(as_bin_sha)):
         return as_bin_sha
     return None
 
@@ -426,9 +428,9 @@ cdef StaticTuple _sha1_to_key(char *sha1):
     cdef StaticTuple key
     cdef object hexxed
     cdef char *c_buf
-    hexxed = PyString_FromStringAndSize(NULL, 45)
-    c_buf = PyString_AS_STRING(hexxed)
-    memcpy(c_buf, 'sha1:', 5)
+    hexxed = PyBytes_FromStringAndSize(NULL, 45)
+    c_buf = PyBytes_AS_STRING(hexxed)
+    memcpy(c_buf, b'sha1:', 5)
     _hexlify_sha1(sha1, c_buf+5)
     key = StaticTuple_New(1)
     Py_INCREF(hexxed)
@@ -448,9 +450,9 @@ cdef StaticTuple _sha1_to_key(char *sha1):
 
 def _py_sha1_to_key(sha1_bin):
     """Test thunk to check the sha1 mapping."""
-    if not PyString_CheckExact(sha1_bin) or PyString_GET_SIZE(sha1_bin) != 20:
+    if not PyBytes_CheckExact(sha1_bin) or PyBytes_GET_SIZE(sha1_bin) != 20:
         raise ValueError('sha1_bin must be a str of exactly 20 bytes')
-    return _sha1_to_key(PyString_AS_STRING(sha1_bin))
+    return _sha1_to_key(PyBytes_AS_STRING(sha1_bin))
 
 
 cdef unsigned int _sha1_to_uint(char *sha1): # cannot_raise
@@ -464,21 +466,19 @@ cdef unsigned int _sha1_to_uint(char *sha1): # cannot_raise
 
 
 cdef _format_record(gc_chk_sha1_record *record):
-    # This is inefficient to go from a logical state back to a
-    # string, but it makes things work a bit better internally for now.
+    # This is inefficient to go from a logical state back to a bytes object,
+    # but it makes things work a bit better internally for now.
     if record.block_offset >= 0xFFFFFFFF:
-        # %llu is what we really want, but unfortunately it was only added
-        # in python 2.7... :(
-        block_offset_str = str(record.block_offset)
-        value = PyString_FromFormat('%s %u %u %u',
-                                PyString_AS_STRING(block_offset_str),
-                                record.block_length,
-                                record.record_start, record.record_end)
+        # Could use %llu which was added to Python 2.7 but it oddly is missing
+        # from the Python 3 equivalent functions, so hack still needed. :(
+        block_offset_str = b'%d' % record.block_offset
+        value = PyBytes_FromFormat(
+            '%s %u %u %u', PyBytes_AS_STRING(block_offset_str),
+            record.block_length, record.record_start, record.record_end)
     else:
-        value = PyString_FromFormat('%lu %u %u %u',
-                                    <unsigned long>record.block_offset,
-                                    record.block_length,
-                                    record.record_start, record.record_end)
+        value = PyBytes_FromFormat(
+            '%lu %u %u %u', <unsigned long>record.block_offset,
+            record.block_length, record.record_start, record.record_end)
     return value
 
 
@@ -501,20 +501,9 @@ cdef class GCCHKSHA1LeafNode:
     cdef unsigned char offsets[257]
 
     def __sizeof__(self):
-        # :( Why doesn't Pyrex let me do a simple sizeof(GCCHKSHA1LeafNode)
-        # like Cython? Explicitly enumerating everything here seems to leave my
-        # size off by 2 (286 bytes vs 288 bytes actual). I'm guessing it is an
-        # alignment/padding issue. Oh well- at least we scale properly with
-        # num_records and are very close to correct, which is what I care
-        # about.
-        # If we ever decide to require cython:
-        # return (sizeof(GCCHKSHA1LeafNode)
-        #     + sizeof(gc_chk_sha1_record)*self.num_records)
-        return (sizeof(PyObject) + sizeof(void*) + sizeof(int)
-            + sizeof(gc_chk_sha1_record*) + sizeof(PyObject *)
-            + sizeof(gc_chk_sha1_record*) + sizeof(char)
-            + sizeof(unsigned char)*257
-            + sizeof(gc_chk_sha1_record)*self.num_records)
+        return (
+            sizeof(GCCHKSHA1LeafNode) +
+            sizeof(gc_chk_sha1_record) * self.num_records)
 
     def __dealloc__(self):
         if self.records != NULL:
@@ -661,8 +650,8 @@ cdef class GCCHKSHA1LeafNode:
             num_records = num_records + 1
         return num_records
 
-    cdef _parse_bytes(self, bytes):
-        """Parse the string 'bytes' into content."""
+    cdef _parse_bytes(self, data):
+        """Parse the bytes 'data' into content."""
         cdef char *c_bytes
         cdef char *c_cur
         cdef char *c_end
@@ -671,15 +660,15 @@ cdef class GCCHKSHA1LeafNode:
         cdef int entry
         cdef gc_chk_sha1_record *cur_record
 
-        if not PyString_CheckExact(bytes):
-            raise TypeError('We only support parsing plain 8-bit strings.')
+        if not PyBytes_CheckExact(data):
+            raise TypeError('We only support parsing byte strings.')
         # Pass 1, count how many records there will be
-        n_bytes = PyString_GET_SIZE(bytes)
-        c_bytes = PyString_AS_STRING(bytes)
+        n_bytes = PyBytes_GET_SIZE(data)
+        c_bytes = PyBytes_AS_STRING(data)
         c_end = c_bytes + n_bytes
-        if strncmp(c_bytes, 'type=leaf\n', 10):
+        if strncmp(c_bytes, b'type=leaf\n', 10):
             raise ValueError("bytes did not start with 'type=leaf\\n': %r"
-                             % (bytes[:10],))
+                             % (data[:10],))
         c_cur = c_bytes + 10
         num_records = self._count_records(c_cur, c_end)
         # Now allocate the memory for these items, and go to town
@@ -702,8 +691,9 @@ cdef class GCCHKSHA1LeafNode:
     cdef char *_parse_one_entry(self, char *c_cur, char *c_end,
                                 gc_chk_sha1_record *cur_record) except NULL:
         """Read a single sha record from the bytes.
+
         :param c_cur: The pointer to the start of bytes
-        :param cur_record: 
+        :param cur_record: Record to populate
         """
         cdef char *c_next
         if strncmp(c_cur, 'sha1:', 5):
@@ -719,7 +709,7 @@ cdef class GCCHKSHA1LeafNode:
         if c_cur[0] != c'\0':
             raise ValueError('only 1 null, not 2 as expected')
         c_cur = c_cur + 1
-        cur_record.block_offset = strtoll(c_cur, &c_next, 10)
+        cur_record.block_offset = strtoull(c_cur, &c_next, 10)
         if c_cur == c_next or c_next[0] != c' ':
             raise ValueError('Failed to parse block offset')
         c_cur = c_next + 1
@@ -746,7 +736,7 @@ cdef class GCCHKSHA1LeafNode:
         return this_offset
 
     def _get_offset_for_sha1(self, sha1):
-        return self._offset_for_sha1(PyString_AS_STRING(sha1))
+        return self._offset_for_sha1(PyBytes_AS_STRING(sha1))
 
     cdef _compute_common(self):
         cdef unsigned int first
@@ -855,7 +845,7 @@ def _flatten_node(node, reference_lists):
     #       checks if this supports the sequence interface.
     #       We *could* do more work on our own, and grab the actual items
     #       lists. For now, just ask people to use a better compiler. :)
-    string_key = '\0'.join(node[1])
+    string_key = b'\0'.join(node[1])
 
     # TODO: instead of using string joins, precompute the final string length,
     #       and then malloc a single string and copy everything in.
@@ -889,7 +879,7 @@ def _flatten_node(node, reference_lists):
                         if (not PyTuple_CheckExact(reference)
                             and not StaticTuple_CheckExact(reference)):
                             raise TypeError(
-                                'We expect references to be tuples not: %s'
+                                'We expect references to be tuples not: %r'
                                 % type(reference))
                         next_len = len(reference)
                         if next_len > 0:
@@ -897,25 +887,24 @@ def _flatten_node(node, reference_lists):
                             # separate the reference key
                             refs_len = refs_len + (next_len - 1)
                             for ref_bit in reference:
-                                if not PyString_CheckExact(ref_bit):
-                                    raise TypeError('We expect reference bits'
-                                        ' to be strings not: %s'
-                                        % type(<object>ref_bit))
-                                refs_len = refs_len + PyString_GET_SIZE(ref_bit)
+                                if not PyBytes_CheckExact(ref_bit):
+                                    raise TypeError(
+                                        'We expect reference bits to be bytes'
+                                        ' not: %r' % type(ref_bit))
+                                refs_len = refs_len + PyBytes_GET_SIZE(ref_bit)
 
     # So we have the (key NULL refs NULL value LF)
-    key_len = PyString_Size(string_key)
+    key_len = PyBytes_Size(string_key)
     val = node[2]
-    if not PyString_CheckExact(val):
-        raise TypeError('Expected a plain str for value not: %s'
-                        % type(val))
-    value = PyString_AS_STRING(val)
-    value_len = PyString_GET_SIZE(val)
+    if not PyBytes_CheckExact(val):
+        raise TypeError('Expected bytes for value not: %r' % type(val))
+    value = PyBytes_AS_STRING(val)
+    value_len = PyBytes_GET_SIZE(val)
     flat_len = (key_len + 1 + refs_len + 1 + value_len + 1)
-    line = PyString_FromStringAndSize(NULL, flat_len)
+    line = PyBytes_FromStringAndSize(NULL, flat_len)
     # Get a pointer to the new buffer
-    out = PyString_AsString(line)
-    memcpy(out, PyString_AsString(string_key), key_len)
+    out = PyBytes_AsString(line)
+    memcpy(out, PyBytes_AsString(string_key), key_len)
     out = out + key_len
     out[0] = c'\0'
     out = out + 1
@@ -938,8 +927,8 @@ def _flatten_node(node, reference_lists):
                         out[0] = c'\x00'
                         out = out + 1
                     ref_bit = reference[i]
-                    ref_bit_len = PyString_GET_SIZE(ref_bit)
-                    memcpy(out, PyString_AS_STRING(ref_bit), ref_bit_len)
+                    ref_bit_len = PyBytes_GET_SIZE(ref_bit)
+                    memcpy(out, PyBytes_AS_STRING(ref_bit), ref_bit_len)
                     out = out + ref_bit_len
     out[0] = c'\0'
     out = out  + 1
