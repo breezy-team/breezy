@@ -14,10 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-def load_tests(loader, basic_tests, pattern):
-    testmod_names = [
-        'test_news_merge',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return basic_tests
+from unittest import TestLoader, TestSuite
+
+def test_suite():
+    result = TestSuite()
+    from . import test_news_merge
+
+    loader = TestLoader()
+    result.addTests(loader.loadTestsFromModule(test_news_merge))
+    return result
+

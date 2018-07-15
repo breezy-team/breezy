@@ -468,7 +468,7 @@ class cmd_cat_revision(Command):
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
                     msg = gettext("The repository {0} contains no revision {1}.").format(
-                        b.repository.base, revision_id)
+                        b.repository.base, revision_id.decode('utf-8'))
                     raise errors.BzrCommandError(msg)
             elif revision is not None:
                 for rev in revision:
@@ -3050,19 +3050,19 @@ class cmd_ls(Command):
             if verbose:
                 outstring = '%-8s %s' % (fc, outstring)
                 if show_ids and fid is not None:
-                    outstring = "%-50s %s" % (outstring, fid)
+                    outstring = "%-50s %s" % (outstring, fid.decode('utf-8'))
                 self.outf.write(outstring + '\n')
             elif null:
                 self.outf.write(fp + '\0')
                 if show_ids:
                     if fid is not None:
-                        self.outf.write(fid)
+                        self.outf.write(fid.decode('utf-8'))
                     self.outf.write('\0')
                 self.outf.flush()
             else:
                 if show_ids:
                     if fid is not None:
-                        my_id = fid
+                        my_id = fid.decode('utf-8')
                     else:
                         my_id = ''
                     self.outf.write('%-50s %s\n' % (outstring, my_id))
@@ -6786,11 +6786,11 @@ class cmd_fetch_ghosts(Command):
         if len(installed) > 0:
             self.outf.write("Installed:\n")
             for rev in installed:
-                self.outf.write(rev + "\n")
+                self.outf.write(rev.decode('utf-8') + "\n")
         if len(failed) > 0:
             self.outf.write("Still missing:\n")
             for rev in failed:
-                self.outf.write(rev + "\n")
+                self.outf.write(rev.decode('utf-8') + "\n")
         if not no_fix and len(installed) > 0:
             cmd_reconcile().run(".")
 

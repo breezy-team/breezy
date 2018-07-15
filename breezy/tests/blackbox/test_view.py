@@ -89,7 +89,7 @@ class TestViewUI(TestCaseWithTransport):
         # Check bad usage is reported to the user
         out, err = self.run_bzr('view --delete --switch x', retcode=3)
         self.assertContainsRe(err,
-            b"Both --delete and --switch specified")
+            "Both --delete and --switch specified")
         out, err = self.run_bzr('view --delete a b c', retcode=3)
         self.assertContainsRe(err, "Both --delete and a file list specified")
 

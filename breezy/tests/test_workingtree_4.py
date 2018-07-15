@@ -47,7 +47,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # format 'Bazaar Working Tree format 4'
         # stat-cache = ??
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar Working Tree Format 4 (bzr 0.15)\n',
+        self.assertEqualDiff(b'Bazaar Working Tree Format 4 (bzr 0.15)\n',
                              t.get('format').read())
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
@@ -755,7 +755,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         file_obj, statvalue = tree.get_file_with_stat('foo')
         expected = os.lstat('foo')
         self.assertEqualStat(expected, statvalue)
-        self.assertEqual(["contents of foo\n"], file_obj.readlines())
+        self.assertEqual([b"contents of foo\n"], file_obj.readlines())
 
 
 class TestCorruptDirstate(TestCaseWithTransport):

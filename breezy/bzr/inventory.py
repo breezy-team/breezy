@@ -766,7 +766,7 @@ class CommonInventory(object):
             if (specific_file_ids is None or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
-        elif isinstance(from_dir, (str, text_type)):
+        elif isinstance(from_dir, (bytes, text_type)):
             from_dir = self.get_entry(from_dir)
 
         if specific_file_ids is not None:
@@ -953,9 +953,9 @@ class Inventory(CommonInventory):
     returned quickly.
 
     >>> inv = Inventory()
-    >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
+    >>> inv.add(InventoryFile(b'123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-    >>> inv.get_entry('123-123').name
+    >>> inv.get_entry(b'123-123').name
     'hello.c'
 
     Id's may be looked up from paths:
@@ -1252,11 +1252,11 @@ class Inventory(CommonInventory):
         >>> i2 = Inventory()
         >>> i1 == i2
         True
-        >>> i1.add(InventoryFile('123', 'foo', ROOT_ID))
+        >>> i1.add(InventoryFile(b'123', 'foo', ROOT_ID))
         InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         False
-        >>> i2.add(InventoryFile('123', 'foo', ROOT_ID))
+        >>> i2.add(InventoryFile(b'123', 'foo', ROOT_ID))
         InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         True

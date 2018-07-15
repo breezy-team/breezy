@@ -199,8 +199,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo', 'bar'], [b'foo-id', b'bar-id'])
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', b'bar-id', 'directory', b'bar'),
-                          ('add file', b'foo-id', 'file', b'foo')],
+        self.assertEqual([('add file', b'bar-id', 'directory', 'bar'),
+                          ('add file', b'foo-id', 'file', 'foo')],
                           sorted(list(creator.iter_shelvable())))
         return creator, tree
 

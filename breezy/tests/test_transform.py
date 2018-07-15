@@ -1186,7 +1186,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 (b'eert_toor', b'eert_toor'), ('old', 'old'), ('file', 'file'),
                 (False, False))], list(transform.iter_changes()))
             transform.cancel_deletion(old)
-            self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
+            self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
                 (b'eert_toor', b'eert_toor'), ('old', 'old'), ('file', 'file'),
                 (False, False))], list(transform.iter_changes()))
             transform.cancel_creation(old)

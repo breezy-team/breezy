@@ -57,7 +57,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             retcode=errors.EXIT_ERROR)
         self.assertContainsRe(err, r"^brz: ERROR: .*'\\xa0'.* unsupported",
             flags=re.MULTILINE)
-        self.assertEqual(out, "")
+        self.assertEqual(out, b"")
 
     def test_utf8_default_fs_enc(self):
         """In the C locale brz treats a posix filesystem as UTF-8 encoded"""
@@ -65,7 +65,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_bzr_subprocess(["init", "file:%C2%A7"],
             env_changes={"LANG": "C", "LC_ALL": "C"})
-        self.assertContainsRe(out, "^Created a standalone tree .*$")
+        self.assertContainsRe(out, b"^Created a standalone tree .*$")
 
 
 class TestOptParseBugHandling(tests.TestCase):

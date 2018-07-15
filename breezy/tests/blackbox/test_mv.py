@@ -69,14 +69,14 @@ class TestMove(TestCaseWithTransport):
     def test_mv_unversioned(self):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not rename unversioned.txt => elsewhere."
-             b" .*unversioned.txt is not versioned\\.$"],
+            ["^brz: ERROR: Could not rename unversioned.txt => elsewhere."
+             " .*unversioned.txt is not versioned\\.$"],
             'mv unversioned.txt elsewhere')
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not rename doesnotexist => somewhereelse."
-             b" .*doesnotexist is not versioned\\.$"],
+            ["^brz: ERROR: Could not rename doesnotexist => somewhereelse."
+             " .*doesnotexist is not versioned\\.$"],
             'mv doesnotexist somewhereelse')
 
     def test_mv_unqualified(self):
@@ -88,12 +88,12 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not move to sub1: sub1 is not versioned\\.$"],
+            ["^brz: ERROR: Could not move to sub1: sub1 is not versioned\\.$"],
             'mv test.txt sub1')
 
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not move test.txt => .*hello.txt: "
-             b"sub1 is not versioned\\.$"],
+            ["^brz: ERROR: Could not move test.txt => .*hello.txt: "
+             "sub1 is not versioned\\.$"],
             'mv test.txt sub1/hello.txt')
 
     def test_mv_dirs(self):
@@ -187,7 +187,7 @@ class TestMove(TestCaseWithTransport):
     def test_mv_no_root(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr_error(
-            [b"brz: ERROR: can not move root of branch"],
+            ["brz: ERROR: can not move root of branch"],
             'mv . a')
 
     def test_mv_through_symlinks(self):
@@ -232,7 +232,7 @@ class TestMove(TestCaseWithTransport):
         os.remove('b')
         osutils.rename('a', 'b')
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not move a => b. b is already versioned\\.$"],
+            ["^brz: ERROR: Could not move a => b. b is already versioned\\.$"],
             'mv a b')
         #check that nothing changed
         self.assertPathDoesNotExist('a')
@@ -268,7 +268,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'sub/a')
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not move a => a: sub is not versioned\\.$"],
+            ["^brz: ERROR: Could not move a => a: sub is not versioned\\.$"],
             'mv a sub/a')
         self.assertPathDoesNotExist('a')
         self.assertPathExists('sub/a')
@@ -304,7 +304,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a1', 'sub/a1')
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not move to sub. sub is not versioned\\.$"],
+            ["^brz: ERROR: Could not move to sub. sub is not versioned\\.$"],
             'mv a1 a2 sub')
         self.assertPathDoesNotExist('a1')
         self.assertPathExists('sub/a1')
@@ -327,9 +327,9 @@ class TestMove(TestCaseWithTransport):
         osutils.rename('a', 'b')
         self.build_tree(['a']) #touch a
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not rename a => b because both files exist."
-             b" \\(Use --after to tell brz about a rename that has already"
-             b" happened\\)$"],
+            ["^brz: ERROR: Could not rename a => b because both files exist."
+             " \\(Use --after to tell brz about a rename that has already"
+             " happened\\)$"],
             'mv a b')
         self.assertPathExists('a')
         self.assertPathExists('b')
@@ -377,9 +377,9 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a2']) #touch a2
 
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not rename a1 => sub/a1 because both files"
-             b" exist. \\(Use --after to tell brz about a rename that has already"
-             b" happened\\)$"],
+            ["^brz: ERROR: Could not rename a1 => sub/a1 because both files"
+             " exist. \\(Use --after to tell brz about a rename that has already"
+             " happened\\)$"],
             'mv a1 a2 sub')
         self.assertPathExists('a1')
         self.assertPathExists('a2')

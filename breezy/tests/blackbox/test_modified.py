@@ -48,7 +48,7 @@ class TestModified(TestCaseWithTransport):
         check_modified('')
 
         # with unknown file, still nothing modified
-        self.build_tree_contents([(name, b'contents of %s\n' % (name))])
+        self.build_tree_contents([(name, b'contents of %s\n' % (name.encode('utf-8')))])
         check_modified('')
 
         # after add, not modified

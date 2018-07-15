@@ -31,6 +31,7 @@ from ... import (
     msgeditor,
     )
 from ...controldir import ControlDir
+from ...sixish import PY3
 from .. import (
     test_foreign,
     features,
@@ -145,7 +146,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
         te = osutils.get_terminal_encoding()
-        self.assertContainsRe(err.decode(te),
+        self.assertContainsRe(err if PY3 else err.decode(te),
             u'The commit message is a file name:',
             flags=reflags)
 
@@ -164,7 +165,7 @@ brz: ERROR: No changes to commit.\
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
             te = osutils.get_terminal_encoding()
-            self.assertContainsRe(err.decode(te, 'replace'),
+            self.assertContainsRe(err if PY3 else err.decode(te, 'replace'),
                 u'The commit message is a file name:',
                 flags=reflags)
         finally:
@@ -477,7 +478,7 @@ altered in u2
                               working_dir='dir-a')[1]
         self.assertNotContainsRe(result, 'file-a')
         result = self.run_bzr('status', working_dir='dir-a')[0]
-        self.assertContainsRe(result, b'removed:\n  file-a')
+        self.assertContainsRe(result, 'removed:\n  file-a')
 
     def test_strict_commit(self):
         """Commit with --strict works if everything is known"""
@@ -546,7 +547,7 @@ altered in u2
             encoding='utf-8', retcode=3)
         self.assertEqual('', output)
         self.assertContainsRe(err,
-            b'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
+            'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
@@ -778,7 +779,7 @@ altered in u2
         out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
             retcode=3)
         self.assertContainsRe(err,
-            br'^brz: ERROR: Cannot lock.*readonly transport')
+            r'^brz: ERROR: Cannot lock.*readonly transport')
 
     def setup_editor(self):
         # Test that commit template hooks work

@@ -714,10 +714,10 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_rev(b'root', b'C', [b'A'], b'abCc')
         self.add_rev(b'root', b'D', [b'B'], b'DaBbc')
         self.add_rev(b'root', b'E', [b'B', b'C'], b'aBbCc')
-        self.add_rev(b'root', b'F', [b'C'], 'abCcF')
+        self.add_rev(b'root', b'F', [b'C'], b'abCcF')
         self.add_rev(b'root', b'G', [b'D', b'E'], b'DaBbCc')
         self.add_rev(b'root', b'H', [b'F', b'E'], b'aBbCcF')
-        self.add_rev(b'root', b'Q', [b'E'], 'aBbCc')
+        self.add_rev(b'root', b'Q', [b'E'], b'aBbCc')
         self.add_rev(b'root', b'I', [b'G', b'Q', b'H'], b'DaBbCcF')
         # Merge G & H but supersede an old line in B
         self.add_rev(b'root', b'J', [b'H', b'Q', b'G'], b'DaJbCcF')
@@ -943,7 +943,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff(b'\n'.join(b'abcdghef') + b'\n',
+        self.assertEqualDiff(b'a\nb\nc\nd\ng\nh\ne\nf\n',
                              b''.join(pwm.base_from_plan()))
         # Reversing the order reverses the merge plan, and final order of 'hg'
         # => 'gh'
@@ -960,7 +960,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff(b'\n'.join(b'abcdhgef') + b'\n',
+        self.assertEqualDiff(b'a\nb\nc\nd\nh\ng\ne\nf\n',
                              b''.join(pwm.base_from_plan()))
         # This is where lca differs, in that it (fairly correctly) determines
         # that there is a conflict because both sides resolved the merge
@@ -978,7 +978,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff(b'\n'.join(b'abcdgef') + b'\n',
+        self.assertEqualDiff(b'a\nb\nc\nd\ng\ne\nf\n',
                              b''.join(pwm.base_from_plan()))
         # Reversing it changes what line is doubled, but still gives a
         # double-conflict
@@ -995,7 +995,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff(b'\n'.join(b'abcdhef') + b'\n',
+        self.assertEqualDiff(b'a\nb\nc\nd\nh\ne\nf\n',
                              b''.join(pwm.base_from_plan()))
 
     def assertRemoveExternalReferences(self, filtered_parent_map,

@@ -66,7 +66,7 @@ from .versionedfile import (
 # groupcompress blocks.
 BATCH_SIZE = 2**16
 
-# osutils.sha_string('')
+# osutils.sha_string(b'')
 _null_sha1 = b'da39a3ee5e6b4b0d3255bfef95601890afd80709'
 
 def sort_gc_optimal(parent_map):

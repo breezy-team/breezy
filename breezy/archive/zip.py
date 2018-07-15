@@ -31,6 +31,7 @@ from .. import (
     osutils,
     )
 from ..export import _export_iter_entries
+from ..sixish import PY3
 from ..trace import mutter
 
 
@@ -66,7 +67,9 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                 else:
                     mtime = tree.get_file_mtime(tp, file_id)
                 date_time = time.localtime(mtime)[:6]
-                filename = osutils.pathjoin(root, dp).encode('utf8')
+                filename = osutils.pathjoin(root, dp)
+                if not PY3:
+                    filename = filename.encode('utf8')
                 if ie.kind == "file":
                     zinfo = zipfile.ZipInfo(
                                 filename=filename,

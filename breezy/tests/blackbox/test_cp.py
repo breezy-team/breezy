@@ -39,14 +39,14 @@ class TestCopy(TestCaseWithTransport):
     def test_cp_unversioned(self):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not copy .*unversioned.txt => .*elsewhere."
-             b" .*unversioned.txt is not versioned\\.$"],
+            ["^brz: ERROR: Could not copy .*unversioned.txt => .*elsewhere."
+             " .*unversioned.txt is not versioned\\.$"],
             'cp unversioned.txt elsewhere')
 
     def test_cp_nonexisting(self):
         self.run_bzr_error(
-            [b"^brz: ERROR: Could not copy .*doesnotexist => .*somewhereelse."
-             b" .*doesnotexist is not versioned\\.$"],
+            ["^brz: ERROR: Could not copy .*doesnotexist => .*somewhereelse."
+             " .*doesnotexist is not versioned\\.$"],
             'cp doesnotexist somewhereelse')
 
     def test_cp_unqualified(self):

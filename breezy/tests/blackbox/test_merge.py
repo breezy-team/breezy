@@ -266,7 +266,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # test merge for failure without parent set
         out = self.run_bzr('merge', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                (b'', b'brz: ERROR: No location specified or remembered\n'))
+                ('', 'brz: ERROR: No location specified or remembered\n'))
 
         # test uncommitted changes
         self.build_tree(['branch_b/d'])

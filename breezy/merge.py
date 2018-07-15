@@ -1456,7 +1456,7 @@ class Merge3Merger(object):
                            is_cherrypick=self.cherrypick)
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
         if self.show_base is True:
-            base_marker = '|' * 7
+            base_marker = b'|' * 7
         else:
             base_marker = None
 

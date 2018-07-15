@@ -371,7 +371,7 @@ class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
     """
 
     def do_with_locked_branch(self, branch, location):
-        branch._set_parent_location(location)
+        branch._set_parent_location(location.decode('utf-8'))
         return SuccessfulSmartServerResponse(())
 
 

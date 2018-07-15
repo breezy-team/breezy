@@ -40,6 +40,7 @@ from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
 from ...sixish import (
     BytesIO,
+    PY3,
     )
 from ...status import show_tree_status
 from .. import TestCaseWithTransport, TestSkipped
@@ -796,8 +797,11 @@ added:
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 
-        self.assertEqual(stdout, u"""\
+        expected = u"""\
 added:
   hell\u00d8
-""".encode('latin-1'))
+"""
+        if not PY3:
+            expected = expected.encode('latin-1')
+        self.assertEqual(stdout, expected)
 

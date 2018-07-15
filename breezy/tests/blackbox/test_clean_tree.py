@@ -31,7 +31,7 @@ class TestBzrTools(TestCaseWithTransport):
     @staticmethod
     def touch(filename):
         with open(filename, 'wb') as my_file:
-            my_file.write('')
+            my_file.write(b'')
 
     def test_clean_tree(self):
         self.run_bzr('init')

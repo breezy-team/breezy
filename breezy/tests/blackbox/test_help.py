@@ -78,7 +78,7 @@ class TestHelp(tests.TestCaseWithTransport):
         out, err = self.run_bzr('help repositories')
         from breezy.help_topics import help_as_plain_text, _repositories
         expected = help_as_plain_text(_repositories)
-        self.assertEqual(expected.encode('utf-8'), out)
+        self.assertEqual(expected, out)
 
     def test_help_working_trees(self):
         """Smoke test for 'brz help working-trees'"""

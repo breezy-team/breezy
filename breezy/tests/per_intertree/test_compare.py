@@ -1415,8 +1415,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             'tofile',
             'unchanged',
             ]
-        tree1.add(from_paths_and_ids, from_paths_and_ids)
-        tree2.add(to_paths_and_ids, to_paths_and_ids)
+        tree1.add(from_paths_and_ids, [p.encode('utf-8') for p in from_paths_and_ids])
+        tree2.add(to_paths_and_ids, [p.encode('utf-8') for p in to_paths_and_ids])
         return self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
     def test_versioned_symlinks(self):

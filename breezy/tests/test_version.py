@@ -26,6 +26,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    PY3,
     )
 from .scenarios import load_tests_apply_scenarios
 
@@ -60,6 +61,7 @@ class TestBzrlibVersioning(tests.TestCase):
         self.assertIsNot(m, None)
         self.assertPathExists(m.group(1))
 
+
 class TestPlatformUse(tests.TestCase):
 
     scenarios = [('ascii', dict(_platform='test-platform')),
@@ -74,5 +76,7 @@ class TestPlatformUse(tests.TestCase):
         self.overrideAttr(platform, 'platform', lambda **kwargs: self._platform)
         version.show_version(show_config=False, show_copyright=False,
                              to_file=out)
-        self.assertContainsRe(out.getvalue(),
-                              r'(?m)^  Platform: %s' % self._platform)
+        expected = r'(?m)^  Platform: %s' % self._platform
+        if PY3:
+            expected = expected.encode('utf-8')
+        self.assertContainsRe(out.getvalue(), expected)

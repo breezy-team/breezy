@@ -18,6 +18,7 @@
 
 from .. import TestCaseWithMemoryTransport
 from ...commands import Command, register_command, plugin_cmds
+from ...sixish import PY3
 
 
 class cmd_echo_exact(Command):
@@ -72,7 +73,10 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
         register_command(cmd_echo_strict)
         try:
             self.assertEqual('foo', bzr('echo-strict foo'))
-            self.assertEqual(u'foo\xb5'.encode('utf-8'),
+            expected = u'foo\xb5'
+            if not PY3:
+                expected = expected.encode('utf-8'),
+            self.assertEqual(expected,
                              bzr(['echo-strict', u'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-strict')
