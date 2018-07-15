@@ -126,7 +126,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.remote_tree.commit(b"A commit message", timestamp=1330445983,
             timezone=0, committer=b'Somebody <jrandom@example.com>')
         f = BytesIO()
-        self.helper.cmd_import(f, ["import", b"refs/heads/master"])
+        self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEqual(
             b'commit refs/heads/master\n'
             b'mark :1\n'

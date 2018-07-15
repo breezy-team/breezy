@@ -477,7 +477,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 specific_files = None
             else:
                 specific_files = set([p.encode('utf-8') for p in specific_files])
-        todo = [(self.store, "", self.tree, None)]
+        todo = [(self.store, b"", self.tree, None)]
         while todo:
             store, path, tree_sha, parent_id = todo.pop()
             ie = self._get_dir_ie(path, parent_id)
@@ -623,9 +623,17 @@ def tree_delta_from_git_changes(changes, mapping,
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if newpath == b'' and not include_root:
             continue
+        if oldpath is None:
+            oldpath_encoded = None
+        else:
+            oldpath_decoded = oldpath.decode('utf-8')
+        if newpath is None:
+            newpath_decoded = None
+        else:
+            newpath_decoded = newpath.decode('utf-8')
         if not (specific_files is None or
-                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
-                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
+                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath_decoded)) or
+                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath_decoded))):
             continue
         if mapping.is_special_file(oldpath):
             oldpath = None
@@ -638,22 +646,18 @@ def tree_delta_from_git_changes(changes, mapping,
                 ret.unversioned.append(
                     (osutils.normalized_filename(newpath)[0], None, mode_kind(newmode)))
             else:
-                newpath_decoded = newpath.decode('utf-8')
                 file_id = new_fileid_map.lookup_file_id(newpath_decoded)
                 ret.added.append((newpath_decoded, file_id, mode_kind(newmode)))
         elif newpath is None or newmode == 0:
-            oldpath_decoded = oldpath.decode('utf-8')
             file_id = old_fileid_map.lookup_file_id(oldpath_decoded)
             ret.removed.append((oldpath_decoded, file_id, mode_kind(oldmode)))
         elif oldpath != newpath:
-            oldpath_decoded = oldpath.decode('utf-8')
             file_id = old_fileid_map.lookup_file_id(oldpath_decoded)
             ret.renamed.append(
                 (oldpath_decoded, newpath.decode('utf-8'), file_id,
                 mode_kind(newmode), (oldsha != newsha),
                 (oldmode != newmode)))
         elif mode_kind(oldmode) != mode_kind(newmode):
-            newpath_decoded = newpath.decode('utf-8')
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.kind_changed.append(
                 (newpath_decoded, file_id, mode_kind(oldmode),
@@ -661,13 +665,11 @@ def tree_delta_from_git_changes(changes, mapping,
         elif oldsha != newsha or oldmode != newmode:
             if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
                 continue
-            newpath_decoded = newpath.decode('utf-8')
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.modified.append(
                 (newpath, file_id, mode_kind(newmode),
                 (oldsha != newsha), (oldmode != newmode)))
         else:
-            newpath_decoded = newpath.decode('utf-8')
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.unchanged.append((newpath, file_id, mode_kind(newmode)))
 
