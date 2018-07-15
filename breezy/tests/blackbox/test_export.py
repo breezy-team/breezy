@@ -320,14 +320,14 @@ class TestExport(TestCaseWithTransport):
         tf = tarfile.open('../first.tar.tbz2', 'r:bz2')
         try:
             self.assertEqual(['first.tar/hello'], sorted(tf.getnames()))
-            self.assertEqual('foo', tf.extractfile('first.tar/hello').read())
+            self.assertEqual(b'foo', tf.extractfile('first.tar/hello').read())
         finally:
             tf.close()
         self.run_bzr('export ../first2.tar -r 1 --root pizza')
         tf = tarfile.open('../first2.tar')
         try:
             self.assertEqual(['pizza/hello'], sorted(tf.getnames()))
-            self.assertEqual('foo', tf.extractfile('pizza/hello').read())
+            self.assertEqual(b'foo', tf.extractfile('pizza/hello').read())
         finally:
             tf.close()
 

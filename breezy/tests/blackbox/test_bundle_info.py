@@ -34,9 +34,9 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         info = self.run_bzr('bundle-info bundle')[0]
         # there might be either one file, or two, depending on whether the
         # tree root counts...
-        self.assertContainsRe(info, b'file: [12] .0 multiparent.')
-        self.assertContainsRe(info, b'nicks: source')
-        self.assertNotContainsRe(info, b'foo')
+        self.assertContainsRe(info, 'file: [12] .0 multiparent.')
+        self.assertContainsRe(info, 'nicks: source')
+        self.assertNotContainsRe(info, 'foo')
         self.run_bzr_error(['--verbose requires a merge directive'],
                            'bundle-info -v bundle')
         target = self.make_branch('target')
@@ -46,4 +46,4 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         with open('directive', 'wb') as directive:
             directive.writelines(md.to_lines())
         info = self.run_bzr('bundle-info -v directive')[0]
-        self.assertContainsRe(info, b'foo')
+        self.assertContainsRe(info, 'foo')

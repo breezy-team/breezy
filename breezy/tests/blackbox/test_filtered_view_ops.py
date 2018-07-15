@@ -96,7 +96,7 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('commit -m "file in view" a')
         err_lines = err.splitlines()
-        self.assertStartsWith(err_lines[0], b'Committing to:')
+        self.assertStartsWith(err_lines[0], 'Committing to:')
         self.assertEqual('added a', err_lines[1])
         self.assertEqual('Committed revision 1.', err_lines[2])
         self.assertEqual('', out)
@@ -180,19 +180,19 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         self.run_bzr("bind ../tree_1", working_dir='tree_2')
         out, err = self.run_bzr('update', working_dir='tree_2')
         self.assertEqualDiff(
-            b"""Operating on whole tree but only reporting on 'my' view.
+            """Operating on whole tree but only reporting on 'my' view.
  M  a
 All changes applied successfully.
 Updated to revision 2 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'tree_1'),
             err)
-        self.assertEqual(b"", out)
+        self.assertEqual("", out)
 
     def test_view_on_merge(self):
         tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
         out, err = self.run_bzr('merge -d tree_2 tree_1')
         self.assertEqualDiff(
-            b"Operating on whole tree but only reporting on 'my' view.\n"
-            b" M  a\n"
-            b"All changes applied successfully.\n", err)
-        self.assertEqual(b"", out)
+            "Operating on whole tree but only reporting on 'my' view.\n"
+            " M  a\n"
+            "All changes applied successfully.\n", err)
+        self.assertEqual("", out)

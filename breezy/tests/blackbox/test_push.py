@@ -623,9 +623,9 @@ class TestPush(tests.TestCaseWithTransport):
     def test_overwrite_tags(self):
         """--overwrite-tags only overwrites tags, not revisions."""
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['push', '-d', 'from', 'to'])
         self.assertEqual(out,

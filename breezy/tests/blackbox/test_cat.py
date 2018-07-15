@@ -42,7 +42,7 @@ class TestCat(tests.TestCaseWithTransport):
         # crlf, whereas cat ought to write out the file exactly as it's
         # recorded (by default.)  That problem can't be reproduced in-process,
         # so we need just one test here that 
-        self.assertEqual('foo\n',
+        self.assertEqual(b'foo\n',
                           self.run_bzr_subprocess(['cat', 'a'],
                                                   working_dir='branch')[0])
 

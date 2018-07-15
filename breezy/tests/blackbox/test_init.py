@@ -118,7 +118,7 @@ Using shared repository: %s
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
-        self.assertTrue(err.startswith(b'brz: ERROR: Already a branch:'))
+        self.assertTrue(err.startswith('brz: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')
@@ -142,7 +142,7 @@ Using shared repository: %s
         out, err = self.run_bzr('init subdir', retcode=3)
         # suggests using checkout
         self.assertContainsRe(err,
-                              b'ontains a branch.*but no working tree.*checkout')
+                              'ontains a branch.*but no working tree.*checkout')
 
     def test_no_defaults(self):
         """Init creates no default ignore rules."""

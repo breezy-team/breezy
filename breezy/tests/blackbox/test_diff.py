@@ -93,7 +93,7 @@ class TestDiff(DiffBase):
         # There was an error in error reporting for this option
         out, err = self.run_bzr('diff --prefix old/', retcode=3)
         self.assertContainsRe(err,
-            b'--prefix expects two values separated by a colon')
+            '--prefix expects two values separated by a colon')
 
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
@@ -150,12 +150,12 @@ class TestDiff(DiffBase):
     def test_diff_nonexistent_dotted_revision(self):
         out, err = self.run_bzr('diff -r 1.1', retcode=3)
         self.assertContainsRe(err,
-            b"Requested revision: '1.1' does not exist in branch:")
+            "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_nonexistent_dotted_revision_change(self):
         out, err = self.run_bzr('diff -c 1.1', retcode=3)
         self.assertContainsRe(err,
-            b"Requested revision: '1.1' does not exist in branch:")
+            "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
@@ -392,7 +392,7 @@ class TestExternalDiff(DiffBase):
             'diff -Oprogress_bar=none -r 1 --diff-options -ub',
             universal_newlines=True,
             retcode=None)
-        if 'Diff is not installed on this machine' in err:
+        if b'Diff is not installed on this machine' in err:
             raise tests.TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
@@ -423,4 +423,4 @@ class TestDiffOutput(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
-        self.assertTrue('\n+hello world!\n' in output)
+        self.assertTrue(b'\n+hello world!\n' in output)
