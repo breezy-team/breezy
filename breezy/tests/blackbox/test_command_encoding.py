@@ -75,7 +75,7 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
             self.assertEqual('foo', bzr('echo-strict foo'))
             expected = u'foo\xb5'
             if not PY3:
-                expected = expected.encode('utf-8'),
+                expected = expected.encode('utf-8')
             self.assertEqual(expected,
                              bzr(['echo-strict', u'foo\xb5']))
         finally:
