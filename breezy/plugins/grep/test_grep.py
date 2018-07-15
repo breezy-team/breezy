@@ -21,6 +21,7 @@ import re
 import unicodedata as ud
 
 from ... import tests, osutils
+from ...sixish import PY3
 from ..._termcolor import color_string, FG
 
 from ...tests.features import (
@@ -364,17 +365,23 @@ class TestGrep(GrepTestBase):
         nref = ud.normalize(u'NFC', u"file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line[1-3]'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '-Z', 'line[1-3]'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
@@ -2248,6 +2255,5 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         """grep -p with zero revisions."""
         out, err = self.run_bzr(['init'])
         out, err = self.run_bzr(['grep', '--diff', 'foo'], 3)
-        self.assertEqual(out, b'')
+        self.assertEqual(out, '')
         self.assertContainsRe(err, "ERROR:.*revision.* does not exist in branch")
-

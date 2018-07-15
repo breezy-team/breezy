@@ -203,7 +203,7 @@ class cmd_grep(Command):
             re_flags |= re.IGNORECASE
 
         if not fixed_string:
-            patternc = grep.compile_pattern(pattern, re_flags)
+            patternc = grep.compile_pattern(pattern.encode(grep._user_encoding), re_flags)
 
         if color == 'always':
             show_color = True
