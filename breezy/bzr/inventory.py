@@ -766,8 +766,10 @@ class CommonInventory(object):
             if (specific_file_ids is None or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
-        elif isinstance(from_dir, (bytes, text_type)):
+        elif isinstance(from_dir, bytes):
             from_dir = self.get_entry(from_dir)
+        else:
+            raise TypeError(from_dir)
 
         if specific_file_ids is not None:
             # TODO: jam 20070302 This could really be done as a loop rather
