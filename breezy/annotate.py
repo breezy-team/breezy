@@ -74,10 +74,11 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
     if to_file is None:
         to_file = sys.stdout
 
+    encoding = osutils.get_terminal_encoding()
     # Handle the show_ids case
     annotations = list(tree.annotate_iter(path, file_id))
     if show_ids:
-        return _show_id_annotations(annotations, to_file, full)
+        return _show_id_annotations(annotations, to_file, full, encoding)
 
     if not getattr(tree, "get_revision_id", False):
         # Create a virtual revision to represent the current tree state.
@@ -96,10 +97,10 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         current_rev = None
     annotation = list(_expand_annotations(annotations, branch,
         current_rev))
-    _print_annotations(annotation, verbose, to_file, full)
+    _print_annotations(annotation, verbose, to_file, full, encoding)
 
 
-def _print_annotations(annotation, verbose, to_file, full):
+def _print_annotations(annotation, verbose, to_file, full, encoding):
     """Print annotations to to_file.
 
     :param to_file: The file to output the annotation to.
@@ -132,11 +133,11 @@ def _print_annotations(annotation, verbose, to_file, full):
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| %s\n' % (text,))
+        to_file.write('| %s\n' % (text.decode(encoding),))
         prevanno = anno
 
 
-def _show_id_annotations(annotations, to_file, full):
+def _show_id_annotations(annotations, to_file, full, encoding):
     if not annotations:
         return
     last_rev_id = None
@@ -145,8 +146,9 @@ def _show_id_annotations(annotations, to_file, full):
         if full or last_rev_id != origin:
             this = origin
         else:
-            this = ''
-        to_file.write('%*s | %s' % (max_origin_len, this, text))
+            this = b''
+        to_file.write('%*s | %s' % (max_origin_len, this.decode('utf-8'),
+            text.decode(encoding)))
         last_rev_id = origin
     return
 

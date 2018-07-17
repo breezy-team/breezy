@@ -23,7 +23,7 @@ from .. import (
     tests,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 from .ui_testing import StringIOWithEncoding
 
@@ -280,13 +280,13 @@ class TestAnnotate(tests.TestCaseWithTransport):
         if actual != expected:
             # Create an easier to understand diff when the lines don't actually
             # match
-            self.assertEqualDiff(b''.join('\t'.join(l) for l in expected),
-                                 b''.join('\t'.join(l) for l in actual))
+            self.assertEqualDiff(''.join('\t'.join(l) for l in expected),
+                                 ''.join('\t'.join(l) for l in actual))
 
     def assertBranchAnnotate(self, expected, branch, path, revision_id,
             verbose=False, full=False, show_ids=False):
         tree = branch.repository.revision_tree(revision_id)
-        to_file = BytesIO()
+        to_file = StringIO()
         annotate.annotate_file_tree(tree, path, to_file,
             verbose=verbose, full=full, show_ids=show_ids, branch=branch)
         self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
@@ -312,49 +312,49 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()
 
-        self.assertBranchAnnotate(b'1     joe@foo | first\n'
-                                  b'2     joe@foo | second\n'
-                                  b'1.1.1 barry@f | third\n',
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '2     joe@foo | second\n'
+                                  '1.1.1 barry@f | third\n',
                                   builder.get_branch(), 'a', b'rev-3')
 
     def test_annotate_limits_dotted_revnos(self):
         """Annotate should limit dotted revnos to a depth of 12"""
         builder = self.create_deeply_merged_trees()
 
-        self.assertBranchAnnotate(b'1     joe@foo | first\n'
-                                  b'2     joe@foo | second\n'
-                                  b'1.1.1 barry@f | third\n'
-                                  b'1.2.1 jerry@f | fourth\n'
-                                  b'1.3.1 george@ | fifth\n'
-                                  b'              | sixth\n',
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '2     joe@foo | second\n'
+                                  '1.1.1 barry@f | third\n'
+                                  '1.2.1 jerry@f | fourth\n'
+                                  '1.3.1 george@ | fifth\n'
+                                  '              | sixth\n',
                                   builder.get_branch(), 'a', b'rev-6',
                                   verbose=False, full=False)
 
-        self.assertBranchAnnotate(b'1     joe@foo | first\n'
-                                  b'2     joe@foo | second\n'
-                                  b'1.1.1 barry@f | third\n'
-                                  b'1.2.1 jerry@f | fourth\n'
-                                  b'1.3.1 george@ | fifth\n'
-                                  b'1.3.1 george@ | sixth\n',
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '2     joe@foo | second\n'
+                                  '1.1.1 barry@f | third\n'
+                                  '1.2.1 jerry@f | fourth\n'
+                                  '1.3.1 george@ | fifth\n'
+                                  '1.3.1 george@ | sixth\n',
                                   builder.get_branch(), 'a', b'rev-6',
                                   verbose=False, full=True)
 
         # verbose=True shows everything, the full revno, user id, and date
-        self.assertBranchAnnotate(b'1     joe@foo.com    20061213 | first\n'
-                                  b'2     joe@foo.com    20061213 | second\n'
-                                  b'1.1.1 barry@foo.com  20061213 | third\n'
-                                  b'1.2.1 jerry@foo.com  20061213 | fourth\n'
-                                  b'1.3.1 george@foo.com 20061213 | fifth\n'
-                                  b'                              | sixth\n',
+        self.assertBranchAnnotate('1     joe@foo.com    20061213 | first\n'
+                                  '2     joe@foo.com    20061213 | second\n'
+                                  '1.1.1 barry@foo.com  20061213 | third\n'
+                                  '1.2.1 jerry@foo.com  20061213 | fourth\n'
+                                  '1.3.1 george@foo.com 20061213 | fifth\n'
+                                  '                              | sixth\n',
                                   builder.get_branch(), 'a', b'rev-6',
                                   verbose=True, full=False)
 
-        self.assertBranchAnnotate(b'1     joe@foo.com    20061213 | first\n'
-                                  b'2     joe@foo.com    20061213 | second\n'
-                                  b'1.1.1 barry@foo.com  20061213 | third\n'
-                                  b'1.2.1 jerry@foo.com  20061213 | fourth\n'
-                                  b'1.3.1 george@foo.com 20061213 | fifth\n'
-                                  b'1.3.1 george@foo.com 20061213 | sixth\n',
+        self.assertBranchAnnotate('1     joe@foo.com    20061213 | first\n'
+                                  '2     joe@foo.com    20061213 | second\n'
+                                  '1.1.1 barry@foo.com  20061213 | third\n'
+                                  '1.2.1 jerry@foo.com  20061213 | fourth\n'
+                                  '1.3.1 george@foo.com 20061213 | fifth\n'
+                                  '1.3.1 george@foo.com 20061213 | sixth\n',
                                   builder.get_branch(), 'a', b'rev-6',
                                   verbose=True, full=True)
 
@@ -366,11 +366,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         """
         builder = self.create_deeply_merged_trees()
 
-        self.assertBranchAnnotate(b'1     joe@foo | first\n'
-                                  b'1.1.1 barry@f | third\n'
-                                  b'1.2.1 jerry@f | fourth\n'
-                                  b'1.3.1 george@ | fifth\n'
-                                  b'              | sixth\n',
+        self.assertBranchAnnotate('1     joe@foo | first\n'
+                                  '1.1.1 barry@f | third\n'
+                                  '1.2.1 jerry@f | fourth\n'
+                                  '1.3.1 george@ | fifth\n'
+                                  '              | sixth\n',
                                   builder.get_branch(), 'a', b'rev-1_3_1',
                                   verbose=False, full=False)
 
@@ -378,21 +378,21 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder = self.create_deeply_merged_trees()
 
         # It looks better with real revision ids :)
-        self.assertBranchAnnotate(b'    rev-1 | first\n'
-                                  b'    rev-2 | second\n'
-                                  b'rev-1_1_1 | third\n'
-                                  b'rev-1_2_1 | fourth\n'
-                                  b'rev-1_3_1 | fifth\n'
-                                  b'          | sixth\n',
+        self.assertBranchAnnotate('    rev-1 | first\n'
+                                  '    rev-2 | second\n'
+                                  'rev-1_1_1 | third\n'
+                                  'rev-1_2_1 | fourth\n'
+                                  'rev-1_3_1 | fifth\n'
+                                  '          | sixth\n',
                                   builder.get_branch(), 'a', b'rev-6',
                                   show_ids=True, full=False)
 
-        self.assertBranchAnnotate(b'    rev-1 | first\n'
-                                  b'    rev-2 | second\n'
-                                  b'rev-1_1_1 | third\n'
-                                  b'rev-1_2_1 | fourth\n'
-                                  b'rev-1_3_1 | fifth\n'
-                                  b'rev-1_3_1 | sixth\n',
+        self.assertBranchAnnotate('    rev-1 | first\n'
+                                  '    rev-2 | second\n'
+                                  'rev-1_1_1 | third\n'
+                                  'rev-1_2_1 | fourth\n'
+                                  'rev-1_3_1 | fifth\n'
+                                  'rev-1_3_1 | sixth\n',
                                   builder.get_branch(), 'a', b'rev-6',
                                   show_ids=True, full=True)
 
@@ -418,15 +418,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
         revtree_2 = tree1.branch.repository.revision_tree(b'rev-2')
 
         # this passes if no exception is raised
-        to_file = BytesIO()
+        to_file = StringIO()
         annotate.annotate_file_tree(revtree_1, 'a',
             to_file=to_file, branch=tree1.branch)
 
-        sio = BytesIO()
+        sio = StringIO()
         to_file = codecs.getwriter('ascii')(sio, 'replace')
         annotate.annotate_file_tree(revtree_2, 'b',
             to_file=to_file, branch=tree1.branch)
-        self.assertEqualDiff(b'2   p?rez   | bye\n', sio.getvalue())
+        self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
         # test now with unicode file-like
         to_file = StringIOWithEncoding()
@@ -453,10 +453,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
 
-        self.assertBranchAnnotate(b'1   committ | hello\n', tree1.branch,
+        self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
             'a', b'rev-1')
 
-        self.assertBranchAnnotate(b'2   author@ | bye\n', tree1.branch,
+        self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,
             'b', b'rev-2')
 
 
