@@ -24,7 +24,7 @@ from breezy.workingtree import WorkingTree
 class TestRemerge(TestCaseWithTransport):
 
     def make_file(self, name, contents):
-        with open(name, 'wb') as f:
+        with open(name, 'w') as f:
             f.write(contents)
 
     def create_conflicts(self):

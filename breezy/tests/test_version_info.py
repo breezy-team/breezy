@@ -72,7 +72,7 @@ class VersionInfoTestCase(TestCaseWithTransport):
         self.run_bzr('merge ../other')
         wt.commit('merge', rev_id=b'merge')
 
-        wt.update(revision='o2')
+        wt.update(revision=b'o2')
 
         return wt
 

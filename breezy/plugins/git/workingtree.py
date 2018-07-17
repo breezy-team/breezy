@@ -632,12 +632,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         match = self._global_ignoreglobster.match(filename)
         if match is not None:
             return match
+        encoded_filename = filename.encode('utf-8')
         try:
             if self.kind(filename) == 'directory':
-                filename += b'/'
+                encoded_filename += b'/'
         except errors.NoSuchFile:
             pass
-        filename = filename.lstrip(b'/')
+        encoded_filename = encoded_filename.lstrip(b'/')
         ignore_manager = self._get_ignore_manager()
         ps = list(ignore_manager.find_matching(filename))
         if not ps:
