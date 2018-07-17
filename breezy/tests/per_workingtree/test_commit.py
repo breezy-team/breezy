@@ -177,7 +177,7 @@ class TestCommit(TestCaseWithWorkingTree):
         if tree.branch.repository._format.supports_setting_revision_ids:
             committed_id = tree.commit('foo', rev_id=b'foo')
             # the commit should have returned the same id we asked for.
-            self.assertEqual('foo', committed_id)
+            self.assertEqual(b'foo', committed_id)
         else:
             committed_id = tree.commit('foo')
         self.assertEqual([committed_id], tree.get_parent_ids())

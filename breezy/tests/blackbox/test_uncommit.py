@@ -106,7 +106,7 @@ class TestUncommit(TestCaseWithTransport):
         # uncommit in a checkout should uncommit the parent branch
         # (but doesn't effect the other working tree)
         self.assertEqual([b'a1'], checkout_tree.get_parent_ids())
-        self.assertEqual('a1', wt.branch.last_revision())
+        self.assertEqual(b'a1', wt.branch.last_revision())
         self.assertEqual([b'a2'], wt.get_parent_ids())
 
     def test_uncommit_bound(self):

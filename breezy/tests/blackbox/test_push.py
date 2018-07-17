@@ -235,7 +235,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
-        t.add('filename', 'funky-chars<>%&;"\'')
+        t.add('filename', b'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push -d tree new-tree')
 
@@ -633,7 +633,7 @@ class TestPush(tests.TestCaseWithTransport):
         out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
         self.assertEqual(out, ('', '1 tag updated.\n'))
         self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
-                          'somerevid')
+                          b'somerevid')
         self.assertEqual(to_tree.branch.last_revision(), revid1)
 
 
@@ -890,7 +890,7 @@ class TestPushForeign(tests.TestCaseWithTransport):
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
         builder.build_snapshot(None,
             [('add', ('', b'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', b'fooid', 'file', 'bar'))],
+             ('add', ('foo', b'fooid', 'file', b'bar'))],
             revision_id=b'revid')
         return builder
 

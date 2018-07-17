@@ -135,7 +135,8 @@ class TestPackRepository(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         # We should have a 'shared-storage' marker file.
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         self.check_databases(t)
 
     def test_shared_no_tree_disk_layout(self):
@@ -148,9 +149,11 @@ class TestPackRepository(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         # We should have a 'shared-storage' marker file.
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         # We should have a marker for the no-working-trees flag.
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        with t.get('no-working-trees') as f:
+            self.assertEqualDiff(b'', f.read())
         # The marker should go when we toggle the setting.
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))

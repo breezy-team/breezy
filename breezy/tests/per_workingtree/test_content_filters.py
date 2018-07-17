@@ -79,7 +79,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.build_tree_contents([
             (dir + '/file1.txt', b'Foo Txt'),
             (dir + '/file2.bin', b'Foo Bin')])
-        tree.add(['file1.txt', b'file2.bin'])
+        tree.add(['file1.txt', 'file2.bin'])
         tree.commit('commit raw content')
         return tree, 'file1.txt', 'file2.bin'
 

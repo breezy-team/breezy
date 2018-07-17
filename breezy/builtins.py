@@ -671,11 +671,11 @@ class cmd_revision_info(Command):
             except errors.NoSuchRevision:
                 revno = '???'
             maxlen = max(maxlen, len(revno))
-            revinfos.append([revno, revision_id])
+            revinfos.append((revno, revision_id))
 
         self.cleanup_now()
-        for ri in revinfos:
-            self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
+        for revno, revid in revinfos:
+            self.outf.write('%*s %s\n' % (maxlen, revno, revid.decode('utf-8')))
 
 
 class cmd_add(Command):
