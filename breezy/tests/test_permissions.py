@@ -85,7 +85,7 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         with open('a', 'wb') as f: f.write(b'foo\n')
         # ensure check_mode_r works with capital-letter file-ids like TREE_ROOT
-        t.add('a', 'CAPS-ID')
+        t.add('a', b'CAPS-ID')
         t.commit('foo')
 
         chmod_r('.bzr', 0o644, 0o755)

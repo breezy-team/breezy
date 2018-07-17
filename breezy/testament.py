@@ -196,7 +196,7 @@ class Testament(object):
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        return (self.short_header +
+        return (self.short_header.encode('ascii') +
                 b'revision-id: %s\n'
                 b'sha1: %s\n'
                 % (self.revision_id, self.as_sha1()))

@@ -159,8 +159,8 @@ class TestVersionInfo(TestCaseWithTransport):
                           should_not_be_called)
         self.create_tree()
         out, err = self.run_bzr('version-info --custom --template=r{revno} branch')
-        self.assertEqual(b"r2", out)
-        self.assertEqual(b"", err)
+        self.assertEqual("r2", out)
+        self.assertEqual("", err)
 
     def test_non_ascii(self):
         """Test that we can output non-ascii data"""

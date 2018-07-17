@@ -34,19 +34,19 @@ class TestTestament(TestamentSetup):
         """Testament containing a file and a directory."""
         out, err = self.run_bzr('testament --long')
         self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_2_TESTAMENT)
+        self.assertEqualDiff(out, REV_2_TESTAMENT.decode('utf-8'))
 
     def test_testament_command_2(self):
         """Command getting short testament of previous version."""
         out, err = self.run_bzr('testament -r1')
         self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT)
+        self.assertEqualDiff(out, REV_1_SHORT.decode('utf-8'))
 
     def test_testament_command_3(self):
         """Command getting short testament of previous version."""
         out, err = self.run_bzr('testament -r1 --strict')
         self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT_STRICT)
+        self.assertEqualDiff(out, REV_1_SHORT_STRICT.decode('utf-8'))
 
     def test_testament_non_ascii(self):
         self.wt.commit(u"Non \xe5ssci message")

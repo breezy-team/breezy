@@ -1600,7 +1600,8 @@ class TestControlDir(TestCaseWithControlDir):
                 self.assertEqual(f1[0], f2[0])
                 self.assertEqual(f1[2], f2[2])
                 if f1[2] == "file":
-                    osutils.compare_files(open(f1[4]), open(f2[4]))
+                    with open(f1[4], 'rb') as a, open(f2[4], 'rb') as b:
+                        osutils.compare_files(a, b)
 
     def test_upgrade_new_instance(self):
         """Does an available updater work?"""
