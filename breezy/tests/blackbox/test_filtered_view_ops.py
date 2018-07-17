@@ -170,10 +170,10 @@ class TestViewTreeOperations(tests.TestCaseWithTransport):
         tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
         out, err = self.run_bzr('pull -d tree_2 tree_1')
         self.assertEqualDiff(
-            b"Operating on whole tree but only reporting on 'my' view.\n"
-            b" M  a\n"
-            b"All changes applied successfully.\n", err)
-        self.assertEqualDiff(b"Now on revision 2.\n", out)
+            "Operating on whole tree but only reporting on 'my' view.\n"
+            " M  a\n"
+            "All changes applied successfully.\n", err)
+        self.assertEqualDiff("Now on revision 2.\n", out)
 
     def test_view_on_update(self):
         tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()

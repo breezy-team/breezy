@@ -217,7 +217,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
         try:
-            f = transport.get(urlutils.escape(name))
+            f = transport.get(name)
         except NoSuchFile:
             return None
         with f:
