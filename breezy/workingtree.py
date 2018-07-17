@@ -1285,7 +1285,7 @@ class WorkingTree(mutabletree.MutableTree,
         with self.lock_tree_write():
             un_resolved = _mod_conflicts.ConflictList()
             resolved = _mod_conflicts.ConflictList()
-            conflict_re = re.compile('^(<{7}|={7}|>{7})')
+            conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
                 path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or

@@ -562,7 +562,7 @@ class TransportTests(TestTransportImplementation):
             return
         handle = t.open_write_stream('foo')
         try:
-            self.assertEqual('', t.get_bytes('foo'))
+            self.assertEqual(b'', t.get_bytes('foo'))
         finally:
             handle.close()
 

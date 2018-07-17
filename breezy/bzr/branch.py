@@ -1090,7 +1090,7 @@ class Converter7to8(object):
 
     def convert(self, branch):
         format = BzrBranchFormat8()
-        branch._transport.put_bytes('references', '')
+        branch._transport.put_bytes('references', b'')
         # update target format
         branch._transport.put_bytes('format', format.as_string())
 

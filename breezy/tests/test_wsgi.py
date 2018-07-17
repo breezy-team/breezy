@@ -117,7 +117,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         # object in the environ dict, and returns the response via the iterable
         # returned to the WSGI handler.
         transport = memory.MemoryTransport()
-        transport.put_bytes('foo', 'some bytes')
+        transport.put_bytes('foo', b'some bytes')
         wsgi_app = wsgi.SmartWSGIApp(transport)
         wsgi_app.make_request = self._fake_make_request
         fake_input = BytesIO(b'fake request')
@@ -296,7 +296,7 @@ class FakeRequest(object):
     def __init__(self, transport, write_func):
         self.transport = transport
         self.write_func = write_func
-        self.accepted_bytes = ''
+        self.accepted_bytes = b''
 
     def accept_bytes(self, bytes):
         self.accepted_bytes = bytes

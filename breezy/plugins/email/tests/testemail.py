@@ -136,15 +136,15 @@ class TestGetTo(TestCaseInTempDir):
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
     def test_public_url_set(self):
-        config=("[DEFAULT]\n"
-                "public_branch=http://the.publication/location/\n")
+        config=(b"[DEFAULT]\n"
+                b"public_branch=http://the.publication/location/\n")
         sender = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://the.publication/location/')
 
     def test_url_precedence(self):
-        config=("[DEFAULT]\n"
-                "post_commit_url=http://some.fake/url/\n"
-                "public_branch=http://the.publication/location/\n")
+        config=(b"[DEFAULT]\n"
+                b"post_commit_url=http://some.fake/url/\n"
+                b"public_branch=http://the.publication/location/\n")
         sender = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
@@ -182,7 +182,7 @@ class TestGetTo(TestCaseInTempDir):
             timezone=0,
             committer="Sample <john@example.com>",
             )
-        sender = EmailSender(self.branch, 'A', my_config)
+        sender = EmailSender(self.branch, b'A', my_config)
         # This is usually only done after the EmailSender has locked the branch
         # and repository during send(), however, for testing, we need to do it
         # earlier, since send() is not called.

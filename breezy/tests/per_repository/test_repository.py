@@ -606,16 +606,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.addCleanup(b.unlock)
         if b.repository._format.supports_revision_signatures:
             b.repository.start_write_group()
-            b.repository.add_signature_text(rev_a, 'This might be a signature')
+            b.repository.add_signature_text(rev_a, b'This might be a signature')
             b.repository.commit_write_group()
-            self.assertEqual('This might be a signature',
+            self.assertEqual(b'This might be a signature',
                              b.repository.get_signature_text(rev_a))
         else:
             b.repository.start_write_group()
             self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
                 b.repository.add_signature_text, rev_a,
-                'This might be a signature')
+                b'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=None):

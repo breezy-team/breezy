@@ -20,6 +20,8 @@ import shutil
 import sys
 import tempfile
 
+from io import BytesIO
+
 from . import (
     builtins,
     delta,
@@ -35,9 +37,6 @@ from . import (
     workingtree,
 )
 from .i18n import gettext
-from .sixish import (
-    StringIO,
-    )
 
 
 class UseEditor(Exception):
@@ -239,7 +238,7 @@ class Shelver(object):
             as removals, removals displayed as insertions).
         :return: A patches.Patch.
         """
-        diff_file = StringIO()
+        diff_file = BytesIO()
         if invert:
             old_tree = self.work_tree
             new_tree = self.target_tree
@@ -248,8 +247,9 @@ class Shelver(object):
             new_tree = self.work_tree
         old_path = old_tree.id2path(file_id)
         new_path = new_tree.id2path(file_id)
+        path_encoding = osutils.get_terminal_encoding()
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
-            path_encoding=osutils.get_terminal_encoding())
+            path_encoding=path_encoding)
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)

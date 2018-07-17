@@ -67,8 +67,8 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         child_tree.commit('foo', rev_id=b'foo', allow_pointless=True, local=True)
         # commit to the master making the child tree out of date and not a prefix.
         master_tree.commit('bar', rev_id=b'bar', allow_pointless=True)
-        self.assertEqual('foo', child_tree.branch.update())
-        self.assertEqual('bar', child_tree.branch.last_revision())
+        self.assertEqual(b'foo', child_tree.branch.update())
+        self.assertEqual(b'bar', child_tree.branch.last_revision())
 
     def test_update_in_checkout_of_readonly(self):
         tree1 = self.make_branch_and_tree('tree1')

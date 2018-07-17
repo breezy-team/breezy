@@ -31,6 +31,7 @@ from ... import (
     msgeditor,
     )
 from ...controldir import ControlDir
+from ...sixish import PY3
 from .. import (
     test_foreign,
     features,
@@ -145,7 +146,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
         te = osutils.get_terminal_encoding()
-        self.assertContainsRe(err.decode(te),
+        self.assertContainsRe(err if PY3 else err.decode(te),
             u'The commit message is a file name:',
             flags=reflags)
 
@@ -164,7 +165,7 @@ brz: ERROR: No changes to commit.\
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
             te = osutils.get_terminal_encoding()
-            self.assertContainsRe(err.decode(te, 'replace'),
+            self.assertContainsRe(err if PY3 else err.decode(te, 'replace'),
                 u'The commit message is a file name:',
                 flags=reflags)
         finally:

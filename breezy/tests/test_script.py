@@ -143,18 +143,18 @@ class TestRedirections(tests.TestCase):
         self._check('foo', None, None, ['bar', 'baz'], ['bar', '<foo', 'baz'])
 
     def test_output_redirection(self):
-        self._check(None, 'foo', 'wb+', [], ['>foo'])
-        self._check(None, 'foo', 'wb+', ['bar'], ['bar', '>foo'])
-        self._check(None, 'foo', 'wb+', ['bar'], ['bar', '>', 'foo'])
-        self._check(None, 'foo', 'ab+', [], ['>>foo'])
-        self._check(None, 'foo', 'ab+', ['bar'], ['bar', '>>foo'])
-        self._check(None, 'foo', 'ab+', ['bar'], ['bar', '>>', 'foo'])
+        self._check(None, 'foo', 'w+', [], ['>foo'])
+        self._check(None, 'foo', 'w+', ['bar'], ['bar', '>foo'])
+        self._check(None, 'foo', 'w+', ['bar'], ['bar', '>', 'foo'])
+        self._check(None, 'foo', 'a+', [], ['>>foo'])
+        self._check(None, 'foo', 'a+', ['bar'], ['bar', '>>foo'])
+        self._check(None, 'foo', 'a+', ['bar'], ['bar', '>>', 'foo'])
 
     def test_redirection_syntax_errors(self):
         self._check('', None, None, [], ['<'])
-        self._check(None, '', 'wb+', [], ['>'])
-        self._check(None, '', 'ab+', [], ['>>'])
-        self._check('>', '', 'ab+', [], ['<', '>', '>>'])
+        self._check(None, '', 'w+', [], ['>'])
+        self._check(None, '', 'a+', [], ['>>'])
+        self._check('>', '', 'a+', [], ['<', '>', '>>'])
 
 
 
@@ -317,7 +317,7 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.build_tree_contents([('file', b'content\n')])
         retcode, out, err = self.run_command(['cat', 'file'],
                                              None, 'content\n', None)
-        self.assertEqual(b'content\n', out)
+        self.assertEqual('content\n', out)
         self.assertEqual(None, err)
 
     def test_cat_input_to_file(self):

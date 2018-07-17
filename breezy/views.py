@@ -230,7 +230,7 @@ class PathBasedViews(_Views):
         if not match:
             raise ValueError(
                 "format marker missing from top of views file")
-        elif match.group(1) != '1':
+        elif match.group(1) != b'1':
             raise ValueError(
                 "cannot decode views format %s" % match.group(1))
         try:

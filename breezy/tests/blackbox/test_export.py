@@ -207,7 +207,7 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export test.zip')
         zfile = zipfile.ZipFile('test.zip')
         # all paths are prefixed with the base name of the zipfile
-        self.assertEqual(['test/' + fname.encode('utf8')],
+        self.assertEqual(['test/' + fname],
                          sorted(zfile.namelist()))
 
     def test_zip_export_directories(self):

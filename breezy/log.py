@@ -1587,10 +1587,10 @@ class LongLogFormatter(LogFormatter):
         if revision.tags:
             lines.append('tags: %s' % (', '.join(sorted(revision.tags))))
         if self.show_ids or revision.revno is None:
-            lines.append('revision-id: %s' % (revision.rev.revision_id,))
+            lines.append('revision-id: %s' % (revision.rev.revision_id.decode('utf-8'),))
         if self.show_ids:
             for parent_id in revision.rev.parent_ids:
-                lines.append('parent: %s' % (parent_id,))
+                lines.append('parent: %s' % (parent_id.decode('utf-8'),))
         lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer

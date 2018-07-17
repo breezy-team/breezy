@@ -156,7 +156,7 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
                   allow_binary=True)
     temp.seek(0)
     base64.encode(temp, to_file)
-    to_file.write('\n')
+    to_file.write(b'\n')
 
 serializer_registry.register_lazy('0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
 serializer_registry.register_lazy('0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')

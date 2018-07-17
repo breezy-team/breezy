@@ -48,17 +48,17 @@ class Template(object):
 
     >>> t = Template()
     >>> t.add('test', 'xxx')
-    >>> print list(t.process('{test}'))
+    >>> print(list(t.process('{test}')))
     ['xxx']
-    >>> print list(t.process('{test} test'))
+    >>> print(list(t.process('{test} test')))
     ['xxx', ' test']
-    >>> print list(t.process('test {test}'))
+    >>> print(list(t.process('test {test}')))
     ['test ', 'xxx']
-    >>> print list(t.process('test {test} test'))
+    >>> print(list(t.process('test {test} test')))
     ['test ', 'xxx', ' test']
-    >>> print list(t.process('{test}\\\\n'))
+    >>> print(list(t.process('{test}\\\\n')))
     ['xxx', '\\n']
-    >>> print list(t.process('{test}\\n'))
+    >>> print(list(t.process('{test}\\n')))
     ['xxx', '\\n']
     """
 

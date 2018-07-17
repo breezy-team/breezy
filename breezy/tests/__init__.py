@@ -2245,8 +2245,8 @@ class TestCase(testtools.TestCase):
         out, err = process.communicate()
 
         if universal_newlines:
-            out = out.replace('\r\n', '\n')
-            err = err.replace('\r\n', '\n')
+            out = out.replace(b'\r\n', b'\n')
+            err = err.replace(b'\r\n', b'\n')
 
         if retcode is not None and retcode != process.returncode:
             if process_args is None:

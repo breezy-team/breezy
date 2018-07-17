@@ -110,7 +110,7 @@ class SSHVendorManager(object):
             stdout, stderr = p.communicate()
         except OSError:
             stdout = stderr = b''
-        return stdout + stderr
+        return (stdout + stderr).decode(osutils.get_terminal_encoding())
 
     def _get_vendor_by_version_string(self, version, progname):
         """Return the vendor or None based on output from the subprocess.

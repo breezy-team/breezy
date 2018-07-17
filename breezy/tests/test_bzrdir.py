@@ -307,7 +307,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format_unknown_format(self):
         t = self.get_transport()
         t.mkdir('.bzr')
-        t.put_bytes('.bzr/branch-format', '')
+        t.put_bytes('.bzr/branch-format', b'')
         self.assertRaises(UnknownFormatError,
                           bzrdir.BzrDirFormat.find_format,
                           _mod_transport.get_transport_from_path('.'))

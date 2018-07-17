@@ -70,8 +70,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
 
     to_file.write("  Python standard library:" + ' ')
     to_file.write(os.path.dirname(os.__file__) + '\n')
-    to_file.write("  Platform: %s\n"
-                  % platform.platform(aliased=1).decode('utf-8'))
+    platform_str = platform.platform(aliased=1)
+    if not isinstance(platform_str, text_type):
+        platform_str = platform_str.decode('utf-8')
+    to_file.write("  Platform: %s\n" % platform_str)
     to_file.write("  breezy: ")
     if len(breezy.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's

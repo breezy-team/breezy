@@ -19,6 +19,7 @@ import os
 
 from breezy import (
     merge,
+    osutils,
     tests,
     )
 from breezy.tests import (
@@ -70,7 +71,7 @@ $ brz merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2>2 conflicts encountered.
 """)
         # Fix the conflicts in the .pot file
-        with open('po/adduser.pot', 'w') as f:
+        with open('po/adduser.pot', 'wb') as f:
             f.write(_Adduser['resolved_pot'])
         # Tell brz the conflict is resolved
         self.run_script("""\
@@ -150,7 +151,7 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # beginning of the file.
 
 _Adduser = dict(
-    base_pot = br"""# SOME DESCRIPTIVE TITLE.
+    base_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -177,8 +178,8 @@ msgstr ""
 msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
-""",
-    this_pot = br"""# SOME DESCRIPTIVE TITLE.
+"""),
+    this_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -212,8 +213,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""",
-    other_pot = br"""# SOME DESCRIPTIVE TITLE.
+"""),
+    other_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -247,8 +248,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""",
-    resolved_pot = br"""# SOME DESCRIPTIVE TITLE.
+"""),
+    resolved_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -282,8 +283,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""",
-    base_po = br"""# adduser's manpages translation to French
+"""),
+    base_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -318,8 +319,8 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""",
-    this_po = br"""# adduser's manpages translation to French
+"""),
+    this_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -361,8 +362,8 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""",
-    other_po = br"""# adduser's manpages translation to French
+"""),
+    other_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -404,8 +405,8 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""",
-    resolved_po = br"""# adduser's manpages translation to French
+"""),
+    resolved_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -447,5 +448,5 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""",
+"""),
 )

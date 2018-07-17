@@ -1734,7 +1734,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
         self.build_tree_contents([('foo', b'')])
-        expected_sha = osutils.sha_string('')
+        expected_sha = osutils.sha_string(b'')
         f = open('foo')
         self.addCleanup(f.close)
         size, sha = osutils.size_sha_file(f)
@@ -1756,7 +1756,7 @@ class TestShaFileByName(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
         self.build_tree_contents([('foo', b'')])
-        expected_sha = osutils.sha_string('')
+        expected_sha = osutils.sha_string(b'')
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
     def test_sha_mixed_endings(self):

@@ -394,16 +394,16 @@ class TestExternalDiff(DiffBase):
             retcode=None)
         if b'Diff is not installed on this machine' in err:
             raise tests.TestSkipped("No external 'diff' is available")
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
         self.assertStartsWith(
             out,
-            "=== added file 'goodbye'\n"
-            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
-            "+++ new/goodbye\t")
-        self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
-                                 "+baz\n\n")
+            b"=== added file 'goodbye'\n"
+            b"--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            b"+++ new/goodbye\t")
+        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n"
+                                 b"+baz\n\n")
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process"""

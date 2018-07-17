@@ -36,15 +36,16 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
+from ..sixish import unichr
 from ..errors import BzrError
 
 
 _xml_unescape_map = {
-    'apos':"'",
-    'quot':'"',
-    'amp':'&',
-    'lt':'<',
-    'gt':'>'
+    b'apos':b"'",
+    b'quot':b'"',
+    b'amp':b'&',
+    b'lt':b'<',
+    b'gt':b'>'
 }
 
 
