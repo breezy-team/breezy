@@ -128,10 +128,10 @@ class TestInventoryReads(TestInventory):
         inv = self.make_init_inventory()
         self.assertTrue(inv.is_root(b'tree-root'))
         self.assertFalse(inv.is_root(b'booga'))
-        ie = inv.get_entry('tree-root').copy()
-        ie.file_id = 'booga'
-        inv = inv.create_by_apply_delta([("", None, "tree-root", None),
-                                         (None, "", "booga", ie)], 'new-rev-2')
+        ie = inv.get_entry(b'tree-root').copy()
+        ie.file_id = b'booga'
+        inv = inv.create_by_apply_delta([("", None, b"tree-root", None),
+                                         (None, "", b"booga", ie)], b'new-rev-2')
         self.assertFalse(inv.is_root(b'TREE_ROOT'))
         self.assertTrue(inv.is_root(b'booga'))
 

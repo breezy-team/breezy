@@ -7554,6 +7554,8 @@ breezy.tests.per_inventory.basics.TestInventoryFiltering.test_inv_filter_entry_n
 breezy.tests.per_inventory.basics.TestInventoryFiltering.test_inv_filter_files_and_dirs(Inventory)
 breezy.tests.per_inventory.basics.TestInventoryFiltering.test_inv_filter_files(Inventory)
 breezy.tests.per_inventory.basics.TestInventoryReads.test_ids(Inventory)
+breezy.tests.per_inventory.basics.TestInventoryReads.test_is_root(CHKInventory)
+breezy.tests.per_inventory.basics.TestInventoryReads.test_is_root(Inventory)
 breezy.tests.per_inventory.basics.TestInventoryReads.test_iter_entries_by_dir(Inventory)
 breezy.tests.per_inventory.basics.TestInventoryReads.test_iter_entries(Inventory)
 breezy.tests.per_inventory.basics.TestInventoryReads.test_iter_just_entries(Inventory)
