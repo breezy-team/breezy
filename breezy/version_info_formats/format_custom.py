@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import
 
+import codecs
+
 from breezy import errors
 from breezy.revision import (
    NULL_REVISION,
@@ -71,7 +73,8 @@ class Template(object):
         self._data[name] = value
 
     def process(self, tpl):
-        tpl = tpl.decode('string_escape')
+        unicode_escape = codecs.getdecoder("unicode_escape")
+        tpl = unicode_escape(tpl)[0]
         pos = 0
         while True:
             match = self._tag_re.search(tpl, pos)
@@ -112,7 +115,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
                 info.add('revno', self._get_revno_str(revision_id))
             except errors.GhostRevisionsHaveNoRevno:
                 pass
-            info.add('revision_id', revision_id)
+            info.add('revision_id', revision_id.decode('utf-8'))
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
 
