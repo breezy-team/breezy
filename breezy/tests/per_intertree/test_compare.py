@@ -704,7 +704,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         expected_result = sorted([self.added(tree2, b'root-id'),
             self.added(tree2, b'a-id'), self.added(tree2, b'b-id'),
-            self.added(tree2, b'c-id'), self.deleted(tree1, 'empty-root-id')])
+            self.added(tree2, b'c-id'), self.deleted(tree1, b'empty-root-id')])
         self.assertEqual(expected_result,
             self.do_iter_changes(tree1, tree2, specific_files=['a', 'b/c']))
 
@@ -1426,15 +1426,15 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.path2id('')
         expected = [
             self.unchanged(tree1, tree1.path2id('')),
-            self.added(tree2, 'added'),
+            self.added(tree2, b'added'),
             self.content_changed(tree2, 'changed'),
-            self.kind_changed(tree1, tree2, 'fromdir'),
-            self.kind_changed(tree1, tree2, 'fromfile'),
-            self.deleted(tree1, 'removed'),
-            self.unchanged(tree2, 'unchanged'),
+            self.kind_changed(tree1, tree2, b'fromdir'),
+            self.kind_changed(tree1, tree2, b'fromfile'),
+            self.deleted(tree1, b'removed'),
+            self.unchanged(tree2, b'unchanged'),
             self.unversioned(tree2, 'unknown'),
-            self.kind_changed(tree1, tree2, 'todir'),
-            self.kind_changed(tree1, tree2, 'tofile'),
+            self.kind_changed(tree1, tree2, b'todir'),
+            self.kind_changed(tree1, tree2, b'tofile'),
             ]
         expected = sorted(expected)
         self.assertEqual(expected,
@@ -1447,13 +1447,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.make_trees_with_symlinks()
         root_id = tree1.path2id('')
         expected = [
-            self.added(tree2, 'added'),
+            self.added(tree2, b'added'),
             self.content_changed(tree2, 'changed'),
-            self.kind_changed(tree1, tree2, 'fromdir'),
-            self.kind_changed(tree1, tree2, 'fromfile'),
-            self.deleted(tree1, 'removed'),
-            self.kind_changed(tree1, tree2, 'todir'),
-            self.kind_changed(tree1, tree2, 'tofile'),
+            self.kind_changed(tree1, tree2, b'fromdir'),
+            self.kind_changed(tree1, tree2, b'fromfile'),
+            self.deleted(tree1, b'removed'),
+            self.kind_changed(tree1, tree2, b'todir'),
+            self.kind_changed(tree1, tree2, b'tofile'),
             ]
         expected = sorted(expected)
         # we should get back just the changed links. We pass in 'unchanged' to
