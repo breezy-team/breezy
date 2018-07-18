@@ -1900,7 +1900,7 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        for name in _listdir(top):
             try:
                 name_utf8 = _utf8_encode(name)[0]
             except UnicodeDecodeError:
@@ -1910,7 +1910,7 @@ class UnicodeDirReader(DirReader):
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        return dirblock
+        return sorted(dirblock)
 
 
 def copy_tree(from_path, to_path, handlers={}):
