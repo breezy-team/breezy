@@ -554,7 +554,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
         source.tags.set_tag('tag-a', rev2)
-        source.tags.set_tag('tag-missing', 'missing-rev')
+        source.tags.set_tag('tag-missing', b'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])

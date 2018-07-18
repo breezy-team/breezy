@@ -111,9 +111,9 @@ class _RpcHelper(object):
 def response_tuple_to_repo_format(response):
     """Convert a response tuple describing a repository format to a format."""
     format = RemoteRepositoryFormat()
-    format._rich_root_data = (response[0] == 'yes')
-    format._supports_tree_reference = (response[1] == 'yes')
-    format._supports_external_lookups = (response[2] == 'yes')
+    format._rich_root_data = (response[0] == b'yes')
+    format._supports_tree_reference = (response[1] == b'yes')
+    format._supports_external_lookups = (response[2] == b'yes')
     format._network_name = response[3]
     return format
 

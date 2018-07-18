@@ -30,7 +30,10 @@ from .controldir import ControlDir, is_control_filename
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
-from .sixish import StringIO
+from .sixish import (
+    StringIO,
+    text_type,
+    )
 from .trace import warning
 from .transform import TreeTransform, resolve_conflicts, cook_conflicts
 from .transport import get_transport
@@ -252,7 +255,9 @@ def import_archive_to_transform(tree, archive_file, tt):
         # Inverse functionality in bzr uses utf-8.  We could also
         # interpret relative to fs encoding, which would match native
         # behaviour better.
-        relative_path = member.name.decode('utf-8')
+        relative_path = member.name
+        if not isinstance(relative_path, text_type):
+            relative_path = relative_path.decode('utf-8')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
             relative_path = relative_path.rstrip('/')
