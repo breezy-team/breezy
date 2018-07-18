@@ -1546,9 +1546,13 @@ breezy.tests.blackbox.test_config.TestWithoutConfig.test_remove_unknown_option
 breezy.tests.blackbox.test_config.TestWithoutConfig.test_unexpected_regexp
 breezy.tests.blackbox.test_config.TestWithoutConfig.test_unknown_option
 breezy.tests.blackbox.test_config.TestWithoutConfig.test_wrong_regexp
+breezy.tests.blackbox.test_conflicts.TestConflicts.test_conflicts
+breezy.tests.blackbox.test_conflicts.TestConflicts.test_conflicts_directory
 breezy.tests.blackbox.test_conflicts.TestConflicts.test_conflicts_text
 breezy.tests.blackbox.test_conflicts.TestUnicodePathsOnAsciiTerminal.test_messages
 breezy.tests.blackbox.test_conflicts.TestUnicodePathsOnAsciiTerminal.test_text_conflict_paths
+breezy.tests.blackbox.test_conflicts.TestUnicodePaths.test_messages
+breezy.tests.blackbox.test_conflicts.TestUnicodePaths.test_text_conflict_paths
 breezy.tests.blackbox.test_cp.TestCopy.test_cp_dir
 breezy.tests.blackbox.test_cp.TestCopy.test_cp_file
 breezy.tests.blackbox.test_cp.TestCopy.test_cp_file_into
@@ -2430,6 +2434,7 @@ breezy.tests.blackbox.test_too_much.HTTPTests.test_push
 breezy.tests.blackbox.test_too_much.SFTPTestsAbsoluteSibling.test_push
 breezy.tests.blackbox.test_too_much.SFTPTestsAbsolute.test_push
 breezy.tests.blackbox.test_too_much.SFTPTestsRelative.test_push
+breezy.tests.blackbox.test_too_much.TestCommands.test_conflicts
 breezy.tests.blackbox.test_too_much.TestCommands.test_external_command
 breezy.tests.blackbox.test_too_much.TestCommands.test_invalid_commands
 breezy.tests.blackbox.test_too_much.TestCommands.test_locations
@@ -21199,8 +21204,14 @@ breezy.tests.test_conflicts.TestPerConflict.test_stanza_roundtrip(TextConflict)
 breezy.tests.test_conflicts.TestPerConflict.test_stanza_roundtrip(UnversionedParent)
 breezy.tests.test_conflicts.TestPerConflict.test_stanzification(TextConflict)
 breezy.tests.test_conflicts.TestPerConflict.test_stringification(ContentsConflict)
+breezy.tests.test_conflicts.TestPerConflict.test_stringification(DuplicateEntry)
+breezy.tests.test_conflicts.TestPerConflict.test_stringification(DuplicateID)
+breezy.tests.test_conflicts.TestPerConflict.test_stringification(MissingParent)
+breezy.tests.test_conflicts.TestPerConflict.test_stringification(NonDirectoryParent)
+breezy.tests.test_conflicts.TestPerConflict.test_stringification(ParentLoop)
 breezy.tests.test_conflicts.TestPerConflict.test_stringification(PathConflict)
 breezy.tests.test_conflicts.TestPerConflict.test_stringification(TextConflict)
+breezy.tests.test_conflicts.TestPerConflict.test_stringification(UnversionedParent)
 breezy.tests.test_conflicts.TestResolveActionOption.test_done
 breezy.tests.test_conflicts.TestResolveActionOption.test_take_other
 breezy.tests.test_conflicts.TestResolveActionOption.test_take_this
@@ -21234,6 +21245,7 @@ breezy.tests.test_conflicts.TestResolveMissingParent.test_adopt_child
 breezy.tests.test_conflicts.TestResolveMissingParent.test_keep_them_all
 breezy.tests.test_conflicts.TestResolveMissingParent.test_kill_them_all
 breezy.tests.test_conflicts.TestResolveMissingParent.test_resolve_taking_other
+breezy.tests.test_conflicts.TestResolveMissingParent.test_resolve_taking_this
 breezy.tests.test_conflicts.TestResolvePathConflictBefore531967.test_resolve_taking_other(dir_deleted,dir_renamed)
 breezy.tests.test_conflicts.TestResolvePathConflictBefore531967.test_resolve_taking_other(dir_renamed2,dir_renamed)
 breezy.tests.test_conflicts.TestResolvePathConflictBefore531967.test_resolve_taking_other(dir_renamed,dir_deleted)
@@ -26410,6 +26422,7 @@ breezy.tests.test_transform.TestTreeTransform.test_reuse_name
 breezy.tests.test_transform.TestTreeTransform.test_reuse_when_first_moved
 breezy.tests.test_transform.TestTreeTransform.test_rollback_on_directory_clash
 breezy.tests.test_transform.TestTreeTransform.test__set_mode_stats_correctly
+breezy.tests.test_transform.TestTreeTransform.test_string_conflicts
 breezy.tests.test_transform.TestTreeTransform.test_symlinks
 breezy.tests.test_transform.TestTreeTransform.test_symlinks_unicode
 breezy.tests.test_transform.TestTreeTransform.test_tree_reference

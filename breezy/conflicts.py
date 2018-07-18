@@ -402,6 +402,9 @@ class Conflict(object):
     def __unicode__(self):
         return self.describe()
 
+    def __str__(self):
+        return self.describe()
+
     def describe(self):
         return self.format % self.__dict__
 
