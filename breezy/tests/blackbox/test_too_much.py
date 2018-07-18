@@ -365,7 +365,7 @@ class OldTests(TestCaseWithTransport):
         progress("status of new file")
 
         with open('test.txt', 'wt') as f:
-            f.write(b'hello world!\n')
+            f.write('hello world!\n')
 
         self.assertEqual(self.run_bzr('unknowns')[0], 'test.txt\n')
 

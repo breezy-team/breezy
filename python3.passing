@@ -2536,6 +2536,7 @@ breezy.tests.blackbox.test_whoami.TestWhoami.test_whoami_no_args_no_conf
 breezy.tests.blackbox.test_whoami.TestWhoami.test_whoami_nonbranch_directory
 breezy.tests.blackbox.test_whoami.TestWhoami.test_whoami_not_set
 breezy.tests.blackbox.test_whoami.TestWhoami.test_whoami_remote_directory
+breezy.tests.blackbox.test_whoami.TestWhoami.test_whoami_utf8
 breezy.tests.commands.test_branch.TestBranch.test_branch_local_remote
 breezy.tests.commands.test_branch.TestBranch.test_branch_remote_local
 breezy.tests.commands.test_branch.TestBranch.test_branch_remote_remote
