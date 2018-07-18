@@ -74,7 +74,8 @@ update-python3-passing:
 	  subunit-ls --no-passthrough >> python3.passing.new
 	cp python3.passing python3.passing.old
 	grep "^#" python3.passing.old > python3.passing
-	sort -u python3.passing.new >> python3.passing
+	grep -Fvxf python3.flapping python3.passing.new > python3.passing.new.solid
+	sort -u python3.passing.new.solid >> python3.passing
 
 check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
