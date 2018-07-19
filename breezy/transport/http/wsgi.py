@@ -22,9 +22,8 @@ For more information about WSGI, see PEP 333:
 
 from __future__ import absolute_import
 
-from ...sixish import (
-    BytesIO,
-    )
+from io import BytesIO
+
 from ...bzr.smart import medium
 from ...transport import chroot, get_transport
 from ...urlutils import local_path_to_url
