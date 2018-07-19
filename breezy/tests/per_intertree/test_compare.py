@@ -916,7 +916,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # When an old parent included because of a path conflict is removed,
         # its children have to be all included in the delta.
         tree1 = self.make_branch_and_tree('1')
-        tree1.mkdir('a', 'a-old-id')
+        tree1.mkdir('a', b'a-old-id')
         tree1.mkdir('a/reparented', b'reparented-id')
         tree1.mkdir('a/deleted', b'deleted-id')
         tree2 = self.make_to_branch_and_tree('2')

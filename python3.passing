@@ -22831,6 +22831,7 @@ breezy.tests.test_filter_tree.TestFilterTree.test_tar_export_content_filter_tree
 breezy.tests.test_filter_tree.TestFilterTree.test_zip_export_content_filter_tree
 breezy.tests.test_foreign.DummyForeignVcsTests.test_create
 breezy.tests.test_foreign.DummyForeignVcsTests.test_lossy_push_empty
+breezy.tests.test_foreign.DummyForeignVcsTests.test_lossy_push_simple
 breezy.tests.test_foreign.DummyForeignVcsTests.test_push_not_supported
 breezy.tests.test_foreign.DummyForeignVcsTests.test_sprout
 breezy.tests.test_foreign.ForeignRevisionTests.test_create
