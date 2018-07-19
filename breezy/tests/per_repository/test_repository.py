@@ -45,6 +45,7 @@ from ...bzr import (
 from ...sixish import (
     BytesIO,
     text_type,
+    unichr,
     )
 from .. import (
     per_repository,

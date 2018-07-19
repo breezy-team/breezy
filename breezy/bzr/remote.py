@@ -3619,6 +3619,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._real_branch.get_stacked_on_url()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+        if sys.version_info[0] == 3:
+            return response[1].decode('utf-8')
         return response[1]
 
     def set_stacked_on_url(self, url):
