@@ -462,7 +462,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         a_rev = tree.commit('initial empty commit', allow_pointless=True)
         b_rev = tree.commit('second empty commit', allow_pointless=True)
         c_rev = tree.commit('third empty commit', allow_pointless=True)
-        d_rev = 'd-rev'
+        d_rev = b'd-rev'
         repo = tree.branch.repository
         revision_ids = [a_rev, c_rev, b_rev, d_rev]
         revid_with_rev = repo.iter_revisions(revision_ids)

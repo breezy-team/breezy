@@ -321,7 +321,7 @@ class LocalGitRepository(GitRepository):
         for (file_id, revision_id, identifier) in desired_files:
             per_revision.setdefault(revision_id, []).append(
                 (file_id, identifier))
-        for revid, files in viewitmes(per_revision):
+        for revid, files in viewitems(per_revision):
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             except errors.NoSuchRevision:
@@ -345,9 +345,9 @@ class LocalGitRepository(GitRepository):
                 except KeyError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 else:
-                    if obj.type_name == "tree":
+                    if obj.type_name == b"tree":
                         yield (identifier, [])
-                    elif obj.type_name == "blob":
+                    elif obj.type_name == b"blob":
                         yield (identifier, obj.chunked)
                     else:
                         raise AssertionError("file text resolved to %r" % obj)
@@ -358,7 +358,7 @@ class LocalGitRepository(GitRepository):
         revs = []
         for sha in self._git.object_store:
             o = self._git.object_store[sha]
-            if o.type_name == "commit":
+            if o.type_name == b"commit":
                 revs.append(o.id)
         result['revisions'] = len(revs)
         return result
