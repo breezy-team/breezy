@@ -68,7 +68,7 @@ class ZipFileWrapper(object):
             yield ZipInfoWrapper(self.zipfile, info)
 
     def extractfile(self, infowrapper):
-        return StringIO(self.zipfile.read(infowrapper.name))
+        return BytesIO(self.zipfile.read(infowrapper.name))
 
     def add(self, filename):
         if isdir(filename):
@@ -327,7 +327,7 @@ def do_import(source, tree_directory=None):
             archive, external_compressor = get_archive_type(source)
         except NotArchiveType:
             if file_kind(source) == 'directory':
-                s = StringIO(source)
+                s = BytesIO(source)
                 s.seek(0)
                 import_dir(tree, s)
             else:

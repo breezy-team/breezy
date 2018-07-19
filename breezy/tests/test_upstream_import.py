@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from ..sixish import StringIO
+from io import BytesIO
 from shutil import rmtree, copy2, copytree
 import tarfile
 import tempfile
@@ -96,7 +96,7 @@ class TestImport(TestCaseInTempDir):
         return self.make_archive(maker)
 
     def make_archive(self, maker, subdir=True):
-        result = StringIO()
+        result = BytesIO()
         archive_file = maker(result)
         try:
             os.mkdir('project-0.1')
@@ -126,7 +126,7 @@ class TestImport(TestCaseInTempDir):
         return result
 
     def make_archive2(self, builder, subdir):
-        result = StringIO()
+        result = BytesIO()
         archive_file = builder(result)
         os.mkdir('project-0.2')
         try:
@@ -157,7 +157,7 @@ class TestImport(TestCaseInTempDir):
         return result
 
     def make_messed_tar(self):
-        result = StringIO()
+        result = BytesIO()
         with tarfile.open('project-0.1.tar', 'w', result) as tar_file:
             os.mkdir('project-0.1')
             tar_file.add('project-0.1')
@@ -178,7 +178,7 @@ class TestImport(TestCaseInTempDir):
         return self.make_archive(maker)
 
     def make_tar_with_bzrdir(self):
-        result = StringIO()
+        result = BytesIO()
         with tarfile.open('tar-with-bzrdir.tar', 'w', result) as tar_file:
             os.mkdir('toplevel-dir')
             tar_file.add('toplevel-dir')
@@ -280,7 +280,7 @@ class TestImport(TestCaseInTempDir):
 class TestWithStuff(TestCaseWithTransport):
 
     def transform_to_tar(self, tt):
-        stream = StringIO()
+        stream = BytesIO()
         export(tt.get_preview_tree(), root='', fileobj=stream, format='tar',
                dest=None)
         return stream
