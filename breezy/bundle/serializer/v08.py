@@ -463,7 +463,7 @@ class BundleReader(object):
                     value = value.encode('utf8')
                 elif key in ('parent_ids'):
                     value = [v.encode('utf8') for v in value]
-                elif key in ('testament_sha1'):
+                elif key in ('testament_sha1', 'inventory_sha1', 'sha1'):
                     value = value.encode('ascii')
                 setattr(revision_info, key, value)
             else:
