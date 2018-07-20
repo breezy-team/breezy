@@ -1537,12 +1537,12 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(transport.base)
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         # XXX: Multiple calls are bad, this second call documents what is
         # today.
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo_fmt = remote.RemoteRepositoryFormat()

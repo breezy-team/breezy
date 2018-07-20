@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import errno
+from io import BytesIO
 import os
 import re
 import stat
@@ -31,7 +32,6 @@ from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .sixish import (
-    StringIO,
     text_type,
     )
 from .trace import warning
@@ -340,10 +340,10 @@ def do_import(source, tree_directory=None):
                     tar_input = open_from_url(source)
                     if external_compressor == 'bz2':
                         import bz2
-                        tar_input = StringIO(bz2.decompress(tar_input.read()))
+                        tar_input = BytesIO(bz2.decompress(tar_input.read()))
                     elif external_compressor == 'lzma':
                         import lzma
-                        tar_input = StringIO(lzma.decompress(tar_input.read()))
+                        tar_input = BytesIO(lzma.decompress(tar_input.read()))
                 except IOError as e:
                     if e.errno == errno.ENOENT:
                         raise NoSuchFile(source)
