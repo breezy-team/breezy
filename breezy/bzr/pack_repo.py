@@ -66,6 +66,8 @@ from ..bzr.repository import (
     )
 from ..sixish import (
     reraise,
+    text_type,
+    viewitems,
     )
 from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
@@ -1081,7 +1083,7 @@ class RepositoryPackCollection(object):
             self._names = {}
             self._packs_at_load = set()
             for index, key, value in self._iter_disk_pack_index():
-                name = key[0].decode()
+                name = key[0].decode('ascii')
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
             result = True
@@ -1337,7 +1339,7 @@ class RepositoryPackCollection(object):
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in self._names.items():
+        for name, sizes in viewitems(self._names):
             current_nodes.add(
                 ((name.encode(), ), b' '.join(b'%d' % size for size in sizes)))
 

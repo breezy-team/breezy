@@ -540,7 +540,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.build_tree(['tree/filename'])
         if not from_tree.supports_setting_file_ids():
             raise TestNotApplicable('from tree format can not create custom file ids')
-        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.add('filename', b'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
         try:
