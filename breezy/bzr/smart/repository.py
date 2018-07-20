@@ -918,7 +918,8 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             # bzip needed? missing keys should typically be a small set.
             # Should this be a streaming body response ?
             missing_keys = sorted(missing_keys)
-            bytes = bencode.bencode((write_group_tokens, missing_keys))
+            bytes = bencode.bencode((
+                [token.encode('utf-8') for token in write_group_tokens], missing_keys))
             self.repository.unlock()
             return SuccessfulSmartServerResponse((b'missing-basis', bytes))
         else:

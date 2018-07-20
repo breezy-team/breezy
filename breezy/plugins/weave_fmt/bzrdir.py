@@ -557,7 +557,7 @@ class ConvertBzrDir6ToMeta(Converter):
         ui.ui_factory.note(gettext('starting upgrade from format 6 to metadir'))
         self.controldir.transport.put_bytes(
                 'branch-format',
-                "Converting to format 6",
+                b"Converting to format 6",
                 mode=self.file_mode)
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
