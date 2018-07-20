@@ -403,7 +403,10 @@ class RemoteTransport(transport.ConnectedTransport):
                 #       not have a real string.
                 if key == cur_offset_and_size:
                     yield cur_offset_and_size[0], this_data
-                    cur_offset_and_size = next_offset[0] = next(offset_stack)
+                    try:
+                        cur_offset_and_size = next_offset[0] = next(offset_stack)
+                    except StopIteration:
+                        return
                 else:
                     data_map[key] = this_data
             data_offset += c_offset.length

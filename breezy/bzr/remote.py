@@ -2000,7 +2000,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         prev_inv = Inventory(root_id=None,
             revision_id=_mod_revision.NULL_REVISION)
         # there should be just one substream, with inventory deltas
-        substream_kind, substream = next(stream)
+        try:
+            substream_kind, substream = next(stream)
+        except StopIteration:
+            return
         if substream_kind != "inventory-deltas":
             raise AssertionError(
                  "Unexpected stream %r received" % substream_kind)
@@ -2240,7 +2243,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         unused = b""
         while True:
             while not b"\n" in unused:
-                unused += next(byte_stream)
+                try:
+                    unused += next(byte_stream)
+                except StopIteration:
+                    return
             header, rest = unused.split(b"\n", 1)
             args = header.split(b"\0")
             if args[0] == b"absent":
