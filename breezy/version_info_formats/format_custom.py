@@ -26,6 +26,7 @@ from breezy.revision import (
    NULL_REVISION,
    )
 from breezy.lazy_regex import lazy_compile
+from breezy.sixish import PY3
 from breezy.version_info_formats import (
    create_date_str,
    VersionInfoBuilder,
@@ -75,6 +76,8 @@ class Template(object):
     def process(self, tpl):
         unicode_escape = codecs.getdecoder("unicode_escape")
         tpl = unicode_escape(tpl)[0]
+        if not PY3:
+            tpl = tpl.encode('utf-8')
         pos = 0
         while True:
             match = self._tag_re.search(tpl, pos)

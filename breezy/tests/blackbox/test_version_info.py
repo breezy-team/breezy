@@ -175,7 +175,7 @@ class TestVersionInfo(TestCaseWithTransport):
             ['version-info', '--include-history'], encoding='latin-1')
 
         if not PY3:
-            commit_message = commit_message.encode('utf-8')
+            commit_message = commit_message.encode('latin-1', 'replace')
         self.assertContainsString(out, commit_message)
 
     def test_revision(self):

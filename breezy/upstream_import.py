@@ -19,7 +19,10 @@
 from __future__ import absolute_import
 
 import errno
-from io import BytesIO
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 import re
 import stat
@@ -221,6 +224,7 @@ def import_zip(tree, zip_input):
     zip_file = ZipFileWrapper(zip_input, 'r')
     import_archive(tree, zip_file)
 
+
 def import_dir(tree, dir_input):
     dir_file = DirWrapper(dir_input)
     import_archive(tree, dir_file)
@@ -327,7 +331,7 @@ def do_import(source, tree_directory=None):
             archive, external_compressor = get_archive_type(source)
         except NotArchiveType:
             if file_kind(source) == 'directory':
-                s = BytesIO(source)
+                s = StringIO(source)
                 s.seek(0)
                 import_dir(tree, s)
             else:
