@@ -963,7 +963,7 @@ class TestSmartServerBranchRequestPutConfigFile(TestLockedBranch):
             smart_req.SmartServerResponse((b'ok', )),
             request.do_body(b'foo bar baz'))
         self.assertEqual(
-            branch.control_transport.get_bytes(b'branch.conf'),
+            branch.control_transport.get_bytes('branch.conf'),
             b'foo bar baz')
         branch.unlock()
 

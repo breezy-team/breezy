@@ -169,7 +169,7 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
         revid1 = t.commit("message")
         revid2 = t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['revno', '-rrevid:' + revid1,
+        out, err = self.run_bzr(['revno', '-rrevid:' + revid1.decode('utf-8'),
             self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count

@@ -129,8 +129,7 @@ def show_tree_status(wt,
     if to_file is None:
         to_file = sys.stdout
 
-    wt.lock_read()
-    try:
+    with wt.lock_read():
         new_is_working_tree = True
         if revision is None:
             if wt.last_revision() != wt.branch.last_revision():
@@ -150,9 +149,7 @@ def show_tree_status(wt,
                     raise errors.BzrCommandError(str(e))
             else:
                 new = wt
-        old.lock_read()
-        new.lock_read()
-        try:
+        with old.lock_read(), new.lock_read():
             for hook in hooks['pre_status']:
                 hook(StatusHookParams(old, new, to_file, versioned,
                     show_ids, short, verbose, specific_files=specific_files))
@@ -220,11 +217,6 @@ def show_tree_status(wt,
             for hook in hooks['post_status']:
                 hook(StatusHookParams(old, new, to_file, versioned,
                     show_ids, short, verbose, specific_files=specific_files))
-        finally:
-            old.unlock()
-            new.unlock()
-    finally:
-        wt.unlock()
 
 
 def _get_sorted_revisions(tip_revision, revision_ids, parent_map):

@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 from ...commands import Command
 from ...lazy_import import lazy_import
+from ...sixish import viewitems
 
 lazy_import(globals(), """
 from breezy import errors
@@ -50,4 +51,7 @@ class cmd_ping(Command):
         handler.cancel_read_body()
         self.outf.write('Response: %r\n' % (response,))
         if getattr(handler, 'headers', None) is not None:
-            self.outf.write('Headers: %r\n' % (handler.headers,))
+            headers = {
+                k.decode('utf-8'): v.decode('utf-8')
+                for (k, v) in viewitems(handler.headers)}
+            self.outf.write('Headers: %r\n' % (headers,))

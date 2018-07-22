@@ -243,6 +243,8 @@ class Hunk(object):
             lines.append(line.as_bytes())
         return b"".join(lines)
 
+    __bytes__ = as_bytes
+
     def shift_to_mod(self, pos):
         if pos < self.orig_pos-1:
             return 0

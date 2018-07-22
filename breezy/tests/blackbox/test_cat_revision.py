@@ -40,7 +40,7 @@ class TestCatRevision(TestCaseWithTransport):
         with r.lock_read():
             revs = {}
             for i in (1, 2, 3):
-                revid = "a@r-0-%d" % i
+                revid = b"a@r-0-%d" % i
                 stream = r.revisions.get_record_stream([(revid,)], 'unordered', 
                                                        False) 
                 revs[i] = next(stream).get_bytes_as('fulltext')

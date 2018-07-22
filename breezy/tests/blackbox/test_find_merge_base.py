@@ -36,4 +36,4 @@ class TestFindMergeBase(TestCaseWithTransport):
         tree.commit('message')
         tree2 = self.make_branch_and_tree('bar')
         r = self.run_bzr('find-merge-base foo bar')[0]
-        self.assertEqual(b'merge base is revision null:\n', r)
+        self.assertEqual('merge base is revision null:\n', r)

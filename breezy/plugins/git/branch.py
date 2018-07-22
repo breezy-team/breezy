@@ -460,13 +460,13 @@ class GitBranch(ForeignBranch):
         except KeyError:
             pass
         else:
-            if ref != 'HEAD':
+            if ref != b'HEAD':
                 try:
-                    params['branch'] = ref_to_branch_name(ref).encode('utf-8')
+                    params['branch'] = urlutils.escape(ref_to_branch_name(ref))
                 except ValueError:
-                    params['ref'] = ref.encode('utf-8')
+                    params['ref'] = urlutils.quote_from_bytes(ref)
 
-        url = git_url_to_bzr_url(location)
+        url = git_url_to_bzr_url(location.decode('utf-8'))
         return urlutils.join_segment_parameters(url, params)
 
     def set_parent(self, location):

@@ -127,7 +127,7 @@ class DirWrapper(object):
                     yield v
 
     def extractfile(self, member):
-        return open(member.fullpath)
+        return open(member.fullpath, 'rb')
 
 
 class FileInfo(object):

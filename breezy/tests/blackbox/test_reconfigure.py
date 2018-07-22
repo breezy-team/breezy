@@ -120,7 +120,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
     def test_make_with_trees_nonshared_repo(self):
         branch = self.make_branch('branch')
         self.run_bzr_error(
-            [b"Requested reconfiguration of '.*' is not supported"],
+            ["Requested reconfiguration of '.*' is not supported"],
             'reconfigure --with-trees branch')
 
     def test_make_without_trees_leaves_tree_alone(self):

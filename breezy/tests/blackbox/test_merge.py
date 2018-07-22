@@ -457,7 +457,7 @@ class TestMerge(tests.TestCaseWithTransport):
             source.repository, revision_id, 0, 0, target,
             base_revision_id=base_revision_id)
         if mangle_patch:
-            md.patch = 'asdf\n'
+            md.patch = b'asdf\n'
         self.build_tree_contents([(filename, b''.join(md.to_lines()))])
 
     def test_directive_verify_warning(self):

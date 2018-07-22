@@ -341,7 +341,7 @@ class TestExport(TestCaseWithTransport):
         zf = zipfile.ZipFile('../first.zip')
         try:
             self.assertEqual(['first/hello'], sorted(zf.namelist()))
-            self.assertEqual('foo', zf.read('first/hello'))
+            self.assertEqual(b'foo', zf.read('first/hello'))
         finally:
             zf.close()
 
@@ -349,7 +349,7 @@ class TestExport(TestCaseWithTransport):
         zf = zipfile.ZipFile('../first2.zip')
         try:
             self.assertEqual(['pizza/hello'], sorted(zf.namelist()))
-            self.assertEqual('foo', zf.read('pizza/hello'))
+            self.assertEqual(b'foo', zf.read('pizza/hello'))
         finally:
             zf.close()
 
@@ -357,7 +357,7 @@ class TestExport(TestCaseWithTransport):
         zf = zipfile.ZipFile('../first-zip')
         try:
             self.assertEqual(['first-zip/hello'], sorted(zf.namelist()))
-            self.assertEqual('foo', zf.read('first-zip/hello'))
+            self.assertEqual(b'foo', zf.read('first-zip/hello'))
         finally:
             zf.close()
 

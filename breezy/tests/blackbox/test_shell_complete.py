@@ -19,6 +19,7 @@
 """Black-box tests for 'brz shell-complete'."""
 
 from breezy.tests import TestCaseWithTransport
+from breezy.sixish import PY3
 
 
 class ShellCompleteTests(TestCaseWithTransport):
@@ -36,7 +37,16 @@ class ShellCompleteTests(TestCaseWithTransport):
     def test_specific_command(self):
         out, err = self.run_bzr('shell-complete shell-complete')
         self.assertEqual('', err)
-        self.assertEqual("""\
+        if PY3:
+            self.assertEqual("""\
+"(--help -h)"{--help,-h}
+"(--quiet -q)"{--quiet,-q}
+--usage
+"(--verbose -v)"{--verbose,-v}
+context?
+""", out)
+        else:
+            self.assertEqual("""\
 --usage
 "(--quiet -q)"{--quiet,-q}
 "(--verbose -v)"{--verbose,-v}
