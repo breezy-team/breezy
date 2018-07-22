@@ -3157,7 +3157,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             b'Repository.check_write_group', (b'quack/', b'a token', [b'token1']),
             b'success', (b'ok',))
         repo.lock_write()
-        repo.resume_write_group([b'token1'])
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
