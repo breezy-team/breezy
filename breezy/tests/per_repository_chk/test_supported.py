@@ -346,7 +346,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                          ('content %s\n' % name).encode())))
             file_modifies.append(
                 ('modify', 'file-' + name,
-                    ('new content %s\n' % name).encode())))
+                    ('new content %s\n' % name).encode()))
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None))] +
             file_adds,

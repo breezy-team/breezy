@@ -53,7 +53,6 @@ from ... import (
     revisiontree,
     trace,
     tree as _mod_tree,
-    urlutils,
     workingtree,
     )
 from ...revision import (
@@ -1352,7 +1351,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     dirified = []
     for path, index_entry in target._recurse_index_entries():
         try:
-            live_entry = target._live_entry(urlutils.quote_from_bytes(path))
+            live_entry = target._live_entry(path)
         except EnvironmentError as e:
             if e.errno == errno.ENOENT:
                 # Entry was removed; keep it listed, but mark it as gone.

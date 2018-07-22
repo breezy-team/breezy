@@ -1138,7 +1138,9 @@ class TreeTransformBase(object):
             if kind == 'directory':
                 content = b''
             if kind == 'symlink':
-                content = self._read_symlink_target(trans_id).encode('utf-8')
+                content = self._read_symlink_target(trans_id)
+                if not isinstance(content, bytes):
+                    content = content.encode('utf-8')
             yield serializer.bytes_record(
                     content, ((trans_id.encode('utf-8'), kind.encode('ascii')),))
 
@@ -1704,7 +1706,6 @@ class TreeTransform(DiskTreeTransform):
         self._limbo_children[parent].add(trans_id)
         self._limbo_children_names[parent][filename] = trans_id
         return limbo_name
-
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.

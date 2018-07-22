@@ -177,6 +177,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         return stat_val
 
     def _live_entry(self, path):
+        path = urlutils.quote_from_bytes(path)
         stat_val = self._lstat(path)
         if stat.S_ISDIR(stat_val.st_mode):
             return None
