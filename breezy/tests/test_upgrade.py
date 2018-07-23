@@ -44,7 +44,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_branch5_branch6(self):
         b = self.make_branch('branch', format='knit')
-        b._set_revision_history(['CD'])
+        b._set_revision_history([b'CD'])
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
@@ -53,7 +53,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         converter.convert(b.controldir, None)
         new_branch = branch.Branch.open(self.get_url('branch'))
         self.assertIs(new_branch.__class__, bzrbranch.BzrBranch6)
-        self.assertEqual('CD', new_branch.last_revision())
+        self.assertEqual(b'CD', new_branch.last_revision())
         self.assertEqual('file:///EF', new_branch.get_parent())
         self.assertEqual('file:///GH', new_branch.get_bound_location())
         branch_config = new_branch.get_config_stack()

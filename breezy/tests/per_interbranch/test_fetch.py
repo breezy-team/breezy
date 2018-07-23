@@ -98,7 +98,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.assertEqual(
             {rev1},
             b2.repository.has_revisions(
-                [rev1, 'revision-2', 'revision-3']))
+                [rev1, b'revision-2', b'revision-3']))
 
         rev2 = wt.commit('hmm')
         rev3 = wt.commit('hmmm')

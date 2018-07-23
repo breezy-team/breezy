@@ -285,7 +285,7 @@ class GitDir(ControlDir):
         return ret
 
     def list_branches(self):
-        return self.get_branches().values()
+        return list(self.get_branches().values())
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,

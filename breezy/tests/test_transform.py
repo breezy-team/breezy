@@ -1197,7 +1197,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             transform.version_file(b'id-1', new)
             transform.adjust_path('old', root, new)
             self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
-                ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
+                (b'eert_toor', b'eert_toor'), ('old', 'old'), ('file', 'file'),
                 (False, False))], list(transform.iter_changes()))
             transform.cancel_versioning(new)
             transform._removed_id = set()
@@ -1273,7 +1273,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         try:
             transform.adjust_path('flitter', root, floater)
             self.assertEqual([(b'floater-id', ('floater', 'flitter'), False,
-            (True, True), ('toor_eert', 'toor_eert'), ('floater', 'flitter'),
+            (True, True), (b'toor_eert', b'toor_eert'), ('floater', 'flitter'),
             (None, None), (False, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
@@ -2748,9 +2748,9 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         out = BytesIO()
         show_diff_trees(revision_tree, preview_tree, out)
         lines = out.getvalue().splitlines()
-        self.assertEqual(lines[0], "=== added file 'file2'")
+        self.assertEqual(lines[0], b"=== added file 'file2'")
         # 3 lines of diff administrivia
-        self.assertEqual(lines[4], "+content B")
+        self.assertEqual(lines[4], b"+content B")
 
     def test_transform_conflicts(self):
         revision_tree = self.create_tree()
@@ -3371,7 +3371,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def make_records(self, attribs, contents):
         records = [
-            (((('attribs'),),), bencode.bencode(attribs))]
+            ((((b'attribs'),),), bencode.bencode(attribs))]
         records.extend([(((n, k),), c) for n, k, c in contents])
         return records
 
@@ -3417,9 +3417,9 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def symlink_creation_records(self):
         attribs = self.default_attribs()
         attribs['_id_number'] = 2
-        attribs['_new_name'] = {'new-1': u'foo\u1234'.encode('utf-8')}
-        attribs['_new_parent'] = {'new-1': 'new-0'}
-        contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
+        attribs['_new_name'] = {b'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs['_new_parent'] = {b'new-1': b'new-0'}
+        contents = [(b'new-1', b'symlink', u'bar\u1234'.encode('utf-8'))]
         return self.make_records(attribs, contents)
 
     def test_serialize_symlink_creation(self):
@@ -3497,7 +3497,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
         tree.add('file', b'file-id')
-        return self.get_preview(tree), LINES_TWO
+        return self.get_preview(tree), [LINES_TWO]
 
     def modification_records(self):
         attribs = self.default_attribs()
@@ -3507,7 +3507,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             '': 'new-0',}
         attribs['_removed_contents'] = ['new-1']
         contents = [('new-1', 'file',
-                     'i 1\nz\n\nc 0 1 1 1\ni 1\nx\n\nc 0 3 3 1\n')]
+                     b'i 1\nz\n\nc 0 1 1 1\ni 1\nx\n\nc 0 3 3 1\n')]
         return self.make_records(attribs, contents)
 
     def test_serialize_modification(self):

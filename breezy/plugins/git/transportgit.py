@@ -136,11 +136,7 @@ class TransportRefsContainer(RefsContainer):
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
-                unquoted_filename = urlutils.unquote(filename)
-                if PY3:
-                    # JRV: Work around unquote returning a text_type string on
-                    # PY3.
-                    unquoted_filename = unquoted_filename.encode('utf-8')
+                unquoted_filename = urlutils.unquote_to_bytes(filename)
                 refname = osutils.pathjoin(b"refs", unquoted_filename)
                 if check_ref_format(refname):
                     keys.add(refname)

@@ -1339,9 +1339,14 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         :param subdir: Subdirectory to export, if not the root
         """
         tree = repository.revision_tree(revision_id)
+        if subdir is not None:
+            subdir = subdir.decode('utf-8')
+        if root is not None:
+            root = root.decode('utf-8')
+        name = name.decode('utf-8')
         return SuccessfulSmartServerResponse((b'ok',),
             body_stream=self.body_stream(
-                tree, format, os.path.basename(name), root, subdir,
+                tree, format.decode('utf-8'), os.path.basename(name), root, subdir,
                 force_mtime))
 
     def body_stream(self, tree, format, name, root, subdir=None, force_mtime=None):

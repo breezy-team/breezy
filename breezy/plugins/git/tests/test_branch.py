@@ -84,8 +84,9 @@ class TestGitBranch(tests.TestCaseInTempDir):
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEqual(
-            "<LocalGitBranch('%s/', u'master')>" % (
-                urlutils.local_path_to_url(self.test_dir),),
+            "<LocalGitBranch('%s/', %r)>" % (
+                urlutils.local_path_to_url(self.test_dir),
+                u'master'),
             repr(thebranch))
 
     def test_last_revision_is_null(self):

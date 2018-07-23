@@ -115,7 +115,7 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export test.tar -d tar')
         ball = tarfile.open('test.tar')
         # all paths are prefixed with the base name of the tarball
-        self.assertEqual(['test/' + fname.encode('utf8')],
+        self.assertEqual(['test/' + fname],
                          sorted(ball.getnames()))
 
     def test_tar_export_unicode_basedir(self):

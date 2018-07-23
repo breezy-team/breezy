@@ -226,9 +226,9 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], b.get_branches().keys())
+        self.assertEqual(["abranch"], list(b.get_branches().keys()))
         self.assertEqual(["atag"],
-                b.open_branch("abranch").tags.get_tag_dict().keys())
+                list(b.open_branch("abranch").tags.get_tag_dict().keys()))
 
     def test_git_import_colo(self):
         r = GitRepo.init("a", mkdir=True)

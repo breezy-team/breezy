@@ -349,19 +349,19 @@ class TestAddParent(TestParents):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
-            tree.add_parent_tree, ('first-revision', None))
+            tree.add_parent_tree, (b'first-revision', None))
 
     def test_add_first_parent_tree_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         try:
-            tree.add_parent_tree(('first-revision', None),
+            tree.add_parent_tree((b'first-revision', None),
                 allow_leftmost_as_ghost=True)
         except errors.GhostRevisionUnusableHere:
             self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
         else:
             self.assertTrue(tree._format.supports_leftmost_parent_id_as_ghost)
-            self.assertConsistentParents(['first-revision'], tree)
+            self.assertConsistentParents([b'first-revision'], tree)
 
     def test_add_second_parent_tree(self):
         """Test adding the second parent id"""
@@ -378,11 +378,11 @@ class TestAddParent(TestParents):
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
         if tree._format.supports_righthand_parent_id_as_ghost:
-            tree.add_parent_tree(('second', None))
-            self.assertConsistentParents([first_revision, 'second'], tree)
+            tree.add_parent_tree((b'second', None))
+            self.assertConsistentParents([first_revision, b'second'], tree)
         else:
             self.assertRaises(errors.GhostRevisionUnusableHere,
-                    tree.add_parent_tree, ('second', None))
+                    tree.add_parent_tree, (b'second', None))
 
 
 class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):

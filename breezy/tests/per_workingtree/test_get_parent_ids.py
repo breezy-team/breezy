@@ -34,7 +34,7 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         t.merge_from_branch(t2.branch)
         self.assertEqual([rev1_id, rev2_id], t.get_parent_ids())
         for parent_id in t.get_parent_ids():
-            self.assertIsInstance(parent_id, str)
+            self.assertIsInstance(parent_id, bytes)
 
     def test_pending_merges(self):
         """Test the correspondence between set pending merges and get_parent_ids."""

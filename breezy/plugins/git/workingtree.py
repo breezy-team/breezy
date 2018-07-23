@@ -602,7 +602,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         except KeyError:
             return False
         try:
-            tree_lookup_path(self.store.__getitem__, root_tree, path)
+            tree_lookup_path(self.store.__getitem__, root_tree, path.encode('utf-8'))
         except KeyError:
             return False
         else:
@@ -613,8 +613,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         try:
             return self._lstat(path).st_mtime
         except OSError as e:
-            (num, msg) = e
-            if num == errno.ENOENT:
+            if e.errno == errno.ENOENT:
                 raise errors.NoSuchFile(path)
             raise
 
@@ -697,8 +696,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             try:
                 return osutils.sha_file_by_name(abspath)
             except OSError as e:
-                (num, msg) = e
-                if num in (errno.EISDIR, errno.ENOENT):
+                if e.errno in (errno.EISDIR, errno.ENOENT):
                     return None
                 raise
 
@@ -1163,7 +1161,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     else:
                         # Let's at least try to use the working tree file:
                         try:
-                            st = self._lstat(self.abspath(entry.path))
+                            st = self._lstat(self.abspath(entry.path.decode('utf-8')))
                         except OSError:
                             # But if it doesn't exist, we'll make something up.
                             obj = self.store[entry.sha]

@@ -99,6 +99,7 @@ def dirname(url, exclude_trailing_slash=True):
 if PY3:
     quote_from_bytes = urlparse.quote_from_bytes
     quote = urlparse.quote
+    unquote_to_bytes = urlparse.unquote_to_bytes
 else:
     # Private copies of quote and unquote, copied from Python's
     # urllib module because urllib unconditionally imports socket, which imports
@@ -152,6 +153,7 @@ else:
         return ''.join(map(quoter, s))
 
     quote = quote_from_bytes
+    unquote_to_bytes = urlparse.unquote
 
 
 unquote = urlparse.unquote

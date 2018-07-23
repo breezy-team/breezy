@@ -2344,7 +2344,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 size = None
                 executable = None
             if kind == 'symlink':
-                link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
+                link_or_sha1 = os.readlink(limbo_name)
+                if not isinstance(link_or_sha1, text_type):
+                    link_or_sha1 = link_or_sha1.decode(osutils._fs_enc)
         executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 

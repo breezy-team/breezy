@@ -1151,9 +1151,9 @@ class Inventory(CommonInventory):
         """Return the entry for given file_id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123123', 'hello.c', ROOT_ID))
+        >>> inv.add(InventoryFile(b'123123', 'hello.c', ROOT_ID))
         InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> inv.get_entry('123123').name
+        >>> inv.get_entry(b'123123').name
         'hello.c'
         """
         if not isinstance(file_id, bytes):

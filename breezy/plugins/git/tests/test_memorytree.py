@@ -45,11 +45,10 @@ class TestMemoryTree(TestCaseWithTransport):
         wt.add(['foo'])
         rev_id = wt.commit('first post')
         tree = wt.branch.create_memorytree()
-        tree.lock_read()
-        self.assertEqual([rev_id], tree.get_parent_ids())
-        self.assertEqual('contents of sometree/foo\n',
-            tree.get_file('foo').read())
-        tree.unlock()
+        with tree.lock_read():
+            self.assertEqual([rev_id], tree.get_parent_ids())
+            self.assertEqual(b'contents of sometree/foo\n',
+                tree.get_file('foo').read())
 
     def test_lock_tree_write(self):
         """Check we can lock_tree_write and unlock MemoryTrees."""
