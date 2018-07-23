@@ -59,7 +59,6 @@ from dulwich.repo import (
     REFSDIR,
     SYMREF,
     check_ref_format,
-    read_gitfile,
     read_packed_refs_with_peeled,
     read_packed_refs,
     write_packed_refs,
@@ -383,6 +382,22 @@ class TransportRefsContainer(RefsContainer):
                 return LogicalLockResult(unlock)
 
 
+# TODO(jelmer): Use upstream read_gitfile; unfortunately that expects strings
+# rather than bytes..
+def read_gitfile(f):
+    """Read a ``.git`` file.
+
+    The first line of the file should start with "gitdir: "
+
+    :param f: File-like object to read from
+    :return: A path
+    """
+    cs = f.read()
+    if not cs.startswith(b"gitdir: "):
+        raise ValueError("Expected file to start with 'gitdir: '")
+    return cs[len(b"gitdir: "):].rstrip(b"\n")
+
+
 class TransportRepo(BaseRepo):
 
     def __init__(self, transport, bare, refs_text=None):
@@ -397,7 +412,7 @@ class TransportRepo(BaseRepo):
             else:
                 self._controltransport = self.transport.clone('.git')
         else:
-            self._controltransport = self.transport.clone(path)
+            self._controltransport = self.transport.clone(urlutils.quote_from_bytes(path))
         commondir = self.get_named_file(COMMONDIR)
         if commondir is not None:
             with commondir:

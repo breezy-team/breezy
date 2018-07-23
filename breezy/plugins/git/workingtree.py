@@ -839,20 +839,20 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             found_any = False
             seen_children = set()
             for item_path, value in self.index.iteritems():
+                decoded_item_path = item_path.decode('utf-8')
                 if self.mapping.is_special_file(item_path):
                     continue
-                if not osutils.is_inside(encoded_path, item_path):
+                if not osutils.is_inside(path, decoded_item_path):
                     continue
                 found_any = True
-                subpath = posixpath.relpath(item_path, encoded_path)
-                if b'/' in subpath:
-                    dirname = subpath.split(b'/', 1)[0]
+                subpath = posixpath.relpath(decoded_item_path, path)
+                if '/' in subpath:
+                    dirname = subpath.split('/', 1)[0]
                     file_ie = self._get_dir_ie(posixpath.join(path, dirname), parent_id)
                 else:
-                    (parent, name) = posixpath.split(item_path)
+                    (unused_parent, name) = posixpath.split(decoded_item_path)
                     file_ie = self._get_file_ie(
-                            name.decode('utf-8'),
-                            item_path.decode('utf-8'), value, parent_id)
+                        name, decoded_item_path, value, parent_id)
                 yield file_ie
             if not found_any and path != u'':
                 raise errors.NoSuchFile(path)
@@ -1111,18 +1111,21 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         parent_tree.get_file_revision(parent_path))
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
-            graph = self.branch.repository.get_file_graph()
+            # Now we have the parents of this content
+            from breezy.annotate import Annotator
+            from .annotate import AnnotateProvider
+            annotate_provider = AnnotateProvider(
+                self.branch.repository._file_change_scanner)
+            annotator = Annotator(annotate_provider)
+
+            from breezy.graph import Graph
+            graph = Graph(annotate_provider)
             heads = graph.heads(maybe_file_parent_keys)
             file_parent_keys = []
             for key in maybe_file_parent_keys:
                 if key in heads:
                     file_parent_keys.append(key)
 
-            # Now we have the parents of this content
-            from breezy.annotate import Annotator
-            from .annotate import AnnotateProvider
-            annotator = Annotator(AnnotateProvider(
-                self.branch.repository._file_change_scanner))
             text = self.get_file_text(path)
             this_key = (path, default_revision)
             annotator.add_special_text(this_key, file_parent_keys, text)

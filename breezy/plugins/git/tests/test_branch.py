@@ -71,7 +71,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
             )
         d = ControlDir.open(url)
         b = d.create_branch()
-        self.assertEqual(b.ref, "refs/remotes/origin/unstable")
+        self.assertEqual(b.ref, b"refs/remotes/origin/unstable")
 
     def test_open_existing(self):
         r = GitRepo.init('.')

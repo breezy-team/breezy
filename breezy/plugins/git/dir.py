@@ -137,7 +137,7 @@ class GitDir(ControlDir):
             self.user_transport, "get_segment_parameters", lambda: {})()
         ref = segment_parameters.get("ref")
         if ref is not None:
-            return urlutils.unescape(ref)
+            return urlutils.unquote_to_bytes(ref)
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
             if branch is not None:

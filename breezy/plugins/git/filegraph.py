@@ -104,6 +104,10 @@ class GitFileParentProvider(object):
             if text_revision == NULL_REVISION:
                 ret[key] = ()
                 continue
+            if not isinstance(file_id, bytes):
+                raise TypeError(file_id)
+            if not isinstance(text_revision, bytes):
+                raise TypeError(text_revision)
             try:
                 ret[key] = self._get_parents(file_id, text_revision)
             except KeyError:
