@@ -435,7 +435,8 @@ class LocalGitRepository(GitRepository):
                     this_parent_map[revid] = parents
             parent_map.update(this_parent_map)
             pending = set()
-            map(pending.update, viewvalues(this_parent_map))
+            for values in viewvalues(this_parent_map):
+                pending.update(values)
             pending = pending.difference(parent_map)
         return _mod_graph.KnownGraph(parent_map)
 
