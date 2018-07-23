@@ -547,7 +547,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         all_revs = self.target.all_revision_ids()
         parent_map = self.target.get_parent_map(all_revs)
         all_parents = set()
-        map(all_parents.update, viewvalues(parent_map))
+        for values in viewvalues(parent_map):
+            all_parents.update(values)
         return set(all_revs) - all_parents
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
