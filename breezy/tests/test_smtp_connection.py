@@ -159,7 +159,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertEqual(password, conn._smtp_password)
 
     def test_authenticate_with_byte_strings(self):
-        user = 'joe'
+        user = b'joe'
         unicode_pass = u'h\xECspass'
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()

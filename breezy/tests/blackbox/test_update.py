@@ -380,13 +380,13 @@ $ brz update -r revid:m2
 
         # check for conflict notification
         self.assertContainsString(err,
-                                  b' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
-        
-        self.assertEqualDiff(b'<<<<<<< TREE\n'
-                             b'fie||||||| BASE-REVISION\n'
-                             b'foo=======\n'
-                             b'fee>>>>>>> MERGE-SOURCE\n',
-                             open('hello').read())
+                                  ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+        with open('hello', 'rb') as f:
+            self.assertEqualDiff(b'<<<<<<< TREE\n'
+                                 b'fie||||||| BASE-REVISION\n'
+                                 b'foo=======\n'
+                                 b'fee>>>>>>> MERGE-SOURCE\n',
+                                 f.read())
 
     def test_update_checkout_prevent_double_merge(self):
         """"Launchpad bug 113809 in brz "update performs two merges"

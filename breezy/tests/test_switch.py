@@ -167,7 +167,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         # Check it out and switch to revision 1
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
-        switch.switch(checkout.controldir, tree.branch, revision_id="rev1")
+        switch.switch(checkout.controldir, tree.branch, revision_id=b"rev1")
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
 

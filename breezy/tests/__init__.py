@@ -95,6 +95,7 @@ except ImportError:
     # lsprof not available
     pass
 from ..sixish import (
+    int2byte,
     PY3,
     string_types,
     text_type,
@@ -4431,7 +4432,7 @@ def probe_bad_non_ascii(encoding):
     for given encoding.
     """
     for i in range(128, 256):
-        char = chr(i)
+        char = int2byte(i)
         try:
             char.decode(encoding)
         except UnicodeDecodeError:

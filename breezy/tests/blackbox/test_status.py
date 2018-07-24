@@ -40,6 +40,7 @@ from ...osutils import pathjoin
 from ...revisionspec import RevisionSpec
 from ...sixish import (
     BytesIO,
+    StringIO,
     PY3,
     )
 from ...status import show_tree_status
@@ -240,52 +241,52 @@ class BranchStatus(TestCaseWithTransport):
                 ],
                 wt, short=True)
 
-        tof = BytesIO()
+        tof = StringIO()
         self.assertRaises(errors.PathsDoNotExist,
                           show_tree_status,
                           wt, specific_files=['bye.c', 'test.c', 'absent.c'],
                           to_file=tof)
 
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
         self.assertEqual(tof.readlines(),
                           ['unknown:\n',
                            '  directory/hello.c\n'
                            ])
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof,
                          short=True)
         tof.seek(0)
         self.assertEqual(tof.readlines(), ['?   directory/hello.c\n'])
 
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof)
         tof.seek(0)
         self.assertEqual(tof.readlines(),
                           ['unknown:\n',
                            '  dir2/\n'
                            ])
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(wt, specific_files=['dir2'], to_file=tof, short=True)
         tof.seek(0)
         self.assertEqual(tof.readlines(), ['?   dir2/\n'])
 
-        tof = BytesIO()
+        tof = StringIO()
         revs = [RevisionSpec.from_string('0'), RevisionSpec.from_string('1')]
         show_tree_status(wt, specific_files=['test.c'], to_file=tof,
                          short=True, revision=revs)
         tof.seek(0)
         self.assertEqual(tof.readlines(), ['+N  test.c\n'])
 
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
         tof.seek(0)
         self.assertEqual(tof.readlines(),
                           ['missing:\n',
                            '  missing.c\n'])
 
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
                          short=True)
         tof.seek(0)
@@ -304,14 +305,14 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqualDiff(b'', tof.getvalue())
         tree.set_conflicts(conflicts.ConflictList(
             [conflicts.ContentsConflict('dir2')]))
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff(b'conflicts:\n  Contents conflict in dir2\n',
                              tof.getvalue())
 
         tree.set_conflicts(conflicts.ConflictList(
             [conflicts.ContentsConflict('dir2/file1')]))
-        tof = BytesIO()
+        tof = StringIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
         self.assertEqualDiff(b'conflicts:\n  Contents conflict in dir2/file1\n',
                              tof.getvalue())

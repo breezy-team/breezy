@@ -290,7 +290,7 @@ class BzrFastExporter(object):
             time_required)
 
     def print_cmd(self, cmd):
-        self.outf.write(b"%r\n" % cmd)
+        self.outf.write(b"%s\n" % cmd)
 
     def _save_marks(self):
         if self.export_marks_file:
@@ -364,7 +364,7 @@ class BzrFastExporter(object):
 
         # Report progress and checkpoint if it's time for that
         self.report_progress(ncommits)
-        if (self.checkpoint > 0 and ncommits
+        if (self.checkpoint is not None and self.checkpoint > 0 and ncommits
             and ncommits % self.checkpoint == 0):
             self.note("Exported %i commits - adding checkpoint to output"
                 % ncommits)
