@@ -202,8 +202,8 @@ class VersionedFileCheck(Check):
                 len(self.unreferenced_versions))
         if verbose and len(self.unreferenced_versions):
                 for file_id, revision_id in self.unreferenced_versions:
-                    note(gettext('unreferenced version: {{{0}}} in {1}').format(revision_id,
-                        file_id))
+                    note(gettext('unreferenced version: {{{0}}} in {1}').format(
+                        revision_id.decode('utf-8'), file_id.decode('utf-8')))
         if self.missing_inventory_sha_cnt:
             note(gettext('%6d revisions are missing inventory_sha1'),
                  self.missing_inventory_sha_cnt)
@@ -214,15 +214,16 @@ class VersionedFileCheck(Check):
             note(gettext('%6d ghost revisions'), len(self.ghosts))
             if verbose:
                 for ghost in self.ghosts:
-                    note('      %s', ghost)
+                    note('      %s', ghost.decode('utf-8'))
         if len(self.missing_parent_links):
             note(gettext('%6d revisions missing parents in ancestry'),
                  len(self.missing_parent_links))
             if verbose:
                 for link, linkers in viewitems(self.missing_parent_links):
-                    note(gettext('      %s should be in the ancestry for:'), link)
+                    note(gettext('      %s should be in the ancestry for:'),
+                         link.decode('utf-8'))
                     for linker in linkers:
-                        note('       * %s', linker)
+                        note('       * %s', linker.decode('utf-8'))
         if len(self.inconsistent_parents):
             note(gettext('%6d inconsistent parents'), len(self.inconsistent_parents))
             if verbose:
@@ -230,8 +231,9 @@ class VersionedFileCheck(Check):
                     revision_id, file_id, found_parents, correct_parents = info
                     note(gettext('      * {0} version {1} has parents {2!r} '
                          'but should have {3!r}').format(
-                         file_id, revision_id, found_parents,
-                             correct_parents))
+                         file_id.decode('utf-8'), revision_id.decode('utf-8'),
+                         tuple(p.decode('utf-8') for p in found_parents),
+                         tuple(p.decode('utf-8') for p in correct_parents)))
         if self.revs_with_bad_parents_in_index:
             note(gettext(
                  '%6d revisions have incorrect parents in the revision index'),
@@ -242,7 +244,9 @@ class VersionedFileCheck(Check):
                     note(gettext(
                         '       {0} has wrong parents in index: '
                         '{1!r} should be {2!r}').format(
-                        revision_id, index_parents, actual_parents))
+                        revision_id.decode('utf-8'), 
+                        tuple(p.decode('utf-8') for p in index_parents),
+                        tuple(p.decode('utf-8') for p in actual_parents)))
         for item in self._report_items:
             note(item)
 
@@ -255,7 +259,7 @@ class VersionedFileCheck(Check):
         if rev.revision_id != rev_id:
             self._report_items.append(gettext(
                 'Mismatched internal revid {{{0}}} and index revid {{{1}}}').format(
-                rev.revision_id, rev_id))
+                rev.revision_id.decode('utf-8'), rev_id.decode('utf-8')))
             rev_id = rev.revision_id
         # Check this revision tree etc, and count as seen when we encounter a
         # reference to it.
