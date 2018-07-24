@@ -268,10 +268,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
-        file_ids = ['TREE_ROOT',
-                    'fo\xe2\x82\xaco-id',
-                    'ba\xe2\x82\xacr-id',
-                    'ba\xe2\x82\xacz-id',
+        file_ids = [b'TREE_ROOT',
+                    b'fo\xe2\x82\xaco-id',
+                    b'ba\xe2\x82\xacr-id',
+                    b'ba\xe2\x82\xacz-id',
                    ]
         self.build_tree(paths[1:])
         if tree.get_root_id() is None:

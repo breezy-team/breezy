@@ -315,8 +315,8 @@ class TestUpgrade(TestCaseWithTransport):
         b = control.open_branch()
         self.addCleanup(b.lock_read().unlock)
         self.assertEqual(b._revision_history(),
-           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
-            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+           [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""

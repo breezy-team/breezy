@@ -662,7 +662,7 @@ class TransportTests(TestTransportImplementation):
             t.append_file('a', BytesIO(b'add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            b'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
 
         # a file with no parent should fail..
@@ -712,9 +712,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                t.append_bytes, 'f', 'f', mode=None)
+                t.append_bytes, 'f', b'f', mode=None)
             return
-        t.append_bytes('f', 'f', mode=None)
+        t.append_bytes('f', b'f', mode=None)
 
     def test_delete(self):
         # TODO: Test Transport.delete
