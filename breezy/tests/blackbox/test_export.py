@@ -28,6 +28,7 @@ import zipfile
 from ...archive import zip
 from ... import (
     export,
+    osutils,
     )
 from ...sixish import (
     BytesIO,
@@ -115,8 +116,8 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export test.tar -d tar')
         ball = tarfile.open('test.tar')
         # all paths are prefixed with the base name of the tarball
-        self.assertEqual(['test/' + fname],
-                         sorted(ball.getnames()))
+        self.assertEqual([u'test/' + fname],
+                         [osutils.safe_unicode(n) for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""

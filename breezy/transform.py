@@ -1105,7 +1105,7 @@ class TreeTransformBase(object):
                       for k, v in viewitems(self._new_parent)}
         new_id = {k.encode('utf-8'): v
                   for k, v in viewitems(self._new_id)}
-        new_executability = {k: int(v)
+        new_executability = {k.encode('utf-8'): int(v)
                              for k, v in viewitems(self._new_executability)}
         tree_path_ids = {k.encode('utf-8'): v.encode('utf-8')
                          for k, v in viewitems(self._tree_path_ids)}
@@ -1157,7 +1157,7 @@ class TreeTransformBase(object):
                           for k, v in viewitems(attribs[b'_new_name'])}
         self._new_parent = {k.decode('utf-8'): v.decode('utf-8')
                             for k, v in viewitems(attribs[b'_new_parent'])}
-        self._new_executability = {k: bool(v)
+        self._new_executability = {k.decode('utf-8'): bool(v)
             for k, v in viewitems(attribs[b'_new_executability'])}
         self._new_id = {k.decode('utf-8'): v
                         for k, v in viewitems(attribs[b'_new_id'])}

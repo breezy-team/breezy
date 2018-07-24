@@ -2969,7 +2969,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
             resume_tokens = tokens
-            return resume_tokens, set((kind.decode('utf-8'), revid) for (kind, revid) in missing_keys)
+            return resume_tokens, set((entry[0].decode('utf-8'), ) + entry[1:] for entry in missing_keys)
         else:
             self.target_repo.refresh_data()
             return [], set()
