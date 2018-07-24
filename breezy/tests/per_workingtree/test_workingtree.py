@@ -563,16 +563,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     'first_root_id')
             return
         wt.set_root_id(b'first_root_id')
-        self.assertEqual('first_root_id', wt.get_root_id())
+        self.assertEqual(b'first_root_id', wt.get_root_id())
         self.build_tree(['tree/file'])
         wt.add(['file'])
         wt.commit('first')
         co = wt.branch.create_checkout('checkout')
         wt.set_root_id(b'second_root_id')
         wt.commit('second')
-        self.assertEqual('second_root_id', wt.get_root_id())
+        self.assertEqual(b'second_root_id', wt.get_root_id())
         self.assertEqual(0, co.update())
-        self.assertEqual('second_root_id', co.get_root_id())
+        self.assertEqual(b'second_root_id', co.get_root_id())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support

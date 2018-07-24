@@ -1755,7 +1755,7 @@ class LineLogFormatter(LogFormatter):
             # show revno only when is not None
             out.append("%s:" % revno)
         if max_chars is not None:
-            out.append(self.truncate(self.short_author(rev), (max_chars+3)/4))
+            out.append(self.truncate(self.short_author(rev), (max_chars+3)//4))
         else:
             out.append(self.short_author(rev))
         out.append(self.date_string(rev))

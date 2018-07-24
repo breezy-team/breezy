@@ -1559,7 +1559,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
         b_stacked = b_base.controldir.sprout('stacked', stacked=True).open_branch()
         b_stacked.lock_write()
         self.addCleanup(b_stacked.unlock)
-        b_stacked.fetch(b_source, 'B')
+        b_stacked.fetch(b_source, b'B')
         # Now re-open the stacked repo directly (no fallbacks) so that we can
         # fill in the A rev.
         repo_not_stacked = b_stacked.controldir.open_repository()
@@ -1567,29 +1567,29 @@ class TestGCCHKPacker(TestCaseWithTransport):
         self.addCleanup(repo_not_stacked.unlock)
         # Now we should have a pack file with A's inventory, but not its
         # Revision
-        self.assertEqual([('A',), ('B',)],
+        self.assertEqual([(b'A',), (b'B',)],
                          sorted(repo_not_stacked.inventories.keys()))
-        self.assertEqual([('B',)],
+        self.assertEqual([(b'B',)],
                          sorted(repo_not_stacked.revisions.keys()))
         stacked_pack_names = repo_not_stacked._pack_collection.names()
         # We have a couple names here, figure out which has A's inventory
         for name in stacked_pack_names:
             pack = repo_not_stacked._pack_collection.get_pack_by_name(name)
             keys = [n[1] for n in pack.inventory_index.iter_all_entries()]
-            if ('A',) in keys:
+            if (b'A',) in keys:
                 inv_a_pack_name = name
                 break
         else:
             self.fail('Could not find pack containing A\'s inventory')
-        repo_not_stacked.fetch(b_source.repository, 'A')
-        self.assertEqual([('A',), ('B',)],
+        repo_not_stacked.fetch(b_source.repository, b'A')
+        self.assertEqual([(b'A',), (b'B',)],
                          sorted(repo_not_stacked.revisions.keys()))
         new_pack_names = set(repo_not_stacked._pack_collection.names())
         rev_a_pack_names = new_pack_names.difference(stacked_pack_names)
         self.assertEqual(1, len(rev_a_pack_names))
         rev_a_pack_name = list(rev_a_pack_names)[0]
         # Now fetch 'C', so we have a couple pack files to join
-        repo_not_stacked.fetch(b_source.repository, 'C')
+        repo_not_stacked.fetch(b_source.repository, b'C')
         rev_c_pack_names = set(repo_not_stacked._pack_collection.names())
         rev_c_pack_names = rev_c_pack_names.difference(new_pack_names)
         self.assertEqual(1, len(rev_c_pack_names))
