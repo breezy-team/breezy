@@ -330,7 +330,7 @@ class ConvertBzrDir4To5(Converter):
                 weaves._put_weave(file_id, file_weave, transaction)
                 i += 1
             self.pb.update(gettext('inventory'), 0, 1)
-            controlweaves._put_weave('inventory', self.inv_weave, transaction)
+            controlweaves._put_weave(b'inventory', self.inv_weave, transaction)
             self.pb.update(gettext('inventory'), 1, 1)
         finally:
             self.pb.clear()
@@ -441,8 +441,8 @@ class ConvertBzrDir4To5(Converter):
         heads = graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
-        previous_entries = dict((head, parent_candiate_entries[head]) for head
-            in heads)
+        previous_entries = {head: parent_candiate_entries[head]
+                            for head in heads}
         self.snapshot_ie(previous_entries, ie, w, rev_id)
 
     def get_parent_map(self, revision_ids):
@@ -526,7 +526,7 @@ class ConvertBzrDir5To6(Converter):
                 else:
                     file_id = filename
                     suffix = ''
-                new_name = store._mapper.map((file_id,)) + suffix
+                new_name = store._mapper.map((file_id.encode('utf-8'),)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, new_name)

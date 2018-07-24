@@ -383,7 +383,7 @@ class TestUpgrade(TestCaseWithTransport):
         revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
-        eq(rev.parent_ids[1], 'wibble@wobble-2')
+        eq(rev.parent_ids[1], b'wibble@wobble-2')
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)

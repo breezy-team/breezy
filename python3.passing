@@ -1228,6 +1228,9 @@ breezy.plugins.weave_fmt.test_bzrdir.TestFormat6.test_needs_conversion
 breezy.plugins.weave_fmt.test_bzrdir.TestFormat6.test_same_lockfiles_between_tree_repo_branch
 breezy.plugins.weave_fmt.test_bzrdir.TestInfo.test_info_locking_oslocks
 breezy.plugins.weave_fmt.test_bzrdir.TestInit.test_init_weave
+breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_simple
+breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_to_meta_sets_workingtree_last_revision
+breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_with_ghosts
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_across_models
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_across_models_incompatible
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_across_serializers
@@ -2406,6 +2409,7 @@ breezy.tests.blackbox.test_revno.TestRevno.test_revno
 breezy.tests.blackbox.test_revno.TestRevno.test_revno_and_tree_mutually_exclusive
 breezy.tests.blackbox.test_revno.TestRevno.test_revno_tree
 breezy.tests.blackbox.test_revno.TestRevno.test_revno_tree_no_tree
+breezy.tests.blackbox.test_revno.TestRevno.test_revno_with_revision
 breezy.tests.blackbox.test_revno.TestRevno.test_stale_revno_tree
 breezy.tests.blackbox.test_revno.TestSmartServerRevno.test_simple_branch_revno
 breezy.tests.blackbox.test_revno.TestSmartServerRevno.test_simple_branch_revno_lookup
@@ -28080,6 +28084,12 @@ breezy.tests.test_smtp_connection.TestSMTPConnection.test_smtp_server
 breezy.tests.test_smtp_connection.TestSMTPConnection.test_smtp_username
 breezy.tests.test_source.TestApiUsage.test_branch_working_tree
 breezy.tests.test_source.TestApiUsage.test_branch_WorkingTree
+breezy.tests.test_source.TestSource.test_coding_style
+breezy.tests.test_source.TestSource.test_copyright
+breezy.tests.test_source.TestSource.test_extension_exceptions
+breezy.tests.test_source.TestSource.test_feature_absolute_import
+breezy.tests.test_source.TestSource.test_gpl
+breezy.tests.test_source.TestSource.test_no_asserts
 breezy.tests.test_source.TestSource.test_tmpdir_not_in_source_files
 breezy.tests.test_ssh_transport.SSHVendorManagerTests.test_cached_vendor
 breezy.tests.test_ssh_transport.SSHVendorManagerTests.test_default_vendor
