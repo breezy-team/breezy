@@ -23,10 +23,14 @@ import sys
 from .. import (
     osutils,
     )
+from ..sixish import PY3
 from . import (
     TestCase,
     )
-from .ui_testing import BytesIOWithEncoding
+from .ui_testing import (
+    BytesIOWithEncoding,
+    StringIOWithEncoding,
+    )
 
 
 class FakeCodec(object):
@@ -84,11 +88,20 @@ class TestTerminalEncoding(TestCase):
                              stdin_encoding,
                              user_encoding='user_encoding',
                              enable_fake_encodings=True):
-        sys.stdout = BytesIOWithEncoding()
+        if PY3:
+            sys.stdout = StringIOWithEncoding()
+        else:
+            sys.stdout = BytesIOWithEncoding()
         sys.stdout.encoding = stdout_encoding
-        sys.stderr = BytesIOWithEncoding()
+        if PY3:
+            sys.stderr = StringIOWithEncoding()
+        else:
+            sys.stderr = BytesIOWithEncoding()
         sys.stderr.encoding = stderr_encoding
-        sys.stdin = BytesIOWithEncoding()
+        if PY3:
+            sys.stdin = StringIOWithEncoding()
+        else:
+            sys.stdin = BytesIOWithEncoding()
         sys.stdin.encoding = stdin_encoding
         osutils._cached_user_encoding = user_encoding
         if enable_fake_encodings:
@@ -171,7 +184,10 @@ class TestUserEncoding(TestCase):
         self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)
-        self.overrideAttr(sys, 'stderr', BytesIOWithEncoding())
+        if PY3:
+            self.overrideAttr(sys, 'stderr', StringIOWithEncoding())
+        else:
+            self.overrideAttr(sys, 'stderr', BytesIOWithEncoding())
 
     def get_encoding(self, do_setlocale=True):
         return self._encoding
@@ -181,22 +197,22 @@ class TestUserEncoding(TestCase):
         fake_codec.add('user_encoding')
         self.assertEqual('iso8859-1', # fake_codec maps to latin-1
                           osutils.get_user_encoding())
-        self.assertEqual(b'', sys.stderr.getvalue())
+        self.assertEqual('', sys.stderr.getvalue())
 
     def test_user_cp0(self):
         self._encoding = 'cp0'
         self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual(b'', sys.stderr.getvalue())
+        self.assertEqual('', sys.stderr.getvalue())
 
     def test_user_cp_unknown(self):
         self._encoding = 'cp-unknown'
         self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual(b'brz: warning: unknown encoding cp-unknown.'
-                          b' Continuing with ascii encoding.\n',
-                          sys.stderr.getvalue())
+        self.assertEqual('brz: warning: unknown encoding cp-unknown.'
+                         ' Continuing with ascii encoding.\n',
+                         sys.stderr.getvalue())
 
     def test_user_empty(self):
         """Running bzr from a vim script gives '' for a preferred locale"""
         self._encoding = ''
         self.assertEqual('ascii', osutils.get_user_encoding())
-        self.assertEqual(b'', sys.stderr.getvalue())
+        self.assertEqual('', sys.stderr.getvalue())
