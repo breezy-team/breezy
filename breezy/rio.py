@@ -95,9 +95,7 @@ def read_stanzas(from_file):
         s = read_stanza(from_file)
         if s is None:
             break
-        else:
-            yield s
-
+        yield s
 
 
 def read_stanzas_unicode(from_file):
@@ -106,9 +104,7 @@ def read_stanzas_unicode(from_file):
         s = read_stanza_unicode(from_file)
         if s is None:
             break
-        else:
-            yield s
-
+        yield s
 
 
 class Stanza(object):

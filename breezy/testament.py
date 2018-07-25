@@ -94,7 +94,7 @@ class Testament(object):
     """
 
     long_header = 'bazaar-ng testament version 1\n'
-    short_header = b'bazaar-ng testament short form 1\n'
+    short_header = 'bazaar-ng testament short form 1\n'
     include_root = False
 
     @classmethod
