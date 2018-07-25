@@ -132,8 +132,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         user = 'joe'
         password = 'hispass'
         factory = WideOpenSMTPFactory()
-        conn = self.get_connection(b'[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=factory)
+        conn = self.get_connection(
+                b'[DEFAULT]\nsmtp_username=%s\n' % user.encode('ascii'),
+                smtp_factory=factory)
         self.assertIs(None, conn._smtp_password)
 
         ui.ui_factory = ui.CannedInputUIFactory([password])
@@ -144,8 +145,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         user = 'joe'
         password = 'hispass'
         factory = WideOpenSMTPFactory()
-        conn = self.get_connection(b'[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=factory)
+        conn = self.get_connection(
+            b'[DEFAULT]\nsmtp_username=%s\n' % user.encode('ascii'),
+            smtp_factory=factory)
         self.assertEqual(user, conn._smtp_username)
         self.assertIs(None, conn._smtp_password)
         # Create a config file with the right password
@@ -159,7 +161,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         self.assertEqual(password, conn._smtp_password)
 
     def test_authenticate_with_byte_strings(self):
-        user = 'joe'
+        user = b'joe'
         unicode_pass = u'h\xECspass'
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
@@ -173,8 +175,8 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
                           ('has_extn', 'starttls'),
                           ('login', user, utf8_pass)], factory._calls)
         smtp_username, smtp_password = factory._calls[-1][1:]
-        self.assertIsInstance(smtp_username, str)
-        self.assertIsInstance(smtp_password, str)
+        self.assertIsInstance(smtp_username, bytes)
+        self.assertIsInstance(smtp_password, bytes)
 
     def test_create_connection(self):
         factory = StubSMTPFactory()
@@ -261,17 +263,17 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
         self.assertRaises(
             smtp_connection.NoDestinationAddress,
-            smtp_connection.SMTPConnection(config.MemoryStack("")
+            smtp_connection.SMTPConnection(config.MemoryStack(b"")
                                            ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', '', 'subject')
         self.assertRaises(
             smtp_connection.NoDestinationAddress,
-            smtp_connection.SMTPConnection(config.MemoryStack("")
+            smtp_connection.SMTPConnection(config.MemoryStack(b"")
                                            ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', [], 'subject')
         self.assertRaises(
             smtp_connection.NoDestinationAddress,
-            smtp_connection.SMTPConnection(config.MemoryStack("")
+            smtp_connection.SMTPConnection(config.MemoryStack(b"")
                                            ).send_email, msg)

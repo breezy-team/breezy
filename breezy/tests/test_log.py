@@ -29,6 +29,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    StringIO,
     unichr,
     )
 
@@ -1051,8 +1052,8 @@ class TestShowChangedRevisions(tests.TestCaseWithTransport):
         tree.commit('bar', rev_id=b'bar-id')
         s = self.make_utf8_encoded_stringio()
         log.show_changed_revisions(tree.branch, [], [b'bar-id'], s)
-        self.assertContainsRe(s.getvalue(), 'bar')
-        self.assertNotContainsRe(s.getvalue(), 'foo')
+        self.assertContainsRe(s.getvalue(), b'bar')
+        self.assertNotContainsRe(s.getvalue(), b'foo')
 
 
 class TestLogFormatter(tests.TestCase):
@@ -1179,69 +1180,69 @@ class TestHistoryChange(tests.TestCaseWithTransport):
 
     def test_all_new(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('1a', '3a', tree.branch.repository)
+        old, new = log.get_history_change(b'1a', b'3a', tree.branch.repository)
         self.assertEqual([], old)
-        self.assertEqual(['2a', '3a'], new)
+        self.assertEqual([b'2a', b'3a'], new)
 
     def test_all_old(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', '1a', tree.branch.repository)
+        old, new = log.get_history_change(b'3a', b'1a', tree.branch.repository)
         self.assertEqual([], new)
-        self.assertEqual(['2a', '3a'], old)
+        self.assertEqual([b'2a', b'3a'], old)
 
     def test_null_old(self):
         tree = self.setup_ab_tree()
         old, new = log.get_history_change(revision.NULL_REVISION,
-                                          '3a', tree.branch.repository)
+                                          b'3a', tree.branch.repository)
         self.assertEqual([], old)
-        self.assertEqual(['1a', '2a', '3a'], new)
+        self.assertEqual([b'1a', b'2a', b'3a'], new)
 
     def test_null_new(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', revision.NULL_REVISION,
+        old, new = log.get_history_change(b'3a', revision.NULL_REVISION,
                                           tree.branch.repository)
         self.assertEqual([], new)
-        self.assertEqual(['1a', '2a', '3a'], old)
+        self.assertEqual([b'1a', b'2a', b'3a'], old)
 
     def test_diverged(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', '3b', tree.branch.repository)
-        self.assertEqual(old, ['2a', '3a'])
-        self.assertEqual(new, ['2b', '3b'])
+        old, new = log.get_history_change(b'3a', b'3b', tree.branch.repository)
+        self.assertEqual(old, [b'2a', b'3a'])
+        self.assertEqual(new, [b'2b', b'3b'])
 
     def test_unrelated(self):
         tree = self.setup_ac_tree()
-        old, new = log.get_history_change('3a', '3c', tree.branch.repository)
-        self.assertEqual(old, ['1a', '2a', '3a'])
-        self.assertEqual(new, ['1c', '2c', '3c'])
+        old, new = log.get_history_change(b'3a', b'3c', tree.branch.repository)
+        self.assertEqual(old, [b'1a', b'2a', b'3a'])
+        self.assertEqual(new, [b'1c', b'2c', b'3c'])
 
     def test_show_branch_change(self):
         tree = self.setup_ab_tree()
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 3, '3a')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 3, b'3a')
         self.assertContainsRe(s.getvalue(),
             '[*]{60}\nRemoved Revisions:\n(.|\n)*2a(.|\n)*3a(.|\n)*'
             '[*]{60}\n\nAdded Revisions:\n(.|\n)*2b(.|\n)*3b')
 
     def test_show_branch_change_no_change(self):
         tree = self.setup_ab_tree()
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 3, '3b')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 3, b'3b')
         self.assertEqual(s.getvalue(),
             'Nothing seems to have changed\n')
 
     def test_show_branch_change_no_old(self):
         tree = self.setup_ab_tree()
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 2, '2b')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 2, b'2b')
         self.assertContainsRe(s.getvalue(), 'Added Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Removed Revisions:')
 
     def test_show_branch_change_no_new(self):
         tree = self.setup_ab_tree()
         tree.branch.set_last_revision_info(2, b'2b')
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 3, '3b')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 3, b'3b')
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
 
@@ -1278,31 +1279,31 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
     def test_one_revision(self):
         tree = self.setup_ab_tree()
         lf = LogCatcher()
-        rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         log.show_log(tree.branch, lf, verbose=True, start_revision=rev,
                      end_revision=rev)
         self.assertEqual(1, len(lf.revisions))
         self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
-        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+        self.assertEqual(b'3a', lf.revisions[0].rev.revision_id)
 
     def test_many_revisions(self):
         tree = self.setup_ab_tree()
         lf = LogCatcher()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         log.show_log(tree.branch, lf, verbose=True, start_revision=start_rev,
                      end_revision=end_rev)
         self.assertEqual(3, len(lf.revisions))
         self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
-        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+        self.assertEqual(b'3a', lf.revisions[0].rev.revision_id)
         self.assertEqual(None, lf.revisions[1].revno)   # Out-of-branch
-        self.assertEqual('2a', lf.revisions[1].rev.revision_id)
+        self.assertEqual(b'2a', lf.revisions[1].rev.revision_id)
         self.assertEqual('1', lf.revisions[2].revno)    # In-branch
 
     def test_long_format(self):
         tree = self.setup_ab_tree()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revision-id: 3a
@@ -1332,8 +1333,8 @@ message:
 
     def test_short_format(self):
         tree = self.setup_ab_tree()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         self.assertFormatterResult(b"""\
       Joe Foo\t2005-11-22
       revision-id:3a
@@ -1353,8 +1354,8 @@ message:
 
     def test_line_format(self):
         tree = self.setup_ab_tree()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         self.assertFormatterResult(b"""\
 Joe Foo 2005-11-22 commit 3a
 Joe Foo 2005-11-22 commit 2a
@@ -1640,21 +1641,21 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
     def test_merge_sorted_exclude_ancestry(self):
         b = self.make_branch_with_alternate_ancestries()
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
-                             b, '1', '3', exclude_common_ancestry=False)
+        self.assertLogRevnos([b'3', b'1.1.2', b'1.2.1', b'1.1.1', b'2', b'1'],
+                             b, b'1', b'3', exclude_common_ancestry=False)
         # '2' is part of the '3' ancestry but not part of '1.1.1' ancestry so
         # it should be mentioned even if merge_sort order will make it appear
         # after 1.1.1
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
-                             b, '1.1.1', '3', exclude_common_ancestry=True)
+        self.assertLogRevnos([b'3', b'1.1.2', b'1.2.1', b'2'],
+                             b, b'1.1.1', b'3', exclude_common_ancestry=True)
 
     def test_merge_sorted_simple_revnos_exclude_ancestry(self):
         b = self.make_branch_with_alternate_ancestries()
-        self.assertLogRevnos(['3', '2'],
-                             b, '1', '3', exclude_common_ancestry=True,
+        self.assertLogRevnos([b'3', b'2'],
+                             b, b'1', b'3', exclude_common_ancestry=True,
                              generate_merge_revisions=False)
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
-                             b, '1', '3', exclude_common_ancestry=True,
+        self.assertLogRevnos([b'3', b'1.1.2', b'1.2.1', b'1.1.1', b'2'],
+                             b, b'1', b'3', exclude_common_ancestry=True,
                              generate_merge_revisions=True)
 
 

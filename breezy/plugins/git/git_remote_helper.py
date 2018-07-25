@@ -142,12 +142,13 @@ class RemoteHelper(object):
     def cmd_import(self, outf, argv):
         if "fastimport" in CAPABILITIES:
             raise Exception("install fastimport for 'import' command support")
-        dest_branch_name = ref_to_branch_name(argv[1].encode('utf-8'))
+        ref = argv[1].encode('utf-8')
+        dest_branch_name = ref_to_branch_name(ref)
         if dest_branch_name == "master":
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
         exporter = fastexporter.BzrFastExporter(remote_branch,
-            outf=outf, ref=argv[1],
+            outf=outf, ref=ref,
             checkpoint=None, import_marks_file=None,
             export_marks_file=None, revision=None,
             verbose=None, plain_format=True,

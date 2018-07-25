@@ -59,8 +59,9 @@ class TestCat(tests.TestCaseWithTransport):
         rev_id = tree.branch.last_revision()
 
         self.assertEqual(
-            'baz\n', self.run_bzr(['cat', 'a', '-r', 'revid:%s' % rev_id],
-                                  working_dir='branch')[0])
+            'baz\n', self.run_bzr(
+                ['cat', 'a', '-r', 'revid:%s' % rev_id.decode('utf-8')],
+                working_dir='branch')[0])
 
         self.assertEqual('foo\n',
                           self.run_bzr(['cat', 'branch/a',

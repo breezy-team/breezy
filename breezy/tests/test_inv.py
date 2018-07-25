@@ -495,7 +495,7 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_parent_is_missing(self):
         inv = self.get_empty_inventory()
-        file2 = inventory.InventoryFile(b'id2', 'path2', 'missingparent')
+        file2 = inventory.InventoryFile(b'id2', 'path2', b'missingparent')
         file2.revision = b'result'
         file2.text_size = 0
         file2.text_sha1 = b""
@@ -1102,11 +1102,13 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test_create_by_apply_delta_sets_root(self):
         inv = Inventory()
+        inv.root.revision = b"myrootrev"
         inv.revision_id = b"revid"
         chk_bytes = self.get_chk_bytes()
         base_inv = CHKInventory.from_inventory(chk_bytes, inv)
         inv.add_path("", "directory", b"myrootid", None)
-        inv.revision_id = "expectedid"
+        inv.revision_id = b"expectedid"
+        inv.root.revision = b"myrootrev"
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
         delta = [("", None, base_inv.root.file_id, None),
             (None, "",  b"myrootid", inv.root)]
@@ -1331,6 +1333,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.get_entry(b"fileid").text_sha1 = b"ffff"
         inv.get_entry(b"fileid").text_size = 0
         inv.add(InventoryDirectory(b"dirid", u'dir-\N{EURO SIGN}', root_id))
+        inv.get_entry(b"dirid").revision = b"dirrev"
         inv.add(InventoryFile(b"childid", u'ch\xefld', b"dirid"))
         inv.get_entry(b"childid").revision = b"filerev"
         inv.get_entry(b"childid").text_sha1 = b"ffff"
@@ -1365,6 +1368,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         inv.get_entry(b"fileid").text_sha1 = b"ffff"
         inv.get_entry(b"fileid").text_size = 1
         inv.add(InventoryDirectory(b"dirid", "dir", root_id))
+        inv.get_entry(b"dirid").revision = b"dirrev"
         inv.add(InventoryFile(b"childid", "child", b"dirid"))
         inv.get_entry(b"childid").revision = b"filerev"
         inv.get_entry(b"childid").executable = False
@@ -1383,7 +1387,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertTrue(new_inv._fully_cached)
         ie_root = new_inv._fileid_to_entry_cache[root_id]
         self.assertEqual(['dir', 'file'], sorted(ie_root._children.keys()))
-        ie_dir = new_inv._fileid_to_entry_cache['dirid']
+        ie_dir = new_inv._fileid_to_entry_cache[b'dirid']
         self.assertEqual(['child'], sorted(ie_dir._children.keys()))
 
     def test__preload_handles_partially_evaluated_inventory(self):
@@ -1405,9 +1409,13 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def test_filter_change_in_renamed_subfolder(self):
         inv = Inventory(b'tree-root')
+        inv.root.revision = b'rootrev'
         src_ie = inv.add_path('src', 'directory', b'src-id')
-        inv.add_path('src/sub/', 'directory', b'sub-id')
+        src_ie.revision = b'srcrev'
+        sub_ie = inv.add_path('src/sub/', 'directory', b'sub-id')
+        sub_ie.revision = b'subrev'
         a_ie = inv.add_path('src/sub/a', 'file', b'a-id')
+        a_ie.revision = b'filerev'
         a_ie.text_sha1 = osutils.sha_string(b'content\n')
         a_ie.text_size = len(b'content\n')
         chk_bytes = self.get_chk_bytes()
@@ -1431,13 +1439,16 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         trans = self.get_transport('')
         return factory(trans)
 
-    def make_dir(self, inv, name, parent_id):
-        inv.add(inv.make_entry('directory', name, parent_id, name.encode('utf-8') + b'-id'))
+    def make_dir(self, inv, name, parent_id, revision):
+        ie = inv.make_entry('directory', name, parent_id, name.encode('utf-8') + b'-id')
+        ie.revision = revision
+        inv.add(ie)
 
-    def make_file(self, inv, name, parent_id, content=b'content\n'):
+    def make_file(self, inv, name, parent_id, revision, content=b'content\n'):
         ie = inv.make_entry('file', name, parent_id, name.encode('utf-8') + b'-id')
         ie.text_sha1 = osutils.sha_string(content)
         ie.text_size = len(content)
+        ie.revision = revision
         inv.add(ie)
 
     def make_simple_inventory(self):
@@ -1453,14 +1464,14 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         # dir2/             dir2-id
         #   sub2-file1      sub2-file1-id
         # top               top-id
-        self.make_dir(inv, 'dir1', b'TREE_ROOT')
-        self.make_dir(inv, 'dir2', b'TREE_ROOT')
-        self.make_dir(inv, 'sub-dir1', b'dir1-id')
-        self.make_file(inv, 'top', b'TREE_ROOT')
-        self.make_file(inv, 'sub-file1', b'dir1-id')
-        self.make_file(inv, 'sub-file2', b'dir1-id')
-        self.make_file(inv, 'subsub-file1', b'sub-dir1-id')
-        self.make_file(inv, 'sub2-file1', b'dir2-id')
+        self.make_dir(inv, 'dir1', b'TREE_ROOT', b'dirrev')
+        self.make_dir(inv, 'dir2', b'TREE_ROOT', b'dirrev')
+        self.make_dir(inv, 'sub-dir1', b'dir1-id', b'dirrev')
+        self.make_file(inv, 'top', b'TREE_ROOT', b'filerev')
+        self.make_file(inv, 'sub-file1', b'dir1-id', b'filerev')
+        self.make_file(inv, 'sub-file2', b'dir1-id', b'filerev')
+        self.make_file(inv, 'subsub-file1', b'sub-dir1-id', b'filerev')
+        self.make_file(inv, 'sub2-file1', b'dir2-id', b'filerev')
         chk_bytes = self.get_chk_bytes()
         #  use a small maximum_size to force internal paging structures
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
@@ -1482,10 +1493,10 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         for entry in entries:
             s = expected_children.setdefault(entry.parent_id, [])
             s.append(entry.file_id)
-        val_children = dict((k, sorted(v)) for k, v
-                            in val_children.items())
-        expected_children = dict((k, sorted(v)) for k, v
-                            in expected_children.items())
+        val_children = {
+            k: sorted(v) for k, v in val_children.items()}
+        expected_children = {
+            k: sorted(v) for k, v in expected_children.items()}
         self.assertEqual(expected_children, val_children)
 
     def test_make_simple_inventory(self):
@@ -1521,7 +1532,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
 
     def test_single_file(self):
         inv = self.make_simple_inventory()
-        self.assertExpand([b'TREE_ROOT', b'top-id'], inv, ['top-id'])
+        self.assertExpand([b'TREE_ROOT', b'top-id'], inv, [b'top-id'])
 
     def test_get_all_parents(self):
         inv = self.make_simple_inventory()
@@ -1543,7 +1554,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
 
     def test_top_level_file(self):
         inv = self.make_simple_inventory()
-        self.assertExpand([b'TREE_ROOT', b'top-id'], inv, ['top-id'])
+        self.assertExpand([b'TREE_ROOT', b'top-id'], inv, [b'top-id'])
 
     def test_subsub_file(self):
         inv = self.make_simple_inventory()
@@ -1553,7 +1564,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
     def test_sub_and_root(self):
         inv = self.make_simple_inventory()
         self.assertExpand([b'TREE_ROOT', b'dir1-id', b'sub-dir1-id', b'top-id',
-                           b'subsub-file1-id'], inv, ['top-id', b'subsub-file1-id'])
+                           b'subsub-file1-id'], inv, [b'top-id', b'subsub-file1-id'])
 
 
 class TestMutableInventoryFromTree(TestCaseWithTransport):

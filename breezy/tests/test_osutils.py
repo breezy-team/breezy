@@ -38,6 +38,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    PY3,
     text_type,
     )
 from . import (
@@ -1081,10 +1082,10 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
 class TestChunksToLines(tests.TestCase):
 
     def test_smoketest(self):
-        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
-                         osutils.chunks_to_lines(['foo\nbar', '\nbaz\n']))
-        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
-                         osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
+        self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
+                         osutils.chunks_to_lines([b'foo\nbar', b'\nbaz\n']))
+        self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
+                         osutils.chunks_to_lines([b'foo\n', b'bar\n', b'baz\n']))
 
     def test_osutils_binding(self):
         from . import test__chunks_to_lines
@@ -1104,8 +1105,8 @@ class TestSplitLines(tests.TestCase):
                          osutils.split_lines(u'foo\nbar\xae\n'))
 
     def test_split_with_carriage_returns(self):
-        self.assertEqual(['foo\rbar\n'],
-                         osutils.split_lines('foo\rbar\n'))
+        self.assertEqual([b'foo\rbar\n'],
+                         osutils.split_lines(b'foo\rbar\n'))
 
 
 class TestWalkDirs(tests.TestCaseInTempDir):
@@ -1278,7 +1279,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # Force it to redetect
         osutils._selected_dir_reader = None
         # Nothing to list, but should still trigger the selection logic
-        self.assertEqual([(('', '.'), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertEqual([((b'', '.'), [])], list(osutils._walkdirs_utf8('.')))
         self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
@@ -1369,20 +1370,20 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         name2 = name2.encode('utf8')
 
         expected_dirblocks = [
-                (('', '.'),
-                 [(name0, name0, 'file', './' + name0),
-                  (name1, name1, 'directory', './' + name1),
-                  (name2, name2, 'file', './' + name2),
+                ((b'', b'.'),
+                 [(name0, name0, 'file', b'./' + name0),
+                  (name1, name1, 'directory', b'./' + name1),
+                  (name2, name2, 'file', b'./' + name2),
                  ]
                 ),
-                ((name1, './' + name1),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1
-                                                        + '/' + name0),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1
-                                                            + '/' + name1),
+                ((name1, b'./' + name1),
+                 [(name1 + b'/' + name0, name0, 'file', b'./' + name1
+                                                        + b'/' + name0),
+                  (name1 + b'/' + name1, name1, 'directory', b'./' + name1
+                                                            + b'/' + name1),
                  ]
                 ),
-                ((name1 + '/' + name1, './' + name1 + '/' + name1),
+                ((name1 + b'/' + name1, b'./' + name1 + b'/' + name1),
                  [
                  ]
                 ),
@@ -1391,7 +1392,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # For ease in testing, if walkdirs_utf8 returns Unicode, assert that
         # all abspaths are Unicode, and encode them back into utf8.
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
-            self.assertIsInstance(dirdetail[0], str)
+            self.assertIsInstance(dirdetail[0], bytes)
             if isinstance(dirdetail[1], text_type):
                 dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
                 dirblock = [list(info) for info in dirblock]
@@ -1400,9 +1401,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                     info[4] = info[4].encode('utf8')
             new_dirblock = []
             for info in dirblock:
-                self.assertIsInstance(info[0], str)
-                self.assertIsInstance(info[1], str)
-                self.assertIsInstance(info[4], str)
+                self.assertIsInstance(info[0], bytes)
+                self.assertIsInstance(info[1], bytes)
+                self.assertIsInstance(info[4], bytes)
                 # Remove the stat information
                 new_dirblock.append((info[0], info[1], info[2], info[4]))
             result.append((dirdetail, new_dirblock))
@@ -1436,20 +1437,20 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # All of the abspaths should be in unicode, all of the relative paths
         # should be in utf8
         expected_dirblocks = [
-                (('', '.'),
+                ((b'', '.'),
                  [(name0, name0, 'file', './' + name0u),
                   (name1, name1, 'directory', './' + name1u),
                   (name2, name2, 'file', './' + name2u),
                  ]
                 ),
                 ((name1, './' + name1u),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1u
+                 [(name1 + b'/' + name0, name0, 'file', './' + name1u
                                                         + '/' + name0u),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1u
+                  (name1 + b'/' + name1, name1, 'directory', './' + name1u
                                                             + '/' + name1u),
                  ]
                 ),
-                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+                ((name1 + b'/' + name1, './' + name1u + '/' + name1u),
                  [
                  ]
                 ),
@@ -1727,7 +1728,7 @@ class TestSetUnsetEnv(tests.TestCase):
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
         self.assertEqual(None, os.environ.get('BRZ_TEST_ENV_VAR'))
-        self.assertFalse('BRZ_TEST_ENV_VAR' in os.environ)
+        self.assertNotIn('BRZ_TEST_ENV_VAR', os.environ)
 
 
 class TestSizeShaFile(tests.TestCaseInTempDir):
@@ -1804,18 +1805,18 @@ class TestDirReader(tests.TestCaseInTempDir):
             '2file'
             ]
         expected_dirblocks = [
-                (('', '.'),
-                 [('0file', '0file', 'file'),
-                  ('1dir', '1dir', 'directory'),
-                  ('2file', '2file', 'file'),
+                ((b'', '.'),
+                 [(b'0file', b'0file', 'file'),
+                  (b'1dir', b'1dir', 'directory'),
+                  (b'2file', b'2file', 'file'),
                  ]
                 ),
-                (('1dir', './1dir'),
-                 [('1dir/0file', '0file', 'file'),
-                  ('1dir/1dir', '1dir', 'directory'),
+                ((b'1dir', './1dir'),
+                 [(b'1dir/0file', b'0file', 'file'),
+                  (b'1dir/1dir', b'1dir', 'directory'),
                  ]
                 ),
-                (('1dir/1dir', './1dir/1dir'),
+                ((b'1dir/1dir', './1dir/1dir'),
                  [
                  ]
                 ),
@@ -1856,20 +1857,20 @@ class TestDirReader(tests.TestCaseInTempDir):
         name1 = name1u.encode('UTF-8')
         name2 = name2u.encode('UTF-8')
         expected_dirblocks = [
-                (('', '.'),
+                ((b'', '.'),
                  [(name0, name0, 'file', './' + name0u),
                   (name1, name1, 'directory', './' + name1u),
                   (name2, name2, 'file', './' + name2u),
                  ]
                 ),
                 ((name1, './' + name1u),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1u
+                 [(name1 + b'/' + name0, name0, 'file', './' + name1u
                                                         + '/' + name0u),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1u
+                  (name1 + b'/' + name1, name1, 'directory', './' + name1u
                                                             + '/' + name1u),
                  ]
                 ),
-                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+                ((name1 + b'/' + name1, './' + name1u + '/' + name1u),
                  [
                  ]
                 ),
@@ -1906,7 +1907,7 @@ class TestDirReader(tests.TestCaseInTempDir):
         target_utf8 = target.encode('UTF-8')
         link_name_utf8 = link_name.encode('UTF-8')
         expected_dirblocks = [
-                (('', '.'),
+                ((b'', '.'),
                  [(link_name_utf8, link_name_utf8,
                    'symlink', './' + link_name),],
                  )]
@@ -1981,8 +1982,12 @@ class TestFailedToLoadExtension(tests.TestCase):
     def test_failure_to_load(self):
         self._try_loading()
         self.assertLength(1, osutils._extension_load_failures)
-        self.assertEqual(osutils._extension_load_failures[0],
-            "No module named _fictional_extension_py")
+        if PY3:
+            self.assertEqual(osutils._extension_load_failures[0],
+                "No module named 'breezy._fictional_extension_py'")
+        else:
+            self.assertEqual(osutils._extension_load_failures[0],
+                "No module named _fictional_extension_py")
 
     def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
@@ -1997,8 +2002,8 @@ class TestFailedToLoadExtension(tests.TestCase):
         osutils.report_extension_load_failures()
         self.assertContainsRe(
             log.getvalue(),
-            r"brz: warning: some compiled extensions could not be loaded; "
-            "see ``brz help missing-extensions``\n"
+            br"brz: warning: some compiled extensions could not be loaded; "
+            b"see ``brz help missing-extensions``\n"
             )
 
 

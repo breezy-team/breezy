@@ -1110,7 +1110,7 @@ def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     # Trivially convert a fulltext into a 'chunked' representation, and let
     # chunks_to_lines do the heavy lifting.
-    if isinstance(s, str):
+    if isinstance(s, bytes):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:

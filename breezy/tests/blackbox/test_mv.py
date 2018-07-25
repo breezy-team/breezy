@@ -516,7 +516,7 @@ class TestMove(TestCaseWithTransport):
         self.requireFeature(UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
-        out, err = self.run_bzr_error(["Could not rename", b"not versioned"],
+        out, err = self.run_bzr_error(["Could not rename", "not versioned"],
             ["mv", u"\xA7", "b"])
 
     def test_mv_removed_non_ascii(self):
@@ -527,5 +527,5 @@ class TestMove(TestCaseWithTransport):
         tree.add([u"\xA7"])
         tree.commit(u"Adding \xA7")
         os.remove(u"\xA7")
-        out, err = self.run_bzr_error(["Could not rename", b"not exist"],
+        out, err = self.run_bzr_error(["Could not rename", "not exist"],
             ["mv", u"\xA7", "b"])

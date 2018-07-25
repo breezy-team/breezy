@@ -3416,9 +3416,9 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def symlink_creation_records(self):
         attribs = self.default_attribs()
-        attribs['_id_number'] = 2
-        attribs['_new_name'] = {b'new-1': u'foo\u1234'.encode('utf-8')}
-        attribs['_new_parent'] = {b'new-1': b'new-0'}
+        attribs[b'_id_number'] = 2
+        attribs[b'_new_name'] = {b'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs[b'_new_parent'] = {b'new-1': b'new-0'}
         contents = [(b'new-1', b'symlink', u'bar\u1234'.encode('utf-8'))]
         return self.make_records(attribs, contents)
 
@@ -3444,10 +3444,10 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def destruction_records(self):
         attribs = self.default_attribs()
-        attribs['_id_number'] = 3
-        attribs['_removed_id'] = [b'new-1']
-        attribs['_removed_contents'] = [b'new-2']
-        attribs['_tree_path_ids'] = {
+        attribs[b'_id_number'] = 3
+        attribs[b'_removed_id'] = [b'new-1']
+        attribs[b'_removed_contents'] = [b'new-2']
+        attribs[b'_tree_path_ids'] = {
             b'': b'new-0',
             u'foo\u1234'.encode('utf-8'): b'new-1',
             b'bar': b'new-2',
@@ -3501,11 +3501,11 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def modification_records(self):
         attribs = self.default_attribs()
-        attribs['_id_number'] = 2
-        attribs['_tree_path_ids'] = {
+        attribs[b'_id_number'] = 2
+        attribs[b'_tree_path_ids'] = {
             b'file': b'new-1',
             b'': b'new-0',}
-        attribs['_removed_contents'] = [b'new-1']
+        attribs[b'_removed_contents'] = [b'new-1']
         contents = [(b'new-1', b'file',
                      b'i 1\nz\n\nc 0 1 1 1\ni 1\nx\n\nc 0 3 3 1\n')]
         return self.make_records(attribs, contents)

@@ -111,7 +111,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist([default_log, brz_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Breezy log file: " + brz_log)
+        self.assertContainsRe(out, br"(?m)^  Breezy log file: " + brz_log)
         self.assertPathDoesNotExist(default_log)
         self.assertPathExists(brz_log)
 
@@ -127,7 +127,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Breezy log file: " + brz_log)
+        self.assertContainsRe(out, br"(?m)^  Breezy log file: " + brz_log)
         self.assertPathDoesNotExist(default_log)
 
     def test_unicode_brz_log(self):

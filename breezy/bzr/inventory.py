@@ -398,7 +398,7 @@ class InventoryDirectory(InventoryEntry):
         # to provide a per-fileid log. The hash of every directory content is
         # "da..." below (the sha1sum of '').
         checker.add_pending_item(rev_id,
-            (b'texts', self.file_id, self.revision), b'text',
+            ('texts', self.file_id, self.revision), b'text',
              b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
@@ -438,7 +438,7 @@ class InventoryFile(InventoryEntry):
         """See InventoryEntry._check"""
         # TODO: check size too.
         checker.add_pending_item(tree_revision_id,
-            (b'texts', self.file_id, self.revision), b'text',
+            ('texts', self.file_id, self.revision), b'text',
              self.text_sha1)
         if self.text_size is None:
             checker._report_items.append(
@@ -545,7 +545,7 @@ class InventoryLink(InventoryEntry):
                     % (self.file_id, tree_revision_id))
         # Symlinks are stored as ''
         checker.add_pending_item(tree_revision_id,
-            (b'texts', self.file_id, self.revision), b'text',
+            ('texts', self.file_id, self.revision), b'text',
              b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):

@@ -145,12 +145,8 @@ class TestSource(TestSourceHelper):
 
     def get_source_file_contents(self, extensions=None):
         for fname in self.get_source_files(extensions=extensions):
-            f = open(fname, 'rb')
-            try:
-                text = f.read()
-            finally:
-                f.close()
-            yield fname, text
+            with open(fname, 'r') as f:
+                yield fname, f.read()
 
     def is_our_code(self, fname):
         """True if it's a "real" part of breezy rather than external code"""
@@ -350,8 +346,9 @@ class TestSource(TestSourceHelper):
                 continue
             if not assert_re.search(text):
                 continue
-            ast = parser.ast2tuple(parser.suite(text))
-            if search(ast):
+            st = parser.suite(text)
+            code = parser.st2tuple(st)
+            if search(code):
                 badfiles.append(fname)
         if badfiles:
             self.fail(

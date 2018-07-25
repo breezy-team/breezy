@@ -315,8 +315,8 @@ class TestUpgrade(TestCaseWithTransport):
         b = control.open_branch()
         self.addCleanup(b.lock_read().unlock)
         self.assertEqual(b._revision_history(),
-           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
-            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+           [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""
@@ -383,7 +383,7 @@ class TestUpgrade(TestCaseWithTransport):
         revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
-        eq(rev.parent_ids[1], 'wibble@wobble-2')
+        eq(rev.parent_ids[1], b'wibble@wobble-2')
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)

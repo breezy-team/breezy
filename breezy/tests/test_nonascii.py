@@ -36,7 +36,7 @@ class NonAsciiTest(TestCaseWithTransport):
             raise TestSkipped("filesystem can't accomodate nonascii names")
             return
         with open(pathjoin(br_dir, "a"), "w") as f: f.write("hello")
-        wt.add(["a"], ["a-id"])
+        wt.add(["a"], [b"a-id"])
 
 
 a_circle_c = u'\xe5'

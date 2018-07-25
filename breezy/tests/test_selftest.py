@@ -1905,8 +1905,9 @@ class TestExtraAssertions(tests.TestCase):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
+        self.assertIn(str(e),
+            ["None is an instance of <type 'NoneType'> rather than <type 'int'>",
+             "None is an instance of <class 'NoneType'> rather than <class 'int'>"])
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
             self.assertIsInstance, None, int, "it's just not")
