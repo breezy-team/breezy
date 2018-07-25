@@ -1939,12 +1939,14 @@ class TestNonAscii(GrepTestBase):
         self.build_tree(contents)
         tree.add(contents)
         tree.commit("Initial commit")
-        as_utf8 = u"\u1234".encode("UTF-8")
+        as_utf8 = u"\u1234"
 
         # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
         #                is mangled according to the user encoding.
         streams = self.run_bzr(["grep", "--files-with-matches",
             u"contents"], encoding="UTF-8")
+        if not PY3:
+            as_utf8 = as_utf8.encode("UTF-8")
         self.assertEqual(streams, (as_utf8 + "\n", ""))
 
         streams = self.run_bzr(["grep", "-r", "1", "--files-with-matches",

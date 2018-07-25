@@ -986,7 +986,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             """
             for index in search_indexes:
                 if entry[1][index][0] == b'r': # relocated
-                    if not osutils.is_inside_any(searched_paths, entry[1][index][1]):
+                    if not dirstate.is_inside_any(searched_paths, entry[1][index][1]):
                         search_paths.add(entry[1][index][1])
                 elif entry[1][index][0] != b'a': # absent
                     found_ids.add(entry[0][2])

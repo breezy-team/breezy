@@ -292,6 +292,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
             repo_format = response_tuple_to_repo_format(response[1:])
             if repo_path == b'.':
                 repo_path = b''
+            repo_path = repo_path.decode('utf-8')
             if repo_path:
                 repo_bzrdir_format = RemoteBzrDirFormat()
                 repo_bzrdir_format._network_name = response[5]
@@ -300,10 +301,12 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
             else:
                 repo_bzr = bzrdir
             final_stack = response[8] or None
+            if final_stack:
+                final_stack = final_stack.decode('utf-8')
             final_stack_pwd = response[9] or None
             if final_stack_pwd:
                 final_stack_pwd = urlutils.join(
-                    transport.base, final_stack_pwd)
+                    transport.base, final_stack_pwd.decode('utf-8'))
             remote_repo = RemoteRepository(repo_bzr, repo_format)
             if len(response) > 10:
                 # Updated server verb that locks remotely.
@@ -713,6 +716,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         body = bencode.bdecode(handler.read_body_bytes())
         ret = {}
         for name, value in viewitems(body):
+            name = name.decode('utf-8')
             ret[name] = self._open_branch(name, value[0], value[1],
                 possible_transports=possible_transports,
                 ignore_fallbacks=ignore_fallbacks)
@@ -761,10 +765,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if verb == b'BzrDir.open_branch':
             if response[0] != b'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
-            if response[1] != '':
+            if response[1] != b'':
                 return (b'ref', response[1])
             else:
-                return (b'branch', '')
+                return (b'branch', b'')
         if response[0] not in (b'ref', b'branch'):
             raise errors.UnexpectedSmartServerResponse(response)
         return response

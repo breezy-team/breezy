@@ -3489,7 +3489,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def test_deserialize_missing(self):
         tt = self.get_preview()
         tt.deserialize(iter(self.missing_records()))
-        self.assertEqual({b'boo': b'new-1'}, tt._non_present_ids)
+        self.assertEqual({b'boo': 'new-1'}, tt._non_present_ids)
 
     def make_modification_preview(self):
         LINES_ONE = b'aa\nbb\ncc\ndd\n'
@@ -3536,7 +3536,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             b'foo': b'new-1',
             b'': b'new-0',}
         attribs[b'_removed_contents'] = [b'new-1']
-        contents = [('new-1', 'file',
+        contents = [(b'new-1', b'file',
                      b'i 4\na\nb\nc\nd\n\n')]
         return self.make_records(attribs, contents)
 
@@ -3566,7 +3566,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs[b'_tree_path_ids'] = {
             b'foo': b'new-1',
             b'': b'new-0',}
-        contents = [('new-1', 'file',
+        contents = [(b'new-1', b'file',
                      b'i 4\na\nb\nc\nd\n\n')]
         return self.make_records(attribs, contents)
 

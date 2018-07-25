@@ -266,8 +266,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         tt = transform.TreeTransform(tree)
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
-            tt.new_symlink('symlink',
-                root_transaction_id, 'link-target', 'symlink')
+            tt.new_symlink(b'symlink',
+                root_transaction_id, 'link-target', b'symlink')
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 

@@ -63,7 +63,10 @@ from ... import (
     progress,
     trace,
     )
-from ...sixish import int2byte
+from ...sixish import (
+    int2byte,
+    viewitems,
+    )
 
 from . import (
     helpers,
@@ -604,7 +607,7 @@ class BzrFastExporter(object):
         return path
 
     def emit_tags(self):
-        for tag, revid in self.branch.tags.get_tag_dict().items():
+        for tag, revid in viewitems(self.branch.tags.get_tag_dict()):
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:

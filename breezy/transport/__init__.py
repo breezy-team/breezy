@@ -1525,8 +1525,9 @@ def location_to_url(location):
             raise urlutils.InvalidURL(path=location,
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
-    if PY3:
-        location = location.decode('ascii')
+    else:
+        if PY3:
+            location = location.decode('ascii')
 
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])

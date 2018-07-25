@@ -221,7 +221,7 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # branch
         builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
         # merge branch into mainline
-        builder.build_snapshot([b'2', '1.1.1'], [], revision_id=b'3')
+        builder.build_snapshot([b'2', b'1.1.1'], [], revision_id=b'3')
         # new commits in branch
         builder.build_snapshot([b'1.1.1'], [], revision_id=b'1.1.2')
         builder.build_snapshot([b'1.1.2'], [], revision_id=b'1.1.3')

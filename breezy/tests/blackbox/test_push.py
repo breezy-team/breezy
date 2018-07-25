@@ -772,7 +772,6 @@ class TestPushStrictMixin(object):
         self.assertEqual(revid_to_push, branch_to.last_revision())
 
 
-
 class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
                                    TestPushStrictMixin):
 
@@ -852,7 +851,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.assertPushSucceeds([], with_warning=True)
 
     def test_push_with_revision(self):
-        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push='added')
+        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push=b'added')
 
     def test_push_no_strict(self):
         self.assertPushSucceeds(['--no-strict'])

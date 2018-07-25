@@ -492,9 +492,11 @@ class LocalGitDir(GitDir):
                 else:
                     params = {}
             try:
-                base_url = urlutils.local_path_to_url(self.control_transport.get_bytes('commondir')).rstrip('/.git/')+'/'
+                commondir = self.control_transport.get_bytes('commondir')
             except bzr_errors.NoSuchFile:
                 base_url = self.user_url.rstrip('/')
+            else:
+                base_url = urlutils.local_path_to_url(commondir.decode(osutils._fs_enc)).rstrip('/.git/')+'/'
             if not PY3:
                 params = {k: v.encode('utf-8') for (k, v) in viewitems(params)}
             return urlutils.join_segment_parameters(base_url, params)
@@ -693,5 +695,5 @@ class LocalGitDir(GitDir):
         except bzr_errors.NoSuchFile:
             return self
         else:
-            commondir = commondir.rstrip(b'/.git/')
+            commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)
             return ControlDir.open_from_transport(get_transport_from_path(commondir))

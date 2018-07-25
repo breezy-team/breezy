@@ -543,7 +543,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             +y
 
             """)
-        self.assertEqualDiff(expected, diff[-len(expected):])
+        self.assertEqualDiff(expected.encode('utf-8'), diff[-len(expected):])
 
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')

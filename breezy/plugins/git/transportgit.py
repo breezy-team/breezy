@@ -104,8 +104,8 @@ class TransportRefsContainer(RefsContainer):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
     def _ensure_dir_exists(self, path):
-        for n in range(path.count(b"/")):
-            dirname = b"/".join(path.split(b"/")[:n+1])
+        for n in range(path.count("/")):
+            dirname = "/".join(path.split("/")[:n+1])
             try:
                 self.transport.mkdir(dirname)
             except FileExists:
@@ -217,7 +217,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
         try:
-            f = transport.get(name)
+            f = transport.get(urlutils.quote_from_bytes(name))
         except NoSuchFile:
             return None
         with f:
@@ -259,10 +259,10 @@ class TransportRefsContainer(RefsContainer):
         self._check_refname(other)
         if name != b'HEAD':
             transport = self.transport
-            self._ensure_dir_exists(name)
+            self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         else:
             transport = self.worktree_transport
-        transport.put_bytes(name, SYMREF + other + b'\n')
+        transport.put_bytes(urlutils.quote_from_bytes(name), SYMREF + other + b'\n')
 
     def set_if_equals(self, name, old_ref, new_ref):
         """Set a refname to new_ref only if it currently equals old_ref.
@@ -285,8 +285,8 @@ class TransportRefsContainer(RefsContainer):
             transport = self.worktree_transport
         else:
             transport = self.transport
-            self._ensure_dir_exists(realname)
-        transport.put_bytes(realname, new_ref+b"\n")
+            self._ensure_dir_exists(urlutils.quote_from_bytes(realname))
+        transport.put_bytes(urlutils.quote_from_bytes(realname), new_ref+b"\n")
         return True
 
     def add_if_new(self, name, ref):
@@ -311,8 +311,8 @@ class TransportRefsContainer(RefsContainer):
             transport = self.worktree_transport
         else:
             transport = self.transport
-            self._ensure_dir_exists(realname)
-        transport.put_bytes(realname, ref+b"\n")
+            self._ensure_dir_exists(urlutils.quote_from_bytes(realname))
+        transport.put_bytes(urlutils.quote_from_bytes(realname), ref+b"\n")
         return True
 
     def remove_if_equals(self, name, old_ref):
@@ -333,7 +333,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
         try:
-            transport.delete(name)
+            transport.delete(urlutils.quote_from_bytes(name))
         except NoSuchFile:
             pass
         self._remove_packed_ref(name)
@@ -352,7 +352,7 @@ class TransportRefsContainer(RefsContainer):
             transport = self.transport
         lockname = name + b".lock"
         try:
-            self.transport.delete(lockname)
+            self.transport.delete(urlutils.quote_from_bytes(lockname))
         except NoSuchFile:
             pass
 
@@ -361,10 +361,10 @@ class TransportRefsContainer(RefsContainer):
             transport = self.worktree_transport
         else:
             transport = self.transport
-        self._ensure_dir_exists(name)
-        lockname = name + b".lock"
+        self._ensure_dir_exists(urlutils.quote_from_bytes(name))
+        lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = self.transport.local_abspath(name)
+            local_path = self.transport.local_abspath(urlutils.quote_from_bytes(name))
         except NotLocalUrl:
             # This is racy, but what can we do?
             if self.transport.has(lockname):
@@ -632,19 +632,19 @@ class TransportObjectStore(PackBasedObjectStore):
             if len(base) != 2:
                 continue
             for rest in self.transport.list_dir(base):
-                yield base+rest
+                yield (base+rest).encode(sys.getfilesystemencoding())
 
     def _split_loose_object(self, sha):
         return (sha[:2], sha[2:])
 
     def _remove_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
-        self.transport.delete(path)
+        self.transport.delete(urlutils.quote_from_bytes(path))
 
     def _get_loose_object(self, sha):
         path = osutils.joinpath(self._split_loose_object(sha))
         try:
-            with self.transport.get(path) as f:
+            with self.transport.get(urlutils.quote_from_bytes(path)) as f:
                 return ShaFile.from_file(f)
         except NoSuchFile:
             return None
@@ -656,10 +656,10 @@ class TransportObjectStore(PackBasedObjectStore):
         """
         (dir, file) = self._split_loose_object(obj.id)
         try:
-            self.transport.mkdir(dir)
+            self.transport.mkdir(urlutils.quote_from_bytes(dir))
         except FileExists:
             pass
-        path = osutils.pathjoin(dir, file)
+        path = urlutils.quote_from_bytes(osutils.pathjoin(dir, file))
         if self.transport.has(path):
             return # Already there, no need to write again
         self.transport.put_bytes(path, obj.as_legacy_object())

@@ -334,7 +334,7 @@ class Shelver(object):
             offset = 0
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
-                self.diff_writer.write(str(hunk))
+                self.diff_writer.write(bytes(hunk))
                 selected = self.prompt_bool(self.reporter.vocab['hunk'],
                                             allow_editor=(self.change_editor
                                                           is not None))

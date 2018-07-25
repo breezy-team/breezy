@@ -795,5 +795,5 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_manager = tree.get_shelf_manager()
         shelf_id = shelf_manager.shelve_changes(creator, 'foo')
         metadata = shelf_manager.get_metadata(shelf_id)
-        self.assertEqual('foo', metadata['message'])
-        self.assertEqual('null:', metadata['revision_id'])
+        self.assertEqual('foo', metadata[b'message'])
+        self.assertEqual(b'null:', metadata[b'revision_id'])

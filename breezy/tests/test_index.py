@@ -872,7 +872,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_iter_missing_entry_empty_no_size(self):
         idx = self.make_index()
-        idx = _mod_index.GraphIndex(idx._transport, b'index', None)
+        idx = _mod_index.GraphIndex(idx._transport, 'index', None)
         self.assertEqual([], list(idx.iter_entries([(b'a', )])))
 
     def test_iter_key_prefix_1_element_key_None(self):
@@ -1110,7 +1110,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         size = trans.put_file(name, stream)
         return _mod_index.GraphIndex(trans, name, size)
 
-    def make_combined_index_with_missing(self, missing=[b'1', b'2']):
+    def make_combined_index_with_missing(self, missing=['1', '2']):
         """Create a CombinedGraphIndex which will have missing indexes.
 
         This creates a CGI which thinks it has 2 indexes, however they have
@@ -1219,7 +1219,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_iter_key_prefix_2_key_element_refs(self):
         idx1 = self.make_index('1', 1, key_elements=2, nodes=[
                 ((b'name', b'fin1'), b'data', ([(b'ref', b'erence')], ))])
-        idx2 = self.make_index(b'2', 1, key_elements=2, nodes=[
+        idx2 = self.make_index('2', 1, key_elements=2, nodes=[
                 ((b'name', b'fin2'), b'beta', ([], )),
                 ((b'ref', b'erence'), b'refdata', ([], ))])
         idx = _mod_index.CombinedGraphIndex([idx1, idx2])
@@ -1328,7 +1328,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         # still fail. This is mostly to test we don't get stuck in an infinite
         # loop trying to reload
         idx, reload_counter = self.make_combined_index_with_missing(
-            [b'1', b'2', b'3'])
+            ['1', '2', '3'])
         self.assertRaises(errors.NoSuchFile, idx.key_count)
         self.assertEqual([2, 1, 1], reload_counter)
 
@@ -1391,7 +1391,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_iter_all_entries_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
-                                    [b'1', b'2', b'3'])
+                                    ['1', '2', '3'])
         self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
 
     def test_iter_entries_prefix_reloads(self):
@@ -1402,7 +1402,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         self.assertEqual([1, 1, 0], reload_counter)
 
     def test_iter_entries_prefix_reloads_midway(self):
-        index, reload_counter = self.make_combined_index_with_missing([b'2'])
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
         index1, index2 = index._indices
         result = list(index.iter_entries_prefix([(b'1',)]))
         index3 = index._indices[0]
@@ -1419,7 +1419,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
 
     def test_iter_entries_prefix_reloads_and_fails(self):
         index, reload_counter = self.make_combined_index_with_missing(
-                                    [b'1', b'2', b'3'])
+                                    ['1', '2', '3'])
         self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
                                                  [(b'1',)])
 

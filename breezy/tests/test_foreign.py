@@ -129,7 +129,8 @@ class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
-                (str(self._timestamp), str(self._timezone), "UNKNOWN"))
+                (str(self._timestamp).encode('ascii'),
+                 str(self._timezone).encode('ascii'), b"UNKNOWN"))
             self.random_revid = False
         elif revid is not None:
             self._new_revision_id = revid
