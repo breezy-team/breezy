@@ -397,7 +397,9 @@ breezy.plugins.git.tests.test_blackbox.ShallowTests.test_version_info_python
 breezy.plugins.git.tests.test_blackbox.ShallowTests.test_version_info_rio
 breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_branch
 breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_branches
+breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_branch_ls
 breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_check
+breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_checkout
 breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_diff_format
 breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_git_import
 breezy.plugins.git.tests.test_blackbox.TestGitBlackBox.test_git_import_colo
@@ -2489,7 +2491,10 @@ breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_branch_tree
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_init
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_init_repo_existing_dir
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_init_repo_smart_acceptance
+breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_init_repo_without_username
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_init_repo_with_post_repo_init_hook
+breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_make_repository
+breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_make_repository_quiet
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_notification_on_branch_from_nonrepository
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_notification_on_branch_from_repository
 breezy.tests.blackbox.test_shared_repository.TestSharedRepo.test_no_trees_argument
