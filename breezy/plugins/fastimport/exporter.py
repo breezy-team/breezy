@@ -65,6 +65,7 @@ from ... import (
     )
 from ...sixish import (
     int2byte,
+    PY3,
     viewitems,
     )
 
@@ -290,7 +291,10 @@ class BzrFastExporter(object):
             time_required)
 
     def print_cmd(self, cmd):
-        self.outf.write(b"%s\n" % cmd)
+        if PY3:
+            self.outf.write(b"%s\n" % cmd)
+        else:
+            self.outf.write(b"%r\n" % cmd)
 
     def _save_marks(self):
         if self.export_marks_file:
