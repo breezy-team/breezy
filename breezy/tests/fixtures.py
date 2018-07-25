@@ -73,7 +73,7 @@ def generate_unicode_encodings(universal_encoding=None):
     >>> try:
     ...   n1.encode(enc2).decode(enc2)
     ... except UnicodeError:
-    ...   print 'fail'
+    ...   print('fail')
     fail
     """
     # TODO: check they're supported on this platform?

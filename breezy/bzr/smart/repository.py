@@ -875,7 +875,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         self.do_insert_stream_request(repository, resume_tokens)
 
     def do_insert_stream_request(self, repository, resume_tokens):
-        tokens = [token for token in resume_tokens.split(b' ') if token]
+        tokens = [token.decode('utf-8') for token in resume_tokens.split(b' ') if token]
         self.tokens = tokens
         self.repository = repository
         self.queue = queue.Queue()
@@ -917,7 +917,8 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if write_group_tokens or missing_keys:
             # bzip needed? missing keys should typically be a small set.
             # Should this be a streaming body response ?
-            missing_keys = sorted(missing_keys)
+            missing_keys = sorted(
+                [(entry[0].encode('utf-8'),) + entry[1:] for entry in missing_keys])
             bytes = bencode.bencode((
                 [token.encode('utf-8') for token in write_group_tokens], missing_keys))
             self.repository.unlock()
@@ -1301,8 +1302,11 @@ class SmartServerRepositoryGetStreamForMissingKeys(SmartServerRepositoryRequest)
         repository.lock_read()
         try:
             source = repository._get_source(self._to_format)
-            stream = source.get_stream_for_missing_keys(
-                [tuple(k.split(b'\t')) for k in body_bytes.split(b'\n')])
+            keys = []
+            for entry in body_bytes.split(b'\n'):
+                (kind, revid) = entry.split(b'\t')
+                keys.append((kind.decode('utf-8'), revid))
+            stream = source.get_stream_for_missing_keys(keys)
         except Exception:
             try:
                 # On non-error, unlocking is done by the body stream handler.
@@ -1339,9 +1343,14 @@ class SmartServerRepositoryRevisionArchive(SmartServerRepositoryRequest):
         :param subdir: Subdirectory to export, if not the root
         """
         tree = repository.revision_tree(revision_id)
+        if subdir is not None:
+            subdir = subdir.decode('utf-8')
+        if root is not None:
+            root = root.decode('utf-8')
+        name = name.decode('utf-8')
         return SuccessfulSmartServerResponse((b'ok',),
             body_stream=self.body_stream(
-                tree, format, os.path.basename(name), root, subdir,
+                tree, format.decode('utf-8'), os.path.basename(name), root, subdir,
                 force_mtime))
 
     def body_stream(self, tree, format, name, root, subdir=None, force_mtime=None):

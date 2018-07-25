@@ -137,7 +137,7 @@ class GitDir(ControlDir):
             self.user_transport, "get_segment_parameters", lambda: {})()
         ref = segment_parameters.get("ref")
         if ref is not None:
-            return urlutils.unescape(ref)
+            return urlutils.unquote_to_bytes(ref)
         if branch is None and getattr(self, "_get_selected_branch", False):
             branch = self._get_selected_branch()
             if branch is not None:
@@ -285,7 +285,7 @@ class GitDir(ControlDir):
         return ret
 
     def list_branches(self):
-        return self.get_branches().values()
+        return list(self.get_branches().values())
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,

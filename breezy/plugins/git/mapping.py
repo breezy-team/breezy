@@ -159,18 +159,18 @@ class BzrGitMapping(foreign.VcsMapping):
     def generate_file_id(self, path):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
-        if path == "":
-            return ROOT_ID
         if isinstance(path, text_type):
             path = path.encode("utf-8")
+        if path == b"":
+            return ROOT_ID
         return FILE_ID_PREFIX + escape_file_id(path)
 
     def parse_file_id(self, file_id):
         if file_id == ROOT_ID:
-            return ""
+            return u""
         if not file_id.startswith(FILE_ID_PREFIX):
             raise ValueError
-        return unescape_file_id(file_id[len(FILE_ID_PREFIX):])
+        return unescape_file_id(file_id[len(FILE_ID_PREFIX):]).decode('utf-8')
 
     def revid_as_refname(self, revid):
         if not isinstance(revid, bytes):

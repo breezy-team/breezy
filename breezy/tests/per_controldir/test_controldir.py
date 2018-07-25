@@ -1267,7 +1267,7 @@ class TestControlDir(TestCaseWithControlDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_control.create_repository()
         made_branch = made_control.create_branch()
-        branches = made_control.list_branches()
+        branches = list(made_control.list_branches())
         self.assertEqual(1, len(branches))
         self.assertEqual(made_branch.base, branches[0].base)
         try:

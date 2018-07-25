@@ -41,7 +41,7 @@ from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
 from ...osutils import pathjoin, getcwd, has_symlinks
 from ...sixish import (
-    BytesIO,
+    StringIO,
     )
 from .. import (
     features,
@@ -346,8 +346,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello'])
         wt.add(['hello'])
         wt.commit(message='add hello')
-        stdout = BytesIO()
-        stderr = BytesIO()
+        stdout = StringIO()
+        stderr = StringIO()
         self.assertEqual(None, self.apply_redirected(None, stdout, stderr,
                                                      wt.remove,
                                                      ['hello'],

@@ -281,7 +281,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         change_scanner = self._repository._file_change_scanner
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
-        (path, commit_id) = change_scanner.find_last_change_revision(
+        (unused_path, commit_id) = change_scanner.find_last_change_revision(
             path.encode('utf-8'), self.commit_id)
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
 
@@ -301,7 +301,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
             path = self._fileid_map.lookup_path(file_id)
         except ValueError:
             raise errors.NoSuchId(self, file_id)
-        path = path.decode('utf-8')
         if self.is_versioned(path):
             return path
         raise errors.NoSuchId(self, file_id)
@@ -686,17 +685,24 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
     if target_extras is None:
         target_extras = set()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if oldpath is not None:
+            oldpath_decoded = oldpath.decode('utf-8')
+        else:
+            oldpath_decoded = None
+        if newpath is not None:
+            newpath_decoded = newpath.decode('utf-8')
+        else:
+            newpath_decoded = None
         if not (specific_files is None or
-                (oldpath is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath)) or
-                (newpath is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath))):
+                (oldpath_decoded is not None and osutils.is_inside_or_parent_of_any(specific_files, oldpath_decoded)) or
+                (newpath_decoded is not None and osutils.is_inside_or_parent_of_any(specific_files, newpath_decoded))):
             continue
-        path = (oldpath, newpath)
         if oldpath is not None and mapping.is_special_file(oldpath):
             continue
         if newpath is not None and mapping.is_special_file(newpath):
             continue
-        if oldpath is None:
-            fileid = mapping.generate_file_id(newpath)
+        if oldpath_decoded is None:
+            fileid = mapping.generate_file_id(newpath_decoded)
             oldexe = None
             oldkind = None
             oldname = None
@@ -704,46 +710,44 @@ def changes_from_git_changes(changes, mapping, specific_files=None, include_unch
             oldversioned = False
         else:
             oldversioned = True
-            oldpath = oldpath.decode("utf-8")
             if oldmode:
                 oldexe = mode_is_executable(oldmode)
                 oldkind = mode_kind(oldmode)
             else:
                 oldexe = False
                 oldkind = None
-            if oldpath == u'':
+            if oldpath_decoded == u'':
                 oldparent = None
-                oldname = ''
+                oldname = u''
             else:
-                (oldparentpath, oldname) = osutils.split(oldpath)
+                (oldparentpath, oldname) = osutils.split(oldpath_decoded)
                 oldparent = mapping.generate_file_id(oldparentpath)
-            fileid = mapping.generate_file_id(oldpath)
-        if newpath is None:
+            fileid = mapping.generate_file_id(oldpath_decoded)
+        if newpath_decoded is None:
             newexe = None
             newkind = None
             newname = None
             newparent = None
             newversioned = False
         else:
-            newversioned = (newpath not in target_extras)
+            newversioned = (newpath_decoded not in target_extras)
             if newmode:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
             else:
                 newexe = False
                 newkind = None
-            newpath = newpath.decode("utf-8")
-            if newpath == u'':
+            if newpath_decoded == u'':
                 newparent = None
                 newname = u''
             else:
-                newparentpath, newname = osutils.split(newpath)
+                newparentpath, newname = osutils.split(newpath_decoded)
                 newparent = mapping.generate_file_id(newparentpath)
         if (not include_unchanged and
             oldkind == 'directory' and newkind == 'directory' and
-            oldpath == newpath):
+            oldpath_decoded == newpath_decoded):
             continue
-        yield (fileid, (oldpath, newpath), (oldsha != newsha),
+        yield (fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
              (oldversioned, newversioned),
              (oldparent, newparent), (oldname, newname),
              (oldkind, newkind), (oldexe, newexe))
@@ -901,7 +905,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 path = self._fileid_map.lookup_path(file_id)
             except ValueError:
                 raise errors.NoSuchId(self, file_id)
-            path = path.decode('utf-8')
             if self.is_versioned(path):
                 return path
             raise errors.NoSuchId(self, file_id)
@@ -910,7 +913,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._fileid_map.set_file_id("", file_id)
 
     def get_root_id(self):
-        return self.path2id("")
+        return self.path2id(u"")
 
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
@@ -1230,7 +1233,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     pass
                 self._index_add_entry(to_rel, kind)
             else:
-                todo = [(p, i) for (p, i) in self._recurse_index_entries() if p.startswith(from_path+'/')]
+                todo = [(p, i) for (p, i) in self._recurse_index_entries() if p.startswith(from_path+b'/')]
                 for child_path, child_value in todo:
                     (child_to_index, child_to_index_path) = self._lookup_index(
                             posixpath.join(to_path, posixpath.relpath(child_path, from_path)))

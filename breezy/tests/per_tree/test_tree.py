@@ -139,7 +139,7 @@ class TestFileIds(TestCaseWithTree):
         with tree.lock_read():
             self.assertEqual(u'a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
-            self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
+            self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
 
     def test_all_file_ids(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -338,7 +338,7 @@ class TestGetFileSha1(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        expected = osutils.sha_strings(b'file content')
+        expected = osutils.sha_string(b'file content')
         self.assertEqual(expected, tree.get_file_sha1('file'))
 
 

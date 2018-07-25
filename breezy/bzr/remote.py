@@ -2969,7 +2969,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
             resume_tokens = tokens
-            return resume_tokens, set(missing_keys)
+            return resume_tokens, set((entry[0].decode('utf-8'), ) + entry[1:] for entry in missing_keys)
         else:
             self.target_repo.refresh_data()
             return [], set()
@@ -3049,7 +3049,8 @@ class RemoteStreamSource(vf_repository.StreamSource):
             return self._get_real_stream_for_missing_keys(missing_keys)
         path = self.from_repository.controldir._path_for_remote_call(client)
         args = (path, self.to_format.network_name())
-        search_bytes = b'\n'.join([b'\t'.join(key) for key in missing_keys])
+        search_bytes = b'\n'.join(
+            [b'%s\t%s' % (key[0].encode('utf-8'), key[1]) for key in missing_keys])
         try:
             response, handler = self.from_repository._call_with_body_bytes_expecting_body(
                 b'Repository.get_stream_for_missing_keys', args, search_bytes)
