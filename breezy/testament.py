@@ -137,7 +137,7 @@ class Testament(object):
         r = []
         a = r.append
         a(self.long_header)
-        a('revision-id: %s\n' % self.revision_id)
+        a('revision-id: %s\n' % self.revision_id.decode('utf-8'))
         a('committer: %s\n' % self.committer)
         a('timestamp: %d\n' % self.timestamp)
         a('timezone: %d\n' % self.timezone)
@@ -146,7 +146,7 @@ class Testament(object):
         for parent_id in sorted(self.parent_ids):
             if contains_whitespace(parent_id):
                 raise ValueError(parent_id)
-            a('  %s\n' % parent_id)
+            a('  %s\n' % parent_id.decode('utf-8'))
         a('message:\n')
         for l in self.message.splitlines():
             a('  %s\n' % l)
@@ -173,12 +173,12 @@ class Testament(object):
         if contains_whitespace(ie.file_id):
             raise ValueError(ie.file_id)
         content = ''
-        content_spacer=''
+        content_spacer=  ''
         if ie.kind == 'file':
             # TODO: avoid switching on kind
             if not ie.text_sha1:
                 raise AssertionError()
-            content = ie.text_sha1
+            content = ie.text_sha1.decode('ascii')
             content_spacer = ' '
         elif ie.kind == 'symlink':
             if not ie.symlink_target:
@@ -226,7 +226,7 @@ class StrictTestament(Testament):
     include_root = False
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
-        l += ' ' + ie.revision.decode('ascii')
+        l += ' ' + ie.revision.decode('utf-8')
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
 

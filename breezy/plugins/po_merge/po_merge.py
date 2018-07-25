@@ -162,7 +162,7 @@ class PoMerger(merge.PerFileMerger):
                 f.writelines(params.other_lines)
             command = self.conf.expand_options(self.command, env)
             retcode, out, err = self._invoke(command)
-            with osutils.open_file(env['result']) as f:
+            with osutils.open_file(env['result'], 'rb') as f:
                 # FIXME: To avoid the list() construct below which means the
                 # whole 'result' file is kept in memory, there may be a way to
                 # use an iterator that will close the file when it's done, but

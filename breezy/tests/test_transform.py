@@ -430,7 +430,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(transform.find_conflicts(),
                          [('unversioned parent', lion_id),
                           ('missing parent', lion_id)])
-        transform.version_file("Courage", lion_id)
+        transform.version_file(b"Courage", lion_id)
         self.assertEqual(transform.find_conflicts(),
                          [('missing parent', lion_id),
                           ('versioning no contents', lion_id)])

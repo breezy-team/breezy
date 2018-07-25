@@ -295,7 +295,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
             rev = branch.repository.get_revision(merge)
         except errors.NoSuchRevision:
             # If we are missing a revision, just print out the revision id
-            to_file.write(first_prefix + '(ghost) ' + merge + '\n')
+            to_file.write(first_prefix + '(ghost) ' + merge.decode('utf-8') + '\n')
             other_revisions.append(merge)
             continue
 

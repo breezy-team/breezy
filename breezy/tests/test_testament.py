@@ -88,19 +88,19 @@ class TestamentTests(TestamentSetup):
         """Conversion of testament to canonical text form."""
         t = self.from_revision(self.b.repository, b'test@user-1')
         text_form = t.as_text()
-        self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, self.expected(b'rev_1'))
+        self.log('testament text form:\n%s' % text_form)
+        self.assertEqualDiff(text_form, self.expected('rev_1'))
         short_text_form = t.as_short_text()
-        self.assertEqualDiff(short_text_form, self.expected(b'rev_1_short'))
+        self.assertEqualDiff(short_text_form, self.expected('rev_1_short'))
 
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
         t = self.from_revision(self.b.repository, b'test@user-2')
         text_form = t.as_text()
-        self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, self.expected(b'rev_2'))
+        self.log('testament text form:\n%s' % text_form)
+        self.assertEqualDiff(text_form, self.expected('rev_2'))
         actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, self.expected(b'rev_2_short'))
+        self.assertEqualDiff(actual_short, self.expected('rev_2_short'))
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
@@ -113,7 +113,7 @@ class TestamentTests(TestamentSetup):
                  rev_id=b'test@user-3',
                  committer='test@user')
         t = self.from_revision(self.b.repository, b'test@user-3')
-        self.assertEqualDiff(t.as_text(), self.expected(b'rev_3'))
+        self.assertEqualDiff(t.as_text(), self.expected('rev_3'))
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
@@ -128,7 +128,7 @@ class TestamentTests(TestamentSetup):
                       committer='test@user',
                       revprops=props)
         t = self.from_revision(self.b.repository, b'test@user-3')
-        self.assertEqualDiff(t.as_text(), self.expected(b'rev_props'))
+        self.assertEqualDiff(t.as_text(), self.expected('rev_props'))
 
     def test_testament_unicode_commit_message(self):
         self.wt.commit(

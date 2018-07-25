@@ -1599,11 +1599,11 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         tree.branch.repository.start_write_group()
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute(b'', write_token,
-            b'rev1', *write_group_tokens))
+            b'rev1', *[token.encode('utf-8') for token in write_group_tokens]))
         response = request.do_body(b'somesignature')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args[0], b'ok')
-        write_group_tokens = response.args[1:]
+        write_group_tokens = [token.decode('utf-8') for token in response.args[1:]]
         tree.branch.repository.resume_write_group(write_group_tokens)
         tree.branch.repository.commit_write_group()
         tree.unlock()

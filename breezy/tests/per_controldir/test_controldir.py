@@ -896,7 +896,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags ')
         try:
-            source.tags.set_tag('tag-absent', 'absent-rev')
+            source.tags.set_tag('tag-absent', b'absent-rev')
         except errors.GhostTagsNotSupported:
             has_ghost_tag = False
         else:
@@ -909,7 +909,7 @@ class TestControlDir(TestCaseWithControlDir):
         new_branch = target.open_branch()
         if has_ghost_tag:
             self.assertEqual(
-                {'tag-absent': 'absent-rev', 'tag-non-ancestry': rev_b2},
+                {'tag-absent': b'absent-rev', 'tag-non-ancestry': rev_b2},
                 new_branch.tags.get_tag_dict())
         else:
             self.assertEqual(

@@ -73,5 +73,6 @@ breezy/_*.pyd
 .testrepository
 python3.passing.old
 python3.passing.new
+python3.passing.new.solid
 selftest.log
 .coverage

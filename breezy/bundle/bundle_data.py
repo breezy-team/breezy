@@ -53,6 +53,7 @@ from ..bzr.xml5 import serializer_v5
 class RevisionInfo(object):
     """Gets filled out for each revision object that is read.
     """
+
     def __init__(self, revision_id):
         self.revision_id = revision_id
         self.sha1 = None

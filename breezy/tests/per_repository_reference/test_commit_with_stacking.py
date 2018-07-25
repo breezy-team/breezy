@@ -193,7 +193,7 @@ class TestCommitWithStacking(TestCaseWithStackedTarget):
         to_be_merged_tree.add(['f2.txt'], [b'f2.txt-id'])
         ghost_key = (b'ghost-rev-id',)
         to_be_merged_tree.set_parent_ids([r3_key[0], ghost_key[0]])
-        to_merge_key = ('to-merge-rev-id',)
+        to_merge_key = (b'to-merge-rev-id',)
         to_be_merged_tree.commit('new-to-be-merged', rev_id=to_merge_key[0])
         stacked_tree.merge_from_branch(to_be_merged_tree.branch)
         merged_key = (b'merged-rev-id',)

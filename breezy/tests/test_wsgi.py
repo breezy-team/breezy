@@ -56,7 +56,7 @@ class WSGITestMixin(object):
         return environ
 
     def read_response(self, iterable):
-        response = ''
+        response = b''
         for string in iterable:
             response += string
         return response
@@ -224,7 +224,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # Expect a version 1-encoded response.
-        self.assertEqual('ok\x012\n', response)
+        self.assertEqual(b'ok\x012\n', response)
 
     def test_protocol_version_detection_two(self):
         # SmartWSGIApp detects requests that start with REQUEST_VERSION_TWO
@@ -287,7 +287,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
             message_handler, expect_version_marker=True)
         decoder.accept_bytes(response_bytes)
         self.assertTrue(
-            ('structure', ('branch', branch._format.network_name()))
+            ('structure', (b'branch', branch._format.network_name()))
             in message_handler.event_log)
 
 

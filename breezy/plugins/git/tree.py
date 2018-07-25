@@ -319,7 +319,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def all_versioned_paths(self):
         ret = set()
-        todo = {(self.store, '', self.tree)}
+        todo = [(self.store, b'', self.tree)]
         while todo:
             (store, path, tree_id) = todo.pop()
             if tree_id is None:
@@ -328,9 +328,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             for name, mode, hexsha in tree.items():
                 subpath = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
-                    todo.add((store, subpath, hexsha))
+                    todo.append((store, subpath, hexsha))
                 else:
-                    ret.add(subpath)
+                    ret.add(subpath.decode('utf-8'))
         return ret
 
     def get_root_id(self):

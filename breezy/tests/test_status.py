@@ -22,7 +22,7 @@ from .. import (
     )
 from ..revisionspec import RevisionSpec
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 from ..status import show_pending_merges, show_tree_status
 from . import TestCaseWithTransport
@@ -39,12 +39,9 @@ class TestStatus(TestCaseWithTransport):
         tree2.add_parent_tree_id(b'some-ghost', allow_leftmost_as_ghost=True)
         # do a merge
         tree2.merge_from_branch(tree.branch)
-        output = BytesIO()
-        tree2.lock_read()
-        try:
+        output = StringIO()
+        with tree2.lock_read():
             show_pending_merges(tree2, output)
-        finally:
-            tree2.unlock()
         self.assertContainsRe(output.getvalue(), 'empty commit')
 
     def make_multiple_pending_tree(self):
@@ -63,7 +60,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_multiple_pending(self):
         tree = self.make_multiple_pending_tree()
-        output = BytesIO()
+        output = StringIO()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         show_pending_merges(tree, output)
@@ -76,7 +73,7 @@ class TestStatus(TestCaseWithTransport):
 
     def test_multiple_pending_verbose(self):
         tree = self.make_multiple_pending_tree()
-        output = BytesIO()
+        output = StringIO()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         show_pending_merges(tree, output, verbose=True)
@@ -95,7 +92,7 @@ class TestStatus(TestCaseWithTransport):
         tree.add_parent_tree_id(b'a-ghost-revision')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        output = BytesIO()
+        output = StringIO()
         show_pending_merges(tree, output)
         self.assertEqualDiff(
             'pending merge tips: (use -v to see all merge revisions)\n'
@@ -115,7 +112,7 @@ class TestStatus(TestCaseWithTransport):
         tree.merge_from_branch(tree2.branch)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        output = BytesIO()
+        output = StringIO()
         show_pending_merges(tree, output, verbose=True)
         self.assertEqualDiff('pending merges:\n'
                              '  Joe Foo 2007-12-04 another non-ghost\n'
@@ -130,10 +127,10 @@ class TestStatus(TestCaseWithTransport):
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
-        output = BytesIO()
+        output = StringIO()
         show_tree_status(tree, to_file=output,
-                     revision=[RevisionSpec.from_string("revid:%s" % r1_id),
-                               RevisionSpec.from_string("revid:%s" % r2_id)])
+                     revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                               RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         # return does not matter as long as it did not raise.
 
 
@@ -163,10 +160,10 @@ class TestHooks(TestCaseWithTransport):
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
-        output = BytesIO()
+        output = StringIO()
         show_tree_status(tree, to_file=output,
-            revision=[RevisionSpec.from_string("revid:%s" % r1_id),
-                RevisionSpec.from_string("revid:%s" % r2_id)])
+            revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
@@ -186,10 +183,10 @@ class TestHooks(TestCaseWithTransport):
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
-        output = BytesIO()
+        output = StringIO()
         show_tree_status(tree, to_file=output,
-            revision=[RevisionSpec.from_string("revid:%s" % r1_id),
-                RevisionSpec.from_string("revid:%s" % r2_id)])
+            revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)

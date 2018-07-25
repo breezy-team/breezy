@@ -1537,12 +1537,12 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(transport.base)
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         # XXX: Multiple calls are bad, this second call documents what is
         # today.
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo_fmt = remote.RemoteRepositoryFormat()
@@ -3157,7 +3157,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             b'Repository.check_write_group', (b'quack/', b'a token', [b'token1']),
             b'success', (b'ok',))
         repo.lock_write()
-        repo.resume_write_group([b'token1'])
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):

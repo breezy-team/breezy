@@ -582,12 +582,12 @@ class TooManyParentsScenario(BrokenRepoScenario):
         return {(b'a-file-id', b'bad-parent'): [NULL_REVISION],
                 (b'a-file-id', b'broken-revision'):
                     [(b'a-file-id', b'good-parent')],
-                (b'a-file-id', b'good-parent'): [('a-file-id', b'bad-parent')]}
+                (b'a-file-id', b'good-parent'): [(b'a-file-id', b'bad-parent')]}
 
     def versioned_repository_text_keys(self):
         return {(b'TREE_ROOT', b'bad-parent'): [NULL_REVISION],
                 (b'TREE_ROOT', b'broken-revision'):
-                    [(b'TREE_ROOT', 'good-parent')],
+                    [(b'TREE_ROOT', b'good-parent')],
                 (b'TREE_ROOT', b'good-parent'): [(b'TREE_ROOT', b'bad-parent')]}
 
 

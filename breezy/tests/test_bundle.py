@@ -274,7 +274,7 @@ class BTreeTester(tests.TestCase):
 
     def unified_diff(self, old, new):
         out = BytesIO()
-        diff.internal_diff(b"old", old, b"new", new, out)
+        diff.internal_diff("old", old, "new", new, out)
         out.seek(0, 0)
         return out.read()
 
@@ -1210,7 +1210,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
                              )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
                          rev.properties)

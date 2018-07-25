@@ -24,6 +24,7 @@ from breezy import (
     errors,
     tests,
     )
+from breezy.sixish import PY3
 
 
 class TestWhoami(tests.TestCaseWithTransport):
@@ -33,6 +34,8 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
+        if PY3 and isinstance(expected, bytes):
+            expected = expected.decode(kwargs.get('encoding', 'ascii'))
         self.assertEqual(expected, lines[0].rstrip())
 
     def test_whoami_no_args_no_conf(self):
@@ -72,7 +75,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """verify that an identity can be in utf-8."""
         self.run_bzr(['whoami', u'Branch Identity \u20ac <branch@identi.ty>'],
                      encoding='utf-8')
-        self.assertWhoAmI('Branch Identity \xe2\x82\xac <branch@identi.ty>',
+        self.assertWhoAmI(b'Branch Identity \xe2\x82\xac <branch@identi.ty>',
                           encoding='utf-8')
         self.assertWhoAmI('branch@identi.ty', '--email')
 

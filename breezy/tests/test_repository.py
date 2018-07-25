@@ -523,7 +523,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree(b'dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
-        self.assertEqual('dull',
+        self.assertEqual(b'dull',
                 revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
 
     def test_supports_external_lookups(self):

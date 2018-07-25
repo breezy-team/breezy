@@ -111,9 +111,9 @@ class _RpcHelper(object):
 def response_tuple_to_repo_format(response):
     """Convert a response tuple describing a repository format to a format."""
     format = RemoteRepositoryFormat()
-    format._rich_root_data = (response[0] == 'yes')
-    format._supports_tree_reference = (response[1] == 'yes')
-    format._supports_external_lookups = (response[2] == 'yes')
+    format._rich_root_data = (response[0] == b'yes')
+    format._supports_tree_reference = (response[1] == b'yes')
+    format._supports_external_lookups = (response[2] == b'yes')
     format._network_name = response[3]
     return format
 
@@ -1272,7 +1272,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(b'Repository.abort_write_group', path,
-                self._lock_token, self._write_group_tokens)
+                self._lock_token,
+                [token.encode('utf-8') for token in self._write_group_tokens])
         except Exception as exc:
             self._write_group = None
             if not suppress_errors:
@@ -1310,7 +1311,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.BzrError("not in write group")
         path = self.controldir._path_for_remote_call(self._client)
         response = self._call(b'Repository.commit_write_group', path,
-            self._lock_token, self._write_group_tokens)
+            self._lock_token, [token.encode('utf-8') for token in self._write_group_tokens])
         if response != (b'ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = None
@@ -1323,7 +1324,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(b'Repository.check_write_group', path,
-               self._lock_token, tokens)
+               self._lock_token, [token.encode('utf-8') for token in tokens])
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.resume_write_group(tokens)
@@ -1739,7 +1740,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return self._real_repository.start_write_group()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = response[1]
+        self._write_group_tokens = [token.decode('utf-8') for token in response[1]]
 
     def _unlock(self, token):
         path = self.controldir._path_for_remote_call(self._client)
@@ -2000,7 +2001,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         prev_inv = Inventory(root_id=None,
             revision_id=_mod_revision.NULL_REVISION)
         # there should be just one substream, with inventory deltas
-        substream_kind, substream = next(stream)
+        try:
+            substream_kind, substream = next(stream)
+        except StopIteration:
+            return
         if substream_kind != "inventory-deltas":
             raise AssertionError(
                  "Unexpected stream %r received" % substream_kind)
@@ -2240,7 +2244,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         unused = b""
         while True:
             while not b"\n" in unused:
-                unused += next(byte_stream)
+                try:
+                    unused += next(byte_stream)
+                except StopIteration:
+                    return
             header, rest = unused.split(b"\n", 1)
             args = header.split(b"\0")
             if args[0] == b"absent":
@@ -2749,7 +2756,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         path = self.controldir._path_for_remote_call(self._client)
         response, handler = self._call_with_body_bytes_expecting_body(
             b'Repository.add_signature_text', (path, self._lock_token,
-                revision_id) + tuple(self._write_group_tokens), signature)
+                revision_id) +
+            tuple([token.encode('utf-8') for token in self._write_group_tokens]),
+            signature)
         handler.cancel_read_body()
         self.refresh_data()
         if response[0] != b'ok':
@@ -3619,6 +3628,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._real_branch.get_stacked_on_url()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+        if sys.version_info[0] == 3:
+            return response[1].decode('utf-8')
         return response[1]
 
     def set_stacked_on_url(self, url):
