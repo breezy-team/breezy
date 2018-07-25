@@ -84,7 +84,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         self.assertContainsRe(
             self.get_log(),
             "revision-id has wrong parents in index: "
-            r"\('incorrect-parent',\) should be \(\)")
+            r"\(incorrect-parent\) should be \(\)")
 
 
 class TestCallbacks(TestCaseWithRepository):

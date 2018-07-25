@@ -39,6 +39,8 @@ from ..git_remote_helper import (
     fetch,
     )
 
+from . import FastimportFeature
+
 
 def map_to_git_sha1(dir, bzr_revid):
     object_store = get_object_store(dir.open_repository())
@@ -119,8 +121,7 @@ class RemoteHelperTests(TestCaseWithTransport):
             f.getvalue())
 
     def test_import(self):
-        if fastexporter is None:
-            raise TestSkipped("bzr-fastimport not available")
+        self.requireFeature(FastimportFeature)
         self.build_tree_contents([("remote/afile", b"somecontent")])
         self.remote_tree.add(["afile"])
         self.remote_tree.commit(b"A commit message", timestamp=1330445983,

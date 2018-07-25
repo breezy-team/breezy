@@ -229,11 +229,11 @@ class VersionedFileCheck(Check):
             if verbose:
                 for info in self.inconsistent_parents:
                     revision_id, file_id, found_parents, correct_parents = info
-                    note(gettext('      * {0} version {1} has parents {2!r} '
-                         'but should have {3!r}').format(
+                    note(gettext('      * {0} version {1} has parents ({2}) '
+                         'but should have ({3})').format(
                          file_id.decode('utf-8'), revision_id.decode('utf-8'),
-                         tuple(p.decode('utf-8') for p in found_parents),
-                         tuple(p.decode('utf-8') for p in correct_parents)))
+                         ', '.join(p.decode('utf-8') for p in found_parents),
+                         ', '.join(p.decode('utf-8') for p in correct_parents)))
         if self.revs_with_bad_parents_in_index:
             note(gettext(
                  '%6d revisions have incorrect parents in the revision index'),
@@ -243,10 +243,10 @@ class VersionedFileCheck(Check):
                     revision_id, index_parents, actual_parents = item
                     note(gettext(
                         '       {0} has wrong parents in index: '
-                        '{1!r} should be {2!r}').format(
-                        revision_id.decode('utf-8'), 
-                        tuple(p.decode('utf-8') for p in index_parents),
-                        tuple(p.decode('utf-8') for p in actual_parents)))
+                        '({1}) should be ({2})').format(
+                        revision_id.decode('utf-8'),
+                        ', '.join(p.decode('utf-8') for p in index_parents),
+                        ', '.join(p.decode('utf-8') for p in actual_parents)))
         for item in self._report_items:
             note(item)
 
