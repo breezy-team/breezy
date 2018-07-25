@@ -37,20 +37,10 @@ class ShellCompleteTests(TestCaseWithTransport):
     def test_specific_command(self):
         out, err = self.run_bzr('shell-complete shell-complete')
         self.assertEqual('', err)
-        if PY3:
-            self.assertEqual("""\
+        self.assertEqual("""\
 "(--help -h)"{--help,-h}
 "(--quiet -q)"{--quiet,-q}
---usage
 "(--verbose -v)"{--verbose,-v}
-context?
-""", out)
-        else:
-            self.assertEqual("""\
 --usage
-"(--quiet -q)"{--quiet,-q}
-"(--verbose -v)"{--verbose,-v}
-"(--help -h)"{--help,-h}
 context?
-""", out)
-
+""".splitlines(), sorted(out.splitlines()))
