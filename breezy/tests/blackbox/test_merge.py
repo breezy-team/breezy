@@ -639,7 +639,7 @@ class TestMerge(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)
         self.assertFileEqual(b'base-contents\n<<<<<<< TREE\nthis-contents\n'
                              b'=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
-                             b'a/file')
+                             'a/file')
 
     def test_merge_preview(self):
         this_tree = self.make_branch_and_tree('this')

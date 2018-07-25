@@ -509,21 +509,21 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repository = tree.branch.repository
         repository.lock_read()
         self.addCleanup(repository.unlock)
-        extracted = dict((i, ''.join(b)) for i, b in
+        extracted = dict((i, b''.join(b)) for i, b in
                          repository.iter_files_bytes(
                          [(file1_id, rev1, 'file1-old'),
                           (file1_id, rev2, 'file1-new'),
                           (file2_id, rev1, 'file2'),
                          ]))
-        self.assertEqual('foo', extracted['file1-old'])
-        self.assertEqual('bar', extracted['file2'])
-        self.assertEqual('baz', extracted['file1-new'])
+        self.assertEqual(b'foo', extracted['file1-old'])
+        self.assertEqual(b'bar', extracted['file2'])
+        self.assertEqual(b'baz', extracted['file1-new'])
         self.assertRaises(errors.RevisionNotPresent, list,
                           repository.iter_files_bytes(
-                          [(file1_id, 'rev3', 'file1-notpresent')]))
+                          [(file1_id, b'rev3', 'file1-notpresent')]))
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
-                          [('file3-id', 'rev3', 'file1-notpresent')]))
+                          [(b'file3-id', b'rev3', 'file1-notpresent')]))
 
     def test_get_graph(self):
         """Bare-bones smoketest that all repositories implement get_graph."""

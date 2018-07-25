@@ -96,7 +96,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         while trees:
             (path, tree) = trees.pop()
             for name, mode, sha in tree.iteritems():
-                subpath = posixpath.join(path, name)
+                subpath = posixpath.join(path, name.decode('utf-8'))
                 if stat.S_ISDIR(mode):
                     self._file_transport.mkdir(subpath)
                     trees.append((subpath, self.store[sha]))

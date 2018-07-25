@@ -164,7 +164,8 @@ class TestExport(TestCaseWithTransport):
 
     def assertTarANameAndContent(self, ball, root=''):
         fname = root + 'a'
-        tar_info = next(ball)
+        ball_iter = iter(ball)
+        tar_info = next(ball_iter)
         self.assertEqual(fname, tar_info.name)
         self.assertEqual(tarfile.REGTYPE, tar_info.type)
         self.assertEqual(len(self._file_content), tar_info.size)
@@ -173,7 +174,7 @@ class TestExport(TestCaseWithTransport):
             self.fail('File content has been corrupted.'
                       ' Check that all streams are handled in binary mode.')
         # There should be no other files in the tarball
-        self.assertIs(None, next(ball))
+        self.assertRaises(StopIteration, next, ball_iter)
 
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         tree = self.make_basic_tree()

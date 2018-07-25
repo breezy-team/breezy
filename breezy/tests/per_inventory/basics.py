@@ -46,7 +46,7 @@ class TestInventory(TestCaseWithInventory):
         inv.root.revision = b'initial-rev'
         return self.inv_to_test_inv(inv)
 
-    def make_file(self, file_id, name, parent_id, content='content\n',
+    def make_file(self, file_id, name, parent_id, content=b'content\n',
                   revision=b'new-test-rev'):
         ie = InventoryFile(file_id, name, parent_id)
         ie.text_sha1 = osutils.sha_string(content)
@@ -61,6 +61,7 @@ class TestInventory(TestCaseWithInventory):
 
     def prepare_inv_with_nested_dirs(self):
         inv = inventory.Inventory(b'tree-root')
+        inv.root.revision = b'revision'
         for args in [('src', 'directory', b'src-id'),
                      ('doc', 'directory', b'doc-id'),
                      ('src/hello.c', 'file', b'hello-id'),
@@ -71,6 +72,7 @@ class TestInventory(TestCaseWithInventory):
                      ('src/sub/a', 'file', b'a-id'),
                      ('Makefile', 'file', b'makefile-id')]:
             ie = inv.add_path(*args)
+            ie.revision = b'revision'
             if args[1] == 'file':
                 ie.text_sha1 = osutils.sha_string(b'content\n')
                 ie.text_size = len(b'content\n')
@@ -128,22 +130,24 @@ class TestInventoryReads(TestInventory):
         inv = self.make_init_inventory()
         self.assertTrue(inv.is_root(b'tree-root'))
         self.assertFalse(inv.is_root(b'booga'))
-        ie = inv.get_entry('tree-root').copy()
-        ie.file_id = 'booga'
-        inv = inv.create_by_apply_delta([("", None, "tree-root", None),
-                                         (None, "", "booga", ie)], 'new-rev-2')
+        ie = inv.get_entry(b'tree-root').copy()
+        ie.file_id = b'booga'
+        inv = inv.create_by_apply_delta([("", None, b"tree-root", None),
+                                         (None, "", b"booga", ie)], b'new-rev-2')
         self.assertFalse(inv.is_root(b'TREE_ROOT'))
         self.assertTrue(inv.is_root(b'booga'))
 
     def test_ids(self):
         """Test detection of files within selected directories."""
         inv = inventory.Inventory(b'TREE_ROOT')
+        inv.root.revision = b'revision'
         for args in [('src', 'directory', b'src-id'),
                      ('doc', 'directory', b'doc-id'),
                      ('src/hello.c', 'file'),
                      ('src/bye.c', 'file', b'bye-id'),
                      ('Makefile', 'file')]:
             ie = inv.add_path(*args)
+            ie.revision = b'revision'
             if args[1] == 'file':
                 ie.text_sha1 = osutils.sha_string(b'content\n')
                 ie.text_size = len(b'content\n')

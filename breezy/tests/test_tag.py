@@ -43,7 +43,7 @@ class TestTagSerialization(TestCase):
         store = BasicTags(branch=None)
         td = dict(stable=b'stable-revid', boring=b'boring-revid')
         packed = store._serialize_tag_dict(td)
-        expected = r'd6:boring12:boring-revid6:stable12:stable-revide'
+        expected = br'd6:boring12:boring-revid6:stable12:stable-revide'
         self.assertEqualDiff(packed, expected)
         self.assertEqual(store._deserialize_tag_dict(packed), td)
 

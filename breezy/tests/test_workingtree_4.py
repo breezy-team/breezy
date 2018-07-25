@@ -813,16 +813,16 @@ class TestCorruptDirstate(TestCaseWithTransport):
         state = tree.current_dirstate()
         state._read_dirblocks_if_needed()
         self.assertEqual([
-            ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', b'file-id'), ['f', 'f'])]),
+            (b'', [((b'', b'', root_id), [b'd', b'd'])]),
+            (b'', [((b'', b'dir', b'dir-id'), [b'd', b'd'])]),
+            (b'dir', [((b'dir', b'file', b'file-id'), [b'f', b'f'])]),
         ],  self.get_simple_dirblocks(state))
 
         tree.remove(['dir/file'])
         self.assertEqual([
-            ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', b'file-id'), ['a', 'f'])]),
+            (b'', [((b'', b'', root_id), [b'd', b'd'])]),
+            (b'', [((b'', b'dir', b'dir-id'), [b'd', b'd'])]),
+            (b'dir', [((b'dir', b'file', b'file-id'), [b'a', b'f'])]),
         ],  self.get_simple_dirblocks(state))
         # Make sure the removal is written to disk
         tree.flush()

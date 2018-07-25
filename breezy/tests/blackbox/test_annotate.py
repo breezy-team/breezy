@@ -196,9 +196,9 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree = self._setup_edited_file()
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
-            b'1   test@ho | foo\n'
-            b'2?  local u | bar\n'
-            b'1   test@ho | gam\n',
+            '1   test@ho | foo\n'
+            '2?  local u | bar\n'
+            '1   test@ho | gam\n',
             out)
 
     def test_annotate_edited_file_show_ids(self):
@@ -206,9 +206,9 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.overrideEnv('BRZ_EMAIL', 'current@host2')
         out, err = self.run_bzr('annotate file --show-ids')
         self.assertEqual(
-            b'    rev1 | foo\n'
-            b'current: | bar\n'
-            b'    rev1 | gam\n',
+            '    rev1 | foo\n'
+            'current: | bar\n'
+            '    rev1 | gam\n',
             out)
 
     def _create_merged_file(self):
@@ -236,22 +236,22 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         email = config.extract_email_address(
             wt.branch.get_config_stack().get('email'))
         self.assertEqual(
-            b'3?    %-7s | local\n'
-            b'1     test@ho | foo\n'
-            b'1.1.1 test@ho | bar\n'
-            b'2     test@ho | baz\n'
-            b'1     test@ho | gam\n' % email[:7],
+            '3?    %-7s | local\n'
+            '1     test@ho | foo\n'
+            '1.1.1 test@ho | bar\n'
+            '2     test@ho | baz\n'
+            '1     test@ho | gam\n' % email[:7],
             out)
 
     def test_annotated_edited_merged_file_ids(self):
         self._create_merged_file()
         out, err = self.run_bzr(['annotate', 'file', '--show-ids'])
         self.assertEqual(
-            b'current: | local\n'
-            b'    rev1 | foo\n'
-            b'rev1.1.1 | bar\n'
-            b'    rev2 | baz\n'
-            b'    rev1 | gam\n',
+            'current: | local\n'
+            '    rev1 | foo\n'
+            'rev1.1.1 | bar\n'
+            '    rev2 | baz\n'
+            '    rev1 | gam\n',
             out)
 
     def test_annotate_empty_file(self):

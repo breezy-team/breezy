@@ -37,7 +37,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('update')
         self.assertEqual(
-            b'Tree is up to date at revision 0 of branch %s\n' % self.test_dir,
+            'Tree is up to date at revision 0 of branch %s\n' % self.test_dir,
             err)
         self.assertEqual('', out)
 

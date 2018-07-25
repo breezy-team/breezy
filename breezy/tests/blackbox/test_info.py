@@ -1518,7 +1518,7 @@ In the working tree:
          0 ignored
          0 versioned subdirectories
 """, out)
-        self.assertEqual(b"", err)
+        self.assertEqual("", err)
 
     def test_info_shows_colocated_branches(self):
         bzrdir = self.make_branch('.', format='development-colo').controldir
@@ -1545,7 +1545,7 @@ Branch history:
 Repository:
          0 revisions
 """, out)
-        self.assertEqual(b"", err)
+        self.assertEqual("", err)
 
 
 class TestSmartServerInfo(tests.TestCaseWithTransport):

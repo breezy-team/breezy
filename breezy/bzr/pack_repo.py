@@ -255,6 +255,9 @@ class ExistingPack(Pack):
             self.__class__.__module__, self.__class__.__name__, id(self),
             self.pack_transport, self.name)
 
+    def __hash__(self):
+        return hash((type(self), self.name))
+
 
 class ResumedPack(ExistingPack):
 

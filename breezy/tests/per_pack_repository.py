@@ -135,7 +135,8 @@ class TestPackRepository(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         # We should have a 'shared-storage' marker file.
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         self.check_databases(t)
 
     def test_shared_no_tree_disk_layout(self):
@@ -148,9 +149,11 @@ class TestPackRepository(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         # We should have a 'shared-storage' marker file.
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         # We should have a marker for the no-working-trees flag.
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        with t.get('no-working-trees') as f:
+            self.assertEqualDiff(b'', f.read())
         # The marker should go when we toggle the setting.
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
@@ -170,9 +173,9 @@ class TestPackRepository(TestCaseWithTransport):
         name = node[1][0]
         # the pack sizes should be listed in the index
         pack_value = node[2]
-        sizes = [int(digits) for digits in pack_value.split(' ')]
+        sizes = [int(digits) for digits in pack_value.split(b' ')]
         for size, suffix in zip(sizes, ['.rix', '.iix', '.tix', '.six']):
-            stat = trans.stat('indices/%s%s' % (name, suffix))
+            stat = trans.stat('indices/%s%s' % (name.decode('ascii'), suffix))
             self.assertEqual(size, stat.st_size)
 
     def test_pulling_nothing_leads_to_no_new_names(self):
@@ -232,8 +235,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         format = self.get_format()
         repo = self.make_repository('foo', format=format)
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             # All current pack repository styles autopack at 10 revisions; and
             # autopack as well as regular commit write group needs to return
             # the new pack name. Looping is a little ugly, but we don't have a
@@ -261,8 +263,6 @@ class TestPackRepository(TestCaseWithTransport):
                     # In this test, len(result) is always 1, so unordered is ok
                     new_names = list(cur_names - old_names)
                     self.assertEqual(new_names, result)
-        finally:
-            repo.unlock()
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
@@ -361,6 +361,7 @@ class TestPackRepository(TestCaseWithTransport):
             tree.branch.repository._pack_collection.names()[0])
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
+        pos_1 = pos_2 = None
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
@@ -368,7 +369,7 @@ class TestPackRepository(TestCaseWithTransport):
             else:
                 # eol_flag, start, len
                 pos = int(val[1:].split()[0])
-            if key == ('1',):
+            if key == (b'1',):
                 pos_1 = pos
             else:
                 pos_2 = pos

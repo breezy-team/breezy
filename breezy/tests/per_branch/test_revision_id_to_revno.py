@@ -53,12 +53,12 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
         # a ghost and the revision not being on the mainline. As such,
         # allow both NoSuchRevision and GhostRevisionsHaveNoRevno here.
         self.assertRaises((errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno),
-            tree.branch.revision_id_to_revno, "unknown")
-        self.assertEqual(1, tree.branch.revision_id_to_revno("rev1"))
-        self.assertEqual(2, tree.branch.revision_id_to_revno("rev2"))
+            tree.branch.revision_id_to_revno, b"unknown")
+        self.assertEqual(1, tree.branch.revision_id_to_revno(b"rev1"))
+        self.assertEqual(2, tree.branch.revision_id_to_revno(b"rev2"))
 
     def test_empty(self):
         branch = self.make_branch('.')
         self.assertRaises(errors.NoSuchRevision,
-            branch.revision_id_to_revno, "unknown")
+            branch.revision_id_to_revno, b"unknown")
         self.assertEqual(0, branch.revision_id_to_revno(b'null:'))

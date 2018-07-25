@@ -64,7 +64,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             out = self.run_bzr(args, encoding=encoding,
                                retcode=retcode, working_dir=working_dir)[0]
             if PY3:
-                return out
+                return out.encode(encoding, 'replace').decode(encoding)
             else:
                 return out.decode(encoding)
         except UnicodeError as e:
@@ -151,7 +151,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         txt = self.run_bzr_decode('status', encoding='ascii')
         expected = u'modified:\n  %s\n' % (
-                    self.info['filename'].encode('ascii', 'replace'),)
+                    self.info['filename'].encode('ascii', 'replace').decode('ascii'),)
         self.assertEqual(expected, txt)
 
     def test_cat(self):
@@ -553,5 +553,5 @@ class TestNonAscii(tests.TestCaseWithTransport):
         txt = self.run_bzr_decode(['ignored'])
         self.assertEqual(txt, '%-50s %s\n' % (fname, fname))
         txt = self.run_bzr_decode(['ignored'], encoding='ascii')
-        fname = fname.encode('ascii', 'replace')
+        fname = fname.encode('ascii', 'replace').decode('ascii')
         self.assertEqual(txt, '%-50s %s\n' % (fname, fname))

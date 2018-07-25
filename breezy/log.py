@@ -1545,8 +1545,9 @@ class LogFormatter(object):
         return lines
 
     def show_diff(self, to_file, diff, indent):
-        for l in diff.rstrip().split('\n'):
-            to_file.write(indent + '%s\n' % (l,))
+        encoding = get_terminal_encoding()
+        for l in diff.rstrip().split(b'\n'):
+            to_file.write(indent + l.decode(encoding, 'ignore') + '\n')
 
 
 # Separator between revisions in long format

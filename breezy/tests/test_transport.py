@@ -1133,11 +1133,11 @@ class TestLocationToUrl(tests.TestCase):
 
     def test_unicode_url(self):
         self.assertRaises(urlutils.InvalidURL, location_to_url,
-            "http://fo/\xc3\xaf".decode("utf-8"))
+            b"http://fo/\xc3\xaf".decode("utf-8"))
 
     def test_unicode_path(self):
         path, url = self.get_base_location()
-        location = path + "\xc3\xaf".decode("utf-8")
+        location = path + b"\xc3\xaf".decode("utf-8")
         url += '%C3%AF'
         self.assertEqual(url, location_to_url(location))
 

@@ -671,11 +671,11 @@ class cmd_revision_info(Command):
             except errors.NoSuchRevision:
                 revno = '???'
             maxlen = max(maxlen, len(revno))
-            revinfos.append([revno, revision_id])
+            revinfos.append((revno, revision_id))
 
         self.cleanup_now()
-        for ri in revinfos:
-            self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
+        for revno, revid in revinfos:
+            self.outf.write('%*s %s\n' % (maxlen, revno, revid.decode('utf-8')))
 
 
 class cmd_add(Command):
@@ -888,7 +888,7 @@ class cmd_inventory(Command):
             if path == "":
                 continue
             if show_ids:
-                self.outf.write('%-50s %s\n' % (path, entry.file_id))
+                self.outf.write('%-50s %s\n' % (path, entry.file_id.decode('utf-8')))
             else:
                 self.outf.write(path)
                 self.outf.write('\n')
@@ -1914,11 +1914,11 @@ class cmd_file_id(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        i = tree.path2id(relpath)
-        if i is None:
+        file_id = tree.path2id(relpath)
+        if file_id is None:
             raise errors.NotVersionedError(filename)
         else:
-            self.outf.write(i + '\n')
+            self.outf.write(file_id.decode('utf-8') + '\n')
 
 
 class cmd_file_path(Command):
@@ -3258,7 +3258,7 @@ class cmd_lookup_revision(Command):
             raise errors.BzrCommandError(gettext("not a valid revision-number: %r")
                                          % revno)
         revid = WorkingTree.open_containing(directory)[0].branch.get_rev_id(revno)
-        self.outf.write("%s\n" % revid)
+        self.outf.write("%s\n" % revid.decode('utf-8'))
 
 
 class cmd_export(Command):

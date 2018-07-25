@@ -35,7 +35,10 @@ from ...decorators import only_raises
 from ...foreign import (
     ForeignRepository,
     )
-from ...sixish import viewvalues
+from ...sixish import (
+    viewitems,
+    viewvalues,
+    )
 
 from .commit import (
     GitCommitBuilder,
@@ -318,7 +321,7 @@ class LocalGitRepository(GitRepository):
         for (file_id, revision_id, identifier) in desired_files:
             per_revision.setdefault(revision_id, []).append(
                 (file_id, identifier))
-        for revid, files in per_revision.iteritems():
+        for revid, files in viewitems(per_revision):
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             except errors.NoSuchRevision:

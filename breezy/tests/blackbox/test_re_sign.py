@@ -49,9 +49,9 @@ class ReSign(tests.TestCaseInTempDir):
     def assertEqualSignature(self, repo, revision_id):
         """Assert a signature is stored correctly in repository."""
         self.assertEqual(
-            '-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
+            b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
             Testament.from_revision(repo, revision_id).as_short_text() +
-            '-----END PSEUDO-SIGNED CONTENT-----\n',
+            b'-----END PSEUDO-SIGNED CONTENT-----\n',
             repo.get_signature_text(revision_id))
 
     def test_resign(self):
@@ -62,10 +62,10 @@ class ReSign(tests.TestCaseInTempDir):
         self.monkey_patch_gpg()
         self.run_bzr('re-sign -r revid:A')
 
-        self.assertEqualSignature(repo, 'A')
+        self.assertEqualSignature(repo, b'A')
 
         self.run_bzr('re-sign B')
-        self.assertEqualSignature(repo, 'B')
+        self.assertEqualSignature(repo, b'B')
 
     def test_resign_range(self):
         wt = self.setup_tree()
@@ -73,9 +73,9 @@ class ReSign(tests.TestCaseInTempDir):
 
         self.monkey_patch_gpg()
         self.run_bzr('re-sign -r 1..')
-        self.assertEqualSignature(repo, 'A')
-        self.assertEqualSignature(repo, 'B')
-        self.assertEqualSignature(repo, 'C')
+        self.assertEqualSignature(repo, b'A')
+        self.assertEqualSignature(repo, b'B')
+        self.assertEqualSignature(repo, b'C')
 
     def test_resign_multiple(self):
         wt = self.setup_tree()
@@ -83,9 +83,9 @@ class ReSign(tests.TestCaseInTempDir):
 
         self.monkey_patch_gpg()
         self.run_bzr('re-sign A B C')
-        self.assertEqualSignature(repo, 'A')
-        self.assertEqualSignature(repo, 'B')
-        self.assertEqualSignature(repo, 'C')
+        self.assertEqualSignature(repo, b'A')
+        self.assertEqualSignature(repo, b'B')
+        self.assertEqualSignature(repo, b'C')
 
     def test_resign_directory(self):
         """Test --directory option"""
@@ -96,6 +96,6 @@ class ReSign(tests.TestCaseInTempDir):
         repo = wt.branch.repository
         self.monkey_patch_gpg()
         self.run_bzr('re-sign --directory=a -r revid:A')
-        self.assertEqualSignature(repo, 'A')
+        self.assertEqualSignature(repo, b'A')
         self.run_bzr('re-sign -d a B')
-        self.assertEqualSignature(repo, 'B')
+        self.assertEqualSignature(repo, b'B')

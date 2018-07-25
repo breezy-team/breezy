@@ -47,7 +47,7 @@ def _lowercase(chunks, context=None):
     return _converter_helper(chunks, 'lower')
 
 
-_trailer_string = '\nend string\n'
+_trailer_string = b'\nend string\n'
 
 
 def _append_text(chunks, context=None):
@@ -60,7 +60,7 @@ def _append_text(chunks, context=None):
 def _remove_appended_text(chunks, context=None):
     """Remove the appended text."""
 
-    text = ''.join(chunks)
+    text = b''.join(chunks)
     if text.endswith(_trailer_string):
         text = text[:-len(_trailer_string)]
     return [text]
@@ -79,7 +79,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.build_tree_contents([
             (dir + '/file1.txt', b'Foo Txt'),
             (dir + '/file2.bin', b'Foo Bin')])
-        tree.add(['file1.txt', b'file2.bin'])
+        tree.add(['file1.txt', 'file2.bin'])
         tree.commit('commit raw content')
         return tree, 'file1.txt', 'file2.bin'
 

@@ -159,8 +159,8 @@ class TestVersionInfo(TestCaseWithTransport):
                           should_not_be_called)
         self.create_tree()
         out, err = self.run_bzr('version-info --custom --template=r{revno} branch')
-        self.assertEqual(b"r2", out)
-        self.assertEqual(b"", err)
+        self.assertEqual("r2", out)
+        self.assertEqual("", err)
 
     def test_non_ascii(self):
         """Test that we can output non-ascii data"""
@@ -175,7 +175,7 @@ class TestVersionInfo(TestCaseWithTransport):
             ['version-info', '--include-history'], encoding='latin-1')
 
         if not PY3:
-            commit_message = commit_message.encode('utf-8')
+            commit_message = commit_message.encode('latin-1', 'replace')
         self.assertContainsString(out, commit_message)
 
     def test_revision(self):
