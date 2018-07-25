@@ -19,6 +19,7 @@
 from testtools.matchers import *
 
 from ..bzr.smart.client import CallHookParams
+from ..sixish import PY3
 
 from . import (
     CapturedCall,
@@ -132,9 +133,14 @@ class TestHasLayout(TestCaseWithTransport):
         t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
-        self.assertEqual(
-            set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
-            set(mismatch.describe().split(" != ")))
+        if PY3:
+            self.assertEqual(
+                set(("['', 'a', 'b/', 'b/c']", "['a']")),
+                set(mismatch.describe().split(" != ")))
+        else:
+            self.assertEqual(
+                set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
+                set(mismatch.describe().split(" != ")))
 
     def test_no_dirs(self):
         # Some tree/repository formats do not support versioned directories

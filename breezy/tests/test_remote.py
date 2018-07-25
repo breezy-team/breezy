@@ -3941,7 +3941,7 @@ class TestStacking(tests.TestCaseWithTransport):
         # the public implementation of get_parent_map obeys stacking
         _, branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
-        self.assertEqual({'rev1'}, set(repo.get_parent_map([b'rev1'])))
+        self.assertEqual({b'rev1'}, set(repo.get_parent_map([b'rev1'])))
 
     def test_unstacked_get_parent_map(self):
         # _unstacked_provider.get_parent_map ignores stacking
