@@ -152,9 +152,14 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
-        self.assertEqual(
-            set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
-            set(mismatch.describe().split(" != ")))
+        if PY3:
+            self.assertEqual(
+                set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
+                set(mismatch.describe().split(" != ")))
+        else:
+            self.assertEqual(
+                set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
+                set(mismatch.describe().split(" != ")))
 
 
 class TestHasPathRelations(TestCaseWithTransport):
@@ -202,12 +207,12 @@ class TestContainsNoVfsCalls(TestCase):
         self.assertIs(None, ContainsNoVfsCalls().match(calls))
 
     def test_match(self):
-        calls = [self._make_call("append", ["file"]),
-                 self._make_call("Branch.get_config_file", [])]
+        calls = [self._make_call(b"append", [b"file"]),
+                 self._make_call(b"Branch.get_config_file", [])]
         mismatch = ContainsNoVfsCalls().match(calls)
         self.assertIsNot(None, mismatch)
         self.assertEqual([calls[0].call], mismatch.vfs_calls)
-        self.assertEqual("no VFS calls expected, got: append('file')""",
+        self.assertEqual("no VFS calls expected, got: b'append'(b'file')""",
                 mismatch.describe())
 
 
@@ -222,14 +227,19 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.commit('msg1', rev_id=b'a')
         tree.commit('msg2', rev_id=b'b')
-        matcher = RevisionHistoryMatches(['a', 'b'])
+        matcher = RevisionHistoryMatches([b'a', b'b'])
         self.assertIs(None, matcher.match(tree.branch))
 
     def test_mismatch(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('msg1', rev_id=b'a')
         tree.commit('msg2', rev_id=b'b')
-        matcher = RevisionHistoryMatches(['a', 'b', 'c'])
-        self.assertEqual(
-            set(("['a', 'b']", "['a', 'b', 'c']")),
-            set(matcher.match(tree.branch).describe().split(" != ")))
+        matcher = RevisionHistoryMatches([b'a', b'b', b'c'])
+        if PY3:
+            self.assertEqual(
+                set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
+                set(matcher.match(tree.branch).describe().split(" != ")))
+        else:
+            self.assertEqual(
+                set(("['a', 'b']", "['a', 'b', 'c']")),
+                set(matcher.match(tree.branch).describe().split(" != ")))

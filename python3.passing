@@ -26130,10 +26130,12 @@ breezy.tests.test_mail_client.TestXDGEmail.test_commandline
 breezy.tests.test_mail_client.TestXDGEmail.test_commandline_is_8bit
 breezy.tests.test_matchers.TestContainsNoVfsCalls.test_empty
 breezy.tests.test_matchers.TestContainsNoVfsCalls.test_ignores_unknown
+breezy.tests.test_matchers.TestContainsNoVfsCalls.test_match
 breezy.tests.test_matchers.TestContainsNoVfsCalls.test_no_vfs_calls
 breezy.tests.test_matchers.TestContainsNoVfsCalls.test__str__
 breezy.tests.test_matchers.TestHasLayout.test_match
 breezy.tests.test_matchers.TestHasLayout.test_mismatch
+breezy.tests.test_matchers.TestHasLayout.test_no_dirs
 breezy.tests.test_matchers.TestHasLayout.test__str__
 breezy.tests.test_matchers.TestHasPathRelations.test_match
 breezy.tests.test_matchers.TestHasPathRelations.test_mismatch
@@ -26145,6 +26147,8 @@ breezy.tests.test_matchers.TestReturnsUnlockable.test_match
 breezy.tests.test_matchers.TestReturnsUnlockable.test_mismatch
 breezy.tests.test_matchers.TestReturnsUnlockable.test___str__
 breezy.tests.test_matchers.TestRevisionHistoryMatches.test_empty
+breezy.tests.test_matchers.TestRevisionHistoryMatches.test_matches
+breezy.tests.test_matchers.TestRevisionHistoryMatches.test_mismatch
 breezy.tests.test_memorytree.TestMemoryTree.test_add_in_subdir
 breezy.tests.test_memorytree.TestMemoryTree.test_add_with_kind
 breezy.tests.test_memorytree.TestMemoryTree.test_commit_trivial
