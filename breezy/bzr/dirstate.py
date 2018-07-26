@@ -1543,7 +1543,7 @@ class DirState(object):
         # expanding them recursively as needed.
         # At the same time, to reduce interface friction we convert the input
         # inventory entries to dirstate.
-        root_only = (b'', b'')
+        root_only = ('', '')
         # Accumulate parent references (path_utf8, id), to check for parentless
         # items or items placed under files/links/tree-references. We get
         # references from every item in the delta that is not a deletion and
