@@ -1342,7 +1342,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_id, to_rel,
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(path=to_rel,
                         extra="New file has not been created yet"))
                 only_change_inv = True
@@ -1391,7 +1391,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
             except errors.BzrMoveFailedError as e:
-                raise errors.BzrMoveFailedError( '', '', "Rollback failed."
+                raise errors.BzrMoveFailedError('', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
                         " Error message is: %s" % e)

@@ -86,7 +86,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                 tree.basis_tree(), tree,
                 [('', ''), ('b/', 'b/'), ('foo', 'a')])
         self.assertPathDoesNotExist('a')
-        self.assertFileEqual(a_contents, b'foo')
+        self.assertFileEqual(a_contents, 'foo')
 
     def test_rename_one_not_localdir(self):
         tree = self.make_branch_and_tree('tree')
@@ -100,7 +100,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                 tree.basis_tree(), tree,
                 [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
         self.assertPathDoesNotExist('tree/a')
-        self.assertFileEqual(a_contents, b'tree/b/foo')
+        self.assertFileEqual(a_contents, 'tree/b/foo')
 
     def test_rename_one_subdir(self):
         tree = self.make_branch_and_tree('.')
@@ -116,7 +116,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                 tree.basis_tree(), tree,
                 [('', ''), ('b/', 'b/'), ('b/c', 'b/c'), ('b/d', 'a')])
         self.assertPathDoesNotExist('a')
-        self.assertFileEqual(a_contents, b'b/d')
+        self.assertFileEqual(a_contents, 'b/d')
 
     def test_rename_one_parent_dir(self):
         tree = self.make_branch_and_tree('.')
