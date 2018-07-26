@@ -1185,8 +1185,7 @@ class TestResolveActionOption(tests.TestCase):
     def setUp(self):
         super(TestResolveActionOption, self).setUp()
         self.options = [conflicts.ResolveActionOption()]
-        self.parser = option.get_optparser(dict((o.name, o)
-                                                for o in self.options))
+        self.parser = option.get_optparser(self.options)
 
     def parse(self, args):
         return self.parser.parse_args(args)

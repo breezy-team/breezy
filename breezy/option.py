@@ -477,7 +477,7 @@ def get_optparser(options):
 
     parser = OptionParser()
     parser.remove_option('--help')
-    for option in options.values():
+    for option in options:
         option.add_option(parser, option.short_name())
     return parser
 

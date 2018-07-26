@@ -186,10 +186,10 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string, branch.controldir)
         transport = branch.controldir.get_workingtree_transport(None)
         transport.mkdir('.')
-        transport.put_bytes("format", "some format name")
+        transport.put_bytes("format", b"some format name")
         # The format does not have to be known by Bazaar,
         # find_format_string just retrieves the name
-        self.assertEqual("some format name",
+        self.assertEqual(b"some format name",
             bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string(branch.controldir))
 
     def test_find_format(self):

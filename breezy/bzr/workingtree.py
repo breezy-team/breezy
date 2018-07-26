@@ -888,7 +888,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     file_id = cache_utf8.encode(s.get("file_id"))
                     if not self.has_id(file_id):
                         continue
-                    text_hash = s.get("hash")
+                    text_hash = s.get("hash").encode('ascii')
                     path = self.id2path(file_id)
                     if text_hash == self.get_file_sha1(path, file_id):
                         merge_hashes[file_id] = text_hash
