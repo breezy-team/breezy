@@ -685,7 +685,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 raise errors.BzrMoveFailedError('', to_dir,
                     errors.NotADirectory(to_abs))
 
-            if to_entry[1][0][0] != 'd':
+            if to_entry[1][0][0] != b'd':
                 raise errors.BzrMoveFailedError('', to_dir,
                     errors.NotADirectory(to_abs))
 
