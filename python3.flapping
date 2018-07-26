@@ -38,3 +38,4 @@ breezy.tests.blackbox.test_status.CheckoutStatus.test_status_multiple_nonexisten
 breezy.tests.blackbox.test_status.BranchStatus.test_status_multiple_nonexistent_files
 breezy.tests.blackbox.test_status.BranchStatus.test_status_nonexistent_file_with_others
 breezy.tests.test_transform.TestSerializeTransform.test_serialize_creation
+breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_dir_becomes_symlink

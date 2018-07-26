@@ -497,7 +497,6 @@ breezy.plugins.git.tests.test_fetch.ImportObjects.test_import_tree_with_file_exe
 breezy.plugins.git.tests.test_fetch.ImportObjects.test_import_tree_with_unusual_mode_file
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_becomes_executable
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_changing_symlink
-breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_dir_becomes_symlink
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_empty
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_executable
 breezy.plugins.git.tests.test_fetch.LocalRepositoryFetchTests.test_incremental
@@ -28647,7 +28646,6 @@ breezy.tests.test_transform.TestSerializeTransform.test_deserialize_symlink_crea
 breezy.tests.test_transform.TestSerializeTransform.test_get_parents_lines
 breezy.tests.test_transform.TestSerializeTransform.test_get_parents_texts
 breezy.tests.test_transform.TestSerializeTransform.test_serialize_add_contents
-breezy.tests.test_transform.TestSerializeTransform.test_serialize_creation
 breezy.tests.test_transform.TestSerializeTransform.test_serialize_destruction
 breezy.tests.test_transform.TestSerializeTransform.test_serialize_kind_change
 breezy.tests.test_transform.TestSerializeTransform.test_serialize_missing
