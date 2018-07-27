@@ -238,7 +238,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         class HookSuccess(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append(('success',))
-                if merge_params.file_id == '1':
+                if merge_params.file_id == b'1':
                     return 'success', [b'text-merged-by-hook']
                 return 'not_applicable', None
         def hook_success_factory(merger):
@@ -251,7 +251,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         class HookConflict(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append(('conflict',))
-                if merge_params.file_id == '1':
+                if merge_params.file_id == b'1':
                     return ('conflicted',
                         [b'text-with-conflict-markers-from-hook'])
                 return 'not_applicable', None
@@ -265,7 +265,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         class HookDelete(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append(('delete',))
-                if merge_params.file_id == '1':
+                if merge_params.file_id == b'1':
                     return 'delete', None
                 return 'not_applicable', None
         def hook_delete_factory(merger):
@@ -310,8 +310,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         builder.change_contents(b"1", other=b"text4", this=b"text3")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
-        self.assertEqual(
-            builder.this.get_file('name1').read(), b'text-merged-by-hook')
+        with builder.this.get_file('name1') as f:
+            self.assertEqual(f.read(), b'text-merged-by-hook')
 
     def test_change_vs_deleted(self):
         """Hook is used for (changed, deleted)"""
@@ -322,8 +322,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         builder.remove_file(b"1", other=True)
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
-        self.assertEqual(
-            builder.this.get_file('name1').read(), b'text-merged-by-hook')
+        with builder.this.get_file('name1') as f:
+            self.assertEqual(f.read(), b'text-merged-by-hook')
 
     def test_result_can_be_delete(self):
         """A hook's result can be the deletion of a file."""
@@ -344,9 +344,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.assertEqual(conflicts, [TextConflict('name1', file_id=b'1')])
         # The hook still gets to set the file contents in this case, so that it
         # can insert custom conflict markers.
-        self.assertEqual(
-            builder.this.get_file('name1').read(),
-            b'text-with-conflict-markers-from-hook')
+        with builder.this.get_file('name1') as f:
+            self.assertEqual(f.read(), b'text-with-conflict-markers-from-hook')
 
     def test_can_access_this_other_and_base_versions(self):
         """The hook function can call params.merger.get_lines to access the
@@ -368,8 +367,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.create_file_needing_contents_merge(builder, b"1")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
-        self.assertEqual(
-            builder.this.get_file('name1').read(), b'text-merged-by-hook')
+        with builder.this.get_file('name1') as f:
+            self.assertEqual(f.read(), b'text-merged-by-hook')
         self.assertEqual([('inactive',), ('success',)], self.hook_log)
 
     def test_chain_when_not_applicable(self):
@@ -382,8 +381,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.create_file_needing_contents_merge(builder, b"1")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
-        self.assertEqual(
-            builder.this.get_file('name1').read(), b'text-merged-by-hook')
+        with builder.this.get_file('name1') as f:
+            self.assertEqual(f.read(), b'text-merged-by-hook')
         self.assertEqual([('no-op',), ('success',)], self.hook_log)
 
     def test_chain_stops_after_success(self):
