@@ -485,7 +485,7 @@ class TestLogSignatures(TestLog):
         tree = self.make_linear_branch(format='dirstate-tags')
 
         log = self.run_bzr("log --signatures")[0]
-        self.assertTrue(b'signature: no signature' in log)
+        self.assertTrue('signature: no signature' in log)
 
     def test_log_without_signatures(self):
         self.requireFeature(features.gpg)
@@ -493,7 +493,7 @@ class TestLogSignatures(TestLog):
         tree = self.make_linear_branch(format='dirstate-tags')
 
         log = self.run_bzr("log")[0]
-        self.assertFalse(b'signature: no signature' in log)
+        self.assertFalse('signature: no signature' in log)
 
 
 class TestLogVerbose(TestLog):

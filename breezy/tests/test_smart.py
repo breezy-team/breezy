@@ -184,11 +184,11 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
     def test_translate_client_path_vfs(self):
         """VfsRequests receive escaped paths rather than raw UTF-8."""
         transport = self.get_transport()
-        request = vfs.VfsRequest(transport, b'foo/')
+        request = vfs.VfsRequest(transport, 'foo/')
         e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
         escaped = urlutils.escape(u'foo/' + e_acute)
-        self.assertEqual(b'./' + urlutils.escape(e_acute).encode('utf-8'),
-                         request.translate_client_path(escaped))
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path(escaped.encode('ascii')))
 
     def test_transport_from_client_path(self):
         transport = self.get_transport()
@@ -272,7 +272,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((b'ok',))
-        self.assertEqual(expected, request.execute(b'', "branchname"))
+        self.assertEqual(expected, request.execute(b'', b"branchname"))
 
     def test_destroy_branch_missing(self):
         """An error is raised if the branch didn't exist."""
@@ -2470,7 +2470,7 @@ class TestSmartServerVfsGet(tests.TestCaseWithMemoryTransport):
         request = vfs.GetRequest(backing)
         backing.put_bytes_non_atomic(filename_escaped, b'contents')
         self.assertEqual(smart_req.SmartServerResponse((b'ok', ), b'contents'),
-            request.execute(filename_escaped))
+            request.execute(filename_escaped.encode('ascii')))
 
 
 class TestHandlers(tests.TestCase):
@@ -2776,5 +2776,5 @@ class TestSmartServerRepositoryAnnotateFileRevision(tests.TestCaseWithTransport)
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(
-                [['somerev', 'somecontents\n'], ['somerev', 'morecontents\n']],
+                [[b'somerev', b'somecontents\n'], [b'somerev', b'morecontents\n']],
                 bencode.bdecode(response.body))

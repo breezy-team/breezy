@@ -810,7 +810,7 @@ altered in u2
         out, err = self.run_bzr("commit tree/hello.txt", retcode=3,
             stdin="y\n")
         self.assertContainsRe(err,
-            b"brz: ERROR: Empty commit message specified")
+            "brz: ERROR: Empty commit message specified")
 
     def test_commit_hook_template_accepted(self):
         tree = self.setup_commit_with_template()

@@ -56,4 +56,6 @@ class TestTestament(TestamentSetup):
         self.assertEqualDiff(err, '')
         sha1_re = re.compile('sha1: (?P<sha1>[a-f0-9]+)$', re.M)
         sha1 = sha1_re.search(short_out).group('sha1')
-        self.assertEqual(sha1, osutils.sha_string(long_out))
+        self.assertEqual(
+                sha1.encode('ascii'),
+                osutils.sha_string(long_out.encode('utf-8')))

@@ -4277,7 +4277,8 @@ class cmd_find_merge_base(Command):
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
 
-        self.outf.write(gettext('merge base is revision %s\n') % base_rev_id)
+        self.outf.write(gettext('merge base is revision %s\n') %
+                base_rev_id.decode('utf-8'))
 
 
 class cmd_merge(Command):

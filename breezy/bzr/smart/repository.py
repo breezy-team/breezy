@@ -1030,7 +1030,8 @@ class SmartServerRepositoryCommitWriteGroup(SmartServerRepositoryRequest):
                 repository.resume_write_group([token.decode('utf-8') for token in write_group_tokens])
             except errors.UnresumableWriteGroup as e:
                 return FailedSmartServerResponse(
-                    (b'UnresumableWriteGroup', [token.encode('utf-8') for token in e.write_groups], e.reason))
+                    (b'UnresumableWriteGroup', [token.encode('utf-8') for token
+                        in e.write_groups], e.reason.encode('utf-8')))
             try:
                 repository.commit_write_group()
             except:
@@ -1056,7 +1057,7 @@ class SmartServerRepositoryAbortWriteGroup(SmartServerRepositoryRequest):
                 return FailedSmartServerResponse(
                     (b'UnresumableWriteGroup',
                         [token.encode('utf-8') for token in e.write_groups],
-                        e.reason))
+                        e.reason.encode('utf-8')))
                 repository.abort_write_group()
         return SuccessfulSmartServerResponse((b'ok', ))
 
@@ -1077,7 +1078,7 @@ class SmartServerRepositoryCheckWriteGroup(SmartServerRepositoryRequest):
                 return FailedSmartServerResponse(
                     (b'UnresumableWriteGroup',
                         [token.encode('utf-8') for token in e.write_groups],
-                        e.reason))
+                        e.reason.encode('utf-8')))
             else:
                 repository.suspend_write_group()
         return SuccessfulSmartServerResponse((b'ok', ))

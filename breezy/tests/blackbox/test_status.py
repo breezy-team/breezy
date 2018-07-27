@@ -371,15 +371,15 @@ class BranchStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status NONEXISTENT', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
         self.assertContainsRe(err,
-                              br'.*ERROR: Path\(s\) do not exist: '
-                              b'NONEXISTENT.*')
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
         expected = [
           'X:   NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status --short NONEXISTENT', retcode=3)
         self.assertContainsRe(err,
-                              br'.*ERROR: Path\(s\) do not exist: '
-                              b'NONEXISTENT.*')
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
 
     def test_status_nonexistent_file_with_others(self):
         # brz st [--short] NONEXISTENT ...others..
@@ -565,9 +565,9 @@ class BranchStatus(TestCaseWithTransport):
         self.build_tree(['bye.c'])
         wt.add('bye.c')
         self.assertStatus([
-                b'added:\n',
-                b'  bye.c\n',
-                b'1 shelf exists. See "brz shelve --list" for details.\n',
+                'added:\n',
+                '  bye.c\n',
+                '1 shelf exists. See "brz shelve --list" for details.\n',
             ],
             wt)
         self.run_bzr(['shelve', '--all', '-m', 'bar'])
@@ -575,15 +575,15 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('eggs.c')
         wt.add('spam.c')
         self.assertStatus([
-                b'added:\n',
-                b'  eggs.c\n',
-                b'  spam.c\n',
-                b'2 shelves exist. See "brz shelve --list" for details.\n',
+                'added:\n',
+                '  eggs.c\n',
+                '  spam.c\n',
+                '2 shelves exist. See "brz shelve --list" for details.\n',
             ],
             wt)
         self.assertStatus([
-                b'added:\n',
-                b'  spam.c\n',
+                'added:\n',
+                '  spam.c\n',
             ],
             wt,
             specific_files=['spam.c'])

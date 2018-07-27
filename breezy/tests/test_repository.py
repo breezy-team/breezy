@@ -955,7 +955,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
-        file_id = filename + b'-id'
+        file_id = filename.encode('utf-8') + b'-id'
         entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
         entry.text_size = 0
