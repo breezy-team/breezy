@@ -93,10 +93,10 @@ class InventoryEntry(object):
     >>> i = Inventory()
     >>> i.path2id('')
     'TREE_ROOT'
-    >>> i.add(InventoryDirectory('123', 'src', ROOT_ID))
+    >>> i.add(InventoryDirectory(b'123', 'src', ROOT_ID))
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
-    >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
-    InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
+    >>> i.add(InventoryFile(b'2323', 'hello.c', parent_id='123'))
+    InventoryFile(b'2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
     >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
@@ -216,12 +216,12 @@ class InventoryEntry(object):
         The filename must be a single component, relative to the
         parent directory; it cannot be a whole path or relative name.
 
-        >>> e = InventoryFile('123', 'hello.c', ROOT_ID)
+        >>> e = InventoryFile(b'123', 'hello.c', ROOT_ID)
         >>> e.name
         'hello.c'
         >>> e.file_id
         '123'
-        >>> e = InventoryFile('123', 'src/hello.c', ROOT_ID)
+        >>> e = InventoryFile(b'123', 'src/hello.c', ROOT_ID)
         Traceback (most recent call last):
         InvalidEntryName: Invalid entry name: src/hello.c
         """

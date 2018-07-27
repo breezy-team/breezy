@@ -40,7 +40,7 @@ from ..bzr.fullhistory import (
     BzrBranchFormat5,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 
 
@@ -115,7 +115,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertFileEqual(b"# comment\n"
                              b"[%s]\n"
                              b"push_location = foo\n"
-                             b"push_location:policy = norecurse\n" % local_path,
+                             b"push_location:policy = norecurse\n" % local_path.encode('utf-8'),
                              config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
@@ -688,15 +688,14 @@ class TestPullResult(tests.TestCase):
         r.old_revno = 10
         r.new_revid = b"new-revid"
         r.new_revno = 20
-        f = BytesIO()
+        f = StringIO()
         r.report(f)
-        self.assertEqual(b"Now on revision 20.\n", f.getvalue())
-        self.assertEqual(b"Now on revision 20.\n", f.getvalue())
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):
         r = _mod_branch.PullResult()
         r.old_revid = b"same-revid"
         r.new_revid = b"same-revid"
-        f = BytesIO()
+        f = StringIO()
         r.report(f)
-        self.assertEqual(b"No revisions or tags to pull.\n", f.getvalue())
+        self.assertEqual("No revisions or tags to pull.\n", f.getvalue())

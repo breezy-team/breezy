@@ -358,7 +358,7 @@ class TestGetFileVerifier(TestCaseWithTree):
             tree.get_file_verifier('file1'),
             tree.get_file_verifier('file2'))
         if kind == "SHA1":
-            expected = osutils.sha_strings(b'file content')
+            expected = osutils.sha_string(b'file content')
             self.assertEqual(expected, data)
 
 
