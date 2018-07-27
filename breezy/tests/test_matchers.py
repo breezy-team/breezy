@@ -212,8 +212,9 @@ class TestContainsNoVfsCalls(TestCase):
         mismatch = ContainsNoVfsCalls().match(calls)
         self.assertIsNot(None, mismatch)
         self.assertEqual([calls[0].call], mismatch.vfs_calls)
-        self.assertEqual("no VFS calls expected, got: b'append'(b'file')""",
-                mismatch.describe())
+        self.assertIn(mismatch.describe(), [
+                "no VFS calls expected, got: b'append'(b'file')",
+                "no VFS calls expected, got: append('file')"])
 
 
 class TestRevisionHistoryMatches(TestCaseWithTransport):

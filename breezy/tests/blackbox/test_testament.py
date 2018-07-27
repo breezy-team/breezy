@@ -18,6 +18,7 @@
 
 import re
 
+from breezy.sixish import PY3
 from breezy.tests.test_testament import (
     osutils,
     REV_1_SHORT,
@@ -58,4 +59,4 @@ class TestTestament(TestamentSetup):
         sha1 = sha1_re.search(short_out).group('sha1')
         self.assertEqual(
                 sha1.encode('ascii'),
-                osutils.sha_string(long_out.encode('utf-8')))
+                osutils.sha_string(long_out.encode('utf-8') if PY3 else long_out))

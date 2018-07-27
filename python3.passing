@@ -1537,7 +1537,6 @@ breezy.tests.blackbox.test_commit.TestCommit.test_author_sets_property
 breezy.tests.blackbox.test_commit.TestCommit.test_commit_a_text_merge_in_a_checkout
 breezy.tests.blackbox.test_commit.TestCommit.test_commit_exclude_excludes_modified_files
 breezy.tests.blackbox.test_commit.TestCommit.test_commit_exclude_twice_uses_both_rules
-breezy.tests.blackbox.test_commit.TestCommit.test_commit_hook_template_rejected
 breezy.tests.blackbox.test_commit.TestCommit.test_commit_lossy_foreign
 breezy.tests.blackbox.test_commit.TestCommit.test_commit_lossy_native
 breezy.tests.blackbox.test_commit.TestCommit.test_commit_merge_reports_all_modified_files
@@ -22527,7 +22526,6 @@ breezy.tests.test_bundle.V4BundleTester.test_last_modified
 breezy.tests.test_bundle.V4BundleTester.test_malformed
 breezy.tests.test_bundle.V4BundleTester.test_non_bundle
 breezy.tests.test_bundle.V4BundleTester.test_revision_id_with_slash
-breezy.tests.test_bundle.V4BundleTester.test_skip_file
 breezy.tests.test_bundle.V4BundleTester.test_symlink_bundle
 breezy.tests.test_bundle.V4BundleTester.test_unicode_bundle
 breezy.tests.test_bundle.V4BundleTester.test_unicode_symlink_bundle
