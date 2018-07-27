@@ -473,7 +473,7 @@ class RemoteTransport(transport.ConnectedTransport):
     def iter_files_recursive(self):
         resp = self._call2(b'iter_files_recursive', self._remote_path(''))
         if resp[0] == b'names':
-            return resp[1:]
+            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
 
