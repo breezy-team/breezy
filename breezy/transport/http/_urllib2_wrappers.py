@@ -83,6 +83,7 @@ from ... import (
     urlutils,
 )
 from ...sixish import (
+    PY3,
     reraise,
 )
 
@@ -409,8 +410,11 @@ class HTTPConnection(AbstractHTTPConnection, http_client.HTTPConnection):
     def __init__(self, host, port=None, proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
-        # Use strict=True since we don't support HTTP/0.9
-        http_client.HTTPConnection.__init__(self, host, port, strict=True)
+        if PY3:
+            http_client.HTTPConnection.__init__(self, host, port)
+        else:
+            # Use strict=True since we don't support HTTP/0.9
+            http_client.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
         # ca_certs is ignored, it's only relevant for https
 
@@ -427,9 +431,13 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
                  proxied_host=None,
                  report_activity=None, ca_certs=None):
         AbstractHTTPConnection.__init__(self, report_activity=report_activity)
-        # Use strict=True since we don't support HTTP/0.9
-        http_client.HTTPSConnection.__init__(self, host, port,
-                                         key_file, cert_file, strict=True)
+        if PY3:
+            http_client.HTTPSConnection.__init__(
+                    self, host, port, key_file, cert_file)
+        else:
+            # Use strict=True since we don't support HTTP/0.9
+            http_client.HTTPSConnection.__init__(self, host, port,
+                                             key_file, cert_file, strict=True)
         self.proxied_host = proxied_host
         self.ca_certs = ca_certs
 
@@ -525,7 +533,7 @@ class Request(urllib_request.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        host, port = urllib.splitport(self.get_host())
+        host, port = urllib.splitport(self.host)
         if port is None:
             # We need to set the default port ourselves way before it gets set
             # in the HTTP[S]Connection object at build time.
@@ -551,7 +559,7 @@ class _ConnectRequest(Request):
         :param request: the first request sent to the proxied host, already
             processed by the opener (i.e. proxied_host is already set).
         """
-        # We give a fake url and redefine get_selector or urllib_request will be
+        # We give a fake url and redefine selector or urllib_request will be
         # confused
         Request.__init__(self, 'CONNECT', request.get_full_url(),
                          connection=request.connection)
@@ -559,8 +567,12 @@ class _ConnectRequest(Request):
             raise AssertionError()
         self.proxied_host = request.proxied_host
 
-    def get_selector(self):
+    @property
+    def selector(self):
         return self.proxied_host
+
+    def get_selector(self):
+        return selector
 
     def set_proxy(self, proxy, type):
         """Set the proxy without remembering the proxied host.
@@ -741,7 +753,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
 
                     my_exception = errors.ConnectionError(
                         msg= 'while sending %s %s:' % (request.get_method(),
-                                                       request.get_selector()),
+                                                       request.selector),
                         orig_error=exc_val)
 
                 if self._debuglevel >= 2:
@@ -773,16 +785,23 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         # before sending the request. And not all versions of python 2.5 do
         # that. Since we replace urllib_request.AbstractHTTPHandler.do_open we do it
         # ourself below.
-        headers = dict((name.title(), val) for name, val in headers.items())
+        headers = {name.title(): val for name, val in headers.items()}
 
         try:
             method = request.get_method()
-            url = request.get_selector()
-            connection._send_request(method, url,
-                                     # FIXME: implements 100-continue
-                                     #None, # We don't send the body yet
-                                     request.get_data(),
-                                     headers)
+            url = request.selector
+            if PY3:
+                connection._send_request(method, url,
+                                         # FIXME: implements 100-continue
+                                         #None, # We don't send the body yet
+                                         request.data,
+                                         headers, encode_chunked=False)
+            else:
+                connection._send_request(method, url,
+                                         # FIXME: implements 100-continue
+                                         #None, # We don't send the body yet
+                                         request.data,
+                                         headers)
             if 'http' in debug.debug_flags:
                 trace.mutter('> %s %s' % (method, url))
                 hdrs = []
@@ -813,7 +832,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
 #        if code == 100:
 #            mutter('Will send the body')
 #            # We can send the body now
-#            body = request.get_data()
+#            body = request.data
 #            if body is None:
 #                raise URLError("No data given")
 #            connection.send(body)
@@ -1127,7 +1146,7 @@ class ProxyHandler(urllib_request.ProxyHandler):
         return None
 
     def set_proxy(self, request, type):
-        if self.proxy_bypass(request.get_host()):
+        if self.proxy_bypass(request.host):
             return request
 
         proxy = self.get_proxy_env_var(type)
@@ -1615,7 +1634,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        url_scheme, url_selector = urllib.splittype(request.get_selector())
+        url_scheme, url_selector = urllib.splittype(request.selector)
         sel_host, uri = urllib.splithost(url_selector)
 
         A1 = '%s:%s:%s' % (auth['user'], auth['realm'], auth['password'])
