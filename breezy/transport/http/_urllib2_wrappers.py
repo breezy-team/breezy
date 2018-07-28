@@ -592,7 +592,7 @@ class ConnectionHandler(urllib_request.BaseHandler):
         self.ca_certs = ca_certs
 
     def create_connection(self, request, http_connection_class):
-        host = request.get_host()
+        host = request.host
         if not host:
             # Just a bit of paranoia here, this should have been
             # handled in the higher levels
