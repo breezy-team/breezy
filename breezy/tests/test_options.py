@@ -26,7 +26,6 @@ from .. import (
     )
 from ..builtins import cmd_commit
 from ..commands import parse_args
-from ..sixish import viewvalues
 from . import TestCase
 from ..bzr import knitrepo
 
