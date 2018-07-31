@@ -115,9 +115,10 @@ class cmd_dump_btree(Command):
             else:
                 refs_as_tuples = static_tuple.as_tuples(refs)
             if PY3:
-                refs_as_tuples = tuple(
-                    tuple(tuple(r.decode('utf-8') for r in t1) for t1 in t2)
-                    for t2 in refs_as_tuples)
+                if refs_as_tuples is not None:
+                    refs_as_tuples = tuple(
+                        tuple(tuple(r.decode('utf-8') for r in t1) for t1 in t2)
+                        for t2 in refs_as_tuples)
                 as_tuple = (
                         tuple([r.decode('utf-8') for r in node[1]]),
                         node[2].decode('utf-8'),
