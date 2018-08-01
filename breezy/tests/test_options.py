@@ -31,7 +31,7 @@ from ..bzr import knitrepo
 
 
 def parse(options, args):
-    parser = option.get_optparser(dict((o.name, o) for o in options))
+    parser = option.get_optparser(options)
     return parser.parse_args(args)
 
 
@@ -93,7 +93,7 @@ class OptionTests(TestCase):
         self.assertEqual((['-']), parse_args(cmd_commit(), ['-'])[0])
 
     def parse(self, options, args):
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         return parser.parse_args(args)
 
     def test_conversion(self):
@@ -198,7 +198,7 @@ class OptionTests(TestCase):
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
                    str, value_switches=True, title='Formats')]
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         value = parser.format_option_help()
         self.assertContainsRe(value, 'format.*format help')
         self.assertContainsRe(value, 'one.*one help')
@@ -271,7 +271,7 @@ class TestListOptions(TestCase):
     """Tests for ListOption, used to specify lists on the command-line."""
 
     def parse(self, options, args):
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         return parser.parse_args(args)
 
     def test_list_option(self):
@@ -421,7 +421,8 @@ class TestVerboseQuietLinkage(TestCase):
         self.assertEqual(level, option._verbosity_level)
 
     def test_verbose_quiet_linkage(self):
-        parser = option.get_optparser(option.Option.STD_OPTIONS)
+        parser = option.get_optparser(
+                [v for k, v in sorted(option.Option.STD_OPTIONS.items())])
         self.check(parser, 0, [])
         self.check(parser, 1, ['-v'])
         self.check(parser, 2, ['-v', '-v'])

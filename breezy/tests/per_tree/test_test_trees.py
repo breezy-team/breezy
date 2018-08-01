@@ -321,13 +321,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             self.assertEqual(expected[0], path) # Paths should match
             self.assertIsInstance(path, text_type)
             self.assertEqual(expected[1], ie.file_id)
-            self.assertIsInstance(ie.file_id, str)
+            self.assertIsInstance(ie.file_id, bytes)
             self.assertEqual(expected[2], ie.parent_id)
             if expected[2] is not None:
-                self.assertIsInstance(ie.parent_id, str)
+                self.assertIsInstance(ie.parent_id, bytes)
             # WorkingTree's return None for the last modified revision
             if ie.revision is not None:
-                self.assertIsInstance(ie.revision, str)
+                self.assertIsInstance(ie.revision, bytes)
                 if expected[0] != '':
                     # Some trees will preserve the revision id of the tree root,
                     # but not all will
@@ -335,10 +335,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(len(path_and_ids), len(path_entries))
         get_revision_id = getattr(tree, 'get_revision_id', None)
         if get_revision_id is not None:
-            self.assertIsInstance(get_revision_id(), str)
+            self.assertIsInstance(get_revision_id(), bytes)
         last_revision = getattr(tree, 'last_revision', None)
         if last_revision is not None:
-            self.assertIsInstance(last_revision(), str)
+            self.assertIsInstance(last_revision(), bytes)
 
     def test_tree_with_merged_utf8(self):
         wt = self.make_branch_and_tree('.')

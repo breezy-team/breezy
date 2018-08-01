@@ -140,7 +140,7 @@ class RevisionSpec_bork(RevisionSpec):
 
     def _match_on(self, branch, revs):
         if self.spec == "bork":
-            return RevisionInfo.from_revision_id(branch, "r1")
+            return RevisionInfo.from_revision_id(branch, b"r1")
         else:
             raise errors.InvalidRevisionSpec(self.spec, branch)
 
@@ -245,8 +245,9 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         try:
             int('X')
         except ValueError as e:
-            pass
-        self.assertInvalid('revno:X', extra='\n' + str(e))
+            self.assertInvalid('revno:X', extra='\n' + str(e))
+        else:
+            self.fail()
 
     def test_missing_number_and_branch(self):
         self.assertInvalid('revno::',
@@ -256,8 +257,9 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         try:
             int('X')
         except ValueError as e:
-            pass
-        self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
+            self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
+        else:
+            self.fail()
 
     def test_non_exact_branch(self):
         # It seems better to require an exact path to the branch
@@ -465,7 +467,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
     def test_alt_no_parents(self):
         new_tree = self.make_branch_and_tree('new_tree')
         new_tree.commit('first', rev_id=b'new_r1')
-        self.tree.branch.fetch(new_tree.branch, 'new_r1')
+        self.tree.branch.fetch(new_tree.branch, b'new_r1')
         self.assertInHistoryIs(0, b'null:', 'before:revid:new_r1')
 
     def test_as_revision_id(self):

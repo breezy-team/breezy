@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import codecs
 import errno
 import os
 import sys
@@ -1768,11 +1769,11 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file('i.OTHER').read(),
                          b'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
-        modified = ['a', 'b', 'c', 'h', 'i']
+        modified = [b'a', b'b', b'c', b'h', b'i']
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
-        with open(this.wt.abspath(this.wt.id2path('a')), 'wb') as f: f.write(b'booga')
+        with open(this.wt.abspath(this.wt.id2path(b'a')), 'wb') as f: f.write(b'booga')
         modified.pop(0)
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
@@ -2188,7 +2189,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
             filters._reset_registry(original_registry)
         self.addCleanup(restore_registry)
         def rot13(chunks, context=None):
-            return [b''.join(chunks).encode('rot13')]
+            return [codecs.encode(chunk.decode('ascii'), 'rot13').encode('ascii')
+                    for chunk in chunks]
         rot13filter = filters.ContentFilter(rot13, rot13)
         filters.filter_stacks_registry.register(
             'rot13', {'yes': [rot13filter]}.get)

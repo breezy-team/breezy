@@ -150,7 +150,10 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         tree.add('')
         root_delta.added = [('', tree.path2id(''), 'directory')]
-        class PreCommitException(Exception): pass
+        class PreCommitException(Exception):
+            
+            def __init__(self, revid):
+                self.revid = revid
         def hook_func(local, master,
                       old_revno, old_revid, new_revno, new_revid,
                       tree_delta, future_tree):
@@ -163,7 +166,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         # so the commit is rolled back and revno unchanged
         err = self.assertRaises(PreCommitException, tree.commit, 'message')
         # we have to record the revid to use in assertEqual later
-        revids[0] = str(err)
+        revids[0] = err.revid
         # unregister all pre_commit hooks
         branch.Branch.hooks["pre_commit"] = []
         # and re-register the capture hook

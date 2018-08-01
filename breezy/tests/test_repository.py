@@ -280,11 +280,12 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff(b'', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
@@ -300,8 +301,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff(b'', t.get('shared-storage').read())
@@ -953,7 +955,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
-        file_id = filename + b'-id'
+        file_id = filename.encode('utf-8') + b'-id'
         entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
         entry.text_size = 0
@@ -1321,7 +1323,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs.pack_distribution = lambda x: [10]
         r.start_write_group()
         r.revisions.insert_record_stream([versionedfile.FulltextContentFactory(
-            ('bogus-rev',), (), None, 'bogus-content\n')])
+            (b'bogus-rev',), (), None, b'bogus-content\n')])
         # This should trigger an autopack, which will combine everything into a
         # single pack file.
         new_names = r.commit_write_group()

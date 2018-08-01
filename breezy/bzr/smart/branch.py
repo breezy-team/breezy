@@ -398,7 +398,8 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b'UnlockableTransport',))
         except errors.LockFailed as e:
-            return FailedSmartServerResponse((b'LockFailed', str(e.lock), str(e.why)))
+            return FailedSmartServerResponse((b'LockFailed',
+                str(e.lock).encode('utf-8'), str(e.why).encode('utf-8')))
         if repo_token is None:
             repo_token = b''
         else:

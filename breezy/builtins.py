@@ -3662,6 +3662,9 @@ class cmd_commit(Command):
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
                     start_message = generate_commit_message_template(commit_obj)
+                    if start_message is not None:
+                        start_message = start_message.encode(
+                                osutils.get_user_encoding())
                     my_message = edit_commit_message_encoded(text,
                         start_message=start_message)
                 if my_message is None:
@@ -4277,7 +4280,8 @@ class cmd_find_merge_base(Command):
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
 
-        self.outf.write(gettext('merge base is revision %s\n') % base_rev_id)
+        self.outf.write(gettext('merge base is revision %s\n') %
+                base_rev_id.decode('utf-8'))
 
 
 class cmd_merge(Command):

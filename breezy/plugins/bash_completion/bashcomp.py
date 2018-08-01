@@ -369,7 +369,7 @@ class DataCollector(object):
 
     def option(self, opt):
         optswitches = {}
-        parser = option.get_optparser({opt.name: opt})
+        parser = option.get_optparser([opt])
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())

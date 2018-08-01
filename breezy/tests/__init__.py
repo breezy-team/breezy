@@ -1286,9 +1286,9 @@ class TestCase(testtools.TestCase):
 
         A trailing newline is added if missing to make the strings
         print properly."""
-        if b and b[-1] != '\n':
+        if b and not b.endswith('\n'):
             b += '\n'
-        if a and a[-1] != '\n':
+        if a and not a.endswith('\n'):
             a += '\n'
         difflines = difflib.ndiff(a.splitlines(True),
                                   b.splitlines(True),
@@ -1325,9 +1325,9 @@ class TestCase(testtools.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        if a + '\n' == b:
+        if a + ('\n' if isinstance(a, text_type) else b'\n') == b:
             message = 'first string is missing a final newline.\n'
-        if a == b + '\n':
+        if a == b + ('\n' if isinstance(b, text_type) else b'\n'):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))

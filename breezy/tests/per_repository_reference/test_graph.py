@@ -57,7 +57,7 @@ class TestGraph(TestCaseWithRepository):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'directory', b'root-id', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A')
         builder.build_snapshot([b'A'], [], revision_id=b'B')
         builder.build_snapshot([b'B'], [], revision_id=b'C')
@@ -101,18 +101,18 @@ class TestGraph(TestCaseWithRepository):
         self.addCleanup(target_b.lock_write().unlock)
         self.setup_smart_server_with_call_log()
         res = target_b.repository.search_missing_revision_ids(
-                stacked_b.repository, revision_ids=['F'],
+                stacked_b.repository, revision_ids=[b'F'],
                 find_ghosts=False)
         self.assertParentMapCalls([
             # One call to stacked to start, which returns F=>E, and that E
             # itself is missing, so when we step, we won't look for it.
-            ('extra/stacked/', ['F']),
+            ('extra/stacked/', [b'F']),
             # One fallback call to extra/master, which will return the rest of
             # the history.
-            ('extra/master/', ['E']),
+            ('extra/master/', [b'E']),
             # And then one get_parent_map call to the target, to see if it
             # already has any of these revisions.
-            ('extra/target_repo/branch/', ['A', 'B', 'C', 'D', 'E', 'F']),
+            ('extra/target_repo/branch/', [b'A', b'B', b'C', b'D', b'E', b'F']),
             ])
         # Before bug #388269 was fixed, there would be a bunch of extra calls
         # to 'extra/stacked', ['D'] then ['C'], then ['B'], then ['A'].

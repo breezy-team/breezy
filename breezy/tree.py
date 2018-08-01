@@ -1145,7 +1145,7 @@ class MultiWalker(object):
             return True, path, ie
 
     @staticmethod
-    def _cmp_path_by_dirblock(path1, path2):
+    def _lt_path_by_dirblock(path1, path2):
         """Compare two paths based on what directory they are in.
 
         This generates a sort order, such that all children of a directory are
@@ -1160,7 +1160,7 @@ class MultiWalker(object):
         """
         # Shortcut this special case
         if path1 == path2:
-            return 0
+            return False
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
@@ -1170,8 +1170,8 @@ class MultiWalker(object):
         if not isinstance(path2, text_type):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
-        return cmp(MultiWalker._path_to_key(path1),
-                   MultiWalker._path_to_key(path2))
+        return (MultiWalker._path_to_key(path1) <
+                MultiWalker._path_to_key(path2))
 
     @staticmethod
     def _path_to_key(path):
@@ -1267,7 +1267,7 @@ class MultiWalker(object):
                     other_walker = other_walkers[idx]
                     other_extra = others_extra[idx]
                     while (other_has_more and
-                           self._cmp_path_by_dirblock(other_path, path) < 0):
+                           self._lt_path_by_dirblock(other_path, path)):
                         other_file_id = other_ie.file_id
                         if other_file_id not in out_of_order_processed:
                             other_extra[other_file_id] = (other_path, other_ie)

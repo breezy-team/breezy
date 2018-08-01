@@ -34,7 +34,7 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
         self.assertEqual(3, the_branch.revision_id_to_revno(revmap['3']))
 
         self.assertRaises(errors.NoSuchRevision,
-                          the_branch.revision_id_to_revno, 'rev-none')
+                          the_branch.revision_id_to_revno, b'rev-none')
         # revision_id_to_revno is defined as returning only integer revision
         # numbers, so non-mainline revisions get NoSuchRevision raised
         self.assertRaises(errors.NoSuchRevision,

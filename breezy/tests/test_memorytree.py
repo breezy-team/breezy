@@ -48,8 +48,8 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_read()
         self.assertEqual([rev_id], tree.get_parent_ids())
-        self.assertEqual('contents of foo\n',
-            tree.get_file('foo').read())
+        with tree.get_file('foo') as f:
+            self.assertEqual(b'contents of foo\n', f.read())
         tree.unlock()
 
     def test_get_root_id(self):
