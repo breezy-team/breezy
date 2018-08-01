@@ -63,6 +63,7 @@ from ..bzr import (
     groupcompress_repo,
     )
 from ..sixish import (
+    PY3,
     StringIO,
     text_type,
     )
@@ -3045,14 +3046,17 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        if __doc__ is not None:
+        if __doc__ is not None and not PY3:
             expected_test_list.extend([
                 # modules_to_doctest
                 'breezy.timestamp.format_highres_date',
                 ])
         suite = tests.test_suite()
-        self.assertEqual({"testmod_names", "modules_to_doctest"},
-            set(calls))
+        if PY3:
+            self.assertEqual({"testmod_names"}, set(calls))
+        else:
+            self.assertEqual({"testmod_names", "modules_to_doctest"},
+                set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
