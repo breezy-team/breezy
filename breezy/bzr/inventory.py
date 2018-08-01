@@ -96,7 +96,7 @@ class InventoryEntry(object):
     >>> i.add(InventoryDirectory(b'123', 'src', ROOT_ID))
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
     >>> i.add(InventoryFile(b'2323', 'hello.c', parent_id='123'))
-    InventoryFile(b'2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
+    InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
     >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])

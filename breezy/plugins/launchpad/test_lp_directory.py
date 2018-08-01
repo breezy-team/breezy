@@ -20,6 +20,7 @@ import os
 
 try:
     from xmlrpclib import Fault
+    from http.client import parse_headers
 except ImportError:  # python < 3
     from xmlrpc.client import Fault
 
@@ -32,6 +33,7 @@ from ... import (
     )
 from ...branch import Branch
 from ...directory_service import directories
+from ...sixish import PY3
 from ...tests import (
     features,
     ssl_certs,
@@ -419,8 +421,11 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     def handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
-        self.MessageClass(self.rfile, 0)
-        if requestline.startswith('POST'):
+        if PY3:
+            parse_headers(self.rfile)
+        else:
+            self.MessageClass(self.rfile, 0)
+        if requestline.startswith(b'POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)
             self.rfile.readline()

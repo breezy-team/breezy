@@ -62,9 +62,10 @@ try:
 except ImportError:  # python < 3
     import urllib2 as urllib_request
 try:
-    from urllib.parse import urljoin
+    from urllib.parse import urljoin, splitport, splittype, splithost
 except ImportError:
     from urlparse import urljoin
+    from urllib import splitport, splittype, splithost
 import re
 import ssl
 import sys
@@ -85,6 +86,7 @@ from ... import (
 from ...sixish import (
     PY3,
     reraise,
+    text_type,
 )
 
 try:
@@ -533,7 +535,10 @@ class Request(urllib_request.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        host, port = urllib.splitport(self.host)
+        if PY3:
+            host, port = splitport(self.host)
+        else:
+            host, port = splitport(self.get_host())
         if port is None:
             # We need to set the default port ourselves way before it gets set
             # in the HTTP[S]Connection object at build time.
@@ -572,7 +577,7 @@ class _ConnectRequest(Request):
         return self.proxied_host
 
     def get_selector(self):
-        return selector
+        return self.selector
 
     def set_proxy(self, proxy, type):
         """Set the proxy without remembering the proxied host.
@@ -750,10 +755,13 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                     # far outside our scope, so closing the
                     # connection and retrying is the best we can
                     # do.
-
+                    if PY3:
+                        selector = request.selector
+                    else:
+                        selector = request.get_selector()
                     my_exception = errors.ConnectionError(
                         msg= 'while sending %s %s:' % (request.get_method(),
-                                                       request.selector),
+                                                       selector),
                         orig_error=exc_val)
 
                 if self._debuglevel >= 2:
@@ -789,14 +797,15 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
 
         try:
             method = request.get_method()
-            url = request.selector
             if PY3:
+                url = request.selector
                 connection._send_request(method, url,
                                          # FIXME: implements 100-continue
                                          #None, # We don't send the body yet
                                          request.data,
                                          headers, encode_chunked=False)
             else:
+                url = request.get_selector()
                 connection._send_request(method, url,
                                          # FIXME: implements 100-continue
                                          #None, # We don't send the body yet
@@ -825,6 +834,10 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                 socket.error, http_client.HTTPException):
             response = self.retry_or_raise(http_class, request, first_try)
             convert_to_addinfourl = False
+
+        if PY3:
+            response.msg = response.reason
+            return response
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)
@@ -965,10 +978,15 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
         # and that we MAY avoid following the redirections. But
         # if we want to be sure, we MUST follow them.
 
+        if PY3:
+            origin_req_host = req.origin_req_host
+        else:
+            origin_req_host = req.get_origin_req_host()
+
         if code in (301, 302, 303, 307):
             return Request(req.get_method(), newurl,
                            headers = req.headers,
-                           origin_req_host = req.get_origin_req_host(),
+                           origin_req_host = origin_req_host,
                            unverifiable = True,
                            # TODO: It will be nice to be able to
                            # detect virtual hosts sharing the same
@@ -994,9 +1012,9 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
         # following will need to be updated to use correct case
         # for headers.
         if 'location' in headers:
-            newurl = headers.getheaders('location')[0]
+            newurl = headers.get('location')
         elif 'uri' in headers:
-            newurl = headers.getheaders('uri')[0]
+            newurl = headers.get('uri')
         else:
             return
         if self._debuglevel >= 1:
@@ -1125,7 +1143,7 @@ class ProxyHandler(urllib_request.ProxyHandler):
         if no_proxy is None:
             # All hosts are proxied
             return False
-        hhost, hport = urllib.splitport(host)
+        hhost, hport = splitport(host)
         # Does host match any of the domains mentioned in
         # no_proxy ? The rules about what is authorized in no_proxy
         # are fuzzy (to say the least). We try to allow most
@@ -1134,7 +1152,7 @@ class ProxyHandler(urllib_request.ProxyHandler):
             domain = domain.strip()
             if domain == '':
                 continue
-            dhost, dport = urllib.splitport(domain)
+            dhost, dport = splitport(domain)
             if hport == dport or dport is None:
                 # Protect glob chars
                 dhost = dhost.replace(".", r"\.")
@@ -1146,7 +1164,11 @@ class ProxyHandler(urllib_request.ProxyHandler):
         return None
 
     def set_proxy(self, request, type):
-        if self.proxy_bypass(request.host):
+        if PY3:
+            host = request.host
+        else:
+            host = request.get_host()
+        if self.proxy_bypass(host):
             return request
 
         proxy = self.get_proxy_env_var(type)
@@ -1280,7 +1302,10 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
                 # Let's be ready for next round
                 self._retry_count = None
                 return None
-        server_headers = headers.getheaders(self.auth_required_header)
+        if PY3:
+            server_headers = headers.get_all(self.auth_required_header)
+        else:
+            server_headers = headers.getheaders(self.auth_required_header)
         if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
@@ -1429,7 +1454,7 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
         prompt = u'%s' % auth['protocol'].upper() + u' %(user)s@%(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += u", Realm: '%s'" % realm.decode('utf8')
+            prompt += u", Realm: '%s'" % realm
         prompt += u' password'
         return prompt
 
@@ -1447,7 +1472,7 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
         prompt = u'%s' % auth['protocol'].upper() + u' %(host)s'
         realm = auth['realm']
         if realm is not None:
-            prompt += u", Realm: '%s'" % realm.decode('utf8')
+            prompt += u", Realm: '%s'" % realm
         prompt += u' username'
         return prompt
 
@@ -1526,7 +1551,7 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     def build_auth_header(self, auth, request):
         raw = '%s:%s' % (auth['user'], auth['password'])
-        auth_header = 'Basic ' + base64.b64encode(raw)
+        auth_header = 'Basic ' + base64.b64encode(raw.encode('utf-8')).decode('ascii')
         return auth_header
 
     def extract_realm(self, header_value):
@@ -1568,14 +1593,14 @@ def get_digest_algorithm_impls(algorithm):
     elif algorithm == 'SHA':
         H = osutils.sha_string
     if H is not None:
-        KD = lambda secret, data: H("%s:%s" % (secret, data))
+        KD = lambda secret, data: H(("%s:%s" % (secret, data)).encode('utf-8'))
     return H, KD
 
 
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
-                           urllib_request.randombytes(8))
-    return osutils.sha_string(raw)[:16]
+                           osutils.rand_chars(8))
+    return osutils.sha_string(raw.encode('utf-8'))[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):
@@ -1634,11 +1659,15 @@ class DigestAuthHandler(AbstractAuthHandler):
         return True
 
     def build_auth_header(self, auth, request):
-        url_scheme, url_selector = urllib.splittype(request.selector)
-        sel_host, uri = urllib.splithost(url_selector)
+        if PY3:
+            selector = request.selector
+        else:
+            selector = request.get_selector()
+        url_scheme, url_selector = splittype(selector)
+        sel_host, uri = splithost(url_selector)
 
-        A1 = '%s:%s:%s' % (auth['user'], auth['realm'], auth['password'])
-        A2 = '%s:%s' % (request.get_method(), uri)
+        A1 = ('%s:%s:%s' % (auth['user'], auth['realm'], auth['password'])).encode('utf-8')
+        A2 = ('%s:%s' % (request.get_method(), uri)).encode('utf-8')
 
         nonce = auth['nonce']
         qop = auth['qop']
