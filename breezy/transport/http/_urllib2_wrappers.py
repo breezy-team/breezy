@@ -799,13 +799,15 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
             method = request.get_method()
             if PY3:
                 url = request.selector
+            else:
+                url = request.get_selector()
+            if sys.version_info[:2] >= (3, 6):
                 connection._send_request(method, url,
                                          # FIXME: implements 100-continue
                                          #None, # We don't send the body yet
                                          request.data,
                                          headers, encode_chunked=False)
             else:
-                url = request.get_selector()
                 connection._send_request(method, url,
                                          # FIXME: implements 100-continue
                                          #None, # We don't send the body yet
