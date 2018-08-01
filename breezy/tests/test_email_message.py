@@ -204,7 +204,7 @@ class TestEmailMessage(tests.TestCase):
 
     def test_string_with_encoding(self):
         pairs = {
-                u'Pepe':        ('Pepe', 'ascii'),
+                u'Pepe':        (b'Pepe', 'ascii'),
                 u'P\xe9rez':    ('P\xc3\xa9rez', 'utf-8'),
                 'Perez':         ('Perez', 'ascii'), # u'Pepe' == 'Pepe'
                 'P\xc3\xa9rez': ('P\xc3\xa9rez', 'utf-8'),

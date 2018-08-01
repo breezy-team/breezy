@@ -3877,7 +3877,6 @@ test_prefix_alias_registry.register('bp', 'breezy.plugins')
 def _test_suite_testmod_names():
     """Return the standard list of test module names to test."""
     return [
-        'breezy.doc',
         'breezy.tests.blackbox',
         'breezy.tests.commands',
         'breezy.tests.per_branch',
@@ -4162,6 +4161,8 @@ def test_suite(keep_only=None, starting_with=None):
     suite.addTest(loader.loadTestsFromModuleNames(_test_suite_testmod_names()))
 
     if not PY3:
+        suite.addTest(loader.loadTestsFromModuleNames(['breezy.doc']))
+
         # It's pretty much impossible to write readable doctests that work on
         # both Python 2 and Python 3 because of their overreliance on
         # consistent repr() return values.

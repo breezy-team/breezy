@@ -129,7 +129,7 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEqual('dummy-v1:1302659388.0-0-UNKNOWN', revid)
+        self.assertEqual(b'dummy-v1:1302659388.0-0-UNKNOWN', revid)
 
     def test_commit_bound_lossy_foreign(self):
         """Attempt a lossy commit to a bzr branch bound to a foreign branch."""
@@ -142,10 +142,10 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEqual('dummy-v1:1302659388.0-0-0', revid)
-        self.assertEqual('dummy-v1:1302659388.0-0-0',
+        self.assertEqual(b'dummy-v1:1302659388.0-0-0', revid)
+        self.assertEqual(b'dummy-v1:1302659388.0-0-0',
             foreign_branch.last_revision())
-        self.assertEqual('dummy-v1:1302659388.0-0-0',
+        self.assertEqual(b'dummy-v1:1302659388.0-0-0',
             wt.branch.last_revision())
 
     def test_missing_commit(self):

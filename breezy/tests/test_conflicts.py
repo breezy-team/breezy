@@ -994,8 +994,8 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return wt.id2path(self._other['dir_id'])
 
     def assertParentLoop(self, wt, c):
-        self.assertEqual(self._other[b'dir_id'], c.file_id)
-        self.assertEqual(self._other[b'target_id'], c.conflict_file_id)
+        self.assertEqual(self._other['dir_id'], c.file_id)
+        self.assertEqual(self._other['target_id'], c.conflict_file_id)
         # The conflict paths are irrelevant (they are deterministic but not
         # worth checking since they don't provide the needed information
         # anyway)

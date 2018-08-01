@@ -37,6 +37,9 @@ class ZzzTranslations(object):
     def zzz(self, s):
         return u'zz\xe5{{%s}}' % s
 
+    def gettext(self, s):
+        return self.zzz(self._null_translation.gettext(s))
+
     def ugettext(self, s):
         return self.zzz(self._null_translation.ugettext(s))
 

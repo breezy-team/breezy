@@ -31,7 +31,7 @@ class TestFileIds(tests.TestCase):
         The file id should be ascii, and should be an 8-bit string
         """
         file_id = generate_ids.gen_file_id(filename)
-        self.assertContainsRe(file_id, '^'+regex+'$')
+        self.assertContainsRe(file_id, b'^'+regex+b'$')
         # It should be a utf8 file_id, not a unicode one
         self.assertIsInstance(file_id, str)
         # gen_file_id should always return ascii file ids.
@@ -71,11 +71,11 @@ class TestFileIds(tests.TestCase):
         self.assertTrue(len(fid) < 60)
 
     def test_file_ids_are_ascii(self):
-        tail = r'-\d{14}-[a-z0-9]{16}-\d+'
-        self.assertGenFileId('foo' + tail, 'foo')
-        self.assertGenFileId('foo' + tail, u'foo')
-        self.assertGenFileId('bar' + tail, u'bar')
-        self.assertGenFileId('br' + tail, u'b\xe5r')
+        tail = br'-\d{14}-[a-z0-9]{16}-\d+'
+        self.assertGenFileId(b'foo' + tail, b'foo')
+        self.assertGenFileId(b'foo' + tail, u'foo')
+        self.assertGenFileId(b'bar' + tail, u'bar')
+        self.assertGenFileId(b'br' + tail, u'b\xe5r')
 
     def test__next_id_suffix_sets_suffix(self):
         generate_ids._gen_file_id_suffix = None

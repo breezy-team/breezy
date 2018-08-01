@@ -239,10 +239,10 @@ class TestRepository(TestCaseWithRepository):
         #   * signatures
         #   * revisions
         expected_item_keys = [
-            (b'file', b'file1', [b'rev_id']),
-            (b'inventory', None, [b'rev_id']),
-            (b'signatures', None, signature_texts),
-            (b'revisions', None, [b'rev_id'])]
+            ('file', b'file1', [b'rev_id']),
+            ('inventory', None, [b'rev_id']),
+            ('signatures', None, signature_texts),
+            ('revisions', None, [b'rev_id'])]
         item_keys = list(repo.item_keys_introduced_by([b'rev_id']))
         item_keys = [
             (kind, file_id, list(versions))
@@ -255,8 +255,8 @@ class TestRepository(TestCaseWithRepository):
             # Note that the file keys can be in any order, so this test is
             # written to allow that.
             inv = repo.get_inventory(b'rev_id')
-            root_item_key = (b'file', inv.root.file_id, [b'rev_id'])
-            self.assertTrue(root_item_key in item_keys)
+            root_item_key = ('file', inv.root.file_id, [b'rev_id'])
+            self.assertIn(root_item_key, item_keys)
             item_keys.remove(root_item_key)
 
         self.assertEqual(expected_item_keys, item_keys)
