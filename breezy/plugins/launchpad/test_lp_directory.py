@@ -19,10 +19,10 @@
 import os
 
 try:
-    from xmlrpclib import Fault
+    from xmlrpc.client import Fault
     from http.client import parse_headers
 except ImportError:  # python < 3
-    from xmlrpc.client import Fault
+    from xmlrpclib import Fault
 
 import breezy
 from ... import (
@@ -474,7 +474,7 @@ class TestXMLRPCTransport(tests.TestCase):
             ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
 
     def set_canned_response(self, server, path):
-        response_format = '''HTTP/1.1 200 OK\r
+        response_format = b'''HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -502,8 +502,8 @@ Content-Type: text/plain; charset=UTF-8\r
 </methodResponse>
 '''
         length = 334 + 2 * len(path)
-        server.canned_response = response_format % dict(length=length,
-                                                        path=path)
+        server.canned_response = response_format % {
+                b'length': length, b'path': path}
 
     def do_request(self, server_url):
         os.environ['BRZ_LP_XMLRPC_URL'] = self.server.get_url()
@@ -513,7 +513,7 @@ Content-Type: text/plain; charset=UTF-8\r
         return result
 
     def test_direct_request(self):
-        self.set_canned_response(self.server, '~bzr-pqm/bzr/bzr.dev')
+        self.set_canned_response(self.server, b'~bzr-pqm/bzr/bzr.dev')
         result = self.do_request(self.server.get_url())
         urls = result.get('urls', None)
         self.assertIsNot(None, urls)
