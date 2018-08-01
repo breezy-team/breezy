@@ -3587,7 +3587,7 @@ class cmd_commit(Command):
             StrictCommitFailed
         )
         from .msgeditor import (
-            edit_commit_message,
+            edit_commit_message_encoded,
             generate_commit_message_template,
             make_commit_message_template_encoded,
             set_commit_message,
@@ -3662,7 +3662,10 @@ class cmd_commit(Command):
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
                     start_message = generate_commit_message_template(commit_obj)
-                    my_message = edit_commit_message(text,
+                    if start_message is not None:
+                        start_message = start_message.encode(
+                                osutils.get_user_encoding())
+                    my_message = edit_commit_message_encoded(text,
                         start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError(gettext("please specify a commit"
