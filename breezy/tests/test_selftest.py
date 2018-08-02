@@ -18,6 +18,7 @@
 
 import gc
 import doctest
+from functools import reduce
 import os
 import signal
 import sys
@@ -790,8 +791,8 @@ class TestTestResult(tests.TestCase):
 
         This is used to exercise the test framework.
         """
-        self.time(text_type, 'hello', errors='replace')
-        self.time(text_type, 'world', errors='replace')
+        self.time(text_type, b'hello', errors='replace')
+        self.time(text_type, b'world', errors='replace')
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
@@ -821,14 +822,20 @@ class TestTestResult(tests.TestCase):
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
         output = result_stream.getvalue()
-        self.assertContainsRe(output,
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        if PY3:
+            self.assertContainsRe(output,
+                r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
+            self.assertContainsRe(output,
+                r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
+        else:
+            self.assertContainsRe(output,
+                r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+            self.assertContainsRe(output,
+                r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
         self.assertContainsRe(output,
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
         self.assertContainsRe(output,
             r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
-        self.assertContainsRe(output,
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
     def test_uses_time_from_testtools(self):
         """Test case timings in verbose results should use testtools times"""
@@ -1912,9 +1919,14 @@ class TestExtraAssertions(tests.TestCase):
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
             self.assertIsInstance, None, int, "it's just not")
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
-            ": it's just not")
+        if PY3:
+            self.assertEqual(str(e),
+                "None is an instance of <class 'NoneType'> rather than <class 'int'>: it's "
+                "just not")
+        else:
+            self.assertEqual(str(e),
+                "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+                ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2174,7 +2186,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
 
     def test_load_list(self):
         # Provide a list with one test - this test.
-        test_id_line = b'%s\n' % self.id().encode('ascii')
+        test_id_line = '%s\n' % self.id()
         self.build_tree_contents([('test.list', test_id_line)])
         # And generate a list of the tests in  the suite.
         stream = self.run_selftest(load_list='test.list', list_only=True)
@@ -2862,7 +2874,7 @@ class TestBlackboxSupport(tests.TestCase):
         out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
-            b'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
+            'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
 class TestTestLoader(tests.TestCase):
