@@ -2767,7 +2767,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self.refresh_data()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = response[1:]
+        self._write_group_tokens = [token.decode('utf-8') for token in response[1:]]
 
     def has_signature_for_revision_id(self, revision_id):
         path = self.controldir._path_for_remote_call(self._client)

@@ -708,8 +708,7 @@ class BTreeGraphIndex(object):
 
     def __lt__(self, other):
         if isinstance(other, type(self)):
-            return ((self._transport, self._name, self._size) <
-                    (other._transport, other._name, other._size))
+            return ((self._name, self._size) < (other._name, other._size))
         # Always sort existing indexes before ones that are still being built.
         if isinstance(other, BTreeBuilder):
             return True

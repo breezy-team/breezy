@@ -1045,7 +1045,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # XXX: It would be better to call fmt.initialize_on_transport_ex, but
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
-        result = fmt._initialize_on_transport_ex_rpc(client, 'path',
+        result = fmt._initialize_on_transport_ex_rpc(client, b'path',
             transport, False, False, False, None, None, None, None, False)
         self.assertFinished(client)
 
@@ -1067,7 +1067,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
         err = self.assertRaises(errors.PermissionDenied,
-            fmt._initialize_on_transport_ex_rpc, client, 'path', transport,
+            fmt._initialize_on_transport_ex_rpc, client, b'path', transport,
             False, False, False, None, None, None, None, False)
         self.assertEqual('path', err.path)
         self.assertEqual(': extra info', err.extra)
@@ -1596,8 +1596,8 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(self.get_url())
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            b'BzrDir.open_branchV3', ('stacked/',),
-            b'success', ('branch', branch_network_name))
+            b'BzrDir.open_branchV3', (b'stacked/',),
+            b'success', (b'branch', branch_network_name))
         client.add_expected_call(
             b'BzrDir.find_repositoryV3', (b'stacked/',),
             b'success', (b'ok', b'', b'yes', b'no', b'yes', network_name))
@@ -1994,7 +1994,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         client.add_expected_call(
             b'Branch.lock_write', (b'memory:///', b'', b''),
             b'success', (b'ok', b'branch token', b'repo token'))
-        encoded_dict_value = 'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde'
+        encoded_dict_value = b'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde'
         client.add_expected_call(
             b'Branch.set_config_option_dict', (b'memory:///', b'branch token',
             b'repo token', encoded_dict_value, b'foo', b''),

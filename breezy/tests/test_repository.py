@@ -255,7 +255,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
         tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
-        self.assertHasKnit(t, b'knits/e8/%254easty-%2549d%2543%253a',
+        self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             b'\nfoo fulltext 0 81  :')
 
     def assertHasKnit(self, t, knit_name, extra_content=b''):
@@ -265,9 +265,9 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def check_knits(self, t):
         """check knit content for a repository."""
-        self.assertHasKnit(t, b'inventory')
-        self.assertHasKnit(t, b'revisions')
-        self.assertHasKnit(t, b'signatures')
+        self.assertHasKnit(t, 'inventory')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasKnit(t, 'signatures')
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -724,20 +724,20 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # would only get the newly created chk pages
         search = vf_search.SearchResult({b'rev-2'}, {b'rev-1'}, 1,
                                     {b'rev-2'})
-        simple_chk_records = []
+        simple_chk_records = set()
         for vf_name, substream in source.get_stream(search):
             if vf_name == 'chk_bytes':
                 for record in substream:
-                    simple_chk_records.append(record.key)
+                    simple_chk_records.add(record.key)
             else:
                 for _ in substream:
                     continue
         # 3 pages, the root (InternalNode), + 2 pages which actually changed
-        self.assertEqual([(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+        self.assertEqual({(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
                           (b'sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
                           (b'sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
-                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
-                         simple_chk_records)
+                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)},
+                         set(simple_chk_records))
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
         missing = [('inventories', b'rev-2')]

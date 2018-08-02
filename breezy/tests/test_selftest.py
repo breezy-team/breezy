@@ -2174,7 +2174,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
 
     def test_load_list(self):
         # Provide a list with one test - this test.
-        test_id_line = b'%s\n' % self.id()
+        test_id_line = b'%s\n' % self.id().encode('ascii')
         self.build_tree_contents([('test.list', test_id_line)])
         # And generate a list of the tests in  the suite.
         stream = self.run_selftest(load_list='test.list', list_only=True)
