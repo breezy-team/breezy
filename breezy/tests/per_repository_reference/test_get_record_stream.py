@@ -201,4 +201,4 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             self.expectFailure('KVF does not weave fulltexts from fallback'
                 ' repositories to preserve perfect order',
                 self.assertTrue, record_keys in (keys, alt_1, alt_2, alt_3))
-        self.assertTrue(record_keys in (keys, alt_1, alt_2, alt_3))
+        self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3))

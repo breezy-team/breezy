@@ -170,6 +170,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     #       since we added them in alphabetical order.
     delta.modified.sort()
     delta.unchanged.sort()
+    delta.unversioned.sort()
 
     return delta
 
@@ -320,12 +321,14 @@ def report_changes(change_iterator, reporter):
         (False, True): 'added',
         (False, False): 'unversioned',
         }
-    def key(change):
-        if change[1][1] is None:
-            return change[1][0]
-        return change[1][1]
+    def path_key(change):
+        if change[1][0] is not None:
+            path = change[1][0]
+        else:
+            path = change[1][1]
+        return osutils.splitpath(path)
     for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in sorted(change_iterator, key=key):
+         executable) in sorted(change_iterator, key=path_key):
         exe_change = False
         # files are "renamed" if they are moved or if name changes, as long
         # as it had a value

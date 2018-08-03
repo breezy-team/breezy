@@ -236,8 +236,8 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 '?   bye.c\n',
                 '?   dir2/\n',
+                '?   directory/hello.c\n',
                 '+!  missing.c\n',
-                '?   directory/hello.c\n'
                 ],
                 wt, short=True)
 
