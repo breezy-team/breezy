@@ -724,31 +724,31 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # would only get the newly created chk pages
         search = vf_search.SearchResult({b'rev-2'}, {b'rev-1'}, 1,
                                     {b'rev-2'})
-        simple_chk_records = []
+        simple_chk_records = set()
         for vf_name, substream in source.get_stream(search):
             if vf_name == 'chk_bytes':
                 for record in substream:
-                    simple_chk_records.append(record.key)
+                    simple_chk_records.add(record.key)
             else:
                 for _ in substream:
                     continue
         # 3 pages, the root (InternalNode), + 2 pages which actually changed
-        self.assertEqual([(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+        self.assertEqual({(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
                           (b'sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
                           (b'sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
-                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
+                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)},
                          simple_chk_records)
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
         missing = [('inventories', b'rev-2')]
-        full_chk_records = []
+        full_chk_records = set()
         for vf_name, substream in source.get_stream_for_missing_keys(missing):
             if vf_name == 'inventories':
                 for record in substream:
                     self.assertEqual((b'rev-2',), record.key)
             elif vf_name == 'chk_bytes':
                 for record in substream:
-                    full_chk_records.append(record.key)
+                    full_chk_records.add(record.key)
             else:
                 self.fail('Should not be getting a stream of %s' % (vf_name,))
         # We have 257 records now. This is because we have 1 root page, and 256

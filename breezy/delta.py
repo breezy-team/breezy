@@ -303,6 +303,7 @@ class _ChangeReporter(object):
         self.output("%s%s%s %s%s", rename, self.modified_map[modified], exe,
                     old_path, path)
 
+
 def report_changes(change_iterator, reporter):
     """Report the changes from a change iterator.
 
@@ -319,8 +320,12 @@ def report_changes(change_iterator, reporter):
         (False, True): 'added',
         (False, False): 'unversioned',
         }
+    def key(change):
+        if change[1][1] is None:
+            return change[1][0]
+        return change[1][1]
     for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in change_iterator:
+         executable) in sorted(change_iterator, key=key):
         exe_change = False
         # files are "renamed" if they are moved or if name changes, as long
         # as it had a value

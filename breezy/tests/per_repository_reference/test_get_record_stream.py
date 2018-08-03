@@ -153,7 +153,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             if record.storage_kind == 'absent':
                 raise ValueError('absent record: %s' % (record.key,))
             record_keys.append(record.key)
-        self.assertTrue(record_keys in (keys, alt_1, alt_2, alt_3))
+        self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3))
 
     def test_ordered_fulltext_simple(self):
         self.make_simple_split()
@@ -174,7 +174,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             if record.storage_kind == 'absent':
                 raise ValueError('absent record: %s' % (record.key,))
             record_keys.append(record.key)
-        self.assertTrue(record_keys in (keys, alt_1))
+        self.assertIn(record_keys, (keys, alt_1))
 
     def test_ordered_fulltext_complex(self):
         self.make_complex_split()

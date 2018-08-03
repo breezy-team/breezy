@@ -64,6 +64,7 @@ from breezy.transport import (
 from breezy.i18n import gettext
 """)
 
+from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
@@ -1157,7 +1158,7 @@ class BzrFormat(object):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        for name, necessity in self.features.items():
+        for name, necessity in viewitems(self.features):
             if name in self._present_features:
                 continue
             if necessity == b"optional":
@@ -1196,7 +1197,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
-                      for item in self.features.items()])
+                      for item in sorted(self.features.items())])
         return b"".join(lines)
 
     @classmethod

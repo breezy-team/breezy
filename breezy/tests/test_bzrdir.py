@@ -1477,8 +1477,8 @@ class TestBzrFormat(TestCase):
         format.features["another"] = "optional"
         self.assertEqual(format.as_string(),
             b"First line\n"
-            b"required foo\n"
-            b"optional another\n")
+            b"optional another\n"
+            b"required foo\n")
 
     def test_network_name(self):
         # The network string should include the feature info
