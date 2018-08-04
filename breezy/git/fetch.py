@@ -101,6 +101,9 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     :param blob: A git blob
     :return: Inventory delta for this file
     """
+    if not isinstance(path, bytes):
+        raise TypeError(path)
+    decoded_path = path.decode('utf-8')
     (base_mode, mode) = modes
     (base_hexsha, hexsha) = hexshas
     if mapping.is_special_file(path):
@@ -108,7 +111,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return []
-    file_id = lookup_file_id(path)
+    file_id = lookup_file_id(decoded_path)
     if stat.S_ISLNK(mode):
         cls = InventoryLink
     else:
@@ -117,14 +120,14 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     if ie.kind == "file":
         ie.executable = mode_is_executable(mode)
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
-        base_exec = base_bzr_tree.is_executable(path)
+        base_exec = base_bzr_tree.is_executable(decoded_path)
         if ie.kind == "symlink":
-            ie.symlink_target = base_bzr_tree.get_symlink_target(path)
+            ie.symlink_target = base_bzr_tree.get_symlink_target(decoded_path)
         else:
-            ie.text_size = base_bzr_tree.get_file_size(path)
-            ie.text_sha1 = base_bzr_tree.get_file_sha1(path)
+            ie.text_size = base_bzr_tree.get_file_size(decoded_path)
+            ie.text_sha1 = base_bzr_tree.get_file_sha1(decoded_path)
         if ie.kind == "symlink" or ie.executable == base_exec:
-            ie.revision = base_bzr_tree.get_file_revision(path)
+            ie.revision = base_bzr_tree.get_file_revision(decoded_path)
         else:
             blob = lookup_object(hexsha)
     else:
@@ -139,9 +142,10 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     parent_keys = []
     for ptree in parent_bzr_trees:
         try:
-            ppath = ptree.id2path(file_id)
-        except errors.NoSuchId:
+            ppaths = base_bzr_tree.find_related_paths_across_trees([decoded_path], trees=[ptree])
+        except errors.PathsNotVersionedError:
             continue
+        ppath = ppaths.pop()
         pkind = ptree.kind(ppath, file_id)
         if (pkind == ie.kind and
             ((pkind == "symlink" and ptree.get_symlink_target(ppath, file_id) == ie.symlink_target) or
@@ -167,14 +171,13 @@ def import_git_blob(texts, mapping, path, name, hexshas,
                 tuple(parent_keys), ie.text_sha1, chunks)])
     invdelta = []
     if base_hexsha is not None:
-        old_path = path.decode("utf-8") # Renames are not supported yet
+        old_path = decoded_path # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
             invdelta.extend(remove_disappeared_children(base_bzr_tree, old_path,
                 lookup_object(base_hexsha), [], lookup_object))
     else:
         old_path = None
-    new_path = path.decode("utf-8")
-    invdelta.append((old_path, new_path, file_id, ie))
+    invdelta.append((old_path, decoded_path, file_id, ie))
     if base_hexsha != hexsha:
         store_updater.add_object(blob, (ie.file_id, ie.revision), path)
     return invdelta
@@ -256,15 +259,15 @@ def import_git_tree(texts, mapping, path, name, hexshas,
     """
     (base_hexsha, hexsha) = hexshas
     (base_mode, mode) = modes
-    if type(path) is not str:
+    if not isinstance(path, bytes):
         raise TypeError(path)
-    if type(name) is not str:
+    if not isinstance(name, bytes):
         raise TypeError(name)
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return [], {}
     invdelta = []
-    file_id = lookup_file_id(path)
+    file_id = lookup_file_id(osutils.safe_unicode(path))
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, name.decode("utf-8"), parent_id)
     tree = lookup_object(hexsha)
@@ -406,7 +409,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     store_updater = target_git_object_retriever._get_updater(rev)
     tree_supplement = mapping.get_fileid_map(lookup_object, o.tree)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
-            mapping, "", "", (base_tree, o.tree), base_bzr_tree,
+            mapping, b"", b"", (base_tree, o.tree), base_bzr_tree,
             None, rev.revision_id, parent_trees,
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             tree_supplement.lookup_file_id,
@@ -475,7 +478,7 @@ def import_git_objects(repo, mapping, object_iter,
         head = heads.pop()
         if head == ZERO_SHA:
             continue
-        if type(head) is not str:
+        if not isinstance(head, bytes):
             raise TypeError(head)
         try:
             o = lookup_object(head)

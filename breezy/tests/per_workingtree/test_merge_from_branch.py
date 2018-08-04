@@ -112,7 +112,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         this.commit('content -> baz')
         class QuxMerge(merge.Merge3Merger):
             def text_merge(self, trans_id, paths, file_id):
-                self.tt.create_file(b'qux', trans_id)
+                self.tt.create_file([b'qux'], trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
         self.assertEqual(b'qux', this.get_file_text('foo'))
 
@@ -134,7 +134,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
             [('add', ('file4', None, 'file', b'file4 content\n'))
              ])
         rev5 = bld_inner.build_snapshot(
-            [rev4], [('rename', ('file4', b'dir/file4'))])
+            [rev4], [('rename', ('file4', 'dir/file4'))])
         rev3 = bld_inner.build_snapshot(
             [rev1], [('modify', ('file3', b'new file3 contents\n')),])
         rev2 = bld_inner.build_snapshot(

@@ -1543,7 +1543,7 @@ class DirState(object):
         # expanding them recursively as needed.
         # At the same time, to reduce interface friction we convert the input
         # inventory entries to dirstate.
-        root_only = (b'', b'')
+        root_only = ('', '')
         # Accumulate parent references (path_utf8, id), to check for parentless
         # items or items placed under files/links/tree-references. We get
         # references from every item in the delta that is not a deletion and
@@ -3319,7 +3319,7 @@ class DirState(object):
                             raise AssertionError(
                             "file %s is absent in row %r but also present " \
                             "at %r"% \
-                            (file_id, entry, previous_path))
+                            (file_id.decode('utf-8'), entry, previous_path))
                     elif minikind == b'r':
                         target_location = tree_state[1]
                         if previous_path != target_location:
@@ -3455,6 +3455,8 @@ def py_update_entry(state, entry, abspath, stat_value,
     packed_stat = pack_stat(stat_value)
     (saved_minikind, saved_link_or_sha1, saved_file_size,
      saved_executable, saved_packed_stat) = entry[1][0]
+    if not isinstance(saved_minikind, bytes):
+        raise TypeError(saved_minikind)
 
     if minikind == b'd' and saved_minikind == b't':
         minikind = b't'

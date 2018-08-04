@@ -376,7 +376,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.add_file('hello/file', b'foo')
         self.do_full_upload()
         self.delete_any('hello/file')
-        self.transform_dir_into_file('hello', 'bar')
+        self.transform_dir_into_file('hello', b'bar')
 
         self.assertUpFileEqual(b'foo', 'hello/file')
 
@@ -558,7 +558,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.add_file('.bzrignore-upload', b'hello')
         self.delete_any('hello/file')
-        self.transform_dir_into_file('hello', 'bar')
+        self.transform_dir_into_file('hello', b'bar')
 
         self.assertUpFileEqual(b'foo', 'hello/file')
 

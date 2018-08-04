@@ -29,6 +29,7 @@ import os
 from ..controldir import ControlDir
 from ..errors import NotBranchError, NoRepositoryPresent
 from ..repository import InterRepository
+from ..sixish import viewitems
 from ..transport import get_transport_from_path
 
 from . import (
@@ -118,8 +119,8 @@ class RemoteHelper(object):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(self.remote_dir, object_store)
-            for ref, git_sha1 in refs.as_dict().iteritems():
-                ref = ref.replace("~", "_")
+            for ref, git_sha1 in viewitems(refs.as_dict()):
+                ref = ref.replace(b"~", b"_")
                 outf.write(b"%s %s\n" % (git_sha1, ref))
             outf.write(b"\n")
 
@@ -141,12 +142,13 @@ class RemoteHelper(object):
     def cmd_import(self, outf, argv):
         if "fastimport" in CAPABILITIES:
             raise Exception("install fastimport for 'import' command support")
-        dest_branch_name = ref_to_branch_name(argv[1])
+        ref = argv[1].encode('utf-8')
+        dest_branch_name = ref_to_branch_name(ref)
         if dest_branch_name == "master":
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
         exporter = fastexporter.BzrFastExporter(remote_branch,
-            outf=outf, ref=argv[1],
+            outf=outf, ref=ref,
             checkpoint=None, import_marks_file=None,
             export_marks_file=None, revision=None,
             verbose=None, plain_format=True,

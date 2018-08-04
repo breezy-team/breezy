@@ -129,7 +129,7 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEqual('dummy-v1:1302659388.0-0-UNKNOWN', revid)
+        self.assertEqual(b'dummy-v1:1302659388.0-0-UNKNOWN', revid)
 
     def test_commit_bound_lossy_foreign(self):
         """Attempt a lossy commit to a bzr branch bound to a foreign branch."""
@@ -142,10 +142,10 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEqual('dummy-v1:1302659388.0-0-0', revid)
-        self.assertEqual('dummy-v1:1302659388.0-0-0',
+        self.assertEqual(b'dummy-v1:1302659388.0-0-0', revid)
+        self.assertEqual(b'dummy-v1:1302659388.0-0-0',
             foreign_branch.last_revision())
-        self.assertEqual('dummy-v1:1302659388.0-0-0',
+        self.assertEqual(b'dummy-v1:1302659388.0-0-0',
             wt.branch.last_revision())
 
     def test_missing_commit(self):
@@ -266,7 +266,7 @@ class TestCommit(TestCaseWithTransport):
         tree1 = b.repository.revision_tree(b'test@rev-1')
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
-        eq(tree1.id2path(b'hello-id'), b'hello')
+        eq(tree1.id2path(b'hello-id'), 'hello')
         eq(tree1.get_file_text('hello'), b'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
         self.check_tree_shape(tree1, ['hello'])

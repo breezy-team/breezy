@@ -30,7 +30,7 @@ from dulwich.objects import (
 
 import stat
 
-README_CONTENTS = """\
+README_CONTENTS = b"""\
 This branch contains delta files that pristine-tar can use to
 regenerate tarballs for its own releases.
 """
@@ -57,7 +57,7 @@ def get_pristine_tar_tree(repo):
 
     """
     try:
-        cid = repo.refs["refs/heads/pristine-tar"]
+        cid = repo.refs[b"refs/heads/pristine-tar"]
     except KeyError:
         return Tree()
     tid = repo.object_store[cid].tree
@@ -72,8 +72,8 @@ def read_git_pristine_tar_data(repo, filename):
     :return: Tuple with delta and id
     """
     tree = get_pristine_tar_tree(repo)
-    delta = tree[filename + ".delta"][1]
-    gitid = tree[filename + ".id"][1]
+    delta = tree[filename + b".delta"][1]
+    gitid = tree[filename + b".id"][1]
     return (repo.object_store[delta].data,
             repo.object_store[gitid].data)
 
@@ -88,22 +88,22 @@ def store_git_pristine_tar_data(repo, filename, delta, gitid,
     :param gitid: Git id the pristine tar delta is generated against
     """
     delta_ob = Blob.from_string(delta)
-    delta_name = filename + ".delta"
+    delta_name = filename + b".delta"
     id_ob = Blob.from_string(gitid)
-    id_name = filename + ".id"
+    id_name = filename + b".id"
     objects = [
         (delta_ob, delta_name),
         (id_ob, id_name)]
     tree = get_pristine_tar_tree(repo)
     tree.add(delta_name, stat.S_IFREG | 0o644, delta_ob.id)
     tree.add(id_name, stat.S_IFREG | 0o644, id_ob.id)
-    if not "README" in tree:
+    if not b"README" in tree:
         readme_ob = Blob.from_string(README_CONTENTS)
-        objects.append((readme_ob, "README"))
-        tree.add("README", stat.S_IFREG | 0o644, readme_ob.id)
+        objects.append((readme_ob, b"README"))
+        tree.add(b"README", stat.S_IFREG | 0o644, readme_ob.id)
     objects.append((tree, ""))
     repo.object_store.add_objects(objects)
     if message is None:
-        message = 'pristine-tar data for %s' % filename
-    return repo.do_commit(ref='refs/heads/pristine-tar', tree=tree.id,
+        message = b'pristine-tar data for %s' % filename
+    return repo.do_commit(ref=b'refs/heads/pristine-tar', tree=tree.id,
         message=message, **kwargs)

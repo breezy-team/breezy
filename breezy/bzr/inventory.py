@@ -93,9 +93,9 @@ class InventoryEntry(object):
     >>> i = Inventory()
     >>> i.path2id('')
     'TREE_ROOT'
-    >>> i.add(InventoryDirectory('123', 'src', ROOT_ID))
+    >>> i.add(InventoryDirectory(b'123', 'src', ROOT_ID))
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
-    >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
+    >>> i.add(InventoryFile(b'2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None, revision=None)
     >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
@@ -216,12 +216,12 @@ class InventoryEntry(object):
         The filename must be a single component, relative to the
         parent directory; it cannot be a whole path or relative name.
 
-        >>> e = InventoryFile('123', 'hello.c', ROOT_ID)
+        >>> e = InventoryFile(b'123', 'hello.c', ROOT_ID)
         >>> e.name
         'hello.c'
         >>> e.file_id
         '123'
-        >>> e = InventoryFile('123', 'src/hello.c', ROOT_ID)
+        >>> e = InventoryFile(b'123', 'src/hello.c', ROOT_ID)
         Traceback (most recent call last):
         InvalidEntryName: Invalid entry name: src/hello.c
         """
@@ -398,7 +398,7 @@ class InventoryDirectory(InventoryEntry):
         # to provide a per-fileid log. The hash of every directory content is
         # "da..." below (the sha1sum of '').
         checker.add_pending_item(rev_id,
-            (b'texts', self.file_id, self.revision), b'text',
+            ('texts', self.file_id, self.revision), b'text',
              b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
@@ -438,7 +438,7 @@ class InventoryFile(InventoryEntry):
         """See InventoryEntry._check"""
         # TODO: check size too.
         checker.add_pending_item(tree_revision_id,
-            (b'texts', self.file_id, self.revision), b'text',
+            ('texts', self.file_id, self.revision), b'text',
              self.text_sha1)
         if self.text_size is None:
             checker._report_items.append(
@@ -545,7 +545,7 @@ class InventoryLink(InventoryEntry):
                     % (self.file_id, tree_revision_id))
         # Symlinks are stored as ''
         checker.add_pending_item(tree_revision_id,
-            (b'texts', self.file_id, self.revision), b'text',
+            ('texts', self.file_id, self.revision), b'text',
              b'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
@@ -766,8 +766,10 @@ class CommonInventory(object):
             if (specific_file_ids is None or
                 self.root.file_id in specific_file_ids):
                 yield u'', self.root
-        elif isinstance(from_dir, (str, text_type)):
+        elif isinstance(from_dir, bytes):
             from_dir = self.get_entry(from_dir)
+        else:
+            raise TypeError(from_dir)
 
         if specific_file_ids is not None:
             # TODO: jam 20070302 This could really be done as a loop rather
@@ -953,9 +955,9 @@ class Inventory(CommonInventory):
     returned quickly.
 
     >>> inv = Inventory()
-    >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
+    >>> inv.add(InventoryFile(b'123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-    >>> inv.get_entry('123-123').name
+    >>> inv.get_entry(b'123-123').name
     'hello.c'
 
     Id's may be looked up from paths:
@@ -1010,8 +1012,8 @@ class Inventory(CommonInventory):
             applied the final inventory must be internally consistent, but it
             is ok to supply changes which, if only half-applied would have an
             invalid result - such as supplying two changes which rename two
-            files, 'A' and 'B' with each other : [('A', 'B', 'A-id', a_entry),
-            ('B', 'A', 'B-id', b_entry)].
+            files, 'A' and 'B' with each other : [('A', 'B', b'A-id', a_entry),
+            ('B', 'A', b'B-id', b_entry)].
 
             Each change is a tuple, of the form (old_path, new_path, file_id,
             new_entry).
@@ -1149,9 +1151,9 @@ class Inventory(CommonInventory):
         """Return the entry for given file_id.
 
         >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123123', 'hello.c', ROOT_ID))
+        >>> inv.add(InventoryFile(b'123123', 'hello.c', ROOT_ID))
         InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> inv.get_entry('123123').name
+        >>> inv.get_entry(b'123123').name
         'hello.c'
         """
         if not isinstance(file_id, bytes):
@@ -1252,11 +1254,11 @@ class Inventory(CommonInventory):
         >>> i2 = Inventory()
         >>> i1 == i2
         True
-        >>> i1.add(InventoryFile('123', 'foo', ROOT_ID))
+        >>> i1.add(InventoryFile(b'123', 'foo', ROOT_ID))
         InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         False
-        >>> i2.add(InventoryFile('123', 'foo', ROOT_ID))
+        >>> i2.add(InventoryFile(b'123', 'foo', ROOT_ID))
         InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
         >>> i1 == i2
         True

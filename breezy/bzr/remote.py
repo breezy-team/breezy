@@ -111,9 +111,9 @@ class _RpcHelper(object):
 def response_tuple_to_repo_format(response):
     """Convert a response tuple describing a repository format to a format."""
     format = RemoteRepositoryFormat()
-    format._rich_root_data = (response[0] == 'yes')
-    format._supports_tree_reference = (response[1] == 'yes')
-    format._supports_external_lookups = (response[2] == 'yes')
+    format._rich_root_data = (response[0] == b'yes')
+    format._supports_tree_reference = (response[1] == b'yes')
+    format._supports_external_lookups = (response[2] == b'yes')
     format._network_name = response[3]
     return format
 
@@ -292,6 +292,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
             repo_format = response_tuple_to_repo_format(response[1:])
             if repo_path == b'.':
                 repo_path = b''
+            repo_path = repo_path.decode('utf-8')
             if repo_path:
                 repo_bzrdir_format = RemoteBzrDirFormat()
                 repo_bzrdir_format._network_name = response[5]
@@ -300,10 +301,12 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
             else:
                 repo_bzr = bzrdir
             final_stack = response[8] or None
+            if final_stack:
+                final_stack = final_stack.decode('utf-8')
             final_stack_pwd = response[9] or None
             if final_stack_pwd:
                 final_stack_pwd = urlutils.join(
-                    transport.base, final_stack_pwd)
+                    transport.base, final_stack_pwd.decode('utf-8'))
             remote_repo = RemoteRepository(repo_bzr, repo_format)
             if len(response) > 10:
                 # Updated server verb that locks remotely.
@@ -713,6 +716,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         body = bencode.bdecode(handler.read_body_bytes())
         ret = {}
         for name, value in viewitems(body):
+            name = name.decode('utf-8')
             ret[name] = self._open_branch(name, value[0], value[1],
                 possible_transports=possible_transports,
                 ignore_fallbacks=ignore_fallbacks)
@@ -761,10 +765,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if verb == b'BzrDir.open_branch':
             if response[0] != b'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
-            if response[1] != '':
+            if response[1] != b'':
                 return (b'ref', response[1])
             else:
-                return (b'branch', '')
+                return (b'branch', b'')
         if response[0] not in (b'ref', b'branch'):
             raise errors.UnexpectedSmartServerResponse(response)
         return response
@@ -1272,7 +1276,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(b'Repository.abort_write_group', path,
-                self._lock_token, self._write_group_tokens)
+                self._lock_token,
+                [token.encode('utf-8') for token in self._write_group_tokens])
         except Exception as exc:
             self._write_group = None
             if not suppress_errors:
@@ -1310,7 +1315,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.BzrError("not in write group")
         path = self.controldir._path_for_remote_call(self._client)
         response = self._call(b'Repository.commit_write_group', path,
-            self._lock_token, self._write_group_tokens)
+            self._lock_token, [token.encode('utf-8') for token in self._write_group_tokens])
         if response != (b'ok', ):
             raise errors.UnexpectedSmartServerResponse(response)
         self._write_group_tokens = None
@@ -1323,7 +1328,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         path = self.controldir._path_for_remote_call(self._client)
         try:
             response = self._call(b'Repository.check_write_group', path,
-               self._lock_token, tokens)
+               self._lock_token, [token.encode('utf-8') for token in tokens])
         except errors.UnknownSmartMethod:
             self._ensure_real()
             return self._real_repository.resume_write_group(tokens)
@@ -1739,7 +1744,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return self._real_repository.start_write_group()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = response[1]
+        self._write_group_tokens = [token.decode('utf-8') for token in response[1]]
 
     def _unlock(self, token):
         path = self.controldir._path_for_remote_call(self._client)
@@ -2000,7 +2005,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         prev_inv = Inventory(root_id=None,
             revision_id=_mod_revision.NULL_REVISION)
         # there should be just one substream, with inventory deltas
-        substream_kind, substream = next(stream)
+        try:
+            substream_kind, substream = next(stream)
+        except StopIteration:
+            return
         if substream_kind != "inventory-deltas":
             raise AssertionError(
                  "Unexpected stream %r received" % substream_kind)
@@ -2240,7 +2248,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         unused = b""
         while True:
             while not b"\n" in unused:
-                unused += next(byte_stream)
+                try:
+                    unused += next(byte_stream)
+                except StopIteration:
+                    return
             header, rest = unused.split(b"\n", 1)
             args = header.split(b"\0")
             if args[0] == b"absent":
@@ -2486,7 +2497,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         """Return Tree for a revision on this branch with only some files.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         :param file_ids: if not None, the result is filtered
           so that only those file-ids, their parents and their
           children are included.
@@ -2684,7 +2695,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             b"Repository.iter_revisions", (path, ), body))
         if response_tuple[0] != b"ok":
             raise errors.UnexpectedSmartServerResponse(response_tuple)
-        serializer_format = response_tuple[1]
+        serializer_format = response_tuple[1].decode('ascii')
         serializer = serializer_format_registry.get(serializer_format)
         byte_stream = response_handler.read_streamed_body()
         decompressor = zlib.decompressobj()
@@ -2749,7 +2760,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         path = self.controldir._path_for_remote_call(self._client)
         response, handler = self._call_with_body_bytes_expecting_body(
             b'Repository.add_signature_text', (path, self._lock_token,
-                revision_id) + tuple(self._write_group_tokens), signature)
+                revision_id) +
+            tuple([token.encode('utf-8') for token in self._write_group_tokens]),
+            signature)
         handler.cancel_read_body()
         self.refresh_data()
         if response[0] != b'ok':
@@ -2956,7 +2969,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
             resume_tokens = tokens
-            return resume_tokens, set(missing_keys)
+            return resume_tokens, set((entry[0].decode('utf-8'), ) + entry[1:] for entry in missing_keys)
         else:
             self.target_repo.refresh_data()
             return [], set()
@@ -3036,7 +3049,8 @@ class RemoteStreamSource(vf_repository.StreamSource):
             return self._get_real_stream_for_missing_keys(missing_keys)
         path = self.from_repository.controldir._path_for_remote_call(client)
         args = (path, self.to_format.network_name())
-        search_bytes = b'\n'.join([b'\t'.join(key) for key in missing_keys])
+        search_bytes = b'\n'.join(
+            [b'%s\t%s' % (key[0].encode('utf-8'), key[1]) for key in missing_keys])
         try:
             response, handler = self.from_repository._call_with_body_bytes_expecting_body(
                 b'Repository.get_stream_for_missing_keys', args, search_bytes)
@@ -3619,6 +3633,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._real_branch.get_stacked_on_url()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+        if sys.version_info[0] == 3:
+            return response[1].decode('utf-8')
         return response[1]
 
     def set_stacked_on_url(self, url):
@@ -4270,7 +4286,7 @@ def _translate_error(err, **context):
         arg.
         """
         try:
-            return context['path'].decode('utf-8')
+            return context['path']
         except KeyError:
             try:
                 return err.error_args[0].decode('utf-8')

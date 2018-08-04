@@ -35,6 +35,10 @@ from ..decorators import only_raises
 from ..foreign import (
     ForeignRepository,
     )
+from ..sixish import (
+    viewitems,
+    viewvalues,
+    )
 
 from .commit import (
     GitCommitBuilder,
@@ -317,7 +321,7 @@ class LocalGitRepository(GitRepository):
         for (file_id, revision_id, identifier) in desired_files:
             per_revision.setdefault(revision_id, []).append(
                 (file_id, identifier))
-        for revid, files in per_revision.iteritems():
+        for revid, files in viewitems(per_revision):
             try:
                 (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
             except errors.NoSuchRevision:
@@ -334,16 +338,17 @@ class LocalGitRepository(GitRepository):
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 try:
                     obj = tree_lookup_path(
-                        self._git.object_store.__getitem__, root_tree, path)
+                        self._git.object_store.__getitem__, root_tree,
+                        path.encode('utf-8'))
                     if isinstance(obj, tuple):
                         (mode, item_id) = obj
                         obj = self._git.object_store[item_id]
                 except KeyError:
                     raise errors.RevisionNotPresent((fileid, revid), self)
                 else:
-                    if obj.type_name == "tree":
+                    if obj.type_name == b"tree":
                         yield (identifier, [])
-                    elif obj.type_name == "blob":
+                    elif obj.type_name == b"blob":
                         yield (identifier, obj.chunked)
                     else:
                         raise AssertionError("file text resolved to %r" % obj)
@@ -354,7 +359,7 @@ class LocalGitRepository(GitRepository):
         revs = []
         for sha in self._git.object_store:
             o = self._git.object_store[sha]
-            if o.type_name == "commit":
+            if o.type_name == b"commit":
                 revs.append(o.id)
         result['revisions'] = len(revs)
         return result
@@ -430,7 +435,8 @@ class LocalGitRepository(GitRepository):
                     this_parent_map[revid] = parents
             parent_map.update(this_parent_map)
             pending = set()
-            map(pending.update, this_parent_map.itervalues())
+            for values in viewvalues(this_parent_map):
+                pending.update(values)
             pending = pending.difference(parent_map)
         return _mod_graph.KnownGraph(parent_map)
 
@@ -460,7 +466,7 @@ class LocalGitRepository(GitRepository):
         :raise KeyError: If foreign revision was not found
         :return: bzr revision id
         """
-        if type(foreign_revid) is not str:
+        if not isinstance(foreign_revid, bytes):
             raise TypeError(foreign_revid)
         if mapping is None:
             mapping = self.get_mapping()
@@ -550,7 +556,7 @@ class LocalGitRepository(GitRepository):
             return (git_sha, mapping)
 
     def get_revision(self, revision_id):
-        if not isinstance(revision_id, str):
+        if not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id, self)
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:

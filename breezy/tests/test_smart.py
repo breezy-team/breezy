@@ -184,11 +184,11 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
     def test_translate_client_path_vfs(self):
         """VfsRequests receive escaped paths rather than raw UTF-8."""
         transport = self.get_transport()
-        request = vfs.VfsRequest(transport, b'foo/')
+        request = vfs.VfsRequest(transport, 'foo/')
         e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'
         escaped = urlutils.escape(u'foo/' + e_acute)
-        self.assertEqual(b'./' + urlutils.escape(e_acute).encode('utf-8'),
-                         request.translate_client_path(escaped))
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path(escaped.encode('ascii')))
 
     def test_transport_from_client_path(self):
         transport = self.get_transport()
@@ -272,7 +272,7 @@ class TestSmartServerBzrDirRequestDestroyBranch(
         request_class = smart_dir.SmartServerBzrDirRequestDestroyBranch
         request = request_class(backing)
         expected = smart_req.SuccessfulSmartServerResponse((b'ok',))
-        self.assertEqual(expected, request.execute(b'', "branchname"))
+        self.assertEqual(expected, request.execute(b'', b"branchname"))
 
     def test_destroy_branch_missing(self):
         """An error is raised if the branch didn't exist."""
@@ -848,7 +848,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(
     tests.TestCaseWithMemoryTransport):
 
     def test_empty(self):
-        """For an empty branch, the result is ('ok', '0', 'null:')."""
+        """For an empty branch, the result is ('ok', '0', b'null:')."""
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLastRevisionInfo(backing)
         self.make_branch('.')
@@ -856,7 +856,7 @@ class TestSmartServerBranchRequestLastRevisionInfo(
             request.execute(b''))
 
     def test_ghost(self):
-        """For an empty branch, the result is ('ok', '0', 'null:')."""
+        """For an empty branch, the result is ('ok', '0', b'null:')."""
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLastRevisionInfo(backing)
         branch = self.make_branch('.')
@@ -963,7 +963,7 @@ class TestSmartServerBranchRequestPutConfigFile(TestLockedBranch):
             smart_req.SmartServerResponse((b'ok', )),
             request.do_body(b'foo bar baz'))
         self.assertEqual(
-            branch.control_transport.get_bytes(b'branch.conf'),
+            branch.control_transport.get_bytes('branch.conf'),
             b'foo bar baz')
         branch.unlock()
 
@@ -1104,13 +1104,13 @@ class TestSetLastRevisionVerbMixin(object):
     """Mixin test case for verbs that implement set_last_revision."""
 
     def test_set_null_to_null(self):
-        """An empty branch can have its last revision set to 'null:'."""
+        """An empty branch can have its last revision set to b'null:'."""
         self.assertRequestSucceeds(b'null:', 0)
 
     def test_NoSuchRevision(self):
         """If the revision_id is not present, the verb returns NoSuchRevision.
         """
-        revision_id = 'non-existent revision'
+        revision_id = b'non-existent revision'
         self.assertEqual(smart_req.FailedSmartServerResponse((b'NoSuchRevision',
                                                               revision_id)),
                          self.set_last_revision(revision_id, 1))
@@ -1599,11 +1599,11 @@ class TestSmartServerRepositoryAddSignatureText(tests.TestCaseWithMemoryTranspor
         tree.branch.repository.start_write_group()
         write_group_tokens = tree.branch.repository.suspend_write_group()
         self.assertEqual(None, request.execute(b'', write_token,
-            b'rev1', *write_group_tokens))
+            b'rev1', *[token.encode('utf-8') for token in write_group_tokens]))
         response = request.do_body(b'somesignature')
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args[0], b'ok')
-        write_group_tokens = response.args[1:]
+        write_group_tokens = [token.decode('utf-8') for token in response.args[1:]]
         tree.branch.repository.resume_write_group(write_group_tokens)
         tree.branch.repository.commit_write_group()
         tree.unlock()
@@ -2470,7 +2470,7 @@ class TestSmartServerVfsGet(tests.TestCaseWithMemoryTransport):
         request = vfs.GetRequest(backing)
         backing.put_bytes_non_atomic(filename_escaped, b'contents')
         self.assertEqual(smart_req.SmartServerResponse((b'ok', ), b'contents'),
-            request.execute(filename_escaped))
+            request.execute(filename_escaped.encode('ascii')))
 
 
 class TestHandlers(tests.TestCase):
@@ -2776,5 +2776,5 @@ class TestSmartServerRepositoryAnnotateFileRevision(tests.TestCaseWithTransport)
         self.assertTrue(response.is_successful())
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(
-                [['somerev', 'somecontents\n'], ['somerev', 'morecontents\n']],
+                [[b'somerev', b'somecontents\n'], [b'somerev', b'morecontents\n']],
                 bencode.bdecode(response.body))

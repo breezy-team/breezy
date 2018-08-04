@@ -64,14 +64,14 @@ class TestMerge(tests.TestCaseWithTransport):
         """
         builder = self.make_branch_builder('branch')
         builder.build_snapshot(None,
-            [('add', ('', 'root-id', 'directory', None)),
-             ('add', ('fname', 'f-id', 'file', 'a\nb\nc\n'))],
+            [('add', ('', b'root-id', 'directory', None)),
+             ('add', ('fname', b'f-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'rev1')
-        builder.build_snapshot(['rev1'],
+        builder.build_snapshot([b'rev1'],
             [('modify', ('fname', b'a\nB\nD\n'))],
             revision_id=b'rev2other')
         other = builder.get_branch().controldir.sprout('other').open_branch()
-        builder.build_snapshot(['rev1'],
+        builder.build_snapshot([b'rev1'],
             [('modify', ('fname', b'a\nB\nC\n'))], revision_id=b'rev2this')
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         return tree, other
@@ -230,17 +230,17 @@ class TestMerge(tests.TestCaseWithTransport):
         tree, other = self.create_conflicting_branches()
         self.run_bzr('merge ../other', working_dir='tree',
                      retcode=1)
-        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
-        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
-        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+        self.assertFileEqual(b'a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual(b'a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual(b'a\nB\nC\n', 'tree/fname.THIS')
 
     def test_weave_conflict_leaves_base_this_other_files(self):
         tree, other = self.create_conflicting_branches()
         self.run_bzr('merge ../other --weave', working_dir='tree',
                      retcode=1)
-        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
-        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
-        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+        self.assertFileEqual(b'a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual(b'a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual(b'a\nB\nC\n', 'tree/fname.THIS')
 
     def test_merge_remember(self):
         """Merge changes from one branch to another, test submit location."""
@@ -444,8 +444,8 @@ class TestMerge(tests.TestCaseWithTransport):
         source.add('b')
         source.commit('Added b', rev_id=b'rev2')
         target.commit('empty commit')
-        self.write_directive('directive', source.branch, 'target', 'rev2',
-                             'rev1')
+        self.write_directive('directive', source.branch, 'target', b'rev2',
+                             b'rev1')
         out, err = self.run_bzr('merge -d target directive')
         self.assertPathDoesNotExist('target/a')
         self.assertPathExists('target/b')
@@ -457,7 +457,7 @@ class TestMerge(tests.TestCaseWithTransport):
             source.repository, revision_id, 0, 0, target,
             base_revision_id=base_revision_id)
         if mangle_patch:
-            md.patch = 'asdf\n'
+            md.patch = b'asdf\n'
         self.build_tree_contents([(filename, b''.join(md.to_lines()))])
 
     def test_directive_verify_warning(self):
@@ -467,11 +467,11 @@ class TestMerge(tests.TestCaseWithTransport):
         source.commit('Added a', rev_id=b'rev1')
         target = self.make_branch_and_tree('target')
         target.commit('empty commit')
-        self.write_directive('directive', source.branch, 'target', 'rev1')
+        self.write_directive('directive', source.branch, 'target', b'rev1')
         err = self.run_bzr('merge -d target directive')[1]
         self.assertNotContainsRe(err, 'Preview patch does not match changes')
         target.revert()
-        self.write_directive('directive', source.branch, 'target', 'rev1',
+        self.write_directive('directive', source.branch, 'target', b'rev1',
                              mangle_patch=True)
         err = self.run_bzr('merge -d target directive')[1]
         self.assertContainsRe(err, 'Preview patch does not match changes')
@@ -523,9 +523,9 @@ class TestMerge(tests.TestCaseWithTransport):
         for f in ('a', 'b', 'c', 'd'):
             self.build_tree(['source/'+f])
             source.add(f)
-            source.commit('added '+f, rev_id=b'rev_'+f)
+            source.commit('added '+f, rev_id=b'rev_'+f.encode('ascii'))
         # target branch
-        target = source.controldir.sprout('target', 'rev_a').open_workingtree()
+        target = source.controldir.sprout('target', b'rev_a').open_workingtree()
         self.assertDirectoryContent('target', ['.bzr', 'a'])
         # pick 1 revision
         self.run_bzr('merge -d target -r revid:rev_b..revid:rev_c source')
@@ -612,7 +612,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.build_tree_contents([('other/file', b"c\na\nb\n")])
         other_tree.commit('rev3b')
         self.run_bzr('merge --weave -d this other -r -2..-1')
-        self.assertFileEqual('c\na\n', 'this/file')
+        self.assertFileEqual(b'c\na\n', 'this/file')
 
     def test_lca_merge_criss_cross(self):
         tree_a = self.make_branch_and_tree('a')
@@ -637,8 +637,8 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.commit('', rev_id=b'rev3a')
         tree_b.commit('', rev_id=b'rev3b')
         out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)
-        self.assertFileEqual('base-contents\n<<<<<<< TREE\nthis-contents\n'
-                             '=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
+        self.assertFileEqual(b'base-contents\n<<<<<<< TREE\nthis-contents\n'
+                             b'=======\nother-contents\n>>>>>>> MERGE-SOURCE\n',
                              'a/file')
 
     def test_merge_preview(self):

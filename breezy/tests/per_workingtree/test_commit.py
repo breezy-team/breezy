@@ -177,7 +177,7 @@ class TestCommit(TestCaseWithWorkingTree):
         if tree.branch.repository._format.supports_setting_revision_ids:
             committed_id = tree.commit('foo', rev_id=b'foo')
             # the commit should have returned the same id we asked for.
-            self.assertEqual('foo', committed_id)
+            self.assertEqual(b'foo', committed_id)
         else:
             committed_id = tree.commit('foo')
         self.assertEqual([committed_id], tree.get_parent_ids())
@@ -237,7 +237,7 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.controldir.transport.put_bytes('branch-format', 'garbage')
+        master.controldir.transport.put_bytes('branch-format', b'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,

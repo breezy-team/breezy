@@ -119,10 +119,10 @@ class TestBranch(tests.TestCaseWithTransport):
             c = f.read(1)
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
-            if c == '\xFF':
-                corrupt = '\x00'
+            if c == b'\xFF':
+                corrupt = 'b\x00'
             else:
-                corrupt = '\xFF'
+                corrupt = b'\xFF'
             f.write(corrupt) # make sure we corrupt something
         self.run_bzr_error(['Corruption while decompressing repository file'],
                             'branch a b', retcode=3)
@@ -469,7 +469,8 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            'Created new stacked branch referring to %s.\n' %
+            (trunk.base,),
             err)
 
     def test_branch_stacked_from_rich_root_non_stackable(self):
@@ -553,7 +554,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
         source.tags.set_tag('tag-a', rev2)
-        source.tags.set_tag('tag-missing', 'missing-rev')
+        source.tags.set_tag('tag-missing', b'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])

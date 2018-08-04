@@ -28,6 +28,7 @@ import zipfile
 from ...archive import zip
 from ... import (
     export,
+    osutils,
     )
 from ...sixish import (
     BytesIO,
@@ -44,31 +45,31 @@ class TestExport(TestCaseWithTransport):
     # On Windows, if we fail to set the binary bit, and a '\r' or '\n'
     # ends up in the data stream, we will get corruption. Add a fair amount
     # of random data, to help ensure there is at least one.
-    _file_content = ('!\r\n\t\n \r'
-        + 'r29trp9i1r8k0e24c2o7mcx2isrlaw7toh1hv2mtst3o1udkl36v9xn2z8kt\n'
-          'tvjn7e3i9cj1qs1rw9gcye9w72cbdueiufw8nky7bs08lwggir59d62knecp\n'
-          '7s0537r8sg3e8hdnidji49rswo47c3j8190nh8emef2b6j1mf5kdq45nt3f5\n'
-          '1sz9u7fuzrm4w8bebre7p62sh5os2nkj2iiyuk9n0w0pjpdulu9k2aajejah\n'
-          'ini90ny40qzs12ajuy0ua6l178n93lvy2atqngnntsmtlmqx7yhp0q9a1xr4\n'
-          '1n69kgbo6qu9osjpqq83446r00jijtcstzybfqwm1lnt9spnri2j07bt7bbh\n'
-          'rf3ejatdxta83te2s0pt9rc4hidgy3d2pc53p4wscdt2b1dfxdj9utf5m17f\n'
-          'f03oofcau950o090vyx6m72vfkywo7gp3ajzi6uk02dwqwtumq4r44xx6ho7\n'
-          'nhynborjdjep5j53f9548msb7gd3x9a1xveb4s8zfo6cbdw2kdngcrbakwu8\n'
-          'ql5a8l94gplkwr7oypw5nt1gj5i3xwadyjfr3lb61tfkz31ba7uda9knb294\n'
-          '1azhfta0q3ry9x36lxyanvhp0g5z0t5a0i4wnoc8p4htexi915y1cnw4nznn\n'
-          'aj70dvp88ifiblv2bsp98hz570teinj8g472ddxni9ydmazfzwtznbf3hrg6\n'
-          '84gigirjt6n2yagf70036m8d73cz0jpcighpjtxsmbgzbxx7nb4ewq6jbgnc\n'
-          'hux1b0qtsdi0zfhj6g1otf5jcldmtdvuon8y1ttszkqw3ograwi25yl921hy\n'
-          'izgscmfha9xdhxxabs07b40secpw22ah9iwpbmsns6qz0yr6fswto3ft2ez5\n'
-          'ngn48pdfxj1pw246drmj1y2ll5af5w7cz849rapzd9ih7qvalw358co0yzrs\n'
-          'xan9291d1ivjku4o5gjrsnmllrqwxwy86pcivinbmlnzasa9v3o22lgv4uyd\n'
-          'q8kw77bge3hr5rr5kzwjxk223bkmo3z9oju0954undsz8axr3kb3730otrcr\n'
-          '9cwhu37htnizdwxmpoc5qmobycfm7ubbykfumv6zgkl6b8zlslwl7a8b81vz\n'
-          '3weqkvv5csfza9xvwypr6lo0t03fwp0ihmci3m1muh0lf2u30ze0hjag691j\n'
-          '27fjtd3e3zbiin5n2hq21iuo09ukbs73r5rt7vaw6axvoilvdciir9ugjh2c\n'
-          'na2b8dr0ptftoyhyxv1iwg661y338e28fhz4xxwgv3hnoe98ydfa1oou45vj\n'
-          'ln74oac2keqt0agbylrqhfscin7ireae2bql7z2le823ksy47ud57z8ctomp\n'
-          '31s1vwbczdjwqp0o2jc7mkrurvzg8mj2zwcn2iily4gcl4sy4fsh4rignlyz\n')
+    _file_content = (b'!\r\n\t\n \r'
+        + b'r29trp9i1r8k0e24c2o7mcx2isrlaw7toh1hv2mtst3o1udkl36v9xn2z8kt\n'
+          b'tvjn7e3i9cj1qs1rw9gcye9w72cbdueiufw8nky7bs08lwggir59d62knecp\n'
+          b'7s0537r8sg3e8hdnidji49rswo47c3j8190nh8emef2b6j1mf5kdq45nt3f5\n'
+          b'1sz9u7fuzrm4w8bebre7p62sh5os2nkj2iiyuk9n0w0pjpdulu9k2aajejah\n'
+          b'ini90ny40qzs12ajuy0ua6l178n93lvy2atqngnntsmtlmqx7yhp0q9a1xr4\n'
+          b'1n69kgbo6qu9osjpqq83446r00jijtcstzybfqwm1lnt9spnri2j07bt7bbh\n'
+          b'rf3ejatdxta83te2s0pt9rc4hidgy3d2pc53p4wscdt2b1dfxdj9utf5m17f\n'
+          b'f03oofcau950o090vyx6m72vfkywo7gp3ajzi6uk02dwqwtumq4r44xx6ho7\n'
+          b'nhynborjdjep5j53f9548msb7gd3x9a1xveb4s8zfo6cbdw2kdngcrbakwu8\n'
+          b'ql5a8l94gplkwr7oypw5nt1gj5i3xwadyjfr3lb61tfkz31ba7uda9knb294\n'
+          b'1azhfta0q3ry9x36lxyanvhp0g5z0t5a0i4wnoc8p4htexi915y1cnw4nznn\n'
+          b'aj70dvp88ifiblv2bsp98hz570teinj8g472ddxni9ydmazfzwtznbf3hrg6\n'
+          b'84gigirjt6n2yagf70036m8d73cz0jpcighpjtxsmbgzbxx7nb4ewq6jbgnc\n'
+          b'hux1b0qtsdi0zfhj6g1otf5jcldmtdvuon8y1ttszkqw3ograwi25yl921hy\n'
+          b'izgscmfha9xdhxxabs07b40secpw22ah9iwpbmsns6qz0yr6fswto3ft2ez5\n'
+          b'ngn48pdfxj1pw246drmj1y2ll5af5w7cz849rapzd9ih7qvalw358co0yzrs\n'
+          b'xan9291d1ivjku4o5gjrsnmllrqwxwy86pcivinbmlnzasa9v3o22lgv4uyd\n'
+          b'q8kw77bge3hr5rr5kzwjxk223bkmo3z9oju0954undsz8axr3kb3730otrcr\n'
+          b'9cwhu37htnizdwxmpoc5qmobycfm7ubbykfumv6zgkl6b8zlslwl7a8b81vz\n'
+          b'3weqkvv5csfza9xvwypr6lo0t03fwp0ihmci3m1muh0lf2u30ze0hjag691j\n'
+          b'27fjtd3e3zbiin5n2hq21iuo09ukbs73r5rt7vaw6axvoilvdciir9ugjh2c\n'
+          b'na2b8dr0ptftoyhyxv1iwg661y338e28fhz4xxwgv3hnoe98ydfa1oou45vj\n'
+          b'ln74oac2keqt0agbylrqhfscin7ireae2bql7z2le823ksy47ud57z8ctomp\n'
+          b'31s1vwbczdjwqp0o2jc7mkrurvzg8mj2zwcn2iily4gcl4sy4fsh4rignlyz\n')
 
     def make_basic_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -115,8 +116,8 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export test.tar -d tar')
         ball = tarfile.open('test.tar')
         # all paths are prefixed with the base name of the tarball
-        self.assertEqual(['test/' + fname.encode('utf8')],
-                         sorted(ball.getnames()))
+        self.assertEqual([u'test/' + fname],
+                         [osutils.safe_unicode(n) for n in ball.getnames()])
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
@@ -164,7 +165,8 @@ class TestExport(TestCaseWithTransport):
 
     def assertTarANameAndContent(self, ball, root=''):
         fname = root + 'a'
-        tar_info = next(ball)
+        ball_iter = iter(ball)
+        tar_info = next(ball_iter)
         self.assertEqual(fname, tar_info.name)
         self.assertEqual(tarfile.REGTYPE, tar_info.type)
         self.assertEqual(len(self._file_content), tar_info.size)
@@ -173,7 +175,7 @@ class TestExport(TestCaseWithTransport):
             self.fail('File content has been corrupted.'
                       ' Check that all streams are handled in binary mode.')
         # There should be no other files in the tarball
-        self.assertIs(None, next(ball))
+        self.assertRaises(StopIteration, next, ball_iter)
 
     def run_tar_export_disk_and_stdout(self, extension, tarfile_flags):
         tree = self.make_basic_tree()
@@ -207,7 +209,7 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export test.zip')
         zfile = zipfile.ZipFile('test.zip')
         # all paths are prefixed with the base name of the zipfile
-        self.assertEqual(['test/' + fname.encode('utf8')],
+        self.assertEqual(['test/' + fname],
                          sorted(zfile.namelist()))
 
     def test_zip_export_directories(self):
@@ -304,7 +306,7 @@ class TestExport(TestCaseWithTransport):
         tf = tarfile.open('../first.tar')
         try:
             self.assertEqual(['first/hello'], sorted(tf.getnames()))
-            self.assertEqual('foo', tf.extractfile('first/hello').read())
+            self.assertEqual(b'foo', tf.extractfile('first/hello').read())
         finally:
             tf.close()
 
@@ -320,14 +322,14 @@ class TestExport(TestCaseWithTransport):
         tf = tarfile.open('../first.tar.tbz2', 'r:bz2')
         try:
             self.assertEqual(['first.tar/hello'], sorted(tf.getnames()))
-            self.assertEqual('foo', tf.extractfile('first.tar/hello').read())
+            self.assertEqual(b'foo', tf.extractfile('first.tar/hello').read())
         finally:
             tf.close()
         self.run_bzr('export ../first2.tar -r 1 --root pizza')
         tf = tarfile.open('../first2.tar')
         try:
             self.assertEqual(['pizza/hello'], sorted(tf.getnames()))
-            self.assertEqual('foo', tf.extractfile('pizza/hello').read())
+            self.assertEqual(b'foo', tf.extractfile('pizza/hello').read())
         finally:
             tf.close()
 
@@ -340,7 +342,7 @@ class TestExport(TestCaseWithTransport):
         zf = zipfile.ZipFile('../first.zip')
         try:
             self.assertEqual(['first/hello'], sorted(zf.namelist()))
-            self.assertEqual('foo', zf.read('first/hello'))
+            self.assertEqual(b'foo', zf.read('first/hello'))
         finally:
             zf.close()
 
@@ -348,7 +350,7 @@ class TestExport(TestCaseWithTransport):
         zf = zipfile.ZipFile('../first2.zip')
         try:
             self.assertEqual(['pizza/hello'], sorted(zf.namelist()))
-            self.assertEqual('foo', zf.read('pizza/hello'))
+            self.assertEqual(b'foo', zf.read('pizza/hello'))
         finally:
             zf.close()
 
@@ -356,7 +358,7 @@ class TestExport(TestCaseWithTransport):
         zf = zipfile.ZipFile('../first-zip')
         try:
             self.assertEqual(['first-zip/hello'], sorted(zf.namelist()))
-            self.assertEqual('foo', zf.read('first-zip/hello'))
+            self.assertEqual(b'foo', zf.read('first-zip/hello'))
         finally:
             zf.close()
 

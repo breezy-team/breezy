@@ -554,7 +554,7 @@ class AnnotatedKnitContent(KnitContent):
         lines = self._lines[:]
         if self._should_strip_eol:
             origin, last_line = lines[-1]
-            lines[-1] = (origin, last_line.rstrip('\n'))
+            lines[-1] = (origin, last_line.rstrip(b'\n'))
         return lines
 
     def apply_delta(self, delta, new_version_id):
@@ -1711,7 +1711,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 access_memo = self._access.add_raw_records(
                     [(record.key, len(bytes))], bytes)[0]
                 index_entry = (record.key, options, access_memo, parents)
-                if 'fulltext' not in options:
+                if b'fulltext' not in options:
                     # Not a fulltext, so we need to make sure the compression
                     # parent will also be present.
                     # Note that pack backed knits don't need to buffer here
@@ -2837,6 +2837,9 @@ class _KndxIndex(object):
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
+        # GZ 2018-07-03: This is intentionally either a sequence or bytes?
+        if isinstance(key, bytes):
+            return key[:-1], key[-1:]
         return key[:-1], key[-1]
 
 
@@ -3061,7 +3064,7 @@ class _KnitGraphIndex(object):
                 compression_parent_key = None
             else:
                 compression_parent_key = self._compression_parent(entry)
-            noeol = (entry[2][0] == 'N')
+            noeol = (entry[2][0:1] == b'N')
             if compression_parent_key:
                 method = 'line-delta'
             else:
@@ -3098,11 +3101,11 @@ class _KnitGraphIndex(object):
 
     def _get_method(self, node):
         if not self._deltas:
-            return b'fulltext'
+            return 'fulltext'
         if self._compression_parent(node):
-            return b'line-delta'
+            return 'line-delta'
         else:
-            return b'fulltext'
+            return 'fulltext'
 
     def _get_node(self, key):
         try:

@@ -154,13 +154,10 @@ def internal_size_sha_file_byname(name, filters):
     :param name: path to file
     :param filters: the stack of filters to apply
     """
-    f = open(name, 'rb', 65000)
-    try:
+    with open(name, 'rb', 65000) as f:
         if filters:
             f = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
-    finally:
-        f.close()
 
 
 # The registry of filter stacks indexed by name.

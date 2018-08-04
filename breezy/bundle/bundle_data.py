@@ -53,6 +53,7 @@ from ..bzr.xml5 import serializer_v5
 class RevisionInfo(object):
     """Gets filled out for each revision object that is read.
     """
+
     def __init__(self, revision_id):
         self.revision_id = revision_id
         self.sha1 = None
@@ -349,9 +350,9 @@ class BundleInfo(object):
 
         def do_patch(path, lines, encoding):
             if encoding == 'base64':
-                patch = base64.decodestring(''.join(lines))
+                patch = base64.decodestring(b''.join(lines))
             elif encoding is None:
-                patch =  ''.join(lines)
+                patch =  b''.join(lines)
             else:
                 raise ValueError(encoding)
             bundle_tree.note_patch(path, patch)
@@ -642,7 +643,7 @@ class BundleTree(Tree):
                 raise AssertionError("None: %s" % file_id)
             return patch_original
 
-        if file_patch.startswith('\\'):
+        if file_patch.startswith(b'\\'):
             raise ValueError(
                 'Malformed patch for %s, %r' % (file_id, file_patch))
         return patched_file(file_patch, patch_original)

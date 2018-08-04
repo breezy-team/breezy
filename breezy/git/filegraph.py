@@ -40,10 +40,12 @@ class GitFileLastChangeScanner(object):
         self.store = self.repository._git.object_store
 
     def find_last_change_revision(self, path, commit_id):
+        if not isinstance(path, bytes):
+            raise TypeError(path)
         commit = self.store[commit_id]
         target_mode, target_sha = tree_lookup_path(self.store.__getitem__,
             commit.tree, path)
-        if path == '':
+        if path == b'':
             target_mode = stat.S_IFDIR
         if target_mode is None:
             raise AssertionError("sha %r for %r in %r" % (target_sha, path, commit_id))
@@ -57,7 +59,7 @@ class GitFileLastChangeScanner(object):
                     continue
                 else:
                     parent_commits.append(parent_commit)
-                if path == '':
+                if path == b'':
                     mode = stat.S_IFDIR
                 # Candidate found iff, mode or text changed,
                 # or is a directory that didn't previously exist.
@@ -86,7 +88,7 @@ class GitFileParentProvider(object):
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = self.change_scanner.find_last_change_revision(path, commit_parent)
+                (path, text_parent) = self.change_scanner.find_last_change_revision(path.encode('utf-8'), commit_parent)
             except KeyError:
                 continue
             if text_parent not in text_parents:
@@ -102,6 +104,10 @@ class GitFileParentProvider(object):
             if text_revision == NULL_REVISION:
                 ret[key] = ()
                 continue
+            if not isinstance(file_id, bytes):
+                raise TypeError(file_id)
+            if not isinstance(text_revision, bytes):
+                raise TypeError(text_revision)
             try:
                 ret[key] = self._get_parents(file_id, text_revision)
             except KeyError:

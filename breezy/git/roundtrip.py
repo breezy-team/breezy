@@ -156,7 +156,7 @@ def serialize_fileid_map(file_ids):
     """
     lines = []
     for path in sorted(file_ids.keys()):
-        lines.append(b"%s\0%s\n" % (path, file_ids[path]))
+        lines.append(b"%s\0%s\n" % (path.encode('utf-8'), file_ids[path]))
     return lines
 
 
@@ -171,5 +171,5 @@ def deserialize_fileid_map(filetext):
     lines = f.readlines()
     for l in lines:
         (path, file_id) = l.rstrip(b"\n").split(b"\0")
-        ret[path] = file_id
+        ret[path.decode('utf-8')] = file_id
     return ret

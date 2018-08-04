@@ -24,7 +24,7 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: What about renaming to breezy.tests.transport.http ?
 
 try:
-    from http.client import UnknownProtocol
+    from http.client import UnknownProtocol, parse_headers
     from http.server import SimpleHTTPRequestHandler
 except ImportError:  # python < 3
     from httplib import UnknownProtocol
@@ -50,6 +50,7 @@ from .. import (
 from ..bzr import (
     remote as _mod_remote,
     )
+from ..sixish import PY3
 from . import (
     features,
     http_server,
@@ -172,7 +173,7 @@ class RecordingServer(object):
         self._expect_body_tail = expect_body_tail
         self.host = None
         self.port = None
-        self.received_bytes = ''
+        self.received_bytes = b''
         self.scheme = scheme
 
     def get_url(self):
@@ -197,7 +198,7 @@ class RecordingServer(object):
         if self._expect_body_tail is not None:
             while not self.received_bytes.endswith(self._expect_body_tail):
                 self.received_bytes += conn.recv(4096)
-            conn.sendall('HTTP/1.1 200 OK\r\n')
+            conn.sendall(b'HTTP/1.1 200 OK\r\n')
         try:
             self._sock.close()
         except socket.error:
@@ -260,7 +261,7 @@ class TestAuthHeader(tests.TestCase):
             _urllib2_wrappers.BasicAuthHandler)
         match, realm = self.auth_handler.extract_realm(remainder)
         self.assertTrue(match is not None)
-        self.assertEqual('Thou should not pass', realm)
+        self.assertEqual(u'Thou should not pass', realm)
 
     def test_digest_header(self):
         scheme, remainder = self.parse_header(
@@ -442,7 +443,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         fp = t.get('foo/bar')
         self.assertEqualDiff(
             fp.read(),
-            'contents of foo/bar\n')
+            b'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "Breezy/%s'
@@ -483,23 +484,23 @@ class TestPost(tests.TestCase):
         )
 
     def test_post_body_is_received(self):
-        server = RecordingServer(expect_body_tail='end-of-body',
+        server = RecordingServer(expect_body_tail=b'end-of-body',
                                  scheme=self._url_protocol)
         self.start_server(server)
         url = server.get_url()
         # FIXME: needs a cleanup -- vila 20100611
         http_transport = transport.get_transport_from_url(url)
-        code, response = http_transport._post('abc def end-of-body')
+        code, response = http_transport._post(b'abc def end-of-body')
         self.assertTrue(
-            server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
-        self.assertTrue('content-length: 19\r' in server.received_bytes.lower())
-        self.assertTrue('content-type: application/octet-stream\r'
+            server.received_bytes.startswith(b'POST /.bzr/smart HTTP/1.'))
+        self.assertTrue(b'content-length: 19\r' in server.received_bytes.lower())
+        self.assertTrue(b'content-type: application/octet-stream\r'
                         in server.received_bytes.lower())
         # The transport should not be assuming that the server can accept
         # chunked encoding the first time it connects, because HTTP/1.1, so we
         # check for the literal string.
         self.assertTrue(
-            server.received_bytes.endswith('\r\n\r\nabc def end-of-body'))
+            server.received_bytes.endswith(b'\r\n\r\nabc def end-of-body'))
 
 
 class TestRangeHeader(tests.TestCase):
@@ -628,7 +629,7 @@ class InvalidStatusRequestHandler(http_server.TestingHTTPRequestHandler):
     def parse_request(self):
         """Fakes handling a single HTTP request, returns a bad status"""
         ignored = http_server.TestingHTTPRequestHandler.parse_request(self)
-        self.wfile.write("Invalid status line\r\n")
+        self.wfile.write(b"Invalid status line\r\n")
         # If we don't close the connection pycurl will hang. Since this is a
         # stress test we don't *have* to respect the protocol, but we don't
         # have to sabotage it too much either.
@@ -653,9 +654,8 @@ class BadProtocolRequestHandler(http_server.TestingHTTPRequestHandler):
         ignored = http_server.TestingHTTPRequestHandler.parse_request(self)
         # Returns an invalid protocol version, but curl just
         # ignores it and those cannot be tested.
-        self.wfile.write("%s %d %s\r\n" % ('HTTP/0.0',
-                                           404,
-                                           'Look at my protocol version'))
+        self.wfile.write(b"%s %d %s\r\n" % (
+            b'HTTP/0.0', 404, b'Look at my protocol version'))
         return False
 
 
@@ -701,7 +701,7 @@ class TestRecordingServer(tests.TestCase):
 
     def test_create(self):
         server = RecordingServer(expect_body_tail=None)
-        self.assertEqual('', server.received_bytes)
+        self.assertEqual(b'', server.received_bytes)
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
@@ -717,14 +717,14 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.port)
 
     def test_send_receive_bytes(self):
-        server = RecordingServer(expect_body_tail='c', scheme='http')
+        server = RecordingServer(expect_body_tail=b'c', scheme='http')
         self.start_server(server)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((server.host, server.port))
-        sock.sendall('abc')
-        self.assertEqual('HTTP/1.1 200 OK\r\n',
+        sock.sendall(b'abc')
+        self.assertEqual(b'HTTP/1.1 200 OK\r\n',
                          osutils.recv_all(sock, 4096))
-        self.assertEqual('abc', server.received_bytes)
+        self.assertEqual(b'abc', server.received_bytes)
 
 
 class TestRangeRequestServer(TestSpecificRequestHandler):
@@ -740,18 +740,18 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
     def test_readv(self):
         t = self.get_readonly_transport()
         l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
-        self.assertEqual(l[0], (0, '0'))
-        self.assertEqual(l[1], (1, '1'))
-        self.assertEqual(l[2], (3, '34'))
-        self.assertEqual(l[3], (9, '9'))
+        self.assertEqual(l[0], (0, b'0'))
+        self.assertEqual(l[1], (1, b'1'))
+        self.assertEqual(l[2], (3, b'34'))
+        self.assertEqual(l[3], (9, b'9'))
 
     def test_readv_out_of_order(self):
         t = self.get_readonly_transport()
         l = list(t.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
-        self.assertEqual(l[0], (1, '1'))
-        self.assertEqual(l[1], (9, '9'))
-        self.assertEqual(l[2], (0, '0'))
-        self.assertEqual(l[3], (3, '34'))
+        self.assertEqual(l[0], (1, b'1'))
+        self.assertEqual(l[1], (9, b'9'))
+        self.assertEqual(l[2], (0, b'0'))
+        self.assertEqual(l[3], (3, b'34'))
 
     def test_readv_invalid_ranges(self):
         t = self.get_readonly_transport()
@@ -773,10 +773,10 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         t._max_readv_combine = 1
         t._max_get_ranges = 1
         l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
-        self.assertEqual(l[0], (0, '0'))
-        self.assertEqual(l[1], (1, '1'))
-        self.assertEqual(l[2], (3, '34'))
-        self.assertEqual(l[3], (9, '9'))
+        self.assertEqual(l[0], (0, b'0'))
+        self.assertEqual(l[1], (1, b'1'))
+        self.assertEqual(l[2], (3, b'34'))
+        self.assertEqual(l[3], (9, b'9'))
         # The server should have issued 4 requests
         self.assertEqual(4, server.GET_request_nb)
 
@@ -788,10 +788,10 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # single range will keep its size even if bigger than the limit.
         t._get_max_size = 2
         l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
-        self.assertEqual(l[0], (0, '0'))
-        self.assertEqual(l[1], (1, '1'))
-        self.assertEqual(l[2], (2, '2345'))
-        self.assertEqual(l[3], (6, '6789'))
+        self.assertEqual(l[0], (0, b'0'))
+        self.assertEqual(l[1], (1, b'1'))
+        self.assertEqual(l[2], (2, b'2345'))
+        self.assertEqual(l[3], (6, b'6789'))
         # The server should have issued 3 requests
         self.assertEqual(3, server.GET_request_nb)
 
@@ -803,7 +803,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
         # The server should have issued 3 requests
         self.assertEqual(3, server.GET_request_nb)
-        self.assertEqual('0123456789', t.get_bytes('a'))
+        self.assertEqual(b'0123456789', t.get_bytes('a'))
         self.assertEqual(4, server.GET_request_nb)
 
     def test_incomplete_readv_leave_pipe_clean(self):
@@ -814,10 +814,10 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # Don't collapse readv results into a list so that we leave unread
         # bytes on the socket
         ireadv = iter(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
-        self.assertEqual((0, '0'), next(ireadv))
+        self.assertEqual((0, b'0'), next(ireadv))
         # The server should have issued one request so far
         self.assertEqual(1, server.GET_request_nb)
-        self.assertEqual('0123456789', t.get_bytes('a'))
+        self.assertEqual(b'0123456789', t.get_bytes('a'))
         # get_bytes issued an additional request, the readv pending ones are
         # lost
         self.assertEqual(2, server.GET_request_nb)
@@ -890,7 +890,7 @@ class MultipleRangeWithoutContentLengthRequestHandler(
                          "multipart/byteranges; boundary=%s" % boundary)
         self.end_headers()
         for (start, end) in ranges:
-            self.wfile.write("--%s\r\n" % boundary)
+            self.wfile.write(b"--%s\r\n" % boundary.encode('ascii'))
             self.send_header("Content-type", 'application/octet-stream')
             self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
                                                                   end,
@@ -898,7 +898,7 @@ class MultipleRangeWithoutContentLengthRequestHandler(
             self.end_headers()
             self.send_range_content(file, start, end - start + 1)
         # Final boundary
-        self.wfile.write("--%s\r\n" % boundary)
+        self.wfile.write(b"--%s\r\n" % boundary)
 
 
 class TestMultipleRangeWithoutContentLengthServer(TestRangeRequestServer):
@@ -923,7 +923,7 @@ class TruncatedMultipleRangeRequestHandler(
         boundary = 'tagada'
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = '--%s\r\n' % boundary
+        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
         for (start, end) in ranges:
@@ -970,12 +970,12 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
         # Force separate ranges for each offset
         t._bytes_to_read_before_seek = 0
         ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
-        self.assertEqual((0, '0'), next(ireadv))
-        self.assertEqual((2, '2'), next(ireadv))
+        self.assertEqual((0, b'0'), next(ireadv))
+        self.assertEqual((2, b'2'), next(ireadv))
         # Only one request have been issued so far
         self.assertEqual(1, server.GET_request_nb)
-        self.assertEqual((4, '45'), next(ireadv))
-        self.assertEqual((9, '9'), next(ireadv))
+        self.assertEqual((4, b'45'), next(ireadv))
+        self.assertEqual((9, b'9'), next(ireadv))
         # We issue 3 requests: two multiple (4 ranges, then 2 ranges) then a
         # single range.
         self.assertEqual(3, server.GET_request_nb)
@@ -996,7 +996,7 @@ class TruncatedBeforeBoundaryRequestHandler(
         boundary = 'tagada'
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = '--%s\r\n' % boundary
+        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
         for (start, end) in ranges:
@@ -1044,10 +1044,10 @@ class TestTruncatedBeforeBoundary(TestSpecificRequestHandler):
         # Force separate ranges for each offset
         t._bytes_to_read_before_seek = 0
         ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
-        self.assertEqual((0, '0'), next(ireadv))
-        self.assertEqual((2, '2'), next(ireadv))
-        self.assertEqual((4, '45'), next(ireadv))
-        self.assertEqual((9, '9'), next(ireadv))
+        self.assertEqual((0, b'0'), next(ireadv))
+        self.assertEqual((2, b'2'), next(ireadv))
+        self.assertEqual((4, b'45'), next(ireadv))
+        self.assertEqual((9, b'9'), next(ireadv))
 
 
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -1102,17 +1102,17 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     def test_few_ranges(self):
         t = self.get_readonly_transport()
         l = list(t.readv('a', ((0, 4), (1024, 4), )))
-        self.assertEqual(l[0], (0, '0000'))
-        self.assertEqual(l[1], (1024, '0001'))
+        self.assertEqual(l[0], (0, b'0000'))
+        self.assertEqual(l[1], (1024, b'0001'))
         self.assertEqual(1, self.get_readonly_server().GET_request_nb)
 
     def test_more_ranges(self):
         t = self.get_readonly_transport()
         l = list(t.readv('a', ((0, 4), (1024, 4), (4096, 4), (8192, 4))))
-        self.assertEqual(l[0], (0, '0000'))
-        self.assertEqual(l[1], (1024, '0001'))
-        self.assertEqual(l[2], (4096, '0004'))
-        self.assertEqual(l[3], (8192, '0008'))
+        self.assertEqual(l[0], (0, b'0000'))
+        self.assertEqual(l[1], (1024, b'0001'))
+        self.assertEqual(l[2], (4096, b'0004'))
+        self.assertEqual(l[3], (8192, b'0008'))
         # The server will refuse to serve the first request (too much ranges),
         # a second request will succeed.
         self.assertEqual(2, self.get_readonly_server().GET_request_nb)
@@ -1286,10 +1286,10 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     def test_range_header(self):
         # Valid ranges
         self.assertEqual(
-            ['0', '234'], list(self._file_contents('a', [(0, 0), (2, 4)])))
+            [b'0', b'234'], list(self._file_contents('a', [(0, 0), (2, 4)])))
 
     def test_range_header_tail(self):
-        self.assertEqual('789', self._file_tail('a', 3))
+        self.assertEqual(b'789', self._file_tail('a', 3))
 
     def test_syntactically_invalid_range_header(self):
         self.assertListRaises(errors.InvalidHttpRange,
@@ -1318,7 +1318,9 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     def test_redirected(self):
         self.assertRaises(errors.RedirectRequested,
                           self.get_old_transport().get, 'a')
-        self.assertEqual('0123456789', self.get_new_transport().get('a').read())
+        self.assertEqual(
+                b'0123456789',
+                self.get_new_transport().get('a').read())
 
 
 class RedirectedRequest(_urllib2_wrappers.Request):
@@ -1400,7 +1402,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = \
             [('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once', t._perform(req).read())
+        self.assertEqual(b'redirected once', t._perform(req).read())
 
     def test_five_redirections(self):
         t = self.get_old_transport()
@@ -1416,7 +1418,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
             ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
             ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
             ]
-        self.assertEqual('redirected 5 times', t._perform(req).read())
+        self.assertEqual(b'redirected 5 times', t._perform(req).read())
 
 
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1441,7 +1443,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
         t = self.get_new_transport()
 
         # We use None for redirected so that we fail if redirected
-        self.assertEqual('0123456789',
+        self.assertEqual(b'0123456789',
                          transport.do_catching_redirections(
                 self.get_a, t, None).read())
 
@@ -1453,7 +1455,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
             redirected_t = t._redirected_to(exception.source, exception.target)
             return redirected_t
 
-        self.assertEqual('0123456789',
+        self.assertEqual(b'0123456789',
                          transport.do_catching_redirections(
                 self.get_a, self.old_transport, redirected).read())
         self.assertEqual(1, self.redirections)
@@ -1495,7 +1497,7 @@ class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
             protocol='http',
             host='localhost',
             path='/',
-            realm='Realm',
+            realm=u'Realm',
             ))
         self.assertEqual((user, password), got_pass)
 
@@ -1546,14 +1548,14 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def test_empty_pass(self):
         self.server.add_user('joe', '')
         t = self.get_user_transport('joe', '')
-        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual(b'contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_user_pass(self):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'foo')
-        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual(b'contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1579,7 +1581,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         t = self.get_user_transport(None, None)
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
-        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual(b'contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         stderr.seek(0)
@@ -1594,7 +1596,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         t = self.get_user_transport('joe', None)
         ui.ui_factory = tests.TestUIFactory(stdin='foo\n')
         stdout, stderr = ui.ui_factory.stdout, ui.ui_factory.stderr
-        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual(b'contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
@@ -1602,10 +1604,10 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual('', stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
-        self.assertEqual('contents of b\n', t.get('b').read())
+        self.assertEqual(b'contents of b\n', t.get('b').read())
         t2 = t.clone()
         # And neither against a clone
-        self.assertEqual('contents of b\n', t2.get('b').read())
+        self.assertEqual(b'contents of b\n', t2.get('b').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1634,7 +1636,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         _setup_authentication_config(scheme='http', port=self.server.port,
                                      user=user, password=password)
         # Issue a request to the server to connect
-        self.assertEqual('contents of a\n', t.get('a').read())
+        with t.get('a') as f:
+            self.assertEqual(b'contents of a\n', f.read())
         # stdin should have  been left untouched
         self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
         # Only one 'Authentication Required' error should occur
@@ -1646,14 +1649,16 @@ class TestAuth(http_utils.TestCaseWithWebserver):
             raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', 'foo')
-        self.assertEqual('contents of a\n', t.get('a').read())
-        self.assertEqual('contents of b\n', t.get('b').read())
+        with t.get('a') as f:
+            self.assertEqual(b'contents of a\n', f.read())
+        with t.get('b') as f:
+            self.assertEqual(b'contents of b\n', f.read())
         # Only one 'Authentication Required' error should have
         # occured so far
         self.assertEqual(1, self.server.auth_required_errors)
         # The server invalidates the current nonce
         self.server.auth_nonce = self.server.auth_nonce + '. No, now!'
-        self.assertEqual('contents of a\n', t.get('a').read())
+        self.assertEqual(b'contents of a\n', t.get('a').read())
         # Two 'Authentication Required' errors should occur (the
         # initial 'who are you' and a second 'who are you' with the new nonce)
         self.assertEqual(2, self.server.auth_required_errors)
@@ -1666,7 +1671,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                      user=user, password=password)
         t = self.get_user_transport(None, None)
         # Issue a request to the server to connect
-        self.assertEqual('contents of a\n', t.get('a').read())
+        with t.get('a') as f:
+            self.assertEqual(b'contents of a\n', f.read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1934,14 +1940,20 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     def _handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
-        headers = self.MessageClass(self.rfile, 0)
-        # We just read: the request, the headers, an empty line indicating the
-        # end of the headers.
-        bytes_read = len(requestline)
-        for line in headers.headers:
-            bytes_read += len(line)
-        bytes_read += len(b'\r\n')
-        if requestline.startswith('POST'):
+        if PY3:
+            headers = parse_headers(self.rfile)
+            bytes_read = len(headers.as_bytes())
+            bytes_read += headers.as_bytes().count(b'\n')
+            bytes_read += len(requestline)
+        else:
+            headers = self.MessageClass(self.rfile, 0)
+            # We just read: the request, the headers, an empty line indicating the
+            # end of the headers.
+            bytes_read = len(requestline)
+            for line in headers.headers:
+                bytes_read += len(line)
+            bytes_read += len(b'\r\n')
+        if requestline.startswith(b'POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)
             body = self.rfile.readline()
@@ -2028,7 +2040,7 @@ Content-Type: text/plain; charset=UTF-8\r
 Bazaar-NG meta directory, format 1
 '''
         t = self.get_transport()
-        self.assertEqual('Bazaar-NG meta directory, format 1\n',
+        self.assertEqual(b'Bazaar-NG meta directory, format 1\n',
                          t.get('foo/bar').read())
         self.assertActivitiesMatch()
 

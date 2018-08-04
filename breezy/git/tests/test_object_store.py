@@ -60,20 +60,21 @@ class ExpectedShaTests(TestCase):
     def setUp(self):
         super(ExpectedShaTests, self).setUp()
         self.obj = Blob()
-        self.obj.data = "foo"
+        self.obj.data = b"foo"
 
     def test_none(self):
         _check_expected_sha(None, self.obj)
 
     def test_hex(self):
-        _check_expected_sha(self.obj.sha().hexdigest(), self.obj)
+        _check_expected_sha(
+                self.obj.sha().hexdigest().encode('ascii'), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            "0" * 40, self.obj)
+            b"0" * 40, self.obj)
 
     def test_binary(self):
         _check_expected_sha(self.obj.sha().digest(), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            "x" * 20, self.obj)
+            b"x" * 20, self.obj)
 
 
 class FindMissingBzrRevidsTests(TestCase):
@@ -253,20 +254,20 @@ class DirectoryToTreeTests(TestCase):
 
     def test_with_file(self):
         child_ie = InventoryFile(b'bar', 'bar', b'bar')
-        b = Blob.from_string("bla")
+        b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0o100644, b.id)
+        t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)
 
     def test_with_gitdir(self):
         child_ie = InventoryFile(b'bar', 'bar', b'bar')
         git_file_ie = InventoryFile(b'gitid', '.git', b'bar')
-        b = Blob.from_string("bla")
+        b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie, git_file_ie],
                 lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0o100644, b.id)
+        t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)

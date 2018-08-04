@@ -145,8 +145,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id=b'A')
-        inv.root.revision = 'A'
-        inv.root.file_id = 'fixed-root'
+        inv.root.revision = b'A'
+        inv.root.file_id = b'fixed-root'
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository('reference_repo')
@@ -161,7 +161,7 @@ class TestRepository(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         root_id = inv.root.file_id
-        repo.texts.add_lines(('fixed-root', 'A'), [], [])
+        repo.texts.add_lines((b'fixed-root', b'A'), [], [])
         repo.add_revision(b'A', _mod_revision.Revision(
                 b'A', committer='B', timestamp=0,
                 timezone=0, message='C'), inv=inv)
@@ -177,7 +177,7 @@ class TestRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision(b'A', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -239,10 +239,10 @@ class TestRepository(TestCaseWithRepository):
         #   * signatures
         #   * revisions
         expected_item_keys = [
-            (b'file', b'file1', [b'rev_id']),
-            (b'inventory', None, [b'rev_id']),
-            (b'signatures', None, signature_texts),
-            (b'revisions', None, [b'rev_id'])]
+            ('file', b'file1', [b'rev_id']),
+            ('inventory', None, [b'rev_id']),
+            ('signatures', None, signature_texts),
+            ('revisions', None, [b'rev_id'])]
         item_keys = list(repo.item_keys_introduced_by([b'rev_id']))
         item_keys = [
             (kind, file_id, list(versions))
@@ -255,8 +255,8 @@ class TestRepository(TestCaseWithRepository):
             # Note that the file keys can be in any order, so this test is
             # written to allow that.
             inv = repo.get_inventory(b'rev_id')
-            root_item_key = (b'file', inv.root.file_id, [b'rev_id'])
-            self.assertTrue(root_item_key in item_keys)
+            root_item_key = ('file', inv.root.file_id, [b'rev_id'])
+            self.assertIn(root_item_key, item_keys)
             item_keys.remove(root_item_key)
 
         self.assertEqual(expected_item_keys, item_keys)

@@ -43,11 +43,11 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.start_write_group()
             try:
                 sha1, len, _ = repo.chk_bytes.add_lines((None,),
-                    None, ["foo\n", "bar\n"], random_id=True)
-                self.assertEqual('4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
+                    None, [b"foo\n", b"bar\n"], random_id=True)
+                self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
                     sha1)
                 self.assertEqual(
-                    {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
+                    {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                     repo.chk_bytes.keys())
             except:
                 repo.abort_write_group()
@@ -59,13 +59,13 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         # And after an unlock/lock pair
         with repo.lock_read():
             self.assertEqual(
-                {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
+                {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
         # and reopening
         repo = repo.controldir.open_repository()
         with repo.lock_read():
             self.assertEqual(
-                {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
+                {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
 
     def test_pack_preserves_chk_bytes_store(self):
@@ -74,7 +74,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         node_lines = [b"chknode:\n", b"0\n", b"1\n", b"1\n", b"foo\n",
                       b"\x00sha1:%s\n" % (leaf_sha1,)]
         node_sha1 = osutils.sha_strings(node_lines)
-        expected_set = {('sha1:' + leaf_sha1,), ('sha1:' + node_sha1,)}
+        expected_set = {(b'sha1:' + leaf_sha1,), (b'sha1:' + node_sha1,)}
         repo = self.make_repository('.')
         repo.lock_write()
         try:
@@ -115,11 +115,11 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         repo.start_write_group()
         try:
             sha1, len, _ = repo.chk_bytes.add_lines((None,),
-                None, ["foo\n", "bar\n"], random_id=True)
-            self.assertEqual('4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
+                None, [b"foo\n", b"bar\n"], random_id=True)
+            self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
                 sha1)
             self.assertEqual(
-                {('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
+                {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
         except:
             repo.abort_write_group()
@@ -306,8 +306,8 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         self.addCleanup(b.unlock)
         # Now, manually insert objects for a stacked repo with only revision
         # C-id, *except* the chk root entry for the parent inventory.
-        # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
-        # ('inventories', 'B-id'), and the corresponding chk roots for those
+        # We need (b'revisions', b'C-id'), (b'inventories', b'C-id'),
+        # (b'inventories', b'B-id'), and the corresponding chk roots for those
         # inventories.
         inv_c = b.repository.get_inventory(b'C-id')
         chk_keys_for_c_only = [
@@ -345,7 +345,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                 ('add', ('file-' + name, ('file-%s-id' % name).encode(), 'file',
                          ('content %s\n' % name).encode())))
             file_modifies.append(
-                ('modify', (('file-' + name).encode(),
+                ('modify', ('file-' + name,
                     ('new content %s\n' % name).encode())))
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None))] +

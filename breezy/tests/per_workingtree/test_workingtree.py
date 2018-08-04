@@ -41,7 +41,7 @@ from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
 from ...osutils import pathjoin, getcwd, has_symlinks
 from ...sixish import (
-    BytesIO,
+    StringIO,
     )
 from .. import (
     features,
@@ -346,8 +346,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello'])
         wt.add(['hello'])
         wt.commit(message='add hello')
-        stdout = BytesIO()
-        stderr = BytesIO()
+        stdout = StringIO()
+        stderr = StringIO()
         self.assertEqual(None, self.apply_redirected(None, stdout, stderr,
                                                      wt.remove,
                                                      ['hello'],
@@ -374,7 +374,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         parent_ids = wt.get_parent_ids()
         self.assertEqual([a], parent_ids)
         for parent_id in parent_ids:
-            self.assertIsInstance(parent_id, str)
+            self.assertIsInstance(parent_id, bytes)
 
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
@@ -563,16 +563,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     'first_root_id')
             return
         wt.set_root_id(b'first_root_id')
-        self.assertEqual('first_root_id', wt.get_root_id())
+        self.assertEqual(b'first_root_id', wt.get_root_id())
         self.build_tree(['tree/file'])
         wt.add(['file'])
         wt.commit('first')
         co = wt.branch.create_checkout('checkout')
         wt.set_root_id(b'second_root_id')
         wt.commit('second')
-        self.assertEqual('second_root_id', wt.get_root_id())
+        self.assertEqual(b'second_root_id', wt.get_root_id())
         self.assertEqual(0, co.update())
-        self.assertEqual('second_root_id', co.get_root_id())
+        self.assertEqual(b'second_root_id', co.get_root_id())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
@@ -623,13 +623,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         this.lock_write()
         self.addCleanup(this.unlock)
         merge_inner(this.branch, other, base, this_tree=this)
-        a = open('b1/a', 'rb')
-        try:
+        with open('b1/a', 'rb') as a:
             self.assertNotEqual(a.read(), 'a test\n')
-        finally:
-            a.close()
         this.revert()
-        self.assertFileEqual('a test\n', 'b1/a')
+        self.assertFileEqual(b'a test\n', 'b1/a')
         self.assertPathExists('b1/b.~1~')
         if this.supports_merge_modified():
             self.assertPathDoesNotExist('b1/c')
@@ -695,7 +692,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # when adding 'update -r' we should make sure all wt formats support
         # it
         conflicts = wt.update(revision=rev1)
-        self.assertFileEqual('old content', 'wt/a')
+        self.assertFileEqual(b'old content', 'wt/a')
         self.assertEqual([rev1], wt.get_parent_ids())
 
     def test_merge_modified_detects_corruption(self):
@@ -705,7 +702,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable("merge-hashes is specific to bzr "
                 "working trees")
-        tree._transport.put_bytes('merge-hashes', 'asdfasdf')
+        tree._transport.put_bytes('merge-hashes', b'asdfasdf')
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
     def test_merge_modified(self):
@@ -742,10 +739,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
-        tree2._transport.put_bytes('conflicts', '')
+        tree2._transport.put_bytes('conflicts', b'')
         self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
-        tree2._transport.put_bytes('conflicts', 'a')
+        tree2._transport.put_bytes('conflicts', b'a')
         self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
 
@@ -889,8 +886,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
         inventory = Inventory(tree.get_root_id())
-        inventory.add_path('missing', 'file', 'missing-id')
-        inventory.add_path('present', 'file', 'present-id')
+        inventory.add_path('missing', 'file', b'missing-id')
+        inventory.add_path('present', 'file', b'present-id')
         # there is no point in being able to write an inventory to an unlocked
         # tree object - its a low level api not a convenience api.
         tree.lock_write()
@@ -902,8 +899,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             unknown_stat = os.lstat('unknown')
             expected_results = [
                 (('', tree.get_root_id()),
-                 [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
-                  ('present', 'present', 'file', present_stat, 'present-id', 'file'),
+                 [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
+                  ('present', 'present', 'file', present_stat, b'present-id', 'file'),
                   ('unknown', 'unknown', 'file', unknown_stat, None, None),
                  ]
                 )]
@@ -1114,17 +1111,17 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         revids['1'] = builder.build_snapshot(
             None,
             [('add', ('', None, 'directory', '')),
-             ('add', ('file1', None, 'file', 'file1 content\n'))])
+             ('add', ('file1', None, 'file', b'file1 content\n'))])
         # branch
         revids['2'] = builder.build_snapshot([revids['1']], [])
         revids['4'] = builder.build_snapshot(
             [revids['1']],
-            [('add', ('file4', None, 'file', 'file4 content\n'))])
+            [('add', ('file4', None, 'file', b'file4 content\n'))])
         # master
         revids['3'] = builder.build_snapshot([revids['1']], [])
         revids['5'] = builder.build_snapshot(
             [revids['3']],
-            [('add', ('file5', None, 'file', 'file5 content\n'))])
+            [('add', ('file5', None, 'file', b'file5 content\n'))])
         builder.finish_series()
         return (builder, builder._branch.last_revision(), revids)
 

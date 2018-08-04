@@ -88,7 +88,7 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
                               start_revision_id='1.1.1')
 
     def test_merge_sorted_range_stop_exclude(self):
-        self.assertIterRevids(['3', '1.1.1', '2'], stop_revision_id=b'1')
+        self.assertIterRevids(['3', '1.1.1', '2'], stop_revision_id='1')
 
     def test_merge_sorted_range_stop_include(self):
         self.assertIterRevids(['3', '1.1.1', '2'],

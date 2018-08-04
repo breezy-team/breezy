@@ -994,8 +994,8 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return wt.id2path(self._other['dir_id'])
 
     def assertParentLoop(self, wt, c):
-        self.assertEqual(self._other[b'dir_id'], c.file_id)
-        self.assertEqual(self._other[b'target_id'], c.conflict_file_id)
+        self.assertEqual(self._other['dir_id'], c.file_id)
+        self.assertEqual(self._other['target_id'], c.conflict_file_id)
         # The conflict paths are irrelevant (they are deterministic but not
         # worth checking since they don't provide the needed information
         # anyway)
@@ -1185,8 +1185,7 @@ class TestResolveActionOption(tests.TestCase):
     def setUp(self):
         super(TestResolveActionOption, self).setUp()
         self.options = [conflicts.ResolveActionOption()]
-        self.parser = option.get_optparser(dict((o.name, o)
-                                                for o in self.options))
+        self.parser = option.get_optparser(self.options)
 
     def parse(self, args):
         return self.parser.parse_args(args)

@@ -84,11 +84,11 @@ class TestRevno(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id', 'B-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id', b'B-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         co_b = b.create_checkout('checkout_b', lightweight=True,
@@ -105,10 +105,10 @@ class TestRevno(tests.TestCaseWithTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None)),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         # The branch is now at "C-id", but the checkout is still at "B-id"
@@ -130,7 +130,7 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno -r-2 .')
         self.assertEqual('1\n', out)
 
-        out, err = self.run_bzr('revno -rrevid:%s .' % revid1)
+        out, err = self.run_bzr('revno -rrevid:%s .' % revid1.decode('utf-8'))
         self.assertEqual('1\n', out)
 
     def test_revno_and_tree_mutually_exclusive(self):
@@ -169,7 +169,7 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
         revid1 = t.commit("message")
         revid2 = t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['revno', '-rrevid:' + revid1,
+        out, err = self.run_bzr(['revno', '-rrevid:' + revid1.decode('utf-8'),
             self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count

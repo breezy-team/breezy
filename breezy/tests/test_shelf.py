@@ -124,7 +124,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_change_handles_move(self):
         creator, tree = self.prepare_shelve_move()
-        creator.shelve_change(('rename', 'baz-id', 'foo/baz', 'bar/baz'))
+        creator.shelve_change(('rename', b'baz-id', 'foo/baz', 'bar/baz'))
         self.check_shelve_move(creator, tree)
 
     def test_shelve_changed_root_id(self):
@@ -199,8 +199,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo', 'bar'], [b'foo-id', b'bar-id'])
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', b'bar-id', 'directory', b'bar'),
-                          ('add file', b'foo-id', 'file', b'foo')],
+        self.assertEqual([('add file', b'bar-id', 'directory', 'bar'),
+                          ('add file', b'foo-id', 'file', 'foo')],
                           sorted(list(creator.iter_shelvable())))
         return creator, tree
 
@@ -376,7 +376,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def check_shelve_deletion(self, tree):
         self.assertTrue(tree.has_id(b'foo-id'))
         self.assertTrue(tree.has_id(b'bar-id'))
-        self.assertFileEqual('baz', 'tree/foo/bar')
+        self.assertFileEqual(b'baz', 'tree/foo/bar')
 
     def test_shelve_deletion(self):
         creator, tree = self.prepare_shelve_deletion()
@@ -424,7 +424,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         return creator
 
     def check_shelve_change_kind(self, creator):
-        self.assertFileEqual('bar', 'tree/foo')
+        self.assertFileEqual(b'bar', 'tree/foo')
         s_trans_id = creator.shelf_transform.trans_id_file_id(b'foo-id')
         self.assertEqual('directory',
                          creator.shelf_transform._new_contents[s_trans_id])
@@ -564,7 +564,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
             unshelver.make_merger().do_merge()
             self.addCleanup(unshelver.finalize)
-            self.assertFileEqual('bar', 'tree/foo')
+            self.assertFileEqual(b'bar', 'tree/foo')
 
     def test_unshelve_changed(self):
         tree = self.make_branch_and_tree('tree')
@@ -577,7 +577,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         list(creator.iter_shelvable())
-        creator.shelve_lines(b'foo-id', ['a\n', 'b\n', 'c\n'])
+        creator.shelve_lines(b'foo-id', [b'a\n', b'b\n', b'c\n'])
         shelf_file = open('shelf', 'w+b')
         self.addCleanup(shelf_file.close)
         creator.write_shelf(shelf_file)
@@ -587,7 +587,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
         self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
-        self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
+        self.assertFileEqual(b'z\na\nb\nd\n', 'tree/foo')
 
     def test_unshelve_deleted(self):
         tree = self.make_branch_and_tree('tree')
@@ -610,7 +610,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         # validate the test setup
         self.assertTrue(tree.has_id(b'foo-id'))
         self.assertTrue(tree.has_id(b'bar-id'))
-        self.assertFileEqual('baz', 'tree/foo/bar')
+        self.assertFileEqual(b'baz', 'tree/foo/bar')
         with open('shelf', 'r+b') as shelf_file:
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
             self.addCleanup(unshelver.finalize)
@@ -772,7 +772,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree_contents([('tree/foo', b'bar')])
-        self.assertFileEqual('bar', 'tree/foo')
+        self.assertFileEqual(b'bar', 'tree/foo')
         tree.add('foo', b'foo-id')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
@@ -784,7 +784,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         unshelver = shelf_manager.get_unshelver(shelf_id)
         self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
-        self.assertFileEqual('bar', 'tree/foo')
+        self.assertFileEqual(b'bar', 'tree/foo')
 
     def test_get_metadata(self):
         tree = self.make_branch_and_tree('.')
@@ -795,5 +795,5 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_manager = tree.get_shelf_manager()
         shelf_id = shelf_manager.shelve_changes(creator, 'foo')
         metadata = shelf_manager.get_metadata(shelf_id)
-        self.assertEqual('foo', metadata['message'])
-        self.assertEqual('null:', metadata['revision_id'])
+        self.assertEqual('foo', metadata[b'message'])
+        self.assertEqual(b'null:', metadata[b'revision_id'])

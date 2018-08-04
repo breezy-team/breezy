@@ -178,10 +178,10 @@ def lt_by_dirs(path1, path2):
     :return: True if path1 comes first, otherwise False
     """
     if not isinstance(path1, bytes):
-        raise TypeError("'path1' must be a plain string, not %s: %r"
+        raise TypeError("'path1' must be a byte string, not %s: %r"
                         % (type(path1), path1))
     if not isinstance(path2, bytes):
-        raise TypeError("'path2' must be a plain string, not %s: %r"
+        raise TypeError("'path2' must be a byte string, not %s: %r"
                         % (type(path2), path2))
     return path1.split(b'/') < path2.split(b'/')
 

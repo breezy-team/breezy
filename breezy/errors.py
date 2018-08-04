@@ -1407,12 +1407,6 @@ class WorkingTreeNotRevision(BzrError):
         BzrError.__init__(self, basedir=tree.basedir)
 
 
-class CantReprocessAndShowBase(BzrError):
-
-    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
-           "the relationship of conflicting lines to the base")
-
-
 class GraphCycleError(BzrError):
 
     _fmt = "Cycle in graph %(graph)r"

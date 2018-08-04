@@ -122,7 +122,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             entry = inventory.make_entry('file', 'foo-path', parent_id, b'foo')
             entry.revision = revid
             entry.text_size = len('contents')
-            entry.text_sha1 = osutils.sha_string('contents')
+            entry.text_sha1 = osutils.sha_string(b'contents')
             inv_sha1, _ = source.add_inventory_by_delta(revid, [
                 (None, 'foo-path', b'foo', entry)], b'new', [revid])
             rev = Revision(timestamp=0,
@@ -142,8 +142,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
         self.assertEqual(b'contents',
-            to_repo.texts.get_record_stream([(b'foo', revid)],
-            'unordered', True).next().get_bytes_as('fulltext'))
+            next(to_repo.texts.get_record_stream([(b'foo', revid)],
+            'unordered', True)).get_bytes_as('fulltext'))
 
     def test_fetch_from_stacked_smart(self):
         self.setup_smart_server_with_call_log()
@@ -540,7 +540,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.build_tree(['tree/filename'])
         if not from_tree.supports_setting_file_ids():
             raise TestNotApplicable('from tree format can not create custom file ids')
-        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.add('filename', b'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
         try:
@@ -564,7 +564,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.addCleanup(to_repo.unlock)
         stream = to_repo.inventories.get_record_stream([(revid,)],
                                                        'unordered', True)
-        bytes = stream.next().get_bytes_as('fulltext')
+        bytes = next(stream).get_bytes_as('fulltext')
         computed_inv_sha1 = osutils.sha_string(bytes)
         self.assertEqual(computed_inv_sha1, recorded_inv_sha1)
 

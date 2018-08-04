@@ -233,7 +233,7 @@ Message: %(message)s.
         boundary = '%d' % random.randint(0, 0x7FFFFFFF)
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = '--%s\r\n' % boundary
+        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
         for (start, end) in ranges:

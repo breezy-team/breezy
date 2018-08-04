@@ -103,12 +103,12 @@ class AnnotateProvider(object):
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = self.change_scanner.find_last_change_revision(path, commit_parent)
+                (path, text_parent) = self.change_scanner.find_last_change_revision(path.encode('utf-8'), commit_parent)
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
-        return tuple([(path,
+        return tuple([(path.decode('utf-8'),
             self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
             in text_parents])
 
@@ -144,7 +144,7 @@ class AnnotateProvider(object):
                 yield GitAbsentContentFactory(store, path, text_revision)
                 continue
             try:
-                (mode, blob_sha) = tree_lookup_path(store.__getitem__, tree_id, path)
+                (mode, blob_sha) = tree_lookup_path(store.__getitem__, tree_id, path.encode('utf-8'))
             except KeyError:
                 yield GitAbsentContentFactory(store, path, text_revision)
             else:

@@ -41,10 +41,14 @@ from .. import (
     transport,
     urlutils,
     )
+from ..foreign import ForeignBranch
 from ..revision import (
     NULL_REVISION,
     )
-from ..sixish import text_type
+from ..sixish import (
+    text_type,
+    viewitems,
+    )
 from ..trace import (
     is_quiet,
     mutter,
@@ -75,14 +79,13 @@ from .unpeel_map import (
     )
 from .urls import git_url_to_bzr_url
 
-from ..foreign import ForeignBranch
 
 
 class GitPullResult(branch.PullResult):
     """Result of a pull from a Git branch."""
 
     def _lookup_revno(self, revid):
-        if type(revid) is not str:
+        if not isinstance(revid, bytes):
             raise TypeError(revid)
         # Try in source branch first, it'll be faster
         with self.target_branch.lock_read():
@@ -236,7 +239,7 @@ class LocalGitTagDict(GitTags):
 
     def _set_tag_dict(self, to_dict):
         extra = set(self.refs.allkeys())
-        for k, revid in to_dict.iteritems():
+        for k, revid in viewitems(to_dict):
             name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
@@ -456,13 +459,13 @@ class GitBranch(ForeignBranch):
         except KeyError:
             pass
         else:
-            if ref != 'HEAD':
+            if ref != b'HEAD':
                 try:
-                    params['branch'] = ref_to_branch_name(ref).encode('utf-8')
+                    params['branch'] = urlutils.escape(ref_to_branch_name(ref))
                 except ValueError:
-                    params['ref'] = ref.encode('utf-8')
+                    params['ref'] = urlutils.quote_from_bytes(ref)
 
-        url = git_url_to_bzr_url(location)
+        url = git_url_to_bzr_url(location.decode('utf-8'))
         return urlutils.join_segment_parameters(url, params)
 
     def set_parent(self, location):
@@ -688,7 +691,7 @@ class LocalGitBranch(GitBranch):
         :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
         """
         refs = self.repository._git.refs
-        for ref_name, unpeeled in refs.as_dict().iteritems():
+        for ref_name, unpeeled in viewitems(refs.as_dict()):
             try:
                 tag_name = ref_to_tag_name(ref_name)
             except (ValueError, UnicodeDecodeError):
@@ -720,7 +723,7 @@ class LocalGitBranch(GitBranch):
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
-    if type(revid) is not str:
+    if not isinstance(revid, bytes):
         raise TypeError(revid)
     # Try in source branch first, it'll be faster
     with local_branch.lock_read():
@@ -1013,7 +1016,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                     raise errors.DivergedBranches(self.source, self.target)
             refs = { self.target.ref: new_ref }
             result.new_revid = stop_revision
-            for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
+            for name, sha in viewitems(self.source.repository._git.refs.as_dict(b"refs/tags")):
                 refs[tag_name_to_ref(name)] = sha
             return refs
         self.target.repository.send_pack(get_changed_refs,
@@ -1152,14 +1155,14 @@ class InterToGitBranch(branch.GenericInterBranch):
             (stop_revno, stop_revision) = self.source.last_revision_info()
         else:
             stop_revno = self.source.revision_id_to_revno(stop_revision)
-        if type(stop_revision) is not str:
+        if not isinstance(stop_revision, bytes):
             raise TypeError(stop_revision)
         main_ref = self.target.ref
         refs = { main_ref: (None, stop_revision) }
         if fetch_tags is None:
             c = self.source.get_config_stack()
             fetch_tags = c.get('branch.fetch_tags')
-        for name, revid in self.source.tags.get_tag_dict().iteritems():
+        for name, revid in viewitems(self.source.tags.get_tag_dict()):
             if self.source.repository.has_revision(revid):
                 ref = tag_name_to_ref(name)
                 if not check_ref_format(ref):
@@ -1195,7 +1198,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             # that hasn't actually been updated.
             return False
         # FIXME: Check for diverged branches
-        for ref, (git_sha, revid) in new_refs.iteritems():
+        for ref, (git_sha, revid) in viewitems(new_refs):
             if ref_equals(ret, ref, git_sha, revid):
                 # Already up to date
                 if git_sha is None:
@@ -1230,7 +1233,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             stop_revision = self.source.last_revision()
         ret = []
         if fetch_tags:
-            for k, v in self.source.tags.get_tag_dict().iteritems():
+            for k, v in viewitems(self.source.tags.get_tag_dict()):
                 ret.append((None, v))
         ret.append((None, stop_revision))
         try:

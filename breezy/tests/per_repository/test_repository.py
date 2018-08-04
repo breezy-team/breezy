@@ -45,6 +45,7 @@ from ...bzr import (
 from ...sixish import (
     BytesIO,
     text_type,
+    unichr,
     )
 from .. import (
     per_repository,
@@ -461,7 +462,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         a_rev = tree.commit('initial empty commit', allow_pointless=True)
         b_rev = tree.commit('second empty commit', allow_pointless=True)
         c_rev = tree.commit('third empty commit', allow_pointless=True)
-        d_rev = 'd-rev'
+        d_rev = b'd-rev'
         repo = tree.branch.repository
         revision_ids = [a_rev, c_rev, b_rev, d_rev]
         revid_with_rev = repo.iter_revisions(revision_ids)
@@ -509,21 +510,21 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repository = tree.branch.repository
         repository.lock_read()
         self.addCleanup(repository.unlock)
-        extracted = dict((i, ''.join(b)) for i, b in
+        extracted = dict((i, b''.join(b)) for i, b in
                          repository.iter_files_bytes(
                          [(file1_id, rev1, 'file1-old'),
                           (file1_id, rev2, 'file1-new'),
                           (file2_id, rev1, 'file2'),
                          ]))
-        self.assertEqual('foo', extracted['file1-old'])
-        self.assertEqual('bar', extracted['file2'])
-        self.assertEqual('baz', extracted['file1-new'])
+        self.assertEqual(b'foo', extracted['file1-old'])
+        self.assertEqual(b'bar', extracted['file2'])
+        self.assertEqual(b'baz', extracted['file1-new'])
         self.assertRaises(errors.RevisionNotPresent, list,
                           repository.iter_files_bytes(
-                          [(file1_id, 'rev3', 'file1-notpresent')]))
+                          [(file1_id, b'rev3', 'file1-notpresent')]))
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
-                          [('file3-id', 'rev3', 'file1-notpresent')]))
+                          [(b'file3-id', b'rev3', 'file1-notpresent')]))
 
     def test_get_graph(self):
         """Bare-bones smoketest that all repositories implement get_graph."""
@@ -542,9 +543,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree.add_parent_tree_id(b'ghost')
         rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
-        parents = graph.get_parent_map(['ghost', rev2])
-        self.assertTrue('ghost' not in parents)
-        self.assertEqual(parents[rev2], (rev1, 'ghost'))
+        parents = graph.get_parent_map([b'ghost', rev2])
+        self.assertTrue(b'ghost' not in parents)
+        self.assertEqual(parents[rev2], (rev1, b'ghost'))
 
     def test_get_known_graph_ancestry(self):
         tree = self.make_branch_and_tree('here')
@@ -606,16 +607,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.addCleanup(b.unlock)
         if b.repository._format.supports_revision_signatures:
             b.repository.start_write_group()
-            b.repository.add_signature_text(rev_a, 'This might be a signature')
+            b.repository.add_signature_text(rev_a, b'This might be a signature')
             b.repository.commit_write_group()
-            self.assertEqual('This might be a signature',
+            self.assertEqual(b'This might be a signature',
                              b.repository.get_signature_text(rev_a))
         else:
             b.repository.start_write_group()
             self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
                 b.repository.add_signature_text, rev_a,
-                'This might be a signature')
+                b'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=None):

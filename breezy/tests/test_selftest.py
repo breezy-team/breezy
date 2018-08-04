@@ -63,6 +63,7 @@ from ..bzr import (
     groupcompress_repo,
     )
 from ..sixish import (
+    PY3,
     StringIO,
     text_type,
     )
@@ -1905,8 +1906,9 @@ class TestExtraAssertions(tests.TestCase):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
+        self.assertIn(str(e),
+            ["None is an instance of <type 'NoneType'> rather than <type 'int'>",
+             "None is an instance of <class 'NoneType'> rather than <class 'int'>"])
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
             self.assertIsInstance, None, int, "it's just not")
@@ -2302,10 +2304,10 @@ class TestRunBzr(tests.TestCase):
         self.assertEqual(err, self.err)
 
     def test_run_bzr_error_regexes(self):
-        self.out = ''
-        self.err = "bzr: ERROR: foobarbaz is not versioned"
+        self.out = b''
+        self.err = b"bzr: ERROR: foobarbaz is not versioned"
         out, err = self.run_bzr_error(
-            ["bzr: ERROR: foobarbaz is not versioned"],
+            [b"bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
 
     def test_encoding(self):
@@ -2655,11 +2657,11 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         self.disable_missing_extensions_warning()
         process = self.start_bzr_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
-        self.assertEqual('running\n', process.stdout.readline())
+        self.assertEqual(b'running\n', process.stdout.readline())
         result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
-        self.assertEqual('', result[0])
-        self.assertEqual('brz: interrupted\n', result[1])
+        self.assertEqual(b'', result[0])
+        self.assertEqual(b'brz: interrupted\n', result[1])
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -2860,7 +2862,7 @@ class TestBlackboxSupport(tests.TestCase):
         out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
-            'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
+            b'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
 class TestTestLoader(tests.TestCase):
@@ -3044,14 +3046,17 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        if __doc__ is not None:
+        if __doc__ is not None and not PY3:
             expected_test_list.extend([
                 # modules_to_doctest
                 'breezy.timestamp.format_highres_date',
                 ])
         suite = tests.test_suite()
-        self.assertEqual({"testmod_names", "modules_to_doctest"},
-            set(calls))
+        if PY3:
+            self.assertEqual({"testmod_names"}, set(calls))
+        else:
+            self.assertEqual({"testmod_names", "modules_to_doctest"},
+                set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):

@@ -89,7 +89,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
 
         clone = tree.controldir.clone('clone').open_workingtree()
         clone.lock_tree_write()
-        clone_root_id = 'new-id'
+        clone_root_id = b'new-id'
         clone.set_root_id(clone_root_id)
         tree_root_id = tree.path2id('')
         clone.unlock()
@@ -104,7 +104,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         basis = tree.basis_tree()
         basis_root_id = basis.path2id('')
         tree.lock_tree_write()
-        tree_root_id = 'new-id'
+        tree_root_id = b'new-id'
         tree.set_root_id(tree_root_id)
         tree.unlock()
         self.assertExpectedIds([tree_root_id, basis_root_id], tree, [''], [basis])
@@ -160,7 +160,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             ['tree/dir/', 'tree/dir/child-moves', 'tree/dir/child-stays',
              'tree/dir/child-goes'])
         tree.add(['dir', 'dir/child-moves', 'dir/child-stays', 'dir/child-goes'],
-                 ['dir', 'child-moves', 'child-stays', 'child-goes'])
+                 [b'dir', b'child-moves', b'child-stays', b'child-goes'])
         tree.commit('create basis')
         basis = tree.basis_tree()
         tree.unversion(['dir/child-goes'])
@@ -173,10 +173,10 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         self.build_tree(['tree/newdir/dir/new-child'])
         tree.add(['newdir/dir/new-child'], ['new-child'])
         self.assertExpectedIds(
-            ['newdir', 'dir', 'child-moves', 'child-stays', 'child-goes',
-             'new-child'], tree, ['newdir'], [basis])
+            [b'newdir', b'dir', b'child-moves', b'child-stays', b'child-goes',
+             b'new-child'], tree, ['newdir'], [basis])
         self.assertExpectedIds(
-            ['dir', 'child-moves', 'child-stays', 'child-goes', 'new-child'],
+            [b'dir', b'child-moves', b'child-stays', b'child-goes', b'new-child'],
             tree, ['dir'], [basis])
 
     def test_unversioned_one_tree(self):
@@ -206,8 +206,8 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.build_tree(['tree/in-one'])
-        tree.add(['in-one'], ['in-one'])
-        self.assertExpectedIds(['in-one'], tree, ['in-one'], [basis])
+        tree.add(['in-one'], [b'in-one'])
+        self.assertExpectedIds([b'in-one'], tree, ['in-one'], [basis])
 
     def test_unversioned_all_of_multiple_trees(self):
         # in this test, the path is unversioned in every tree, and thus

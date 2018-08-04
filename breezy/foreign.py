@@ -88,7 +88,7 @@ class VcsMappingRegistry(registry.Registry):
         The factory must be a callable that takes one parameter: the key.
         It must produce an instance of VcsMapping when called.
         """
-        if ":" in key:
+        if b":" in key:
             raise ValueError("mapping name can not contain colon (:)")
         registry.Registry.register(self, key, factory, help)
 
@@ -116,7 +116,7 @@ class ForeignRevision(Revision):
 
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
         if not "inventory_sha1" in kwargs:
-            kwargs["inventory_sha1"] = ""
+            kwargs["inventory_sha1"] = b""
         super(ForeignRevision, self).__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
         self.mapping = mapping
@@ -171,7 +171,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param foreign_vcs: ForeignVCS instance
         :param help: Description of the foreign VCS
         """
-        if ":" in key or "-" in key:
+        if b":" in key or b"-" in key:
             raise ValueError("vcs name can not contain : or -")
         registry.Registry.register(self, key, foreign_vcs, help)
 
@@ -182,10 +182,10 @@ class ForeignVcsRegistry(registry.Registry):
         :param revid: The bzr revision id
         :return: tuple with foreign revid and vcs mapping
         """
-        if not ":" in revid or not "-" in revid:
+        if b":" not in revid or b"-" not in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
-            foreign_vcs = self.get(revid.split("-")[0])
+            foreign_vcs = self.get(revid.split(b"-")[0])
         except KeyError:
             raise errors.InvalidRevisionId(revid, None)
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)

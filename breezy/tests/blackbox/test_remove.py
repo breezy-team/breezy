@@ -27,7 +27,7 @@ from breezy.tests import (
 from breezy.workingtree import WorkingTree
 from breezy import osutils
 
-_id='-id'
+_id=b'-id'
 a='a'
 b='b/'
 c='b/c'
@@ -43,7 +43,7 @@ class TestRemove(TestCaseWithTransport):
         try:
             self.build_tree(paths)
             for path in paths:
-                file_id=str(path).replace('/', '_') + _id
+                file_id=path.replace('/', '_').encode('utf-8') + _id
                 tree.add(path, file_id)
         finally:
             tree.unlock()
@@ -51,7 +51,7 @@ class TestRemove(TestCaseWithTransport):
 
     def assertFilesDeleted(self, files):
         for f in files:
-            id=f+_id
+            id=f.encode('utf-8')+_id
             self.assertNotInWorkingTree(f)
             self.assertPathDoesNotExist(f)
 
@@ -264,7 +264,7 @@ class TestRemove(TestCaseWithTransport):
                      error_regexes=["removed b", "removed b/c"])
         tree = WorkingTree.open('.')
         self.assertInWorkingTree(a)
-        self.assertEqual(tree.path2id(a), a + _id)
+        self.assertEqual(tree.path2id(a), a.encode('utf-8') + _id)
         self.assertFilesUnversioned([b, c])
 
     def test_remove_with_new_in_dir2(self):

@@ -323,18 +323,18 @@ class TestPush(TestCaseWithInterBranch):
         self.assertFalse(local.is_locked())
         local.push(remote)
         hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertIn('Repository.insert_stream_1.19', hpss_call_names)
+        self.assertIn(b'Repository.insert_stream_1.19', hpss_call_names)
         insert_stream_idx = hpss_call_names.index(
-            'Repository.insert_stream_1.19')
+            b'Repository.insert_stream_1.19')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
         # After inserting the stream the client has no reason to query the
         # remote graph any further.
         bzr_core_trace = Equals(
-            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'Branch.set_last_revision_info', 'Branch.unlock'])
+            [b'Repository.insert_stream_1.19', b'Repository.insert_stream_1.19',
+             b'Branch.set_last_revision_info', b'Branch.unlock'])
         bzr_loom_trace = Equals(
-            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'Branch.set_last_revision_info', 'get', 'Branch.unlock'])
+            [b'Repository.insert_stream_1.19', b'Repository.insert_stream_1.19',
+             b'Branch.set_last_revision_info', b'get', b'Branch.unlock'])
         self.assertThat(calls_after_insert_stream,
             MatchesAny(bzr_core_trace, bzr_loom_trace))
 

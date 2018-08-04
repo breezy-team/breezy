@@ -61,7 +61,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
         # parents first, and then grab the ordered requests.
         needed_ids = [k[-1] for k in self.present_parents]
         needed_ids.extend([k[-1] for k in self.ordered_keys])
-        inv_to_str = self.repo._serializer.write_inventory_to_string
+        inv_to_bytes = self.repo._serializer.write_inventory_to_string
         for inv in self.repo.iter_inventories(needed_ids):
             revision_id = inv.revision_id
             key = (revision_id,)
@@ -71,7 +71,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
                 parent_ids = None
             else:
                 parent_ids = [k[-1] for k in self.parent_map[key]]
-            as_bytes = inv_to_str(inv)
+            as_bytes = inv_to_bytes(inv)
             self._process_one_record(key, (as_bytes,))
             if parent_ids is None:
                 continue
@@ -267,15 +267,6 @@ class BundleReader(object):
 class BundleSerializerV4(bundle_serializer.BundleSerializer):
     """Implement the high-level bundle interface"""
 
-    def write(self, repository, revision_ids, forced_bases, fileobj):
-        """Write a bundle to a file-like object
-
-        For backwards-compatibility only
-        """
-        write_op = BundleWriteOperation.from_old_args(repository, revision_ids,
-                                                      forced_bases, fileobj)
-        return write_op.do_write()
-
     def write_bundle(self, repository, target, base, fileobj):
         """Write a bundle to a file object
 
@@ -285,7 +276,7 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
             at.
         :param fileobj: The file-like object to write to
         """
-        write_op =  BundleWriteOperation(base, target, repository, fileobj)
+        write_op = BundleWriteOperation(base, target, repository, fileobj)
         return write_op.do_write()
 
     def read(self, file):
@@ -301,14 +292,6 @@ class BundleSerializerV4(bundle_serializer.BundleSerializer):
 
 class BundleWriteOperation(object):
     """Perform the operation of writing revisions to a bundle"""
-
-    @classmethod
-    def from_old_args(cls, repository, revision_ids, forced_bases, fileobj):
-        """Create a BundleWriteOperation from old-style arguments"""
-        base, target = cls.get_base_target(revision_ids, forced_bases,
-                                           repository)
-        return BundleWriteOperation(base, target, repository, fileobj,
-                                    revision_ids)
 
     def __init__(self, base, target, repository, fileobj, revision_ids=None):
         self.base = base
@@ -399,12 +382,12 @@ class BundleWriteOperation(object):
 
     def _add_revision_texts(self, revision_order):
         parent_map = self.repository.get_parent_map(revision_order)
-        revision_to_str = self.repository._serializer.write_revision_to_string
+        revision_to_bytes = self.repository._serializer.write_revision_to_string
         revisions = self.repository.get_revisions(revision_order)
         for revision in revisions:
             revision_id = revision.revision_id
             parents = parent_map.get(revision_id, None)
-            revision_text = revision_to_str(revision)
+            revision_text = revision_to_bytes(revision)
             self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id)
             try:

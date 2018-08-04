@@ -19,6 +19,7 @@ from breezy import (
     tests,
     workingtree,
     )
+from breezy.sixish import PY3
 from breezy.tests import script, features
 
 
@@ -97,7 +98,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch"],
             encoding=self.encoding)
-        self.assertEqual(out.decode(self.encoding),
+        self.assertEqual(out if PY3 else out.decode(self.encoding),
             u"Text conflict in \xA7_other_file\n"
             u"Path conflict: \xA7dir3 / \xA7dir2\n"
             u"Text conflict in \xA7file\n")
@@ -108,7 +109,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch", "--text"],
             encoding=self.encoding)
-        self.assertEqual(out.decode(self.encoding),
+        self.assertEqual(out if PY3 else out.decode(self.encoding),
             u"\xA7_other_file\n"
             u"\xA7file\n")
         self.assertEqual(err, "")

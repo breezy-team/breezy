@@ -66,6 +66,8 @@ from ..bzr.repository import (
     )
 from ..sixish import (
     reraise,
+    text_type,
+    viewitems,
     )
 from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
@@ -216,6 +218,15 @@ class Pack(object):
             index._leaf_factory = btree_index._gcchk_factory
         setattr(self, index_type + '_index', index)
 
+    def __lt__(self, other):
+        if not isinstance(other, Pack):
+            raise TypeError(other)
+        return (id(self) < id(other))
+
+    def __hash__(self):
+        return hash((type(self), self.revision_index, self.inventory_index,
+            self.text_index, self.signature_index, self.chk_index))
+
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -245,6 +256,9 @@ class ExistingPack(Pack):
         return "<%s.%s object at 0x%x, %s, %s" % (
             self.__class__.__module__, self.__class__.__name__, id(self),
             self.pack_transport, self.name)
+
+    def __hash__(self):
+        return hash((type(self), self.name))
 
 
 class ResumedPack(ExistingPack):
@@ -1069,7 +1083,7 @@ class RepositoryPackCollection(object):
             self._names = {}
             self._packs_at_load = set()
             for index, key, value in self._iter_disk_pack_index():
-                name = key[0].decode()
+                name = key[0].decode('ascii')
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
             result = True
@@ -1325,7 +1339,7 @@ class RepositoryPackCollection(object):
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in self._names.items():
+        for name, sizes in viewitems(self._names):
             current_nodes.add(
                 ((name.encode(), ), b' '.join(b'%d' % size for size in sizes)))
 

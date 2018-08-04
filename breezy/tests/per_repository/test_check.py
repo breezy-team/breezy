@@ -32,7 +32,7 @@ class TestCleanRepository(TestCaseWithRepository):
         self.overrideEnv('BRZ_EMAIL', 'foo@sample.com')
         builder = branch.get_commit_builder([], branch.get_config_stack())
         list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
-            ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
+            (b'TREE_ROOT', (None, ''), True, (False, True), (None, None),
             (None, ''), (None, 'directory'), (None, False))]))
         builder.finish_inventory()
         rev_id = builder.commit('first post')

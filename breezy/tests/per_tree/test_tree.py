@@ -33,15 +33,15 @@ class TestAnnotate(TestCaseWithTree):
     def test_annotate(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        tree_revision = getattr(tree, 'get_revision_id', lambda: 'current:')()
+        tree_revision = getattr(tree, 'get_revision_id', lambda: b'current:')()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         for revision, line in tree.annotate_iter('a'):
-            self.assertEqual('contents of a\n', line)
+            self.assertEqual(b'contents of a\n', line)
             self.assertEqual(tree_revision, revision)
-        tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
-        for revision, line in tree.annotate_iter('a', default_revision='random:'):
-            self.assertEqual('contents of a\n', line)
+        tree_revision = getattr(tree, 'get_revision_id', lambda: b'random:')()
+        for revision, line in tree.annotate_iter('a', default_revision=b'random:'):
+            self.assertEqual(b'contents of a\n', line)
             self.assertEqual(tree_revision, revision)
 
 
@@ -139,7 +139,7 @@ class TestFileIds(TestCaseWithTree):
         with tree.lock_read():
             self.assertEqual(u'a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
-            self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
+            self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
 
     def test_all_file_ids(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -338,7 +338,7 @@ class TestGetFileSha1(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        expected = osutils.sha_strings(b'file content')
+        expected = osutils.sha_string(b'file content')
         self.assertEqual(expected, tree.get_file_sha1('file'))
 
 
@@ -358,7 +358,7 @@ class TestGetFileVerifier(TestCaseWithTree):
             tree.get_file_verifier('file1'),
             tree.get_file_verifier('file2'))
         if kind == "SHA1":
-            expected = osutils.sha_strings(b'file content')
+            expected = osutils.sha_string(b'file content')
             self.assertEqual(expected, data)
 
 

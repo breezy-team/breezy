@@ -47,7 +47,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # format 'Bazaar Working Tree format 4'
         # stat-cache = ??
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar Working Tree Format 4 (bzr 0.15)\n',
+        self.assertEqualDiff(b'Bazaar Working Tree Format 4 (bzr 0.15)\n',
                              t.get('format').read())
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
@@ -126,12 +126,12 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree.lock_write()
         self.addCleanup(subtree.unlock)
         self.build_tree(['subdir/file-a',])
-        subtree.add(['file-a'], ['id-a'])
+        subtree.add(['file-a'], [b'id-a'])
         rev1 = subtree.commit('commit in subdir')
 
         subtree2 = subtree.controldir.sprout('subdir2').open_workingtree()
         self.build_tree(['subdir2/file-b'])
-        subtree2.add(['file-b'], ['id-b'])
+        subtree2.add(['file-b'], [b'id-b'])
         rev2 = subtree2.commit('commit in subdir2')
 
         subtree.flush()
@@ -578,15 +578,15 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # a diff against the basis should give us a directory and the root (as
         # the root is new too).
         tree.lock_read()
-        expected = [('dir-id',
+        expected = [(b'dir-id',
             (None, u'dir'),
             True,
             (False, True),
-            (None, 'root'),
+            (None, b'root'),
             (None, u'dir'),
             (None, 'directory'),
             (None, False)),
-            ('root', (None, u''), True, (False, True), (None, None),
+            (b'root', (None, u''), True, (False, True), (None, None),
             (None, u''), (None, 'directory'), (None, 0))]
         self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
             specific_files=['dir'])))
@@ -598,11 +598,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         os.rename('dir', 'also-dir')
         # now the diff will use the fast path
         tree.lock_read()
-        expected = [('dir-id',
+        expected = [(b'dir-id',
             (u'dir', u'dir'),
             True,
             (True, True),
-            ('root', 'root'),
+            (b'root', b'root'),
             ('dir', 'dir'),
             ('directory', None),
             (False, False))]
@@ -657,11 +657,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                           (None, 'versioned/unversioned'),
                           (None, 'versioned2/unversioned'),
                          ], changes)
-        self.assertEqual(['', 'versioned', 'versioned2'], returned)
+        self.assertEqual([b'', b'versioned', b'versioned2'], returned)
         del returned[:] # reset
         changes = [c[1] for c in tree.iter_changes(basis)]
         self.assertEqual([], changes)
-        self.assertEqual(['', 'versioned', 'versioned2'], returned)
+        self.assertEqual([b'', b'versioned', b'versioned2'], returned)
 
     def test_iter_changes_unversioned_error(self):
         """ Check if a PathsNotVersionedError is correctly raised and the
@@ -717,7 +717,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.get_tree_with_cachable_file_foo()
         expected_sha1 = osutils.sha_file_by_name('foo')
         statvalue = os.lstat("foo")
-        tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
+        tree._observed_sha1(b"foo-id", "foo", (expected_sha1, statvalue))
         entry = tree._get_entry(path="foo")
         entry_state = entry[1][0]
         self.assertEqual(expected_sha1, entry_state[1])
@@ -739,7 +739,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         with tree.lock_read():
             current_sha1 = tree._get_entry(path="foo")[1][0][1]
         with tree.lock_write():
-            tree._observed_sha1("foo-id", "foo",
+            tree._observed_sha1(b"foo-id", "foo",
                 (osutils.sha_file_by_name('foo'), os.lstat("foo")))
             # Must not have changed
             self.assertEqual(current_sha1,
@@ -755,7 +755,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         file_obj, statvalue = tree.get_file_with_stat('foo')
         expected = os.lstat('foo')
         self.assertEqualStat(expected, statvalue)
-        self.assertEqual(["contents of foo\n"], file_obj.readlines())
+        self.assertEqual([b"contents of foo\n"], file_obj.readlines())
 
 
 class TestCorruptDirstate(TestCaseWithTransport):
@@ -777,9 +777,9 @@ class TestCorruptDirstate(TestCaseWithTransport):
             state = tree.current_dirstate()
             state._read_dirblocks_if_needed()
             # Now add in an invalid entry, a rename with a dangling pointer
-            state._dirblocks[1][1].append((('', 'foo', 'foo-id'),
-                                            [('f', '', 0, False, ''),
-                                             ('r', 'bar', 0, False, '')]))
+            state._dirblocks[1][1].append(((b'', b'foo', b'foo-id'),
+                                            [(b'f', b'', 0, False, b''),
+                                             (b'r', b'bar', 0, False, b'')]))
             self.assertListRaises(dirstate.DirstateCorrupt,
                                   tree.iter_changes, tree.basis_tree())
 
@@ -813,16 +813,16 @@ class TestCorruptDirstate(TestCaseWithTransport):
         state = tree.current_dirstate()
         state._read_dirblocks_if_needed()
         self.assertEqual([
-            ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', b'file-id'), ['f', 'f'])]),
+            (b'', [((b'', b'', root_id), [b'd', b'd'])]),
+            (b'', [((b'', b'dir', b'dir-id'), [b'd', b'd'])]),
+            (b'dir', [((b'dir', b'file', b'file-id'), [b'f', b'f'])]),
         ],  self.get_simple_dirblocks(state))
 
         tree.remove(['dir/file'])
         self.assertEqual([
-            ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', b'file-id'), ['a', 'f'])]),
+            (b'', [((b'', b'', root_id), [b'd', b'd'])]),
+            (b'', [((b'', b'dir', b'dir-id'), [b'd', b'd'])]),
+            (b'dir', [((b'dir', b'file', b'file-id'), [b'a', b'f'])]),
         ],  self.get_simple_dirblocks(state))
         # Make sure the removal is written to disk
         tree.flush()
@@ -846,9 +846,9 @@ class TestCorruptDirstate(TestCaseWithTransport):
         state = tree.current_dirstate()
         state._read_dirblocks_if_needed()
         self.assertEqual([
-            ('', [(('', '', root_id), ['d', 'd'])]),
-            ('', [(('', 'dir', b'dir-id'), ['d', 'd'])]),
-            ('dir', [(('dir', 'file', b'file-id'), ['a', 'f'])]),
+            (b'', [((b'', b'', root_id), [b'd', b'd'])]),
+            (b'', [((b'', b'dir', b'dir-id'), [b'd', b'd'])]),
+            (b'dir', [((b'dir', b'file', b'file-id'), [b'a', b'f'])]),
         ],  self.get_simple_dirblocks(state))
 
 

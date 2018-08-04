@@ -31,6 +31,7 @@ from ... import (
     msgeditor,
     )
 from ...controldir import ControlDir
+from ...sixish import PY3
 from .. import (
     test_foreign,
     features,
@@ -145,7 +146,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
         te = osutils.get_terminal_encoding()
-        self.assertContainsRe(err.decode(te),
+        self.assertContainsRe(err if PY3 else err.decode(te),
             u'The commit message is a file name:',
             flags=reflags)
 
@@ -164,7 +165,7 @@ brz: ERROR: No changes to commit.\
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE|re.DOTALL|re.UNICODE
             te = osutils.get_terminal_encoding()
-            self.assertContainsRe(err.decode(te, 'replace'),
+            self.assertContainsRe(err if PY3 else err.decode(te, 'replace'),
                 u'The commit message is a file name:',
                 flags=reflags)
         finally:
@@ -421,7 +422,7 @@ brz: ERROR: No changes to commit.\
         # work as a merge
         # retcode 1 as we expect a text conflict
         self.run_bzr('update u1', retcode=1)
-        self.assertFileEqual('''\
+        self.assertFileEqual(b'''\
 <<<<<<< TREE
 first offline change in u1
 =======
@@ -544,9 +545,9 @@ altered in u2
             ['commit', '-m', 'hello',
              u'--fixes=generic:\u20ac', 'tree/hello.txt'],
             encoding='utf-8', retcode=3)
-        self.assertEqual(b'', output)
+        self.assertEqual('', output)
         self.assertContainsRe(err,
-            b'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
+            'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
@@ -575,9 +576,9 @@ altered in u2
         # we don't care about for this test.
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = dict(last_rev.properties)
-        del properties['branch-nick']
+        del properties[u'branch-nick']
 
-        self.assertEqual({'bugs': 'https://launchpad.net/bugs/234 fixed'},
+        self.assertEqual({u'bugs': 'https://launchpad.net/bugs/234 fixed'},
                          properties)
 
     def test_fixes_multiple_bugs_sets_properties(self):
@@ -595,7 +596,7 @@ altered in u2
         del properties['branch-nick']
 
         self.assertEqual(
-            {'bugs': 'https://launchpad.net/bugs/123 fixed\n'
+            {u'bugs': 'https://launchpad.net/bugs/123 fixed\n'
                      'https://launchpad.net/bugs/235 fixed'},
             properties)
 

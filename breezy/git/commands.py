@@ -33,6 +33,7 @@ from ..option import (
     )
 from ..sixish import (
     text_type,
+    viewitems,
     )
 
 
@@ -129,7 +130,7 @@ class cmd_git_import(Command):
         refs = interrepo.fetch()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, (name, sha) in enumerate(refs.iteritems()):
+            for i, (name, sha) in enumerate(viewitems(refs)):
                 try:
                     branch_name = ref_to_branch_name(name)
                 except ValueError:
@@ -150,7 +151,7 @@ class cmd_git_import(Command):
                 source_branch.tags.merge_to(head_branch.tags)
                 if not head_branch.get_parent():
                     url = urlutils.join_segment_parameters(
-                        source_branch.base, {"branch": urllib.quote(branch_name.encode('utf-8'), '')})
+                        source_branch.base, {"branch": urlutils.escape(branch_name)})
                     head_branch.set_parent(url)
         finally:
             pb.finished()
@@ -232,8 +233,8 @@ class cmd_git_refs(Command):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
-            for k, v in refs.as_dict().iteritems():
-                self.outf.write("%s -> %s\n" % (k, v))
+            for k, v in sorted(viewitems(refs.as_dict())):
+                self.outf.write("%s -> %s\n" % (k.decode('utf-8'), v.decode('utf-8')))
 
 
 class cmd_git_apply(Command):

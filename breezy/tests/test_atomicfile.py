@@ -75,9 +75,9 @@ class TestAtomicFile(TestCaseInTempDir):
 
         contents = open('test', 'rb').read()
         if sys.platform == 'win32':
-            self.assertEqual('foo\r\n', contents)
+            self.assertEqual(b'foo\r\n', contents)
         else:
-            self.assertEqual('foo\n', contents)
+            self.assertEqual(b'foo\n', contents)
 
     def can_sys_preserve_mode(self):
         # PLATFORM DEFICIENCY/ TestSkipped

@@ -36,13 +36,13 @@ class TestFetchBase(TestCaseWithRepository):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None)),
-            ('add', ('a', b'a-id', 'file', ''.join(content))),
+            ('add', ('a', b'a-id', 'file', b''.join(content))),
             ], revision_id=b'A-id')
         content.append(b'and some more lines for B\n')
         builder.build_snapshot([b'A-id'], [
             ('modify', ('a', b''.join(content)))],
             revision_id=b'B-id')
-        content.append('and yet even more content for C\n')
+        content.append(b'and yet even more content for C\n')
         builder.build_snapshot([b'B-id'], [
             ('modify', ('a', b''.join(content)))],
             revision_id=b'C-id')
@@ -101,14 +101,14 @@ class TestFetch(TestFetchBase):
         # Now we should be able to branch from the remote location to a local
         # location
         final_b = target_b.controldir.sprout('final').open_branch()
-        self.assertEqual('C-id', final_b.last_revision())
+        self.assertEqual(b'C-id', final_b.last_revision())
 
         # bzrdir.sprout() has slightly different code paths if you supply a
         # revision_id versus not. If you supply revision_id, then you get a
         # PendingAncestryResult for the search, versus a SearchResult...
         final2_b = target_b.controldir.sprout('final2',
                                           revision_id=b'C-id').open_branch()
-        self.assertEqual('C-id', final_b.last_revision())
+        self.assertEqual(b'C-id', final_b.last_revision())
 
     def make_source_with_ghost_and_stacked_target(self):
         builder = self.make_branch_builder('source')

@@ -89,60 +89,60 @@ class TestGitShaMap:
 
     def test_lookup_notfound(self):
         self.assertRaises(KeyError, list,
-            self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
+            self.map.lookup_git_sha(b"5686645d49063c73d35436192dfc9a160c672301"))
 
     def test_blob(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision("myrevid"))
-        updater.add_object(self._get_test_commit(), { "testament3-sha1": "Test" }, None)
+        updater = self.cache.get_updater(Revision(b"myrevid"))
+        updater.add_object(self._get_test_commit(), { "testament3-sha1": b"Test" }, None)
         b = Blob()
-        b.data = "TEH BLOB"
-        updater.add_object(b, ("myfileid", "myrevid"), None)
+        b.data = b"TEH BLOB"
+        updater.add_object(b, (b"myfileid", b"myrevid"), None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEqual(
-            [("blob", ("myfileid", "myrevid"))],
+            [("blob", (b"myfileid", b"myrevid"))],
             list(self.map.lookup_git_sha(b.id)))
         self.assertEqual(b.id,
-            self.map.lookup_blob_id("myfileid", "myrevid"))
+            self.map.lookup_blob_id(b"myfileid", b"myrevid"))
 
     def test_tree(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision("somerevid"))
+        updater = self.cache.get_updater(Revision(b"somerevid"))
         updater.add_object(self._get_test_commit(), {
-            "testament3-sha1": "mytestamentsha" }, None)
+            "testament3-sha1": b"mytestamentsha" }, None)
         t = Tree()
-        t.add("somename", stat.S_IFREG, Blob().id)
-        updater.add_object(t, ("fileid", "myrevid"), "")
+        t.add(b"somename", stat.S_IFREG, Blob().id)
+        updater.add_object(t, (b"fileid", b"myrevid"), b"")
         updater.finish()
         self.map.commit_write_group()
-        self.assertEqual([("tree", ("fileid", "myrevid"))],
+        self.assertEqual([("tree", (b"fileid", b"myrevid"))],
             list(self.map.lookup_git_sha(t.id)))
         # It's possible for a backend to not implement lookup_tree
         try:
             self.assertEqual(t.id,
-                self.map.lookup_tree_id("fileid", "myrevid"))
+                self.map.lookup_tree_id(b"fileid", b"myrevid"))
         except NotImplementedError:
             pass
 
     def test_revids(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision("myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, {"testament3-sha1": "mtestament"}, None)
+        updater.add_object(c, {"testament3-sha1": b"mtestament"}, None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEqual(["myrevid"], list(self.map.revids()))
+        self.assertEqual([b"myrevid"], list(self.map.revids()))
 
     def test_missing_revisions(self):
         self.map.start_write_group()
-        updater = self.cache.get_updater(Revision("myrevid"))
+        updater = self.cache.get_updater(Revision(b"myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, {"testament3-sha1": "testament"}, None)
+        updater.add_object(c, {"testament3-sha1": b"testament"}, None)
         updater.finish()
         self.map.commit_write_group()
-        self.assertEqual(set(["lala", "bla"]),
-            set(self.map.missing_revisions(["myrevid", "lala", "bla"])))
+        self.assertEqual(set([b"lala", b"bla"]),
+            set(self.map.missing_revisions([b"myrevid", b"lala", b"bla"])))
 
 
 class DictGitShaMapTests(TestCase,TestGitShaMap):

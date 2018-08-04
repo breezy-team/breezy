@@ -24,7 +24,7 @@ except ImportError:  # python < 3
     from urlparse import urlsplit
 try:
     from xmlrpc.client import Fault
-except ImportError:  # python < 3
+except ImportError:  # Python < 3
     from xmlrpclib import Fault
 
 from ... import (

@@ -290,7 +290,7 @@ class BTreeTester(tests.TestCase):
     def test_adds(self):
         """File/inventory adds"""
         btree = self.make_tree_2()
-        add_patch = self.unified_diff([], ["Extra cheese\n"])
+        add_patch = self.unified_diff([], [b"Extra cheese\n"])
         btree.note_patch("grandparent/parent/file", add_patch)
         btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
         btree.note_target('grandparent/parent/symlink', 'venus')
@@ -308,7 +308,7 @@ class BTreeTester(tests.TestCase):
         """File/inventory adds, with patch-compatibile renames"""
         btree = self.make_tree_2()
         btree.contents_by_id = False
-        add_patch = self.unified_diff(["Hello\n"], ["Extra cheese\n"])
+        add_patch = self.unified_diff([b"Hello\n"], [b"Extra cheese\n"])
         btree.note_patch("grandparent/parent/file", add_patch)
         btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
         btree.note_target('grandparent/parent/symlink', 'venus')
@@ -332,7 +332,7 @@ class BTreeTester(tests.TestCase):
     def test_get_file(self):
         """Get file contents"""
         btree = self.make_tree_3()
-        mod_patch = self.unified_diff(["Anchovies\n"], ["Lemon\n"])
+        mod_patch = self.unified_diff([b"Anchovies\n"], [b"Lemon\n"])
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
         self.get_file_test(btree)
 
@@ -340,9 +340,9 @@ class BTreeTester(tests.TestCase):
         """Get file contents, with patch-compatible renames"""
         btree = self.make_tree_3()
         btree.contents_by_id = False
-        mod_patch = self.unified_diff([], ["Lemon\n"])
+        mod_patch = self.unified_diff([], [b"Lemon\n"])
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        mod_patch = self.unified_diff([], ["Hello\n"])
+        mod_patch = self.unified_diff([], [b"Hello\n"])
         btree.note_patch("grandparent/alt_parent/file", mod_patch)
         self.get_file_test(btree)
 
@@ -469,8 +469,7 @@ class BundleTester(object):
                              len(bundle_rev.parent_ids))
         self.assertEqual(rev_ids,
                          [r.revision_id for r in bundle.real_revisions])
-        self.valid_apply_bundle(base_rev_id, bundle,
-                                   checkout_dir=checkout_dir)
+        self.valid_apply_bundle(base_rev_id, bundle, checkout_dir=checkout_dir)
 
         return bundle
 
@@ -1211,7 +1210,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
                              )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
                          rev.properties)
@@ -1248,7 +1247,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
                              )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'empty':'', 'one':'two'},
                          rev.properties)
@@ -1274,7 +1273,7 @@ class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
                              )
         bundle = read_bundle(bundle_sio)
         revision_info = bundle.revisions[0]
-        self.assertEqual('rev1', revision_info.revision_id)
+        self.assertEqual(b'rev1', revision_info.revision_id)
         rev = revision_info.as_revision()
         self.assertEqual({'branch-nick':'tree', 'a':'4', 'b':'3', 'c':'2',
                           'd':'1'}, rev.properties)
@@ -1412,7 +1411,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree.commit('changed file', rev_id=b'rev2')
         s = BytesIO()
         serializer = BundleSerializerV4('1.0')
-        serializer.write(tree.branch.repository, [b'rev1', b'rev2'], {}, s)
+        with tree.lock_read():
+            serializer.write_bundle(tree.branch.repository, b'rev2', b'null:', s)
         s.seek(0)
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
@@ -1471,7 +1471,8 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         repo_b = tree_b.branch.repository
         s = BytesIO()
         serializer = BundleSerializerV4('4')
-        serializer.write(tree_a.branch.repository, [b'A', b'B'], {}, s)
+        with tree_a.lock_read():
+            serializer.write_bundle(tree_a.branch.repository, b'B', b'null:', s)
         s.seek(0)
         install_bundle(repo_b, serializer.read(s))
         self.assertTrue(repo_b.has_signature_for_revision_id(b'B'))
@@ -1662,17 +1663,17 @@ class V4_2aBundleTester(V4BundleTester):
                                        revision_id=b'a@cset-0-2a').open_branch()
         bundle_txt, rev_ids = self.create_bundle_text(b'a@cset-0-2a',
                                                       b'a@cset-0-3')
-        self.assertEqual([b'a@cset-0-2b', b'a@cset-0-3'], rev_ids)
+        self.assertEqual(set([b'a@cset-0-2b', b'a@cset-0-3']), set(rev_ids))
         bundle = read_bundle(bundle_txt)
         target.lock_write()
         self.addCleanup(target.unlock)
         install_bundle(target.repository, bundle)
-        inv1 = self.b1.repository.inventories.get_record_stream([
+        inv1 = next(self.b1.repository.inventories.get_record_stream([
             (b'a@cset-0-3',)], 'unordered',
-            True).next().get_bytes_as('fulltext')
-        inv2 = target.repository.inventories.get_record_stream([
+            True)).get_bytes_as('fulltext')
+        inv2 = next(target.repository.inventories.get_record_stream([
             (b'a@cset-0-3',)], 'unordered',
-            True).next().get_bytes_as('fulltext')
+            True)).get_bytes_as('fulltext')
         self.assertEqualDiff(inv1, inv2)
 
 

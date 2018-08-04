@@ -66,7 +66,7 @@ class TCPClient(object):
                 self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
             except socket.error as e:
-                if e[0] in (errno.EBADF, errno.ENOTCONN):
+                if e.errno in (errno.EBADF, errno.ENOTCONN):
                     # Right, the socket is already down
                     pass
                 else:

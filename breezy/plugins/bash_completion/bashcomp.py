@@ -288,6 +288,9 @@ class OptionData(object):
     def __cmp__(self, other):
         return cmp(self.name, other.name)
 
+    def __lt__(self, other):
+        return self.name < other.name
+
 
 class DataCollector(object):
 
@@ -366,7 +369,7 @@ class DataCollector(object):
 
     def option(self, opt):
         optswitches = {}
-        parser = option.get_optparser({opt.name: opt})
+        parser = option.get_optparser([opt])
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())

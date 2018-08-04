@@ -114,6 +114,7 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
     :param base_revision_id: Revision assumed to be present in repositories
          applying the bundle.
     :param out: Output file.
+    :return: List of revision ids written
     """
     with repository.lock_read():
         return get_serializer(format).write_bundle(repository, revision_id,
@@ -144,22 +145,9 @@ class BundleSerializer(object):
         :param base: The most recent of ancestor of the revision that does not
             need to be included in the bundle
         :param fileobj: The file to output to
+        :return: List of revision ids written
         """
         raise NotImplementedError
-
-    def _write_bundle(self, repository, revision_id, base_revision_id, out):
-        """Helper function for translating write_bundle to write"""
-        forced_bases = {revision_id:base_revision_id}
-        if base_revision_id is NULL_REVISION:
-            base_revision_id = None
-        graph = repository.get_graph()
-        revision_ids = graph.find_unique_ancestors(revision_id,
-            [base_revision_id])
-        revision_ids = list(repository.get_graph().iter_topo_order(
-            revision_ids))
-        revision_ids.reverse()
-        self.write(repository, revision_ids, forced_bases, out)
-        return revision_ids
 
 
 def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
@@ -168,7 +156,7 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
                   allow_binary=True)
     temp.seek(0)
     base64.encode(temp, to_file)
-    to_file.write('\n')
+    to_file.write(b'\n')
 
 serializer_registry.register_lazy('0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
 serializer_registry.register_lazy('0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')

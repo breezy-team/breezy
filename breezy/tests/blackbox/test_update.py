@@ -192,7 +192,7 @@ Your local commits will now show as pending merges with 'brz status', and can be
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
         checkout_dir.set_branch_reference(master.branch)
-        checkout1 = checkout_dir.create_workingtree('m1')
+        checkout1 = checkout_dir.create_workingtree(b'm1')
 
         # Create a second branch, with an extra commit
         other = master.controldir.sprout('other').open_workingtree()
@@ -209,7 +209,7 @@ Your local commits will now show as pending merges with 'brz status', and can be
         os.chdir('checkout1')
         self.run_bzr('merge ../other')
 
-        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+        self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
         # At this point, 'commit' should fail, because we are out of date
         self.run_bzr_error(["please run 'brz update'"],
@@ -225,7 +225,7 @@ Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         # The pending merges should still be there
-        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+        self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
     def test_readonly_lightweight_update(self):
         """Update a light checkout of a readonly branch"""
@@ -248,7 +248,7 @@ Updated to revision 2 of branch %s
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
         checkout_dir.set_branch_reference(master.branch)
-        checkout1 = checkout_dir.create_workingtree('m1')
+        checkout1 = checkout_dir.create_workingtree(b'm1')
 
         # Create a second branch, with an extra commit
         other = master.controldir.sprout('other').open_workingtree()
@@ -258,7 +258,7 @@ Updated to revision 2 of branch %s
 
         # Merge the other branch into checkout -  'start reviewing a patch'
         checkout1.merge_from_branch(other.branch)
-        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+        self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
         # Create a new commit in the master branch - 'someone else lands its'
         master.merge_from_branch(other.branch)
@@ -295,7 +295,7 @@ $ brz update -r 1
 ''')
         self.assertPathExists('./file1')
         self.assertPathDoesNotExist('./file2')
-        self.assertEqual(['m1'], master.get_parent_ids())
+        self.assertEqual([b'm1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
         """Ensure that we can update -r to dotted revisions.
@@ -381,12 +381,12 @@ $ brz update -r revid:m2
         # check for conflict notification
         self.assertContainsString(err,
                                   ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
-        
-        self.assertEqualDiff('<<<<<<< TREE\n'
-                             'fie||||||| BASE-REVISION\n'
-                             'foo=======\n'
-                             'fee>>>>>>> MERGE-SOURCE\n',
-                             open('hello').read())
+        with open('hello', 'rb') as f:
+            self.assertEqualDiff(b'<<<<<<< TREE\n'
+                                 b'fie||||||| BASE-REVISION\n'
+                                 b'foo=======\n'
+                                 b'fee>>>>>>> MERGE-SOURCE\n',
+                                 f.read())
 
     def test_update_checkout_prevent_double_merge(self):
         """"Launchpad bug 113809 in brz "update performs two merges"

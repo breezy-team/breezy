@@ -37,6 +37,7 @@ from .. import (
 from ..bzr import (
     remote,
     )
+from ..sixish import PY3
 from ..bzr.smart import client, medium
 
 
@@ -187,7 +188,7 @@ class RemoteTransport(transport.ConnectedTransport):
         except errors.ErrorFromSmartServer as err:
             # The first argument, if present, is always a path.
             if args:
-                context = {'relpath': args[0]}
+                context = {'relpath': args[0].decode('utf-8')}
             else:
                 context = {}
             self._translate_error(err, **context)
@@ -402,7 +403,10 @@ class RemoteTransport(transport.ConnectedTransport):
                 #       not have a real string.
                 if key == cur_offset_and_size:
                     yield cur_offset_and_size[0], this_data
-                    cur_offset_and_size = next_offset[0] = next(offset_stack)
+                    try:
+                        cur_offset_and_size = next_offset[0] = next(offset_stack)
+                    except StopIteration:
+                        return
                 else:
                     data_map[key] = this_data
             data_offset += c_offset.length
@@ -463,13 +467,13 @@ class RemoteTransport(transport.ConnectedTransport):
     def list_dir(self, relpath):
         resp = self._call2(b'list_dir', self._remote_path(relpath))
         if resp[0] == b'names':
-            return [name.encode('ascii') for name in resp[1:]]
+            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
         resp = self._call2(b'iter_files_recursive', self._remote_path(''))
         if resp[0] == b'names':
-            return resp[1:]
+            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
 

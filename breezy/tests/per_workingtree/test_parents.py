@@ -349,19 +349,19 @@ class TestAddParent(TestParents):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
-            tree.add_parent_tree, ('first-revision', None))
+            tree.add_parent_tree, (b'first-revision', None))
 
     def test_add_first_parent_tree_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         try:
-            tree.add_parent_tree(('first-revision', None),
+            tree.add_parent_tree((b'first-revision', None),
                 allow_leftmost_as_ghost=True)
         except errors.GhostRevisionUnusableHere:
             self.assertFalse(tree._format.supports_leftmost_parent_id_as_ghost)
         else:
             self.assertTrue(tree._format.supports_leftmost_parent_id_as_ghost)
-            self.assertConsistentParents(['first-revision'], tree)
+            self.assertConsistentParents([b'first-revision'], tree)
 
     def test_add_second_parent_tree(self):
         """Test adding the second parent id"""
@@ -378,11 +378,11 @@ class TestAddParent(TestParents):
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
         if tree._format.supports_righthand_parent_id_as_ghost:
-            tree.add_parent_tree(('second', None))
-            self.assertConsistentParents([first_revision, 'second'], tree)
+            tree.add_parent_tree((b'second', None))
+            self.assertConsistentParents([first_revision, b'second'], tree)
         else:
             self.assertRaises(errors.GhostRevisionUnusableHere,
-                    tree.add_parent_tree, ('second', None))
+                    tree.add_parent_tree, (b'second', None))
 
 
 class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
@@ -528,7 +528,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         basis_shape = Inventory(root_id=None)  # empty tree
         new_shape = Inventory()  # tree with a root
         self.assertTransitionFromBasisToShape(basis_shape, None, new_shape,
-            'new_parent')
+            b'new_parent')
 
     def test_no_parents_full_tree(self):
         """Test doing a regular initial commit with files and dirs."""
@@ -537,11 +537,11 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         new_shape = Inventory(root_id=None)
         self.add_dir(new_shape, revid, b'root-id', None, '')
         self.add_link(new_shape, revid, b'link-id', b'root-id', 'link', 'target')
-        self.add_file(new_shape, revid, b'file-id', b'root-id', 'file', '1' * 32,
+        self.add_file(new_shape, revid, b'file-id', b'root-id', 'file', b'1' * 32,
             12)
         self.add_dir(new_shape, revid, b'dir-id', b'root-id', 'dir')
         self.add_file(new_shape, revid, b'subfile-id', b'dir-id', 'subfile',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, None, new_shape,
             revid)
 
@@ -550,12 +550,12 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         basis_shape = Inventory(root_id=None)
         self.add_dir(basis_shape, old_revid, b'root-id', None, '')
         self.add_file(basis_shape, old_revid, b'file-id', b'root-id', 'file',
-            '1' * 32, 12)
+            b'1' * 32, 12)
         new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
         self.add_file(new_shape, new_revid, b'file-id', b'root-id', 'file',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
@@ -575,7 +575,7 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
 
     def test_kind_changes(self):
         def do_file(inv, revid):
-            self.add_file(inv, revid, b'path-id', b'root-id', 'path', '1' * 32,
+            self.add_file(inv, revid, b'path-id', b'root-id', 'path', b'1' * 32,
                 12)
 
         def do_link(inv, revid):
@@ -600,21 +600,21 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                     new_shape, new_revid)
 
     def test_content_from_second_parent_is_dropped(self):
-        left_revid = 'left-parent'
+        left_revid = b'left-parent'
         basis_shape = Inventory(root_id=None)
         self.add_dir(basis_shape, left_revid, b'root-id', None, '')
         self.add_link(basis_shape, left_revid, b'link-id', b'root-id', 'link',
             'left-target')
         # the right shape has content - file, link, subdir with a child,
         # that should all be discarded by the call.
-        right_revid = 'right-parent'
+        right_revid = b'right-parent'
         right_shape = Inventory(root_id=None)
         self.add_dir(right_shape, left_revid, b'root-id', None, '')
         self.add_link(right_shape, right_revid, b'link-id', b'root-id', 'link',
             'some-target')
         self.add_dir(right_shape, right_revid, b'subdir-id', b'root-id', 'dir')
         self.add_file(right_shape, right_revid, b'file-id', b'subdir-id', 'file',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, left_revid, new_revid)
@@ -712,9 +712,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         self.add_link(basis_shape, old_revid, b'link-id-C', b'root-id', 'C', 'C')
         self.add_link(basis_shape, old_revid, b'link-id-D', b'root-id', 'D', 'D')
         self.add_file(basis_shape, old_revid, b'file-id-E', b'root-id', 'E',
-            '1' * 32, 12)
+            b'1' * 32, 12)
         self.add_file(basis_shape, old_revid, b'file-id-F', b'root-id', 'F',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
@@ -723,9 +723,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         self.add_link(new_shape, new_revid, b'link-id-C', b'root-id', 'D', 'C')
         self.add_link(new_shape, new_revid, b'link-id-D', b'root-id', 'C', 'D')
         self.add_file(new_shape, new_revid, b'file-id-E', b'root-id', 'F',
-            '1' * 32, 12)
+            b'1' * 32, 12)
         self.add_file(new_shape, new_revid, b'file-id-F', b'root-id', 'E',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
@@ -741,9 +741,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         self.add_dir(new_shape, new_revid, b'dir-id-A', b'root-id', 'A')
         self.add_link(new_shape, new_revid, b'link-id-B', b'root-id', 'B', 'C')
         self.add_file(new_shape, new_revid, b'file-id-C', b'root-id', 'C',
-            '1' * 32, 12)
+            b'1' * 32, 12)
         self.add_file(new_shape, new_revid, b'file-id-D', b'dir-id-A', 'D',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 
@@ -756,9 +756,9 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         self.add_dir(basis_shape, old_revid, b'dir-id-A', b'root-id', 'A')
         self.add_link(basis_shape, old_revid, b'link-id-B', b'root-id', 'B', 'C')
         self.add_file(basis_shape, old_revid, b'file-id-C', b'root-id', 'C',
-            '1' * 32, 12)
+            b'1' * 32, 12)
         self.add_file(basis_shape, old_revid, b'file-id-D', b'dir-id-A', 'D',
-            '2' * 32, 24)
+            b'2' * 32, 24)
         new_revid = b'new-parent'
         new_shape = Inventory(root_id=None)
         self.add_new_root(new_shape, old_revid, new_revid)
@@ -819,6 +819,6 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
         self.add_new_root(new_shape, old_revid, new_revid)
         self.add_dir(new_shape, old_revid, b'dir-id-A', b'root-id', 'A')
         self.add_file(new_shape, new_revid, b'file-id-B', b'dir-id-A', 'B',
-            '1' * 32, 24)
+            b'1' * 32, 24)
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
                 new_shape, new_revid, set_current_inventory=False)

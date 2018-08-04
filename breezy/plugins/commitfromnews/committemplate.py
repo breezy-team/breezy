@@ -59,7 +59,7 @@ class CommitTemplate(object):
             _, new_chunks = list(
                 self.commit.builder.repository.iter_files_bytes(
                     [(found_entry.file_id, found_entry.revision, None)]))[0]
-            content = ''.join(new_chunks)
+            content = b''.join(new_chunks).decode('utf-8')
             return self.merge_message(content)
         else:
             # Get a diff. XXX Is this hookable? I thought it was, can't find it
@@ -86,7 +86,7 @@ class CommitTemplate(object):
                     continue
                 if tag == 'delete':
                     continue
-                new_lines.extend(new[j1:j2])
+                new_lines.extend([l.decode('utf-8') for l in new[j1:j2]])
             if not self.commit.revprops.get('bugs'):
                 # TODO: Allow the user to configure the bug tracker to use
                 # rather than hardcoding Launchpad.

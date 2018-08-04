@@ -193,13 +193,13 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual(set(),
                 repo.inventories.get_missing_compression_parent_keys())
         self.assertEqual(
-            {(b'inventories', b'rev-1')},
+            {('inventories', b'rev-1')},
             repo.get_missing_parent_inventories())
         # Resuming the write group does not affect
         # get_missing_parent_inventories.
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
         self.assertEqual(
-            {(b'inventories', b'rev-1')},
+            {('inventories', b'rev-1')},
             reopened_repo.get_missing_parent_inventories())
         # Adding the parent inventory satisfies get_missing_parent_inventories.
         reopened_repo.inventories.insert_record_stream(
@@ -227,7 +227,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         text_keys = [(b'file-id', b'A-id')]
         if repo.supports_rich_root():
             text_keys.append((b'root-id', b'A-id'))
-        # Directly add the texts, inventory, and revision object for 'A-id'
+        # Directly add the texts, inventory, and revision object for b'A-id'
         repo.texts.insert_record_stream(b.repository.texts.get_record_stream(
             text_keys, 'unordered', True))
         repo.add_revision(b'A-id', b.repository.get_revision(b'A-id'),

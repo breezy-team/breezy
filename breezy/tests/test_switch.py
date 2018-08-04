@@ -167,7 +167,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         # Check it out and switch to revision 1
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
-        switch.switch(checkout.controldir, tree.branch, revision_id="rev1")
+        switch.switch(checkout.controldir, tree.branch, revision_id=b"rev1")
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
 
@@ -181,7 +181,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
         switch.switch(checkout.controldir, tree2.branch)
-        self.assertEqual('custom-root-id', tree2.get_root_id())
+        self.assertEqual(b'custom-root-id', tree2.get_root_id())
 
     def test_switch_configurable_file_merger(self):
         class DummyMerger(_mod_merge.ConfigurableFileMerger):
@@ -198,7 +198,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         bar = foo.controldir.sprout('bar').open_workingtree()
         self.build_tree_contents([('bar/file', b'b')])
         bar.commit('b')
-        self.build_tree_contents([('checkout/file', 'c')])
+        self.build_tree_contents([('checkout/file', b'c')])
         switch.switch(checkout.controldir, bar.branch)
 
 

@@ -371,7 +371,7 @@ class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
     """
 
     def do_with_locked_branch(self, branch, location):
-        branch._set_parent_location(location)
+        branch._set_parent_location(location.decode('utf-8'))
         return SuccessfulSmartServerResponse(())
 
 
@@ -398,7 +398,8 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
         except errors.UnlockableTransport:
             return FailedSmartServerResponse((b'UnlockableTransport',))
         except errors.LockFailed as e:
-            return FailedSmartServerResponse((b'LockFailed', str(e.lock), str(e.why)))
+            return FailedSmartServerResponse((b'LockFailed',
+                str(e.lock).encode('utf-8'), str(e.why).encode('utf-8')))
         if repo_token is None:
             repo_token = b''
         else:

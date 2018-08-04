@@ -37,6 +37,7 @@ from ..conflicts import ConflictList, TextConflict
 from ..errors import UnrelatedBranches, NoCommits
 from ..merge import transform_tree, merge_inner, _PlanMerge
 from ..osutils import basename, pathjoin, file_kind
+from ..sixish import int2byte
 from . import (
     features,
     TestCaseWithMemoryTransport,
@@ -106,7 +107,7 @@ class TestMerge(TestCaseWithTransport):
         br1.fetch(wt2.branch)
         # merge all of branch 2 into branch 1 even though they
         # are not related.
-        wt1.merge_from_branch(wt2.branch, wt2.last_revision(), 'null:')
+        wt1.merge_from_branch(wt2.branch, wt2.last_revision(), b'null:')
         self.assertEqual([br1.last_revision(), wt2.branch.last_revision()],
             wt1.get_parent_ids())
         return (wt1, wt2.branch)
@@ -245,7 +246,7 @@ class TestMerge(TestCaseWithTransport):
         # tree
         tree2.commit('changed file text')
         tree.merge_from_branch(tree2.branch)
-        self.assertFileEqual('text2', 'tree/sub-tree/file')
+        self.assertFileEqual(b'text2', 'tree/sub-tree/file')
 
     def test_merge_with_missing(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -374,22 +375,22 @@ class TestMerge(TestCaseWithTransport):
     def test_weave_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
         merger = _mod_merge.Merger.from_revision_ids(
-            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+            this_tree, b'rev3b', b'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
-        self.assertFileEqual('c\na\n', 'this/file')
+        self.assertFileEqual(b'c\na\n', 'this/file')
 
     def test_weave_cannot_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
         merger = _mod_merge.Merger.from_revision_ids(
-            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+            this_tree, b'rev2b', b'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.WeaveMerger
         self.assertRaises(errors.CannotReverseCherrypick, merger.do_merge)
 
     def test_merge3_can_reverse_cherrypick(self):
         this_tree, other_tree = self.prepare_cherrypick()
         merger = _mod_merge.Merger.from_revision_ids(
-            this_tree, 'rev2b', 'rev3b', other_tree.branch)
+            this_tree, b'rev2b', b'rev3b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
 
@@ -407,14 +408,14 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(this_tree.unlock)
 
         merger = _mod_merge.Merger.from_revision_ids(
-            this_tree, 'rev3b', 'rev2b', other_tree.branch)
+            this_tree, b'rev3b', b'rev2b', other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         merger.do_merge()
-        self.assertFileEqual('a\n'
-                             '<<<<<<< TREE\n'
-                             '=======\n'
-                             'c\n'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertFileEqual(b'a\n'
+                             b'<<<<<<< TREE\n'
+                             b'=======\n'
+                             b'c\n'
+                             b'>>>>>>> MERGE-SOURCE\n',
                              'this/file')
 
     def test_merge_reverse_revision_range(self):
@@ -445,13 +446,13 @@ class TestMerge(TestCaseWithTransport):
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
         merger = _mod_merge.Merger.from_revision_ids(
-            this_tree, 'rev2b', other_branch=other_tree.branch)
+            this_tree, b'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
         self.assertIs(_mod_merge.Merge3Merger, tree_merger.__class__)
-        self.assertEqual('rev2b',
+        self.assertEqual(b'rev2b',
             tree_merger.other_tree.get_revision_id())
-        self.assertEqual('rev1',
+        self.assertEqual(b'rev1',
             tree_merger.base_tree.get_revision_id())
         self.assertEqual(other_tree.branch, tree_merger.other_branch)
 
@@ -474,16 +475,10 @@ class TestMerge(TestCaseWithTransport):
         tt = tree_merger.make_preview_transform()
         self.addCleanup(tt.finalize)
         preview_tree = tt.get_preview_tree()
-        tree_file = this_tree.get_file('file')
-        try:
-            self.assertEqual('1\n2a\n', tree_file.read())
-        finally:
-            tree_file.close()
-        preview_file = preview_tree.get_file('file')
-        try:
-            self.assertEqual('2b\n1\n2a\n', preview_file.read())
-        finally:
-            preview_file.close()
+        with this_tree.get_file('file') as tree_file:
+            self.assertEqual(b'1\n2a\n', tree_file.read())
+        with preview_tree.get_file('file') as preview_file:
+            self.assertEqual(b'2b\n1\n2a\n', preview_file.read())
 
     def test_do_merge(self):
         this_tree = self.make_branch_and_tree('this')
@@ -562,11 +557,11 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         mapper = versionedfile.PrefixMapper()
         factory = knit.make_file_factory(True, mapper)
         self.vf = factory(self.get_transport())
-        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile('root')
+        self.plan_merge_vf = versionedfile._PlanMergeVersionedFile(b'root')
         self.plan_merge_vf.fallback_versionedfiles.append(self.vf)
 
     def add_version(self, key, parents, text):
-        self.vf.add_lines(key, parents, [c+'\n' for c in text])
+        self.vf.add_lines(key, parents, [int2byte(c)+b'\n' for c in bytearray(text)])
 
     def add_rev(self, prefix, revision_id, parents, text):
         self.add_version((prefix, revision_id), [(prefix, p) for p in parents],
@@ -574,75 +569,75 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def add_uncommitted_version(self, key, parents, text):
         self.plan_merge_vf.add_lines(key, parents,
-                                     [c+'\n' for c in text])
+                                     [int2byte(c)+b'\n' for c in bytearray(text)])
 
     def setup_plan_merge(self):
-        self.add_rev('root', 'A', [], 'abc')
-        self.add_rev('root', 'B', ['A'], 'acehg')
-        self.add_rev('root', 'C', ['A'], 'fabg')
-        return _PlanMerge('B', 'C', self.plan_merge_vf, ('root',))
+        self.add_rev(b'root', b'A', [], b'abc')
+        self.add_rev(b'root', b'B', [b'A'], b'acehg')
+        self.add_rev(b'root', b'C', [b'A'], b'fabg')
+        return _PlanMerge(b'B', b'C', self.plan_merge_vf, (b'root',))
 
     def setup_plan_merge_uncommitted(self):
-        self.add_version(('root', 'A'), [], 'abc')
-        self.add_uncommitted_version(('root', 'B:'), [('root', 'A')], 'acehg')
-        self.add_uncommitted_version(('root', 'C:'), [('root', 'A')], 'fabg')
-        return _PlanMerge('B:', 'C:', self.plan_merge_vf, ('root',))
+        self.add_version((b'root', b'A'), [], b'abc')
+        self.add_uncommitted_version((b'root', b'B:'), [(b'root', b'A')], b'acehg')
+        self.add_uncommitted_version((b'root', b'C:'), [(b'root', b'A')], b'fabg')
+        return _PlanMerge(b'B:', b'C:', self.plan_merge_vf, (b'root',))
 
     def test_base_from_plan(self):
         self.setup_plan_merge()
-        plan = self.plan_merge_vf.plan_merge('B', 'C')
+        plan = self.plan_merge_vf.plan_merge(b'B', b'C')
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqual(['a\n', 'b\n', 'c\n'], pwm.base_from_plan())
+        self.assertEqual([b'a\n', b'b\n', b'c\n'], pwm.base_from_plan())
 
     def test_unique_lines(self):
         plan = self.setup_plan_merge()
         self.assertEqual(plan._unique_lines(
-            plan._get_matching_blocks('B', 'C')),
+            plan._get_matching_blocks(b'B', b'C')),
             ([1, 2, 3], [0, 2]))
 
     def test_plan_merge(self):
         self.setup_plan_merge()
-        plan = self.plan_merge_vf.plan_merge('B', 'C')
+        plan = self.plan_merge_vf.plan_merge(b'B', b'C')
         self.assertEqual([
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-a', 'b\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-a', 'e\n'),
-                          ('new-a', 'h\n'),
-                          ('new-a', 'g\n'),
-                          ('new-b', 'g\n')],
+                          ('new-b', b'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-a', b'b\n'),
+                          ('killed-b', b'c\n'),
+                          ('new-a', b'e\n'),
+                          ('new-a', b'h\n'),
+                          ('new-a', b'g\n'),
+                          ('new-b', b'g\n')],
                          list(plan))
 
     def test_plan_merge_cherrypick(self):
-        self.add_rev('root', 'A', [], 'abc')
-        self.add_rev('root', 'B', ['A'], 'abcde')
-        self.add_rev('root', 'C', ['A'], 'abcefg')
-        self.add_rev('root', 'D', ['A', 'B', 'C'], 'abcdegh')
-        my_plan = _PlanMerge('B', 'D', self.plan_merge_vf, ('root',))
+        self.add_rev(b'root', b'A', [], b'abc')
+        self.add_rev(b'root', b'B', [b'A'], b'abcde')
+        self.add_rev(b'root', b'C', [b'A'], b'abcefg')
+        self.add_rev(b'root', b'D', [b'A', b'B', b'C'], b'abcdegh')
+        my_plan = _PlanMerge(b'B', b'D', self.plan_merge_vf, (b'root',))
         # We shortcut when one text supersedes the other in the per-file graph.
         # We don't actually need to compare the texts at this point.
         self.assertEqual([
-                          ('new-b', 'a\n'),
-                          ('new-b', 'b\n'),
-                          ('new-b', 'c\n'),
-                          ('new-b', 'd\n'),
-                          ('new-b', 'e\n'),
-                          ('new-b', 'g\n'),
-                          ('new-b', 'h\n')],
+                          ('new-b', b'a\n'),
+                          ('new-b', b'b\n'),
+                          ('new-b', b'c\n'),
+                          ('new-b', b'd\n'),
+                          ('new-b', b'e\n'),
+                          ('new-b', b'g\n'),
+                          ('new-b', b'h\n')],
                           list(my_plan.plan_merge()))
 
     def test_plan_merge_no_common_ancestor(self):
-        self.add_rev('root', 'A', [], 'abc')
-        self.add_rev('root', 'B', [], 'xyz')
-        my_plan = _PlanMerge('A', 'B', self.plan_merge_vf, ('root',))
+        self.add_rev(b'root', b'A', [], b'abc')
+        self.add_rev(b'root', b'B', [], b'xyz')
+        my_plan = _PlanMerge(b'A', b'B', self.plan_merge_vf, (b'root',))
         self.assertEqual([
-                          ('new-a', 'a\n'),
-                          ('new-a', 'b\n'),
-                          ('new-a', 'c\n'),
-                          ('new-b', 'x\n'),
-                          ('new-b', 'y\n'),
-                          ('new-b', 'z\n')],
+                          ('new-a', b'a\n'),
+                          ('new-a', b'b\n'),
+                          ('new-a', b'c\n'),
+                          ('new-b', b'x\n'),
+                          ('new-b', b'y\n'),
+                          ('new-b', b'z\n')],
                           list(my_plan.plan_merge()))
 
     def test_plan_merge_tail_ancestors(self):
@@ -665,35 +660,35 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         # are already present in E
 
         # Introduce the base text
-        self.add_rev('root', 'A', [], 'abc')
+        self.add_rev(b'root', b'A', [], b'abc')
         # Introduces a new line B
-        self.add_rev('root', 'B', ['A'], 'aBbc')
+        self.add_rev(b'root', b'B', [b'A'], b'aBbc')
         # Introduces a new line C
-        self.add_rev('root', 'C', ['A'], 'abCc')
+        self.add_rev(b'root', b'C', [b'A'], b'abCc')
         # Introduce new line D
-        self.add_rev('root', 'D', ['B'], 'DaBbc')
+        self.add_rev(b'root', b'D', [b'B'], b'DaBbc')
         # Merges B and C by just incorporating both
-        self.add_rev('root', 'E', ['B', 'C'], 'aBbCc')
+        self.add_rev(b'root', b'E', [b'B', b'C'], b'aBbCc')
         # Introduce new line F
-        self.add_rev('root', 'F', ['C'], 'abCcF')
+        self.add_rev(b'root', b'F', [b'C'], b'abCcF')
         # Merge D & E by just combining the texts
-        self.add_rev('root', 'G', ['D', 'E'], 'DaBbCc')
+        self.add_rev(b'root', b'G', [b'D', b'E'], b'DaBbCc')
         # Merge F & E by just combining the texts
-        self.add_rev('root', 'H', ['F', 'E'], 'aBbCcF')
+        self.add_rev(b'root', b'H', [b'F', b'E'], b'aBbCcF')
         # Merge G & H by just combining texts
-        self.add_rev('root', 'I', ['G', 'H'], 'DaBbCcF')
+        self.add_rev(b'root', b'I', [b'G', b'H'], b'DaBbCcF')
         # Merge G & H but supersede an old line in B
-        self.add_rev('root', 'J', ['H', 'G'], 'DaJbCcF')
-        plan = self.plan_merge_vf.plan_merge('I', 'J')
+        self.add_rev(b'root', b'J', [b'H', b'G'], b'DaJbCcF')
+        plan = self.plan_merge_vf.plan_merge(b'I', b'J')
         self.assertEqual([
-                          ('unchanged', 'D\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-b', 'B\n'),
-                          ('new-b', 'J\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'C\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'F\n')],
+                          ('unchanged', b'D\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-b', b'B\n'),
+                          ('new-b', b'J\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'C\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'F\n')],
                          list(plan))
 
     def test_plan_merge_tail_triple_ancestors(self):
@@ -714,28 +709,28 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         # a third LCA that doesn't add new lines, but will trigger our more
         # involved ancestry logic
 
-        self.add_rev('root', 'A', [], 'abc')
-        self.add_rev('root', 'B', ['A'], 'aBbc')
-        self.add_rev('root', 'C', ['A'], 'abCc')
-        self.add_rev('root', 'D', ['B'], 'DaBbc')
-        self.add_rev('root', 'E', ['B', 'C'], 'aBbCc')
-        self.add_rev('root', 'F', ['C'], 'abCcF')
-        self.add_rev('root', 'G', ['D', 'E'], 'DaBbCc')
-        self.add_rev('root', 'H', ['F', 'E'], 'aBbCcF')
-        self.add_rev('root', 'Q', ['E'], 'aBbCc')
-        self.add_rev('root', 'I', ['G', 'Q', 'H'], 'DaBbCcF')
+        self.add_rev(b'root', b'A', [], b'abc')
+        self.add_rev(b'root', b'B', [b'A'], b'aBbc')
+        self.add_rev(b'root', b'C', [b'A'], b'abCc')
+        self.add_rev(b'root', b'D', [b'B'], b'DaBbc')
+        self.add_rev(b'root', b'E', [b'B', b'C'], b'aBbCc')
+        self.add_rev(b'root', b'F', [b'C'], b'abCcF')
+        self.add_rev(b'root', b'G', [b'D', b'E'], b'DaBbCc')
+        self.add_rev(b'root', b'H', [b'F', b'E'], b'aBbCcF')
+        self.add_rev(b'root', b'Q', [b'E'], b'aBbCc')
+        self.add_rev(b'root', b'I', [b'G', b'Q', b'H'], b'DaBbCcF')
         # Merge G & H but supersede an old line in B
-        self.add_rev('root', 'J', ['H', 'Q', 'G'], 'DaJbCcF')
-        plan = self.plan_merge_vf.plan_merge('I', 'J')
+        self.add_rev(b'root', b'J', [b'H', b'Q', b'G'], b'DaJbCcF')
+        plan = self.plan_merge_vf.plan_merge(b'I', b'J')
         self.assertEqual([
-                          ('unchanged', 'D\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-b', 'B\n'),
-                          ('new-b', 'J\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'C\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'F\n')],
+                          ('unchanged', b'D\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-b', b'B\n'),
+                          ('new-b', b'J\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'C\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'F\n')],
                          list(plan))
 
     def test_plan_merge_2_tail_triple_ancestors(self):
@@ -754,42 +749,42 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         # This is meant to test after hitting a 3-way LCA, and multiple tail
         # ancestors (only have NULL_REVISION in common)
 
-        self.add_rev('root', 'A', [], 'abc')
-        self.add_rev('root', 'B', [], 'def')
-        self.add_rev('root', 'D', ['A'], 'Dabc')
-        self.add_rev('root', 'E', ['A', 'B'], 'abcdef')
-        self.add_rev('root', 'F', ['B'], 'defF')
-        self.add_rev('root', 'G', ['D', 'E'], 'Dabcdef')
-        self.add_rev('root', 'H', ['F', 'E'], 'abcdefF')
-        self.add_rev('root', 'Q', ['E'], 'abcdef')
-        self.add_rev('root', 'I', ['G', 'Q', 'H'], 'DabcdefF')
+        self.add_rev(b'root', b'A', [], b'abc')
+        self.add_rev(b'root', b'B', [], b'def')
+        self.add_rev(b'root', b'D', [b'A'], b'Dabc')
+        self.add_rev(b'root', b'E', [b'A', b'B'], b'abcdef')
+        self.add_rev(b'root', b'F', [b'B'], b'defF')
+        self.add_rev(b'root', b'G', [b'D', b'E'], b'Dabcdef')
+        self.add_rev(b'root', b'H', [b'F', b'E'], b'abcdefF')
+        self.add_rev(b'root', b'Q', [b'E'], b'abcdef')
+        self.add_rev(b'root', b'I', [b'G', b'Q', b'H'], b'DabcdefF')
         # Merge G & H but supersede an old line in B
-        self.add_rev('root', 'J', ['H', 'Q', 'G'], 'DabcdJfF')
-        plan = self.plan_merge_vf.plan_merge('I', 'J')
+        self.add_rev(b'root', b'J', [b'H', b'Q', b'G'], b'DabcdJfF')
+        plan = self.plan_merge_vf.plan_merge(b'I', b'J')
         self.assertEqual([
-                          ('unchanged', 'D\n'),
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('killed-b', 'e\n'),
-                          ('new-b', 'J\n'),
-                          ('unchanged', 'f\n'),
-                          ('unchanged', 'F\n')],
+                          ('unchanged', b'D\n'),
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('killed-b', b'e\n'),
+                          ('new-b', b'J\n'),
+                          ('unchanged', b'f\n'),
+                          ('unchanged', b'F\n')],
                          list(plan))
 
     def test_plan_merge_uncommitted_files(self):
         self.setup_plan_merge_uncommitted()
-        plan = self.plan_merge_vf.plan_merge('B:', 'C:')
+        plan = self.plan_merge_vf.plan_merge(b'B:', b'C:')
         self.assertEqual([
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-a', 'b\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-a', 'e\n'),
-                          ('new-a', 'h\n'),
-                          ('new-a', 'g\n'),
-                          ('new-b', 'g\n')],
+                          ('new-b', b'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-a', b'b\n'),
+                          ('killed-b', b'c\n'),
+                          ('new-a', b'e\n'),
+                          ('new-a', b'h\n'),
+                          ('new-a', b'g\n'),
+                          ('new-b', b'g\n')],
                          list(plan))
 
     def test_plan_merge_insert_order(self):
@@ -800,52 +795,52 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         same ordering, then the lines match the parents, if they don't only
         *some* of the lines match.
         """
-        self.add_rev('root', 'A', [], 'abcdef')
-        self.add_rev('root', 'B', ['A'], 'abwxcdef')
-        self.add_rev('root', 'C', ['A'], 'abyzcdef')
+        self.add_rev(b'root', b'A', [], b'abcdef')
+        self.add_rev(b'root', b'B', [b'A'], b'abwxcdef')
+        self.add_rev(b'root', b'C', [b'A'], b'abyzcdef')
         # Merge, and resolve the conflict by adding *both* sets of lines
         # If we get the ordering wrong, these will look like new lines in D,
         # rather than carried over from B, C
-        self.add_rev('root', 'D', ['B', 'C'],
-                         'abwxyzcdef')
+        self.add_rev(b'root', b'D', [b'B', b'C'],
+                         b'abwxyzcdef')
         # Supersede the lines in B and delete the lines in C, which will
         # conflict if they are treated as being in D
-        self.add_rev('root', 'E', ['C', 'B'],
-                         'abnocdef')
+        self.add_rev(b'root', b'E', [b'C', b'B'],
+                         b'abnocdef')
         # Same thing for the lines in C
-        self.add_rev('root', 'F', ['C'], 'abpqcdef')
-        plan = self.plan_merge_vf.plan_merge('D', 'E')
+        self.add_rev(b'root', b'F', [b'C'], b'abpqcdef')
+        plan = self.plan_merge_vf.plan_merge(b'D', b'E')
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('killed-b', 'w\n'),
-                          ('killed-b', 'x\n'),
-                          ('killed-b', 'y\n'),
-                          ('killed-b', 'z\n'),
-                          ('new-b', 'n\n'),
-                          ('new-b', 'o\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('unchanged', 'e\n'),
-                          ('unchanged', 'f\n')],
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('killed-b', b'w\n'),
+                          ('killed-b', b'x\n'),
+                          ('killed-b', b'y\n'),
+                          ('killed-b', b'z\n'),
+                          ('new-b', b'n\n'),
+                          ('new-b', b'o\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('unchanged', b'e\n'),
+                          ('unchanged', b'f\n')],
                          list(plan))
-        plan = self.plan_merge_vf.plan_merge('E', 'D')
+        plan = self.plan_merge_vf.plan_merge(b'E', b'D')
         # Going in the opposite direction shows the effect of the opposite plan
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('new-b', 'w\n'),
-                          ('new-b', 'x\n'),
-                          ('killed-a', 'y\n'),
-                          ('killed-a', 'z\n'),
-                          ('killed-both', 'w\n'),
-                          ('killed-both', 'x\n'),
-                          ('new-a', 'n\n'),
-                          ('new-a', 'o\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('unchanged', 'e\n'),
-                          ('unchanged', 'f\n')],
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('new-b', b'w\n'),
+                          ('new-b', b'x\n'),
+                          ('killed-a', b'y\n'),
+                          ('killed-a', b'z\n'),
+                          ('killed-both', b'w\n'),
+                          ('killed-both', b'x\n'),
+                          ('new-a', b'n\n'),
+                          ('new-a', b'o\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('unchanged', b'e\n'),
+                          ('unchanged', b'f\n')],
                          list(plan))
 
     def test_plan_merge_criss_cross(self):
@@ -873,45 +868,45 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         #   'foo', it should appear as superseding the value in F (since it
         #   came from B), rather than conflict because of the resolution during
         #   C & D.
-        self.add_rev('root', 'XX', [], 'qrs')
-        self.add_rev('root', 'A', ['XX'], 'abcdef')
-        self.add_rev('root', 'B', ['A'], 'axcdef')
-        self.add_rev('root', 'C', ['B'], 'axcdefg')
-        self.add_rev('root', 'D', ['B'], 'haxcdef')
-        self.add_rev('root', 'E', ['A'], 'abcdyf')
+        self.add_rev(b'root', b'XX', [], b'qrs')
+        self.add_rev(b'root', b'A', [b'XX'], b'abcdef')
+        self.add_rev(b'root', b'B', [b'A'], b'axcdef')
+        self.add_rev(b'root', b'C', [b'B'], b'axcdefg')
+        self.add_rev(b'root', b'D', [b'B'], b'haxcdef')
+        self.add_rev(b'root', b'E', [b'A'], b'abcdyf')
         # Simple combining of all texts
-        self.add_rev('root', 'F', ['C', 'D', 'E'], 'haxcdyfg')
+        self.add_rev(b'root', b'F', [b'C', b'D', b'E'], b'haxcdyfg')
         # combine and supersede 'x'
-        self.add_rev('root', 'G', ['C', 'D', 'E'], 'hazcdyfg')
-        plan = self.plan_merge_vf.plan_merge('F', 'G')
+        self.add_rev(b'root', b'G', [b'C', b'D', b'E'], b'hazcdyfg')
+        plan = self.plan_merge_vf.plan_merge(b'F', b'G')
         self.assertEqual([
-                          ('unchanged', 'h\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-base', 'b\n'),
-                          ('killed-b', 'x\n'),
-                          ('new-b', 'z\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('killed-base', 'e\n'),
-                          ('unchanged', 'y\n'),
-                          ('unchanged', 'f\n'),
-                          ('unchanged', 'g\n')],
+                          ('unchanged', b'h\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-base', b'b\n'),
+                          ('killed-b', b'x\n'),
+                          ('new-b', b'z\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('killed-base', b'e\n'),
+                          ('unchanged', b'y\n'),
+                          ('unchanged', b'f\n'),
+                          ('unchanged', b'g\n')],
                          list(plan))
-        plan = self.plan_merge_vf.plan_lca_merge('F', 'G')
+        plan = self.plan_merge_vf.plan_lca_merge(b'F', b'G')
         # This is one of the main differences between plan_merge and
         # plan_lca_merge. plan_lca_merge generates a conflict for 'x => z',
         # because 'x' was not present in one of the bases. However, in this
         # case it is spurious because 'x' does not exist in the global base A.
         self.assertEqual([
-                          ('unchanged', 'h\n'),
-                          ('unchanged', 'a\n'),
-                          ('conflicted-a', 'x\n'),
-                          ('new-b', 'z\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('unchanged', 'y\n'),
-                          ('unchanged', 'f\n'),
-                          ('unchanged', 'g\n')],
+                          ('unchanged', b'h\n'),
+                          ('unchanged', b'a\n'),
+                          ('conflicted-a', b'x\n'),
+                          ('new-b', b'z\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('unchanged', b'y\n'),
+                          ('unchanged', b'f\n'),
+                          ('unchanged', b'g\n')],
                          list(plan))
 
     def test_criss_cross_flip_flop(self):
@@ -920,88 +915,88 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         #       XX      unused ancestor, should not show up in the weave
         #       |
         #       A       Unique LCA
-        #      / \  
+        #      / \
         #     B   C     B & C both introduce a new line
-        #     |\ /|  
-        #     | X |  
-        #     |/ \| 
+        #     |\ /|
+        #     | X |
+        #     |/ \|
         #     D   E     B & C are both merged, so both are common ancestors
         #               In the process of merging, both sides order the new
         #               lines differently
         #
-        self.add_rev('root', 'XX', [], 'qrs')
-        self.add_rev('root', 'A', ['XX'], 'abcdef')
-        self.add_rev('root', 'B', ['A'], 'abcdgef')
-        self.add_rev('root', 'C', ['A'], 'abcdhef')
-        self.add_rev('root', 'D', ['B', 'C'], 'abcdghef')
-        self.add_rev('root', 'E', ['C', 'B'], 'abcdhgef')
-        plan = list(self.plan_merge_vf.plan_merge('D', 'E'))
+        self.add_rev(b'root', b'XX', [], b'qrs')
+        self.add_rev(b'root', b'A', [b'XX'], b'abcdef')
+        self.add_rev(b'root', b'B', [b'A'], b'abcdgef')
+        self.add_rev(b'root', b'C', [b'A'], b'abcdhef')
+        self.add_rev(b'root', b'D', [b'B', b'C'], b'abcdghef')
+        self.add_rev(b'root', b'E', [b'C', b'B'], b'abcdhgef')
+        plan = list(self.plan_merge_vf.plan_merge(b'D', b'E'))
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('new-b', 'h\n'),
-                          ('unchanged', 'g\n'),
-                          ('killed-b', 'h\n'),
-                          ('unchanged', 'e\n'),
-                          ('unchanged', 'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('new-b', b'h\n'),
+                          ('unchanged', b'g\n'),
+                          ('killed-b', b'h\n'),
+                          ('unchanged', b'e\n'),
+                          ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff('\n'.join('abcdghef') + '\n',
-                             ''.join(pwm.base_from_plan()))
+        self.assertEqualDiff(b'a\nb\nc\nd\ng\nh\ne\nf\n',
+                             b''.join(pwm.base_from_plan()))
         # Reversing the order reverses the merge plan, and final order of 'hg'
         # => 'gh'
-        plan = list(self.plan_merge_vf.plan_merge('E', 'D'))
+        plan = list(self.plan_merge_vf.plan_merge(b'E', b'D'))
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('new-b', 'g\n'),
-                          ('unchanged', 'h\n'),
-                          ('killed-b', 'g\n'),
-                          ('unchanged', 'e\n'),
-                          ('unchanged', 'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('new-b', b'g\n'),
+                          ('unchanged', b'h\n'),
+                          ('killed-b', b'g\n'),
+                          ('unchanged', b'e\n'),
+                          ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff('\n'.join('abcdhgef') + '\n',
-                             ''.join(pwm.base_from_plan()))
+        self.assertEqualDiff(b'a\nb\nc\nd\nh\ng\ne\nf\n',
+                             b''.join(pwm.base_from_plan()))
         # This is where lca differs, in that it (fairly correctly) determines
         # that there is a conflict because both sides resolved the merge
         # differently
-        plan = list(self.plan_merge_vf.plan_lca_merge('D', 'E'))
+        plan = list(self.plan_merge_vf.plan_lca_merge(b'D', b'E'))
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('conflicted-b', 'h\n'),
-                          ('unchanged', 'g\n'),
-                          ('conflicted-a', 'h\n'),
-                          ('unchanged', 'e\n'),
-                          ('unchanged', 'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('conflicted-b', b'h\n'),
+                          ('unchanged', b'g\n'),
+                          ('conflicted-a', b'h\n'),
+                          ('unchanged', b'e\n'),
+                          ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff('\n'.join('abcdgef') + '\n',
-                             ''.join(pwm.base_from_plan()))
+        self.assertEqualDiff(b'a\nb\nc\nd\ng\ne\nf\n',
+                             b''.join(pwm.base_from_plan()))
         # Reversing it changes what line is doubled, but still gives a
         # double-conflict
-        plan = list(self.plan_merge_vf.plan_lca_merge('E', 'D'))
+        plan = list(self.plan_merge_vf.plan_lca_merge(b'E', b'D'))
         self.assertEqual([
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('unchanged', 'd\n'),
-                          ('conflicted-b', 'g\n'),
-                          ('unchanged', 'h\n'),
-                          ('conflicted-a', 'g\n'),
-                          ('unchanged', 'e\n'),
-                          ('unchanged', 'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'c\n'),
+                          ('unchanged', b'd\n'),
+                          ('conflicted-b', b'g\n'),
+                          ('unchanged', b'h\n'),
+                          ('conflicted-a', b'g\n'),
+                          ('unchanged', b'e\n'),
+                          ('unchanged', b'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff('\n'.join('abcdhef') + '\n',
-                             ''.join(pwm.base_from_plan()))
+        self.assertEqualDiff(b'a\nb\nc\nd\nh\ne\nf\n',
+                             b''.join(pwm.base_from_plan()))
 
     def assertRemoveExternalReferences(self, filtered_parent_map,
                                        child_map, tails, parent_map):
@@ -1076,134 +1071,134 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def test_subtract_plans(self):
         old_plan = [
-        ('unchanged', 'a\n'),
-        ('new-a', 'b\n'),
-        ('killed-a', 'c\n'),
-        ('new-b', 'd\n'),
-        ('new-b', 'e\n'),
-        ('killed-b', 'f\n'),
-        ('killed-b', 'g\n'),
+        ('unchanged', b'a\n'),
+        ('new-a', b'b\n'),
+        ('killed-a', b'c\n'),
+        ('new-b', b'd\n'),
+        ('new-b', b'e\n'),
+        ('killed-b', b'f\n'),
+        ('killed-b', b'g\n'),
         ]
         new_plan = [
-        ('unchanged', 'a\n'),
-        ('new-a', 'b\n'),
-        ('killed-a', 'c\n'),
-        ('new-b', 'd\n'),
-        ('new-b', 'h\n'),
-        ('killed-b', 'f\n'),
-        ('killed-b', 'i\n'),
+        ('unchanged', b'a\n'),
+        ('new-a', b'b\n'),
+        ('killed-a', b'c\n'),
+        ('new-b', b'd\n'),
+        ('new-b', b'h\n'),
+        ('killed-b', b'f\n'),
+        ('killed-b', b'i\n'),
         ]
         subtracted_plan = [
-        ('unchanged', 'a\n'),
-        ('new-a', 'b\n'),
-        ('killed-a', 'c\n'),
-        ('new-b', 'h\n'),
-        ('unchanged', 'f\n'),
-        ('killed-b', 'i\n'),
+        ('unchanged', b'a\n'),
+        ('new-a', b'b\n'),
+        ('killed-a', b'c\n'),
+        ('new-b', b'h\n'),
+        ('unchanged', b'f\n'),
+        ('killed-b', b'i\n'),
         ]
         self.assertEqual(subtracted_plan,
             list(_PlanMerge._subtract_plans(old_plan, new_plan)))
 
     def setup_merge_with_base(self):
-        self.add_rev('root', 'COMMON', [], 'abc')
-        self.add_rev('root', 'THIS', ['COMMON'], 'abcd')
-        self.add_rev('root', 'BASE', ['COMMON'], 'eabc')
-        self.add_rev('root', 'OTHER', ['BASE'], 'eafb')
+        self.add_rev(b'root', b'COMMON', [], b'abc')
+        self.add_rev(b'root', b'THIS', [b'COMMON'], b'abcd')
+        self.add_rev(b'root', b'BASE', [b'COMMON'], b'eabc')
+        self.add_rev(b'root', b'OTHER', [b'BASE'], b'eafb')
 
     def test_plan_merge_with_base(self):
         self.setup_merge_with_base()
-        plan = self.plan_merge_vf.plan_merge('THIS', 'OTHER', 'BASE')
-        self.assertEqual([('unchanged', 'a\n'),
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'b\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-a', 'd\n')
+        plan = self.plan_merge_vf.plan_merge(b'THIS', b'OTHER', b'BASE')
+        self.assertEqual([('unchanged', b'a\n'),
+                          ('new-b', b'f\n'),
+                          ('unchanged', b'b\n'),
+                          ('killed-b', b'c\n'),
+                          ('new-a', b'd\n')
                          ], list(plan))
 
     def test_plan_lca_merge(self):
         self.setup_plan_merge()
-        plan = self.plan_merge_vf.plan_lca_merge('B', 'C')
+        plan = self.plan_merge_vf.plan_lca_merge(b'B', b'C')
         self.assertEqual([
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-a', 'e\n'),
-                          ('new-a', 'h\n'),
-                          ('killed-a', 'b\n'),
-                          ('unchanged', 'g\n')],
+                          ('new-b', b'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-b', b'c\n'),
+                          ('new-a', b'e\n'),
+                          ('new-a', b'h\n'),
+                          ('killed-a', b'b\n'),
+                          ('unchanged', b'g\n')],
                          list(plan))
 
     def test_plan_lca_merge_uncommitted_files(self):
         self.setup_plan_merge_uncommitted()
-        plan = self.plan_merge_vf.plan_lca_merge('B:', 'C:')
+        plan = self.plan_merge_vf.plan_lca_merge(b'B:', b'C:')
         self.assertEqual([
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'a\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-a', 'e\n'),
-                          ('new-a', 'h\n'),
-                          ('killed-a', 'b\n'),
-                          ('unchanged', 'g\n')],
+                          ('new-b', b'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('killed-b', b'c\n'),
+                          ('new-a', b'e\n'),
+                          ('new-a', b'h\n'),
+                          ('killed-a', b'b\n'),
+                          ('unchanged', b'g\n')],
                          list(plan))
 
     def test_plan_lca_merge_with_base(self):
         self.setup_merge_with_base()
-        plan = self.plan_merge_vf.plan_lca_merge('THIS', 'OTHER', 'BASE')
-        self.assertEqual([('unchanged', 'a\n'),
-                          ('new-b', 'f\n'),
-                          ('unchanged', 'b\n'),
-                          ('killed-b', 'c\n'),
-                          ('new-a', 'd\n')
+        plan = self.plan_merge_vf.plan_lca_merge(b'THIS', b'OTHER', b'BASE')
+        self.assertEqual([('unchanged', b'a\n'),
+                          ('new-b', b'f\n'),
+                          ('unchanged', b'b\n'),
+                          ('killed-b', b'c\n'),
+                          ('new-a', b'd\n')
                          ], list(plan))
 
     def test_plan_lca_merge_with_criss_cross(self):
-        self.add_version(('root', 'ROOT'), [], 'abc')
+        self.add_version((b'root', b'ROOT'), [], b'abc')
         # each side makes a change
-        self.add_version(('root', 'REV1'), [('root', 'ROOT')], 'abcd')
-        self.add_version(('root', 'REV2'), [('root', 'ROOT')], 'abce')
+        self.add_version((b'root', b'REV1'), [(b'root', b'ROOT')], b'abcd')
+        self.add_version((b'root', b'REV2'), [(b'root', b'ROOT')], b'abce')
         # both sides merge, discarding others' changes
-        self.add_version(('root', 'LCA1'),
-            [('root', 'REV1'), ('root', 'REV2')], 'abcd')
-        self.add_version(('root', 'LCA2'),
-            [('root', 'REV1'), ('root', 'REV2')], 'fabce')
-        plan = self.plan_merge_vf.plan_lca_merge('LCA1', 'LCA2')
-        self.assertEqual([('new-b', 'f\n'),
-                          ('unchanged', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('unchanged', 'c\n'),
-                          ('conflicted-a', 'd\n'),
-                          ('conflicted-b', 'e\n'),
+        self.add_version((b'root', b'LCA1'),
+            [(b'root', b'REV1'), (b'root', b'REV2')], b'abcd')
+        self.add_version((b'root', b'LCA2'),
+            [(b'root', b'REV1'), (b'root', b'REV2')], b'fabce')
+        plan = self.plan_merge_vf.plan_lca_merge(b'LCA1', b'LCA2')
+        self.assertEqual([('new-b', b'f\n'),
+                          ('unchanged', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('unchanged', b'c\n'),
+                          ('conflicted-a', b'd\n'),
+                          ('conflicted-b', b'e\n'),
                          ], list(plan))
 
     def test_plan_lca_merge_with_null(self):
-        self.add_version(('root', 'A'), [], 'ab')
-        self.add_version(('root', 'B'), [], 'bc')
-        plan = self.plan_merge_vf.plan_lca_merge('A', 'B')
-        self.assertEqual([('new-a', 'a\n'),
-                          ('unchanged', 'b\n'),
-                          ('new-b', 'c\n'),
+        self.add_version((b'root', b'A'), [], b'ab')
+        self.add_version((b'root', b'B'), [], b'bc')
+        plan = self.plan_merge_vf.plan_lca_merge(b'A', b'B')
+        self.assertEqual([('new-a', b'a\n'),
+                          ('unchanged', b'b\n'),
+                          ('new-b', b'c\n'),
                          ], list(plan))
 
     def test_plan_merge_with_delete_and_change(self):
-        self.add_rev('root', 'C', [], 'a')
-        self.add_rev('root', 'A', ['C'], 'b')
-        self.add_rev('root', 'B', ['C'], '')
-        plan = self.plan_merge_vf.plan_merge('A', 'B')
-        self.assertEqual([('killed-both', 'a\n'),
-                          ('new-a', 'b\n'),
+        self.add_rev(b'root', b'C', [], b'a')
+        self.add_rev(b'root', b'A', [b'C'], b'b')
+        self.add_rev(b'root', b'B', [b'C'], b'')
+        plan = self.plan_merge_vf.plan_merge(b'A', b'B')
+        self.assertEqual([('killed-both', b'a\n'),
+                          ('new-a', b'b\n'),
                          ], list(plan))
 
     def test_plan_merge_with_move_and_change(self):
-        self.add_rev('root', 'C', [], 'abcd')
-        self.add_rev('root', 'A', ['C'], 'acbd')
-        self.add_rev('root', 'B', ['C'], 'aBcd')
-        plan = self.plan_merge_vf.plan_merge('A', 'B')
-        self.assertEqual([('unchanged', 'a\n'),
-                          ('new-a', 'c\n'),
-                          ('killed-b', 'b\n'),
-                          ('new-b', 'B\n'),
-                          ('killed-a', 'c\n'),
-                          ('unchanged', 'd\n'),
+        self.add_rev(b'root', b'C', [], b'abcd')
+        self.add_rev(b'root', b'A', [b'C'], b'acbd')
+        self.add_rev(b'root', b'B', [b'C'], b'aBcd')
+        plan = self.plan_merge_vf.plan_merge(b'A', b'B')
+        self.assertEqual([('unchanged', b'a\n'),
+                          ('new-a', b'c\n'),
+                          ('killed-b', b'b\n'),
+                          ('new-b', b'B\n'),
+                          ('killed-a', b'c\n'),
+                          ('unchanged', b'd\n'),
                          ], list(plan))
 
 
@@ -1259,7 +1254,7 @@ class TestMergerBase(TestCaseWithMemoryTransport):
         # D E
         builder = self.setup_simple_graph()
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
-        builder.build_snapshot(['B-id', b'C-id'], [], revision_id=b'D-id')
+        builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
         return builder
 
     def make_Merger(self, builder, other_revision_id, interesting_files=None):
@@ -1293,7 +1288,7 @@ class TestMergerInMemory(TestMergerBase):
         merger = self.make_Merger(self.setup_simple_graph(), b'C-id')
         original_cache = dict(merger._cached_trees)
         tree = merger.this_branch.repository.revision_tree(b'B-id')
-        original_cache['B-id'] = tree
+        original_cache[b'B-id'] = tree
         merger.cache_trees_with_revision_ids([tree])
         self.assertEqual(original_cache, merger._cached_trees)
 
@@ -1403,7 +1398,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder = self.get_builder()
         builder.build_snapshot(None,
             [('add', (u'', b'a-root-id', 'directory', None)),
-             ('add', (u'a', b'a-id', 'file', 'a\nb\nc\n'))],
+             ('add', (u'a', b'a-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
         builder.build_snapshot([b'A-id'],
             [('modify', ('a', b'a\nb\nC\nc\n'))],
@@ -1454,10 +1449,10 @@ class TestMergerEntriesLCA(TestMergerBase):
             [('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'B-id')
         builder.build_snapshot([b'A-id'],
-            [('add', (u'bar', 'bar-id', 'file', b'd\ne\nf\n'))],
+            [('add', (u'bar', b'bar-id', 'file', b'd\ne\nf\n'))],
             revision_id=b'C-id')
         builder.build_snapshot([b'B-id', b'C-id'],
-            [('add', (u'bar', 'bar-id', 'file', b'd\ne\nf\n'))],
+            [('add', (u'bar', b'bar-id', 'file', b'd\ne\nf\n'))],
             revision_id=b'D-id')
         builder.build_snapshot([b'C-id', b'B-id'],
             [('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
@@ -1465,7 +1460,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot([b'E-id', b'D-id'],
             [('modify', (u'bar', b'd\ne\nf\nG\n'))],
             revision_id=b'G-id')
-        builder.build_snapshot(['D-id', b'E-id'], [], revision_id=b'F-id')
+        builder.build_snapshot([b'D-id', b'E-id'], [], revision_id=b'F-id')
         merge_obj = self.make_merge_obj(builder, b'G-id')
 
         self.assertEqual([b'D-id', b'E-id'], [t.get_revision_id()
@@ -1833,7 +1828,7 @@ class TestMergerEntriesLCA(TestMergerBase):
             [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
         builder.build_snapshot([b'A-id'],
-            [('modify', ('foo', 'C content\n'))],
+            [('modify', ('foo', b'C content\n'))],
             revision_id=b'C-id')
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         builder.build_snapshot([b'B-id', b'C-id'], [], revision_id=b'D-id')
@@ -1865,7 +1860,7 @@ class TestMergerEntriesLCA(TestMergerBase):
              ('add', (u'foo', b'foo-id', 'file', b'A content\n'))],
             revision_id=b'A-id')
         builder.build_snapshot([b'A-id'],
-            [('modify', ('foo', 'B content\n'))],
+            [('modify', ('foo', b'B content\n'))],
             revision_id=b'B-id')
         builder.build_snapshot([b'A-id'],
             [('modify', ('foo', b'C content\n'))],
@@ -2031,8 +2026,8 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
         builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.build_snapshot([b'C-id', b'B-id'],
-            [('modify', ('a', 'new-content\n')),
-             ('modify', ('b', 'new-content\n'))],
+            [('modify', ('a', b'new-content\n')),
+             ('modify', ('b', b'new-content\n'))],
             revision_id=b'E-id')
         builder.build_snapshot([b'B-id', b'C-id'],
             [('rename', ('b', 'c'))],
@@ -2084,7 +2079,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         builder.build_snapshot(None,
             [('add', (u'', b'a-root-id', 'directory', None)),
              ('add', (u'a', b'a-id', 'file', b'content\n')),
-             ('add', (u'b', 'b-id', 'file', b'content\n'))],
+             ('add', (u'b', b'b-id', 'file', b'content\n'))],
             revision_id=b'A-id')
         builder.build_snapshot([b'A-id'],
             [('rename', ('b', 'c'))], revision_id=b'B-id')
@@ -2093,7 +2088,7 @@ class TestMergerEntriesLCA(TestMergerBase):
             [('modify', ('a', b'new-content\n')),
              ('modify', ('b', b'new-content\n'))],
             revision_id=b'E-id')
-        builder.build_snapshot(['B-id', b'C-id'],
+        builder.build_snapshot([b'B-id', b'C-id'],
             [('rename', ('c', 'b'))], revision_id=b'D-id')
         merge_obj = self.make_merge_obj(builder, b'E-id',
                                         interesting_files=['c'])
@@ -2626,7 +2621,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder = self.get_builder()
         builder.build_snapshot(None,
             [('add', (u'', b'a-root-id', 'directory', None)),
-             ('add', (u'foo', b'foo-id', 'file', 'a\nb\nc\n'))],
+             ('add', (u'foo', b'foo-id', 'file', b'a\nb\nc\n'))],
             revision_id=b'A-id')
         builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.build_snapshot([b'A-id'],
@@ -2764,7 +2759,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.set_last_revision(b'A-id')
         wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
-        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        wt.merge_from_branch(wt.branch, to_revision=b'B-id')
         wt.commit('E', rev_id=b'E-id', recursive=None)
         wt.set_parent_ids([b'B-id', b'C-id'])
         wt.branch.set_last_revision_info(2, b'B-id')
@@ -2798,11 +2793,11 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.set_last_revision(b'A-id')
         wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
-        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        wt.merge_from_branch(wt.branch, to_revision=b'B-id')
         self.build_tree_contents([('tree/sub/file', b'text2')])
         sub_tree.commit('modify contents', rev_id=b'sub-B-id')
         wt.commit('E', rev_id=b'E-id', recursive=None)
-        wt.set_parent_ids(['B-id', b'C-id'])
+        wt.set_parent_ids([b'B-id', b'C-id'])
         wt.branch.set_last_revision_info(2, b'B-id')
         wt.commit('D', rev_id=b'D-id', recursive=None)
 
@@ -2850,7 +2845,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
         root_id = b'a-root-id'
-        self.assertEqual([('sub-tree-root', False,
+        self.assertEqual([(b'sub-tree-root', False,
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
@@ -2879,7 +2874,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.set_last_revision(b'A-id')
         wt.branch.set_last_revision_info(1, b'A-id')
         wt.commit('C', rev_id=b'C-id', recursive=None)
-        wt.merge_from_branch(wt.branch, to_revision='B-id')
+        wt.merge_from_branch(wt.branch, to_revision=b'B-id')
         self.build_tree_contents([('tree/sub/file', b'text2')])
         sub_tree.commit('modify contents', rev_id=b'sub-B-id')
         wt.rename_one('sub', 'alt_sub')
@@ -2895,7 +2890,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         merge_obj = merger.make_merger()
         entries = list(merge_obj._entries_lca())
         root_id = b'a-root-id'
-        self.assertEqual([('sub-tree-root', False,
+        self.assertEqual([(b'sub-tree-root', False,
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
                            ((root_id, [root_id, root_id]), root_id, root_id),
                            ((u'sub', [u'sub', u'sub']), u'alt_sub', u'sub'),
@@ -3129,17 +3124,17 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         Default is empty tree (just root entry).
         """
         if root_id is None:
-            root_id = ('%s-root-id' % (relpath,)).encode('ascii')
+            root_id = b'%s-root-id' % (relpath.encode('ascii'),)
         wt = self.make_branch_and_tree(relpath)
         wt.set_root_id(root_id)
         if shape is not None:
             adjusted_shape = [relpath + '/' + elem for elem in shape]
             self.build_tree(adjusted_shape)
             ids = [
-                ('%s-%s-id' % (relpath, basename(elem.rstrip('/')))).encode('ascii')
+                (b'%s-%s-id' % (relpath.encode('utf-8'), basename(elem.rstrip('/')).encode('ascii')))
                 for elem in shape]
             wt.add(shape, ids=ids)
-        rev_id = 'r1-%s' % (relpath,)
+        rev_id = b'r1-%s' % (relpath.encode('utf-8'),)
         wt.commit("Initial commit of %s" % (relpath,), rev_id=rev_id)
         self.assertEqual(root_id, wt.path2id(''))
         return wt
@@ -3205,16 +3200,16 @@ class TestMergeInto(TestMergeIntoBase):
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         # The r1-lib1 revision should be merged into this one
-        self.assertEqual(['r1-project', 'r1-lib1'], project_wt.get_parent_ids())
+        self.assertEqual([b'r1-project', b'r1-lib1'], project_wt.get_parent_ids())
         self.assertTreeEntriesEqual(
-            [('', 'project-root-id'),
-             ('README', 'project-README-id'),
-             ('dir', 'project-dir-id'),
-             ('lib1', 'lib1-root-id'),
-             ('dir/file.c', 'project-file.c-id'),
-             ('lib1/Makefile', 'lib1-Makefile-id'),
-             ('lib1/README', 'lib1-README-id'),
-             ('lib1/foo.c', 'lib1-foo.c-id'),
+            [('', b'project-root-id'),
+             ('README', b'project-README-id'),
+             ('dir', b'project-dir-id'),
+             ('lib1', b'lib1-root-id'),
+             ('dir/file.c', b'project-file.c-id'),
+             ('lib1/Makefile', b'lib1-Makefile-id'),
+             ('lib1/README', b'lib1-README-id'),
+             ('lib1/foo.c', b'lib1-foo.c-id'),
             ], project_wt)
 
     def test_subdir(self):
@@ -3224,16 +3219,16 @@ class TestMergeInto(TestMergeIntoBase):
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         # The r1-lib1 revision should be merged into this one
-        self.assertEqual(['r1-project', 'r1-lib1'], project_wt.get_parent_ids())
+        self.assertEqual([b'r1-project', b'r1-lib1'], project_wt.get_parent_ids())
         self.assertTreeEntriesEqual(
-            [('', 'project-root-id'),
-             ('README', 'project-README-id'),
-             ('dir', 'project-dir-id'),
-             ('dir/file.c', 'project-file.c-id'),
-             ('dir/lib1', 'lib1-root-id'),
-             ('dir/lib1/Makefile', 'lib1-Makefile-id'),
-             ('dir/lib1/README', 'lib1-README-id'),
-             ('dir/lib1/foo.c', 'lib1-foo.c-id'),
+            [('', b'project-root-id'),
+             ('README', b'project-README-id'),
+             ('dir', b'project-dir-id'),
+             ('dir/file.c', b'project-file.c-id'),
+             ('dir/lib1', b'lib1-root-id'),
+             ('dir/lib1/Makefile', b'lib1-Makefile-id'),
+             ('dir/lib1/README', b'lib1-README-id'),
+             ('dir/lib1/foo.c', b'lib1-foo.c-id'),
             ], project_wt)
 
     def test_newdir_with_repeat_roots(self):
@@ -3246,18 +3241,18 @@ class TestMergeInto(TestMergeIntoBase):
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         # The r1-lib1 revision should be merged into this one
-        self.assertEqual(['r1-project', 'r1-lib1'], project_wt.get_parent_ids())
+        self.assertEqual([b'r1-project', b'r1-lib1'], project_wt.get_parent_ids())
         new_lib1_id = project_wt.path2id('lib1')
         self.assertNotEqual(None, new_lib1_id)
         self.assertTreeEntriesEqual(
             [('', root_id),
-             ('README', 'project-README-id'),
-             ('dir', 'project-dir-id'),
+             ('README', b'project-README-id'),
+             ('dir', b'project-dir-id'),
              ('lib1', new_lib1_id),
-             ('dir/file.c', 'project-file.c-id'),
-             ('lib1/Makefile', 'lib1-Makefile-id'),
-             ('lib1/README', 'lib1-README-id'),
-             ('lib1/foo.c', 'lib1-foo.c-id'),
+             ('dir/file.c', b'project-file.c-id'),
+             ('lib1/Makefile', b'lib1-Makefile-id'),
+             ('lib1/README', b'lib1-README-id'),
+             ('lib1/foo.c', b'lib1-foo.c-id'),
             ], project_wt)
 
     def test_name_conflict(self):
@@ -3271,13 +3266,13 @@ class TestMergeInto(TestMergeIntoBase):
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The r1-lib1 revision should be merged into this one
-        self.assertEqual(['r1-dest', 'r1-src'], dest_wt.get_parent_ids())
+        self.assertEqual([b'r1-dest', b'r1-src'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual(
-            [('', 'dest-root-id'),
-             ('dir', 'src-root-id'),
-             ('dir.moved', 'dest-dir-id'),
-             ('dir/README', 'src-README-id'),
-             ('dir.moved/file.txt', 'dest-file.txt-id'),
+            [('', b'dest-root-id'),
+             ('dir', b'src-root-id'),
+             ('dir.moved', b'dest-dir-id'),
+             ('dir/README', b'src-README-id'),
+             ('dir.moved/file.txt', b'dest-file.txt-id'),
             ], dest_wt)
 
     def test_file_id_conflict(self):
@@ -3309,11 +3304,11 @@ class TestMergeInto(TestMergeIntoBase):
         self.addCleanup(dest_wt.unlock)
         # The r1-lib1 revision should NOT be merged into this one (this is a
         # partial merge).
-        self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
+        self.assertEqual([b'r1-dest'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual(
-            [('', 'dest-root-id'),
-             ('dir', 'src-dir-id'),
-             ('dir/foo.c', 'src-foo.c-id'),
+            [('', b'dest-root-id'),
+             ('dir', b'src-dir-id'),
+             ('dir/foo.c', b'src-foo.c-id'),
             ], dest_wt)
 
     def test_only_file(self):
@@ -3325,9 +3320,9 @@ class TestMergeInto(TestMergeIntoBase):
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The r1-lib1 revision should NOT be merged into this one
-        self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
+        self.assertEqual([b'r1-dest'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual(
-            [('', 'dest-root-id'), ('file1.txt', 'two-file-file1.txt-id')],
+            [('', b'dest-root-id'), ('file1.txt', b'two-file-file1.txt-id')],
             dest_wt)
 
     def test_no_such_source_path(self):
@@ -3341,8 +3336,8 @@ class TestMergeInto(TestMergeIntoBase):
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The dest tree is unmodified.
-        self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
-        self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
+        self.assertEqual([b'r1-dest'], dest_wt.get_parent_ids())
+        self.assertTreeEntriesEqual([('', b'dest-root-id')], dest_wt)
 
     def test_no_such_target_path(self):
         """PathNotInTree is also raised if the specified path in the target
@@ -3355,8 +3350,8 @@ class TestMergeInto(TestMergeIntoBase):
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The dest tree is unmodified.
-        self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
-        self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
+        self.assertEqual([b'r1-dest'], dest_wt.get_parent_ids())
+        self.assertTreeEntriesEqual([('', b'dest-root-id')], dest_wt)
 
 
 class TestMergeHooks(TestCaseWithTransport):
@@ -3385,7 +3380,7 @@ class TestMergeHooks(TestCaseWithTransport):
                                                    factory, 'test factory')
         self.tree_a.merge_from_branch(self.tree_b.branch)
 
-        self.assertFileEqual("content_3", 'tree_a/file')
+        self.assertFileEqual(b"content_3", 'tree_a/file')
         self.assertLength(1, calls)
 
     def test_post_merge_hook_called(self):
@@ -3398,5 +3393,5 @@ class TestMergeHooks(TestCaseWithTransport):
 
         self.tree_a.merge_from_branch(self.tree_b.branch)
 
-        self.assertFileEqual("content_2", 'tree_a/file')
+        self.assertFileEqual(b"content_2", 'tree_a/file')
         self.assertLength(1, calls)

@@ -21,6 +21,7 @@ import re
 import unicodedata as ud
 
 from ... import tests, osutils
+from ...sixish import PY3
 from ..._termcolor import color_string, FG
 
 from ...tests.features import (
@@ -364,17 +365,23 @@ class TestGrep(GrepTestBase):
         nref = ud.normalize(u'NFC', u"file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line[1-3]'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '-Z', 'line[1-3]'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
@@ -1932,12 +1939,14 @@ class TestNonAscii(GrepTestBase):
         self.build_tree(contents)
         tree.add(contents)
         tree.commit("Initial commit")
-        as_utf8 = u"\u1234".encode("UTF-8")
+        as_utf8 = u"\u1234"
 
         # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
         #                is mangled according to the user encoding.
         streams = self.run_bzr(["grep", "--files-with-matches",
             u"contents"], encoding="UTF-8")
+        if not PY3:
+            as_utf8 = as_utf8.encode("UTF-8")
         self.assertEqual(streams, (as_utf8 + "\n", ""))
 
         streams = self.run_bzr(["grep", "-r", "1", "--files-with-matches",
@@ -2250,4 +2259,3 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '--diff', 'foo'], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err, "ERROR:.*revision.* does not exist in branch")
-

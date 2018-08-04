@@ -84,8 +84,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 files.add('revision', self._file_revisions[path])
             info.add('file-revisions', files.to_unicode())
 
-        writer = RioWriter(to_file=to_file)
-        writer.write_stanza(info)
+        to_file.write(info.to_unicode())
 
 
 class RioVersionInfoBuilderHooks(hooks.Hooks):

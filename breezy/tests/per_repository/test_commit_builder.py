@@ -135,7 +135,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
                 except errors.NonAsciiRevisionId:
-                    revision_id = 'abc'
+                    revision_id = b'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
             except repository.CannotSetRevisionId:
@@ -841,7 +841,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(UnicodeDecodeError,
             branch.repository.get_commit_builder,
             branch, [], branch.get_config_stack(),
-            committer="Erik B\xe5gfors <erik@example.com>")
+            committer=b"Erik B\xe5gfors <erik@example.com>")
 
     def test_stacked_repositories_reject_commit_builder(self):
         # As per bug 375013, committing to stacked repositories is currently

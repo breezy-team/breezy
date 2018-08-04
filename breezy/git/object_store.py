@@ -47,6 +47,7 @@ from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
     )
+from ..sixish import viewitems
 from ..testament import(
     StrictTestament3,
     )
@@ -162,7 +163,7 @@ def _check_expected_sha(expected_sha, object):
     if expected_sha is None:
         return
     if len(expected_sha) == 40:
-        if expected_sha != object.sha().hexdigest():
+        if expected_sha != object.sha().hexdigest().encode('ascii'):
             raise AssertionError("Invalid sha for %r: %s" % (object,
                 expected_sha))
     elif len(expected_sha) == 20:
@@ -392,7 +393,7 @@ class PackTupleIterable(object):
 
     def __iter__(self):
         return ((self.store[object_id], path) for (object_id, path) in
-                self.objects.iteritems())
+                viewitems(self.objects))
 
 
 class BazaarObjectStore(BaseObjectStore):
@@ -612,8 +613,8 @@ class BazaarObjectStore(BaseObjectStore):
                         entry.revision)
                 except KeyError:
                     # no-change merge?
-                    return self._reconstruct_blobs(
-                        [(entry.file_id, entry.revision, None)]).next().id
+                    return next(self._reconstruct_blobs(
+                        [(entry.file_id, entry.revision, None)])).id
             elif entry.kind == 'tree-reference':
                 # FIXME: Make sure the file id is the root id
                 return self._lookup_revision_sha1(entry.reference_revision)
@@ -751,7 +752,7 @@ class BazaarObjectStore(BaseObjectStore):
             elif kind == "blob":
                 (fileid, revision) = type_data
                 blobs = self._reconstruct_blobs([(fileid, revision, sha)])
-                return blobs.next()
+                return next(blobs)
             elif kind == "tree":
                 (fileid, revid) = type_data
                 try:

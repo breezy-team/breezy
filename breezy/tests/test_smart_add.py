@@ -36,7 +36,7 @@ class AddCustomIDAction(add.AddAction):
         file_id = cache_utf8.encode(kind + '-' + path.replace('/', '%'))
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
-                                % (path, file_id))
+                                % (path, file_id.decode('utf-8')))
         return file_id
 
 

@@ -48,12 +48,15 @@ from ..repository import (
 from ..revision import (
     NULL_REVISION,
     )
+from ..sixish import (
+    viewitems,
+    viewvalues,
+    )
 from .. import (
     config,
     trace,
     ui,
     )
-from ..sixish import viewvalues
 
 from .errors import (
     NoPushSupport,
@@ -220,7 +223,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         new_stop_revids.append(revid)
                 stop_revids = set()
                 parent_map = graph.get_parent_map(new_stop_revids)
-                for parent_revids in parent_map.itervalues():
+                for parent_revids in viewvalues(parent_map):
                     stop_revids.update(parent_revids)
                 pb.update("determining revisions to fetch", len(missing))
         finally:
@@ -260,7 +263,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_objects(
                 [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith(SYMREF)], lossy=lossy)
-            for name, (gitid, revid) in new_refs.iteritems():
+            for name, (gitid, revid) in viewitems(new_refs):
                 if gitid is None:
                     try:
                         gitid = revidmap[revid][0]
@@ -344,9 +347,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
         revidmap = {}
         def determine_wants(old_refs):
             ret = {}
-            self.old_refs = dict([(k, (v, None)) for (k, v) in old_refs.iteritems()])
+            self.old_refs = dict([(k, (v, None)) for (k, v) in viewitems(old_refs)])
             self.new_refs = update_refs(self.old_refs)
-            for name, (gitid, revid) in self.new_refs.iteritems():
+            for name, (gitid, revid) in viewitems(self.new_refs):
                 if gitid is None:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
                     gitid = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
@@ -395,8 +398,8 @@ class InterFromGitRepository(InterRepository):
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
-                for k, unpeeled in refs.iteritems():
-                    if k.endswith("^{}"):
+                for k, unpeeled in viewitems(refs):
+                    if k.endswith(b"^{}"):
                         continue
                     if not is_tag(k):
                         continue
@@ -460,7 +463,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
 
     def determine_wants_all(self, refs):
         potential = set()
-        for k, v in refs.iteritems():
+        for k, v in viewitems(refs):
             # For non-git target repositories, only worry about peeled
             if v == ZERO_SHA:
                 continue
@@ -472,7 +475,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
-                for k, unpeeled in refs.iteritems():
+                for k, unpeeled in viewitems(refs):
                     if not is_tag(k):
                         continue
                     if unpeeled == ZERO_SHA:
@@ -544,7 +547,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         all_revs = self.target.all_revision_ids()
         parent_map = self.target.get_parent_map(all_revs)
         all_parents = set()
-        map(all_parents.update, parent_map.itervalues())
+        for values in viewvalues(parent_map):
+            all_parents.update(values)
         return set(all_revs) - all_parents
 
     def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
@@ -632,12 +636,12 @@ class InterGitGitRepository(InterFromGitRepository):
         old_refs = self.target.controldir.get_refs_container()
         ref_changes = {}
         def determine_wants(heads):
-            old_refs = dict([(k, (v, None)) for (k, v) in heads.as_dict().iteritems()])
+            old_refs = dict([(k, (v, None)) for (k, v) in viewitems(heads.as_dict())])
             new_refs = update_refs(old_refs)
             ref_changes.update(new_refs)
-            return [sha1 for (sha1, bzr_revid) in new_refs.itervalues()]
+            return [sha1 for (sha1, bzr_revid) in viewvalues(new_refs)]
         self.fetch_objects(determine_wants, lossy=lossy)
-        for k, (git_sha, bzr_revid) in ref_changes.iteritems():
+        for k, (git_sha, bzr_revid) in viewitems(ref_changes):
             self.target._git.refs[k] = git_sha
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
@@ -665,7 +669,7 @@ class InterGitGitRepository(InterFromGitRepository):
         if branches is not None:
             def determine_wants(refs):
                 ret = []
-                for name, value in refs.iteritems():
+                for name, value in viewitems(refs):
                     if value == ZERO_SHA:
                         continue
 

@@ -401,27 +401,27 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'c/e', b'a-id', True, [u'a', u'a'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
-    def assertCmpByDirblock(self, cmp_val, path1, path2):
-        self.assertEqual(cmp_val,
-            _mod_tree.MultiWalker._cmp_path_by_dirblock(path1, path2))
+    def assertLtByDirblock(self, lt_val, path1, path2):
+        self.assertEqual(lt_val,
+            _mod_tree.MultiWalker._lt_path_by_dirblock(path1, path2))
 
-    def test__cmp_path_by_dirblock(self):
+    def test__lt_path_by_dirblock(self):
         # We only support Unicode strings at this point
         self.assertRaises(TypeError,
-            _mod_tree.MultiWalker._cmp_path_by_dirblock, '', 'b')
-        self.assertCmpByDirblock(0, u'', u'')
-        self.assertCmpByDirblock(0, u'a', u'a')
-        self.assertCmpByDirblock(0, u'a/b', u'a/b')
-        self.assertCmpByDirblock(0, u'a/b/c', u'a/b/c')
-        self.assertCmpByDirblock(1, u'a-a', u'a')
-        self.assertCmpByDirblock(-1, u'a-a', u'a/a')
-        self.assertCmpByDirblock(-1, u'a=a', u'a/a')
-        self.assertCmpByDirblock(1, u'a-a/a', u'a/a')
-        self.assertCmpByDirblock(1, u'a=a/a', u'a/a')
-        self.assertCmpByDirblock(1, u'a-a/a', u'a/a/a')
-        self.assertCmpByDirblock(1, u'a=a/a', u'a/a/a')
-        self.assertCmpByDirblock(1, u'a-a/a/a', u'a/a/a')
-        self.assertCmpByDirblock(1, u'a=a/a/a', u'a/a/a')
+            _mod_tree.MultiWalker._lt_path_by_dirblock, b'', b'b')
+        self.assertLtByDirblock(False, u'', u'')
+        self.assertLtByDirblock(False, u'a', u'a')
+        self.assertLtByDirblock(False, u'a/b', u'a/b')
+        self.assertLtByDirblock(False, u'a/b/c', u'a/b/c')
+        self.assertLtByDirblock(False, u'a-a', u'a')
+        self.assertLtByDirblock(True, u'a-a', u'a/a')
+        self.assertLtByDirblock(True, u'a=a', u'a/a')
+        self.assertLtByDirblock(False, u'a-a/a', u'a/a')
+        self.assertLtByDirblock(False, u'a=a/a', u'a/a')
+        self.assertLtByDirblock(False, u'a-a/a', u'a/a/a')
+        self.assertLtByDirblock(False, u'a=a/a', u'a/a/a')
+        self.assertLtByDirblock(False, u'a-a/a/a', u'a/a/a')
+        self.assertLtByDirblock(False, u'a=a/a/a', u'a/a/a')
 
     def assertPathToKey(self, expected, path):
         self.assertEqual(expected, _mod_tree.MultiWalker._path_to_key(path))

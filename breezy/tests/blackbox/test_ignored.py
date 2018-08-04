@@ -36,8 +36,8 @@ class TestIgnored(TestCaseWithTransport):
         # now add it and check the ui does not show it.
         tree.add('foo.pyc')
         out, err = self.run_bzr('ignored')
-        self.assertEqual(b'', out)
-        self.assertEqual(b'', err)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_ignored_directory(self):
         """Test --directory option"""
@@ -45,4 +45,4 @@ class TestIgnored(TestCaseWithTransport):
         self.build_tree_contents([('a/README', b'contents'),
                                   ('a/.bzrignore', b'README')])
         out, err = self.run_bzr(['ignored', '--directory=a'])
-        self.assertStartsWith(out, b'README')
+        self.assertStartsWith(out, 'README')

@@ -1110,7 +1110,7 @@ def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     # Trivially convert a fulltext into a 'chunked' representation, and let
     # chunks_to_lines do the heavy lifting.
-    if isinstance(s, str):
+    if isinstance(s, bytes):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:
@@ -1900,7 +1900,7 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        for name in _listdir(top):
             try:
                 name_utf8 = _utf8_encode(name)[0]
             except UnicodeDecodeError:
@@ -1910,7 +1910,7 @@ class UnicodeDirReader(DirReader):
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        return dirblock
+        return sorted(dirblock)
 
 
 def copy_tree(from_path, to_path, handlers={}):
@@ -2226,7 +2226,7 @@ def resource_string(package, resource_name):
     base = dirname(breezy.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    with open(pathjoin(base, resource_relpath), "rU") as f:
+    with open(pathjoin(base, resource_relpath), "rt") as f:
         return f.read()
 
 def file_kind_from_stat_mode_thunk(mode):

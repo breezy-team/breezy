@@ -39,6 +39,8 @@ from ..git_remote_helper import (
     fetch,
     )
 
+from . import FastimportFeature
+
 
 def map_to_git_sha1(dir, bzr_revid):
     object_store = get_object_store(dir.open_repository())
@@ -74,7 +76,7 @@ class FetchTests(TestCaseWithTransport):
 
     def test_no_wants(self):
         r = self.fetch([])
-        self.assertEqual("\n", r)
+        self.assertEqual(b"\n", r)
 
     def test_simple(self):
         self.build_tree(['remote/foo'])
@@ -82,7 +84,7 @@ class FetchTests(TestCaseWithTransport):
         revid = self.remote_tree.commit("msg")
         git_sha1 = map_to_git_sha1(self.remote_dir, revid)
         out = self.fetch([(git_sha1, 'HEAD')])
-        self.assertEqual(out, "\n")
+        self.assertEqual(out, b"\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
         self.assertEqual({
@@ -103,37 +105,36 @@ class RemoteHelperTests(TestCaseWithTransport):
         f = BytesIO()
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
-        base = "fetch\noption\npush\n"
-        self.assertTrue(capabs in (base+"\n", base+"import\n\n"), capabs)
+        base = b"fetch\noption\npush\n"
+        self.assertTrue(capabs in (base+b"\n", base+b"import\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()
         self.helper.cmd_option(f, [])
-        self.assertEqual("unsupported\n", f.getvalue())
+        self.assertEqual(b"unsupported\n", f.getvalue())
 
     def test_list_basic(self):
         f = BytesIO()
         self.helper.cmd_list(f, [])
         self.assertEqual(
-            '\n',
+            b'\n',
             f.getvalue())
 
     def test_import(self):
-        if fastexporter is None:
-            raise TestSkipped("bzr-fastimport not available")
-        self.build_tree_contents([("remote/afile", "somecontent")])
+        self.requireFeature(FastimportFeature)
+        self.build_tree_contents([("remote/afile", b"somecontent")])
         self.remote_tree.add(["afile"])
-        self.remote_tree.commit("A commit message", timestamp=1330445983,
-            timezone=0, committer='Somebody <jrandom@example.com>')
+        self.remote_tree.commit(b"A commit message", timestamp=1330445983,
+            timezone=0, committer=b'Somebody <jrandom@example.com>')
         f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEqual(
-            'commit refs/heads/master\n'
-            'mark :1\n'
-            'committer Somebody <jrandom@example.com> 1330445983 +0000\n'
-            'data 16\n'
-            'A commit message\n'
-            'M 644 inline afile\n'
-            'data 11\n'
-            'somecontent\n',
+            b'commit refs/heads/master\n'
+            b'mark :1\n'
+            b'committer Somebody <jrandom@example.com> 1330445983 +0000\n'
+            b'data 16\n'
+            b'A commit message\n'
+            b'M 644 inline afile\n'
+            b'data 11\n'
+            b'somecontent\n',
             f.getvalue())

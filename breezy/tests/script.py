@@ -163,10 +163,10 @@ def _scan_redirection_options(args):
             in_name = redirected_file_name('<', arg[1:], args)
         elif arg.startswith('>>'):
             out_name = redirected_file_name('>>', arg[2:], args)
-            out_mode = 'ab+'
+            out_mode = 'a+'
         elif arg.startswith('>',):
             out_name = redirected_file_name('>', arg[1:], args)
-            out_mode = 'wb+'
+            out_mode = 'w+'
         else:
             remaining.append(arg)
     return in_name, out_name, out_mode, remaining
@@ -296,7 +296,7 @@ class ScriptRunner(object):
 
     def _read_input(self, input, in_name):
         if in_name is not None:
-            infile = open(in_name, 'rb')
+            infile = open(in_name, 'r')
             try:
                 # Command redirection takes precedence over provided input
                 input = infile.read()

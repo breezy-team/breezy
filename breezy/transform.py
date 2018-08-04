@@ -1055,7 +1055,7 @@ class TreeTransformBase(object):
                 parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError('TreeTransform not based on branch basis: %s' %
-                             self._tree.get_revision_id())
+                             self._tree.get_revision_id().decode('utf-8'))
         revprops = commit.Commit.update_revprops(revprops, branch, authors)
         builder = branch.get_commit_builder(parent_ids,
                                             timestamp=timestamp,
@@ -1099,22 +1099,32 @@ class TreeTransformBase(object):
 
         :param serializer: A Serialiser like pack.ContainerSerializer.
         """
-        new_name = dict((k, v.encode('utf-8')) for k, v in
-                        viewitems(self._new_name))
-        new_executability = dict((k, int(v)) for k, v in
-                                 viewitems(self._new_executability))
-        tree_path_ids = dict((k.encode('utf-8'), v)
-                             for k, v in viewitems(self._tree_path_ids))
+        new_name = {k.encode('utf-8'): v.encode('utf-8')
+                    for k, v in viewitems(self._new_name)}
+        new_parent = {k.encode('utf-8'): v.encode('utf-8')
+                      for k, v in viewitems(self._new_parent)}
+        new_id = {k.encode('utf-8'): v
+                  for k, v in viewitems(self._new_id)}
+        new_executability = {k.encode('utf-8'): int(v)
+                             for k, v in viewitems(self._new_executability)}
+        tree_path_ids = {k.encode('utf-8'): v.encode('utf-8')
+                         for k, v in viewitems(self._tree_path_ids)}
+        non_present_ids = {k: v.encode('utf-8')
+                           for k, v in viewitems(self._non_present_ids)}
+        removed_contents = [trans_id.encode('utf-8')
+                            for trans_id in self._removed_contents]
+        removed_id = [trans_id.encode('utf-8')
+                      for trans_id in self._removed_id]
         attribs = {
             b'_id_number': self._id_number,
             b'_new_name': new_name,
-            b'_new_parent': self._new_parent,
+            b'_new_parent': new_parent,
             b'_new_executability': new_executability,
-            b'_new_id': self._new_id,
+            b'_new_id': new_id,
             b'_tree_path_ids': tree_path_ids,
-            b'_removed_id': list(self._removed_id),
-            b'_removed_contents': list(self._removed_contents),
-            b'_non_present_ids': self._non_present_ids,
+            b'_removed_id': removed_id,
+            b'_removed_contents': removed_contents,
+            b'_non_present_ids': non_present_ids,
             }
         yield serializer.bytes_record(bencode.bencode(attribs),
                                       ((b'attribs',),))
@@ -1129,7 +1139,10 @@ class TreeTransformBase(object):
                 content = b''
             if kind == 'symlink':
                 content = self._read_symlink_target(trans_id)
-            yield serializer.bytes_record(content, ((trans_id, kind),))
+                if not isinstance(content, bytes):
+                    content = content.encode('utf-8')
+            yield serializer.bytes_record(
+                    content, ((trans_id.encode('utf-8'), kind.encode('ascii')),))
 
     def deserialize(self, records):
         """Deserialize a stored TreeTransform.
@@ -1140,23 +1153,31 @@ class TreeTransformBase(object):
         names, content = next(records)
         attribs = bencode.bdecode(content)
         self._id_number = attribs[b'_id_number']
-        self._new_name = dict((k, v.decode('utf-8'))
-                              for k, v in viewitems(attribs[b'_new_name']))
-        self._new_parent = attribs[b'_new_parent']
-        self._new_executability = dict((k, bool(v))
-            for k, v in viewitems(attribs[b'_new_executability']))
-        self._new_id = attribs[b'_new_id']
-        self._r_new_id = dict((v, k) for k, v in viewitems(self._new_id))
+        self._new_name = {k.decode('utf-8'): v.decode('utf-8')
+                          for k, v in viewitems(attribs[b'_new_name'])}
+        self._new_parent = {k.decode('utf-8'): v.decode('utf-8')
+                            for k, v in viewitems(attribs[b'_new_parent'])}
+        self._new_executability = {k.decode('utf-8'): bool(v)
+            for k, v in viewitems(attribs[b'_new_executability'])}
+        self._new_id = {k.decode('utf-8'): v
+                        for k, v in viewitems(attribs[b'_new_id'])}
+        self._r_new_id = {v: k for k, v in viewitems(self._new_id)}
         self._tree_path_ids = {}
         self._tree_id_paths = {}
         for bytepath, trans_id in viewitems(attribs[b'_tree_path_ids']):
             path = bytepath.decode('utf-8')
+            trans_id = trans_id.decode('utf-8')
             self._tree_path_ids[path] = trans_id
             self._tree_id_paths[trans_id] = path
-        self._removed_id = set(attribs[b'_removed_id'])
-        self._removed_contents = set(attribs[b'_removed_contents'])
-        self._non_present_ids = attribs[b'_non_present_ids']
+        self._removed_id = {trans_id.decode('utf-8')
+                            for trans_id in attribs[b'_removed_id']}
+        self._removed_contents = set(trans_id.decode('utf-8')
+                                     for trans_id in attribs[b'_removed_contents'])
+        self._non_present_ids = {k: v.decode('utf-8')
+                                 for k, v in viewitems(attribs[b'_non_present_ids'])}
         for ((trans_id, kind),), content in records:
+            trans_id = trans_id.decode('utf-8')
+            kind = kind.decode('ascii')
             if kind == 'file':
                 mpdiff = multiparent.MultiParent.from_patch(content)
                 lines = mpdiff.to_lines(self._get_parents_texts(trans_id))
@@ -1686,7 +1707,6 @@ class TreeTransform(DiskTreeTransform):
         self._limbo_children_names[parent][filename] = trans_id
         return limbo_name
 
-
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
 
@@ -2177,8 +2197,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         dir_id = self._transform.final_file_id(dir_trans_id)
         for child_trans_id in self._all_children(dir_trans_id):
             ordered_ids.append((child_trans_id, dir_id))
+        path_entries = []
         for entry, trans_id in self._make_inv_entries(ordered_ids):
-            yield self._final_paths.get_path(trans_id), entry
+            path_entries.append((self._final_paths.get_path(trans_id), entry))
+        path_entries.sort()
+        return path_entries
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         """See WorkingTree.list_files."""
@@ -2321,7 +2344,9 @@ class _PreviewTree(inventorytree.InventoryTree):
                 size = None
                 executable = None
             if kind == 'symlink':
-                link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
+                link_or_sha1 = os.readlink(limbo_name)
+                if not isinstance(link_or_sha1, text_type):
+                    link_or_sha1 = link_or_sha1.decode(osutils._fs_enc)
         executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 

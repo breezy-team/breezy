@@ -67,11 +67,11 @@ class TestGitBranch(tests.TestCaseInTempDir):
         GitRepo.init('.')
         url = "%s,ref=%s" % (
             urlutils.local_path_to_url(self.test_dir),
-            urllib.quote("refs/remotes/origin/unstable", safe='')
+            urlutils.quote("refs/remotes/origin/unstable", safe='')
             )
         d = ControlDir.open(url)
         b = d.create_branch()
-        self.assertEqual(b.ref, "refs/remotes/origin/unstable")
+        self.assertEqual(b.ref, b"refs/remotes/origin/unstable")
 
     def test_open_existing(self):
         r = GitRepo.init('.')
@@ -84,8 +84,9 @@ class TestGitBranch(tests.TestCaseInTempDir):
         d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEqual(
-            "<LocalGitBranch('%s/', u'master')>" % (
-                urlutils.local_path_to_url(self.test_dir),),
+            "<LocalGitBranch('%s/', %r)>" % (
+                urlutils.local_path_to_url(self.test_dir),
+                u'master'),
             repr(thebranch))
 
     def test_last_revision_is_null(self):
@@ -100,7 +101,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         r = GitRepo.init('.')
         self.build_tree(['a'])
         r.stage(["a"])
-        return r.do_commit("a", committer=b"Somebody <foo@example.com>")
+        return r.do_commit(b"a", committer=b"Somebody <foo@example.com>")
 
     def test_last_revision_is_valid(self):
         head = self.simple_commit_a()
@@ -113,7 +114,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.build_tree(['b'])
         r = GitRepo(".")
         r.stage("b")
-        revb = r.do_commit("b", committer=b"Somebody <foo@example.com>")
+        revb = r.do_commit(b"b", committer=b"Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
         self.assertEqual((2, default_mapping.revision_id_foreign_to_bzr(revb)), thebranch.last_revision_info())
@@ -121,15 +122,15 @@ class TestGitBranch(tests.TestCaseInTempDir):
     def test_tag_annotated(self):
         reva = self.simple_commit_a()
         o = Tag()
-        o.name = "foo"
-        o.tagger = "Jelmer <foo@example.com>"
-        o.message = "add tag"
+        o.name = b"foo"
+        o.tagger = b"Jelmer <foo@example.com>"
+        o.message = b"add tag"
         o.object = (Commit, reva)
         o.tag_timezone = 0
         o.tag_time = 42
         r = GitRepo(".")
         r.object_store.add_object(o)
-        r['refs/tags/foo'] = o.id
+        r[b'refs/tags/foo'] = o.id
         thebranch = Branch.open('.')
         self.assertEqual({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
@@ -137,7 +138,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
     def test_tag(self):
         reva = self.simple_commit_a()
         r = GitRepo(".")
-        r.refs["refs/tags/foo"] = reva
+        r.refs[b"refs/tags/foo"] = reva
         thebranch = Branch.open('.')
         self.assertEqual({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
@@ -173,7 +174,7 @@ class TestLocalGitBranchFormat(tests.TestCase):
         self.assertEqual("Local Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
-        self.assertEqual("git", self.format.network_name())
+        self.assertEqual(b"git", self.format.network_name())
 
     def test_supports_tags(self):
         self.assertTrue(self.format.supports_tags())
@@ -186,8 +187,8 @@ class BranchTests(tests.TestCaseInTempDir):
         os.chdir("d")
         GitRepo.init('.')
         bb = tests.GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
         return os.path.abspath("d"), gitsha
@@ -197,9 +198,9 @@ class BranchTests(tests.TestCaseInTempDir):
         os.chdir("d")
         GitRepo.init('.')
         bb = tests.GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         marks = bb.finish()
         os.chdir("..")
         return "d", (marks[mark1], marks[mark2])
@@ -213,14 +214,14 @@ class BranchTests(tests.TestCaseInTempDir):
         path, gitsha = self.make_onerev_branch()
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
-        self.assertEqual(gitsha, oldrepo._git.get_refs()["refs/heads/master"])
+        self.assertEqual(gitsha, oldrepo._git.get_refs()[b"refs/heads/master"])
         newbranch = self.clone_git_branch(path, "f")
         self.assertEqual([revid], newbranch.repository.all_revision_ids())
 
     def test_sprouted_tags(self):
         path, gitsha = self.make_onerev_branch()
         r = GitRepo(path)
-        r.refs["refs/tags/lala"] = r.head()
+        r.refs[b"refs/tags/lala"] = r.head()
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newbranch = self.clone_git_branch(path, "f")
@@ -259,7 +260,7 @@ class BranchTests(tests.TestCaseInTempDir):
     def test_interbranch_pull_with_tags(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
         gitrepo = GitRepo(path)
-        gitrepo.refs["refs/tags/sometag"] = gitsha2
+        gitrepo.refs[b"refs/tags/sometag"] = gitsha2
         oldrepo = Repository.open(path)
         revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)

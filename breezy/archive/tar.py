@@ -46,7 +46,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     Returns a (tarinfo, fileobj) tuple
     """
     file_id = getattr(entry, 'file_id', None)
-    filename = osutils.pathjoin(root, final_path).encode('utf8')
+    filename = osutils.pathjoin(root, final_path)
     item = tarfile.TarInfo(filename)
     if force_mtime is not None:
         item.mtime = force_mtime
@@ -190,7 +190,12 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
         compressor = lzma.LZMACompressor(
                 options={"format": compression_format})
     else:
-        compressor = lzma.LZMACompressor(format=compression_format)
+        compressor = lzma.LZMACompressor(
+                format={
+                    'xz': lzma.FORMAT_XZ,
+                    'raw': lzma.FORMAT_RAW,
+                    'alone': lzma.FORMAT_ALONE,
+                }[compression_format])
 
     for chunk in tarball_generator(
             tree, root, subdir, force_mtime=force_mtime):

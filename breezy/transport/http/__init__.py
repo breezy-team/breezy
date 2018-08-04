@@ -295,7 +295,10 @@ class HttpTransport(ConnectedTransport):
             # serve the corresponding offsets respecting the initial order. We
             # need an offset iterator for that.
             iter_offsets = iter(offsets)
-            cur_offset_and_size = next(iter_offsets)
+            try:
+                cur_offset_and_size = next(iter_offsets)
+            except StopIteration:
+                return
 
             try:
                 for cur_coal, rfile in self._coalesce_readv(relpath, coalesced):
@@ -312,7 +315,10 @@ class HttpTransport(ConnectedTransport):
                             # The offset requested are sorted as the coalesced
                             # ones, no need to cache. Win !
                             yield cur_offset_and_size[0], data
-                            cur_offset_and_size = next(iter_offsets)
+                            try:
+                                cur_offset_and_size = next(iter_offsets)
+                            except StopIteration:
+                                return
                         else:
                             # Different sorting. We need to cache.
                             data_map[(start, size)] = data
@@ -324,7 +330,10 @@ class HttpTransport(ConnectedTransport):
                         # vila20071129
                         this_data = data_map.pop(cur_offset_and_size)
                         yield cur_offset_and_size[0], this_data
-                        cur_offset_and_size = next(iter_offsets)
+                        try:
+                            cur_offset_and_size = next(iter_offsets)
+                        except StopIteration:
+                            return
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange, errors.HttpBoundaryMissing) as e:

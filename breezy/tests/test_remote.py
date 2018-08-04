@@ -564,7 +564,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_controldir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_controldir.get_branches()
-        self.assertEqual({b"", b"foo"}, set(result.keys()))
+        self.assertEqual({"", "foo"}, set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', b'BzrDir.get_branches', (b'quack/',)),
              ('call', b'BzrDir.find_repositoryV3', (b'quack/', )),
@@ -1389,7 +1389,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
             b'success', (b'ok', b'1', b'rev-tip'))
         client.add_expected_call(
             b'Branch.get_config_file', (b'quack/',),
-            b'success', (b'ok',), '')
+            b'success', (b'ok',), b'')
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
@@ -1537,12 +1537,12 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(transport.base)
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         # XXX: Multiple calls are bad, this second call documents what is
         # today.
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo_fmt = remote.RemoteRepositoryFormat()
@@ -1770,7 +1770,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
 class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
 
     def test_set_last_revision_info(self):
-        # set_last_revision_info(num, 'rev-id') is translated to calling
+        # set_last_revision_info(num, b'rev-id') is translated to calling
         # Branch.set_last_revision_info(num, 'rev-id') on the wire.
         transport = MemoryTransport()
         transport.mkdir('branch')
@@ -2665,9 +2665,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # Query for b'first' and b'null:'.  Because b'null:' is a parent of
         # 'first' it will be a candidate for the stop_keys of subsequent
-        # requests, and because 'null:' was queried but not returned it will be
+        # requests, and because b'null:' was queried but not returned it will be
         # cached as missing.
         self.assertEqual({b'first': (b'null:',)},
             graph.get_parent_map([b'first', b'null:']))
@@ -3157,7 +3157,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             b'Repository.check_write_group', (b'quack/', b'a token', [b'token1']),
             b'success', (b'ok',))
         repo.lock_write()
-        repo.resume_write_group([b'token1'])
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
@@ -3402,7 +3402,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             yield ('inventory-deltas', inventory_delta_substream())
             yield ('texts', [
                 versionedfile.FulltextContentFactory(
-                    (b'some-rev', 'some-file'), (), None, 'content')])
+                    (b'some-rev', b'some-file'), (), None, b'content')])
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
             text = fmt._serializer.write_inventory_to_string(inv)
@@ -3413,7 +3413,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
                 'directory', 'newdir', inv.root.file_id, b'newdir-id')
-            entry.revision = 'ghost'
+            entry.revision = b'ghost'
             delta = [(None, 'newdir', b'newdir-id', entry)]
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False)
@@ -3941,7 +3941,7 @@ class TestStacking(tests.TestCaseWithTransport):
         # the public implementation of get_parent_map obeys stacking
         _, branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
-        self.assertEqual({'rev1'}, set(repo.get_parent_map([b'rev1'])))
+        self.assertEqual({b'rev1'}, set(repo.get_parent_map([b'rev1'])))
 
     def test_unstacked_get_parent_map(self):
         # _unstacked_provider.get_parent_map ignores stacking

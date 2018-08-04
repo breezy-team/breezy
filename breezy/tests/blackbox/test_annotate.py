@@ -108,9 +108,9 @@ class TestAnnotate(tests.TestCaseWithTransport):
 %*s | your helicopter
 %*s | all of
 %*s | our helicopters
-''' % (max_len, self.revision_id_1,
-       max_len, self.revision_id_3,
-       max_len, self.revision_id_4,
+''' % (max_len, self.revision_id_1.decode('utf-8'),
+       max_len, self.revision_id_3.decode('utf-8'),
+       max_len, self.revision_id_4.decode('utf-8'),
        max_len, '',
       )
 , out)
@@ -161,7 +161,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         file_relpath = joinpath(relpath, 'file')
         self.build_tree_contents([(file_relpath, b'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', committer="test@host", rev_id="rev1")
+        tree.commit('add file', committer="test@host", rev_id=b"rev1")
         self.build_tree_contents([(file_relpath, b'foo\nbar\ngam\n')])
         return tree
 
@@ -216,16 +216,16 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('file', b'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', rev_id="rev1", committer="test@host")
+        tree.commit('add file', rev_id=b"rev1", committer="test@host")
         # right side
         self.build_tree_contents([('file', b'foo\nbar\ngam\n')])
-        tree.commit("right", rev_id="rev1.1.1", committer="test@host")
-        tree.pull(tree.branch, True, "rev1")
+        tree.commit("right", rev_id=b"rev1.1.1", committer="test@host")
+        tree.pull(tree.branch, True, b"rev1")
         # left side
         self.build_tree_contents([('file', b'foo\nbaz\ngam\n')])
-        tree.commit("left", rev_id="rev2", committer="test@host")
+        tree.commit("left", rev_id=b"rev2", committer="test@host")
         # merge
-        tree.merge_from_branch(tree.branch, "rev1.1.1")
+        tree.merge_from_branch(tree.branch, b"rev1.1.1")
         # edit the file to be 'resolved' and have a further local edit
         self.build_tree_contents([('file', b'local\nfoo\nbar\nbaz\ngam\n')])
         return tree

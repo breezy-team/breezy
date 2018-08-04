@@ -183,8 +183,8 @@ class TransportTests(TestTransportImplementation):
     def test_get_unknown_file(self):
         t = self.get_transport()
         files = ['a', 'b']
-        contents = ['contents of a\n',
-                    'contents of b\n',
+        contents = [b'contents of a\n',
+                    b'contents of b\n',
                     ]
         self.build_tree(files, transport=t, line_endings='binary')
         self.assertRaises(NoSuchFile, t.get, 'c')
@@ -562,7 +562,7 @@ class TransportTests(TestTransportImplementation):
             return
         handle = t.open_write_stream('foo')
         try:
-            self.assertEqual('', t.get_bytes('foo'))
+            self.assertEqual(b'', t.get_bytes('foo'))
         finally:
             handle.close()
 
@@ -662,7 +662,7 @@ class TransportTests(TestTransportImplementation):
             t.append_file('a', BytesIO(b'add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            b'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
 
         # a file with no parent should fail..
@@ -695,7 +695,7 @@ class TransportTests(TestTransportImplementation):
 
         # a file with no parent should fail..
         self.assertRaises(NoSuchFile,
-                          t.append_bytes, 'missing/path', 'content')
+                          t.append_bytes, 'missing/path', b'content')
 
     def test_append_file_mode(self):
         """Check that append accepts a mode parameter"""
@@ -712,9 +712,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                t.append_bytes, 'f', 'f', mode=None)
+                t.append_bytes, 'f', b'f', mode=None)
             return
-        t.append_bytes('f', 'f', mode=None)
+        t.append_bytes('f', b'f', mode=None)
 
     def test_delete(self):
         # TODO: Test Transport.delete
@@ -1452,7 +1452,7 @@ class TransportTests(TestTransportImplementation):
 
         for fname in files:
             fname_utf8 = fname.encode('utf-8')
-            contents = 'contents of %s\n' % (fname_utf8,)
+            contents = b'contents of %s\n' % (fname_utf8,)
             self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):

@@ -159,7 +159,8 @@ class SearchResult(AbstractSearchResult):
         start_keys = b' '.join(self._recipe[1])
         stop_keys = b' '.join(self._recipe[2])
         count = str(self._recipe[3]).encode('ascii')
-        return (self._recipe[0], b'\n'.join((start_keys, stop_keys, count)))
+        return (self._recipe[0].encode('ascii'),
+                b'\n'.join((start_keys, stop_keys, count)))
 
     def get_keys(self):
         """Return the keys found in this search.

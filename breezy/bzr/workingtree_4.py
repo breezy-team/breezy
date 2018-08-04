@@ -340,7 +340,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ies = {'' : inv.root}
+        parent_ies = {b'' : inv.root}
         for block in state._dirblocks[1:]: # skip the root
             dirname = block[0]
             try:
@@ -685,7 +685,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 raise errors.BzrMoveFailedError('', to_dir,
                     errors.NotADirectory(to_abs))
 
-            if to_entry[1][0][0] != 'd':
+            if to_entry[1][0][0] != b'd':
                 raise errors.BzrMoveFailedError('', to_dir,
                     errors.NotADirectory(to_abs))
 
@@ -986,7 +986,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             """
             for index in search_indexes:
                 if entry[1][index][0] == b'r': # relocated
-                    if not osutils.is_inside_any(searched_paths, entry[1][index][1]):
+                    if not dirstate.is_inside_any(searched_paths, entry[1][index][1]):
                         search_paths.add(entry[1][index][1])
                 elif entry[1][index][0] != b'a': # absent
                     found_ids.add(entry[0][2])
@@ -1004,7 +1004,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             initial_key = (current_root, b'', b'')
             block_index, _ = state._find_block_index_from_key(initial_key)
             while (block_index < len(state._dirblocks) and
-                osutils.is_inside(current_root, state._dirblocks[block_index][0])):
+                dirstate.is_inside(current_root, state._dirblocks[block_index][0])):
                 for entry in state._dirblocks[block_index][1]:
                     _process_entry(entry)
                 block_index += 1
@@ -1810,7 +1810,7 @@ class DirStateRevisionTree(InventoryTree):
         inv_byid = inv._byid
         # we could do this straight out of the dirstate; it might be fast
         # and should be profiled - RBC 20070216
-        parent_ies = {'' : inv.root}
+        parent_ies = {b'' : inv.root}
         for block in self._dirstate._dirblocks[1:]: #skip root
             dirname = block[0]
             try:
@@ -2088,7 +2088,7 @@ class DirStateRevisionTree(InventoryTree):
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
-                    pending.append((dir[0], dir[4]))
+                    pending.append((dir[0].decode('utf-8'), dir[4]))
 
 
 class InterDirStateTree(InterTree):
@@ -2186,17 +2186,9 @@ class InterDirStateTree(InterTree):
                     self.source._revision_id, parent_ids))
             source_index = 1 + parent_ids.index(self.source._revision_id)
             indices = (source_index, target_index)
-        # -- make all specific_files utf8 --
-        if specific_files:
-            specific_files_utf8 = set()
-            for path in specific_files:
-                # Note, if there are many specific files, using cache_utf8
-                # would be good here.
-                specific_files_utf8.add(path.encode('utf8'))
-            specific_files = specific_files_utf8
-        else:
-            specific_files = {b''}
-        # -- specific_files is now a utf8 path set --
+
+        if specific_files is None:
+            specific_files = {''}
 
         # -- get the state object and prepare it.
         state = self.target.current_dirstate()
@@ -2205,10 +2197,10 @@ class InterDirStateTree(InterTree):
             # -- check all supplied paths are versioned in a search tree. --
             not_versioned = []
             for path in specific_files:
-                path_entries = state._entries_for_path(path)
+                path_entries = state._entries_for_path(path.encode('utf-8'))
                 if not path_entries:
                     # this specified path is not present at all: error
-                    not_versioned.append(path.decode('utf-8'))
+                    not_versioned.append(path)
                     continue
                 found_versioned = False
                 # for each id at this path
@@ -2222,15 +2214,22 @@ class InterDirStateTree(InterTree):
                 if not found_versioned:
                     # none of the indexes was not 'absent' at all ids for this
                     # path.
-                    not_versioned.append(path.decode('utf-8'))
+                    not_versioned.append(path)
             if len(not_versioned) > 0:
                 raise errors.PathsNotVersionedError(not_versioned)
-        # -- remove redundancy in supplied specific_files to prevent over-scanning --
-        search_specific_files = osutils.minimum_path_selection(specific_files)
 
+        # -- remove redundancy in supplied specific_files to prevent over-scanning --
+        # -- make all specific_files utf8 --
+        search_specific_files_utf8 = set()
+        for path in osutils.minimum_path_selection(specific_files):
+            # Note, if there are many specific files, using cache_utf8
+            # would be good here.
+            search_specific_files_utf8.add(path.encode('utf8'))
+
+        # -- specific_files is now a utf8 path set --
         use_filesystem_for_exec = (sys.platform != 'win32')
         iter_changes = self.target._iter_changes(include_unchanged,
-            use_filesystem_for_exec, search_specific_files, state,
+            use_filesystem_for_exec, search_specific_files_utf8, state,
             source_index, target_index, want_unversioned, self.target)
         return iter_changes.iter_changes()
 

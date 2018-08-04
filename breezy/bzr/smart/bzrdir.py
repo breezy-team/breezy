@@ -35,6 +35,7 @@ from ..bzrdir import (
 from ...controldir import (
     network_format_registry,
     )
+from ...sixish import PY3
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -476,8 +477,16 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             return True
         raise AssertionError("invalid arg %r" % arg)
 
-    def parse_NoneString(self, arg):
+    def parse_NoneBytestring(self, arg):
         return arg or None
+
+    def parse_NoneString(self, arg):
+        if not arg:
+            return None
+        if PY3:
+            return arg.decode('utf-8')
+        else:
+            return arg
 
     def _serialize_NoneTrueFalse(self, arg):
         if arg is False:
@@ -511,7 +520,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         shared_repo = self.parse_NoneTrueFalse(shared_repo)
         if stack_on_pwd == b'.':
             stack_on_pwd = target_transport.base.encode('utf-8')
-        repo_format_name = self.parse_NoneString(repo_format_name)
+        repo_format_name = self.parse_NoneBytestring(repo_format_name)
         repo, bzrdir, stacking, repository_policy = \
             format.initialize_on_transport_ex(target_transport,
             use_existing_dir=use_existing_dir, create_prefix=create_prefix,

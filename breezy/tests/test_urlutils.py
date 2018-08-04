@@ -23,7 +23,10 @@ from .. import osutils, urlutils, win32utils
 from ..errors import (
     PathNotChild,
     )
-from ..sixish import text_type
+from ..sixish import (
+    text_type,
+    PY3,
+    )
 from . import features, TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -660,9 +663,13 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
 
-        self.assertRaises(urlutils.InvalidURL, urlutils.unescape, u'\xe5')
-        self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '\xe5')
-        self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '%E5')
+        if not PY3:
+            self.assertRaises(urlutils.InvalidURL, urlutils.unescape, u'\xe5')
+        self.assertRaises((TypeError, urlutils.InvalidURL), urlutils.unescape, b'\xe5')
+        if not PY3:
+            self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '%E5')
+        else:
+            self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
 
     def test_escape_unescape(self):
         self.assertEqual(u'\xe5', urlutils.unescape(urlutils.escape(u'\xe5')))

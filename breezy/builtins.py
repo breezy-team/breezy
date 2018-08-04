@@ -85,6 +85,7 @@ from .revisionspec import (
     )
 from .sixish import (
     BytesIO,
+    PY3,
     text_type,
     viewitems,
     viewvalues,
@@ -468,7 +469,7 @@ class cmd_cat_revision(Command):
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
                     msg = gettext("The repository {0} contains no revision {1}.").format(
-                        b.repository.base, revision_id)
+                        b.repository.base, revision_id.decode('utf-8'))
                     raise errors.BzrCommandError(msg)
             elif revision is not None:
                 for rev in revision:
@@ -671,11 +672,11 @@ class cmd_revision_info(Command):
             except errors.NoSuchRevision:
                 revno = '???'
             maxlen = max(maxlen, len(revno))
-            revinfos.append([revno, revision_id])
+            revinfos.append((revno, revision_id))
 
         self.cleanup_now()
-        for ri in revinfos:
-            self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
+        for revno, revid in revinfos:
+            self.outf.write('%*s %s\n' % (maxlen, revno, revid.decode('utf-8')))
 
 
 class cmd_add(Command):
@@ -888,7 +889,7 @@ class cmd_inventory(Command):
             if path == "":
                 continue
             if show_ids:
-                self.outf.write('%-50s %s\n' % (path, entry.file_id))
+                self.outf.write('%-50s %s\n' % (path, entry.file_id.decode('utf-8')))
             else:
                 self.outf.write(path)
                 self.outf.write('\n')
@@ -948,7 +949,7 @@ class cmd_cp(Command):
                         % (src, dst, src))
             if src_kind is None:
                 raise errors.BzrCommandError(
-                    gettext('Could not copy %s => %s . %s is not versioned\.'
+                    gettext('Could not copy %s => %s . %s is not versioned\\.'
                         % (src, dst, src)))
             if src_kind == 'directory':
                 raise errors.BzrCommandError(
@@ -1582,7 +1583,7 @@ class cmd_branches(Command):
                 else:
                     prefix = " "
                 self.outf.write("%s %s\n" % (
-                    prefix, name.encode(self.outf.encoding)))
+                    prefix, (name if PY3 else name.encode(self.outf.encoding))))
 
 
 class cmd_checkout(Command):
@@ -1914,11 +1915,11 @@ class cmd_file_id(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        i = tree.path2id(relpath)
-        if i is None:
+        file_id = tree.path2id(relpath)
+        if file_id is None:
             raise errors.NotVersionedError(filename)
         else:
-            self.outf.write(i + '\n')
+            self.outf.write(file_id.decode('utf-8') + '\n')
 
 
 class cmd_file_path(Command):
@@ -2023,7 +2024,7 @@ class cmd_ancestry(Command):
         for revision_id in reversed(revisions):
             if _mod_revision.is_null(revision_id):
                 continue
-            self.outf.write(revision_id + '\n')
+            self.outf.write(revision_id.decode('utf-8') + '\n')
 
 
 class cmd_init(Command):
@@ -3050,19 +3051,19 @@ class cmd_ls(Command):
             if verbose:
                 outstring = '%-8s %s' % (fc, outstring)
                 if show_ids and fid is not None:
-                    outstring = "%-50s %s" % (outstring, fid)
+                    outstring = "%-50s %s" % (outstring, fid.decode('utf-8'))
                 self.outf.write(outstring + '\n')
             elif null:
                 self.outf.write(fp + '\0')
                 if show_ids:
                     if fid is not None:
-                        self.outf.write(fid)
+                        self.outf.write(fid.decode('utf-8'))
                     self.outf.write('\0')
                 self.outf.flush()
             else:
                 if show_ids:
                     if fid is not None:
-                        my_id = fid
+                        my_id = fid.decode('utf-8')
                     else:
                         my_id = ''
                     self.outf.write('%-50s %s\n' % (outstring, my_id))
@@ -3258,7 +3259,7 @@ class cmd_lookup_revision(Command):
             raise errors.BzrCommandError(gettext("not a valid revision-number: %r")
                                          % revno)
         revid = WorkingTree.open_containing(directory)[0].branch.get_rev_id(revno)
-        self.outf.write("%s\n" % revid)
+        self.outf.write("%s\n" % revid.decode('utf-8'))
 
 
 class cmd_export(Command):
@@ -3644,7 +3645,7 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             if file:
-                with open(file) as f:
+                with open(file, 'rb') as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
             elif message is not None:
                 my_message = message
@@ -3662,6 +3663,9 @@ class cmd_commit(Command):
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
                     start_message = generate_commit_message_template(commit_obj)
+                    if start_message is not None:
+                        start_message = start_message.encode(
+                                osutils.get_user_encoding())
                     my_message = edit_commit_message_encoded(text,
                         start_message=start_message)
                 if my_message is None:
@@ -4277,7 +4281,8 @@ class cmd_find_merge_base(Command):
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
 
-        self.outf.write(gettext('merge base is revision %s\n') % base_rev_id)
+        self.outf.write(gettext('merge base is revision %s\n') %
+                base_rev_id.decode('utf-8'))
 
 
 class cmd_merge(Command):
@@ -5462,7 +5467,7 @@ class cmd_uncommit(Command):
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write(gettext('You can restore the old tip by running:\n'
-             '  brz pull . -r revid:%s\n') % last_rev_id)
+             '  brz pull . -r revid:%s\n') % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):
@@ -6596,7 +6601,7 @@ class cmd_shelve(Command):
             note(gettext('No shelved changes.'))
             return 0
         for shelf_id in reversed(shelves):
-            message = manager.get_metadata(shelf_id).get('message')
+            message = manager.get_metadata(shelf_id).get(b'message')
             if message is None:
                 message = '<no message>'
             self.outf.write('%3d: %s\n' % (shelf_id, message))
@@ -6786,11 +6791,11 @@ class cmd_fetch_ghosts(Command):
         if len(installed) > 0:
             self.outf.write("Installed:\n")
             for rev in installed:
-                self.outf.write(rev + "\n")
+                self.outf.write(rev.decode('utf-8') + "\n")
         if len(failed) > 0:
             self.outf.write("Still missing:\n")
             for rev in failed:
-                self.outf.write(rev + "\n")
+                self.outf.write(rev.decode('utf-8') + "\n")
         if not no_fix and len(installed) > 0:
             cmd_reconcile().run(".")
 

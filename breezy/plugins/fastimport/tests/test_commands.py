@@ -45,20 +45,18 @@ class TestSourceStream(tests.TestCase):
     def test_get_source_gz(self):
         # files ending in .gz are automatically decompressed.
         fd, filename = tempfile.mkstemp(suffix=".gz")
-        f = gzip.GzipFile(fileobj=os.fdopen(fd, "w"), mode='w')
-        f.write("bla")
-        f.close()
+        with gzip.GzipFile(fileobj=os.fdopen(fd, "wb"), mode='wb') as f:
+            f.write(b"bla")
         stream = _get_source_stream(filename)
         self.assertIsNot("bla", stream.read())
 
     def test_get_source_file(self):
         # other files are opened as regular files.
         fd, filename = tempfile.mkstemp()
-        f = os.fdopen(fd, 'w')
-        f.write("bla")
-        f.close()
+        with os.fdopen(fd, 'wb') as f:
+            f.write(b"bla")
         stream = _get_source_stream(filename)
-        self.assertIsNot("bla", stream.read())
+        self.assertIsNot(b"bla", stream.read())
 
 
 fast_export_baseline_data = """commit refs/heads/master
@@ -126,12 +124,12 @@ class TestFastExport(ExternalBase):
         rev_id = tree.branch.dotted_revno_to_revision_id((1,))
         tree.branch.tags.set_tag("goodTag", rev_id)
         tree.branch.tags.set_tag("bad Tag", rev_id)
-        
+
         # first check --no-rewrite-tag-names
         data = self.run_bzr("fast-export --plain --no-rewrite-tag-names br")[0]
         self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
         self.assertEqual(data.find("reset refs/tags/"), data.rfind("reset refs/tags/"))
-        
+
         # and now with --rewrite-tag-names
         data = self.run_bzr("fast-export --plain --rewrite-tag-names br")[0]
         self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
@@ -226,5 +224,5 @@ committer
 data 15
 """)])
         self.make_branch_and_tree("br")
-        self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
+        self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command .*commit.* is missing section .*committer.*\n'], "fast-import empty.fi br")
 

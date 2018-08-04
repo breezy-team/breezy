@@ -43,13 +43,13 @@ import stat
 class RevisionPristineTarDataTests(TestCase):
 
     def test_pristine_tar_delta_unknown(self):
-        rev = Revision("myrevid")
+        rev = Revision(b"myrevid")
         self.assertRaises(KeyError,
             revision_pristine_tar_data, rev)
 
     def test_pristine_tar_delta_gz(self):
-        rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta"] = standard_b64encode(b"bla")
+        rev = Revision(b"myrevid")
+        rev.properties[u"deb-pristine-delta"] = standard_b64encode(b"bla")
         self.assertEqual((b"bla", "gz"), revision_pristine_tar_data(rev))
 
 
@@ -58,19 +58,19 @@ class ReadPristineTarData(TestCase):
     def test_read_pristine_tar_data_no_branch(self):
         r = GitMemoryRepo()
         self.assertRaises(KeyError, read_git_pristine_tar_data,
-            r, "foo")
+            r, b"foo")
 
     def test_read_pristine_tar_data_no_file(self):
         r = GitMemoryRepo()
         t = Tree()
-        b = Blob.from_string("README")
+        b = Blob.from_string(b"README")
         r.object_store.add_object(b)
-        t.add("README", stat.S_IFREG | 0o644, b.id)
+        t.add(b"README", stat.S_IFREG | 0o644, b.id)
         r.object_store.add_object(t)
-        r.do_commit("Add README", tree=t.id,
-                    ref='refs/heads/pristine-tar')
+        r.do_commit(b"Add README", tree=t.id,
+                    ref=b'refs/heads/pristine-tar')
         self.assertRaises(KeyError, read_git_pristine_tar_data,
-            r, "foo")
+            r, b"foo")
 
     def test_read_pristine_tar_data(self):
         r = GitMemoryRepo()
@@ -86,21 +86,21 @@ class ReadPristineTarData(TestCase):
                     ref=b'refs/heads/pristine-tar')
         self.assertEqual(
             (b"some yummy data", b"someid"),
-            read_git_pristine_tar_data(r, 'foo'))
+            read_git_pristine_tar_data(r, b'foo'))
 
 
 class StoreGitPristineTarData(TestCase):
 
     def test_store_new(self):
         r = GitMemoryRepo()
-        cid = store_git_pristine_tar_data(r, "foo", "mydelta", "myid")
+        cid = store_git_pristine_tar_data(r, b"foo", b"mydelta", b"myid")
         tree = get_pristine_tar_tree(r)
         self.assertEqual(
-            (stat.S_IFREG | 0o644, "7b02de8ac4162e64f402c43487d8a40a505482e1"),
-            tree["README"])
+            (stat.S_IFREG | 0o644, b"7b02de8ac4162e64f402c43487d8a40a505482e1"),
+            tree[b"README"])
         self.assertEqual(r[cid].tree, tree.id)
-        self.assertEqual(r[tree["foo.delta"][1]].data, "mydelta")
-        self.assertEqual(r[tree["foo.id"][1]].data, "myid")
+        self.assertEqual(r[tree[b"foo.delta"][1]].data, b"mydelta")
+        self.assertEqual(r[tree[b"foo.id"][1]].data, b"myid")
 
-        self.assertEqual(("mydelta", "myid"),
-            read_git_pristine_tar_data(r, "foo"))
+        self.assertEqual((b"mydelta", b"myid"),
+            read_git_pristine_tar_data(r, b"foo"))

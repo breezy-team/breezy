@@ -140,7 +140,7 @@ class RevisionSpec_bork(RevisionSpec):
 
     def _match_on(self, branch, revs):
         if self.spec == "bork":
-            return RevisionInfo.from_revision_id(branch, "r1")
+            return RevisionInfo.from_revision_id(branch, b"r1")
         else:
             raise errors.InvalidRevisionSpec(self.spec, branch)
 
@@ -150,14 +150,14 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
     # Don't need to test revno's explicitly since TRS_revno already
     # covers that well for us
     def test_dwim_spec_revno(self):
-        self.assertInHistoryIs(2, 'r2', '2')
+        self.assertInHistoryIs(2, b'r2', '2')
         self.assertAsRevisionId(b'alt_r2', '1.1.1')
 
     def test_dwim_spec_revid(self):
-        self.assertInHistoryIs(2, 'r2', 'r2')
+        self.assertInHistoryIs(2, b'r2', 'r2')
 
     def test_dwim_spec_tag(self):
-        self.tree.branch.tags.set_tag('footag', 'r1')
+        self.tree.branch.tags.set_tag('footag', b'r1')
         self.assertAsRevisionId(b'r1', 'footag')
         self.tree.branch.tags.delete_tag('footag')
         self.assertRaises(errors.InvalidRevisionSpec,
@@ -167,7 +167,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         # Test that we slip past revno with things that look like revnos,
         # but aren't.  Tags are convenient for testing this since we can
         # make them look however we want.
-        self.tree.branch.tags.set_tag('3', 'r2')
+        self.tree.branch.tags.set_tag('3', b'r2')
         self.assertAsRevisionId(b'r2', '3')
         self.build_tree(['tree/b'])
         self.tree.add(['b'])
@@ -178,7 +178,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertAsRevisionId(b'r1', 'today')
 
     def test_dwim_spec_branch(self):
-        self.assertInHistoryIs(None, 'alt_r2', 'tree2')
+        self.assertInHistoryIs(None, b'alt_r2', 'tree2')
 
     def test_dwim_spec_nonexistent(self):
         self.assertInvalid('somethingrandom', invalid_as_revision_id=False)
@@ -209,44 +209,45 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
 class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_positive_int(self):
-        self.assertInHistoryIs(0, 'null:', '0')
-        self.assertInHistoryIs(1, 'r1', '1')
-        self.assertInHistoryIs(2, 'r2', '2')
+        self.assertInHistoryIs(0, b'null:', '0')
+        self.assertInHistoryIs(1, b'r1', '1')
+        self.assertInHistoryIs(2, b'r2', '2')
         self.assertInvalid('3')
 
     def test_dotted_decimal(self):
-        self.assertInHistoryIs(None, 'alt_r2', '1.1.1')
+        self.assertInHistoryIs(None, b'alt_r2', '1.1.1')
         self.assertInvalid('1.1.123')
 
     def test_negative_int(self):
-        self.assertInHistoryIs(2, 'r2', '-1')
-        self.assertInHistoryIs(1, 'r1', '-2')
+        self.assertInHistoryIs(2, b'r2', '-1')
+        self.assertInHistoryIs(1, b'r1', '-2')
 
-        self.assertInHistoryIs(1, 'r1', '-3')
-        self.assertInHistoryIs(1, 'r1', '-4')
-        self.assertInHistoryIs(1, 'r1', '-100')
+        self.assertInHistoryIs(1, b'r1', '-3')
+        self.assertInHistoryIs(1, b'r1', '-4')
+        self.assertInHistoryIs(1, b'r1', '-100')
 
     def test_positive(self):
-        self.assertInHistoryIs(0, 'null:', 'revno:0')
-        self.assertInHistoryIs(1, 'r1', 'revno:1')
-        self.assertInHistoryIs(2, 'r2', 'revno:2')
+        self.assertInHistoryIs(0, b'null:', 'revno:0')
+        self.assertInHistoryIs(1, b'r1', 'revno:1')
+        self.assertInHistoryIs(2, b'r2', 'revno:2')
 
         self.assertInvalid('revno:3')
 
     def test_negative(self):
-        self.assertInHistoryIs(2, 'r2', 'revno:-1')
-        self.assertInHistoryIs(1, 'r1', 'revno:-2')
+        self.assertInHistoryIs(2, b'r2', 'revno:-1')
+        self.assertInHistoryIs(1, b'r1', 'revno:-2')
 
-        self.assertInHistoryIs(1, 'r1', 'revno:-3')
-        self.assertInHistoryIs(1, 'r1', 'revno:-4')
+        self.assertInHistoryIs(1, b'r1', 'revno:-3')
+        self.assertInHistoryIs(1, b'r1', 'revno:-4')
 
     def test_invalid_number(self):
         # Get the right exception text
         try:
             int('X')
         except ValueError as e:
-            pass
-        self.assertInvalid('revno:X', extra='\n' + str(e))
+            self.assertInvalid('revno:X', extra='\n' + str(e))
+        else:
+            self.fail()
 
     def test_missing_number_and_branch(self):
         self.assertInvalid('revno::',
@@ -256,8 +257,9 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         try:
             int('X')
         except ValueError as e:
-            pass
-        self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
+            self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
+        else:
+            self.fail()
 
     def test_non_exact_branch(self):
         # It seems better to require an exact path to the branch
@@ -272,14 +274,14 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
-        self.assertEqual('alt_r2', revinfo.rev_id)
+        self.assertEqual(b'alt_r2', revinfo.rev_id)
 
     def test_int_with_branch(self):
         revinfo = self.get_in_history('2:tree2')
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
-        self.assertEqual('alt_r2', revinfo.rev_id)
+        self.assertEqual(b'alt_r2', revinfo.rev_id)
 
     def test_with_url(self):
         url = self.get_url() + '/tree2'
@@ -287,7 +289,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
-        self.assertEqual('alt_r2', revinfo.rev_id)
+        self.assertEqual(b'alt_r2', revinfo.rev_id)
 
     def test_negative_with_url(self):
         url = self.get_url() + '/tree2'
@@ -295,14 +297,14 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)
-        self.assertEqual('alt_r2', revinfo.rev_id)
+        self.assertEqual(b'alt_r2', revinfo.rev_id)
 
     def test_different_history_lengths(self):
         # Make sure we use the revisions and offsets in the supplied branch
         # not the ones in the original branch.
         self.tree2.commit('three', rev_id=b'r3')
-        self.assertInHistoryIs(3, 'r3', 'revno:3:tree2')
-        self.assertInHistoryIs(3, 'r3', 'revno:-1:tree2')
+        self.assertInHistoryIs(3, b'r3', 'revno:3:tree2')
+        self.assertInHistoryIs(3, b'r3', 'revno:-1:tree2')
 
     def test_invalid_branch(self):
         self.assertRaises(errors.NotBranchError,
@@ -329,15 +331,15 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         wtb.commit('Commit three', rev_id=b'b@r-0-3')
 
 
-        self.assertEqual((1, 'a@r-0-1'),
+        self.assertEqual((1, b'a@r-0-1'),
                          spec_in_history('revno:1:a/', ba))
         # The argument of in_history should be ignored since it is
         # redundant with the path in the spec.
-        self.assertEqual((1, 'a@r-0-1'),
+        self.assertEqual((1, b'a@r-0-1'),
                          spec_in_history('revno:1:a/', None))
-        self.assertEqual((1, 'a@r-0-1'),
+        self.assertEqual((1, b'a@r-0-1'),
                          spec_in_history('revno:1:a/', bb))
-        self.assertEqual((2, 'b@r-0-2'),
+        self.assertEqual((2, b'b@r-0-2'),
                          spec_in_history('revno:2:b/', None))
 
     def test_as_revision_id(self):
@@ -395,7 +397,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         revision_id = u'\N{SNOWMAN}'.encode('utf-8')
         self.tree.commit('unicode', rev_id=revision_id)
         self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
-        self.assertInHistoryIs(3, revision_id, b'revid:' + revision_id)
+        self.assertInHistoryIs(3, revision_id, 'revid:' + revision_id.decode('utf-8'))
 
     def test_as_revision_id(self):
         self.assertAsRevisionId(b'r1', 'revid:r1')
@@ -427,11 +429,12 @@ class TestRevisionSpec_last(TestRevisionSpec):
                           spec_in_history, 'last:', tree.branch)
 
     def test_not_a_number(self):
+        last_e = None
         try:
             int('Y')
         except ValueError as e:
-            pass
-        self.assertInvalid('last:Y', extra='\n' + str(e))
+            last_e = e
+        self.assertInvalid('last:Y', extra='\n' + str(last_e))
 
     def test_as_revision_id(self):
         self.assertAsRevisionId(b'r2', 'last:1')
@@ -464,7 +467,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
     def test_alt_no_parents(self):
         new_tree = self.make_branch_and_tree('new_tree')
         new_tree.commit('first', rev_id=b'new_r1')
-        self.tree.branch.fetch(new_tree.branch, 'new_r1')
+        self.tree.branch.fetch(new_tree.branch, b'new_r1')
         self.assertInHistoryIs(0, b'null:', 'before:revid:new_r1')
 
     def test_as_revision_id(self):

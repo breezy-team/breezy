@@ -183,7 +183,7 @@ default_format = 1.9
 ''')
         g_store.save()
         out, err = self.run_bzr_subprocess('init')
-        self.assertContainsRe(out, '1.9')
+        self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""
@@ -197,8 +197,8 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # init on a remote url should succeed.
         out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
-            b"""Created a standalone branch (format: pack-0.92)\n""")
-        self.assertEqual(b'', err)
+            """Created a standalone branch (format: pack-0.92)\n""")
+        self.assertEqual('', err)
 
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention
@@ -241,6 +241,6 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BRZ_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
-        self.assertEqual(err, b'')
+        self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
 

@@ -210,7 +210,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
     def get_tree_no_parents_abc_content_7(self, tree, converter=None):
         """return a test tree with a, b/, d/e contents.
 
-        This variation adds a dir 'd' ('d-id'), renames b to d/e.
+        This variation adds a dir 'd' (b'd-id'), renames b to d/e.
         """
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
@@ -267,7 +267,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
             tt.new_symlink('symlink',
-                root_transaction_id, 'link-target', 'symlink')
+                root_transaction_id, 'link-target', b'symlink')
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 

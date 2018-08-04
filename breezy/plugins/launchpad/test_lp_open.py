@@ -32,13 +32,13 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # to guess the Launchpad page for the given URL / path. If it cannot
         # find one, it will raise an error.
         self.assertEqual(
-            [b'brz: ERROR: . is not registered on Launchpad.'],
+            ['brz: ERROR: . is not registered on Launchpad.'],
             self.run_open('.', retcode=3))
 
     def test_no_public_location_no_push_location(self):
         self.make_branch('not-public')
         self.assertEqual(
-            [b'brz: ERROR: not-public is not registered on Launchpad.'],
+            ['brz: ERROR: not-public is not registered on Launchpad.'],
             self.run_open('not-public', retcode=3))
 
     def test_non_launchpad_branch(self):
@@ -46,16 +46,16 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         url = 'http://example.com/non-lp'
         branch.set_public_branch(url)
         self.assertEqual(
-            [b'brz: ERROR: %s is not registered on Launchpad.' %
-                url.encode('ascii')],
+            ['brz: ERROR: %s is not registered on Launchpad.' %
+                url],
             self.run_open('non-lp', retcode=3))
 
     def test_launchpad_branch_with_public_location(self):
         branch = self.make_branch('lp')
         branch.set_public_branch('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            [b'Opening https://code.launchpad.net/~foo/bar/baz in web '
-             b'browser'],
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
+             'browser'],
             self.run_open('lp'))
 
     def test_launchpad_branch_with_public_and_push_location(self):
@@ -69,8 +69,8 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         finally:
             branch.unlock()
         self.assertEqual(
-            [b'Opening https://code.launchpad.net/~foo/bar/public in web '
-             b'browser'],
+            ['Opening https://code.launchpad.net/~foo/bar/public in web '
+             'browser'],
             self.run_open('lp'))
 
     def test_launchpad_branch_with_no_public_but_with_push(self):
@@ -79,8 +79,8 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch = self.make_branch('lp')
         branch.set_push_location('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            [b'Opening https://code.launchpad.net/~foo/bar/baz in web '
-             b'browser'],
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
+             'browser'],
             self.run_open('lp'))
 
     def test_launchpad_branch_with_no_public_no_push(self):
@@ -88,8 +88,8 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # location and no push location, then just try to look up the
         # Launchpad page for that URL.
         self.assertEqual(
-            [b'Opening https://code.launchpad.net/~foo/bar/baz in web '
-             b'browser'],
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
+             'browser'],
             self.run_open('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz'))
 
     def test_launchpad_branch_subdirectory(self):
@@ -99,6 +99,6 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.build_tree(['lp/a/'])
         self.assertEqual(
-            [b'Opening https://code.launchpad.net/~foo/bar/baz in web '
-             b'browser'],
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
+             'browser'],
             self.run_open('.', working_dir='lp/a'))

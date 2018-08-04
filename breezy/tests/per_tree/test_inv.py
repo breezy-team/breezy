@@ -34,7 +34,7 @@ from breezy.tests import (
 
 
 def get_entry(tree, path):
-    return tree.iter_entries_by_dir(specific_files=[path]).next()[1]
+    return next(tree.iter_entries_by_dir(specific_files=[path]))[1]
 
 
 class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):

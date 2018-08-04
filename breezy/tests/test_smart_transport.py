@@ -892,10 +892,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
         transport = memory.MemoryTransport('memory:///')
         utf8_filename = u'testfile\N{INTERROBANG}'.encode('utf-8')
         # VFS requests use filenames, not raw UTF-8.
-        hpss_path = urlutils.escape(utf8_filename)
-        transport.put_bytes(utf8_filename, b'contents\nof\nfile\n')
+        hpss_path = urlutils.quote_from_bytes(utf8_filename)
+        transport.put_bytes(hpss_path, b'contents\nof\nfile\n')
         server, from_server = self.create_pipe_context(
-                b'get\001' + hpss_path + b'\n', transport)
+                b'get\001' + hpss_path.encode('ascii') + b'\n', transport)
         smart_protocol = protocol.SmartServerRequestProtocolOne(transport,
                 from_server.write)
         server._serve_one_request(smart_protocol)

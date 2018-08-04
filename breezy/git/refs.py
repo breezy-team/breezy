@@ -87,7 +87,7 @@ def ref_to_branch_name(ref):
     if ref is None:
         return ref
     if ref.startswith(LOCAL_BRANCH_PREFIX):
-        return osutils.safe_unicode(ref[len(LOCAL_BRANCH_PREFIX):])
+        return ref[len(LOCAL_BRANCH_PREFIX):].decode('utf-8')
     raise ValueError("unable to map ref %s back to branch name" % ref)
 
 
@@ -107,7 +107,7 @@ class BazaarRefsContainer(RefsContainer):
         return {}
 
     def set_symbolic_ref(self, name, other):
-        if name == "HEAD":
+        if name == b"HEAD":
             pass # FIXME: Switch default branch
         else:
             raise NotImplementedError(
@@ -204,7 +204,8 @@ def remote_refs_dict_to_tag_refs(refs_dict):
         else:
             base[k] = v
             peeled[k] = v
-    for n in set(base.keys() + peeled.keys()):
+    all_keys = set().union(base.keys(), peeled.keys())
+    for n in all_keys:
         try:
             tag_name = ref_to_tag_name(n)
         except ValueError:

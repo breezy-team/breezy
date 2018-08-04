@@ -130,7 +130,7 @@ added:
                                                         diff=True,
                                                         output_encoding='utf8')
 
-        self.assertTrue("""\
+        self.assertTrue(b"""\
 @@ -0,0 +1,1 @@
 +contents of hello
 """ in template)
@@ -166,26 +166,26 @@ added:
             '"%s"' % self.make_do_nothing_editor('name with spaces'))
         self.assertEqual(True, msgeditor._run_editor('a_filename'))    
 
-    def make_fake_editor(self, message='test message from fed\\n'):
+    def make_fake_editor(self, message='test message from fed\n'):
         """Set up environment so that an editor will be a known script.
 
         Sets up BRZ_EDITOR so that if an editor is spawned it will run a
         script that just adds a known message to the start of the file.
         """
-        with open('fed.py', 'wb') as f:
-            f.write(b'#!%s\n' % sys.executable)
-            f.write(b"""\
+        if not isinstance(message, bytes):
+            message = message.encode('utf-8')
+        with open('fed.py', 'w') as f:
+            f.write('#!%s\n' % sys.executable)
+            f.write("""\
 # coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
-    f = open(fn, 'rb')
-    s = f.read()
-    f.close()
-    f = open(fn, 'wb')
-    f.write('%s')
-    f.write(s)
-    f.close()
+    with open(fn, 'rb') as f:
+        s = f.read()
+    with open(fn, 'wb') as f:
+        f.write(%r)
+        f.write(s)
 """ % (message, ))
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
@@ -252,7 +252,8 @@ if len(sys.argv) == 2:
             editor = 'rm'
         self.overrideEnv('BRZ_EDITOR', editor)
 
-        self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
+        self.assertRaises((EnvironmentError, errors.NoSuchFile),
+                msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
         self.overrideEnv('BRZ_EDITOR', 'bzr_editor')
@@ -304,7 +305,7 @@ if len(sys.argv) == 2:
         # check that commit template written properly
         # and has platform native line-endings (CRLF on win32)
         create_file = msgeditor._create_temp_file_with_commit_template
-        msgfilename, hasinfo = create_file('infotext', '----', 'start message')
+        msgfilename, hasinfo = create_file(b'infotext', '----', b'start message')
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
         expected = os.linesep.join(['start message',
@@ -322,7 +323,7 @@ if len(sys.argv) == 2:
             os.mkdir(tmpdir)
             # Force the creation of temp file in a directory whose name
             # requires some encoding support
-            msgeditor._create_temp_file_with_commit_template('infotext',
+            msgeditor._create_temp_file_with_commit_template(b'infotext',
                                                              tmpdir=tmpdir)
         else:
             raise TestNotApplicable('Test run elsewhere with non-ascii data.')

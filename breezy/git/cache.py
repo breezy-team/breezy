@@ -40,6 +40,11 @@ from ..bzr import (
     index as _mod_index,
     versionedfile,
     )
+from ..sixish import (
+    viewitems,
+    viewkeys,
+    viewvalues,
+    )
 from ..transport import (
     get_transport,
     )
@@ -290,8 +295,10 @@ class DictCacheUpdater(CacheUpdater):
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
         else:
-            type_name = obj.type_name
+            type_name = obj.type_name.decode('ascii')
             hexsha = obj.id
+        if not isinstance(hexsha, bytes):
+            raise TypeError(hexsha)
         if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
@@ -326,7 +333,9 @@ class DictGitShaMap(GitShaMap):
         return self._by_fileid[revision][fileid]
 
     def lookup_git_sha(self, sha):
-        for entry in self._by_sha[sha].itervalues():
+        if not isinstance(sha, bytes):
+            raise TypeError(sha)
+        for entry in viewvalues(self._by_sha[sha]):
             yield entry
 
     def lookup_tree_id(self, fileid, revision):
@@ -336,13 +345,13 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, entries in self._by_sha.iteritems():
-            for (type, type_data) in entries.values():
+        for key, entries in viewitems(self._by_sha):
+            for (type, type_data) in viewvalues(entries):
                 if type == "commit":
                     yield type_data[0]
 
     def sha1s(self):
-        return self._by_sha.iterkeys()
+        return viewkeys(self._by_sha)
 
 
 class SqliteCacheUpdater(CacheUpdater):
@@ -359,8 +368,10 @@ class SqliteCacheUpdater(CacheUpdater):
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
         else:
-            type_name = obj.type_name
+            type_name = obj.type_name.decode('ascii')
             hexsha = obj.id
+        if not isinstance(hexsha, bytes):
+            raise TypeError(hexsha)
         if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
@@ -510,7 +521,7 @@ class SqliteGitShaMap(GitShaMap):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
             for (sha,) in self.db.execute("select sha1 from %s" % table):
-                yield sha
+                yield sha.encode('ascii')
 
 
 class TdbCacheUpdater(CacheUpdater):
@@ -584,7 +595,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
             basepath = transport.local_abspath(".").encode(osutils._fs_enc)
         except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
-        if type(basepath) is not str:
+        if not isinstance(basepath, str):
             raise TypeError(basepath)
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
@@ -649,7 +660,7 @@ class TdbGitShaMap(GitShaMap):
             raise KeyError("No cache entry for %r" % revid)
 
     def lookup_blob_id(self, fileid, revision):
-        return sha_to_hex(self.db[b"\0".join(("blob", fileid, revision))])
+        return sha_to_hex(self.db[b"\0".join((b"blob", fileid, revision))])
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -683,15 +694,21 @@ class TdbGitShaMap(GitShaMap):
                 ret.add(revid)
         return ret
 
+    def _keys(self):
+        try:
+            return self.db.keys()
+        except AttributeError:  # python < 3
+            return self.db.iterkeys()
+
     def revids(self):
         """List the revision ids known."""
-        for key in self.db.iterkeys():
+        for key in self._keys():
             if key.startswith(b"commit\0"):
                 yield key[7:]
 
     def sha1s(self):
         """List the SHA1s."""
-        for key in self.db.iterkeys():
+        for key in self._keys():
             if key.startswith(b"git\0"):
                 yield sha_to_hex(key[4:])
 
@@ -727,22 +744,22 @@ class IndexCacheUpdater(CacheUpdater):
         if isinstance(obj, tuple):
             (type_name, hexsha) = obj
         else:
-            type_name = obj.type_name
+            type_name = obj.type_name.decode('ascii')
             hexsha = obj.id
         if type_name == "commit":
             self._commit = obj
             if type(bzr_key_data) is not dict:
                 raise TypeError(bzr_key_data)
-            self.cache.idmap._add_git_sha(hexsha, "commit",
+            self.cache.idmap._add_git_sha(hexsha, b"commit",
                 (self.revid, obj.tree, bzr_key_data))
-            self.cache.idmap._add_node(("commit", self.revid, "X"),
-                " ".join((hexsha, obj.tree)))
+            self.cache.idmap._add_node((b"commit", self.revid, b"X"),
+                b" ".join((hexsha, obj.tree)))
         elif type_name == "blob":
-            self.cache.idmap._add_git_sha(hexsha, "blob", bzr_key_data)
-            self.cache.idmap._add_node(("blob", bzr_key_data[0],
+            self.cache.idmap._add_git_sha(hexsha, b"blob", bzr_key_data)
+            self.cache.idmap._add_node((b"blob", bzr_key_data[0],
                 bzr_key_data[1]), hexsha)
         elif type_name == "tree":
-            self.cache.idmap._add_git_sha(hexsha, "tree", bzr_key_data)
+            self.cache.idmap._add_git_sha(hexsha, b"tree", bzr_key_data)
         else:
             raise AssertionError
 
@@ -890,12 +907,12 @@ class IndexGitShaMap(GitShaMap):
                 yield (entry[1], entry[2])
 
     def lookup_commit(self, revid):
-        return self._get_entry(("commit", revid, "X"))[:40]
+        return self._get_entry((b"commit", revid, b"X"))[:40]
 
     def _add_git_sha(self, hexsha, type, type_data):
         if hexsha is not None:
             self._name.update(hexsha)
-            if type == "commit":
+            if type == b"commit":
                 td = (type_data[0], type_data[1])
                 try:
                     td += (type_data[2]["testament3-sha1"],)
@@ -903,21 +920,21 @@ class IndexGitShaMap(GitShaMap):
                     pass
             else:
                 td = type_data
-            self._add_node(("git", hexsha, "X"), " ".join((type,) + td))
+            self._add_node((b"git", hexsha, b"X"), b" ".join((type,) + td))
         else:
             # This object is not represented in Git - perhaps an empty
             # directory?
-            self._name.update(type + " ".join(type_data))
+            self._name.update(type + b" ".join(type_data))
 
     def lookup_blob_id(self, fileid, revision):
-        return self._get_entry(("blob", fileid, revision))
+        return self._get_entry((b"blob", fileid, revision))
 
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        value = self._get_entry(("git", sha, "X"))
-        data = value.split(" ", 3)
-        if data[0] == "commit":
+        value = self._get_entry((b"git", sha, b"X"))
+        data = value.split(b" ", 3)
+        if data[0] == b"commit":
             try:
                 if data[3]:
                     verifiers = {"testament3-sha1": data[3]}
@@ -927,24 +944,24 @@ class IndexGitShaMap(GitShaMap):
                 verifiers = {}
             yield ("commit", (data[1], data[2], verifiers))
         else:
-            yield (data[0], tuple(data[1:]))
+            yield (data[0].decode('ascii'), tuple(data[1:]))
 
     def revids(self):
         """List the revision ids known."""
-        for key, value in self._iter_entries_prefix(("commit", None, None)):
+        for key, value in self._iter_entries_prefix((b"commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
         for _, key, value in self._index.iter_entries((
-            ("commit", revid, "X") for revid in revids)):
+            (b"commit", revid, b"X") for revid in revids)):
             missing_revids.remove(key[1])
         return missing_revids
 
     def sha1s(self):
         """List the SHA1s."""
-        for key, value in self._iter_entries_prefix(("git", None, None)):
+        for key, value in self._iter_entries_prefix((b"git", None, None)):
             yield key[1]
 
 

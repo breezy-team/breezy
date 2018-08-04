@@ -38,7 +38,7 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def check_success(self, path):
         base_tree = workingtree.WorkingTree.open(path)
-        self.assertEqual('file1-id', base_tree.path2id('subtree/file1'))
+        self.assertEqual(b'file1-id', base_tree.path2id('subtree/file1'))
 
     def test_join(self):
         base_tree, sub_tree = self.make_trees()

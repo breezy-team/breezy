@@ -31,6 +31,7 @@ from six import (
     reraise,
     string_types,
     text_type,
+    unichr,
     viewitems,
     viewkeys,
     viewvalues,

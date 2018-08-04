@@ -89,7 +89,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._user_transport = self.controldir.transport.clone('..')
         if name != u"":
             self._user_transport.set_segment_parameter(
-                "branch", urlutils.escape(name).encode('utf-8'))
+                "branch", urlutils.escape(name))
         self._base = self._user_transport.base
         self.name = name
         self._format = _format
@@ -1090,7 +1090,7 @@ class Converter7to8(object):
 
     def convert(self, branch):
         format = BzrBranchFormat8()
-        branch._transport.put_bytes('references', '')
+        branch._transport.put_bytes('references', b'')
         # update target format
         branch._transport.put_bytes('format', format.as_string())
 
