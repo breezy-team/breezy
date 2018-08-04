@@ -1257,6 +1257,7 @@ breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_last_modified
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_malformed
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_non_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_revision_id_with_slash
+breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_skip_file
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_symlink_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_unicode_bundle
 breezy.plugins.weave_fmt.test_bzrdir.V4WeaveBundleTester.test_unicode_symlink_bundle
@@ -22643,6 +22644,7 @@ breezy.tests.test_bundle.V4_2aBundleTester.test_non_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_revision_id_with_slash
 breezy.tests.test_bundle.V4_2aBundleTester.test_single_inventory_multiple_parents_as_xml
 breezy.tests.test_bundle.V4_2aBundleTester.test_single_inv_no_parents_as_xml
+breezy.tests.test_bundle.V4_2aBundleTester.test_skip_file
 breezy.tests.test_bundle.V4_2aBundleTester.test_symlink_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_unicode_bundle
 breezy.tests.test_bundle.V4_2aBundleTester.test_unicode_symlink_bundle
@@ -22671,6 +22673,7 @@ breezy.tests.test_bundle.V4BundleTester.test_last_modified
 breezy.tests.test_bundle.V4BundleTester.test_malformed
 breezy.tests.test_bundle.V4BundleTester.test_non_bundle
 breezy.tests.test_bundle.V4BundleTester.test_revision_id_with_slash
+breezy.tests.test_bundle.V4BundleTester.test_skip_file
 breezy.tests.test_bundle.V4BundleTester.test_symlink_bundle
 breezy.tests.test_bundle.V4BundleTester.test_unicode_bundle
 breezy.tests.test_bundle.V4BundleTester.test_unicode_symlink_bundle
