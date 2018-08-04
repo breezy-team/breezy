@@ -55,12 +55,9 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_get_root_id(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add([''])
             self.assertIsNot(None, tree.get_root_id())
-        finally:
-            tree.unlock()
 
     def test_lock_tree_write(self):
         """Check we can lock_tree_write and unlock MemoryTrees."""
@@ -95,35 +92,32 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_add_with_kind(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'afile', 'adir'], None,
-                 ['directory', 'file', 'directory'])
-        self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
-        self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
-        self.assertFalse(tree.has_filename('afile'))
-        self.assertFalse(tree.has_filename('adir'))
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'afile', 'adir'], None,
+                     ['directory', 'file', 'directory'])
+            self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
+            self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
+            self.assertFalse(tree.has_filename('afile'))
+            self.assertFalse(tree.has_filename('adir'))
 
     def test_put_new_file(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                  kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo', b'barshoom')
-        self.assertEqual(b'barshoom', tree.get_file('foo').read())
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
+                      kinds=['directory', 'file'])
+            tree.put_file_bytes_non_atomic('foo', b'barshoom')
+            self.assertEqual(b'barshoom', tree.get_file('foo').read())
 
     def test_put_existing_file(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                 kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo', b'first-content')
-        tree.put_file_bytes_non_atomic('foo', b'barshoom')
-        self.assertEqual(b'barshoom', tree.get_file('foo').read())
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
+                     kinds=['directory', 'file'])
+            tree.put_file_bytes_non_atomic('foo', b'first-content')
+            tree.put_file_bytes_non_atomic('foo', b'barshoom')
+            self.assertEqual(b'barshoom', tree.get_file('foo').read())
 
     def test_add_in_subdir(self):
         branch = self.make_branch('branch')
@@ -140,6 +134,15 @@ class TestMemoryTree(TestCaseWithTransport):
         self.assertEqual('adir/afile', tree.id2path(b'file-id'))
         self.assertEqual('adir', tree.id2path(b'dir-id'))
         tree.put_file_bytes_non_atomic('adir/afile', b'barshoom')
+
+    def test_add_symlink(self):
+        branch = self.make_branch('branch')
+        tree = MemoryTree.create_on_branch(branch)
+        tree.lock_write()
+        tree._file_transport.symlink('bar', 'foo')
+        tree.add(['', 'foo'])
+        self.assertEqual('symlink', tree.kind('foo'))
+        self.assertEqual('bar', tree.get_symlink_target('foo'))
 
     def test_commit_trivial(self):
         """Smoke test for commit on a MemoryTree.

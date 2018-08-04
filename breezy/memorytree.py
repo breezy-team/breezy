@@ -127,7 +127,7 @@ class MemoryTree(MutableInventoryTree):
             # memory tree does not support nested trees yet.
             return kind, None, None, None
         elif kind == 'symlink':
-            raise NotImplementedError('symlink support')
+            return kind, None, None, self._inventory[id].symlink_target
         else:
             raise NotImplementedError('unknown kind')
 
@@ -228,6 +228,8 @@ class MemoryTree(MutableInventoryTree):
                 continue
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
+            elif entry.kind == 'symlink':
+                self._file_transport.symlink(entry.symlink_target, path)
             elif entry.kind == 'file':
                 self._file_transport.put_file(path,
                     self._basis_tree.get_file(path, entry.file_id))
