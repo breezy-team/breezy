@@ -27244,6 +27244,7 @@ breezy.tests.test_options.OptionTests.test_parse_args
 breezy.tests.test_options.OptionTests.test_registry_conversion
 breezy.tests.test_options.OptionTests.test_registry_converter
 breezy.tests.test_options.OptionTests.test_set_short_name
+breezy.tests.test_options.OptionTests.test_unknown_short_opt
 breezy.tests.test_options.TestListOptions.test_list_option
 breezy.tests.test_options.TestListOptions.test_list_option_can_be_reset
 breezy.tests.test_options.TestListOptions.test_list_option_no_arguments
