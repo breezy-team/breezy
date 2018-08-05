@@ -140,10 +140,15 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # Topological ordering allows B & C and D & E to be returned with
         # either one first, so the required ordering is:
         # [A (B C) (D E) G]
+        #
+        # or, because E can be returned before B:
+        #
+        # A C E B D G
         keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDEG')]
         alt_1 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBDEG')]
         alt_2 = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCEDG')]
         alt_3 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBEDG')]
+        alt_4 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACEBDG')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -153,7 +158,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             if record.storage_kind == 'absent':
                 raise ValueError('absent record: %s' % (record.key,))
             record_keys.append(record.key)
-        self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3))
+        self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3, alt_4))
 
     def test_ordered_fulltext_simple(self):
         self.make_simple_split()
@@ -181,10 +186,15 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # Topological ordering allows B & C and D & E to be returned with
         # either one first, so the required ordering is:
         # [A (B C) (D E) G]
+        #
+        # or, because E can be returned before B:
+        #
+        # A C E B D G
         keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDEG')]
         alt_1 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBDEG')]
         alt_2 = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCEDG')]
         alt_3 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBEDG')]
+        alt_4 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACEBDG')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -200,5 +210,5 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
             # See https://bugs.launchpad.net/bzr/+bug/399884
             self.expectFailure('KVF does not weave fulltexts from fallback'
                 ' repositories to preserve perfect order',
-                self.assertTrue, record_keys in (keys, alt_1, alt_2, alt_3))
-        self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3))
+                self.assertTrue, record_keys in (keys, alt_1, alt_2, alt_3, alt_4))
+        self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3, alt_4))
