@@ -27979,6 +27979,7 @@ breezy.tests.test_remote.TestUpdateBoundBranchWithModifiedBoundLocation.test_wit
 breezy.tests.test_remote.TestWithCustomErrorHandler.test_no_context
 breezy.tests.test_remote.TestWithCustomErrorHandler.test_with_context
 breezy.tests.test_rename_map.TestRenameMap.test_add_edge_hashes
+breezy.tests.test_rename_map.TestRenameMap.test_add_file_edge_hashes
 breezy.tests.test_rename_map.TestRenameMap.test_file_match
 breezy.tests.test_rename_map.TestRenameMap.test_file_match_no_dups
 breezy.tests.test_rename_map.TestRenameMap.test_find_directory_renames

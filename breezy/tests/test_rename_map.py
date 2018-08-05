@@ -46,8 +46,8 @@ class TestRenameMap(TestCaseWithTransport):
         tree.add('a', b'a')
         rn = RenameMap(tree)
         rn.add_file_edge_hashes(tree, [b'a'])
-        self.assertEqual({'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
-        self.assertEqual({'a'}, rn.edge_hashes[myhash(('b\n', 'c\n'))])
+        self.assertEqual({b'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
+        self.assertEqual({b'a'}, rn.edge_hashes[myhash(('b\n', 'c\n'))])
         self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_hitcounts(self):
