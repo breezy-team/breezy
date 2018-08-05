@@ -28,6 +28,8 @@ import gettext as _gettext
 import os
 import sys
 
+from .sixish import text_type
+
 
 _translations = None
 
@@ -208,8 +210,7 @@ def load_plugin_translations(domain):
 
     :param domain: Gettext domain name (usually 'brz-PLUGINNAME')
     """
-    locale_base = os.path.dirname(
-        unicode(__file__, sys.getfilesystemencoding()))
+    locale_base = os.path.dirname(__file__)
     translation = install_translations(domain=domain,
         locale_base=locale_base)
     add_fallback(translation)

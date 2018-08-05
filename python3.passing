@@ -25274,6 +25274,7 @@ breezy.tests.test_http.TestTruncatedBeforeBoundary.test_readv_with_short_reads(u
 breezy.tests.test_http.TestTruncatedMultipleRangeServer.test_readv_with_short_reads(urllib,HTTP/1.0)
 breezy.tests.test_http.TestTruncatedMultipleRangeServer.test_readv_with_short_reads(urllib,HTTP/1.1)
 breezy.tests.test_http.TestUrllib2AuthHandler.test_get_user_password_without_port
+breezy.tests.test_i18n.LoadPluginTranslations.test_does_not_exist
 breezy.tests.test_i18n.TestGetTextPerParagraph.test_multiline
 breezy.tests.test_i18n.TestGetTextPerParagraph.test_oneline
 breezy.tests.test_i18n.TestGetText.test_multiline
@@ -25281,7 +25282,9 @@ breezy.tests.test_i18n.TestGetText.test_oneline
 breezy.tests.test_i18n.TestInstall.test_custom_languages
 breezy.tests.test_i18n.TestInstall.test_disable_i18n
 breezy.tests.test_i18n.TestInstall.test_no_env_variables
+breezy.tests.test_i18n.TestTranslate.test_error_message_translation
 breezy.tests.test_i18n.TestTranslate.test_topic_help_translation
+breezy.tests.test_i18n.TestZzzTranslation.test_translation
 breezy.tests.test_identitymap.TestIdentityMap.test_add_weave
 breezy.tests.test_identitymap.TestIdentityMap.test_construct
 breezy.tests.test_identitymap.TestIdentityMap.test_double_add_weave
