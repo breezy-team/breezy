@@ -33,7 +33,7 @@ class TestFileIds(tests.TestCase):
         file_id = generate_ids.gen_file_id(filename)
         self.assertContainsRe(file_id, b'^'+regex+b'$')
         # It should be a utf8 file_id, not a unicode one
-        self.assertIsInstance(file_id, str)
+        self.assertIsInstance(file_id, bytes)
         # gen_file_id should always return ascii file ids.
         file_id.decode('ascii')
 
@@ -41,14 +41,14 @@ class TestFileIds(tests.TestCase):
         gen_file_id = generate_ids.gen_file_id
 
         # We try to use the filename if possible
-        self.assertStartsWith(gen_file_id(b'bar'), b'bar-')
+        self.assertStartsWith(gen_file_id('bar'), b'bar-')
 
         # but we squash capitalization, and remove non word characters
-        self.assertStartsWith(gen_file_id(b'Mwoo oof\t m'), b'mwoooofm-')
+        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), b'mwoooofm-')
 
         # We also remove leading '.' characters to prevent hidden file-ids
-        self.assertStartsWith(gen_file_id(b'..gam.py'), b'gam.py-')
-        self.assertStartsWith(gen_file_id(b'..Mwoo oof\t m'), b'mwoooofm-')
+        self.assertStartsWith(gen_file_id('..gam.py'), b'gam.py-')
+        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), b'mwoooofm-')
 
         # we remove unicode characters, and still don't end up with a
         # hidden file id
@@ -61,18 +61,18 @@ class TestFileIds(tests.TestCase):
 
         # Test both case squashing and length restriction
         fid = gen_file_id('A'*50 + '.txt')
-        self.assertStartsWith(fid, 'a'*20 + '-')
+        self.assertStartsWith(fid, b'a'*20 + b'-')
         self.assertTrue(len(fid) < 60)
 
         # restricting length happens after the other actions, so
         # we preserve as much as possible
         fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
-        self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
+        self.assertStartsWith(fid, b'abcdefghijklmnopqrst-')
         self.assertTrue(len(fid) < 60)
 
     def test_file_ids_are_ascii(self):
         tail = br'-\d{14}-[a-z0-9]{16}-\d+'
-        self.assertGenFileId(b'foo' + tail, b'foo')
+        self.assertGenFileId(b'foo' + tail, 'foo')
         self.assertGenFileId(b'foo' + tail, u'foo')
         self.assertGenFileId(b'bar' + tail, u'bar')
         self.assertGenFileId(b'br' + tail, u'b\xe5r')
