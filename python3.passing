@@ -30061,6 +30061,7 @@ breezy.tests.test_version_info.TestVersionInfoRio.test_rio_null
 breezy.tests.test_version_info.TestVersionInfoRio.test_rio_version_hook
 breezy.tests.test_version_info.TestVersionInfoRio.test_simple
 breezy.tests.test_version.TestBzrlibVersioning.test_get_brz_source_tree
+breezy.tests.test_version.TestBzrlibVersioning.test_python_binary_path
 breezy.tests.test_version.TestPlatformUse.test_platform(ascii)
 breezy.tests.test_version.TestPlatformUse.test_platform(unicode)
 breezy.tests.test_vf_search.TestLimitedSearchResultFromParentMap.test_ancestry_1
