@@ -1230,6 +1230,7 @@ breezy.plugins.weave_fmt.test_bzrdir.TestFormat6.test_needs_conversion
 breezy.plugins.weave_fmt.test_bzrdir.TestFormat6.test_same_lockfiles_between_tree_repo_branch
 breezy.plugins.weave_fmt.test_bzrdir.TestInfo.test_info_locking_oslocks
 breezy.plugins.weave_fmt.test_bzrdir.TestInit.test_init_weave
+breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_makes_dir_weaves
 breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_simple
 breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_to_meta_sets_workingtree_last_revision
 breezy.plugins.weave_fmt.test_bzrdir.TestUpgrade.test_upgrade_v6_to_meta_no_workingtree
