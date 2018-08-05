@@ -22757,6 +22757,7 @@ breezy.tests.test_bzrdir.TestBzrDirHooks.test_pre_open_actual_exceptions_raised
 breezy.tests.test_bzrdir.TestBzrDirHooks.test_pre_open_called
 breezy.tests.test_bzrdir.TestBzrDirSprout.test_sprout_parent
 breezy.tests.test_bzrdir.TestBzrDirSprout.test_sprout_uses_branch_sprout
+breezy.tests.test_bzrdir.TestBzrFormat.test_as_string
 breezy.tests.test_bzrdir.TestBzrFormat.test_check_support_status_optional
 breezy.tests.test_bzrdir.TestBzrFormat.test_check_support_status_required
 breezy.tests.test_bzrdir.TestBzrFormat.test_check_support_status_unknown
