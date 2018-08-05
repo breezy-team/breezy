@@ -43,22 +43,22 @@ load_tests = scenarios.load_tests_apply_scenarios
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'path' and 'id' only with a circle and a hat. (shappo?)
 example_conflicts = conflicts.ConflictList(
-    [conflicts.MissingParent('Not deleting', u'p\xe5thg', '\xc3\xaedg'),
-     conflicts.ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'),
+    [conflicts.MissingParent('Not deleting', u'p\xe5thg', b'\xc3\xaedg'),
+     conflicts.ContentsConflict(u'p\xe5tha', None, b'\xc3\xaeda'),
      conflicts.TextConflict(u'p\xe5tha'),
-     conflicts.PathConflict(u'p\xe5thb', u'p\xe5thc', '\xc3\xaedb'),
+     conflicts.PathConflict(u'p\xe5thb', u'p\xe5thc', b'\xc3\xaedb'),
      conflicts.DuplicateID('Unversioned existing file',
                            u'p\xe5thc', u'p\xe5thc2',
-                           '\xc3\xaedc', '\xc3\xaedc'),
+                           b'\xc3\xaedc', b'\xc3\xaedc'),
     conflicts.DuplicateEntry('Moved existing file to',
                              u'p\xe5thdd.moved', u'p\xe5thd',
-                             '\xc3\xaedd', None),
+                             b'\xc3\xaedd', None),
     conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
-                         None, '\xc3\xaed2e'),
+                         None, b'\xc3\xaed2e'),
     conflicts.UnversionedParent('Versioned directory',
-                                u'p\xe5thf', '\xc3\xaedf'),
+                                u'p\xe5thf', b'\xc3\xaedf'),
     conflicts.NonDirectoryParent('Created directory',
-                                 u'p\xe5thg', '\xc3\xaedg'),
+                                 u'p\xe5thg', b'\xc3\xaedg'),
 ])
 
 
@@ -933,18 +933,18 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
             (dict(_base_actions='create_dir1_dir2'),
              ('dir1_into_dir2',
               dict(actions='move_dir1_into_dir2', check='dir1_moved',
-                   dir_id=b'dir1-id', target_id='dir2-id', xfail=False)),
+                   dir_id=b'dir1-id', target_id=b'dir2-id', xfail=False)),
              ('dir2_into_dir1',
               dict(actions='move_dir2_into_dir1', check='dir2_moved',
-                   dir_id=b'dir2-id', target_id='dir1-id', xfail=False))),
+                   dir_id=b'dir2-id', target_id=b'dir1-id', xfail=False))),
             # Subdirs moved into each other
             (dict(_base_actions='create_dir1_4'),
              ('dir1_into_dir4',
               dict(actions='move_dir1_into_dir4', check='dir1_2_moved',
-                   dir_id=b'dir1-id', target_id='dir4-id', xfail=True)),
+                   dir_id=b'dir1-id', target_id=b'dir4-id', xfail=True)),
              ('dir3_into_dir2',
               dict(actions='move_dir3_into_dir2', check='dir3_4_moved',
-                   dir_id=b'dir3-id', target_id='dir2-id', xfail=True))),
+                   dir_id=b'dir3-id', target_id=b'dir2-id', xfail=True))),
             ])
 
     def do_create_dir1_dir2(self):
