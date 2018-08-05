@@ -29980,6 +29980,8 @@ breezy.tests.test_url_policy_open.TestOpenOnlyScheme.test_stacked_outside_scheme
 breezy.tests.test_url_policy_open.TestOpenOnlyScheme.test_stacked_within_scheme
 breezy.tests.test_urlutils.QuoteTests.test_quote
 breezy.tests.test_urlutils.QuoteTests.test_quote_tildes
+breezy.tests.test_urlutils.QuoteTests.test_unquote
+breezy.tests.test_urlutils.QuoteTests.test_unquote_to_bytes
 breezy.tests.test_urlutils.TestCwdToURL.test_dot
 breezy.tests.test_urlutils.TestCwdToURL.test_non_ascii
 breezy.tests.test_urlutils.TestDeriveToLocation.test_to_locations_derived_from_paths
@@ -30012,6 +30014,7 @@ breezy.tests.test_urlutils.TestURL.test_repr
 breezy.tests.test_urlutils.TestURL.test_str
 breezy.tests.test_urlutils.TestUrlToPath.test_basename
 breezy.tests.test_urlutils.TestUrlToPath.test_dirname
+breezy.tests.test_urlutils.TestUrlToPath.test_escape
 breezy.tests.test_urlutils.TestUrlToPath.test_escape_tildes
 breezy.tests.test_urlutils.TestUrlToPath.test_escape_unescape
 breezy.tests.test_urlutils.TestUrlToPath.test_function_type
@@ -30032,6 +30035,7 @@ breezy.tests.test_urlutils.TestUrlToPath.test_unescape
 breezy.tests.test_urlutils.TestUrlToPath.test_url_scheme_re
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_extract_drive_letter
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_local_path_from_url
+breezy.tests.test_urlutils.TestUrlToPath.test_win32_local_path_to_url
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_strip_local_trailing_slash
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_unc_path_from_url
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_unc_path_to_url
