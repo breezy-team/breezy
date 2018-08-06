@@ -32,6 +32,7 @@ from . import (
     errors,
     lazy_regex,
     )
+from .sixish import text_type
 
 # the regex removes any weird characters; we don't escape them
 # but rather just pull them out
@@ -71,6 +72,8 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
+    if isinstance(name, text_type):
+        name = name.encode('ascii', 'replace')
     # The real randomness is in the _next_id_suffix, the
     # rest of the identifier is just to be nice.
     # So we:
@@ -82,7 +85,7 @@ def gen_file_id(name):
     #    filesystems
     # 4) Removing starting '.' characters to prevent the file ids from
     #    being considered hidden.
-    ascii_word_only = _file_id_chars_re.sub(b'', name.lower().encode('ascii', 'replace'))
+    ascii_word_only = _file_id_chars_re.sub(b'', name.lower())
     short_no_dots = ascii_word_only.lstrip(b'.')[:20]
     return short_no_dots + _next_id_suffix()
 
