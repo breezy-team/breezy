@@ -392,6 +392,7 @@ breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_get_symli
 breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_id2path_no_delta
 breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_id2path_with_delta
 breezy.plugins.fastimport.tests.test_revision_store.Test_TreeShim.test_path2id
+breezy.plugins.git.tests.test_blackbox.ShallowTests.test_log_shallow
 breezy.plugins.git.tests.test_blackbox.ShallowTests.test_version_info_custom_without_revno
 breezy.plugins.git.tests.test_blackbox.ShallowTests.test_version_info_custom_with_revno
 breezy.plugins.git.tests.test_blackbox.ShallowTests.test_version_info_python
