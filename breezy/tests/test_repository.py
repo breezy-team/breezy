@@ -956,13 +956,15 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename.encode('utf-8') + b'-id'
+        content = [b'line\n']
         entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
+        entry.text_sha1 = osutils.sha_strings(content)
         entry.text_size = 0
         inv.add(entry)
         text_key = (file_id, revision)
         parent_keys = [(file_id, parent) for parent in parents]
-        repo.texts.add_lines(text_key, parent_keys, [b'line\n'])
+        repo.texts.add_lines(text_key, parent_keys, content)
 
     def test_insert_from_broken_repo(self):
         """Inserting a data stream from a broken repository won't silently
