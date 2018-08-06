@@ -107,7 +107,7 @@ class DirWrapper(object):
         if mode != 'r':
             raise AssertionError(
                 'only readonly supported')
-        self.root = os.path.realpath(fileobj.read())
+        self.root = os.path.realpath(fileobj.read().decode('utf-8'))
 
     def __repr__(self):
         return 'DirWrapper(%r)' % self.root

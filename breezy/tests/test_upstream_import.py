@@ -66,11 +66,11 @@ class DirFileWriter(object):
         existing = fileobj.read()
         fileobj.seek(0)
         path = tempfile.mkdtemp(dir=os.getcwd())
-        if existing != '':
+        if existing != b'':
             # copytree requires the directory not to exist
             os.rmdir(path)
             copytree(existing, path)
-        fileobj.write(path)
+        fileobj.write(path.encode('utf-8'))
         self.root = path
 
     def add(self, path):
@@ -223,8 +223,7 @@ class TestImport(TestCaseInTempDir):
     def archive_test(self, builder, importer, subdir=False):
         archive_file = self.make_archive(builder, subdir)
         tree = BzrDir.create_standalone_workingtree('tree')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             importer(tree, archive_file)
             self.assertTrue(tree.is_versioned('README'))
             self.assertTrue(tree.is_versioned('FEEDME'))
@@ -242,9 +241,6 @@ class TestImport(TestCaseInTempDir):
             # Ensure the second version of the file is used.
             self.assertEqual(tree.get_file_text('README'), b'Wow?')
             self.assertTrue(not os.path.exists(tree.abspath('FEEDME')))
-        finally:
-            tree.unlock()
-
 
     def test_untar2(self):
         tar_file = self.make_messed_tar()

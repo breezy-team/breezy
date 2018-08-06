@@ -29954,6 +29954,7 @@ breezy.tests.test_upgrade.TestUpgrade.test_convert_knit_one_parent_dirstate
 breezy.tests.test_upgrade.TestUpgrade.test_upgrade_rich_root
 breezy.tests.test_upstream_import.TestImport.test_broken_tar
 breezy.tests.test_upstream_import.TestImport.test_common_directory
+breezy.tests.test_upstream_import.TestImport.test_copydir_nosub
 breezy.tests.test_upstream_import.TestImport.test_get_archive_type
 breezy.tests.test_upstream_import.TestImport.test_no_crash_with_bzrdir
 breezy.tests.test_upstream_import.TestImport.test_top_path
