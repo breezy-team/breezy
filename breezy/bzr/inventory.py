@@ -32,12 +32,8 @@ ROOT_ID = b"TREE_ROOT"
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
-import copy
-import re
-import tarfile
 
 from breezy import (
-    errors,
     generate_ids,
     osutils,
     )
@@ -47,6 +43,7 @@ from breezy.bzr import (
 """)
 
 from .. import (
+    errors,
     lazy_regex,
     trace,
     )
