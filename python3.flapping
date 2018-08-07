@@ -17,3 +17,4 @@ breezy.plugins.git.tests.test_remote.FetchFromRemoteToGitTests.test_sprout_with_
 breezy.plugins.git.tests.test_remote.RemoteControlDirTests.test_annotated_tag
 breezy.tests.test_sftp_transport.SFTPNonServerTest.test_get_paramiko_vendor
 breezy.tests.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
+breezy.tests.test_repository.TestPacker.test_pack_optimizes_pack_order
