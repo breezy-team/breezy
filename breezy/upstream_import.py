@@ -331,7 +331,7 @@ def do_import(source, tree_directory=None):
             archive, external_compressor = get_archive_type(source)
         except NotArchiveType:
             if file_kind(source) == 'directory':
-                s = StringIO(source)
+                s = BytesIO(source.encode('utf-8'))
                 s.seek(0)
                 import_dir(tree, s)
             else:
