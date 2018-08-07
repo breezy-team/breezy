@@ -741,14 +741,14 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
         missing = [('inventories', b'rev-2')]
-        full_chk_records = []
+        full_chk_records = set()
         for vf_name, substream in source.get_stream_for_missing_keys(missing):
             if vf_name == 'inventories':
                 for record in substream:
                     self.assertEqual((b'rev-2',), record.key)
             elif vf_name == 'chk_bytes':
                 for record in substream:
-                    full_chk_records.append(record.key)
+                    full_chk_records.add(record.key)
             else:
                 self.fail('Should not be getting a stream of %s' % (vf_name,))
         # We have 257 records now. This is because we have 1 root page, and 256

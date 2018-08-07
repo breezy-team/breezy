@@ -98,13 +98,14 @@ class ImportTariffTestCase(TestCaseWithTransport):
         :param err: Standard error
         :param forbidden_imports: List of forbidden modules
         """
+        err = err.decode('utf-8')
         self.addDetail('subprocess_stderr',
-            content.text_content(err.decode('utf-8')))
+            content.text_content(err))
 
         bad_modules = []
         for module_name in forbidden_imports:
             if PY3:
-                if err.find(b"\nimport '%s' " % module_name.encode('ascii')) != -1:
+                if err.find("\nimport '%s' " % module_name) != -1:
                     bad_modules.append(module_name)
             else:
                 if err.find("\nimport %s " % module_name) != -1:
@@ -189,6 +190,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.bzr.xml8',
             'getpass',
             'kerberos',
+            'shutil',
             'ssl',
             'socket',
             'smtplib',

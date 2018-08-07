@@ -86,8 +86,9 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         err_lines = err.splitlines()
         self.assertEqual('Ignoring files outside view. View is a, b', err_lines[0])
         self.assertStartsWith(err_lines[1], 'Committing to:')
-        self.assertEqual('added a', err_lines[2])
-        self.assertEqual('added b', err_lines[3])
+        # TODO(jelmer): Should 'added ' output for commit be sorted?
+        self.assertIn('added a', [err_lines[2], err_lines[3]])
+        self.assertIn('added b', [err_lines[2], err_lines[3]])
         self.assertEqual('Committed revision 1.', err_lines[4])
         self.assertEqual('', out)
 

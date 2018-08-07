@@ -1025,8 +1025,8 @@ $ rm -r foo
 $ echo "Boo!" >foo
 $ brz commit -q -m 'foo is now a file'
 $ brz merge ../trunk
-2>+N  foo.new/bar
 2>RK  foo => foo.new/
+2>+N  foo.new/bar
 # FIXME: The message is misleading, foo.new *is* a directory when the message
 # is displayed -- vila 090916
 2>Conflict: foo.new is not a directory, but has files in it.  Created directory.

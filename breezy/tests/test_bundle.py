@@ -1173,7 +1173,7 @@ class BundleTester(object):
         # rev2 is present in bundle, and done by fetch
         # having file1 in the bunle causes file1's versionedfile to be opened.
         self.tree1.add('file3', b'file3-id')
-        self.tree1.commit('rev2')
+        rev2 = self.tree1.commit('rev2')
         # Updating file2 should not cause an attempt to add to file1's vf
         target = self.tree1.controldir.sprout('target').open_workingtree()
         self.build_tree_contents([('tree/file2', b'contents3')])
@@ -1181,11 +1181,10 @@ class BundleTester(object):
         bundle = self.get_valid_bundle(b'reva', b'rev3')
         if getattr(bundle, 'get_bundle_reader', None) is None:
             raise tests.TestSkipped('Bundle format cannot provide reader')
-        # be sure that file1 comes before file2
-        for b, m, k, r, f in bundle.get_bundle_reader().iter_records():
-            if f == b'file3-id':
-                break
-            self.assertNotEqual(f, b'file2-id')
+        file_ids = set(
+            (f, r) for b, m, k, r, f in bundle.get_bundle_reader().iter_records()
+            if f is not None)
+        self.assertEqual({(b'file2-id', b'rev3'), (b'file3-id', rev2)}, file_ids)
         bundle.install_revisions(target.branch.repository)
 
 
