@@ -411,7 +411,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # roundtrip xml invalid characters in the xml-based serializers.
             escaped_message, escape_count = re.subn(
                 u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-                lambda match: match.group(0).encode('unicode_escape'),
+                lambda match: match.group(0).encode('unicode_escape').decode('ascii'),
                 message)
             self.assertEqual(rev.message, escaped_message)
         else:

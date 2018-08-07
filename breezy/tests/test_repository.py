@@ -255,7 +255,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
         tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
-        self.assertHasKnit(t, b'knits/e8/%254easty-%2549d%2543%253a',
+        self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             b'\nfoo fulltext 0 81  :')
 
     def assertHasKnit(self, t, knit_name, extra_content=b''):
@@ -265,9 +265,9 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def check_knits(self, t):
         """check knit content for a repository."""
-        self.assertHasKnit(t, b'inventory')
-        self.assertHasKnit(t, b'revisions')
-        self.assertHasKnit(t, b'signatures')
+        self.assertHasKnit(t, 'inventory')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasKnit(t, 'signatures')
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -737,7 +737,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
                           (b'sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
                           (b'sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
                           (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)},
-                         simple_chk_records)
+                         set(simple_chk_records))
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
         missing = [('inventories', b'rev-2')]
@@ -956,13 +956,15 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename.encode('utf-8') + b'-id'
+        content = [b'line\n']
         entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
+        entry.text_sha1 = osutils.sha_strings(content)
         entry.text_size = 0
         inv.add(entry)
         text_key = (file_id, revision)
         parent_keys = [(file_id, parent) for parent in parents]
-        repo.texts.add_lines(text_key, parent_keys, [b'line\n'])
+        repo.texts.add_lines(text_key, parent_keys, content)
 
     def test_insert_from_broken_repo(self):
         """Inserting a data stream from a broken repository won't silently

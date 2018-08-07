@@ -129,7 +129,7 @@ class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
-                (str(self._timestamp).encode('ascii'),
+                (b'%d' % self._timestamp,
                  str(self._timezone).encode('ascii'), b"UNKNOWN"))
             self.random_revid = False
         elif revid is not None:
@@ -198,7 +198,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                     return (tree.get_file(path, file_id), None)
                 tree.get_file_with_stat = get_file_with_stat
                 new_revid = self.target.mapping.revision_id_foreign_to_bzr(
-                    (str(rev.timestamp).encode('ascii'), str(rev.timezone).encode('ascii'),
+                    (b'%d' % rev.timestamp, str(rev.timezone).encode('ascii'),
                         str(self.target.revno()).encode('ascii')))
                 parent_revno, parent_revid= self.target.last_revision_info()
                 if parent_revid == revision.NULL_REVISION:

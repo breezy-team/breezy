@@ -1003,7 +1003,11 @@ class TreeTransformBase(object):
                    (from_name, to_name),
                    (from_kind, to_kind),
                    (from_executable, to_executable)))
-        return iter(sorted(results, key=lambda x:x[1]))
+
+        def path_key(t):
+            paths = t[1]
+            return (paths[0] or '', paths[1] or '')
+        return iter(sorted(results, key=path_key))
 
     def get_preview_tree(self):
         """Return a tree representing the result of the transform.

@@ -385,7 +385,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = workingtree.WorkingTree.open('root/tree')
         repo = tree.branch.repository
         self.assertRaises(errors.NoSuchRevision, repo.get_revision,
-                          'dead-head-id')
+                          b'dead-head-id')
 
     def test_standalone_to_standalone(self):
         tree = self.make_branch_and_tree('tree')

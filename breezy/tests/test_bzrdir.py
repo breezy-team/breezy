@@ -1227,14 +1227,14 @@ class TestDotBzrHidden(TestCaseWithTransport):
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create('.')
         self.build_tree(['a'])
-        self.assertEqual(['a'], self.get_ls())
+        self.assertEqual([b'a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
         if sys.platform == 'win32' and not win32utils.has_win32file:
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
-        self.assertEqual(['a'], self.get_ls())
+        self.assertEqual([b'a'], self.get_ls())
 
 
 class _TestBzrDirFormat(bzrdir.BzrDirMetaFormat1):
@@ -1404,7 +1404,7 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
     def test_exiting(self):
-        self._transport.put_bytes("a.~1~", "some content")
+        self._transport.put_bytes("a.~1~", b"some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
 
@@ -1474,7 +1474,7 @@ class TestBzrFormat(TestCase):
         self.assertEqual(format.as_string(),
             b"First line\n"
             b"required foo\n")
-        format.features["another"] = "optional"
+        format.features[b"another"] = b"optional"
         self.assertEqual(format.as_string(),
             b"First line\n"
             b"optional another\n"

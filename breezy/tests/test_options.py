@@ -81,7 +81,7 @@ class OptionTests(TestCase):
 
     def test_unknown_short_opt(self):
         out, err = self.run_bzr('help -r', retcode=3)
-        self.assertContainsRe(err, br'no such option')
+        self.assertContainsRe(err, r'no such option')
 
     def test_set_short_name(self):
         o = option.Option('wiggle')

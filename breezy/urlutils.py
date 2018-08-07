@@ -422,7 +422,7 @@ def normalize_url(url):
         if path_chars[i] not in _url_safe_characters:
             chars = path_chars[i].encode('utf-8')
             path_chars[i] = ''.join(
-                ['%%%02X' % ord(c) for c in path_chars[i].encode('utf-8')])
+                ['%%%02X' % c for c in bytearray(path_chars[i].encode('utf-8'))])
     path = ''.join(path_chars)
     path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
     return str(prefix + path)

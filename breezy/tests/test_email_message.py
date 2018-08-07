@@ -23,6 +23,7 @@ except ImportError:  # python < 3
 from .. import __version__ as _breezy_version
 from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
+from ..sixish import text_type
 from ..smtp_connection import SMTPConnection
 from .. import tests
 
@@ -110,10 +111,10 @@ class TestEmailMessage(tests.TestCase):
 
     def test_simple_message(self):
         pairs = {
-            'body': SIMPLE_MESSAGE_ASCII,
+            b'body': SIMPLE_MESSAGE_ASCII,
             u'b\xf3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xf4dy': SIMPLE_MESSAGE_8BIT,
+            b'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
+            b'b\xf4dy': SIMPLE_MESSAGE_8BIT,
         }
         for body, expected in pairs.items():
             msg = EmailMessage('from@from.com', 'to@to.com', 'subject', body)
@@ -205,10 +206,9 @@ class TestEmailMessage(tests.TestCase):
     def test_string_with_encoding(self):
         pairs = {
                 u'Pepe':        (b'Pepe', 'ascii'),
-                u'P\xe9rez':    ('P\xc3\xa9rez', 'utf-8'),
-                'Perez':         ('Perez', 'ascii'), # u'Pepe' == 'Pepe'
-                'P\xc3\xa9rez': ('P\xc3\xa9rez', 'utf-8'),
-                'P\xe8rez':     ('P\xe8rez', '8-bit'),
+                u'P\xe9rez':    (b'P\xc3\xa9rez', 'utf-8'),
+                b'P\xc3\xa9rez': (b'P\xc3\xa9rez', 'utf-8'),
+                b'P\xe8rez':     (b'P\xe8rez', '8-bit'),
         }
         for string_, pair in pairs.items():
             self.assertEqual(pair, EmailMessage.string_with_encoding(string_))
