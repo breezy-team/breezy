@@ -1020,8 +1020,6 @@ class TransportTests(TestTransportImplementation):
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
-        except IOError:
-            self.knownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
