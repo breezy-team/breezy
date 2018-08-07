@@ -207,7 +207,6 @@ class TestEmailMessage(tests.TestCase):
         pairs = {
                 u'Pepe':        (b'Pepe', 'ascii'),
                 u'P\xe9rez':    (b'P\xc3\xa9rez', 'utf-8'),
-                b'Perez':        (b'Perez', 'ascii'), # u'Pepe' == 'Pepe'
                 b'P\xc3\xa9rez': (b'P\xc3\xa9rez', 'utf-8'),
                 b'P\xe8rez':     (b'P\xe8rez', '8-bit'),
         }
