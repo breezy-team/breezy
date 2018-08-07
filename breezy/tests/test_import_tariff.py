@@ -190,6 +190,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.bzr.xml8',
             'getpass',
             'kerberos',
+            'shutil',
             'ssl',
             'socket',
             'smtplib',

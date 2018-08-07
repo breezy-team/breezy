@@ -32,13 +32,13 @@ from __future__ import absolute_import
 import errno
 import os
 import re
-import shutil
 import sys
 
 import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import shutil
 import stat
 
 from breezy import (
