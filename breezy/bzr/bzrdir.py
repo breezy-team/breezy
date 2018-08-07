@@ -1197,7 +1197,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
-                      for item in sorted(self.features.items())])
+                      for item in sorted(viewitems(self.features))])
         return b"".join(lines)
 
     @classmethod
