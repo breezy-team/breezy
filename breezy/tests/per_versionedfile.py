@@ -244,10 +244,10 @@ class VersionedFileTestMixIn(object):
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(errors.BzrBadParameterUnicode,
-            vf.add_lines, b'a', [], ['a\n', u'b\n', 'c\n'])
+            vf.add_lines, b'a', [], [b'a\n', u'b\n', b'c\n'])
         self.assertRaises(
             (errors.BzrBadParameterUnicode, NotImplementedError),
-            vf.add_lines_with_ghosts, b'a', [], ['a\n', u'b\n', 'c\n'])
+            vf.add_lines_with_ghosts, b'a', [], [b'a\n', u'b\n', b'c\n'])
 
     def test_add_follows_left_matching_blocks(self):
         """If we change left_matching_blocks, delta changes
@@ -776,7 +776,7 @@ class VersionedFileTestMixIn(object):
         # a simple file
         vf.add_lines(b'a', [], [b'a\n'])
         # the same file, different metadata
-        vf.add_lines(b'b', ['a'], [b'a\n'])
+        vf.add_lines(b'b', [b'a'], [b'a\n'])
         # a file differing only in last newline.
         vf.add_lines(b'c', [], [b'a'])
         self.assertEqual({
@@ -872,14 +872,14 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
         self.vf2.add_lines((b'root', b'C'), [], [b'c'])
         self.vf2.add_lines((b'root', b'D'), [(b'root', b'C')], [b'd'])
         self.plan_merge_vf.add_lines((b'root', b'E:'),
-            [(b'root', 'B'), (b'root', b'D')], [b'e'])
+            [(b'root', b'B'), (b'root', b'D')], [b'e'])
 
     def test_get_parents(self):
         self.setup_abcde()
         self.assertEqual({(b'root', b'B'): ((b'root', b'A'),)},
             self.plan_merge_vf.get_parent_map([(b'root', b'B')]))
         self.assertEqual({(b'root', b'D'): ((b'root', b'C'),)},
-            self.plan_merge_vf.get_parent_map([('root', b'D')]))
+            self.plan_merge_vf.get_parent_map([(b'root', b'D')]))
         self.assertEqual({(b'root', b'E:'): ((b'root', b'B'), (b'root', b'D'))},
             self.plan_merge_vf.get_parent_map([(b'root', b'E:')]))
         self.assertEqual({},
@@ -2529,7 +2529,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # this versionedfiles would fail).
         merged_key = self.get_simple_key(b'merged')
         self.assertEqual(
-            [merged_key], files.get_parent_map([merged_key]).keys())
+            [merged_key], list(files.get_parent_map([merged_key]).keys()))
         # Add the full delta closure of the missing records
         missing_entries = source.get_record_stream(
             missing_bases, 'unordered', True)
@@ -2537,7 +2537,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # Now 'merged' is fully inserted (and a commit would succeed).
         self.assertEqual([], list(files.get_missing_compression_parent_keys()))
         self.assertEqual(
-            [merged_key], files.get_parent_map([merged_key]).keys())
+            [merged_key], list(files.get_parent_map([merged_key]).keys()))
         files.check()
 
     def test_iter_lines_added_or_present_in_keys(self):

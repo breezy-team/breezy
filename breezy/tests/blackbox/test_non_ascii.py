@@ -24,6 +24,7 @@ from breezy import (
     tests,
     urlutils,
     )
+from breezy.sixish import PY3
 from breezy.tests import EncodingAdapter
 from breezy.tests.scenarios import load_tests_apply_scenarios
 
@@ -42,7 +43,10 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
-        self.overrideEnv('BRZ_EMAIL', email.encode(osutils.get_user_encoding()))
+        if sys.version_info[0] == 2:
+            self.overrideEnv('BRZ_EMAIL', email.encode(osutils.get_user_encoding()))
+        else:
+            self.overrideEnv('BRZ_EMAIL', email)
         self.create_base()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
@@ -59,7 +63,10 @@ class TestNonAscii(tests.TestCaseWithTransport):
         try:
             out = self.run_bzr(args, encoding=encoding,
                                retcode=retcode, working_dir=working_dir)[0]
-            return out.decode(encoding)
+            if PY3:
+                return out.encode(encoding, 'replace').decode(encoding)
+            else:
+                return out.decode(encoding)
         except UnicodeError as e:
             if not fail:
                 raise
@@ -144,7 +151,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         txt = self.run_bzr_decode('status', encoding='ascii')
         expected = u'modified:\n  %s\n' % (
-                    self.info['filename'].encode('ascii', 'replace'),)
+                    self.info['filename'].encode('ascii', 'replace').decode('ascii'),)
         self.assertEqual(expected, txt)
 
     def test_cat(self):
@@ -546,5 +553,5 @@ class TestNonAscii(tests.TestCaseWithTransport):
         txt = self.run_bzr_decode(['ignored'])
         self.assertEqual(txt, '%-50s %s\n' % (fname, fname))
         txt = self.run_bzr_decode(['ignored'], encoding='ascii')
-        fname = fname.encode('ascii', 'replace')
+        fname = fname.encode('ascii', 'replace').decode('ascii')
         self.assertEqual(txt, '%-50s %s\n' % (fname, fname))

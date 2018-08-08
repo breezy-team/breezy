@@ -793,7 +793,7 @@ class KeyMapper(object):
     def map(self, key):
         """Map key to an underlying storage identifier.
 
-        :param key: A key tuple e.g. ('file-id', 'revision-id').
+        :param key: A key tuple e.g. (b'file-id', b'revision-id').
         :return: An underlying storage identifier, specific to the partitioning
             mechanism.
         """
@@ -869,7 +869,7 @@ class HashPrefixMapper(URLEscapeMapper):
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (self._unescape(osutils.basename(partition_id)),)
+        return (self._unescape(osutils.basename(partition_id)).encode('utf-8'),)
 
     def _unescape(self, basename):
         """No unescaping needed for HashPrefixMapper."""

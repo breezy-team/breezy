@@ -29,25 +29,25 @@ from ..filters import ContentFilter
 
 
 # Real Unix newline - \n without \r before it
-_UNIX_NL_RE = re.compile(r'(?<!\r)\n')
+_UNIX_NL_RE = re.compile(br'(?<!\r)\n')
 
 
 def _to_lf_converter(chunks, context=None):
     """A content file that converts crlf to lf."""
-    content = ''.join(chunks)
-    if '\x00' in content:
+    content = b''.join(chunks)
+    if b'\x00' in content:
         return [content]
     else:
-        return [content.replace('\r\n', '\n')]
+        return [content.replace(b'\r\n', b'\n')]
 
 
 def _to_crlf_converter(chunks, context=None):
     """A content file that converts lf to crlf."""
-    content = ''.join(chunks)
-    if '\x00' in content:
+    content = b''.join(chunks)
+    if b'\x00' in content:
         return [content]
     else:
-        return [_UNIX_NL_RE.sub('\r\n', content)]
+        return [_UNIX_NL_RE.sub(b'\r\n', content)]
 
 
 if sys.platform == 'win32':

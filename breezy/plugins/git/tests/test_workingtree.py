@@ -64,7 +64,7 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.build_tree(['conflicted'])
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
-            self.tree.index['conflicted'] = self.tree.index['conflicted'][:9] + (FLAG_STAGEMASK, )
+            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + (FLAG_STAGEMASK, )
             self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
@@ -90,13 +90,13 @@ class TreeDeltaFromGitChangesTests(TestCase):
 
     def test_missing(self):
         delta = TreeDelta()
-        delta.removed.append(('a', 'a-id', 'file'))
-        changes = [(('a', 'a'), (stat.S_IFREG | 0o755, 0), ('a' * 40, 'a' * 40))]
+        delta.removed.append(('a', b'a-id', 'file'))
+        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0), (b'a' * 40, b'a' * 40))]
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, default_mapping,
-                (GitFileIdMap({'a': 'a-id'}, default_mapping),
-                 GitFileIdMap({'a': 'a-id'}, default_mapping))))
+                (GitFileIdMap({u'a': b'a-id'}, default_mapping),
+                 GitFileIdMap({u'a': b'a-id'}, default_mapping))))
 
 
 class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
@@ -122,42 +122,42 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
 
     def test_empty(self):
         self.expectDelta(
-            [((None, ''), (None, stat.S_IFDIR), (None, Tree().id))])
+            [((None, b''), (None, stat.S_IFDIR), (None, Tree().id))])
 
     def test_added_file(self):
         self.build_tree(['a'])
         self.wt.add(['a'])
-        a = Blob.from_string('contents of a\n')
+        a = Blob.from_string(b'contents of a\n')
         t = Tree()
-        t.add("a", stat.S_IFREG | 0o644, a.id)
+        t.add(b"a", stat.S_IFREG | 0o644, a.id)
         self.expectDelta(
-            [((None, ''), (None, stat.S_IFDIR), (None, t.id)),
-             ((None, 'a'), (None, stat.S_IFREG | 0o644), (None, a.id))])
+            [((None, b''), (None, stat.S_IFDIR), (None, t.id)),
+             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, a.id))])
 
     def test_added_unknown_file(self):
         self.build_tree(['a'])
         t = Tree()
         self.expectDelta(
-            [((None, ''), (None, stat.S_IFDIR), (None, t.id))])
-        a = Blob.from_string('contents of a\n')
+            [((None, b''), (None, stat.S_IFDIR), (None, t.id))])
+        a = Blob.from_string(b'contents of a\n')
         t = Tree()
-        t.add("a", stat.S_IFREG | 0o644, a.id)
+        t.add(b"a", stat.S_IFREG | 0o644, a.id)
         self.expectDelta(
-            [((None, ''), (None, stat.S_IFDIR), (None, t.id)),
-             ((None, 'a'), (None, stat.S_IFREG | 0o644), (None, a.id))],
-            ['a'],
+            [((None, b''), (None, stat.S_IFDIR), (None, t.id)),
+             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, a.id))],
+            [b'a'],
             want_unversioned=True)
 
     def test_missing_added_file(self):
         self.build_tree(['a'])
         self.wt.add(['a'])
         os.unlink('a')
-        a = Blob.from_string('contents of a\n')
+        a = Blob.from_string(b'contents of a\n')
         t = Tree()
-        t.add("a", 0, ZERO_SHA)
+        t.add(b"a", 0, ZERO_SHA)
         self.expectDelta(
-            [((None, ''), (None, stat.S_IFDIR), (None, t.id)),
-             ((None, 'a'), (None, 0), (None, ZERO_SHA))],
+            [((None, b''), (None, stat.S_IFDIR), (None, t.id)),
+             ((None, b'a'), (None, 0), (None, ZERO_SHA))],
             [])
 
     def test_missing_versioned_file(self):
@@ -165,14 +165,14 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.wt.add(['a'])
         self.wt.commit('')
         os.unlink('a')
-        a = Blob.from_string('contents of a\n')
+        a = Blob.from_string(b'contents of a\n')
         oldt = Tree()
-        oldt.add("a", stat.S_IFREG | 0o644, a.id)
+        oldt.add(b"a", stat.S_IFREG | 0o644, a.id)
         newt = Tree()
-        newt.add("a", 0, ZERO_SHA)
+        newt.add(b"a", 0, ZERO_SHA)
         self.expectDelta(
-                [(('', ''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
-                 (('a', 'a'), (stat.S_IFREG|0o644, 0), (a.id, ZERO_SHA))])
+                [((b'', b''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
+                 ((b'a', b'a'), (stat.S_IFREG|0o644, 0), (a.id, ZERO_SHA))])
 
     def test_versioned_replace_by_dir(self):
         self.build_tree(['a'])
@@ -180,33 +180,33 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.wt.commit('')
         os.unlink('a')
         os.mkdir('a')
-        olda = Blob.from_string('contents of a\n')
+        olda = Blob.from_string(b'contents of a\n')
         oldt = Tree()
-        oldt.add("a", stat.S_IFREG | 0o644, olda.id)
+        oldt.add(b"a", stat.S_IFREG | 0o644, olda.id)
         newt = Tree()
         newa = Tree()
-        newt.add("a", stat.S_IFDIR, newa.id)
+        newt.add(b"a", stat.S_IFDIR, newa.id)
         self.expectDelta([
-            (('', ''),
+            ((b'', b''),
             (stat.S_IFDIR, stat.S_IFDIR),
             (oldt.id, newt.id)),
-            (('a', 'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
+            ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
             ], want_unversioned=False)
         self.expectDelta([
-            (('', ''),
+            ((b'', b''),
             (stat.S_IFDIR, stat.S_IFDIR),
             (oldt.id, newt.id)),
-            (('a', 'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
+            ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
             ], want_unversioned=True)
 
     def test_extra(self):
         self.build_tree(['a'])
         newa = Blob.from_string(b'contents of a\n')
         newt = Tree()
-        newt.add("a", stat.S_IFREG | 0o644, newa.id)
+        newt.add(b"a", stat.S_IFREG | 0o644, newa.id)
         self.expectDelta([
-            ((None, ''),
+            ((None, b''),
             (None, stat.S_IFDIR),
             (None, newt.id)),
-            ((None, 'a'), (None, stat.S_IFREG | 0o644), (None, newa.id))
-            ], ['a'], want_unversioned=True)
+            ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, newa.id))
+            ], [b'a'], want_unversioned=True)

@@ -99,8 +99,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         """
         revmap = {}
         tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add('')
             revmap['1'] = tree.commit('first')
             revmap['1.1.1'] = tree.commit('second')
@@ -110,8 +109,6 @@ class TestCaseWithBranch(TestCaseWithControlDir):
             revmap['2'] = tree.commit('alt-second')
             tree.set_parent_ids([revmap['2'], revmap['1.1.1']])
             revmap['3'] = tree.commit('third')
-        finally:
-            tree.unlock()
 
         return tree, revmap
 

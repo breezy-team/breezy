@@ -543,14 +543,14 @@ class TestUnshelver(tests.TestCaseWithTransport):
             +y
 
             """)
-        self.assertEqualDiff(expected, diff[-len(expected):])
+        self.assertEqualDiff(expected.encode('utf-8'), diff[-len(expected):])
 
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')
         manager = tree.get_shelf_manager()
         shelf_file = manager.new_shelf()[1]
         try:
-            shelf_file.write('garbage')
+            shelf_file.write(b'garbage')
         finally:
             shelf_file.close()
         unshelver = shelf_ui.Unshelver.from_args(directory='tree',
@@ -566,7 +566,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         manager = tree.get_shelf_manager()
         shelf_file = manager.new_shelf()[1]
         try:
-            shelf_file.write('garbage')
+            shelf_file.write(b'garbage')
         finally:
             shelf_file.close()
         self.assertRaises(shelf.InvalidShelfId,

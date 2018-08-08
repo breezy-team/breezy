@@ -35,6 +35,9 @@ class DummyWeave(object):
             return False
         return self._message == other._message
 
+    def __hash__(self):
+        return hash((type(self), self._message))
+
     def transaction_finished(self):
         self.finished = True
 

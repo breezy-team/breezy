@@ -41,7 +41,7 @@ class FakeConfig(config.MemoryStack):
 
     def __init__(self, content=None):
         if content is None:
-            content = '''
+            content = b'''
 gpg_signing_key=amy@example.com
 '''
         super(FakeConfig, self).__init__(content)
@@ -200,7 +200,7 @@ kRk=
         self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -218,7 +218,7 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
@@ -230,7 +230,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -248,7 +248,7 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
@@ -261,7 +261,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -279,7 +279,7 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
@@ -290,7 +290,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 asdf
@@ -304,7 +304,7 @@ JFA6kUIJU2w9LU/b88Y=
 =UuRX
 -----END PGP SIGNATURE-----
 """
-        plain = """asdf\n"""
+        plain = b"""asdf\n"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("test@example.com")
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None), my_gpg.verify(content))
@@ -312,7 +312,7 @@ JFA6kUIJU2w9LU/b88Y=
     def test_verify_invalid(self):
         self.requireFeature(features.gpg)
         self.import_keys()
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -326,7 +326,7 @@ nswAoNGXAVuR9ONasAKIGBNUE0b+lols
 =SOuC
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
@@ -337,7 +337,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpg)
         self.import_keys()
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
  
 bazaar-ng testament short form 1
@@ -360,7 +360,7 @@ dTp8VatVVrwuvzOPDVc=
     def test_verify_unknown_key(self):
         self.requireFeature(features.gpg)
         self.import_keys()
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 asdf
@@ -392,7 +392,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
         self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig(
-                'acceptable_keys=bazaar@example.com'))
+                b'acceptable_keys=bazaar@example.com'))
         my_gpg.set_acceptable_keys(None)
         self.assertEqual(my_gpg.acceptable_keys,
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
@@ -414,8 +414,8 @@ class TestDisabled(TestCase):
 
     def test_sign(self):
         self.assertRaises(gpg.SigningFailed,
-                          gpg.DisabledGPGStrategy(None).sign, 'content', gpg.MODE_CLEAR)
+                          gpg.DisabledGPGStrategy(None).sign, b'content', gpg.MODE_CLEAR)
 
     def test_verify(self):
         self.assertRaises(gpg.SignatureVerificationFailed,
-                          gpg.DisabledGPGStrategy(None).verify, 'content')
+                          gpg.DisabledGPGStrategy(None).verify, b'content')

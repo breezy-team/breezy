@@ -101,7 +101,8 @@ class cmd_bundle_info(Command):
             bundle_file.seek(0)
             line = bundle_file.readline()
             line = bundle_file.readline()
-            content = bundle_file.read().decode('bz2')
+            import bz2
+            content = bz2.decompress(bundle_file.read())
             self.outf.write(gettext("Decoded contents\n"))
             self.outf.write(content)
             self.outf.write('\n')

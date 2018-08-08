@@ -184,24 +184,24 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqual("=== modified file 'file'\n"
-                          "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "@@ -1,1 +1,1 @@\n"
-                          "-new content\n"
-                          "+contents of branch1/file\n"
-                          "\n", subst_dates(out))
+                         "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "@@ -1,1 +1,1 @@\n"
+                         "-new content\n"
+                         "+contents of branch1/file\n"
+                         "\n", subst_dates(out))
 
     def check_b1_vs_b2(self, cmd):
         # Compare branch1 vs branch2 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-contents of branch1/file\n"
-                              "+new content\n"
-                              "\n", subst_dates(out))
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-contents of branch1/file\n"
+                             "+new content\n"
+                             "\n", subst_dates(out))
 
     def check_no_diffs(self, cmd):
         # Check that running cmd returns an empty diff
@@ -261,12 +261,12 @@ class TestDiff(DiffBase):
                                 retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", subst_dates(out))
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-new content\n"
+                             "+contents of branch1/file\n"
+                             "\n", subst_dates(out))
 
     def example_branch2(self):
         branch1_tree = self.make_branch_and_tree('branch1')
@@ -392,18 +392,18 @@ class TestExternalDiff(DiffBase):
             'diff -Oprogress_bar=none -r 1 --diff-options -ub',
             universal_newlines=True,
             retcode=None)
-        if 'Diff is not installed on this machine' in err:
+        if b'Diff is not installed on this machine' in err:
             raise tests.TestSkipped("No external 'diff' is available")
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
         self.assertStartsWith(
             out,
-            "=== added file 'goodbye'\n"
-            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
-            "+++ new/goodbye\t")
-        self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
-                                 "+baz\n\n")
+            b"=== added file 'goodbye'\n"
+            b"--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            b"+++ new/goodbye\t")
+        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n"
+                                 b"+baz\n\n")
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process"""
@@ -423,4 +423,4 @@ class TestDiffOutput(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
-        self.assertTrue('\n+hello world!\n' in output)
+        self.assertTrue(b'\n+hello world!\n' in output)

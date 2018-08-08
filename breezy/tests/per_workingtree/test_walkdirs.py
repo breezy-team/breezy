@@ -179,9 +179,9 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         tt = transform.TreeTransform(tree)
         root_transaction_id = tt.trans_id_tree_path('')
         tt.new_symlink('link1',
-            root_transaction_id, 'link-target', 'link1')
+            root_transaction_id, 'link-target', b'link1')
         tt.new_symlink('link2',
-            root_transaction_id, 'link-target', 'link2')
+            root_transaction_id, 'link-target', b'link2')
         tt.apply()
         tree.controldir.root_transport.delete_tree('dir1')
         tree.controldir.root_transport.delete_tree('dir2')

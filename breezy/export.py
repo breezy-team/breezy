@@ -84,14 +84,14 @@ def export(tree, dest, format=None, root=None, subdir=None,
         chunks = tree.archive(format, dest, root=root, subdir=subdir, force_mtime=force_mtime)
         if dest == '-':
             for chunk in chunks:
-                 sys.stdout.write(chunk)
+                 getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
         elif fileobj is not None:
             for chunk in chunks:
                 fileobj.write(chunk)
         else:
             with open(dest, 'wb') as f:
                 for chunk in chunks:
-                    f.writelines(chunk)
+                    f.write(chunk)
 
 
 def guess_format(filename, default='dir'):

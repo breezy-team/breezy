@@ -65,12 +65,12 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
     def test_pointless_fetch_refs(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())
         revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
-        self.assertEqual(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
+        self.assertEqual(old_refs, {b'HEAD': (b'ref: refs/heads/master', None)})
         self.assertEqual(new_refs, {})
 
     def test_pointless_lossy_fetch_refs(self):
         revidmap, old_refs, new_refs = self._get_interrepo().fetch_refs(lambda x: {}, lossy=True)
-        self.assertEqual(old_refs, {'HEAD': ('ref: refs/heads/master', None)})
+        self.assertEqual(old_refs, {b'HEAD': (b'ref: refs/heads/master', None)})
         self.assertEqual(new_refs, {})
         self.assertEqual(revidmap, {})
 
@@ -85,7 +85,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         interrepo.source_store.lock_read()
         self.addCleanup(interrepo.source_store.unlock)
         self.assertEqual([],
-                list(interrepo.missing_revisions([(None, "unknown")])))
+                list(interrepo.missing_revisions([(None, b"unknown")])))
 
     def test_odd_rename(self):
         # Add initial revision to bzr branch.
@@ -103,7 +103,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
         # Push bzr branch to git branch.
         def decide(x):
-            return { "refs/heads/master": (None, last_revid) }
+            return { b"refs/heads/master": (None, last_revid) }
         interrepo = self._get_interrepo()
         revidmap, old_refs, new_refs = interrepo.fetch_refs(decide, lossy=True)
         gitid = revidmap[last_revid][0]
@@ -111,11 +111,11 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         commit = store[gitid]
         tree = store[commit.tree]
         tree.check()
-        self.assertIn("baz", tree, repr(tree.items()))
-        self.assertIn(tree["baz"][1], store)
-        baz = store[tree["baz"][1]]
+        self.assertIn(b"baz", tree, repr(tree.items()))
+        self.assertIn(tree[b"baz"][1], store)
+        baz = store[tree[b"baz"][1]]
         baz.check()
-        ircdotnet = store[baz["IrcDotNet"][1]]
+        ircdotnet = store[baz[b"IrcDotNet"][1]]
         ircdotnet.check()
-        foobar = store[ircdotnet["foobar"][1]]
+        foobar = store[ircdotnet[b"foobar"][1]]
         foobar.check()

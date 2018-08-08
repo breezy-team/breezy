@@ -30,7 +30,11 @@ from . import (
     msgeditor,
     osutils,
     urlutils,
-    registry
+    registry,
+    )
+from .sixish import (
+    PY3,
+    text_type,
     )
 
 mail_client_registry = registry.Registry()
@@ -232,7 +236,7 @@ class BodyExternalMailClient(MailClient):
         :param  u:  possible unicode string.
         :return:    encoded string if u is unicode, u itself otherwise.
         """
-        if isinstance(u, unicode):
+        if not PY3 and isinstance(u, text_type):
             return u.encode(osutils.get_user_encoding(), 'replace')
         return u
 
@@ -245,7 +249,7 @@ class BodyExternalMailClient(MailClient):
                         path itself otherwise.
         :raise:         UnableEncodePath.
         """
-        if isinstance(path, unicode):
+        if not PY3 and isinstance(path, text_type):
             try:
                 return path.encode(osutils.get_user_encoding())
             except UnicodeEncodeError:
@@ -298,7 +302,7 @@ class Mutt(BodyExternalMailClient):
             # Store the temp file object in self, so that it does not get
             # garbage collected and delete the file before mutt can read it.
             self._temp_file = tempfile.NamedTemporaryFile(
-                prefix="mutt-body-", suffix=".txt")
+                prefix="mutt-body-", suffix=".txt", mode="w+")
             self._temp_file.write(body)
             self._temp_file.flush()
             message_options.extend(['-i', self._temp_file.name])
@@ -466,7 +470,7 @@ class EmacsMail(ExternalMailClient):
         after being read by Emacs.)
         """
 
-        _defun = r"""(defun bzr-add-mime-att (file)
+        _defun = br"""(defun bzr-add-mime-att (file)
   "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
     (if (and file (file-exists-p file))
@@ -655,9 +659,9 @@ class DefaultMail(MailClient):
         except MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename, body=body)
-mail_client_registry.register('default', DefaultMail,
+mail_client_registry.register(u'default', DefaultMail,
                               help=DefaultMail.__doc__)
-mail_client_registry.default_key = 'default'
+mail_client_registry.default_key = u'default'
 
 opt_mail_client = _mod_config.RegistryOption('mail_client',
         mail_client_registry, help='E-mail client to use.', invalid='error')

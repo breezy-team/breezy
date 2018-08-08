@@ -29,7 +29,7 @@ import stat
 import sys
 
 from .. import cache_utf8, errors, osutils
-from .dirstate import DirState, DirstateCorrupt
+from .dirstate import DirState, DirstateCorrupt, is_inside_any, is_inside
 from ..osutils import parent_directories, pathjoin, splitpath
 
 
@@ -57,7 +57,6 @@ cdef extern from *:
 
 cdef extern from "_dirstate_helpers_pyx.h":
     ctypedef int intptr_t
-
 
 
 cdef extern from "stdlib.h":
@@ -117,27 +116,20 @@ cdef extern from "string.h":
     int strncmp(char *s1, char *s2, int len)
     void *memchr(void *s, int c, size_t len)
     int memcmp(void *b1, void *b2, size_t len)
-    # ??? memrchr is a GNU extension :(
-    # void *memrchr(void *s, int c, size_t len)
 
-# cimport all of the definitions we will need to access
-from .._static_tuple_c cimport import_static_tuple_c, StaticTuple, \
-    StaticTuple_New, StaticTuple_SET_ITEM
+from ._str_helpers cimport (
+    _my_memrchr,
+    safe_string_from_size,
+    )
+
+from .._static_tuple_c cimport (
+    import_static_tuple_c,
+    StaticTuple,
+    StaticTuple_New,
+    StaticTuple_SET_ITEM
+    )
 
 import_static_tuple_c()
-
-cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
-    # memrchr seems to be a GNU extension, so we have to implement it ourselves
-    cdef char *pos
-    cdef char *start
-
-    start = <char*>s
-    pos = start + n - 1
-    while pos >= start:
-        if pos[0] == c:
-            return <void*>pos
-        pos = pos - 1
-    return NULL
 
 
 def _py_memrchr(s, c):
@@ -152,24 +144,15 @@ def _py_memrchr(s, c):
     cdef int length
     cdef char *_c
 
+    assert PyString_Size(c) == 1, 'Expected single character string not %r' % c
+    _c = PyString_AsString(c)
     _s = PyString_AsString(s)
     length = PyString_Size(s)
 
-    _c = PyString_AsString(c)
-    assert PyString_Size(c) == 1,\
-        'Must be a single character string, not %s' % (c,)
     found = _my_memrchr(_s, _c[0], length)
     if found == NULL:
         return None
     return <char*>found - <char*>_s
-
-
-cdef object safe_string_from_size(char *s, Py_ssize_t size):
-    if size < 0:
-        raise AssertionError(
-            'tried to create a string with an invalid size: %d'
-            % (size))
-    return PyString_FromStringAndSize(s, size)
 
 
 cdef int _is_aligned(void *ptr): # cannot_raise
@@ -1164,7 +1147,7 @@ cdef class ProcessEntryC:
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
                 if (not self.doing_consistency_expansion and 
-                    not osutils.is_inside_any(self.searched_specific_files,
+                    not is_inside_any(self.searched_specific_files,
                                              source_details[1])):
                     self.search_specific_files.add(source_details[1])
                     # expanding from a user requested path, parent expansion
@@ -1385,7 +1368,7 @@ cdef class ProcessEntryC:
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
             if (not self.doing_consistency_expansion and 
-                not osutils.is_inside_any(self.searched_specific_files,
+                not is_inside_any(self.searched_specific_files,
                     target_details[1])):
                 self.search_specific_files.add(target_details[1])
                 # We don't expand the specific files parents list here as
@@ -1432,7 +1415,7 @@ cdef class ProcessEntryC:
 
     cdef int _update_current_block(self) except -1:
         if (self.block_index < len(self.state._dirblocks) and
-            osutils.is_inside(self.current_root, self.state._dirblocks[self.block_index][0])):
+            is_inside(self.current_root, self.state._dirblocks[self.block_index][0])):
             self.current_block = self.state._dirblocks[self.block_index]
             self.current_block_list = self.current_block[1]
             self.current_block_pos = 0
@@ -1905,7 +1888,7 @@ cdef class ProcessEntryC:
             if path_utf8 in self.searched_exact_paths:
                 # We've examined this path.
                 continue
-            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
+            if is_inside_any(self.searched_specific_files, path_utf8):
                 # We've examined this path.
                 continue
             path_entries = self.state._entries_for_path(path_utf8)
@@ -1968,7 +1951,7 @@ cdef class ProcessEntryC:
                         current_block = None
                         if block_index < len(self.state._dirblocks):
                             current_block = self.state._dirblocks[block_index]
-                            if not osutils.is_inside(
+                            if not is_inside(
                                 entry_path_utf8, current_block[0]):
                                 # No entries for this directory at all.
                                 current_block = None

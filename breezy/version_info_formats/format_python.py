@@ -42,9 +42,9 @@ So don't edit it. :)
 
 _py_version_footer = '''
 if __name__ == '__main__':
-    print 'revision: %(revno)s' % version_info
-    print 'nick: %(branch_nick)s' % version_info
-    print 'revision id: %(revision_id)s' % version_info
+    print('revision: %(revno)s' % version_info)
+    print('nick: %(branch_nick)s' % version_info)
+    print('revision id: %(revision_id)s' % version_info)
 '''
 
 

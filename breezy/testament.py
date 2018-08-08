@@ -78,6 +78,7 @@ from .osutils import (
     contains_linebreaks,
     sha_strings,
     )
+from .sixish import text_type
 from .tree import Tree
 
 
@@ -136,7 +137,7 @@ class Testament(object):
         r = []
         a = r.append
         a(self.long_header)
-        a('revision-id: %s\n' % self.revision_id)
+        a('revision-id: %s\n' % self.revision_id.decode('utf-8'))
         a('committer: %s\n' % self.committer)
         a('timestamp: %d\n' % self.timestamp)
         a('timezone: %d\n' % self.timezone)
@@ -145,7 +146,7 @@ class Testament(object):
         for parent_id in sorted(self.parent_ids):
             if contains_whitespace(parent_id):
                 raise ValueError(parent_id)
-            a('  %s\n' % parent_id)
+            a('  %s\n' % parent_id.decode('utf-8'))
         a('message:\n')
         for l in self.message.splitlines():
             a('  %s\n' % l)
@@ -162,19 +163,22 @@ class Testament(object):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        return unicode(path.replace('\\', '/').replace(' ', '\\ '))
+        if not isinstance(path, text_type):
+            # TODO(jelmer): Clean this up for pad.lv/1696545
+            path = path.decode('ascii')
+        return path.replace(u'\\', u'/').replace(u' ', u'\\ ')
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
         if contains_whitespace(ie.file_id):
             raise ValueError(ie.file_id)
         content = ''
-        content_spacer=''
+        content_spacer=  ''
         if ie.kind == 'file':
             # TODO: avoid switching on kind
             if not ie.text_sha1:
                 raise AssertionError()
-            content = ie.text_sha1
+            content = ie.text_sha1.decode('ascii')
             content_spacer = ' '
         elif ie.kind == 'symlink':
             if not ie.symlink_target:
@@ -188,13 +192,13 @@ class Testament(object):
         return l
 
     def as_text(self):
-        return ''.join(self.as_text_lines())
+        return b''.join(self.as_text_lines())
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        return (self.short_header +
-                'revision-id: %s\n'
-                'sha1: %s\n'
+        return (self.short_header.encode('ascii') +
+                b'revision-id: %s\n'
+                b'sha1: %s\n'
                 % (self.revision_id, self.as_sha1()))
 
     def _revprops_to_lines(self):
@@ -222,7 +226,7 @@ class StrictTestament(Testament):
     include_root = False
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
-        l += ' ' + ie.revision
+        l += ' ' + ie.revision.decode('utf-8')
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
 
@@ -240,6 +244,9 @@ class StrictTestament3(StrictTestament):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        if path == '':
-            path = '.'
-        return unicode(path.replace('\\', '/').replace(' ', '\\ '))
+        if not isinstance(path, text_type):
+            # TODO(jelmer): Clean this up for pad.lv/1696545
+            path = path.decode('ascii')
+        if path == u'':
+            path = u'.'
+        return path.replace(u'\\', u'/').replace(u' ', u'\\ ')

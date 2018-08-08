@@ -37,7 +37,7 @@ class TestAtomicFile(TestCaseInTempDir):
         f.commit()
 
         self.assertEqual(['test'], os.listdir('.'))
-        self.check_file_contents('test', 'foo\n')
+        self.check_file_contents('test', b'foo\n')
         self.assertRaises(errors.AtomicFileAlreadyClosed, f.commit)
         self.assertRaises(errors.AtomicFileAlreadyClosed, f.abort)
         # close is re-entrant safe
@@ -75,9 +75,9 @@ class TestAtomicFile(TestCaseInTempDir):
 
         contents = open('test', 'rb').read()
         if sys.platform == 'win32':
-            self.assertEqual('foo\r\n', contents)
+            self.assertEqual(b'foo\r\n', contents)
         else:
-            self.assertEqual('foo\n', contents)
+            self.assertEqual(b'foo\n', contents)
 
     def can_sys_preserve_mode(self):
         # PLATFORM DEFICIENCY/ TestSkipped

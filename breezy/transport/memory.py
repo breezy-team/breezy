@@ -23,6 +23,9 @@ so this is primarily useful for testing.
 from __future__ import absolute_import
 
 import contextlib
+from io import (
+    BytesIO,
+    )
 import os
 import errno
 from stat import S_IFREG, S_IFDIR
@@ -36,9 +39,6 @@ from ..errors import (
     LockError,
     InProcessTransport,
     NoSuchFile,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from ..transport import (
     AppendBasedFileStream,
@@ -201,22 +201,38 @@ class MemoryTransport(transport.Transport):
         """Rename a file or directory; fail if the destination exists"""
         abs_from = self._abspath(rel_from)
         abs_to = self._abspath(rel_to)
+
         def replace(x):
             if x == abs_from:
                 x = abs_to
             elif x.startswith(abs_from + '/'):
                 x = abs_to + x[len(abs_from):]
             return x
+
         def do_renames(container):
+            renames = []
             for path in container:
                 new_path = replace(path)
                 if new_path != path:
                     if new_path in container:
                         raise FileExists(new_path)
-                    container[new_path] = container[path]
-                    del container[path]
-        do_renames(self._files)
-        do_renames(self._dirs)
+                    renames.append((path, new_path))
+            for path, new_path in renames:
+                container[new_path] = container[path]
+                del container[path]
+
+        # If we modify the existing dicts, we're not atomic anymore and may
+        # fail differently depending on dict order. So work on copy, fail on
+        # error on only replace dicts if all goes well.
+        renamed_files = self._files.copy()
+        renamed_dirs = self._dirs.copy()
+        do_renames(renamed_files)
+        do_renames(renamed_dirs)
+        # We may have been cloned so modify in place
+        self._files.clear()
+        self._files.update(renamed_files)
+        self._dirs.clear()
+        self._dirs.update(renamed_dirs)
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""

@@ -146,9 +146,8 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._exe = exe
             self._args = args
             self.assertPathExists(args[0])
-            f = open(args[0], 'wt')
-            f.write('temp stuff')
-            f.close()
+            with open(args[0], 'wt') as f:
+                f.write('temp stuff')
             cleanup(0)
             return 0
         retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
@@ -156,7 +155,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         self.assertEqual(0, retcode)
         self.assertEqual('tool', self._exe)
         self.assertPathDoesNotExist(self._args[0])
-        self.assertFileEqual('temp stuff', 'test.txt')
+        self.assertFileEqual(b'temp stuff', 'test.txt')
 
     def test_failure_tempfile(self):
         def dummy_invoker(exe, args, cleanup):
@@ -164,14 +163,13 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._args = args
             self.assertPathExists(args[0])
             self.log(repr(args))
-            f = open(args[0], 'wt')
-            self.log(repr(f))
-            f.write('temp stuff')
-            f.close()
+            with open(args[0], 'wt') as f:
+                self.log(repr(f))
+                f.write('temp stuff')
             cleanup(1)
             return 1
         retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
                                     dummy_invoker)
         self.assertEqual(1, retcode)
         self.assertEqual('tool', self._exe)
-        self.assertFileEqual('stuff', 'test.txt')
+        self.assertFileEqual(b'stuff', 'test.txt')

@@ -306,7 +306,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
             else:
                 match['message'] = [message_search]
         else:
-            match={ 'message': [message_search] }
+            match= {'message': [message_search]}
     return {
         'direction': direction,
         'specific_fileids': specific_fileids,
@@ -464,7 +464,7 @@ class _DefaultLogGenerator(LogGenerator):
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
-                if levels != 0 and merge_depth >= levels:
+                if levels != 0 and merge_depth is not None and merge_depth >= levels:
                     continue
                 if omit_merges and len(rev.parent_ids) > 1:
                     continue
@@ -758,6 +758,8 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
             except errors.RevisionNotPresent as e:
                 # Oops, a ghost.
                 yield e.revision_id, None, None
+                break
+            except StopIteration:
                 break
             else:
                 yield revision_id, str(cur_revno) if cur_revno is not None else None, 0
@@ -1523,7 +1525,7 @@ class LogFormatter(object):
                 rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
-        if not ":" in rev.revision_id:
+        if not b":" in rev.revision_id:
             return []
 
         # Revision was once imported from a foreign repository
@@ -1543,8 +1545,9 @@ class LogFormatter(object):
         return lines
 
     def show_diff(self, to_file, diff, indent):
-        for l in diff.rstrip().split('\n'):
-            to_file.write(indent + '%s\n' % (l,))
+        encoding = get_terminal_encoding()
+        for l in diff.rstrip().split(b'\n'):
+            to_file.write(indent + l.decode(encoding, 'ignore') + '\n')
 
 
 # Separator between revisions in long format
@@ -1583,12 +1586,12 @@ class LongLogFormatter(LogFormatter):
             lines.append('revno: %s%s' % (revision.revno,
                 self.merge_marker(revision)))
         if revision.tags:
-            lines.append('tags: %s' % (', '.join(revision.tags)))
+            lines.append('tags: %s' % (', '.join(sorted(revision.tags))))
         if self.show_ids or revision.revno is None:
-            lines.append('revision-id: %s' % (revision.rev.revision_id,))
+            lines.append('revision-id: %s' % (revision.rev.revision_id.decode('utf-8'),))
         if self.show_ids:
             for parent_id in revision.rev.parent_ids:
-                lines.append('parent: %s' % (parent_id,))
+                lines.append('parent: %s' % (parent_id.decode('utf-8'),))
         lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer
@@ -1670,7 +1673,7 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         tags = ''
         if revision.tags:
-            tags = ' {%s}' % (', '.join(revision.tags))
+            tags = ' {%s}' % (', '.join(sorted(revision.tags)))
         to_file.write(indent + "%*s %s\t%s%s%s\n" % (revno_width,
                 revision.revno or "", self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
@@ -1752,14 +1755,14 @@ class LineLogFormatter(LogFormatter):
             # show revno only when is not None
             out.append("%s:" % revno)
         if max_chars is not None:
-            out.append(self.truncate(self.short_author(rev), (max_chars+3)/4))
+            out.append(self.truncate(self.short_author(rev), (max_chars+3)//4))
         else:
             out.append(self.short_author(rev))
         out.append(self.date_string(rev))
         if len(rev.parent_ids) > 1:
             out.append('[merge]')
         if tags:
-            tag_str = '{%s}' % (', '.join(tags))
+            tag_str = '{%s}' % (', '.join(sorted(tags)))
             out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)

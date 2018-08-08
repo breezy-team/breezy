@@ -96,57 +96,64 @@ def dirname(url, exclude_trailing_slash=True):
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[0]
 
 
-# Private copies of quote and unquote, copied from Python's
-# urllib module because urllib unconditionally imports socket, which imports
-# ssl.
+if PY3:
+    quote_from_bytes = urlparse.quote_from_bytes
+    quote = urlparse.quote
+    unquote_to_bytes = urlparse.unquote_to_bytes
+else:
+    # Private copies of quote and unquote, copied from Python's
+    # urllib module because urllib unconditionally imports socket, which imports
+    # ssl.
 
-always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-               'abcdefghijklmnopqrstuvwxyz'
-               '0123456789' '_.-')
-_safe_map = {}
-for i, c in zip(range(256), ''.join(map(chr, range(256)))):
-    _safe_map[c] = c if (i < 128 and c in always_safe) else '%{0:02X}'.format(i)
-_safe_quoters = {}
+    always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                   'abcdefghijklmnopqrstuvwxyz'
+                   '0123456789' '_.-')
+    _safe_map = {}
+    for i, c in zip(range(256), ''.join(map(chr, range(256)))):
+        _safe_map[c] = c if (i < 128 and c in always_safe) else '%{0:02X}'.format(i)
+    _safe_quoters = {}
 
+    def quote_from_bytes(s, safe='/'):
+        """quote('abc def') -> 'abc%20def'
 
-def quote(s, safe='/'):
-    """quote('abc def') -> 'abc%20def'
+        Each part of a URL, e.g. the path info, the query, etc., has a
+        different set of reserved characters that must be quoted.
 
-    Each part of a URL, e.g. the path info, the query, etc., has a
-    different set of reserved characters that must be quoted.
+        RFC 2396 Uniform Resource Identifiers (URI): Generic Syntax lists
+        the following reserved characters.
 
-    RFC 2396 Uniform Resource Identifiers (URI): Generic Syntax lists
-    the following reserved characters.
+        reserved    = ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" |
+                      "$" | ","
 
-    reserved    = ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" |
-                  "$" | ","
+        Each of these characters is reserved in some component of a URL,
+        but not necessarily in all of them.
 
-    Each of these characters is reserved in some component of a URL,
-    but not necessarily in all of them.
+        By default, the quote function is intended for quoting the path
+        section of a URL.  Thus, it will not encode '/'.  This character
+        is reserved, but in typical usage the quote function is being
+        called on a path where the existing slash characters are used as
+        reserved characters.
+        """
+        # fastpath
+        if not s:
+            if s is None:
+                raise TypeError('None object cannot be quoted')
+            return s
+        cachekey = (safe, always_safe)
+        try:
+            (quoter, safe) = _safe_quoters[cachekey]
+        except KeyError:
+            safe_map = _safe_map.copy()
+            safe_map.update([(c, c) for c in safe])
+            quoter = safe_map.__getitem__
+            safe = always_safe + safe
+            _safe_quoters[cachekey] = (quoter, safe)
+        if not s.rstrip(safe):
+            return s
+        return ''.join(map(quoter, s))
 
-    By default, the quote function is intended for quoting the path
-    section of a URL.  Thus, it will not encode '/'.  This character
-    is reserved, but in typical usage the quote function is being
-    called on a path where the existing slash characters are used as
-    reserved characters.
-    """
-    # fastpath
-    if not s:
-        if s is None:
-            raise TypeError('None object cannot be quoted')
-        return s
-    cachekey = (safe, always_safe)
-    try:
-        (quoter, safe) = _safe_quoters[cachekey]
-    except KeyError:
-        safe_map = _safe_map.copy()
-        safe_map.update([(c, c) for c in safe])
-        quoter = safe_map.__getitem__
-        safe = always_safe + safe
-        _safe_quoters[cachekey] = (quoter, safe)
-    if not s.rstrip(safe):
-        return s
-    return ''.join(map(quoter, s))
+    quote = quote_from_bytes
+    unquote_to_bytes = urlparse.unquote
 
 
 unquote = urlparse.unquote
@@ -154,7 +161,7 @@ unquote = urlparse.unquote
 
 def escape(relpath):
     """Escape relpath to be a valid url."""
-    if not isinstance(relpath, str):
+    if not isinstance(relpath, str) and sys.version_info[0] == 2:
         relpath = relpath.encode('utf-8')
     return quote(relpath, safe='/~')
 
@@ -415,7 +422,7 @@ def normalize_url(url):
         if path_chars[i] not in _url_safe_characters:
             chars = path_chars[i].encode('utf-8')
             path_chars[i] = ''.join(
-                ['%%%02X' % ord(c) for c in path_chars[i].encode('utf-8')])
+                ['%%%02X' % c for c in bytearray(path_chars[i].encode('utf-8'))])
     path = ''.join(path_chars)
     path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
     return str(prefix + path)
@@ -593,10 +600,10 @@ def join_segment_parameters(url, parameters):
     new_parameters.update(existing_parameters)
     for key, value in parameters.items():
         if not isinstance(key, str):
-            raise TypeError("parameter key %r is not a bytestring" % key)
+            raise TypeError("parameter key %r is not a str" % key)
         if not isinstance(value, str):
-            raise TypeError("parameter value %r for %s is not a bytestring" %
-                (key, value))
+            raise TypeError("parameter value %r for %r is not a str" %
+                (value, key))
         if "=" in key:
             raise InvalidURLJoin("= exists in parameter key", url,
                 parameters)
@@ -659,27 +666,27 @@ def unescape(url):
 
     This returns a Unicode path from a URL
     """
-    # jam 20060427 URLs are supposed to be ASCII only strings
-    #       If they are passed in as unicode, unquote
-    #       will return a UNICODE string, which actually contains
-    #       utf-8 bytes. So we have to ensure that they are
-    #       plain ASCII strings, or the final .decode will
-    #       try to encode the UNICODE => ASCII, and then decode
-    #       it into utf-8.
-    if isinstance(url, text_type):
-        try:
-            url = url.encode("ascii")
-        except UnicodeError as e:
-            raise InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
     if PY3:
-        unquoted = urlparse.unquote_to_bytes(url)
+        return urlparse.unquote(url)
     else:
+        # jam 20060427 URLs are supposed to be ASCII only strings
+        #       If they are passed in as unicode, unquote
+        #       will return a UNICODE string, which actually contains
+        #       utf-8 bytes. So we have to ensure that they are
+        #       plain ASCII strings, or the final .decode will
+        #       try to encode the UNICODE => ASCII, and then decode
+        #       it into utf-8.
+        if isinstance(url, text_type):
+            try:
+                url = url.encode("ascii")
+            except UnicodeError as e:
+                raise InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
         unquoted = unquote(url)
-    try:
-        unicode_path = unquoted.decode('utf-8')
-    except UnicodeError as e:
-        raise InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
-    return unicode_path
+        try:
+            unicode_path = unquoted.decode('utf-8')
+        except UnicodeError as e:
+            raise InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
+        return unicode_path
 
 
 # These are characters that if escaped, should stay that way
@@ -878,8 +885,16 @@ class URL(object):
         :param url: URL as bytestring
         """
         # GZ 2017-06-09: Actually validate ascii-ness
-        if not isinstance(url, str):
-            raise InvalidURL('should be ascii:\n%r' % url)
+        # pad.lv/1696545: For the moment, accept both native strings and unicode.
+        if isinstance(url, str):
+            pass
+        elif isinstance(url, text_type):
+            try:
+                url = url.encode()
+            except UnicodeEncodeError:
+                raise InvalidURL(url)
+        else:
+            raise InvalidURL(url)
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         user = password = host = port = None

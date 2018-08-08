@@ -53,9 +53,9 @@ class TestAdd(tests.TestCaseWithTransport):
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEqual(['adding .bzrignore',
-                           'adding dir',
-                           'adding dir/sub.txt',
-                           'adding top.txt'],
+                          'adding dir',
+                          'adding dir/sub.txt',
+                          'adding top.txt'],
                           results)
         out = self.run_bzr('add -v')[0]
         results = sorted(out.rstrip('\n').split('\n'))

@@ -16,6 +16,8 @@
 
 from __future__ import absolute_import
 
+import sys
+
 from . import errors
 
 from .lazy_import import lazy_import
@@ -412,6 +414,8 @@ class Branch(controldir.ControlComponent):
         :return: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "get_revision_id_to_revno_map scales with ancestry.")
         with self.lock_read():
             if self._revision_id_to_revno_cache is not None:
                 mapping = self._revision_id_to_revno_cache
@@ -587,7 +591,10 @@ class Branch(controldir.ControlComponent):
         # ancestry. Given the order guaranteed by the merge sort, we will see
         # uninteresting descendants of the first parent of our tip before the
         # tip itself.
-        first = next(rev_iter)
+        try:
+            first = next(rev_iter)
+        except StopIteration:
+            return
         (rev_id, merge_depth, revno, end_of_merge) = first
         yield first
         if not merge_depth:
@@ -772,7 +779,8 @@ class Branch(controldir.ControlComponent):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file. RBC 20060125
         if url is not None:
-            if isinstance(url, text_type):
+            # TODO(jelmer): Clean this up for pad.lv/1696545
+            if isinstance(url, text_type) and sys.version_info[0] == 2:
                 try:
                     url = url.encode('ascii')
                 except UnicodeEncodeError:
@@ -2121,7 +2129,7 @@ class GenericInterBranch(InterBranch):
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
-                mutter('parent was not accessible to copy: %s', e)
+                mutter('parent was not accessible to copy: %s', str(e))
             else:
                 if parent:
                     self.target.set_parent(parent)

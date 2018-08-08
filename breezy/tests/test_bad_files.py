@@ -50,10 +50,10 @@ class TestBadFiles(TestCaseWithTransport):
         b = wt.branch
 
         files = ['one', 'two', 'three']
-        file_ids = ['one-id', 'two-id', 'three-id']
+        file_ids = [b'one-id', b'two-id', b'three-id']
         self.build_tree(files)
         wt.add(files, file_ids)
-        wt.commit("Commit one", rev_id="a@u-0-0")
+        wt.commit("Commit one", rev_id=b"a@u-0-0")
 
         # We should now have a few files, lets try to
         # put some bogus stuff in the tree
@@ -65,9 +65,9 @@ class TestBadFiles(TestCaseWithTransport):
         self.build_tree(['six'])
 
         verify_status(self, wt,
-                          ['unknown:\n',
-                           '  a-fifo\n',
-                           '  six\n'
+                          [b'unknown:\n',
+                           b'  a-fifo\n',
+                           b'  six\n'
                            ])
 
         # We should raise an error if we are adding a bogus file
@@ -75,23 +75,23 @@ class TestBadFiles(TestCaseWithTransport):
 
         # And the list of files shouldn't have been modified
         verify_status(self, wt,
-                          ['unknown:\n',
-                           '  a-fifo\n',
-                           '  six\n'
+                          [b'unknown:\n',
+                           b'  a-fifo\n',
+                           b'  six\n'
                            ])
 
         # Make sure smart_add can handle having a bogus
         # file in the way
         wt.smart_add([])
         verify_status(self, wt,
-                          ['added:\n',
-                           '  six\n',
-                           'unknown:\n',
-                           '  a-fifo\n',
+                          [b'added:\n',
+                           b'  six\n',
+                           b'unknown:\n',
+                           b'  a-fifo\n',
                            ])
-        wt.commit("Commit four", rev_id="a@u-0-3")
+        wt.commit("Commit four", rev_id=b"a@u-0-3")
 
         verify_status(self, wt,
-                          ['unknown:\n',
-                           '  a-fifo\n',
+                          [b'unknown:\n',
+                           b'  a-fifo\n',
                            ])

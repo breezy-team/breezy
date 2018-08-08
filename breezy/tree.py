@@ -44,6 +44,7 @@ from . import (
     )
 from .inter import InterObject
 from .sixish import (
+    text_type,
     viewvalues,
     )
 
@@ -657,12 +658,10 @@ class Tree(object):
                 force_mtime=None):
         """Create an archive of this tree.
 
-        :param name: target file name
         :param format: Format name (e.g. 'tar')
+        :param name: target file name
         :param root: Root directory name (or None)
         :param subdir: Subdirectory to export (or None)
-        :param per_file_timestamps: Whether to set the timestamp
-            for each file to the last changed time.
         :return: Iterator over archive chunks
         """
         from .archive import create_archive
@@ -970,7 +969,7 @@ class InterTree(InterObject):
         # No inventory available.
         try:
             iterator = tree.iter_entries_by_dir(specific_files=[path])
-            return iterator.next()[1]
+            return next(iterator)[1]
         except StopIteration:
             return None
 
@@ -1146,7 +1145,7 @@ class MultiWalker(object):
             return True, path, ie
 
     @staticmethod
-    def _cmp_path_by_dirblock(path1, path2):
+    def _lt_path_by_dirblock(path1, path2):
         """Compare two paths based on what directory they are in.
 
         This generates a sort order, such that all children of a directory are
@@ -1161,18 +1160,18 @@ class MultiWalker(object):
         """
         # Shortcut this special case
         if path1 == path2:
-            return 0
+            return False
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
-        if not isinstance(path1, unicode):
+        if not isinstance(path1, text_type):
             raise TypeError("'path1' must be a unicode string, not %s: %r"
                             % (type(path1), path1))
-        if not isinstance(path2, unicode):
+        if not isinstance(path2, text_type):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
-        return cmp(MultiWalker._path_to_key(path1),
-                   MultiWalker._path_to_key(path2))
+        return (MultiWalker._path_to_key(path1) <
+                MultiWalker._path_to_key(path2))
 
     @staticmethod
     def _path_to_key(path):
@@ -1268,7 +1267,7 @@ class MultiWalker(object):
                     other_walker = other_walkers[idx]
                     other_extra = others_extra[idx]
                     while (other_has_more and
-                           self._cmp_path_by_dirblock(other_path, path) < 0):
+                           self._lt_path_by_dirblock(other_path, path)):
                         other_file_id = other_ie.file_id
                         if other_file_id not in out_of_order_processed:
                             other_extra[other_file_id] = (other_path, other_ie)

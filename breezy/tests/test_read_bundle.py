@@ -22,6 +22,7 @@ import breezy.bzr.bzrdir
 from .. import errors
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from .. import tests
 from .test_transport import TestTransportImplementation
@@ -49,7 +50,7 @@ def create_bundle_file(test_case):
 
     out = BytesIO()
     rev_ids = write_bundle(wt.branch.repository,
-                           wt.get_parent_ids()[0], 'null:', out)
+                           wt.get_parent_ids()[0], b'null:', out)
     out.seek(0)
     return out, wt
 
@@ -88,9 +89,9 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
 
     def test_read_mergeable_from_url(self):
         info = self.read_mergeable_from_url(
-            unicode(self.get_url(self.bundle_name)))
+            text_type(self.get_url(self.bundle_name)))
         revision = info.real_revisions[-1]
-        self.assertEqual('commit-1', revision.revision_id)
+        self.assertEqual(b'commit-1', revision.revision_id)
 
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file
@@ -107,6 +108,6 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
             # transports (the test will fail even).
             raise tests.TestSkipped(
                 'Need a ConnectedTransport to test transport reuse')
-        url = unicode(self.get_url(self.bundle_name))
+        url = text_type(self.get_url(self.bundle_name))
         info = self.read_mergeable_from_url(url)
         self.assertEqual(1, len(self.possible_transports))

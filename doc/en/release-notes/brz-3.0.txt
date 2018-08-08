@@ -126,6 +126,10 @@ Improvements
  * New ``bzr cp`` command which copies files (but does not currently track
    history). (Jelmer Vernooĳ, start towards #269095)
 
+ * HPSS calls for ``RevisionTree.archive`` and
+   ``RevisionTree.annotate_iter`` have been added. (Jelmer Vernooĳ,
+   #897781)
+
 Bug Fixes
 *********
 

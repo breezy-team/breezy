@@ -25,7 +25,7 @@ from .... import (
     )
 from ....tests import TestCaseWithTransport
 
-INITIAL_NEWS_CONTENT = """----------------------------
+INITIAL_NEWS_CONTENT = b"""----------------------------
 commitfromnews release notes
 ----------------------------
 
@@ -46,7 +46,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         self.commits.append(commit)
         self.messages.append(message)
         if message is None:
-            message = 'let this commit succeed I command thee.'
+            message = u'let this commit succeed I command thee.'
         return message
 
     def enable_commitfromnews(self):
@@ -67,7 +67,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         builder.start_series()
         builder.build_snapshot(None,
             [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
              ],
             message_callback=msgeditor.generate_commit_message_template,
             revision_id=b'BASE-id')
@@ -87,7 +87,7 @@ class TestCommitTemplate(TestCaseWithTransport):
             message_callback=msgeditor.generate_commit_message_template,
             revision_id=b'BASE-id')
         builder.finish_series()
-        self.assertEqual([content], self.messages)
+        self.assertEqual([content.decode('utf-8')], self.messages)
 
     def test_changed_NEWS(self):
         self.setup_capture()

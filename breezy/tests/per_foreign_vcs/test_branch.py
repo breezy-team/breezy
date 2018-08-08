@@ -146,4 +146,4 @@ class ForeignBranchFormatTests(TestCaseWithTransport):
         self.assertIsInstance(self.branch_format.get_format_description(), str)
 
     def test_network_name(self):
-        self.assertIsInstance(self.branch_format.network_name(), str)
+        self.assertIsInstance(self.branch_format.network_name(), bytes)

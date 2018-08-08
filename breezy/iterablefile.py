@@ -100,6 +100,7 @@ class IterableFileBase(object):
 
 class IterableFile(object):
     """This class supplies all File methods that can be implemented cheaply."""
+
     def __init__(self, iterable):
         object.__init__(self)
         self._file_base = IterableFileBase(iterable)

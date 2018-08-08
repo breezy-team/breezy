@@ -105,7 +105,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         GitRepo.init(self.test_dir)
 
         repo = Repository.open('.')
-        self.assertRaises(errors.NoSuchRevision, repo.get_revision, "bla")
+        self.assertRaises(errors.NoSuchRevision, repo.get_revision, b"bla")
 
     def simple_commit(self):
         # Create a git repository with some interesting files in a revision.
@@ -113,7 +113,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         builder = tests.GitBranchBuilder()
         builder.set_file(b'data', b'text\n', False)
         builder.set_file(b'executable', b'content', True)
-        builder.set_link(b'link', b'broken')
+        builder.set_symlink(b'link', b'broken')
         builder.set_file(b'subdir/subfile', b'subdir text\n', False)
         commit_handle = builder.commit(b'Joe Foo <joe@foo.com>', b'message',
             timestamp=1205433193)
@@ -131,7 +131,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = Repository.open('.')
         tree = repo.revision_tree(revid)
         self.assertEqual(tree.get_revision_id(), revid)
-        self.assertEqual("text\n", tree.get_file_text("data"))
+        self.assertEqual(b"text\n", tree.get_file_text("data"))
 
 
 class TestGitRepository(tests.TestCaseWithTransport):
@@ -205,13 +205,13 @@ class SigningGitRepository(tests.TestCaseWithTransport):
         self.assertFalse(branch.repository.has_signature_for_revision_id(revid))
         try:
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
-            conf = config.MemoryStack('''
+            conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
             revid2 = wt.commit(config=conf, message="base", allow_pointless=True)
             def sign(text):
                 return breezy.gpg.LoopbackGPGStrategy(None).sign(text)
-            self.assertIsInstance(branch.repository.get_signature_text(revid2), str)
+            self.assertIsInstance(branch.repository.get_signature_text(revid2), bytes)
         finally:
             breezy.gpg.GPGStrategy = oldstrategy
 

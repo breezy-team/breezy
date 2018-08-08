@@ -199,7 +199,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a', 'a/b', 'c'], [b'a-id', b'b-id', b'c-id'])
         self.run_bzr('mv c/b b')
         tree = workingtree.WorkingTree.open('.')
-        self.assertEqual('b-id', tree.path2id('b'))
+        self.assertEqual(b'b-id', tree.path2id('b'))
 
     def test_mv_already_moved_file(self):
         """Test brz mv original_file to moved_file.

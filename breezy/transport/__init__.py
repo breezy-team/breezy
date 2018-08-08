@@ -188,6 +188,10 @@ class _CoalescedOffset(object):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
 
+    def __eq__(self, other):
+        return ((self.start, self.length, self.ranges) ==
+                (other.start, other.length, other.ranges))
+
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__,
             self.start, self.length, self.ranges)
@@ -241,6 +245,13 @@ class FileStream(object):
 
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.close()
+        return False
 
     def close(self, want_fdatasync=False):
         if want_fdatasync:
@@ -757,7 +768,7 @@ class Transport(object):
             if expansion < 0:
                 # we're asking for more than the minimum read anyway.
                 expansion = 0
-            reduction = expansion / 2
+            reduction = expansion // 2
             new_offset = offset - reduction
             new_length = length + expansion
             if new_offset < 0:
@@ -1514,8 +1525,9 @@ def location_to_url(location):
             raise urlutils.InvalidURL(path=location,
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
-    if PY3:
-        location = location.decode('ascii')
+    else:
+        if PY3:
+            location = location.decode('ascii')
 
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])

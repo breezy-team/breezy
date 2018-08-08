@@ -26,14 +26,14 @@ class TestRevisionHistory(tests.TestCaseWithTransport):
         # setup a standalone branch with three commits
         tree = self.make_branch_and_tree('test')
         with open('test/foo', 'wb') as f:
-            f.write('1111\n')
+            f.write(b'1111\n')
         tree.add('foo')
         tree.commit('added foo', rev_id=b'revision_1')
         with open('test/foo', 'wb')as f:
-            f.write('2222\n')
+            f.write(b'2222\n')
         tree.commit('updated foo', rev_id=b'revision_2')
         with open('test/foo', 'wb')as f:
-            f.write('3333\n')
+            f.write(b'3333\n')
         tree.commit('updated foo again', rev_id=b'revision_3')
         return tree
 

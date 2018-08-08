@@ -33,6 +33,8 @@ from breezy import (
 )
 """)
 
+from .sixish import text_type
+
 
 known_merge_tools = {
     'bcompare': 'bcompare {this} {other} {base} {result}',
@@ -52,7 +54,7 @@ def check_availability(command_line):
         if exe is None:
             return False
         base, ext = os.path.splitext(exe)
-        path_ext = [unicode(s.lower())
+        path_ext = [s.lower()
                     for s in os.getenv('PATHEXT', '').split(os.pathsep)]
         return os.path.exists(exe) and ext in path_ext
     else:

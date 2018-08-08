@@ -140,7 +140,8 @@ class CommitBuilder(object):
 
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
-        if '\r' in text:
+        # TODO(jelmer): Make this repository-format specific
+        if u'\r' in text:
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
@@ -150,6 +151,7 @@ class CommitBuilder(object):
             if not isinstance(value, (text_type, str)):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
+            # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
@@ -986,7 +988,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return Trees for revisions in this repository.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         """
         raise NotImplementedError(self.revision_trees)
 

@@ -74,7 +74,7 @@ class TestApiUsage(TestSourceHelper):
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
-        source = file(filename, 'r')
+        source = open(filename, 'r')
         for line in source:
             if line.find(rule) > -1:
                 occurences += 1
@@ -145,12 +145,8 @@ class TestSource(TestSourceHelper):
 
     def get_source_file_contents(self, extensions=None):
         for fname in self.get_source_files(extensions=extensions):
-            f = open(fname, 'rb')
-            try:
-                text = f.read()
-            finally:
-                f.close()
-            yield fname, text
+            with open(fname, 'r') as f:
+                yield fname, f.read()
 
     def is_our_code(self, fname):
         """True if it's a "real" part of breezy rather than external code"""
@@ -350,8 +346,9 @@ class TestSource(TestSourceHelper):
                 continue
             if not assert_re.search(text):
                 continue
-            ast = parser.ast2tuple(parser.suite(text))
-            if search(ast):
+            st = parser.suite(text)
+            code = parser.st2tuple(st)
+            if search(code):
                 badfiles.append(fname)
         if badfiles:
             self.fail(
@@ -367,10 +364,9 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
+        common_classes = ('StaticTuple',)
         class_re = re.compile(r'^(cdef\s+)?(public\s+)?'
                               r'(api\s+)?class (\w+).*:', re.MULTILINE)
-        extern_class_re = re.compile(r'## extern cdef class (\w+)',
-                                     re.MULTILINE)
         except_re = re.compile(
             r'cdef\s+'        # start with cdef
             r'([\w *]*?)\s*'  # this is the return signature
@@ -381,7 +377,7 @@ class TestSource(TestSourceHelper):
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
             known_classes = {m[-1] for m in class_re.findall(text)}
-            known_classes.update(extern_class_re.findall(text))
+            known_classes.update(common_classes)
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:
                 if sig.startswith('api '):

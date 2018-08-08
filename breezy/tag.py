@@ -28,6 +28,7 @@ from __future__ import absolute_import
 # called tags* are ctags files... mbp 20070220.
 
 from .registry import Registry
+from .sixish import text_type
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
@@ -360,7 +361,7 @@ def sort_natural(branch, tags):
     """
     def natural_sort_key(tag):
         return [f(s) for f, s in
-                zip(itertools.cycle((unicode.lower, int)),
+                zip(itertools.cycle((text_type.lower, int)),
                                     re.split('([0-9]+)', tag[0]))]
     tags.sort(key=natural_sort_key)
 

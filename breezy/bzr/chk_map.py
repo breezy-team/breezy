@@ -54,6 +54,7 @@ from ..sixish import (
     viewitems,
     viewvalues,
     )
+from ..sixish import PY3
 from ..static_tuple import StaticTuple
 
 # approx 4MB
@@ -182,19 +183,23 @@ class CHKMap(object):
             return _get_cache()[key]
         except KeyError:
             stream = self._store.get_record_stream([key], 'unordered', True)
-            bytes = stream.next().get_bytes_as('fulltext')
+            bytes = next(stream).get_bytes_as('fulltext')
             _get_cache()[key] = bytes
             return bytes
 
-    def _dump_tree(self, include_keys=False):
+    def _dump_tree(self, include_keys=False, encoding='utf-8'):
         """Return the tree in a string representation."""
         self._ensure_root()
-        res = self._dump_tree_node(self._root_node, prefix='', indent='',
-                                   include_keys=include_keys)
-        res.append(b'') # Give a trailing '\n'
-        return b'\n'.join(res)
+        if PY3:
+            decode = lambda x: x.decode(encoding)
+        else:
+            decode = lambda x: x
+        res = self._dump_tree_node(self._root_node, prefix=b'', indent='',
+                                   decode=decode, include_keys=include_keys)
+        res.append('') # Give a trailing '\n'
+        return '\n'.join(res)
 
-    def _dump_tree_node(self, node, prefix, indent, include_keys=True):
+    def _dump_tree_node(self, node, prefix, indent, decode, include_keys=True):
         """For this node and all children, generate a string representation."""
         result = []
         if not include_keys:
@@ -202,22 +207,23 @@ class CHKMap(object):
         else:
             node_key = node.key()
             if node_key is not None:
-                key_str = b' %s' % (node_key[0],)
+                key_str = ' %s' % (decode(node_key[0]),)
             else:
-                key_str = b' None'
-        result.append(b'%s%r %s%s' % (indent, prefix, node.__class__.__name__,
+                key_str = ' None'
+        result.append('%s%r %s%s' % (indent, decode(prefix), node.__class__.__name__,
                                       key_str))
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
             for prefix, sub in sorted(viewitems(node._items)):
                 result.extend(self._dump_tree_node(sub, prefix, indent + '  ',
-                                                   include_keys=include_keys))
+                                                   decode=decode, include_keys=include_keys))
         else:
             for key, value in sorted(viewitems(node._items)):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
-                result.append(b'      %r %r' % (tuple(key), value))
+                result.append('      %r %r' % (
+                    tuple([decode(ke) for ke in key]), decode(value)))
         return result
 
     @classmethod
@@ -528,7 +534,7 @@ class CHKMap(object):
 
     def map(self, key, value):
         """Map a key tuple to value.
-        
+
         :param key: A key to map.
         :param value: The value to assign to key.
         """
@@ -780,7 +786,7 @@ class LeafNode(Node):
         # TODO: Should probably be done without actually joining the key, but
         #       then that can be done via the C extension
         return (len(self._serialise_key(key)) + 1
-                + len(str(value.count(b'\n'))) + 1
+                + len(b'%d' % value.count(b'\n')) + 1
                 + len(value) + 1)
 
     def _search_key(self, key):
@@ -881,7 +887,7 @@ class LeafNode(Node):
         else:
             if self._search_prefix is _unknown:
                 raise AssertionError('%r must be known' % self._search_prefix)
-            return self._search_prefix, [("", self)]
+            return self._search_prefix, [(b"", self)]
 
     _serialise_key = b'\x00'.join
 
@@ -991,7 +997,7 @@ class InternalNode(Node):
 
     __slots__ = ('_node_width',)
 
-    def __init__(self, prefix='', search_key_func=None):
+    def __init__(self, prefix=b'', search_key_func=None):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # How many octets key prefixes within this node are.
@@ -1261,7 +1267,7 @@ class InternalNode(Node):
                         new_node = self._check_remap(store)
             if new_node._search_prefix is None:
                 raise AssertionError("_search_prefix should not be None")
-            return new_node._search_prefix, [('', new_node)]
+            return new_node._search_prefix, [(b'', new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
@@ -1272,7 +1278,7 @@ class InternalNode(Node):
             child.add_node(split, node)
         self._len = self._len - old_len + len(child)
         self._key = None
-        return self._search_prefix, [("", self)]
+        return self._search_prefix, [(b"", self)]
 
     def _new_child(self, search_key, klass):
         """Create a new child node of type klass."""

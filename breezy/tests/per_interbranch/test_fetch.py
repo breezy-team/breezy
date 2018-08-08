@@ -49,7 +49,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo'), 'hello')
+        self.assertEqual(tree.get_file_text('foo'), b'hello')
 
     def test_fetch_revisions_limit(self):
         """Test fetch-revision operation."""
@@ -98,7 +98,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.assertEqual(
             {rev1},
             b2.repository.has_revisions(
-                [rev1, 'revision-2', 'revision-3']))
+                [rev1, b'revision-2', b'revision-3']))
 
         rev2 = wt.commit('hmm')
         rev3 = wt.commit('hmmm')
