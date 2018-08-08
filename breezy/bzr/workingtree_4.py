@@ -2088,7 +2088,7 @@ class DirStateRevisionTree(InventoryTree):
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
-                    pending.append((dir[0].decode('utf-8'), dir[4]))
+                    pending.append((dir[0], dir[4]))
 
 
 class InterDirStateTree(InterTree):

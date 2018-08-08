@@ -3286,7 +3286,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                 stream.write("%s\n" % (t.id()))
         return True
     result = runner.run(suite)
-    if strict:
+    if strict and getattr(result, 'wasStrictlySuccessful', False):
         return result.wasStrictlySuccessful()
     else:
         return result.wasSuccessful()

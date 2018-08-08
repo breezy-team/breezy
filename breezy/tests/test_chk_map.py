@@ -407,20 +407,20 @@ class TestMap(TestCaseWithStore):
         map_two = CHKMap(store, None)
         map_two._root_node.set_maximum_size(20)
         self.assertMapLayoutEqual(map_one, map_two)
-        map_one.map(b'aaa', b'value')
+        map_one.map((b'aaa', ), b'value')
         self.assertRaises(AssertionError,
             self.assertMapLayoutEqual, map_one, map_two)
-        map_two.map(b'aaa', b'value')
+        map_two.map((b'aaa', ), b'value')
         self.assertMapLayoutEqual(map_one, map_two)
         # Split the tree, so we ensure that internal nodes and leaf nodes are
         # properly checked
-        map_one.map(b'aab', b'value')
+        map_one.map((b'aab', ), b'value')
         self.assertIsInstance(map_one._root_node, InternalNode)
         self.assertRaises(AssertionError,
             self.assertMapLayoutEqual, map_one, map_two)
-        map_two.map(b'aab', b'value')
+        map_two.map((b'aab', ), b'value')
         self.assertMapLayoutEqual(map_one, map_two)
-        map_one.map(b'aac', b'value')
+        map_one.map((b'aac', ), b'value')
         self.assertRaises(AssertionError,
             self.assertMapLayoutEqual, map_one, map_two)
         self.assertCanonicalForm(map_one)
@@ -434,7 +434,7 @@ class TestMap(TestCaseWithStore):
 
     def test_from_dict_ab(self):
         chk_bytes = self.get_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes, {b"a": b"b"})
+        root_key = CHKMap.from_dict(chk_bytes, {(b"a", ): b"b"})
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, root_key)
@@ -445,7 +445,7 @@ class TestMap(TestCaseWithStore):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {})
         chkmap = CHKMap(chk_bytes, root_key)
-        new_root = chkmap.apply_delta([(None, b"a", b"b")])
+        new_root = chkmap.apply_delta([(None, (b"a", ), b"b")])
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, new_root)
@@ -1143,7 +1143,7 @@ class TestMap(TestCaseWithStore):
     def test_iteritems_two_items(self):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes,
-            {b"a": b"content here", b"b": b"more content"})
+            {(b"a", ): b"content here", (b"b", ): b"more content"})
         chkmap = CHKMap(chk_bytes, root_key)
         self.assertEqual([((b"a",), b"content here"), ((b"b",), b"more content")],
             sorted(list(chkmap.iteritems())))
@@ -1561,8 +1561,8 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(None, node.key())
 
     def test_key_after_map(self):
-        node = LeafNode.deserialise("chkleaf:\n10\n1\n0\n\n", ("sha1:1234",))
-        node.map(None, ("foo bar",), "baz quux")
+        node = LeafNode.deserialise(b"chkleaf:\n10\n1\n0\n\n", (b"sha1:1234",))
+        node.map(None, (b"foo bar",), b"baz quux")
         self.assertEqual(None, node.key())
 
     def test_key_after_unmap(self):

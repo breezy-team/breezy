@@ -1427,7 +1427,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         expected = [
             self.unchanged(tree1, tree1.path2id('')),
             self.added(tree2, b'added'),
-            self.content_changed(tree2, 'changed'),
+            self.content_changed(tree2, b'changed'),
             self.kind_changed(tree1, tree2, b'fromdir'),
             self.kind_changed(tree1, tree2, b'fromfile'),
             self.deleted(tree1, b'removed'),
@@ -1448,7 +1448,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.path2id('')
         expected = [
             self.added(tree2, b'added'),
-            self.content_changed(tree2, 'changed'),
+            self.content_changed(tree2, b'changed'),
             self.kind_changed(tree1, tree2, b'fromdir'),
             self.kind_changed(tree1, tree2, b'fromfile'),
             self.deleted(tree1, b'removed'),

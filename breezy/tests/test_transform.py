@@ -62,6 +62,7 @@ from ..merge import Merge3Merger, Merger
 from ..mutabletree import MutableTree
 from ..sixish import (
     BytesIO,
+    PY3,
     text_type,
     )
 from . import (
@@ -2548,8 +2549,12 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
         new_globals.update(globals)
         new_func = types.FunctionType(func.__code__, new_globals,
             func.__name__, func.__defaults__)
-        setattr(instance, method_name,
-            types.MethodType(new_func, instance, instance.__class__))
+        if PY3:
+            setattr(instance, method_name,
+                types.MethodType(new_func, instance))
+        else:
+            setattr(instance, method_name,
+                types.MethodType(new_func, instance, instance.__class__))
         self.addCleanup(delattr, instance, method_name)
 
     @staticmethod

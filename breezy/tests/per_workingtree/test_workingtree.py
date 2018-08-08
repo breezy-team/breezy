@@ -1207,7 +1207,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         self.build_tree(['tree/subdir/', 'tree/subdir/somefile'])
         tree.add(['subdir', 'subdir/somefile'])
 
-        with open('tree/subdir/m\xb5', 'wb') as f:
+        with open(b'tree/subdir/m\xb5', 'wb') as f:
             f.write(b'trivial\n')
 
         tree.lock_read()
@@ -1220,7 +1220,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
                                   tree.iter_changes, tree.basis_tree(),
                                   want_unversioned=True)
         # We should display the relative path
-        self.assertEqual('subdir/m\xb5', e.filename)
+        self.assertEqual(b'subdir/m\xb5', e.filename)
         self.assertEqual(osutils._fs_enc, e.fs_encoding)
 
 

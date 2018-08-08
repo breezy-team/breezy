@@ -52,7 +52,7 @@ check-nodocs3:
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
 	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing \
+	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing --strict \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
@@ -66,7 +66,7 @@ update-python3-passing:
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	-BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 \
+	  ./brz selftest -Oselftest.timeout=120 --strict \
 	  --subunit2 $(tests) > selftest.log
 	grep -v "^#" python3.passing > python3.passing.new
 	cat selftest.log | \

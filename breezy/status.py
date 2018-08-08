@@ -316,7 +316,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         for num, sub_merge, depth, eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:
-                to_file.write(sub_prefix + '(ghost) ' + sub_merge + '\n')
+                to_file.write(sub_prefix + '(ghost) ' + sub_merge.decode('utf-8') + '\n')
                 continue
             show_log_message(revisions[sub_merge], sub_prefix)
 

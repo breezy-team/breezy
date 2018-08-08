@@ -415,7 +415,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, text_type))
+        self.assertIsInstance(result, str)
 
     def test_win32_unc_path_to_url(self):
         self.requireFeature(features.win32_feature)
@@ -654,7 +654,7 @@ class TestUrlToPath(TestCase):
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
-        self.assertFalse(isinstance(urlutils.escape(u'\xe5'), text_type))
+        self.assertIsInstance(urlutils.escape(u'\xe5'), str)
 
     def test_escape_tildes(self):
         self.assertEqual('~foo', urlutils.escape('~foo'))
@@ -1050,5 +1050,12 @@ class QuoteTests(TestCase):
 
     def test_unquote(self):
         self.assertEqual('%', urlutils.unquote('%25'))
-        self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
+        if PY3:
+            self.assertEqual('\xe5', urlutils.unquote('%C3%A5'))
+        else:
+            self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
         self.assertEqual(u"\xe5", urlutils.unquote(u'\xe5'))
+
+    def test_unquote_to_bytes(self):
+        self.assertEqual(b'%', urlutils.unquote_to_bytes('%25'))
+        self.assertEqual(b'\xc3\xa5', urlutils.unquote_to_bytes('%C3%A5'))

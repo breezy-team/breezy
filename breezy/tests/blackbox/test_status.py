@@ -236,8 +236,8 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 '?   bye.c\n',
                 '?   dir2/\n',
+                '?   directory/hello.c\n',
                 '+!  missing.c\n',
-                '?   directory/hello.c\n'
                 ],
                 wt, short=True)
 
@@ -401,9 +401,9 @@ class BranchStatus(TestCaseWithTransport):
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
         expected = [
-          ' D  FILE_E\n',
-          ' M  FILE_C\n',
           ' M  FILE_B\n',
+          ' M  FILE_C\n',
+          ' D  FILE_E\n',
           'X   NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status --short NONEXISTENT '
@@ -435,9 +435,9 @@ class BranchStatus(TestCaseWithTransport):
                               r'.*ERROR: Path\(s\) do not exist: '
                               'ANOTHER_NONEXISTENT NONEXISTENT.*')
         expected = [
-          ' D  FILE_E\n',
-          ' M  FILE_C\n',
           ' M  FILE_B\n',
+          ' M  FILE_C\n',
+          ' D  FILE_E\n',
           'X   ANOTHER_NONEXISTENT\n',
           'X   NONEXISTENT\n',
           ]

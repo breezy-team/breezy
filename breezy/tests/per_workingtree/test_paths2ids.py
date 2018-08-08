@@ -166,12 +166,12 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         tree.unversion(['dir/child-goes'])
         tree.rename_one('dir/child-moves', 'child-moves')
         self.build_tree(['tree/newdir/'])
-        tree.add(['newdir'], ['newdir'])
+        tree.add(['newdir'], [b'newdir'])
         tree.rename_one('dir/child-stays', 'child-stays')
         tree.rename_one('dir', 'newdir/dir')
         tree.rename_one('child-stays', 'newdir/dir/child-stays')
         self.build_tree(['tree/newdir/dir/new-child'])
-        tree.add(['newdir/dir/new-child'], ['new-child'])
+        tree.add(['newdir/dir/new-child'], [b'new-child'])
         self.assertExpectedIds(
             [b'newdir', b'dir', b'child-moves', b'child-stays', b'child-goes',
              b'new-child'], tree, ['newdir'], [basis])

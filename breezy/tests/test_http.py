@@ -2159,7 +2159,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     def setUp(self):
         super(TestNoReportActivity, self).setUp()
-        self._transport =HttpTransport
+        self._transport = HttpTransport
         TestActivityMixin.setUp(self)
 
     def assertActivitiesMatch(self):

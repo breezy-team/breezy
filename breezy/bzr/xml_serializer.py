@@ -129,7 +129,7 @@ def escape_invalid_chars(message):
     # aren't listed in the XML specification
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
     return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
+            lambda match: match.group(0).encode('unicode_escape').decode('ascii'),
             message)
 
 

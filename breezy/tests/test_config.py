@@ -1495,9 +1495,9 @@ other_url = /other-subdir
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
-precedence_global = 'option = global'
-precedence_branch = 'option = branch'
-precedence_location = """
+precedence_global = b'option = global'
+precedence_branch = b'option = branch'
+precedence_location = b"""
 [http://]
 recurse = true
 option = recurse

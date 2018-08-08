@@ -402,7 +402,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.addCleanup(repo.unlock)
         text_keys = repo.texts.keys()
         dir_keys = [key for key in text_keys if key[0] ==
-                'dir-20051005095101-da1441ea3fa6917a']
+                b'dir-20051005095101-da1441ea3fa6917a']
         self.assertNotEqual([], dir_keys)
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
