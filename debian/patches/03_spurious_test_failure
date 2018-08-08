@@ -2,20 +2,6 @@ Description: Fix some spurious test failures
 Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not forwarded upstream (workaround)
 
-=== modified file 'a/breezy/tests/blackbox/test_serve.py'
-Index: unstable/breezy/tests/blackbox/test_serve.py
-===================================================================
---- unstable.orig/breezy/tests/blackbox/test_serve.py
-+++ unstable/breezy/tests/blackbox/test_serve.py
-@@ -330,8 +330,6 @@ class TestBzrServe(TestBzrServeBase):
-         # request to finish
-         self.assertEqual('Requested to stop gracefully\n',
-                          process.stderr.readline())
--        self.assertEqual('Waiting for 1 client(s) to finish\n',
--                         process.stderr.readline())
-         body = response_handler.read_body_bytes()
-         if body != big_contents:
-             self.fail('Failed to properly read the contents of "bigfile"')
 Index: unstable/breezy/tests/test_test_server.py
 ===================================================================
 --- unstable.orig/breezy/tests/test_test_server.py
@@ -34,41 +20,3 @@ Index: unstable/breezy/tests/test_test_server.py
  
  
  class TCPConnectionHandler(socketserver.BaseRequestHandler):
-@@ -170,37 +175,6 @@ class TestTCPServerInAThread(tests.TestC
-         self.assertRaises(CantStart,
-                           self.get_server, server_class=CantStartServer)
- 
--    def test_server_fails_while_serving_or_stopping(self):
--        class CantConnect(Exception):
--            pass
--
--        class FailingConnectionHandler(TCPConnectionHandler):
--
--            def handle(self):
--                raise CantConnect()
--
--        server = self.get_server(
--            connection_handler_class=FailingConnectionHandler)
--        # The server won't fail until a client connect
--        client = self.get_client()
--        client.connect((server.host, server.port))
--        # We make sure the server wants to handle a request, but the request is
--        # guaranteed to fail. However, the server should make sure that the
--        # connection gets closed, and stop_server should then raise the
--        # original exception.
--        client.write('ping\n')
--        try:
--            self.assertEqual('', client.read())
--        except socket.error as e:
--            # On Windows, failing during 'handle' means we get
--            # 'forced-close-of-connection'. Possibly because we haven't
--            # processed the write request before we close the socket.
--            WSAECONNRESET = 10054
--            if e.errno in (WSAECONNRESET,):
--                pass
--        # Now the server has raised the exception in its own thread
--        self.assertRaises(CantConnect, server.stop_server)
--
-     def test_server_crash_while_responding(self):
-         # We want to ensure the exception has been caught
-         caught = threading.Event()

@@ -12,7 +12,7 @@
 +            if e[0] == errno.ECONNRESET:
 +                return
 +            raise
-         self.assertEqual('', client.read())
+         self.assertEqual(b'', client.read())
  
  
 
