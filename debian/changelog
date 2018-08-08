@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7063-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7063-1) unstable; urgency=medium
 
   * New upstream snapshot.
    + Drop patch 02_diff_language: applied upstream.
