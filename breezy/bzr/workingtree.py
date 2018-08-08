@@ -507,9 +507,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
             xml = self.branch.repository._get_inventory_xml(new_revision)
-            firstline = xml.split('\n', 1)[0]
-            if (not 'revision_id="' in firstline or
-                'format="7"' not in firstline):
+            firstline = xml.split(b'\n', 1)[0]
+            if (not b'revision_id="' in firstline or
+                b'format="7"' not in firstline):
                 inv = self.branch.repository._serializer.read_inventory_from_string(
                     xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
@@ -805,6 +805,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             if file_id is None:
                 file_id = self.path2id(path)
+            if file_id is None:
+                raise errors.NoSuchFile(path)
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
                 try:
@@ -886,7 +888,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     file_id = cache_utf8.encode(s.get("file_id"))
                     if not self.has_id(file_id):
                         continue
-                    text_hash = s.get("hash")
+                    text_hash = s.get("hash").encode('ascii')
                     path = self.id2path(file_id)
                     if text_hash == self.get_file_sha1(path, file_id):
                         merge_hashes[file_id] = text_hash
@@ -1340,7 +1342,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_id, to_rel,
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(path=to_rel,
                         extra="New file has not been created yet"))
                 only_change_inv = True
@@ -1389,7 +1391,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
             except errors.BzrMoveFailedError as e:
-                raise errors.BzrMoveFailedError( '', '', "Rollback failed."
+                raise errors.BzrMoveFailedError('', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
                         " Error message is: %s" % e)

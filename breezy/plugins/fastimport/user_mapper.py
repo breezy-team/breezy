@@ -15,7 +15,10 @@
 
 from __future__ import absolute_import
 
-from email import Utils
+try:
+    from email.utils import parseaddr
+except ImportError:
+    from email.Utils import parseaddr
 
 
 class UserMapper(object):
@@ -43,12 +46,12 @@ class UserMapper(object):
         self._default_domain = None
         for line in lines:
             line = line.strip()
-            if len(line) == 0 or line.startswith('#'):
+            if len(line) == 0 or line.startswith(b'#'):
                 continue
-            old, new = line.split('=', 1)
+            old, new = line.split(b'=', 1)
             old = old.strip()
             new = new.strip()
-            if old == '@':
+            if old == b'@':
                 self._default_domain = new
                 continue
             # Parse each id into a name and email address
@@ -58,10 +61,10 @@ class UserMapper(object):
             self._user_map[(old_name, old_email)] = (new_name, new_email)
 
     def _parse_id(self, id):
-        if id.find('<') == -1:
-            return id, ""
+        if id.find(b'<') == -1:
+            return id, b""
         else:
-            return Utils.parseaddr(id)
+            return parseaddr(id)
 
     def map_name_and_email(self, name, email):
         """Map a name and an email to the preferred name and email.
@@ -75,7 +78,7 @@ class UserMapper(object):
         except KeyError:
             new_name = name
             if self._default_domain and not email:
-                new_email = "%s@%s" % (name, self._default_domain)
+                new_email = b"%s@%s" % (name, self._default_domain)
             else:
                 new_email = email
         return new_name, new_email

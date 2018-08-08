@@ -91,8 +91,8 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
         return "d", gitsha
@@ -115,10 +115,10 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
-        bb.set_file("foobar", "fooll\nbar\n", False)
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "nextmsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        bb.set_file("foobar", b"fooll\nbar\n", False)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"nextmsg")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -135,10 +135,10 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("mylink/somefile", "foo\nbar\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_file("mylink/somefile", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
         bb.set_symlink("mylink", "target/")
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -161,9 +161,9 @@ class RepositoryFetchTests(object):
         os.chdir("d")
         bb = GitBranchBuilder()
         bb.set_symlink("mylink", "target/")
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
-        bb.set_file("mylink/somefile", "foo\nbar\n", False)
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
+        bb.set_file("mylink/somefile", b"foo\nbar\n", False)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -186,9 +186,9 @@ class RepositoryFetchTests(object):
         os.chdir("d")
         bb = GitBranchBuilder()
         bb.set_symlink("mylink", "target")
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
         bb.set_symlink("mylink", "target/")
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         marks = bb.finish()
         gitsha1 = marks[mark1]
         gitsha2 = marks[mark2]
@@ -208,9 +208,9 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", True)
-        bb.set_file("notexec", "foo\nbar\n", False)
-        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", True)
+        bb.set_file("notexec", b"foo\nbar\n", False)
+        mark = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
         oldrepo = self.open_git_repo("d")
@@ -226,10 +226,10 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "foo\nbar\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
-        bb.set_file("foobar", "foo\nbar\n", True)
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        bb.set_file("foobar", b"foo\nbar\n", True)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha2 = bb.finish()[mark2]
         os.chdir("..")
         oldrepo = self.open_git_repo("d")
@@ -244,8 +244,8 @@ class RepositoryFetchTests(object):
         r = self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"foobar", "foo\n", False)
-        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_file(u"foobar", b"foo\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
         gitsha1 = bb.finish()[mark1]
         os.chdir("..")
         stacked_on = self.clone_git_repo("d", "stacked-on")
@@ -259,9 +259,9 @@ class RepositoryFetchTests(object):
         tree.branch.set_stacked_on_url(b.user_url)
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"barbar", "bar\n", False)
-        bb.set_file(u"foo/blie/bla", "bla\n", False)
-        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        bb.set_file(u"barbar", b"bar\n", False)
+        bb.set_file(u"foo/blie/bla", b"bla\n", False)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         gitsha2 = bb.finish()[mark2]
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         os.chdir("..")
@@ -279,8 +279,8 @@ class RepositoryFetchTests(object):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file(u"foőbar", "foo\nbar\n", False)
-        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file(u"foőbar", b"foo\nbar\n", False)
+        mark = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
         oldrepo = self.open_git_repo("d")
@@ -293,19 +293,19 @@ class RepositoryFetchTests(object):
         r = self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
-        bb.set_file("foobar", "fooll\nbar\n", False)
-        mark = bb.commit("Somebody <somebody@someorg.org>", "nextmsg")
+        bb.set_file("foobar", b"fooll\nbar\n", False)
+        mark = bb.commit(b"Somebody <somebody@someorg.org>", b"nextmsg")
         marks = bb.finish()
         gitsha = marks[mark]
         tag = Tag()
-        tag.name = "sometag"
+        tag.name = b"sometag"
         tag.tag_time = int(time.time())
         tag.tag_timezone = 0
-        tag.tagger = "Somebody <somebody@example.com>"
-        tag.message = "Created tag pointed at tree"
+        tag.tagger = b"Somebody <somebody@example.com>"
+        tag.message = b"Created tag pointed at tree"
         tag.object = (Tree, r[gitsha].tree)
         r.object_store.add_object(tag)
-        r["refs/tags/sometag"] = tag
+        r[b"refs/tags/sometag"] = tag
         os.chdir("..")
         oldrepo = self.open_git_repo("d")
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
@@ -337,36 +337,36 @@ class ImportObjects(TestCaseWithTransport):
         self._texts = factory(self.get_transport('texts'))
 
     def test_import_blob_simple(self):
-        blob = Blob.from_string("bar")
+        blob = Blob.from_string(b"bar")
         base_inv = Inventory()
         objs = { "blobname": blob}
-        ret = import_git_blob(self._texts, self._mapping, "bla", "bla",
-            (None, "blobname"), 
-            base_inv, None, "somerevid", [], objs.__getitem__, 
+        ret = import_git_blob(self._texts, self._mapping, b"bla", b"bla",
+            (None, "blobname"),
+            base_inv, None, b"somerevid", [], objs.__getitem__,
             (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEqual(set([('git:bla', 'somerevid')]), self._texts.keys())
-        self.assertEqual(self._texts.get_record_stream([('git:bla', 'somerevid')],
-            "unordered", True).next().get_bytes_as("fulltext"), "bar")
-        self.assertEqual(1, len(ret)) 
+        self.assertEqual(set([(b'git:bla', b'somerevid')]), self._texts.keys())
+        self.assertEqual(next(self._texts.get_record_stream([(b'git:bla', b'somerevid')],
+            "unordered", True)).get_bytes_as("fulltext"), b"bar")
+        self.assertEqual(1, len(ret))
         self.assertEqual(None, ret[0][0])
         self.assertEqual("bla", ret[0][1])
         ie = ret[0][3]
         self.assertEqual(False, ie.executable)
         self.assertEqual("file", ie.kind)
-        self.assertEqual("somerevid", ie.revision)
-        self.assertEqual(osutils.sha_strings(["bar"]), ie.text_sha1)
+        self.assertEqual(b"somerevid", ie.revision)
+        self.assertEqual(osutils.sha_strings([b"bar"]), ie.text_sha1)
 
     def test_import_tree_empty_root(self):
         base_inv = Inventory(root_id=None)
         tree = Tree()
-        ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
-               (None, tree.id), base_inv, 
-               None, "somerevid", [], {tree.id: tree}.__getitem__,
+        ret, child_modes = import_git_tree(self._texts, self._mapping, b"", b"",
+               (None, tree.id), base_inv,
+               None, b"somerevid", [], {tree.id: tree}.__getitem__,
                (None, stat.S_IFDIR), DummyStoreUpdater(),
                self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
-        self.assertEqual(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
+        self.assertEqual(set([(b"TREE_ROOT", b'somerevid')]), self._texts.keys())
         self.assertEqual(1, len(ret))
         self.assertEqual(None, ret[0][0])
         self.assertEqual("", ret[0][1])
@@ -374,19 +374,19 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual(False, ie.executable)
         self.assertEqual("directory", ie.kind)
         self.assertEqual({}, ie.children)
-        self.assertEqual("somerevid", ie.revision)
+        self.assertEqual(b"somerevid", ie.revision)
         self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_empty(self):
         base_inv = Inventory()
         tree = Tree()
-        ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
-           (None, tree.id), base_inv, None, "somerevid", [], 
+        ret, child_modes = import_git_tree(self._texts, self._mapping, b"bla", b"bla",
+           (None, tree.id), base_inv, None, b"somerevid", [],
            { tree.id: tree }.__getitem__,
            (None, stat.S_IFDIR), DummyStoreUpdater(),
            self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
-        self.assertEqual(set([("git:bla", 'somerevid')]), self._texts.keys())
+        self.assertEqual(set([(b"git:bla", b'somerevid')]), self._texts.keys())
         self.assertEqual(1, len(ret))
         self.assertEqual(None, ret[0][0])
         self.assertEqual("bla", ret[0][1])
@@ -394,17 +394,17 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual("directory", ie.kind)
         self.assertEqual(False, ie.executable)
         self.assertEqual({}, ie.children)
-        self.assertEqual("somerevid", ie.revision)
+        self.assertEqual(b"somerevid", ie.revision)
         self.assertEqual(None, ie.text_sha1)
 
     def test_import_tree_with_file(self):
         base_inv = Inventory()
-        blob = Blob.from_string("bar1")
+        blob = Blob.from_string(b"bar1")
         tree = Tree()
-        tree.add("foo", stat.S_IFREG | 0o644, blob.id)
+        tree.add(b"foo", stat.S_IFREG | 0o644, blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
-                (None, tree.id), base_inv, None, "somerevid", [],
+        ret, child_modes = import_git_tree(self._texts, self._mapping, b"bla", b"bla",
+                (None, tree.id), base_inv, None, b"somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
@@ -417,31 +417,31 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual("directory", ie.kind)
         ie = ret[1][3]
         self.assertEqual("file", ie.kind)
-        self.assertEqual("git:bla/foo", ie.file_id)
-        self.assertEqual("somerevid", ie.revision)
-        self.assertEqual(osutils.sha_strings(["bar1"]), ie.text_sha1)
+        self.assertEqual(b"git:bla/foo", ie.file_id)
+        self.assertEqual(b"somerevid", ie.revision)
+        self.assertEqual(osutils.sha_strings([b"bar1"]), ie.text_sha1)
         self.assertEqual(False, ie.executable)
 
     def test_import_tree_with_unusual_mode_file(self):
         base_inv = Inventory()
-        blob = Blob.from_string("bar1")
+        blob = Blob.from_string(b"bar1")
         tree = Tree()
-        tree.add("foo", stat.S_IFREG | 0o664, blob.id)
+        tree.add(b"foo", stat.S_IFREG | 0o664, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping,
-            "bla", "bla", (None, tree.id), base_inv, None, "somerevid", [],
+            b"bla", b"bla", (None, tree.id), base_inv, None, b"somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
-        self.assertEqual(child_modes, { "bla/foo": stat.S_IFREG | 0o664 })
+        self.assertEqual(child_modes, { b"bla/foo": stat.S_IFREG | 0o664 })
 
     def test_import_tree_with_file_exe(self):
         base_inv = Inventory(root_id=None)
-        blob = Blob.from_string("bar")
+        blob = Blob.from_string(b"bar")
         tree = Tree()
-        tree.add("foo", 0o100755, blob.id)
+        tree.add(b"foo", 0o100755, blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
-                (None, tree.id), base_inv, None, "somerevid", [],
+        ret, child_modes = import_git_tree(self._texts, self._mapping, b"", b"",
+                (None, tree.id), base_inv, None, b"somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
@@ -460,18 +460,18 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         base_inv.add_path("foo", "directory")
         base_inv.add_path("foo/bar", "file")
-        othertree = Blob.from_string("someotherthing")
-        blob = Blob.from_string("bar")
+        othertree = Blob.from_string(b"someotherthing")
+        blob = Blob.from_string(b"bar")
         tree = Tree()
-        tree.add("bar", 0o160000, blob.id)
+        tree.add(b"bar", 0o160000, blob.id)
         objects = { tree.id: tree }
-        ret, child_modes = import_git_submodule(self._texts, self._mapping, "foo", "foo",
-                (tree.id, othertree.id), base_inv, base_inv.root.file_id, "somerevid", [],
+        ret, child_modes = import_git_submodule(self._texts, self._mapping, b"foo", b"foo",
+                (tree.id, othertree.id), base_inv, base_inv.root.file_id, b"somerevid", [],
                 objects.__getitem__, (stat.S_IFDIR | 0o755, S_IFGITLINK), DummyStoreUpdater(),
                 self._mapping.generate_file_id)
         self.assertEqual(child_modes, {})
         self.assertEqual(2, len(ret))
         self.assertEqual(ret[0], ("foo/bar", None, base_inv.path2id("foo/bar"), None))
-        self.assertEqual(ret[1][:3], ("foo", "foo", self._mapping.generate_file_id("foo")))
+        self.assertEqual(ret[1][:3], ("foo", b"foo", self._mapping.generate_file_id("foo")))
         ie = ret[1][3]
         self.assertEqual(ie.kind, "tree-reference")

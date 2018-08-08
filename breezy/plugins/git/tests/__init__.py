@@ -60,6 +60,8 @@ FastimportFeature = ModuleAvailableFeature('fastimport')
 class GitBranchBuilder(object):
 
     def __init__(self, stream=None):
+        if not FastimportFeature.available():
+            raise tests.UnavailableFeature(FastimportFeature)
         self.commit_info = []
         self.orig_stream = stream
         if stream is None:
@@ -67,7 +69,7 @@ class GitBranchBuilder(object):
         else:
             self.stream = stream
         self._counter = 0
-        self._branch = 'refs/heads/master'
+        self._branch = b'refs/heads/master'
 
     def set_branch(self, branch):
         """Set the branch we are committing."""
@@ -82,39 +84,35 @@ class GitBranchBuilder(object):
     def _create_blob(self, content):
         self._counter += 1
         from fastimport.commands import BlobCommand
-        blob = BlobCommand(str(self._counter), content)
-        self._write(str(blob)+"\n")
+        blob = BlobCommand(b'%d' % self._counter, content)
+        self._write(bytes(blob)+b"\n")
         return self._counter
 
     def set_symlink(self, path, content):
         """Create or update symlink at a given path."""
-        mark = self._create_blob(content)
-        mode = '120000'
-        self.commit_info.append('M %s :%d %s\n'
+        mark = self._create_blob(self._encode_path(content))
+        mode = b'120000'
+        self.commit_info.append(b'M %s :%d %s\n'
                 % (mode, mark, self._encode_path(path)))
 
     def set_file(self, path, content, executable):
         """Create or update content at a given path."""
         mark = self._create_blob(content)
         if executable:
-            mode = '100755'
+            mode = b'100755'
         else:
-            mode = '100644'
-        self.commit_info.append('M %s :%d %s\n'
+            mode = b'100644'
+        self.commit_info.append(b'M %s :%d %s\n'
                                 % (mode, mark, self._encode_path(path)))
-
-    def set_link(self, path, link_target):
-        """Create or update a link at a given path."""
-        mark = self._create_blob(link_target)
-        self.commit_info.append('M 120000 :%d %s\n'
-                                % (mark, self._encode_path(path)))
 
     def delete_entry(self, path):
         """This will delete files or symlinks at the given location."""
-        self.commit_info.append('D %s\n' % (self._encode_path(path),))
+        self.commit_info.append(b'D %s\n' % (self._encode_path(path),))
 
     @staticmethod
     def _encode_path(path):
+        if isinstance(path, bytes):
+            return path
         if '\n' in path or path[0] == '"':
             path = path.replace('\\', '\\\\')
             path = path.replace('\n', '\\n')
@@ -125,7 +123,7 @@ class GitBranchBuilder(object):
     # TODO: Author
     # TODO: Author timestamp+timezone
     def commit(self, committer, message, timestamp=None,
-               timezone='+0000', author=None,
+               timezone=b'+0000', author=None,
                merge=None, base=None):
         """Commit the new content.
 
@@ -142,24 +140,25 @@ class GitBranchBuilder(object):
             commit.
         """
         self._counter += 1
-        mark = str(self._counter)
+        mark = b'%d' % (self._counter,)
         if timestamp is None:
             timestamp = int(time.time())
-        self._write('commit %s\n' % (self._branch,))
-        self._write('mark :%s\n' % (mark,))
-        self._write('committer %s %s %s\n'
+        self._write(b'commit %s\n' % (self._branch,))
+        self._write(b'mark :%s\n' % (mark,))
+        self._write(b'committer %s %ld %s\n'
                     % (committer, timestamp, timezone))
-        message = message.encode('UTF-8')
-        self._write('data %d\n' % (len(message),))
+        if not isinstance(message, bytes):
+            message = message.encode('UTF-8')
+        self._write(b'data %d\n' % (len(message),))
         self._write(message)
-        self._write('\n')
+        self._write(b'\n')
         if base is not None:
-            self._write('from :%s\n' % (base,))
+            self._write(b'from :%s\n' % (base,))
         if merge is not None:
             for m in merge:
-                self._write('merge :%s\n' % (m,))
+                self._write(b'merge :%s\n' % (m,))
         self._writelines(self.commit_info)
-        self._write('\n')
+        self._write(b'\n')
         self.commit_info = []
         return mark
 
@@ -171,10 +170,10 @@ class GitBranchBuilder(object):
         """
         if ref is None:
             ref = self._branch
-        self._write('reset %s\n' % (ref,))
+        self._write(b'reset %s\n' % (ref,))
         if mark is not None:
-            self._write('from :%s\n' % mark)
-        self._write('\n')
+            self._write(b'from :%s\n' % mark)
+        self._write(b'\n')
 
     def finish(self):
         """We are finished building, close the stream, get the id mapping"""
@@ -187,10 +186,20 @@ class GitBranchBuilder(object):
             return importer.import_stream(self.stream)
 
 
+class MissingFeature(tests.TestCase):
+
+    def test_dulwich(self):
+        self.requireFeature(DulwichFeature)
+
+
 def test_suite():
     loader = tests.TestUtil.TestLoader()
 
     suite = tests.TestUtil.TestSuite()
+
+    if not DulwichFeature.available():
+        suite.addTests(loader.loadTestsFromTestCase(MissingFeature))
+        return suite
 
     testmod_names = [
         'test_blackbox',

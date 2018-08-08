@@ -26,6 +26,12 @@ from __future__ import absolute_import
 import os
 import sys
 
+from . import (
+    i18n,
+    option,
+    osutils,
+    )
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
@@ -37,9 +43,6 @@ from breezy import (
     cleanup,
     cmdline,
     debug,
-    i18n,
-    option,
-    osutils,
     trace,
     ui,
     )
@@ -54,6 +57,7 @@ from . import errors, registry
 from .sixish import (
     string_types,
     text_type,
+    viewvalues,
     )
 
 
@@ -581,7 +585,7 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        parser = option.get_optparser(self.options())
+        parser = option.get_optparser([v for k, v in sorted(self.options().items())])
         options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
@@ -890,7 +894,8 @@ def parse_args(command, argv, alias_argv=None):
     they take, and which commands will accept them.
     """
     # TODO: make it a method of the Command?
-    parser = option.get_optparser(command.options())
+    parser = option.get_optparser(
+            [v for k, v in sorted(command.options().items())])
     if alias_argv is not None:
         args = alias_argv + argv
     else:

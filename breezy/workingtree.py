@@ -32,13 +32,13 @@ from __future__ import absolute_import
 import errno
 import os
 import re
-import shutil
 import sys
 
 import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import shutil
 import stat
 
 from breezy import (
@@ -411,7 +411,7 @@ class WorkingTree(mutabletree.MutableTree,
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
-                revision_id = l.rstrip('\n')
+                revision_id = l.rstrip(b'\n')
                 parents.append(revision_id)
         return parents
 
@@ -1285,7 +1285,7 @@ class WorkingTree(mutabletree.MutableTree,
         with self.lock_tree_write():
             un_resolved = _mod_conflicts.ConflictList()
             resolved = _mod_conflicts.ConflictList()
-            conflict_re = re.compile('^(<{7}|={7}|>{7})')
+            conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
                 path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or

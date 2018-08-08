@@ -210,7 +210,7 @@ class TestPush(tests.TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('commit a-1', rev_id=b'a-1')
         f = open('repo/a/file', 'ab')
-        f.write('more stuff\n')
+        f.write(b'more stuff\n')
         f.close()
         tree_a.commit('commit a-2', rev_id=b'a-2')
 
@@ -219,23 +219,23 @@ class TestPush(tests.TestCaseWithTransport):
         tree_b.add('file')
         tree_b.commit('commit b-1', rev_id=b'b-1')
 
-        self.assertTrue(shared_repo.has_revision('a-1'))
-        self.assertTrue(shared_repo.has_revision('a-2'))
-        self.assertTrue(shared_repo.has_revision('b-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-2'))
+        self.assertTrue(shared_repo.has_revision(b'b-1'))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'push'
         self.run_bzr('push ../../push-b', working_dir='repo/b')
         pushed_tree = workingtree.WorkingTree.open('push-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision('a-1'))
-        self.assertFalse(pushed_repo.has_revision('a-2'))
-        self.assertTrue(pushed_repo.has_revision('b-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-2'))
+        self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
-        t.add('filename', 'funky-chars<>%&;"\'')
+        t.add('filename', b'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push -d tree new-tree')
 
@@ -255,16 +255,16 @@ class TestPush(tests.TestCaseWithTransport):
         source = self.make_branch_builder('source')
         source.start_series()
         source.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A')
-        source.build_snapshot(['A'], [], revision_id=b'B')
-        source.build_snapshot(['A'], [], revision_id=b'C')
+        source.build_snapshot([b'A'], [], revision_id=b'B')
+        source.build_snapshot([b'A'], [], revision_id=b'C')
         source.finish_series()
         self.run_bzr('push target -d source')
         self.addCleanup(target_repo.lock_read().unlock)
         # We should have pushed 'C', but not 'B', since it isn't in the
         # ancestry
-        self.assertEqual([('A',), ('C',)], sorted(target_repo.revisions.keys()))
+        self.assertEqual([(b'A',), (b'C',)], sorted(target_repo.revisions.keys()))
 
     def test_push_smart_non_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -445,16 +445,16 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_with_revisionspec(self):
         """We should be able to push a revision older than the tip."""
         tree_from = self.make_branch_and_tree('from')
-        tree_from.commit("One.", rev_id="from-1")
-        tree_from.commit("Two.", rev_id="from-2")
+        tree_from.commit("One.", rev_id=b"from-1")
+        tree_from.commit("Two.", rev_id=b"from-2")
 
         self.run_bzr('push -r1 ../to', working_dir='from')
 
         tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision('from-1'))
-        self.assertFalse(repo_to.has_revision('from-2'))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertTrue(repo_to.has_revision(b'from-1'))
+        self.assertFalse(repo_to.has_revision(b'from-2'))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], b'from-1')
         self.assertFalse(
             tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
@@ -576,8 +576,8 @@ class TestPush(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('repo/local', format='pack-0.92')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('filename', b'f-id', 'file', b'content\n'))],
             revision_id=b'rev-1')
         builder.build_snapshot([b'rev-1'], [], revision_id=b'rev-2')
         builder.build_snapshot([b'rev-2'],
@@ -614,7 +614,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_from_subdir(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
-        t.add('dir', 'dir/file')
+        t.add(['dir', 'dir/file'])
         t.commit('r1')
         out, err = self.run_bzr('push ../../pushloc', working_dir='tree/dir')
         self.assertEqual('', out)
@@ -623,9 +623,9 @@ class TestPush(tests.TestCaseWithTransport):
     def test_overwrite_tags(self):
         """--overwrite-tags only overwrites tags, not revisions."""
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['push', '-d', 'from', 'to'])
         self.assertEqual(out,
@@ -633,7 +633,7 @@ class TestPush(tests.TestCaseWithTransport):
         out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
         self.assertEqual(out, ('', '1 tag updated.\n'))
         self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
-                          'somerevid')
+                          b'somerevid')
         self.assertEqual(to_tree.branch.last_revision(), revid1)
 
 
@@ -772,7 +772,6 @@ class TestPushStrictMixin(object):
         self.assertEqual(revid_to_push, branch_to.last_revision())
 
 
-
 class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
                                    TestPushStrictMixin):
 
@@ -852,7 +851,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.assertPushSucceeds([], with_warning=True)
 
     def test_push_with_revision(self):
-        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push='added')
+        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push=b'added')
 
     def test_push_no_strict(self):
         self.assertPushSucceeds(['--no-strict'])
@@ -890,7 +889,7 @@ class TestPushForeign(tests.TestCaseWithTransport):
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
         builder.build_snapshot(None,
             [('add', ('', b'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', b'fooid', 'file', 'bar'))],
+             ('add', ('foo', b'fooid', 'file', b'bar'))],
             revision_id=b'revid')
         return builder
 

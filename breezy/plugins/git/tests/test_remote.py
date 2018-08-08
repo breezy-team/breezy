@@ -96,7 +96,7 @@ class TestRemoteGitBranchFormat(TestCase):
         self.assertEqual("Remote Git Branch", self.format.get_format_description())
 
     def test_get_network_name(self):
-        self.assertEqual("git", self.format.network_name())
+        self.assertEqual(b"git", self.format.network_name())
 
     def test_supports_tags(self):
         self.assertTrue(self.format.supports_tags())
@@ -129,7 +129,7 @@ class FetchFromRemoteTestBase(object):
 
     def test_sprout_with_tags(self):
         c1 = self.remote_real.do_commit(
-                message='message',
+                message=b'message',
                 committer=b'committer <committer@example.com>',
                 author=b'author <author@example.com>')
         c2 = self.remote_real.do_commit(
@@ -137,7 +137,7 @@ class FetchFromRemoteTestBase(object):
                 committer=b'committer <committer@example.com>',
                 author=b'author <author@example.com>',
                 ref=b'refs/tags/another')
-        self.remote_real.refs['refs/tags/blah'] = self.remote_real.head()
+        self.remote_real.refs[b'refs/tags/blah'] = self.remote_real.head()
 
         remote = ControlDir.open(self.remote_url)
         self.make_controldir('local', format=self._to_format)
@@ -284,7 +284,7 @@ class PushToRemoteBase(object):
             self.assertRaises(DivergedBranches, wt.branch.push, newbranch, lossy=True)
 
         self.assertEqual(
-                {'refs/heads/newbranch': c1 },
+                {b'refs/heads/newbranch': c1 },
                 self.remote_real.get_refs())
 
         if self._from_format == 'git':
@@ -292,7 +292,7 @@ class PushToRemoteBase(object):
         else:
             wt.branch.push(newbranch, lossy=True, overwrite=True)
 
-        self.assertNotEqual(c1, self.remote_real.refs['refs/heads/newbranch'])
+        self.assertNotEqual(c1, self.remote_real.refs[b'refs/heads/newbranch'])
 
 
 class PushToRemoteFromBzrTests(PushToRemoteBase,TestCaseWithTransport):
@@ -347,8 +347,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
         remote = ControlDir.open(self.remote_url)
         self.assertEqual(
-                ['master', 'blah', 'master'],
-                [b.name for b in remote.list_branches()])
+                set(['master', 'blah', 'master']),
+                set([b.name for b in remote.list_branches()]))
 
     def test_get_branches(self):
         c1 = self.remote_real.do_commit(
@@ -430,7 +430,7 @@ class RemoteControlDirTests(TestCaseWithTransport):
         remote = ControlDir.open(self.remote_url)
         remote_branch = remote.open_branch()
         self.assertEqual({
-            b'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
+            'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
             remote_branch.tags.get_tag_dict())
 
     def tetst_get_branch_reference(self):

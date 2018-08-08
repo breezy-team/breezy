@@ -466,14 +466,11 @@ class ImportReplacerHelper(TestCaseInTempDir):
         sys.path.append(base_path)
         self.addCleanup(sys.path.remove, base_path)
 
-        original_import = __import__
         def instrumented_import(mod, scope1, scope2, fromlist, level):
             self.actions.append(('import', mod, fromlist, level))
-            return original_import(mod, scope1, scope2, fromlist, level)
-        def cleanup():
-            __builtins__['__import__'] = original_import
-        self.addCleanup(cleanup)
-        __builtins__['__import__'] = instrumented_import
+            return __import__(mod, scope1, scope2, fromlist, level=level)
+        self.addCleanup(setattr, lazy_import, '_builtin_import', __import__)
+        lazy_import._builtin_import = instrumented_import
 
     def create_modules(self):
         """Create some random modules to be imported.
@@ -530,14 +527,14 @@ class TestImportReplacerHelper(ImportReplacerHelper):
         """Test that a real import of these modules works"""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
                                   self.submoda_name])
-        root = __import__(sub_mod_path, globals(), locals(), [], 0)
+        root = lazy_import._builtin_import(sub_mod_path, {}, {}, [], 0)
         self.assertEqual(1, root.var1)
         self.assertEqual(3, getattr(root, self.sub_name).var3)
         self.assertEqual(4, getattr(getattr(root, self.sub_name),
                                     self.submoda_name).var4)
 
         mod_path = '.'.join([self.root_name, self.mod_name])
-        root = __import__(mod_path, globals(), locals(), [], 0)
+        root = lazy_import._builtin_import(mod_path, {}, {}, [], 0)
         self.assertEqual(2, getattr(root, self.mod_name).var2)
 
         self.assertEqual([('import', sub_mod_path, [], 0),

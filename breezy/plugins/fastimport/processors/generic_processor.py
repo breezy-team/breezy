@@ -108,7 +108,7 @@ class GenericProcessor(processor.ImportProcessor):
     * inv-cache - number of inventories to cache.
       If not set, the default is 1.
 
-    * mode - import algorithm to use: default, experimental or classic.
+    * mode - import algorithm to use: default or experimental.
 
     * import-marks - name of file to read to load mark information from
 
@@ -184,7 +184,7 @@ class GenericProcessor(processor.ImportProcessor):
                 _max_pack_count_for_import
         else:
             self._original_max_pack_count = None
- 
+
         # Make groupcompress use the fast algorithm during importing.
         # We want to repack at the end anyhow when more information
         # is available to do a better job of saving space.
@@ -215,18 +215,8 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.info = None
 
-        # Decide which CommitHandler to use
-        self.supports_chk = getattr(self.repo._format, 'supports_chks', False)
-        if self.supports_chk and self._mode == 'classic':
-            note("Cannot use classic algorithm on CHK repositories"
-                 " - using default one instead")
-            self._mode = 'default'
-        if self._mode == 'classic':
-            self.commit_handler_factory = \
-                bzr_commit_handler.InventoryCommitHandler
-        else:
-            self.commit_handler_factory = \
-                bzr_commit_handler.InventoryDeltaCommitHandler
+        self.supports_chk = self.repo._format.supports_chks
+        self.commit_handler_factory = bzr_commit_handler.CommitHandler
 
         # Decide how often to automatically report progress
         # (not a parameter yet)
@@ -273,27 +263,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def _revision_store_factory(self):
         """Make a RevisionStore based on what the repository supports."""
-        new_repo_api = hasattr(self.repo, 'revisions')
-        if new_repo_api:
-            return revision_store.RevisionStore2(self.repo)
-        elif not self._experimental:
-            return revision_store.RevisionStore1(self.repo)
-        else:
-            def fulltext_when(count):
-                total = self.total_commits
-                if total is not None and count == total:
-                    fulltext = True
-                else:
-                    # Create an inventory fulltext every 200 revisions
-                    fulltext = count % 200 == 0
-                if fulltext:
-                    self.note("%d commits - storing inventory as full-text",
-                        count)
-                return fulltext
-
-            return revision_store.ImportRevisionStore1(
-                self.repo, self.inventory_cache_size,
-                fulltext_when=fulltext_when)
+        return revision_store.RevisionStore(self.repo)
 
     def process(self, command_iter):
         """Import data into Bazaar by processing a stream of commands.
@@ -479,7 +449,7 @@ class GenericProcessor(processor.ImportProcessor):
         # are identical as well.
         self.cache_mgr.marks, known = idmapfile.load_id_map(
             self.id_map_path)
-        if self.cache_mgr.add_mark('0', _mod_revision.NULL_REVISION):
+        if self.cache_mgr.add_mark(b'0', _mod_revision.NULL_REVISION):
             known += 1
 
         existing_count = len(self.repo.all_revision_ids())
@@ -515,7 +485,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
-        mark = cmd.id.lstrip(':')
+        mark = cmd.id.lstrip(b':')
         if self.skip_total and self._revision_count < self.skip_total:
             self.cache_mgr.reftracker.track_heads(cmd)
             # Check that we really do know about this commit-id
@@ -523,8 +493,8 @@ class GenericProcessor(processor.ImportProcessor):
                 raise plugin_errors.BadRestart(mark)
             self.cache_mgr._blobs = {}
             self._revision_count += 1
-            if cmd.ref.startswith('refs/tags/'):
-                tag_name = cmd.ref[len('refs/tags/'):]
+            if cmd.ref.startswith(b'refs/tags/'):
+                tag_name = cmd.ref[len(b'refs/tags/'):]
                 self._set_tag(tag_name, cmd.id)
             return
         if self.first_incremental_commit:
@@ -542,10 +512,10 @@ class GenericProcessor(processor.ImportProcessor):
             raise
         self.cache_mgr.add_mark(mark, handler.revision_id)
         self._revision_count += 1
-        self.report_progress("(%s)" % cmd.id.lstrip(':'))
+        self.report_progress("(%s)" % cmd.id.lstrip(b':'))
 
-        if cmd.ref.startswith('refs/tags/'):
-            tag_name = cmd.ref[len('refs/tags/'):]
+        if cmd.ref.startswith(b'refs/tags/'):
+            tag_name = cmd.ref[len(b'refs/tags/'):]
             self._set_tag(tag_name, cmd.id)
 
         # Check if we should finish up or automatically checkpoint
@@ -582,8 +552,8 @@ class GenericProcessor(processor.ImportProcessor):
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
-        if cmd.ref.startswith('refs/tags/'):
-            tag_name = cmd.ref[len('refs/tags/'):]
+        if cmd.ref.startswith(b'refs/tags/'):
+            tag_name = cmd.ref[len(b'refs/tags/'):]
             if cmd.from_ is not None:
                 self._set_tag(tag_name, cmd.from_)
             elif self.verbose:

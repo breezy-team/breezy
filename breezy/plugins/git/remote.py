@@ -48,6 +48,7 @@ from ...errors import (
     UninitializableFormat,
     )
 from ...revisiontree import RevisionTree
+from ...sixish import text_type
 from ...transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -333,9 +334,10 @@ class DefaultProgressReporter(object):
         self.pb = pb
 
     def progress(self, text):
-        text = text.rstrip("\r\n")
+        text = text.rstrip(b"\r\n")
+        text = text.decode('utf-8')
         if text.startswith('error: '):
-            trace.show_error('git: %s', text[len('error: '):])
+            trace.show_error('git: %s', text[len(b'error: '):])
         else:
             trace.mutter("git: %s", text)
             g = self._GIT_PROGRESS_PARTIAL_RE.match(text)
@@ -902,7 +904,7 @@ class RemoteGitBranch(GitBranch):
                 except KeyError:
                     # Let's just hope it's a commit
                     peeled = unpeeled
-            if type(tag_name) is not unicode:
+            if not isinstance(tag_name, text_type):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 

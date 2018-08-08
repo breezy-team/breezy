@@ -46,7 +46,8 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         url = 'http://example.com/non-lp'
         branch.set_public_branch(url)
         self.assertEqual(
-            ['brz: ERROR: %s is not registered on Launchpad.' % url],
+            ['brz: ERROR: %s is not registered on Launchpad.' %
+                url],
             self.run_open('non-lp', retcode=3))
 
     def test_launchpad_branch_with_public_location(self):

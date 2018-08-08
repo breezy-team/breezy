@@ -129,7 +129,7 @@ def escape_invalid_chars(message):
     # aren't listed in the XML specification
     # (http://www.w3.org/TR/REC-xml/#NT-Char).
     return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
+            lambda match: match.group(0).encode('unicode_escape').decode('ascii'),
             message)
 
 
@@ -302,6 +302,8 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
                                      elt_get('name'),
                                      parent_id)
         ie.text_sha1 = elt_get('text_sha1')
+        if ie.text_sha1 is not None:
+            ie.text_sha1 = ie.text_sha1.encode('ascii')
         if elt_get('executable') == 'yes':
             ie.executable = True
         v = elt_get('text_size')
@@ -346,9 +348,8 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
     if elt.tag != 'inventory':
         raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
     format = elt.get('format')
-    if format is not None:
-        format = format.encode()
-    if format != format_num:
+    if ((format is None and format_num is not None)
+            or format.encode() != format_num):
         raise errors.UnexpectedInventoryFormat('Invalid format version %r'
                                                % format)
     revision_id = elt.get('revision_id')
@@ -389,7 +390,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
                     b'text_sha1="%s" text_size="%d" />\n' % (
                     executable, encode_and_escape(ie.file_id),
                     encode_and_escape(ie.name), parent_str, parent_id,
-                    encode_and_escape(ie.revision), ie.text_sha1.encode(),
+                    encode_and_escape(ie.revision), ie.text_sha1,
                     ie.text_size))
             else:
                 append(b'<file%s file_id="%s name="%s%s%s />\n' % (

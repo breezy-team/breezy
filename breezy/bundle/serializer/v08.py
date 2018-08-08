@@ -23,13 +23,18 @@ from breezy import (
     errors,
     ui,
     )
-from breezy.bundle.serializer import (BundleSerializer,
-                                      _get_bundle_header,
-                                     )
+from breezy.bundle.serializer import (
+    BundleSerializer,
+    _get_bundle_header,
+    )
 from breezy.bundle.serializer import binary_diff
-from breezy.bundle.bundle_data import (RevisionInfo, BundleInfo)
+from breezy.bundle.bundle_data import (
+    RevisionInfo,
+    BundleInfo,
+    )
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
+from breezy.sixish import text_type
 from breezy.testament import StrictTestament
 from breezy.timestamp import (
     format_highres_date,
@@ -84,12 +89,13 @@ class Action(object):
         while len(text_line) > available:
             to_file.write(text_line[:available])
             text_line = text_line[available:]
-            to_file.write('\n... ')
-            available = 79 - len('... ')
-        to_file.write(text_line+'\n')
+            to_file.write(b'\n... ')
+            available = 79 - len(b'... ')
+        to_file.write(text_line+b'\n')
 
 
 class BundleSerializerV08(BundleSerializer):
+
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
@@ -120,14 +126,25 @@ class BundleSerializerV08(BundleSerializer):
             with ui.ui_factory.nested_progress_bar() as pb:
                 self._write_revisions(pb)
 
-    def write_bundle(self, repository, target, base, fileobj):
-        return self._write_bundle(repository, target, base, fileobj)
+    def write_bundle(self, repository, revision_id, base_revision_id, out):
+        """Helper function for translating write_bundle to write"""
+        forced_bases = {revision_id:base_revision_id}
+        if base_revision_id is NULL_REVISION:
+            base_revision_id = None
+        graph = repository.get_graph()
+        revision_ids = graph.find_unique_ancestors(revision_id,
+            [base_revision_id])
+        revision_ids = list(repository.get_graph().iter_topo_order(
+            revision_ids))
+        revision_ids.reverse()
+        self.write(repository, revision_ids, forced_bases, out)
+        return revision_ids
 
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
         f.write(_get_bundle_header('0.8'))
-        f.write('#\n')
+        f.write(b'#\n')
 
     def _write(self, key, value, indent=1, trailing_space_when_empty=False):
         """Write out meta information, with proper indenting, etc.
@@ -141,30 +158,30 @@ class BundleSerializerV08(BundleSerializer):
         if indent < 1:
             raise ValueError('indentation must be greater than 0')
         f = self.to_file
-        f.write('#' + (' ' * indent))
+        f.write(b'#' + (b' ' * indent))
         f.write(key.encode('utf-8'))
         if not value:
             if trailing_space_when_empty and value == '':
-                f.write(': \n')
+                f.write(b': \n')
             else:
-                f.write(':\n')
-        elif isinstance(value, str):
-            f.write(': ')
+                f.write(b':\n')
+        elif isinstance(value, bytes):
+            f.write(b': ')
             f.write(value)
-            f.write('\n')
-        elif isinstance(value, unicode):
-            f.write(': ')
+            f.write(b'\n')
+        elif isinstance(value, text_type):
+            f.write(b': ')
             f.write(value.encode('utf-8'))
-            f.write('\n')
+            f.write(b'\n')
         else:
-            f.write(':\n')
+            f.write(b':\n')
             for entry in value:
-                f.write('#' + (' ' * (indent+2)))
-                if isinstance(entry, str):
+                f.write(b'#' + (b' ' * (indent+2)))
+                if isinstance(entry, bytes):
                     f.write(entry)
                 else:
                     f.write(entry.encode('utf-8'))
-                f.write('\n')
+                f.write(b'\n')
 
     def _write_revisions(self, pb):
         """Write the information for all of the revisions."""
@@ -217,7 +234,7 @@ class BundleSerializerV08(BundleSerializer):
         w('message', rev.message.split('\n'))
         w('committer', rev.committer)
         w('date', format_highres_date(rev.timestamp, rev.timezone))
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
         self._write_delta(rev_tree, base_tree, rev.revision_id, force_binary)
 
@@ -235,16 +252,16 @@ class BundleSerializerV08(BundleSerializer):
                             trailing_space_when_empty=True)
 
         # Add an extra blank space at the end
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
     def _write_action(self, name, parameters, properties=None):
         if properties is None:
             properties = []
         p_texts = ['%s:%s' % v for v in properties]
-        self.to_file.write('=== ')
+        self.to_file.write(b'=== ')
         self.to_file.write(' '.join([name]+parameters).encode('utf-8'))
         self.to_file.write(' // '.join(p_texts).encode('utf-8'))
-        self.to_file.write('\n')
+        self.to_file.write(b'\n')
 
     def _write_delta(self, new_tree, old_tree, default_revision_id,
                      force_binary):
@@ -392,9 +409,9 @@ class BundleReader(object):
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
-            if line is None or line == '\n':
+            if line is None or line == b'\n':
                 break
-            if not line.startswith('#'):
+            if not line.startswith(b'#'):
                 continue
             found_something = True
             self._handle_next(line)
@@ -406,13 +423,13 @@ class BundleReader(object):
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
-        if not line.startswith('#'):
+        if not line.startswith(b'#'):
             raise errors.MalformedHeader('Bzr header did not start with #')
         line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
             line = line[indent:]
         if not line:
-            return None, None# Ignore blank lines
+            return None, None # Ignore blank lines
 
         loc = line.find(': ')
         if loc != -1:
@@ -446,6 +463,8 @@ class BundleReader(object):
                     value = value.encode('utf8')
                 elif key in ('parent_ids'):
                     value = [v.encode('utf8') for v in value]
+                elif key in ('testament_sha1', 'inventory_sha1', 'sha1'):
+                    value = value.encode('ascii')
                 setattr(revision_info, key, value)
             else:
                 raise errors.MalformedHeader('Duplicated Key: %s' % key)
@@ -461,14 +480,14 @@ class BundleReader(object):
         does not start properly indented.
         """
         values = []
-        start = '#' + (' '*indent)
+        start = b'#' + (b' '*indent)
 
-        if self._next_line is None or self._next_line[:len(start)] != start:
+        if self._next_line is None or not self._next_line.startswith(start):
             return values
 
         for line in self._next():
             values.append(line[len(start):-1].decode('utf-8'))
-            if self._next_line is None or self._next_line[:len(start)] != start:
+            if self._next_line is None or not self._next_line.startswith(start):
                 break
         return values
 
@@ -480,30 +499,30 @@ class BundleReader(object):
         """
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
-        if self._next_line is None or self._next_line.startswith('#'):
+        if self._next_line is None or self._next_line.startswith(b'#'):
             return None, [], False
 
         first = True
         lines = []
         for line in self._next():
             if first:
-                if not line.startswith('==='):
+                if not line.startswith(b'==='):
                     raise errors.MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = line[4:-1].decode('utf-8')
-            elif line.startswith('... '):
-                action += line[len('... '):-1].decode('utf-8')
+            elif line.startswith(b'... '):
+                action += line[len(b'... '):-1].decode('utf-8')
 
             if (self._next_line is not None and
-                self._next_line.startswith('===')):
+                self._next_line.startswith(b'===')):
                 return action, lines, True
-            elif self._next_line is None or self._next_line.startswith('#'):
+            elif self._next_line is None or self._next_line.startswith(b'#'):
                 return action, lines, False
 
             if first:
                 first = False
-            elif not line.startswith('... '):
+            elif not line.startswith(b'... '):
                 lines.append(line)
 
         return action, lines, False
@@ -529,7 +548,7 @@ class BundleReader(object):
             self._handle_next(line)
             if self._next_line is None:
                 break
-            if not self._next_line.startswith('#'):
+            if not self._next_line.startswith(b'#'):
                 # Consume the trailing \n and stop processing
                 next(self._next())
                 break

@@ -82,7 +82,7 @@ Location:
     def test_branch_tree(self):
         self.run_bzr("init-repo --trees a")
         self.run_bzr("init --format=default b")
-        with file('b/hello', 'wt') as f: f.write('bar')
+        with open('b/hello', 'wt') as f: f.write('bar')
         self.run_bzr("add b/hello")
         self.run_bzr("commit -m bar b/hello")
 

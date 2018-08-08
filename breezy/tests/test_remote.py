@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import base64
 import bz2
+import tarfile
 import zlib
 
 from .. import (
@@ -563,7 +564,7 @@ class TestBzrDirGetBranches(TestRemote):
         a_controldir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_controldir.get_branches()
-        self.assertEqual({b"", b"foo"}, set(result.keys()))
+        self.assertEqual({"", "foo"}, set(result.keys()))
         self.assertEqual(
             [('call_expecting_body', b'BzrDir.get_branches', (b'quack/',)),
              ('call', b'BzrDir.find_repositoryV3', (b'quack/', )),
@@ -1044,7 +1045,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # XXX: It would be better to call fmt.initialize_on_transport_ex, but
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
-        result = fmt._initialize_on_transport_ex_rpc(client, 'path',
+        result = fmt._initialize_on_transport_ex_rpc(client, b'path',
             transport, False, False, False, None, None, None, None, False)
         self.assertFinished(client)
 
@@ -1066,7 +1067,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
         err = self.assertRaises(errors.PermissionDenied,
-            fmt._initialize_on_transport_ex_rpc, client, 'path', transport,
+            fmt._initialize_on_transport_ex_rpc, client, b'path', transport,
             False, False, False, None, None, None, None, False)
         self.assertEqual('path', err.path)
         self.assertEqual(': extra info', err.extra)
@@ -1388,7 +1389,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
             b'success', (b'ok', b'1', b'rev-tip'))
         client.add_expected_call(
             b'Branch.get_config_file', (b'quack/',),
-            b'success', (b'ok',), '')
+            b'success', (b'ok',), b'')
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
@@ -1536,12 +1537,12 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(transport.base)
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         # XXX: Multiple calls are bad, this second call documents what is
         # today.
         client.add_expected_call(
             b'Branch.get_stacked_on_url', (b'stacked/',),
-            b'success', (b'ok', vfs_url))
+            b'success', (b'ok', vfs_url.encode('utf-8')))
         bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo_fmt = remote.RemoteRepositoryFormat()
@@ -1595,8 +1596,8 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(self.get_url())
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            b'BzrDir.open_branchV3', ('stacked/',),
-            b'success', ('branch', branch_network_name))
+            b'BzrDir.open_branchV3', (b'stacked/',),
+            b'success', (b'branch', branch_network_name))
         client.add_expected_call(
             b'BzrDir.find_repositoryV3', (b'stacked/',),
             b'success', (b'ok', b'', b'yes', b'no', b'yes', network_name))
@@ -1769,7 +1770,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
 class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
 
     def test_set_last_revision_info(self):
-        # set_last_revision_info(num, 'rev-id') is translated to calling
+        # set_last_revision_info(num, b'rev-id') is translated to calling
         # Branch.set_last_revision_info(num, 'rev-id') on the wire.
         transport = MemoryTransport()
         transport.mkdir('branch')
@@ -1993,7 +1994,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         client.add_expected_call(
             b'Branch.lock_write', (b'memory:///', b'', b''),
             b'success', (b'ok', b'branch token', b'repo token'))
-        encoded_dict_value = 'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde'
+        encoded_dict_value = b'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde'
         client.add_expected_call(
             b'Branch.set_config_option_dict', (b'memory:///', b'branch token',
             b'repo token', encoded_dict_value, b'foo', b''),
@@ -2346,8 +2347,9 @@ class TestRepositoryAllRevisionIds(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(
             b'rev1\nrev2\nanotherrev\n', b'ok')
-        self.assertEqual([b"rev1", b"rev2", b"anotherrev"],
-            repo.all_revision_ids())
+        self.assertEqual(
+            set([b"rev1", b"rev2", b"anotherrev"]),
+            set(repo.all_revision_ids()))
         self.assertEqual(
             [('call_expecting_body', b'Repository.all_revision_ids',
              (b'quack/',))],
@@ -2663,9 +2665,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # Query for b'first' and b'null:'.  Because b'null:' is a parent of
         # 'first' it will be a candidate for the stop_keys of subsequent
-        # requests, and because 'null:' was queried but not returned it will be
+        # requests, and because b'null:' was queried but not returned it will be
         # cached as missing.
         self.assertEqual({b'first': (b'null:',)},
             graph.get_parent_map([b'first', b'null:']))
@@ -3155,7 +3157,7 @@ class TestRepositoryWriteGroups(TestRemoteRepository):
             b'Repository.check_write_group', (b'quack/', b'a token', [b'token1']),
             b'success', (b'ok',))
         repo.lock_write()
-        repo.resume_write_group([b'token1'])
+        repo.resume_write_group(['token1'])
 
 
 class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
@@ -3400,7 +3402,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             yield ('inventory-deltas', inventory_delta_substream())
             yield ('texts', [
                 versionedfile.FulltextContentFactory(
-                    (b'some-rev', 'some-file'), (), None, 'content')])
+                    (b'some-rev', b'some-file'), (), None, b'content')])
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
             text = fmt._serializer.write_inventory_to_string(inv)
@@ -3411,7 +3413,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
                 'directory', 'newdir', inv.root.file_id, b'newdir-id')
-            entry.revision = 'ghost'
+            entry.revision = b'ghost'
             delta = [(None, 'newdir', b'newdir-id', entry)]
             serializer = inventory_delta.InventoryDeltaSerializer(
                 versioned_root=True, tree_references=False)
@@ -3939,7 +3941,7 @@ class TestStacking(tests.TestCaseWithTransport):
         # the public implementation of get_parent_map obeys stacking
         _, branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
-        self.assertEqual({'rev1'}, set(repo.get_parent_map([b'rev1'])))
+        self.assertEqual({b'rev1'}, set(repo.get_parent_map([b'rev1'])))
 
     def test_unstacked_get_parent_map(self):
         # _unstacked_provider.get_parent_map ignores stacking
@@ -4305,3 +4307,71 @@ class TestRepositoryIterInventories(TestRemoteRepository):
             b'success', (b'ok', ), iter([]))
         self.assertRaises(errors.NoSuchRevision, list, repo.iter_inventories(
             [b"somerevid"]))
+
+
+class TestRepositoryRevisionTreeArchive(TestRemoteRepository):
+    """Test Repository.iter_inventories."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_simple(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = controldir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory(b'somerevid', None, None,
+                self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+        client.add_expected_call(
+            b'VersionedFileRepository.get_inventories', (b'quack/', b'unordered'),
+            b'success', (b'ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        f = BytesIO()
+        with tarfile.open(mode='w', fileobj=f) as tf:
+            info = tarfile.TarInfo('somefile')
+            info.mtime = 432432
+            contents = b'some data'
+            info.type = tarfile.REGTYPE
+            info.mode = 0o644
+            info.size = len(contents)
+            tf.addfile(info, BytesIO(contents))
+        client.add_expected_call(
+            b'Repository.revision_archive', (b'quack/', b'somerevid', b'tar', b'foo.tar', b'', b'', None),
+            b'success', (b'ok', ),
+            f.getvalue())
+        tree = repo.revision_tree(b'somerevid')
+        self.assertEqual(f.getvalue(), b''.join(tree.archive('tar', 'foo.tar')))
+
+
+class TestRepositoryAnnotate(TestRemoteRepository):
+    """Test RemoteRevisionTree.annotate.."""
+
+    def _serialize_inv_delta(self, old_name, new_name, delta):
+        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        return b"".join(serializer.delta_to_lines(old_name, new_name, delta))
+
+    def test_simple(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        fmt = controldir.format_registry.get('2a')().repository_format
+        repo._format = fmt
+        stream = [('inventory-deltas', [
+            versionedfile.FulltextContentFactory(b'somerevid', None, None,
+                self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+        client.add_expected_call(
+            b'VersionedFileRepository.get_inventories', (b'quack/', b'unordered'),
+            b'success', (b'ok', ),
+            _stream_to_byte_stream(stream, fmt))
+        client.add_expected_call(
+            b'Repository.annotate_file_revision',
+            (b'quack/', b'somerevid', b'filename', b'', b'current:'),
+            b'success', (b'ok', ),
+            bencode.bencode([[b'baserevid', b'line 1\n'],
+                             [b'somerevid', b'line2\n']]))
+        tree = repo.revision_tree(b'somerevid')
+        self.assertEqual([
+            (b'baserevid', b'line 1\n'),
+            (b'somerevid', b'line2\n')],
+            list(tree.annotate_iter('filename')))

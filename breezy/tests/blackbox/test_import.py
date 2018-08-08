@@ -38,9 +38,8 @@ class TestImport(tests.TestCaseWithTransport):
     def test_import_upstream(self):
         self.run_bzr('init source')
         os.mkdir('source/src')
-        f = file('source/src/myfile', 'wb')
-        f.write('hello?')
-        f.close()
+        with open('source/src/myfile', 'wb') as f:
+            f.write(b'hello?')
         os.chdir('source')
         self.run_bzr('add')
         self.run_bzr('commit -m hello')
@@ -70,9 +69,8 @@ class TestImport(tests.TestCaseWithTransport):
         self.requireFeature(LzmaFeature)
         self.run_bzr('init source')
         os.mkdir('source/src')
-        f = file('source/src/myfile', 'wb')
-        f.write('hello?')
-        f.close()
+        with open('source/src/myfile', 'wb') as f:
+            f.write(b'hello?')
         os.chdir('source')
         self.run_bzr('add')
         self.run_bzr('commit -m hello')

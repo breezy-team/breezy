@@ -268,7 +268,7 @@ def _new_root_data_stream(
         parent_keys = _parent_keys_for_root_version(
             root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
         yield versionedfile.FulltextContentFactory(
-            root_key, parent_keys, None, '')
+            root_key, parent_keys, None, b'')
 
 
 def _parent_keys_for_root_version(

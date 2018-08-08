@@ -56,18 +56,18 @@ class DummyForeignVcsMapping(foreign.VcsMapping):
         return isinstance(self, type(other))
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
-        return tuple(bzr_revid[len("dummy-v1:"):].split("-")), self
+        return tuple(bzr_revid[len(b"dummy-v1:"):].split(b"-")), self
 
     def revision_id_foreign_to_bzr(self, foreign_revid):
-        return "dummy-v1:%s-%s-%s" % foreign_revid
+        return b"dummy-v1:%s-%s-%s" % foreign_revid
 
 
 class DummyForeignVcsMappingRegistry(foreign.VcsMappingRegistry):
 
     def revision_id_bzr_to_foreign(self, revid):
-        if not revid.startswith("dummy-"):
+        if not revid.startswith(b"dummy-"):
             raise errors.InvalidRevisionId(revid, None)
-        mapping_version = revid[len("dummy-"):len("dummy-vx")]
+        mapping_version = revid[len(b"dummy-"):len(b"dummy-vx")]
         mapping = self.get(mapping_version)
         return mapping.revision_id_bzr_to_foreign(revid)
 
@@ -80,7 +80,7 @@ class DummyForeignVcs(foreign.ForeignVcs):
 
     def __init__(self):
         self.mapping_registry = DummyForeignVcsMappingRegistry()
-        self.mapping_registry.register("v1", DummyForeignVcsMapping(self),
+        self.mapping_registry.register(b"v1", DummyForeignVcsMapping(self),
                                        "Version 1")
         self.abbreviation = "dummy"
 
@@ -123,13 +123,14 @@ class DummyForeignVcsBranch(bzrbranch.BzrBranch6, foreign.ForeignBranch):
         return (revno, revid)
 
 
-class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
+class DummyForeignCommitBuilder(vf_repository.VersionedFileCommitBuilder):
 
     def _generate_revision_if_needed(self, revid):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
-                (str(self._timestamp), str(self._timezone), "UNKNOWN"))
+                (b'%d' % self._timestamp,
+                 str(self._timezone).encode('ascii'), b"UNKNOWN"))
             self.random_revid = False
         elif revid is not None:
             self._new_revision_id = revid
@@ -197,8 +198,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                     return (tree.get_file(path, file_id), None)
                 tree.get_file_with_stat = get_file_with_stat
                 new_revid = self.target.mapping.revision_id_foreign_to_bzr(
-                    (str(rev.timestamp), str(rev.timezone),
-                        str(self.target.revno())))
+                    (b'%d' % rev.timestamp, str(rev.timezone).encode('ascii'),
+                        str(self.target.revno()).encode('ascii')))
                 parent_revno, parent_revid= self.target.last_revision_info()
                 if parent_revid == revision.NULL_REVISION:
                     parent_revids = []
@@ -317,7 +318,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def create_workingtree(self):
         # dirstate requires a ".bzr" entry to exist
-        self.root_transport.put_bytes(".bzr", "foo")
+        self.root_transport.put_bytes(".bzr", b"foo")
         return super(DummyForeignVcsDir, self).create_workingtree()
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True,
@@ -376,7 +377,7 @@ class DummyForeignProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return {DummyForeignVcsDirFormat()}
+        return [DummyForeignVcsDirFormat()]
 
 
 class ForeignVcsRegistryTests(tests.TestCase):
@@ -385,20 +386,20 @@ class ForeignVcsRegistryTests(tests.TestCase):
     def test_parse_revision_id_no_dash(self):
         reg = foreign.ForeignVcsRegistry()
         self.assertRaises(errors.InvalidRevisionId,
-                          reg.parse_revision_id, "invalid")
+                          reg.parse_revision_id, b"invalid")
 
     def test_parse_revision_id_unknown_mapping(self):
         reg = foreign.ForeignVcsRegistry()
         self.assertRaises(errors.InvalidRevisionId,
-                          reg.parse_revision_id, "unknown-foreignrevid")
+                          reg.parse_revision_id, b"unknown-foreignrevid")
 
     def test_parse_revision_id(self):
         reg = foreign.ForeignVcsRegistry()
         vcs = DummyForeignVcs()
-        reg.register("dummy", vcs, "Dummy VCS")
+        reg.register(b"dummy", vcs, "Dummy VCS")
         self.assertEqual((
-            ("some", "foreign", "revid"), DummyForeignVcsMapping(vcs)),
-            reg.parse_revision_id("dummy-v1:some-foreign-revid"))
+            (b"some", b"foreign", b"revid"), DummyForeignVcsMapping(vcs)),
+            reg.parse_revision_id(b"dummy-v1:some-foreign-revid"))
 
 
 class ForeignRevisionTests(tests.TestCase):
@@ -406,10 +407,10 @@ class ForeignRevisionTests(tests.TestCase):
 
     def test_create(self):
         mapp = DummyForeignVcsMapping(DummyForeignVcs())
-        rev = foreign.ForeignRevision(("a", "foreign", "revid"),
-                                      mapp, "roundtripped-revid")
-        self.assertEqual("", rev.inventory_sha1)
-        self.assertEqual(("a", "foreign", "revid"), rev.foreign_revid)
+        rev = foreign.ForeignRevision((b"a", b"foreign", b"revid"),
+                                      mapp, b"roundtripped-revid")
+        self.assertEqual(b"", rev.inventory_sha1)
+        self.assertEqual((b"a", b"foreign", b"revid"), rev.foreign_revid)
         self.assertEqual(mapp, rev.mapping)
 
 
@@ -424,7 +425,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         """Test we can create dummies."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         dir = controldir.ControlDir.open("d")
-        self.assertEqual("A Dummy VCS Dir", dir._format.get_format_string())
+        self.assertEqual(b"A Dummy VCS Dir", dir._format.get_format_string())
         dir.open_repository()
         dir.open_branch()
         dir.open_workingtree()
@@ -434,7 +435,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         dir = controldir.ControlDir.open("d")
         newdir = dir.sprout("e")
-        self.assertNotEqual("A Dummy VCS Dir",
+        self.assertNotEqual(b"A Dummy VCS Dir",
                             newdir._format.get_format_string())
 
     def test_push_not_supported(self):

@@ -55,7 +55,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
             revid, lossy=True)
         self.assertIsInstance(ret, tuple)
         self.assertIsInstance(ret[0], int)
-        self.assertIsInstance(ret[1], str)
+        self.assertIsInstance(ret[1], bytes)
 
     def test_same_repo(self):
         # importing and setting last revision within the same repo

@@ -59,12 +59,12 @@ def cachedproperty(attrname_or_fn):
     ...
     ...     @cachedproperty('_foo_cache')
     ...     def foo(self):
-    ...         print 'foo computed'
+    ...         print('foo computed')
     ...         return 23
     ...
     ...     @cachedproperty
     ...     def bar(self):
-    ...         print 'bar computed'
+    ...         print('bar computed')
     ...         return 69
 
     >>> cpt = CachedPropertyTest()

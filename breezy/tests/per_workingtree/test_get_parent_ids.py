@@ -34,7 +34,7 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         t.merge_from_branch(t2.branch)
         self.assertEqual([rev1_id, rev2_id], t.get_parent_ids())
         for parent_id in t.get_parent_ids():
-            self.assertIsInstance(parent_id, str)
+            self.assertIsInstance(parent_id, bytes)
 
     def test_pending_merges(self):
         """Test the correspondence between set pending merges and get_parent_ids."""
@@ -46,14 +46,14 @@ class TestGetParentIds(TestCaseWithWorkingTree):
                     'that are ghosts')
         # the first pending merge replaces the 'last revision' because
         # 'last revision' is shorthand for 'left most parent'
-        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEqual(['foo@azkhazan-123123-abcabc'], wt.get_parent_ids())
+        wt.add_pending_merge(b'foo@azkhazan-123123-abcabc')
+        self.assertEqual([b'foo@azkhazan-123123-abcabc'], wt.get_parent_ids())
         # adding a merge which is already in the parents list gets ignored.
-        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEqual(['foo@azkhazan-123123-abcabc'], wt.get_parent_ids())
+        wt.add_pending_merge(b'foo@azkhazan-123123-abcabc')
+        self.assertEqual([b'foo@azkhazan-123123-abcabc'], wt.get_parent_ids())
         # adding a different merge results in it being appended to the list -
         # order is preserved.
-        wt.add_pending_merge('wibble@fofof--20050401--1928390812')
-        self.assertEqual(['foo@azkhazan-123123-abcabc',
-            'wibble@fofof--20050401--1928390812'],
+        wt.add_pending_merge(b'wibble@fofof--20050401--1928390812')
+        self.assertEqual([b'foo@azkhazan-123123-abcabc',
+            b'wibble@fofof--20050401--1928390812'],
             wt.get_parent_ids())

@@ -152,9 +152,7 @@ class cmd_grep(Command):
             exclude=None, fixed_string=False, files_with_matches=False,
             files_without_match=False, color=None, diff=False):
         from breezy import _termcolor
-        from breezy.plugins.grep import (
-            grep,
-            )
+        from . import grep
         import re
         if path_list is None:
             path_list = ['.']
@@ -205,7 +203,7 @@ class cmd_grep(Command):
             re_flags |= re.IGNORECASE
 
         if not fixed_string:
-            patternc = grep.compile_pattern(pattern, re_flags)
+            patternc = grep.compile_pattern(pattern.encode(grep._user_encoding), re_flags)
 
         if color == 'always':
             show_color = True

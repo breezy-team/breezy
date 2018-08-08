@@ -47,7 +47,7 @@ class TestMergeDirective(TestCaseWithRepository):
             ('add', ('', b'root-id', 'directory', None)),
             ('add', ('f', b'f-id', 'file', b'initial content\n')),
             ], revision_id=b'A')
-        builder.build_snapshot('A', [
+        builder.build_snapshot([b'A'], [
             ('modify', ('f', b'new content\n')),
             ], revision_id=b'B')
         builder.finish_series()
@@ -75,7 +75,7 @@ class TestMergeDirective(TestCaseWithRepository):
                                                 target_branch.base)
         chk_map.clear_cache()
         directive.install_revisions(target_branch.repository)
-        rt = target_branch.repository.revision_tree('B')
+        rt = target_branch.repository.revision_tree(b'B')
         rt.lock_read()
         self.assertEqualDiff(b'new content\n', rt.get_file_text('f', b'f-id'))
         rt.unlock()

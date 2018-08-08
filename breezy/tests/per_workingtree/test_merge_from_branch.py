@@ -112,9 +112,9 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         this.commit('content -> baz')
         class QuxMerge(merge.Merge3Merger):
             def text_merge(self, trans_id, paths, file_id):
-                self.tt.create_file('qux', trans_id)
+                self.tt.create_file([b'qux'], trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
-        self.assertEqual('qux', this.get_file_text('foo'))
+        self.assertEqual(b'qux', this.get_file_text('foo'))
 
 
 class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
@@ -126,20 +126,20 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
             None,
             [('add', ('', None, 'directory', '')),
              ('add', ('dir', None, 'directory', '')),
-             ('add', ('dir/file1', None, 'file', 'file1 content\n')),
-             ('add', ('file3', None, 'file', 'file3 content\n')),
+             ('add', ('dir/file1', None, 'file', b'file1 content\n')),
+             ('add', ('file3', None, 'file', b'file3 content\n')),
              ])
         rev4 = bld_inner.build_snapshot(
             [rev1],
-            [('add', ('file4', None, 'file', 'file4 content\n'))
+            [('add', ('file4', None, 'file', b'file4 content\n'))
              ])
         rev5 = bld_inner.build_snapshot(
             [rev4], [('rename', ('file4', 'dir/file4'))])
         rev3 = bld_inner.build_snapshot(
-            [rev1], [('modify', ('file3', 'new file3 contents\n')),])
+            [rev1], [('modify', ('file3', b'new file3 contents\n')),])
         rev2 = bld_inner.build_snapshot(
             [rev1],
-            [('add', ('dir/file2', None, 'file', 'file2 content\n')),
+            [('add', ('dir/file2', None, 'file', b'file2 content\n')),
              ])
         bld_inner.finish_series()
         br = bld_inner.get_branch()

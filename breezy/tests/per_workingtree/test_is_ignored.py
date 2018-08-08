@@ -62,7 +62,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         # user ignore being used instead of bzrignore. For .e.g. If we
         # don't do this 'foo.~1~' will match '*~' default user ignore
         # pattern instead of '*.~*' from bzr ignore as we expect below.
-        self._set_user_ignore_content('')
+        self._set_user_ignore_content(b'')
         # is_ignored returns the matching ignore regex when a path is ignored.
         # we check some expected matches for each rule, and one or more
         # relevant not-matches that look plausible as cases for bugs.
@@ -137,14 +137,14 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         config.ensure_config_dir_exists()
         user_ignore_file = config.user_ignore_config_filename()
         self._set_user_ignore_content(
-            '*.py[co]\n'
-            './.shelf\n'
-            '# comment line\n'
-            '\n' #Blank line
-            '\r\n' #Blank dos line
-            ' * \n' #Trailing and suffix spaces
-            'crlf\r\n' # dos style line
-            '*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
+            b'*.py[co]\n'
+            b'./.shelf\n'
+            b'# comment line\n'
+            b'\n' #Blank line
+            b'\r\n' #Blank dos line
+            b' * \n' #Trailing and suffix spaces
+            b'crlf\r\n' # dos style line
+            b'*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
             )
 
         # Rooted

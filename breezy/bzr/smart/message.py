@@ -282,8 +282,8 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             self.finished_reading = True
             self._medium_request.finished_reading()
             return
-        bytes = self._medium_request.read_bytes(next_read_size)
-        if bytes == b'':
+        data = self._medium_request.read_bytes(next_read_size)
+        if data == b'':
             # end of file encountered reading from server
             if 'hpss' in debug.debug_flags:
                 mutter(
@@ -294,7 +294,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                 "Unexpected end of message. "
                 "Please check connectivity and permissions, and report a bug "
                 "if problems persist.")
-        self._protocol_decoder.accept_bytes(bytes)
+        self._protocol_decoder.accept_bytes(data)
 
     def protocol_error(self, exception):
         # Whatever the error is, we're done with this request.

@@ -836,7 +836,7 @@ class TestControlDir(TestCaseWithControlDir):
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise TestNotApplicable(
                     "Branch format does not support tags or tags "
@@ -847,7 +847,7 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.sprout(self.get_url('target'))
         # The tag is present in the target
         new_branch = target.open_branch()
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_bzrdir_passing_source_branch_with_absent_tag(self):
         # tags referencing absent revisions are copied (and those absent
@@ -856,7 +856,7 @@ class TestControlDir(TestCaseWithControlDir):
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise TestNotApplicable(
                     "Branch format does not support tags or tags "
@@ -867,10 +867,10 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.sprout(self.get_url('target'), source_branch=source)
         # The tag is present in the target
         new_branch = target.open_branch()
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_bzrdir_passing_rev_not_source_branch_copies_tags(self):
-        # dir.sprout(..., revision_id='rev1') copies rev1, and all the tags of
+        # dir.sprout(..., revision_id=b'rev1') copies rev1, and all the tags of
         # the branch at that bzrdir, the ancestry of all of those, but no other
         # revs (not even the tip of the source branch).
         builder = self.make_branch_builder('source')
@@ -896,7 +896,7 @@ class TestControlDir(TestCaseWithControlDir):
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags ')
         try:
-            source.tags.set_tag('tag-absent', 'absent-rev')
+            source.tags.set_tag('tag-absent', b'absent-rev')
         except errors.GhostTagsNotSupported:
             has_ghost_tag = False
         else:
@@ -909,7 +909,7 @@ class TestControlDir(TestCaseWithControlDir):
         new_branch = target.open_branch()
         if has_ghost_tag:
             self.assertEqual(
-                {'tag-absent': 'absent-rev', 'tag-non-ancestry': rev_b2},
+                {'tag-absent': b'absent-rev', 'tag-non-ancestry': rev_b2},
                 new_branch.tags.get_tag_dict())
         else:
             self.assertEqual(
@@ -1201,7 +1201,7 @@ class TestControlDir(TestCaseWithControlDir):
             self.assertTrue(
                 issubclass(format.__class__, looked_up_format.__class__))
         # The network name must be a byte string.
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
 
     def test_open_not_bzrdir(self):
         # test the formats specific behaviour for no-content or similar dirs.
@@ -1267,7 +1267,7 @@ class TestControlDir(TestCaseWithControlDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_control.create_repository()
         made_branch = made_control.create_branch()
-        branches = made_control.list_branches()
+        branches = list(made_control.list_branches())
         self.assertEqual(1, len(branches))
         self.assertEqual(made_branch.base, branches[0].base)
         try:
@@ -1293,7 +1293,7 @@ class TestControlDir(TestCaseWithControlDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
 
     def test_create_repository_shared(self):
@@ -1600,7 +1600,8 @@ class TestControlDir(TestCaseWithControlDir):
                 self.assertEqual(f1[0], f2[0])
                 self.assertEqual(f1[2], f2[2])
                 if f1[2] == "file":
-                    osutils.compare_files(open(f1[4]), open(f2[4]))
+                    with open(f1[4], 'rb') as a, open(f2[4], 'rb') as b:
+                        osutils.compare_files(a, b)
 
     def test_upgrade_new_instance(self):
         """Does an available updater work?"""

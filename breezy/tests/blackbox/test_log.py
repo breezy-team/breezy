@@ -29,6 +29,7 @@ from breezy import (
     osutils,
     tests,
     )
+from breezy.sixish import PY3
 from breezy.tests import (
     test_log,
     features,
@@ -214,13 +215,13 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
         # mainline
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', ''))],
+            ('add', ('', b'root-id', 'directory', ''))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [], revision_id=b'2')
         # branch
         builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
         # merge branch into mainline
-        builder.build_snapshot([b'2', '1.1.1'], [], revision_id=b'3')
+        builder.build_snapshot([b'2', b'1.1.1'], [], revision_id=b'3')
         # new commits in branch
         builder.build_snapshot([b'1.1.1'], [], revision_id=b'1.1.2')
         builder.build_snapshot([b'1.1.2'], [], revision_id=b'1.1.3')
@@ -288,15 +289,15 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         # 5 -----/
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', ''))], revision_id=b'1')
-        builder.build_snapshot(['1'], [], revision_id=b'2')
-        builder.build_snapshot(['1'], [], revision_id=b'1.1.1')
-        builder.build_snapshot(['2'], [], revision_id=b'2.1.1')
-        builder.build_snapshot(['2', '1.1.1'], [], revision_id=b'3')
-        builder.build_snapshot(['2.1.1'], [], revision_id=b'2.1.2')
-        builder.build_snapshot(['2.1.1'], [], revision_id=b'2.2.1')
-        builder.build_snapshot(['2.1.2', '2.2.1'], [], revision_id=b'2.1.3')
-        builder.build_snapshot(['3', '2.1.3'], [], revision_id=b'4')
-        builder.build_snapshot(['4', '2.1.2'], [], revision_id=b'5')
+        builder.build_snapshot([b'1'], [], revision_id=b'2')
+        builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
+        builder.build_snapshot([b'2'], [], revision_id=b'2.1.1')
+        builder.build_snapshot([b'2', b'1.1.1'], [], revision_id=b'3')
+        builder.build_snapshot([b'2.1.1'], [], revision_id=b'2.1.2')
+        builder.build_snapshot([b'2.1.1'], [], revision_id=b'2.2.1')
+        builder.build_snapshot([b'2.1.2', b'2.2.1'], [], revision_id=b'2.1.3')
+        builder.build_snapshot([b'3', b'2.1.3'], [], revision_id=b'4')
+        builder.build_snapshot([b'4', b'2.1.2'], [], revision_id=b'5')
         builder.finish_series()
         return builder
 
@@ -337,7 +338,7 @@ class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
         self.assertLogRevnos(['-rrevno:1:branch2'],
                              ['1'])
         rev_props = self.log_catcher.revisions[0].rev.properties
-        self.assertEqual('branch2', rev_props['branch-nick'])
+        self.assertEqual('branch2', rev_props[u'branch-nick'])
 
 
 class TestLogErrors(TestLog):
@@ -384,12 +385,12 @@ class TestLogErrors(TestLog):
     def test_log_change_single_revno_only(self):
         self.make_minimal_branch()
         self.run_bzr_error(['brz: ERROR: Option --change does not'
-                           ' accept revision ranges'],
+                            ' accept revision ranges'],
                            ['log', '--change', '2..3'])
 
     def test_log_change_incompatible_with_revision(self):
         self.run_bzr_error(['brz: ERROR: --revision and --change'
-                           ' are mutually exclusive'],
+                            ' are mutually exclusive'],
                            ['log', '--change', '2', '--revision', '3'])
 
     def test_log_nonexistent_file(self):
@@ -782,8 +783,11 @@ class TestLogEncodings(tests.TestCaseInTempDir):
             out, err = brz('log', encoding=encoding)
             if not fail:
                 # Make sure we wrote mu as we expected it to exist
-                self.assertNotEqual(-1, out.find(encoded_msg))
-                out_unicode = out.decode(encoding)
+                if not PY3:
+                    self.assertNotEqual(-1, out.find(encoded_msg))
+                    out_unicode = out.decode(encoding)
+                else:
+                    out_unicode = out
                 self.assertNotEqual(-1, out_unicode.find(self._message))
             else:
                 self.assertNotEqual(-1, out.find('Message with ?'))
@@ -988,7 +992,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
     def setUp(self):
         super(MainlineGhostTests, self).setUp()
         tree = self.make_branch_and_tree('')
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
         tree.commit('msg1', rev_id=b'rev1')
         tree.commit('msg2', rev_id=b'rev2')

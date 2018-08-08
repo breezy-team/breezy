@@ -157,7 +157,7 @@ tex_processor(rubber_argv)
 # Rename output to _destination or print to stdout::
 
 if destination is None:
-    with file(pdfpath) as pdffile:
+    with open(pdfpath) as pdffile:
         print(pdffile.read())
 else:
     os.rename(pdfpath, destination)

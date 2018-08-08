@@ -17,6 +17,7 @@
 """Tests for the test trees used by the per_tree tests."""
 
 from breezy import errors
+from breezy.sixish import text_type
 from breezy.tests import per_tree
 from breezy.tests import (
     TestNotApplicable,
@@ -58,7 +59,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_2_no_parents(self):
@@ -76,7 +77,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('foobar\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'foobar\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b//c'))
 
     def test_abc_tree_content_3_no_parents(self):
@@ -94,7 +95,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('b/c'))
 
     def test_abc_tree_content_4_no_parents(self):
@@ -112,7 +113,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('d'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_5_no_parents(self):
@@ -130,7 +131,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'b', 'd',  'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('bar\n', tree.get_file_text('d'))
+        self.assertEqualDiff(b'bar\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_6_no_parents(self):
@@ -155,7 +156,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in expected_paths],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
-        self.assertEqualDiff('contents of a\n', tree.get_file_text('a'))
+        self.assertEqualDiff(b'contents of a\n', tree.get_file_text('a'))
         self.assertTrue(tree.is_executable('e'))
 
     def test_tree_with_subdirs_and_all_content_types(self):
@@ -267,10 +268,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
-        file_ids = ['TREE_ROOT',
-                    'fo\xe2\x82\xaco-id',
-                    'ba\xe2\x82\xacr-id',
-                    'ba\xe2\x82\xacz-id',
+        file_ids = [b'TREE_ROOT',
+                    b'fo\xe2\x82\xaco-id',
+                    b'ba\xe2\x82\xacr-id',
+                    b'ba\xe2\x82\xacz-id',
                    ]
         self.build_tree(paths[1:])
         if tree.get_root_id() is None:
@@ -303,7 +304,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         tree = self.workingtree_to_test_tree(tree)
 
         revision_id = u'r\xe9v-1'.encode('utf8')
-        root_id = 'TREE_ROOT'
+        root_id = b'TREE_ROOT'
         bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
         foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
         baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
@@ -318,15 +319,15 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
             self.assertEqual(expected[0], path) # Paths should match
-            self.assertIsInstance(path, unicode)
+            self.assertIsInstance(path, text_type)
             self.assertEqual(expected[1], ie.file_id)
-            self.assertIsInstance(ie.file_id, str)
+            self.assertIsInstance(ie.file_id, bytes)
             self.assertEqual(expected[2], ie.parent_id)
             if expected[2] is not None:
-                self.assertIsInstance(ie.parent_id, str)
+                self.assertIsInstance(ie.parent_id, bytes)
             # WorkingTree's return None for the last modified revision
             if ie.revision is not None:
-                self.assertIsInstance(ie.revision, str)
+                self.assertIsInstance(ie.revision, bytes)
                 if expected[0] != '':
                     # Some trees will preserve the revision id of the tree root,
                     # but not all will
@@ -334,10 +335,10 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(len(path_and_ids), len(path_entries))
         get_revision_id = getattr(tree, 'get_revision_id', None)
         if get_revision_id is not None:
-            self.assertIsInstance(get_revision_id(), str)
+            self.assertIsInstance(get_revision_id(), bytes)
         last_revision = getattr(tree, 'last_revision', None)
         if last_revision is not None:
-            self.assertIsInstance(last_revision(), str)
+            self.assertIsInstance(last_revision(), bytes)
 
     def test_tree_with_merged_utf8(self):
         wt = self.make_branch_and_tree('.')
@@ -368,7 +369,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
 
         revision_id_1 = u'r\xe9v-1'.encode('utf8')
         revision_id_2 = u'r\xe9v-2'.encode('utf8')
-        root_id = 'TREE_ROOT'
+        root_id = b'TREE_ROOT'
         bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
         foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
         baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
@@ -387,7 +388,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
             self.assertEqual(epath, path) # Paths should match
-            self.assertIsInstance(path, unicode)
+            self.assertIsInstance(path, text_type)
             self.assertIsInstance(ie.file_id, bytes)
             if wt.supports_setting_file_ids():
                 self.assertEqual(efid, ie.file_id)

@@ -40,18 +40,18 @@ class TestCatRevision(TestCaseWithTransport):
         with r.lock_read():
             revs = {}
             for i in (1, 2, 3):
-                revid = "a@r-0-%d" % i
+                revid = b"a@r-0-%d" % i
                 stream = r.revisions.get_record_stream([(revid,)], 'unordered', 
                                                        False) 
-                revs[i] = stream.next().get_bytes_as('fulltext')
+                revs[i] = next(stream).get_bytes_as('fulltext')
 
         for i in [1, 2, 3]:
             self.assertEqual(revs[i],
-                self.run_bzr('cat-revision -r revid:a@r-0-%d' % i)[0])
+                self.run_bzr('cat-revision -r revid:a@r-0-%d' % i)[0].encode('utf-8'))
             self.assertEqual(revs[i],
-                self.run_bzr('cat-revision a@r-0-%d' % i)[0])
+                self.run_bzr('cat-revision a@r-0-%d' % i)[0].encode('utf-8'))
             self.assertEqual(revs[i],
-                self.run_bzr('cat-revision -r %d' % i)[0])
+                self.run_bzr('cat-revision -r %d' % i)[0].encode('utf-8'))
 
     def test_cat_no_such_revid(self):
         tree = self.make_branch_and_tree('.')

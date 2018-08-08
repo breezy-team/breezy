@@ -60,20 +60,21 @@ class ExpectedShaTests(TestCase):
     def setUp(self):
         super(ExpectedShaTests, self).setUp()
         self.obj = Blob()
-        self.obj.data = "foo"
+        self.obj.data = b"foo"
 
     def test_none(self):
         _check_expected_sha(None, self.obj)
 
     def test_hex(self):
-        _check_expected_sha(self.obj.sha().hexdigest(), self.obj)
+        _check_expected_sha(
+                self.obj.sha().hexdigest().encode('ascii'), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            "0" * 40, self.obj)
+            b"0" * 40, self.obj)
 
     def test_binary(self):
         _check_expected_sha(self.obj.sha().digest(), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            "x" * 20, self.obj)
+            b"x" * 20, self.obj)
 
 
 class FindMissingBzrRevidsTests(TestCase):
@@ -148,7 +149,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_get_blob(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
@@ -167,7 +168,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
 
     def test_get_raw(self):
         b = Blob()
-        b.data = 'a\nb\nc\nd\ne\n'
+        b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
         self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.get_raw, b.id)
@@ -234,39 +235,39 @@ class DirectoryToTreeTests(TestCase):
         self.assertEqual(None, t)
 
     def test_empty_dir(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
                 allow_empty=False)
         self.assertEqual(None, t)
 
     def test_empty_dir_dummy_files(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, ".mydummy",
                 allow_empty=False)
         self.assertTrue(".mydummy" in t)
 
     def test_empty_root(self):
-        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
                 allow_empty=True)
         self.assertEqual(Tree(), t)
 
     def test_with_file(self):
-        child_ie = InventoryFile('bar', 'bar', 'bar')
-        b = Blob.from_string("bla")
+        child_ie = InventoryFile(b'bar', 'bar', b'bar')
+        b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0o100644, b.id)
+        t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)
 
     def test_with_gitdir(self):
-        child_ie = InventoryFile('bar', 'bar', 'bar')
-        git_file_ie = InventoryFile('gitid', '.git', 'bar')
-        b = Blob.from_string("bla")
+        child_ie = InventoryFile(b'bar', 'bar', b'bar')
+        git_file_ie = InventoryFile(b'gitid', '.git', b'bar')
+        b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie, git_file_ie],
                 lambda p, x: b.id, {}, None,
                 allow_empty=False)
         t2 = Tree()
-        t2.add("bar", 0o100644, b.id)
+        t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)

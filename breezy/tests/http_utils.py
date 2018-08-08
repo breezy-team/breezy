@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import base64
 import re
 try:
     from urllib.request import (
@@ -333,7 +334,7 @@ class BasicAuthRequestHandler(AuthRequestHandler):
         if auth_header:
             scheme, raw_auth = auth_header.split(' ', 1)
             if scheme.lower() == tcs.auth_scheme:
-                user, password = raw_auth.decode('base64').split(':')
+                user, password = base64.b64decode(raw_auth).split(b':')
                 return tcs.authorized(user, password)
 
         return False
@@ -410,7 +411,7 @@ class AuthServer(http_server.HttpServer):
     auth_header_sent = None
     auth_header_recv = None
     auth_error_code = None
-    auth_realm = "Thou should not pass"
+    auth_realm = u"Thou should not pass"
 
     def __init__(self, request_handler, auth_scheme,
                  protocol_version=None):
@@ -470,11 +471,11 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = '%s:%s:%s' % (user, realm, password)
-        A2 = '%s:%s' % (command, auth['uri'])
+        A1 = ('%s:%s:%s' % (user, realm, password)).encode('utf-8')
+        A2 = ('%s:%s' % (command, auth['uri'])).encode('utf-8')
 
         H = lambda x: osutils.md5(x).hexdigest()
-        KD = lambda secret, data: H("%s:%s" % (secret, data))
+        KD = lambda secret, data: H(("%s:%s" % (secret, data)).encode('utf-8'))
 
         nonce_count = int(auth['nc'], 16)
 

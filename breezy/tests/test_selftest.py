@@ -18,6 +18,7 @@
 
 import gc
 import doctest
+from functools import reduce
 import os
 import signal
 import sys
@@ -63,6 +64,7 @@ from ..bzr import (
     groupcompress_repo,
     )
 from ..sixish import (
+    PY3,
     StringIO,
     text_type,
     )
@@ -789,8 +791,8 @@ class TestTestResult(tests.TestCase):
 
         This is used to exercise the test framework.
         """
-        self.time(unicode, 'hello', errors='replace')
-        self.time(unicode, 'world', errors='replace')
+        self.time(text_type, b'hello', errors='replace')
+        self.time(text_type, b'world', errors='replace')
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
@@ -820,14 +822,20 @@ class TestTestResult(tests.TestCase):
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
         output = result_stream.getvalue()
-        self.assertContainsRe(output,
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        if PY3:
+            self.assertContainsRe(output,
+                r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
+            self.assertContainsRe(output,
+                r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
+        else:
+            self.assertContainsRe(output,
+                r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+            self.assertContainsRe(output,
+                r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
         self.assertContainsRe(output,
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
         self.assertContainsRe(output,
             r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
-        self.assertContainsRe(output,
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
     def test_uses_time_from_testtools(self):
         """Test case timings in verbose results should use testtools times"""
@@ -1905,14 +1913,20 @@ class TestExtraAssertions(tests.TestCase):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
+        self.assertIn(str(e),
+            ["None is an instance of <type 'NoneType'> rather than <type 'int'>",
+             "None is an instance of <class 'NoneType'> rather than <class 'int'>"])
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
             self.assertIsInstance, None, int, "it's just not")
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
-            ": it's just not")
+        if PY3:
+            self.assertEqual(str(e),
+                "None is an instance of <class 'NoneType'> rather than <class 'int'>: it's "
+                "just not")
+        else:
+            self.assertEqual(str(e),
+                "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+                ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2172,7 +2186,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
 
     def test_load_list(self):
         # Provide a list with one test - this test.
-        test_id_line = b'%s\n' % self.id()
+        test_id_line = '%s\n' % self.id()
         self.build_tree_contents([('test.list', test_id_line)])
         # And generate a list of the tests in  the suite.
         stream = self.run_selftest(load_list='test.list', list_only=True)
@@ -2302,10 +2316,10 @@ class TestRunBzr(tests.TestCase):
         self.assertEqual(err, self.err)
 
     def test_run_bzr_error_regexes(self):
-        self.out = ''
-        self.err = "bzr: ERROR: foobarbaz is not versioned"
+        self.out = b''
+        self.err = b"bzr: ERROR: foobarbaz is not versioned"
         out, err = self.run_bzr_error(
-            ["bzr: ERROR: foobarbaz is not versioned"],
+            [b"bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
 
     def test_encoding(self):
@@ -2655,11 +2669,11 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         self.disable_missing_extensions_warning()
         process = self.start_bzr_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
-        self.assertEqual('running\n', process.stdout.readline())
+        self.assertEqual(b'running\n', process.stdout.readline())
         result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
-        self.assertEqual('', result[0])
-        self.assertEqual('brz: interrupted\n', result[1])
+        self.assertEqual(b'', result[0])
+        self.assertEqual(b'brz: interrupted\n', result[1])
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -3044,14 +3058,17 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        if __doc__ is not None:
+        if __doc__ is not None and not PY3:
             expected_test_list.extend([
                 # modules_to_doctest
                 'breezy.timestamp.format_highres_date',
                 ])
         suite = tests.test_suite()
-        self.assertEqual({"testmod_names", "modules_to_doctest"},
-            set(calls))
+        if PY3:
+            self.assertEqual({"testmod_names"}, set(calls))
+        else:
+            self.assertEqual({"testmod_names", "modules_to_doctest"},
+                set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):

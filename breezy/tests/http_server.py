@@ -26,6 +26,7 @@ import posixpath
 import random
 import re
 import socket
+import sys
 try:
     from urlparse import urlparse
 except ImportError:
@@ -125,7 +126,7 @@ Message: %(message)s.
         self.send_header('Connection', 'close')
         self.end_headers()
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content)
+            self.wfile.write(content.encode('utf-8'))
 
     def _handle_one_request(self):
         http_server.SimpleHTTPRequestHandler.handle_one_request(self)
@@ -232,7 +233,7 @@ Message: %(message)s.
         boundary = '%d' % random.randint(0, 0x7FFFFFFF)
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = '--%s\r\n' % boundary
+        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
         for (start, end) in ranges:
@@ -339,7 +340,8 @@ Message: %(message)s.
         # abandon query parameters
         path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
-        path = path.decode('utf-8')
+        if sys.version_info[0] == 2:
+             path = path.decode('utf-8')
         words = path.split('/')
         path = self._cwd
         for num, word in enumerate(w for w in words if w):

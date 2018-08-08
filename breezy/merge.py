@@ -51,18 +51,17 @@ from . import (
     registry,
     )
 from .sixish import (
+    text_type,
     viewitems,
     )
 # TODO: Report back as changes are merged in
 
 
 def transform_tree(from_tree, to_tree, interesting_files=None):
-    from_tree.lock_tree_write()
-    operation = cleanup.OperationWithCleanups(merge_inner)
-    operation.add_cleanup(from_tree.unlock)
-    operation.run_simple(from_tree.branch, to_tree, from_tree,
-        ignore_zero=True, this_tree=from_tree,
-        interesting_files=interesting_files)
+    with from_tree.lock_tree_write():
+        merge_inner(from_tree.branch, to_tree, from_tree,
+            ignore_zero=True, this_tree=from_tree,
+            interesting_files=interesting_files)
 
 
 class MergeHooks(hooks.Hooks):
@@ -787,17 +786,10 @@ class Merge3Merger(object):
             pass
 
     def make_preview_transform(self):
-        operation = cleanup.OperationWithCleanups(self._make_preview_transform)
-        self.base_tree.lock_read()
-        operation.add_cleanup(self.base_tree.unlock)
-        self.other_tree.lock_read()
-        operation.add_cleanup(self.other_tree.unlock)
-        return operation.run_simple()
-
-    def _make_preview_transform(self):
-        self.tt = transform.TransformPreview(self.working_tree)
-        self._compute_transform()
-        return self.tt
+        with self.base_tree.lock_read(), self.other_tree.lock_read():
+            self.tt = transform.TransformPreview(self.working_tree)
+            self._compute_transform()
+            return self.tt
 
     def _compute_transform(self):
         if self._lca_trees is None:
@@ -841,7 +833,7 @@ class Merge3Merger(object):
                 self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
-            trace.warning(unicode(conflict))
+            trace.warning('%s', conflict.describe())
 
     def _entries3(self):
         """Gather data about files modified between three trees.
@@ -1453,23 +1445,23 @@ class Merge3Merger(object):
         this_lines = self.get_lines(self.this_tree, this_path, file_id)
         m3 = merge3.Merge3(base_lines, this_lines, other_lines,
                            is_cherrypick=self.cherrypick)
-        start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
+        start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
         if self.show_base is True:
-            base_marker = '|' * 7
+            base_marker = b'|' * 7
         else:
             base_marker = None
 
         def iter_merge3(retval):
             retval["text_conflicts"] = False
-            for line in m3.merge_lines(name_a = "TREE",
-                                       name_b = "MERGE-SOURCE",
-                                       name_base = "BASE-REVISION",
+            for line in m3.merge_lines(name_a = b"TREE",
+                                       name_b = b"MERGE-SOURCE",
+                                       name_base = b"BASE-REVISION",
                                        start_marker=start_marker,
                                        base_marker=base_marker,
                                        reprocess=self.reprocess):
                 if line.startswith(start_marker):
                     retval["text_conflicts"] = True
-                    yield line.replace(start_marker, '<' * 7)
+                    yield line.replace(start_marker, b'<' * 7)
                 else:
                     yield line
         retval = {}
@@ -1685,10 +1677,10 @@ class WeaveMerger(Merge3Merger):
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%11s|%s' % l for l in plan)
+            contents = (b'%11s|%s' % l for l in plan)
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-                                                 '>>>>>>> MERGE-SOURCE\n')
+        textmerge = versionedfile.PlanWeaveMerge(plan, b'<<<<<<< TREE\n',
+                                                 b'>>>>>>> MERGE-SOURCE\n')
         lines, conflicts = textmerge.merge_lines(self.reprocess)
         if conflicts:
             base_lines = textmerge.base_from_plan()

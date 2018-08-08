@@ -54,8 +54,8 @@ class GitServerTestCase(TestCaseWithTransport):
 
 class TestPlainFetch(GitServerTestCase):
 
-    def test_fetch_simple(self):
-        wt = self.make_branch_and_tree('t')
+    def test_fetch_from_native_git(self):
+        wt = self.make_branch_and_tree('t', format='git')
         self.build_tree(['t/foo'])
         wt.add('foo')
         revid = wt.commit(message="some data")
@@ -67,7 +67,7 @@ class TestPlainFetch(GitServerTestCase):
         result = c.fetch('/', gitrepo)
         self.assertEqual(
             set(result.refs.keys()),
-            set(["refs/tags/atag", "HEAD"]))
+            set([b"refs/tags/atag", b'refs/heads/master', b"HEAD"]))
 
     def test_fetch_nothing(self):
         wt = self.make_branch_and_tree('t')
@@ -82,4 +82,21 @@ class TestPlainFetch(GitServerTestCase):
         result = c.fetch('/', gitrepo, determine_wants=lambda x: [])
         self.assertEqual(
             set(result.refs.keys()),
-            set(["refs/tags/atag", "HEAD"]))
+            set([b"refs/tags/atag", b"HEAD"]))
+
+    def test_fetch_from_non_git(self):
+        wt = self.make_branch_and_tree('t', format='bzr')
+        self.build_tree(['t/foo'])
+        wt.add('foo')
+        revid = wt.commit(message="some data")
+        wt.branch.tags.set_tag("atag", revid)
+        t = self.get_transport('t')
+        port = self.start_server(t)
+        c = TCPGitClient('localhost', port=port)
+        gitrepo = Repo.init('gitrepo', mkdir=True)
+        result = c.fetch('/', gitrepo)
+        self.assertEqual(
+            set(result.refs.keys()),
+            set([b"refs/tags/atag", b"HEAD"]))
+
+

@@ -516,7 +516,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         return btree_index.BTreeGraphIndex(trans, name, size)
 
     def make_g_index_missing_parent(self):
-        graph_index = self.make_g_index(b'missing_parent', 1,
+        graph_index = self.make_g_index('missing_parent', 1,
             [((b'parent', ), b'2 78 2 10', ([],)),
              ((b'tip', ), b'2 78 2 10',
               ([(b'parent', ), (b'missing-parent', )],)),

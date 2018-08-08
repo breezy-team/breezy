@@ -959,25 +959,24 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
             registry._LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):
-        """Return all "extra" formats, not usable in meta directories."""
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
+        """Return getters for extra formats, not usable in meta directories."""
+        return [getter.get_obj for getter in self._extra_formats]
+
+    def _get_all_lazy(self):
+        """Return getters for all formats, even those not usable in metadirs."""
+        result = [self._dict[name].get_obj for name in self.keys()]
+        result.extend(self._get_extra())
         return result
 
     def _get_all(self):
-        """Return all formats, even those not usable in metadirs.
-        """
+        """Return all formats, even those not usable in metadirs."""
         result = []
-        for name in self.keys():
-            fmt = self.get(name)
+        for getter in self._get_all_lazy():
+            fmt = getter()
             if callable(fmt):
                 fmt = fmt()
             result.append(fmt)
-        return result + self._get_extra()
+        return result
 
     def _get_all_modules(self):
         """Return a set of the modules providing objects."""
@@ -1148,9 +1147,9 @@ class ControlDirFormat(object):
     def known_formats(klass):
         """Return all the known formats.
         """
-        result = set()
+        result = []
         for prober_kls in klass.all_probers():
-            result.update(prober_kls.known_formats())
+            result.extend(prober_kls.known_formats())
         return result
 
     @classmethod

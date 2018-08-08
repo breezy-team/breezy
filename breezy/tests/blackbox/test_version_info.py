@@ -18,6 +18,7 @@
 
 import os
 
+from breezy.sixish import PY3
 from breezy.tests import TestCaseWithTransport
 from breezy.version_info_formats import VersionInfoBuilder
 
@@ -46,7 +47,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
+        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision().decode('utf-8'))
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
@@ -54,11 +55,11 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = self.run_bzr('version-info branch --all')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
+        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision().decode('utf-8'))
         self.assertContainsRe(txt, 'clean: True')
         self.assertContainsRe(txt, 'revisions:')
         for rev_id in wt.branch.repository.all_revision_ids():
-            self.assertContainsRe(txt, 'id: ' + rev_id)
+            self.assertContainsRe(txt, 'id: ' + rev_id.decode('utf-8'))
         self.assertContainsRe(txt, 'message: adding a')
         self.assertContainsRe(txt, 'message: adding b')
         self.assertContainsRe(txt, 'file-revisions:')
@@ -173,7 +174,9 @@ class TestVersionInfo(TestCaseWithTransport):
         out, err = self.run_bzr(
             ['version-info', '--include-history'], encoding='latin-1')
 
-        self.assertContainsString(out, commit_message.encode('utf-8'))
+        if not PY3:
+            commit_message = commit_message.encode('latin-1', 'replace')
+        self.assertContainsString(out, commit_message)
 
     def test_revision(self):
         tree = self.create_tree()

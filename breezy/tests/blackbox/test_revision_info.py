@@ -38,8 +38,8 @@ class TestRevisionInfo(TestCaseWithTransport):
         # Make history with a non-mainline rev
         wt.commit('Commit one', rev_id=b'a@r-0-1')
         wt.commit('Commit two', rev_id=b'a@r-0-1.1.1')
-        wt.set_parent_ids(['a@r-0-1', 'a@r-0-1.1.1'])
-        wt.branch.set_last_revision_info(1, 'a@r-0-1')
+        wt.set_parent_ids([b'a@r-0-1', b'a@r-0-1.1.1'])
+        wt.branch.set_last_revision_info(1, b'a@r-0-1')
         wt.commit('Commit three', rev_id=b'a@r-0-2')
 
         # This is expected to work even if the working tree is removed
@@ -119,10 +119,10 @@ class TestRevisionInfo(TestCaseWithTransport):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.finish_series()
         self.check_output('  1 A-id\n??? B-id\n  2 C-id\n',
                           'revision-info -d branch'

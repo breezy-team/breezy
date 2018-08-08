@@ -177,13 +177,13 @@ Using shared repository: %s
     def test_init_default_format_option(self):
         """brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 default_format = 1.9
 ''')
         g_store.save()
         out, err = self.run_bzr_subprocess('init')
-        self.assertContainsRe(out, '1.9')
+        self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""

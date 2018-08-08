@@ -268,7 +268,6 @@ class cmd_fast_import(Command):
                         'The import algorithm to use.',
                         title='Import Algorithm',
                         default='Use the preferred algorithm (inventory deltas).',
-                        classic="Use the original algorithm (mutable inventories).",
                         experimental="Enable experimental features.",
                         value_switches=True, enum_switch=False,
                         ),
@@ -495,7 +494,7 @@ class cmd_fast_export(Command):
         branch = Branch.open_containing(source)[0]
         outf = exporter._get_output_stream(destination)
         exporter = exporter.BzrFastExporter(branch,
-            outf=outf, ref="refs/heads/%s" % git_branch, checkpoint=checkpoint,
+            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'), checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
             revision=revision, verbose=verbose, plain_format=plain,
             rewrite_tags=rewrite_tag_names, no_tags=no_tags, baseline=baseline)

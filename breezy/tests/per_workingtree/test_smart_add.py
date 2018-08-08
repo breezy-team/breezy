@@ -28,7 +28,7 @@ from ... import (
     workingtree,
     )
 from ...sixish import (
-    BytesIO,
+    StringIO,
     )
 from .. import (
     features,
@@ -257,7 +257,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_custom_ids(self):
-        sio = BytesIO()
+        sio = StringIO()
         action = test_smart_add.AddCustomIDAction(to_file=sio,
                                                   should_print=True)
         self.build_tree(['file1', 'dir1/', 'dir1/file2'])
@@ -280,9 +280,9 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt.lock_read()
         self.addCleanup(wt.unlock)
         self.assertEqual([('', wt.path2id('')),
-                          ('dir1', 'directory-dir1'),
-                          ('file1', 'file-file1'),
-                          ('dir1/file2', 'file-dir1%file2'),
+                          ('dir1', b'directory-dir1'),
+                          ('file1', b'file-file1'),
+                          ('dir1/file2', b'file-dir1%file2'),
                          ], [(path, ie.file_id) for path, ie
                                 in wt.iter_entries_by_dir()])
 

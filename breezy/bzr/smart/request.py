@@ -34,6 +34,10 @@ from __future__ import absolute_import
 
 
 import threading
+try:
+    from _thread import get_ident
+except ImportError:  # Python < 3
+    from thread import get_ident
 
 from ... import (
     branch as _mod_branch,
@@ -45,13 +49,13 @@ from ... import (
     trace,
     urlutils,
     )
+from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
 from breezy.bundle import serializer
 
 import tempfile
-import thread
 """)
 
 
@@ -217,8 +221,6 @@ class SmartServerRequest(object):
         :returns: a transport cloned from self._backing_transport
         """
         relpath = self.translate_client_path(client_path)
-        if not isinstance(relpath, str):
-            raise TypeError(relpath)
         return self._backing_transport.clone(relpath)
 
 
@@ -308,7 +310,7 @@ class SmartServerRequestHandler(object):
         self._command = None
         if 'hpss' in debug.debug_flags:
             self._request_start_time = osutils.timer_func()
-            self._thread_id = thread.get_ident()
+            self._thread_id = get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
         # It is a bit of a shame that this functionality overlaps with that of
@@ -447,7 +449,7 @@ def _translate_error(err):
         # If it is a DecodeError, than most likely we are starting
         # with a plain string
         str_or_unicode = err.object
-        if isinstance(str_or_unicode, unicode):
+        if isinstance(str_or_unicode, text_type):
             # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
             # byte) in it, so this encoding could cause broken responses.
             # Newer clients use protocol v3, so will be fine.
@@ -691,6 +693,9 @@ request_handlers.register_lazy(
     b'Repository.add_signature_text', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAddSignatureText', info='idem')
 request_handlers.register_lazy(
+    b'Repository.annotate_file_revision', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryAnnotateFileRevision', info='read')
+request_handlers.register_lazy(
     b'Repository.all_revision_ids', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryAllRevisionIds', info='read')
 request_handlers.register_lazy(
@@ -757,6 +762,9 @@ request_handlers.register_lazy(
     b'Repository.get_stream_1.19', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryGetStream_1_19', info='read')
 request_handlers.register_lazy(
+    b'Repository.get_stream_for_missing_keys', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryGetStreamForMissingKeys', info='read')
+request_handlers.register_lazy(
     b'Repository.iter_revisions', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryIterRevisions', info='read')
 request_handlers.register_lazy(
@@ -777,6 +785,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     b'Repository.reconcile', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryReconcile', info='idem')
+request_handlers.register_lazy(
+    b'Repository.revision_archive', 'breezy.bzr.smart.repository',
+    'SmartServerRepositoryRevisionArchive', info='read')
 request_handlers.register_lazy(
     b'Repository.tarball', 'breezy.bzr.smart.repository',
     'SmartServerRepositoryTarball', info='read')

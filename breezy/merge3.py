@@ -26,6 +26,12 @@ from . import (
     )
 
 
+class CantReprocessAndShowBase(errors.BzrError):
+
+    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
+           "the relationship of conflicting lines to the base")
+
+
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
 
@@ -58,8 +64,6 @@ def compare_range(a, astart, aend, b, bstart, bend):
             return False
     else:
         return True
-
-
 
 
 class Merge3(object):
@@ -95,27 +99,27 @@ class Merge3(object):
                     name_a=None,
                     name_b=None,
                     name_base=None,
-                    start_marker='<<<<<<<',
-                    mid_marker='=======',
-                    end_marker='>>>>>>>',
+                    start_marker=b'<<<<<<<',
+                    mid_marker=b'=======',
+                    end_marker=b'>>>>>>>',
                     base_marker=None,
                     reprocess=False):
         """Return merge in cvs-like form.
         """
-        newline = '\n'
+        newline = b'\n'
         if len(self.a) > 0:
-            if self.a[0].endswith('\r\n'):
-                newline = '\r\n'
-            elif self.a[0].endswith('\r'):
-                newline = '\r'
+            if self.a[0].endswith(b'\r\n'):
+                newline = b'\r\n'
+            elif self.a[0].endswith(b'\r'):
+                newline = b'\r'
         if base_marker and reprocess:
-            raise errors.CantReprocessAndShowBase()
+            raise CantReprocessAndShowBase()
         if name_a:
-            start_marker = start_marker + ' ' + name_a
+            start_marker = start_marker + b' ' + name_a
         if name_b:
-            end_marker = end_marker + ' ' + name_b
+            end_marker = end_marker + b' ' + name_b
         if name_base and base_marker:
-            base_marker = base_marker + ' ' + name_base
+            base_marker = base_marker + b' ' + name_base
         merge_regions = self.merge_regions()
         if reprocess is True:
             merge_regions = self.reprocess_merge_regions(merge_regions)
@@ -464,9 +468,12 @@ class Merge3(object):
 
 def main(argv):
     # as for diff3 and meld the syntax is "MINE BASE OTHER"
-    a = file(argv[1], 'rt').readlines()
-    base = file(argv[2], 'rt').readlines()
-    b = file(argv[3], 'rt').readlines()
+    with open(argv[1], 'rt') as f:
+        a = f.readlines()
+    with open(argv[2], 'rt') as f:
+        base = f.readlines()
+    with open(argv[3], 'rt') as f:
+        b = f.readlines()
 
     m3 = Merge3(base, a, b)
 

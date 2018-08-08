@@ -51,7 +51,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
     def test_simple_binding(self):
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a', 'base/b'])
-        tree.add('a', 'b')
+        tree.add('a', b'b')
         tree.commit(message='init')
 
         tree.controldir.sprout('child')
@@ -350,7 +350,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         """Test --directory option"""
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a', 'base/b'])
-        tree.add('a', 'b')
+        tree.add('a', b'b')
         tree.commit(message='init')
         branch = tree.branch
         tree.controldir.sprout('child')

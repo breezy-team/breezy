@@ -21,6 +21,7 @@ import sys
 
 import breezy
 from breezy import osutils, trace
+from breezy.sixish import PY3
 from breezy.tests import (
     probe_unicode_in_user_encoding,
     TestCase,
@@ -95,7 +96,10 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (osutils.get_user_encoding(),))
 
-        self.overrideEnv('BRZ_HOME', str_val)
+        if PY3:
+            self.overrideEnv('BRZ_HOME', uni_val)
+        else:
+            self.overrideEnv('BRZ_HOME', str_val)
         self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
@@ -111,7 +115,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist([default_log, brz_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Breezy log file: " + brz_log)
+        self.assertContainsRe(out, br"(?m)^  Breezy log file: " + brz_log)
         self.assertPathDoesNotExist(default_log)
         self.assertPathExists(brz_log)
 
@@ -127,7 +131,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, r"(?m)^  Breezy log file: " + brz_log)
+        self.assertContainsRe(out, br"(?m)^  Breezy log file: " + brz_log)
         self.assertPathDoesNotExist(default_log)
 
     def test_unicode_brz_log(self):

@@ -29,6 +29,7 @@ import os
 from ...controldir import ControlDir
 from ...errors import NotBranchError, NoRepositoryPresent
 from ...repository import InterRepository
+from ...sixish import viewitems
 from ...transport import get_transport_from_path
 
 from . import (
@@ -79,7 +80,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     else:
         lossy = True
     inter.fetch_objects(revs, lossy=lossy)
-    outf.write("\n")
+    outf.write(b"\n")
 
 
 def push(outf, wants, shortname, remote_dir, local_dir):
@@ -93,8 +94,8 @@ def push(outf, wants, shortname, remote_dir, local_dir):
         except NotBranchError:
             remote_branch = remote_dir.create_branch(name=dest_branch_name)
         local_branch.push(remote_branch)
-        outf.write("ok %s\n" % dest_ref)
-    outf.write("\n")
+        outf.write(b"ok %s\n" % dest_ref)
+    outf.write(b"\n")
 
 
 class RemoteHelper(object):
@@ -108,7 +109,7 @@ class RemoteHelper(object):
         self.wants = []
 
     def cmd_capabilities(self, outf, argv):
-        outf.write("\n".join(CAPABILITIES)+"\n\n")
+        outf.write(b"\n".join([c.encode() for c in CAPABILITIES])+b"\n\n")
 
     def cmd_list(self, outf, argv):
         try:
@@ -118,13 +119,13 @@ class RemoteHelper(object):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(self.remote_dir, object_store)
-            for ref, git_sha1 in refs.as_dict().iteritems():
-                ref = ref.replace("~", "_")
-                outf.write("%s %s\n" % (git_sha1, ref))
-            outf.write("\n")
+            for ref, git_sha1 in viewitems(refs.as_dict()):
+                ref = ref.replace(b"~", b"_")
+                outf.write(b"%s %s\n" % (git_sha1, ref))
+            outf.write(b"\n")
 
     def cmd_option(self, outf, argv):
-        outf.write("unsupported\n")
+        outf.write(b"unsupported\n")
 
     def cmd_fetch(self, outf, argv):
         if self.batchcmd not in (None, "fetch"):
@@ -141,12 +142,13 @@ class RemoteHelper(object):
     def cmd_import(self, outf, argv):
         if "fastimport" in CAPABILITIES:
             raise Exception("install fastimport for 'import' command support")
-        dest_branch_name = ref_to_branch_name(argv[1])
+        ref = argv[1].encode('utf-8')
+        dest_branch_name = ref_to_branch_name(ref)
         if dest_branch_name == "master":
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
         exporter = fastexporter.BzrFastExporter(remote_branch,
-            outf=outf, ref=argv[1],
+            outf=outf, ref=ref,
             checkpoint=None, import_marks_file=None,
             export_marks_file=None, revision=None,
             verbose=None, plain_format=True,

@@ -30,6 +30,7 @@ from . import (
     osutils,
     trace,
     )
+from .sixish import text_type
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
@@ -69,8 +70,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
 
     to_file.write("  Python standard library:" + ' ')
     to_file.write(os.path.dirname(os.__file__) + '\n')
-    to_file.write("  Platform: %s\n"
-                  % platform.platform(aliased=1).decode('utf-8'))
+    platform_str = platform.platform(aliased=1)
+    if not isinstance(platform_str, text_type):
+        platform_str = platform_str.decode('utf-8')
+    to_file.write("  Platform: %s\n" % platform_str)
     to_file.write("  breezy: ")
     if len(breezy.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
@@ -80,7 +83,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write(breezy.__path__[0] + '\n')
     if show_config:
         config_dir = osutils.normpath(config.config_dir())  # use native slashes
-        if not isinstance(config_dir, unicode):
+        if not isinstance(config_dir, text_type):
             config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Breezy configuration: %s\n" % (config_dir,))
         to_file.write("  Breezy log file: ")
