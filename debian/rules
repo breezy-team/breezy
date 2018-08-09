@@ -1,16 +1,19 @@
 #!/usr/bin/make -f
 
 # Get the supported Python versions
-PYVERS = $(shell pyversions -r -v)
+PYVERS = $(shell pyversions -r -v) $(shell py3versions -r -v)
 # Get the default Python version
 PYVERSION = $(shell pyversions -d -v)
+PY3VERSION = $(shell py3versions -d -v)
+
+export PYBUILD_NAME=breezy
 
 # Callable functions to determine the correct PYTHONPATH
 pythonpath = $$(ls -d $(CURDIR)/build/lib.*-$(1))
 pythonpath_dbg = $$(ls -d $(CURDIR)/build/lib_d.*-$(1) 2>/dev/null || ls -d $(CURDIR)/build/lib.*$(1)-pydebug)
 
 %:
-	dh $* --with python2,sphinxdoc,bash_completion  --buildsystem=python_distutils
+	dh $* --with python2,python3,sphinxdoc,bash_completion  --buildsystem=pybuild
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 CONCURRENCY = BRZ_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
@@ -25,6 +28,12 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	LC_ALL=C.UTF-8 \
 	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYVERSION)) \
 	$(CURDIR)/build/scripts-$(PYVERSION)/brz -Derror selftest -v --parallel=fork
+	$(CONCURRENCY) \
+	BRZ_HOME=debian/brzhome \
+	BRZ_PLUGIN_PATH=-site:-user \
+	LC_ALL=C.UTF-8 \
+	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PY3VERSION)) \
+	$(CURDIR)/build/scripts-$(PY3VERSION)/brz -Derror selftest -v --parallel=fork
 endif
 
 override_dh_auto_clean:
@@ -47,6 +56,11 @@ override_dh_install:
 		mkdir -p debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
 		mv debian/tmp/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
+	done
+	for py in $(shell py3versions -r); do \
+		mkdir -p debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
+		mv debian/tmp/usr/lib/$$py/dist-packages/breezy/tests \
+			debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
 	if [ -d debian/tmp/usr/share/locale ]; then \
 		mkdir -p debian/python-breezy/usr/share; \

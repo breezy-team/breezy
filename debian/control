@@ -20,7 +20,19 @@ Build-Depends: bash-completion,
                python-paramiko (<< 1.12.0) | python-paramiko (>= 1.14.1),
                python-sphinx (>= 1.0.7+dfsg),
                python-subunit,
-               python-testtools (>= 0.9.5~)
+               python-testtools (>= 0.9.5~),
+               cython3-dbg (>= 0.17),
+               python3 (>= 2.6.6-3),
+               python3-all-dbg (>= 2.6.6-3),
+               python3-all-dev (>= 2.6.6-3),
+               python3-configobj (>= 4.7.2+ds-2),
+               python3-dulwich (>= 0.19.1),
+               python3-docutils,
+               python3-fastimport (>= 0.9.8),
+               python3-paramiko (<< 1.12.0) | python-paramiko (>= 1.14.1),
+               python3-sphinx (>= 1.0.7+dfsg),
+               python3-subunit,
+               python3-testtools (>= 0.9.5~)
 Build-Conflicts: python-pyftpdlib
 Standards-Version: 4.1.1
 X-Python-Version: >= 2.7
@@ -78,14 +90,43 @@ Suggests: python-breezy-dbg,
           python-paramiko,
           xdg-utils
 Provides: ${python:Provides}
-Description: distributed version control system - python library
+Description: distributed version control system - python 2 library
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
- This package contains the Breezy Python library.
+ This package contains the Breezy Python 2 library.
  .
  Install python-paramiko for sftp transport support.
+
+Package: python3-breezy
+Architecture: any
+Section: python
+Depends: python3-configobj,
+         ${misc:Depends},
+         ${python3:Depends},
+         ${shlibs:Depends}
+Recommends: ca-certificates,
+            python3-launchpadlib,
+            ssh-client | python3-paramiko,
+            python3-dulwich (>= 0.19.1)
+Conflicts: python3-paramiko (<< 1.14.1)
+Suggests: python3-breezy-dbg,
+          python3-breezy.tests,
+          python3-fastimport,
+          python3-gpg,
+          python3-kerberos (>= 1.0+svn2455-1),
+          python3-paramiko,
+          xdg-utils
+Provides: ${python3:Provides}
+Description: distributed version control system - python 3 library
+ Breezy is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the Breezy Python 3 library.
+ .
+ Install python3-paramiko for sftp transport support.
 
 Package: python-breezy-dbg
 Architecture: any
@@ -99,12 +140,29 @@ Recommends: python-dbg
 Suggests: python-gpg-dbgsym,
           python-lzma-dbg,
           python-meliae-dbg
-Description: distributed version control system - debug extension
+Description: distributed version control system - python 2 debug extension
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
  .
- This package contains the debug extension for the Breezy Python library.
+ This package contains the debug extension for the Breezy Python 2 library.
+
+Package: python3-breezy-dbg
+Architecture: any
+Section: debug
+Depends: python3-breezy (= ${binary:Version}),
+         ${misc:Depends},
+         ${python3:Depends},
+         ${shlibs:Depends}
+Provides: ${python3:Provides}
+Recommends: python3-dbg
+Suggests: python3-gpg-dbgsym
+Description: distributed version control system - python 3 debug extension
+ Breezy is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the debug extension for the Breezy Python 3 library.
 
 Package: python-breezy.tests
 Architecture: all
@@ -114,10 +172,30 @@ Depends: python-breezy (<= ${source:Version}.1~),
          python-testtools (>= 0.9.5~),
          ${misc:Depends},
          ${python:Depends}
-Suggests: python-subunit, python-pyftpdlib
+Suggests: python-subunit
 Provides: ${python:Provides}
 Replaces: python-breezy (<< 2.4.0~beta1-2)
-Description: distributed version control system - testsuite
+Description: distributed version control system - Python 2 testsuite
+ Breezy is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the breezy test infrastructure and testsuite,
+ which is required to run the 'brz selftest' command and to run
+ plugin tests.
+
+Package: python3-breezy.tests
+Architecture: all
+Section: python
+Depends: python3-breezy (<= ${source:Version}.1~),
+         python3-breezy (>= ${source:Version}),
+         python-testtools (>= 0.9.5~),
+         ${misc:Depends},
+         ${python:Depends}
+Suggests: python3-subunit
+Provides: ${python:Provides}
+Replaces: python3-breezy (<< 2.4.0~beta1-2)
+Description: distributed version control system - Python 3 testsuite
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
  easily extendable.
