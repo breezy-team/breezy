@@ -1,2 +1,0 @@
-#!/bin/sh
-brz selftest -v --parallel=fork --no-plugins -x breezy.tests.test_http.TestBadStatusServer.test_http_get -x breezy.tests.test_http.TestBadStatusServer.test_http_has

@@ -48,25 +48,19 @@ override_dh_auto_clean:
 		doc/en/release-notes/index.txt
 
 override_dh_install:
-	find debian/tmp/ -name "*.pyc" | xargs rm -f
-	find debian/tmp/ -name "*.pyo" | xargs rm -f
+	dh_install
 	mkdir -p debian/python-breezy.tests/usr/lib \
 		debian/python-breezy.tests/usr/share/pyshared/breezy
 	for py in $(shell pyversions -r); do \
 		mkdir -p debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
-		mv debian/tmp/usr/lib/$$py/dist-packages/breezy/tests \
+		mv debian/python-breezy/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
 	for py in $(shell py3versions -r); do \
 		mkdir -p debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
-		mv debian/tmp/usr/lib/$$py/dist-packages/breezy/tests \
+		mv debian/python3-breezy/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
-	if [ -d debian/tmp/usr/share/locale ]; then \
-		mkdir -p debian/python-breezy/usr/share; \
-		mv debian/tmp/usr/share/locale debian/python-breezy/usr/share/locale; \
-	fi;
-	dh_install
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from brz-doc.install.
 	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
@@ -85,6 +79,7 @@ override_dh_compress:
 
 override_dh_strip:
 	dh_strip -ppython-breezy --dbg-package=python-breezy-dbg
+	dh_strip -ppython3-breezy --dbg-package=python3-breezy-dbg
 
 override_dh_link:
 	# symlink identical resources.
