@@ -1,0 +1,12 @@
+=== modified file 'python3.passing'
+--- old/python3.passing	2018-08-07 20:43:32 +0000
++++ new/python3.passing	2018-08-11 14:26:21 +0000
+@@ -1564,7 +1564,6 @@
+ breezy.tests.blackbox.test_commit.TestCommit.test_mv_dirs_non_ascii
+ breezy.tests.blackbox.test_commit.TestCommit.test_no_author
+ breezy.tests.blackbox.test_commit.TestCommit.test_no_bugs_no_properties
+-breezy.tests.blackbox.test_commit.TestCommit.test_non_ascii_file_unversioned_iso_8859_5
+ breezy.tests.blackbox.test_commit.TestCommit.test_other_branch_commit
+ breezy.tests.blackbox.test_commit.TestCommit.test_out_of_date_tree_commit
+ breezy.tests.blackbox.test_commit.TestCommit.test_partial_commit_with_renames_in_tree
+
