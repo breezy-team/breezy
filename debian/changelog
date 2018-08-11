@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7063-2) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7063-2) unstable; urgency=medium
 
   * Add python3-breezy, python3-breezy.tests, python3-breezy-dbg packages.
   * Switch to pybuild.
