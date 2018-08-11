@@ -6,6 +6,7 @@ Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: bash-completion,
                ca-certificates,
                cython-dbg (>= 0.17),
+               dh-python,
                debhelper (>= 9),
                fdupes,
                python (>= 2.6.6-3),
@@ -190,7 +191,7 @@ Architecture: all
 Section: python
 Depends: python3-breezy (<= ${source:Version}.1~),
          python3-breezy (>= ${source:Version}),
-         python-testtools (>= 0.9.5~),
+         python3-testtools (>= 0.9.5~),
          ${misc:Depends},
          ${python3:Depends}
 Suggests: python3-subunit

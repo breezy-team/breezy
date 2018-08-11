@@ -1,5 +1,10 @@
 #!/usr/bin/make -f
 
+export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+include /usr/share/dpkg/pkg-info.mk
+
 # Get the supported Python versions
 PYVERS = $(shell pyversions -r -v) $(shell py3versions -r -v)
 # Get the default Python version
@@ -7,10 +12,6 @@ PYVERSION = $(shell pyversions -d -v)
 PY3VERSION = $(shell py3versions -d -v)
 
 export PYBUILD_NAME=breezy
-
-# Callable functions to determine the correct PYTHONPATH
-pythonpath = $$(ls -d $(CURDIR)/build/lib.*-$(1))
-pythonpath_dbg = $$(ls -d $(CURDIR)/build/lib_d.*-$(1) 2>/dev/null || ls -d $(CURDIR)/build/lib.*$(1)-pydebug)
 
 %:
 	dh $* --with python2,python3,sphinxdoc,bash_completion  --buildsystem=pybuild
@@ -49,6 +50,7 @@ override_dh_auto_clean:
 
 override_dh_install:
 	dh_install
+	find debian/
 	mkdir -p debian/python-breezy.tests/usr/lib \
 		debian/python-breezy.tests/usr/share/pyshared/breezy
 	for py in $(shell pyversions -r); do \
@@ -56,18 +58,48 @@ override_dh_install:
 		mv debian/python-breezy/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
-	rm debian/python-breezy/usr/man/man1/brz.1 debian/python-breezy/usr/bin/brz\*
 	for py in $(shell py3versions -r); do \
 		mkdir -p debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
 		mv debian/python3-breezy/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
-	rm debian/python3-breezy/usr/man/man1/brz.1
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from brz-doc.install.
 	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
 		xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 		"debian/brz-doc/usr/share/doc/brz/txt/{}"
+	rm debian/python-breezy-dbg/usr/man/man1/brz.1 \
+		debian/python-breezy-dbg/usr/man/man1/git-remote-bzr.1 \
+		debian/python-breezy-dbg/usr/bin/bzr-receive-pack \
+		debian/python-breezy-dbg/usr/bin/brz \
+		debian/python-breezy-dbg/usr/bin/bzr-upload-pack \
+		debian/python-breezy-dbg/usr/bin/git-remote-bzr
+	rmdir debian/python-breezy-dbg/usr/man/man1 \
+		  debian/python-breezy-dbg/usr/man
+	rm debian/python-breezy/usr/man/man1/brz.1 \
+		debian/python-breezy/usr/man/man1/git-remote-bzr.1 \
+		debian/python-breezy/usr/bin/bzr-receive-pack \
+		debian/python-breezy/usr/bin/brz \
+		debian/python-breezy/usr/bin/bzr-upload-pack \
+		debian/python-breezy/usr/bin/git-remote-bzr
+	rmdir debian/python-breezy/usr/man/man1 \
+		  debian/python-breezy/usr/man
+	rm debian/python3-breezy/usr/man/man1/brz.1 \
+		debian/python3-breezy/usr/man/man1/git-remote-bzr.1 \
+		debian/python3-breezy/usr/bin/bzr-receive-pack \
+		debian/python3-breezy/usr/bin/brz \
+		debian/python3-breezy/usr/bin/bzr-upload-pack \
+		debian/python3-breezy/usr/bin/git-remote-bzr
+	rmdir debian/python3-breezy/usr/man/man1 \
+		  debian/python3-breezy/usr/man
+	rm debian/python3-breezy-dbg/usr/man/man1/brz.1 \
+		debian/python3-breezy-dbg/usr/man/man1/git-remote-bzr.1 \
+		debian/python3-breezy-dbg/usr/bin/bzr-receive-pack \
+		debian/python3-breezy-dbg/usr/bin/brz \
+		debian/python3-breezy-dbg/usr/bin/bzr-upload-pack \
+		debian/python3-breezy-dbg/usr/bin/git-remote-bzr
+	rmdir debian/python3-breezy-dbg/usr/man/man1 \
+		  debian/python3-breezy-dbg/usr/man
 
 override_dh_auto_missing:
 	dh_missing --fail-missing
@@ -80,8 +112,10 @@ override_dh_compress:
 	dh_compress -X.xvg -X.pdf
 
 override_dh_strip:
+ifeq (,$(filter nostrip,$(DEB_BUILD_OPTIONS)))
 	dh_strip -ppython-breezy --dbg-package=python-breezy-dbg
 	dh_strip -ppython3-breezy --dbg-package=python3-breezy-dbg
+endif
 
 override_dh_link:
 	# symlink identical resources.
