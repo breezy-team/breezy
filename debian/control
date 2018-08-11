@@ -192,9 +192,9 @@ Depends: python3-breezy (<= ${source:Version}.1~),
          python3-breezy (>= ${source:Version}),
          python-testtools (>= 0.9.5~),
          ${misc:Depends},
-         ${python:Depends}
+         ${python3:Depends}
 Suggests: python3-subunit
-Provides: ${python:Provides}
+Provides: ${python3:Provides}
 Replaces: python3-breezy (<< 2.4.0~beta1-2)
 Description: distributed version control system - Python 3 testsuite
  Breezy is a distributed version control system designed to be easy to

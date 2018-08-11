@@ -26,14 +26,14 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	BRZ_HOME=debian/brzhome \
 	BRZ_PLUGIN_PATH=-site:-user \
 	LC_ALL=C.UTF-8 \
-	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYVERSION)) \
-	$(CURDIR)/build/scripts-$(PYVERSION)/brz -Derror selftest -v --parallel=fork
+	PYTHONPATH=$(CURDIR)/.pybuild/cpython2_$(PYVERSION)_breezy/build \
+	$(shell pyversions -d) ./brz -Derror selftest -v --parallel=fork
 	$(CONCURRENCY) \
 	BRZ_HOME=debian/brzhome \
 	BRZ_PLUGIN_PATH=-site:-user \
 	LC_ALL=C.UTF-8 \
-	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PY3VERSION)) \
-	$(CURDIR)/build/scripts-$(PY3VERSION)/brz -Derror selftest -v --parallel=fork
+	PYTHONPATH=$(CURDIR)/.pybuild/cpython3_$(PY3VERSION)_breezy/build \
+	$(shell py3versions -d) ./brz -Derror selftest -v --parallel=fork --load-list=python3.passing
 endif
 
 override_dh_auto_clean:
@@ -56,11 +56,13 @@ override_dh_install:
 		mv debian/python-breezy/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
+	rm debian/python-breezy/usr/man/man1/brz.1 debian/python-breezy/usr/bin/brz\*
 	for py in $(shell py3versions -r); do \
 		mkdir -p debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
 		mv debian/python3-breezy/usr/lib/$$py/dist-packages/breezy/tests \
 			debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
 	done
+	rm debian/python3-breezy/usr/man/man1/brz.1
 	# Install the documentation; since html and txt and intermixed
 	# under doc/, this is handier than trying to do it from brz-doc.install.
 	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
