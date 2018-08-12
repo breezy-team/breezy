@@ -1,5 +1,6 @@
 # This is the list of tests that are known to pass with Python3.
 # "make check-nodocs3" verifies that these pass.
+breezy.git.tests.test_blackbox.TestGitBlackBox.test_tags
 breezy.git.tests.test_fetch.LocalRepositoryFetchTests.test_non_ascii_characters
 breezy.plugins.bash_completion.tests.test_bashcomp.BlackboxTests.test_bash_completion
 breezy.plugins.bash_completion.tests.test_bashcomp.TestBashCodeGen.test_brz_version
@@ -2673,9 +2674,11 @@ breezy.tests.blackbox.test_tags.TestSmartServerCat.test_set_tag
 breezy.tests.blackbox.test_tags.TestSmartServerCat.test_show_tags
 breezy.tests.blackbox.test_tags.TestTagging.test_automatic_tag_name
 breezy.tests.blackbox.test_tags.TestTagging.test_branch_push_pull_merge_copies_tags
+breezy.tests.blackbox.test_tags.TestTagging.test_cannot_tag_range
 breezy.tests.blackbox.test_tags.TestTagging.test_commit_in_heavyweight_checkout_copies_tags_to_master
 breezy.tests.blackbox.test_tags.TestTagging.test_commit_in_heavyweight_checkout_reports_tag_conflict
 breezy.tests.blackbox.test_tags.TestTagging.test_conflicting_tags
+breezy.tests.blackbox.test_tags.TestTagging.test_list_tags
 breezy.tests.blackbox.test_tags.TestTagging.test_list_tags_dotted_revnos_unsupported
 breezy.tests.blackbox.test_tags.TestTagging.test_list_tags_revision_filtering
 breezy.tests.blackbox.test_tags.TestTagging.test_merge_without_commit_does_not_propagate_tags_to_master

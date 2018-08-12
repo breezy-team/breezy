@@ -42,7 +42,7 @@ class TestTagging(TestCaseWithTransport):
     def test_cannot_tag_range(self):
         out, err = self.run_bzr('tag -r1..10 name', retcode=3)
         self.assertContainsRe(err,
-            b"Tags can only be placed on a single revision")
+            "Tags can only be placed on a single revision")
 
     def test_no_tag_name(self):
         out, err = self.run_bzr('tag -d branch', retcode=3)
@@ -220,35 +220,34 @@ class TestTagging(TestCaseWithTransport):
         b1.tags.set_tag(u'tag2\u30d0', b'revid-1')
 
         # natural order
-        out, err = self.run_bzr('tags -d branch1',
-                                encoding='utf-8')
-        self.assertEqual(err, '')
+        out, err = self.run_bzr_raw('tags -d branch1', encoding='utf-8')
+        self.assertEqual(err, b'')
         self.assertContainsRe(out, (u'^tag1\u30d0  *2\ntag2\u30d0  *1\n' +
             u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         # lexicographical order
-        out, err = self.run_bzr('tags --sort=alpha -d branch1',
-                                encoding='utf-8')
-        self.assertEqual(err, '')
+        out, err = self.run_bzr_raw('tags --sort=alpha -d branch1',
+                                    encoding='utf-8')
+        self.assertEqual(err, b'')
         self.assertContainsRe(out, (u'^tag10\u30d0  *\\?\ntag1\u30d0  *2\n' +
             u'tag2\u30d0 *1\n').encode('utf-8'))
 
-        out, err = self.run_bzr('tags --sort=alpha --show-ids -d branch1',
+        out, err = self.run_bzr_raw('tags --sort=alpha --show-ids -d branch1',
                                 encoding='utf-8')
-        self.assertEqual(err, '')
+        self.assertEqual(err, b'')
         self.assertContainsRe(out, (u'^tag10\u30d0  *missing\n' +
             u'tag1\u30d0  *revid-2\ntag2\u30d0 *revid-1\n').encode('utf-8'))
 
         # chronological order
-        out, err = self.run_bzr('tags --sort=time -d branch1',
+        out, err = self.run_bzr_raw('tags --sort=time -d branch1',
                 encoding='utf-8')
-        self.assertEqual(err, '')
+        self.assertEqual(err, b'')
         self.assertContainsRe(out, (u'^tag2\u30d0  *1\ntag1\u30d0  *2\n' +
             u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
-        out, err = self.run_bzr('tags --sort=time --show-ids -d branch1',
+        out, err = self.run_bzr_raw('tags --sort=time --show-ids -d branch1',
                 encoding='utf-8')
-        self.assertEqual(err, '')
+        self.assertEqual(err, b'')
         self.assertContainsRe(out, (u'^tag2\u30d0  *revid-1\n' +
             u'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
 
