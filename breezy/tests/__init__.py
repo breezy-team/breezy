@@ -1916,40 +1916,6 @@ class TestCase(testtools.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
-    def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
-            working_dir):
-        """Run bazaar command line, splitting up a string command line."""
-        if isinstance(args, string_types):
-            args = shlex.split(args)
-
-        if encoding is None:
-            encoding = osutils.get_user_encoding()
-
-        if sys.version_info[0] == 2:
-            stdout = ui_testing.BytesIOWithEncoding()
-            stderr = ui_testing.BytesIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-        else:
-            stdout = ui_testing.StringIOWithEncoding()
-            stderr = ui_testing.StringIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-
-        result = self._run_bzr_core(args,
-                encoding=encoding, stdin=stdin, stdout=stdout,
-                stderr=stderr, working_dir=working_dir,
-                )
-
-        out = stdout.getvalue()
-        err = stderr.getvalue()
-        if out:
-            self.log('output:\n%r', out)
-        if err:
-            self.log('errors:\n%r', err)
-        if retcode is not None:
-            self.assertEqual(retcode, result,
-                              message='Unexpected return code')
-        return result, out, err
-
     def _run_bzr_core(self, args, encoding, stdin, stdout, stderr,
             working_dir):
         # Clear chk_map page cache, because the contents are likely to mask
@@ -2026,13 +1992,35 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        retcode, out, err = self._run_bzr_autosplit(
-            args=args,
-            retcode=retcode,
-            encoding=encoding,
-            stdin=stdin,
-            working_dir=working_dir,
-            )
+        if isinstance(args, string_types):
+            args = shlex.split(args)
+
+        if encoding is None:
+            encoding = osutils.get_user_encoding()
+
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+
+        result = self._run_bzr_core(args,
+                encoding=encoding, stdin=stdin, stdout=stdout,
+                stderr=stderr, working_dir=working_dir,
+                )
+
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%r', out)
+        if err:
+            self.log('errors:\n%r', err)
+        if retcode is not None:
+            self.assertEqual(retcode, result,
+                              message='Unexpected return code')
         self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
