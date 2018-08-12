@@ -322,7 +322,7 @@ class TestBzrServe(TestBzrServeBase):
         m = t.get_smart_medium()
         c = client._SmartClient(m)
         # Start, but don't finish a response
-        resp, response_handler = c.call_expecting_body('get', 'bigfile')
+        resp, response_handler = c.call_expecting_body(b'get', b'bigfile')
         self.assertEqual((b'ok',), resp)
         # Note: process.send_signal is a Python 2.6ism
         process.send_signal(signal.SIGHUP)
@@ -331,8 +331,8 @@ class TestBzrServe(TestBzrServeBase):
         # request to finish
         self.assertEqual(b'Requested to stop gracefully\n',
                          process.stderr.readline())
-        self.assertEqual(b'Waiting for 1 client(s) to finish\n',
-                         process.stderr.readline())
+        self.assertIn(process.stderr.readline(),
+                      (b'', b'Waiting for 1 client(s) to finish\n'))
         body = response_handler.read_body_bytes()
         if body != big_contents:
             self.fail('Failed to properly read the contents of "bigfile"')
