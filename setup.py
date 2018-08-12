@@ -735,16 +735,16 @@ else:
     if not 'bdist_egg' in sys.argv:
         # generate and install brz.1 only with plain install, not the
         # easy_install one
-        DATA_FILES = [('man/man1', ['brz.1', 'breezy/plugins/git/git-remote-bzr.1'])]
+        DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
     DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
     ARGS = {'scripts': ['brz',
                         # TODO(jelmer): Only install the git scripts if
                         # Dulwich was found.
-                        'breezy/plugins/git/git-remote-bzr',
-                        'breezy/plugins/git/bzr-receive-pack',
-                        'breezy/plugins/git/bzr-upload-pack'],
+                        'breezy/git/git-remote-bzr',
+                        'breezy/git/bzr-receive-pack',
+                        'breezy/git/bzr-upload-pack'],
             'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
