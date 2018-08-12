@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7065-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 12 Aug 2018 13:25:06 +0100
+
 breezy (3.0.0~bzr7063-2) unstable; urgency=medium
 
   * Add python3-breezy, python3-breezy.tests, python3-breezy-dbg packages.

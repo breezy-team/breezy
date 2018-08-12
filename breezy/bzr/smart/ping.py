@@ -47,7 +47,7 @@ class cmd_ping(Command):
         client = _SmartClient(medium)
         # Use call_expecting_body (even though we don't expect a body) so that
         # we can see the response headers (if any) via the handler object.
-        response, handler = client.call_expecting_body('hello')
+        response, handler = client.call_expecting_body(b'hello')
         handler.cancel_read_body()
         self.outf.write('Response: %r\n' % (response,))
         if getattr(handler, 'headers', None) is not None:

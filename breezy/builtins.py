@@ -23,6 +23,7 @@ import os
 import sys
 
 import breezy.bzr
+import breezy.git
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """

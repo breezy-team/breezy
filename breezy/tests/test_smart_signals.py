@@ -175,8 +175,8 @@ class TestInetServer(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(client_read,
                             client_write, 'base')
         client_client = client._SmartClient(client_medium)
-        resp, response_handler = client_client.call_expecting_body('get',
-            'bigfile')
+        resp, response_handler = client_client.call_expecting_body(b'get',
+            b'bigfile')
         signals._sighup_handler(SIGHUP, None)
         self.assertTrue(factory.smart_server.finished)
         # We can still finish reading the file content, but more than that, and
