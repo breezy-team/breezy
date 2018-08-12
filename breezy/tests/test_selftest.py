@@ -2286,11 +2286,12 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
 
 class TestRunBzr(tests.TestCase):
 
+    result = 0
     out = ''
     err = ''
 
-    def _run_bzr_core(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
+    def _run_bzr_core(self, argv, encoding=None, stdin=None,
+                      stdout=None, stderr=None, working_dir=None):
         """Override _run_bzr_core to test how it is invoked by run_bzr.
 
         Attempts to run bzr from inside this class don't actually run it.
@@ -2299,17 +2300,18 @@ class TestRunBzr(tests.TestCase):
         only need to test that it passes the right parameters to run_bzr.
         """
         self.argv = list(argv)
-        self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
-        return self.retcode, self.out, self.err
+        stdout.write(self.out)
+        stderr.write(self.err)
+        return self.result
 
     def test_run_bzr_error(self):
         self.out = "It sure does!\n"
+        self.result = 34
         out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=34)
         self.assertEqual(['rocks'], self.argv)
-        self.assertEqual(34, self.retcode)
         self.assertEqual('It sure does!\n', out)
         self.assertEqual(out, self.out)
         self.assertEqual('', err)
@@ -2318,6 +2320,7 @@ class TestRunBzr(tests.TestCase):
     def test_run_bzr_error_regexes(self):
         self.out = b''
         self.err = b"bzr: ERROR: foobarbaz is not versioned"
+        self.result = 3
         out, err = self.run_bzr_error(
             [b"bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
@@ -2325,30 +2328,11 @@ class TestRunBzr(tests.TestCase):
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""
         self.run_bzr('foo bar')
-        self.assertEqual(None, self.encoding)
+        self.assertEqual(osutils.get_user_encoding(), self.encoding)
         self.assertEqual(['foo', 'bar'], self.argv)
 
         self.run_bzr('foo bar', encoding='baz')
         self.assertEqual('baz', self.encoding)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-    def test_retcode(self):
-        """Test that run_bzr passes retcode to _run_bzr_core"""
-        # Default is retcode == 0
-        self.run_bzr('foo bar')
-        self.assertEqual(0, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr('foo bar', retcode=1)
-        self.assertEqual(1, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr('foo bar', retcode=None)
-        self.assertEqual(None, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr(['foo', 'bar'], retcode=3)
-        self.assertEqual(3, self.retcode)
         self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_stdin(self):

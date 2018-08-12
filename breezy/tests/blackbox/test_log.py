@@ -814,7 +814,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         self.build_tree(['a'])
         brz('add a')
         brz(['commit', '-m', u'\u0422\u0435\u0441\u0442'])
-        stdout, stderr = self.run_bzr('log', encoding='cp866')
+        stdout, stderr = self.run_bzr_raw('log', encoding='cp866')
 
         message = stdout.splitlines()[-1]
 
@@ -824,8 +824,8 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         # in cp1251 encoding this is string '\xd2\xe5\xf1\xf2'
         # This test should check that output of log command
         # encoded to sys.stdout.encoding
-        test_in_cp866 = '\x92\xa5\xe1\xe2'
-        test_in_cp1251 = '\xd2\xe5\xf1\xf2'
+        test_in_cp866 = b'\x92\xa5\xe1\xe2'
+        test_in_cp1251 = b'\xd2\xe5\xf1\xf2'
         # Make sure the log string is encoded in cp866
         self.assertEqual(test_in_cp866, message[2:])
         # Make sure the cp1251 string is not found anywhere

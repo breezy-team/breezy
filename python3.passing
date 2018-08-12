@@ -1,5 +1,8 @@
 # This is the list of tests that are known to pass with Python3.
 # "make check-nodocs3" verifies that these pass.
+breezy.git.tests.test_blackbox.ShallowTests.test_log_shallow
+breezy.git.tests.test_blackbox.TestGitBlackBox.test_log
+breezy.git.tests.test_blackbox.TestGitBlackBox.test_log_verbose
 breezy.git.tests.test_blackbox.TestGitBlackBox.test_tags
 breezy.git.tests.test_fetch.LocalRepositoryFetchTests.test_non_ascii_characters
 breezy.plugins.bash_completion.tests.test_bashcomp.BlackboxTests.test_bash_completion
@@ -764,6 +767,7 @@ breezy.plugins.grep.test_grep.TestGrep.test_wtree_include_file_within_dir
 breezy.plugins.grep.test_grep.TestGrep.test_wtree_include_from_outside_dir
 breezy.plugins.grep.test_grep.TestGrep.test_wtree_null_option
 breezy.plugins.grep.test_grep.TestGrep.test_wtree_with_line_number
+breezy.plugins.grep.test_grep.TestNonAscii.test_unicode_only_file
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_no_ssh_keys
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_no_user
 breezy.plugins.launchpad.test_account.CheckAccountTests.test_check_lp_login_valid_user
@@ -1857,6 +1861,7 @@ breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_not_an_ancestor
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_wrong_order
 breezy.tests.blackbox.test_log.TestLogEncodings.test_log_handles_bad_encoding
 breezy.tests.blackbox.test_log.TestLogEncodings.test_log_handles_encoding
+breezy.tests.blackbox.test_log.TestLogEncodings.test_stdout_encoding
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_bad_message_re
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_change_incompatible_with_revision
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_change_nonexistent_dotted_revno
