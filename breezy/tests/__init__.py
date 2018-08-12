@@ -33,6 +33,7 @@ import functools
 from io import (
     BytesIO,
     StringIO,
+    TextIOWrapper,
     )
 import itertools
 import logging
@@ -1930,8 +1931,12 @@ class TestCase(testtools.TestCase):
         logger = logging.getLogger('')
         logger.addHandler(handler)
 
-        self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
-        self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
+        if PY3:
+            self._last_cmd_stdout = stdout
+            self._last_cmd_stderr = stderr
+        else:
+            self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
+            self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
 
         old_ui_factory = ui.ui_factory
         ui.ui_factory = ui_testing.TestUIFactory(
@@ -1958,6 +1963,74 @@ class TestCase(testtools.TestCase):
                 os.chdir(cwd)
 
         return result
+
+    def run_bzr_raw(self, args, retcode=0, stdin=None, encoding=None,
+                working_dir=None, error_regexes=[]):
+        """Invoke brz, as if it were run from the command line.
+
+        The argument list should not include the brz program name - the
+        first argument is normally the brz command.  Arguments may be
+        passed in three ways:
+
+        1- A list of strings, eg ["commit", "a"].  This is recommended
+        when the command contains whitespace or metacharacters, or
+        is built up at run time.
+
+        2- A single string, eg "add a".  This is the most convenient
+        for hardcoded commands.
+
+        This runs brz through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the brz application (rather than a unit test
+        or a functional test of the library.)
+
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+
+        :keyword stdin: A string to be used as stdin for the command.
+        :keyword retcode: The status code the command should return;
+            default 0.
+        :keyword working_dir: The directory to run the command in
+        :keyword error_regexes: A list of expected error messages.  If
+            specified they must be seen in the error output of the command.
+        """
+        if isinstance(args, string_types):
+            args = shlex.split(args)
+
+        if encoding is None:
+            encoding = osutils.get_user_encoding()
+
+        if sys.version_info[0] == 2:
+            wrapped_stdout = stdout = ui_testing.BytesIOWithEncoding()
+            wrapped_stderr = stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+        else:
+            stdout = BytesIO()
+            stderr = BytesIO()
+            wrapped_stdout = TextIOWrapper(stdout, encoding)
+            wrapped_stderr = TextIOWrapper(stderr, encoding)
+
+        result = self._run_bzr_core(
+                args, encoding=encoding, stdin=stdin, stdout=wrapped_stdout,
+                stderr=wrapped_stderr, working_dir=working_dir,
+                )
+
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%r', out)
+        if err:
+            self.log('errors:\n%r', err)
+        if retcode is not None:
+            self.assertEqual(retcode, result,
+                              message='Unexpected return code')
+        self.assertIsInstance(error_regexes, (list, tuple))
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
 
     def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
                 working_dir=None, error_regexes=[]):
