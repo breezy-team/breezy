@@ -1,6 +1,5 @@
 01_selftest_package
 03_spurious_test_failure
-04_racy_tcp_test
 13_spurious_test_failure
 14_test_server
 skip_readdir_on_python3

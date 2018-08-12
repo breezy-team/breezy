@@ -1,6 +1,7 @@
 breezy (3.0.0~bzr7065-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
+  * Drop patch 04_racy_tcp_test: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 12 Aug 2018 13:25:06 +0100
 
