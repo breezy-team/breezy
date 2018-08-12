@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7065-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7065-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Drop patch 04_racy_tcp_test: applied upstream.
