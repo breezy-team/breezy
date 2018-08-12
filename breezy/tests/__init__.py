@@ -1921,19 +1921,9 @@ class TestCase(testtools.TestCase):
         """Run bazaar command line, splitting up a string command line."""
         if isinstance(args, string_types):
             args = shlex.split(args)
-        return self._run_bzr_core(args, retcode=retcode,
-                encoding=encoding, stdin=stdin, working_dir=working_dir,
-                )
 
-    def _run_bzr_core(self, args, retcode, encoding, stdin,
-            working_dir):
-        # Clear chk_map page cache, because the contents are likely to mask
-        # locking errors.
-        chk_map.clear_cache()
         if encoding is None:
             encoding = osutils.get_user_encoding()
-
-        self.log('run brz: %r', args)
 
         if sys.version_info[0] == 2:
             stdout = ui_testing.BytesIOWithEncoding()
@@ -1943,6 +1933,30 @@ class TestCase(testtools.TestCase):
             stdout = ui_testing.StringIOWithEncoding()
             stderr = ui_testing.StringIOWithEncoding()
             stdout.encoding = stderr.encoding = encoding
+
+        result = self._run_bzr_core(args,
+                encoding=encoding, stdin=stdin, stdout=stdout,
+                stderr=stderr, working_dir=working_dir,
+                )
+
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%r', out)
+        if err:
+            self.log('errors:\n%r', err)
+        if retcode is not None:
+            self.assertEqual(retcode, result,
+                              message='Unexpected return code')
+        return result, out, err
+
+    def _run_bzr_core(self, args, encoding, stdin, stdout, stderr,
+            working_dir):
+        # Clear chk_map page cache, because the contents are likely to mask
+        # locking errors.
+        chk_map.clear_cache()
+
+        self.log('run brz: %r', args)
 
         # FIXME: don't call into logging here
         handler = trace.EncodedStreamHandler(
@@ -1977,16 +1991,7 @@ class TestCase(testtools.TestCase):
             if cwd is not None:
                 os.chdir(cwd)
 
-        out = stdout.getvalue()
-        err = stderr.getvalue()
-        if out:
-            self.log('output:\n%r', out)
-        if err:
-            self.log('errors:\n%r', err)
-        if retcode is not None:
-            self.assertEqual(retcode, result,
-                              message='Unexpected return code')
-        return result, out, err
+        return result
 
     def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
                 working_dir=None, error_regexes=[]):

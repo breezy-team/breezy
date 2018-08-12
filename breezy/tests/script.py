@@ -24,12 +24,14 @@ import errno
 import glob
 import os
 import shlex
+import sys
 import textwrap
 
 from .. import (
     osutils,
     tests,
     )
+from ..tests import ui_testing
 
 
 def split(s):
@@ -315,9 +317,21 @@ class ScriptRunner(object):
         return output
 
     def do_brz(self, test_case, input, args):
-        retcode, out, err = test_case._run_bzr_core(
-            args, retcode=None, encoding=None, stdin=input, working_dir=None)
-        return retcode, out, err
+        encoding = osutils.get_user_encoding()
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+
+        retcode = test_case._run_bzr_core(
+            args,  encoding=encoding, stdin=input, stdout=stdout,
+            stderr=stderr, working_dir=None)
+
+        return retcode, stdout.getvalue(), stderr.getvalue()
 
     def do_cat(self, test_case, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
