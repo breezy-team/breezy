@@ -1925,12 +1925,6 @@ class TestCase(testtools.TestCase):
 
         self.log('run brz: %r', args)
 
-        # FIXME: don't call into logging here
-        handler = trace.EncodedStreamHandler(
-            stderr, errors="replace", level=logging.INFO)
-        logger = logging.getLogger('')
-        logger.addHandler(handler)
-
         if PY3:
             self._last_cmd_stdout = stdout
             self._last_cmd_stderr = stderr
@@ -1957,7 +1951,6 @@ class TestCase(testtools.TestCase):
                     _mod_commands.run_bzr_catch_user_errors,
                     args)
         finally:
-            logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
             if cwd is not None:
                 os.chdir(cwd)
@@ -2007,16 +2000,31 @@ class TestCase(testtools.TestCase):
             wrapped_stdout = stdout = ui_testing.BytesIOWithEncoding()
             wrapped_stderr = stderr = ui_testing.BytesIOWithEncoding()
             stdout.encoding = stderr.encoding = encoding
+
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
         else:
             stdout = BytesIO()
             stderr = BytesIO()
             wrapped_stdout = TextIOWrapper(stdout, encoding)
             wrapped_stderr = TextIOWrapper(stderr, encoding)
+            handler = logging.StreamHandler(wrapped_stderr)
+        handler.setLevel(logging.INFO)
 
-        result = self._run_bzr_core(
-                args, encoding=encoding, stdin=stdin, stdout=wrapped_stdout,
-                stderr=wrapped_stderr, working_dir=working_dir,
-                )
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            result = self._run_bzr_core(
+                    args, encoding=encoding, stdin=stdin, stdout=wrapped_stdout,
+                    stderr=wrapped_stderr, working_dir=working_dir,
+                    )
+        finally:
+            logger.removeHandler(handler)
+
+        if PY3:
+            wrapped_stdout.flush()
+            wrapped_stderr.flush()
 
         out = stdout.getvalue()
         err = stderr.getvalue()
@@ -2075,15 +2083,26 @@ class TestCase(testtools.TestCase):
             stdout = ui_testing.BytesIOWithEncoding()
             stderr = ui_testing.BytesIOWithEncoding()
             stdout.encoding = stderr.encoding = encoding
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
         else:
             stdout = ui_testing.StringIOWithEncoding()
             stderr = ui_testing.StringIOWithEncoding()
             stdout.encoding = stderr.encoding = encoding
+            handler = logging.StreamHandler(stream=stderr)
+        handler.setLevel(logging.INFO)
 
-        result = self._run_bzr_core(args,
-                encoding=encoding, stdin=stdin, stdout=stdout,
-                stderr=stderr, working_dir=working_dir,
-                )
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+
+        try:
+            result = self._run_bzr_core(args,
+                    encoding=encoding, stdin=stdin, stdout=stdout,
+                    stderr=stderr, working_dir=working_dir,
+                    )
+        finally:
+            logger.removeHandler(handler)
 
         out = stdout.getvalue()
         err = stderr.getvalue()

@@ -337,10 +337,10 @@ class TestVfsHas(tests.TestCase):
         client = FakeClient('/')
         client.add_success_response(b'yes',)
         transport = RemoteTransport('bzr://localhost/', _client=client)
-        filename = u'/hell\u00d8'.encode('utf-8')
+        filename = u'/hell\u00d8'
         result = transport.has(filename)
         self.assertEqual(
-            [('call', b'has', (filename,))],
+            [('call', b'has', (filename.encode('utf-8'),))],
             client._calls)
         self.assertTrue(result)
 

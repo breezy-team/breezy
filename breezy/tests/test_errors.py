@@ -511,12 +511,15 @@ class TestErrorFormatting(tests.TestCase):
     def test_always_str(self):
         e = PassThroughError(u'\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
-        # In Python str(foo) *must* return a real byte string
+        # In Python 2 str(foo) *must* return a real byte string
         # not a Unicode string. The following line would raise a
         # Unicode error, because it tries to call str() on the string
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
-        self.assertEqual('Pass through \xc2\xb5 and bar', s)
+        if PY3:
+            self.assertEqual('Pass through \xb5 and bar', s)
+        else:
+            self.assertEqual('Pass through \xc2\xb5 and bar', s)
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')

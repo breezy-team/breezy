@@ -1202,8 +1202,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.build_tree(tree)
 
         # rename the 1file to a latin-1 filename
-        os.rename("./1file", "\xe8file")
-        if "\xe8file" not in os.listdir("."):
+        os.rename(b"./1file", b"\xe8file")
+        if b"\xe8file" not in os.listdir("."):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
@@ -1211,7 +1211,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs('.'):
+            for dirdetail, dirblock in osutils.walkdirs(b'.'):
                 pass
 
         self.assertRaises(errors.BadFilenameEncoding, attempt)
@@ -1245,11 +1245,15 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         result = []
         found_bzrdir = False
-        for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
-            if len(dirblock) and dirblock[0][1] == '.bzr':
+        for dirdetail, dirblock in osutils._walkdirs_utf8(b'.'):
+            if len(dirblock) and dirblock[0][1] == b'.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
+            dirdetail = (dirdetail[0].decode('utf-8'), dirdetail[1])
+            dirblock = [
+                    (entry[0].decode('utf-8'), entry[1].decode('utf-8'), entry[2])
+                    for entry in dirblock]
             result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
@@ -1720,7 +1724,10 @@ class TestSetUnsetEnv(tests.TestCase):
                 % (osutils.get_user_encoding(),))
 
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
-        self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        if PY3:
+            self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        else:
+            self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unset(self):
         """Test that passing None will remove the env var"""
@@ -2150,11 +2157,16 @@ class TestPathFromEnviron(tests.TestCase):
         self.assertEqual(u'/home/\xa7test',
             osutils._posix_path_from_environ('BRZ_TEST_PATH'))
         osutils._fs_enc = "iso8859-5"
-        self.assertEqual(u'/home/\u0407test',
-            osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-        osutils._fs_enc = "utf-8"
-        self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
+        if PY3:
+            # In Python 3, os.environ returns unicode.
+            self.assertEqual(u'/home/\xa7test',
+                osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+        else:
+            self.assertEqual(u'/home/\u0407test',
+                osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+            osutils._fs_enc = "utf-8"
+            self.assertRaises(errors.BadFilenameEncoding,
+                osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
 
 
 class TestGetHomeDir(tests.TestCase):
@@ -2180,10 +2192,14 @@ class TestGetHomeDir(tests.TestCase):
         self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
         self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
         osutils._fs_enc = "iso8859-5"
-        self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
-        osutils._fs_enc = "utf-8"
-        self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_get_home_dir)
+        if PY3:
+            # In python 3, os.environ returns unicode
+            self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        else:
+            self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
+            osutils._fs_enc = "utf-8"
+            self.assertRaises(errors.BadFilenameEncoding,
+                osutils._posix_get_home_dir)
 
 
 class TestGetuserUnicode(tests.TestCase):
@@ -2212,7 +2228,10 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        self.overrideEnv(self.envvar_to_override(), encoded_username)
+        if PY3:
+            self.overrideEnv(self.envvar_to_override(), uni_username)
+        else:
+            self.overrideEnv(self.envvar_to_override(), encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
 
 
