@@ -1778,11 +1778,6 @@ def _get_test(name):
     return ExampleTests(name)
 
 
-def _get_skip_reasons(result):
-    # GZ 2017-06-06: Newer testtools doesn't have this, uses detail instead
-    return result.skip_reasons
-
-
 class TestTestCaseLogDetails(tests.TestCase):
 
     def _run_test(self, test_name):
@@ -2265,13 +2260,6 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_unexpected_success')
         self.assertContainsRe(content, '(?m)^log$')
         self.assertContainsRe(content, 'test with unexpected success')
-        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
-        #                success, if a min version check is added remove this
-        from subunit import TestProtocolClient as _Client
-        if _Client.addUnexpectedSuccess.__func__ is _Client.addSuccess.__func__:
-            self.expectFailure('subunit treats "unexpectedSuccess"'
-                               ' as a plain success',
-                self.assertEqual, 1, len(result.unexpectedSuccesses))
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
