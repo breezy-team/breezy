@@ -1853,6 +1853,9 @@ breezy.tests.blackbox.test_log.MainlineGhostTests.test_log_range_open_end
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_no_start_rev_id_with_end_rev_id_being_a_merge
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_not_an_ancestor
 breezy.tests.blackbox.test_log.Test_GenerateAllRevisions.test_wrong_order
+breezy.tests.blackbox.test_log.TestLogDiff.test_log_diff_file1
+breezy.tests.blackbox.test_log.TestLogDiff.test_log_diff_file2
+breezy.tests.blackbox.test_log.TestLogDiff.test_log_diff_with_merges
 breezy.tests.blackbox.test_log.TestLogEncodings.test_log_handles_bad_encoding
 breezy.tests.blackbox.test_log.TestLogEncodings.test_log_handles_encoding
 breezy.tests.blackbox.test_log.TestLogErrors.test_log_bad_message_re
