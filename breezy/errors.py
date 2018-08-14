@@ -560,16 +560,6 @@ class BranchExistsWithoutWorkingTree(PathError):
 (use brz checkout if you wish to build a working tree): "%(path)s"'
 
 
-class AtomicFileAlreadyClosed(PathError):
-
-    _fmt = ('"%(function)s" called on an AtomicFile after it was closed:'
-            ' "%(path)s"')
-
-    def __init__(self, path, function):
-        PathError.__init__(self, path=path, extra=None)
-        self.function = function
-
-
 class InaccessibleParent(PathError):
 
     _fmt = ('Parent not accessible given base "%(base)s" and'
