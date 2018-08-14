@@ -29,6 +29,7 @@ from .. import (
     urlutils,
     )
 from ..sixish import (
+    PY3,
     text_type,
     )
 

@@ -1804,7 +1804,7 @@ class TestTestCaseLogDetails(tests.TestCase):
 
     def test_skip_has_no_log(self):
         result = self._run_test('test_skip')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
@@ -1815,7 +1815,7 @@ class TestTestCaseLogDetails(tests.TestCase):
         # testtools doesn't know about addNotSupported, so it just gets
         # considered as a skip
         result = self._run_test('test_missing_feature')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({str(missing_feature)}, set(reasons))
         skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
@@ -2226,7 +2226,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_skip')
         self.assertNotContainsRe(content, '(?m)^log$')
         self.assertNotContainsRe(content, 'this test will be skipped')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
@@ -2238,7 +2238,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_missing_feature')
         self.assertNotContainsRe(content, '(?m)^log$')
         self.assertNotContainsRe(content, 'missing the feature')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'_MissingFeature\n'}, set(reasons))
         skips = reasons['_MissingFeature\n']
         self.assertEqual(1, len(skips))
@@ -2306,11 +2306,11 @@ class TestRunBzr(tests.TestCase):
         self.assertEqual(err, self.err)
 
     def test_run_bzr_error_regexes(self):
-        self.out = b''
-        self.err = b"bzr: ERROR: foobarbaz is not versioned"
+        self.out = ''
+        self.err = "bzr: ERROR: foobarbaz is not versioned"
         self.result = 3
         out, err = self.run_bzr_error(
-            [b"bzr: ERROR: foobarbaz is not versioned"],
+            ["bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
 
     def test_encoding(self):
