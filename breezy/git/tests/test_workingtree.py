@@ -76,6 +76,17 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.tree.revert(['a'])
         self.assertFalse(self.tree.is_versioned('a'))
 
+    def test_is_ignored_directory(self):
+        self.assertFalse(self.tree.is_ignored('a'))
+        self.build_tree(['a/'])
+        self.assertFalse(self.tree.is_ignored('a'))
+        self.build_tree_contents([('.gitignore', 'a\n')])
+        self.tree._ignoremanager = None
+        self.assertTrue(self.tree.is_ignored('a'))
+        self.build_tree_contents([('.gitignore', 'a/\n')])
+        self.tree._ignoremanager = None
+        self.assertTrue(self.tree.is_ignored('a'))
+
 
 class TreeDeltaFromGitChangesTests(TestCase):
 
