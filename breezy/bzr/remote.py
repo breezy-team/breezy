@@ -3941,8 +3941,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if medium._is_remote_before((1, 15)):
             return self._vfs_set_parent_location(url)
         try:
-            call_url = url or ''
-            if not isinstance(call_url, str):
+            call_url = url or u''
+            if not isinstance(call_url, text_type):
                 raise AssertionError('url must be a str or None (%s)' % url)
             response = self._call(b'Branch.set_parent_location',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
