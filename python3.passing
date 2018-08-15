@@ -28221,6 +28221,7 @@ breezy.tests.test_selftest.TestRunner.test_skipped_test
 breezy.tests.test_selftest.TestRunner.test_startTestRun
 breezy.tests.test_selftest.TestRunner.test_stopTestRun
 breezy.tests.test_selftest.TestRunner.test_unexpected_success_bad
+breezy.tests.test_selftest.TestRunner.test_unicode_test_output_on_ascii_stream
 breezy.tests.test_selftest.TestRunner.test_unsupported_features_listed
 breezy.tests.test_selftest.TestRunner.test_verbose_test_count
 breezy.tests.test_selftest.TestRunSuite.test_runner_class

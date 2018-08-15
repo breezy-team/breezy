@@ -1263,7 +1263,7 @@ class TestRunner(tests.TestCase):
                 self.fail("Now print that log!")
         if PY3:
             bio = BytesIO()
-            out = TextIOWrapper(bio, 'utf-8')
+            out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
         else:
             bio = out = StringIO()
         self.overrideAttr(osutils, "get_terminal_encoding",
