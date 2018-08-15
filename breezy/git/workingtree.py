@@ -146,7 +146,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         return lock.LogicalLockResult(self.unlock)
 
     def _lock_write_tree(self):
-        # TODO(jelmer): Actually create index.lock
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -205,8 +204,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     self._flush(self._index_file)
                     self._index_file.close()
                 else:
-                    # Somebody else already wrote the index file
-                    # by calling .flush()
+                    # Something else already triggered a write of the index
+                    # file by calling .flush()
                     self._index_file.abort()
                 self._index_file = None
             self._lock_mode = None
