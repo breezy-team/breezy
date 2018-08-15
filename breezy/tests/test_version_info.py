@@ -329,7 +329,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['', 'a', 'c', 'd'],
                           sorted(tvi.file_revisions.keys()))
-        self.assertEqual('r4', tvi.file_revisions['a'])
+        self.assertEqual(b'r4', tvi.file_revisions['a'])
         self.assertEqual('unversioned', tvi.file_revisions['c'])
         self.assertEqual('removed', tvi.file_revisions['d'])
 

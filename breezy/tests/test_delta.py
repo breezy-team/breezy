@@ -22,6 +22,7 @@ from .. import (
     tests,
     )
 from ..sixish import (
+    PY3,
     StringIO,
     )
 
@@ -259,9 +260,15 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         other_delta.kind_changed = [('filename', b'file-id', 'file',
                                      'directory')]
         self.assertEqual(other_delta, delta)
-        self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
-            " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
-            " modified=[], unchanged=[], unversioned=[])", repr(delta))
+        if PY3:
+            self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
+                " kind_changed=[('filename', b'file-id', 'file', 'directory')],"
+                " modified=[], unchanged=[], unversioned=[])", repr(delta))
+        else:
+            self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
+                " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
+                " modified=[], unchanged=[], unversioned=[])", repr(delta))
+
         self.assertEqual('K  filename (file => directory) file-id\n',
                          self.show_string(delta, show_ids=True,
                          short_status=True))

@@ -147,15 +147,15 @@ class TestMergeImplementation(TestCaseWithTransport):
         if self.merge_type is _mod_merge.LCAMerger:
             self.expectFailure("lca merge doesn't track deleted lines",
                 self.assertFileEqual,
-                    b'a\n'
-                    b'<<<<<<< TREE\n'
-                    b'b2\n'
-                    b'=======\n'
-                    b'>>>>>>> MERGE-SOURCE\n'
-                    b'c\n'
-                    b'd\n'
-                    b'X\n'
-                    b'e\n', 'test/foo')
+                    'a\n'
+                    '<<<<<<< TREE\n'
+                    'b2\n'
+                    '=======\n'
+                    '>>>>>>> MERGE-SOURCE\n'
+                    'c\n'
+                    'd\n'
+                    'X\n'
+                    'e\n', 'test/foo')
         else:
             self.assertFileEqual(
                 b'a\n'

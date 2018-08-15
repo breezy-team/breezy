@@ -441,7 +441,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                 if show_more is not None:
                     show_more(item)
                 if show_ids:
-                    to_file.write(' %s' % file_id)
+                    to_file.write(' %s' % file_id.decode('utf-8'))
                 to_file.write('\n')
 
     show_list(delta.removed, 'removed', 'D')

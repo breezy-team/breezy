@@ -17,6 +17,7 @@
 """Whitebox tests for annotate functionality."""
 
 import codecs
+from io import BytesIO
 
 from .. import (
     annotate,
@@ -422,11 +423,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
         annotate.annotate_file_tree(revtree_1, 'a',
             to_file=to_file, branch=tree1.branch)
 
-        sio = StringIO()
+        sio = BytesIO()
         to_file = codecs.getwriter('ascii')(sio, 'replace')
         annotate.annotate_file_tree(revtree_2, 'b',
             to_file=to_file, branch=tree1.branch)
-        self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
+        self.assertEqualDiff(b'2   p?rez   | bye\n', sio.getvalue())
 
         # test now with unicode file-like
         to_file = StringIOWithEncoding()
