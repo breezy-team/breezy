@@ -350,7 +350,7 @@ class BundleInfo(object):
 
         def do_patch(path, lines, encoding):
             if encoding == 'base64':
-                patch = base64.decodebytes(b''.join(lines))
+                patch = base64.b64decode(b''.join(lines))
             elif encoding is None:
                 patch =  b''.join(lines)
             else:
