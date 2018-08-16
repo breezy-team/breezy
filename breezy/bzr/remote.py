@@ -3942,11 +3942,11 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._vfs_set_parent_location(url)
         try:
             call_url = url or u''
-            if not isinstance(call_url, text_type):
-                raise AssertionError('url must be a str or None (%s)' % url)
+            if isinstance(call_url, text_type):
+                call_url = call_url.encode('utf-8')
             response = self._call(b'Branch.set_parent_location',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
-                call_url.encode('utf-8'))
+                call_url)
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 15))
             return self._vfs_set_parent_location(url)
