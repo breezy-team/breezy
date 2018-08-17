@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7067-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7067-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Simplify build dependencies for paramiko; also fixes broken
