@@ -34,6 +34,15 @@ class ProposerUnavailable(errors.BzrError):
         self.branch = branch
 
 
+class MergeProposalExists(errors.BzrError):
+
+    _fmt = "A merge proposal already exists: %(url)s."
+
+    def __init__(self, url):
+        errors.BzrError.__init__(self)
+        self.url = url
+
+
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
@@ -60,10 +69,25 @@ class MergeProposer(object):
 
     @classmethod
     def is_compatible(cls, target_branch, source_branch):
-        raise NotImplementedError(self.is_compatible)
+        raise NotImplementedError(cls.is_compatible)
 
-    def create_proposal(self):
+    def get_initial_body(self):
+        """Get a body for the proposal for the user to modify.
+
+        :return: a str or None.
+        """
+        raise NotImplementedError(self.get_initial_body)
+
+    def get_infotext(self):
+        """Determine the initial comment for the merge proposal.
+        """
+        raise NotImplementedError(self.get_infotext)
+
+    def create_proposal(self, description):
         """Create a proposal to merge a branch for merging.
+
+        :param description: Description for the merge proposal
+        :return: URL for the merge proposal
         """
         raise NotImplementedError(self.create_proposal)
 
@@ -84,3 +108,6 @@ def get_proposer(branch, target_branch):
 
 
 proposers = registry.Registry()
+proposers.register_lazy(
+        "launchpad", "breezy.plugins.propose.launchpad",
+        "LaunchpadMergeProposer")

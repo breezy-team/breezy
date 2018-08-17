@@ -16,10 +16,13 @@
 
 """Propose command implementations."""
 
+import webbrowser
+
 from ... import (
     branch as _mod_branch,
     controldir,
     errors,
+    msgeditor,
     )
 from ...i18n import gettext
 from ...commands import Command
@@ -51,4 +54,12 @@ class cmd_propose_merge(Command):
         else:
             target = _mod_branch.Branch.open(submit_branch)
         proposer = _mod_propose.get_proposer(branch, target)
-        proposer.create_proposal()
+        body = proposer.get_initial_body()
+        info = proposer.get_infotext()
+        description = msgeditor.edit_commit_message(info, start_message=body)
+        try:
+            proposal_url = proposer.create_proposal(description=description)
+        except _mod_propose.MergeProposalExists as e:
+            raise errors.BzrCommandError(gettext(
+                'There is already a branch merge proposal: %s') % e.url)
+        webbrowser.open(proposal_url)
