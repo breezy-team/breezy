@@ -1294,6 +1294,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         kind = osutils.file_kind(self.abspath(relpath))
         if kind == 'directory':
             (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
+            if index is None:
+                return kind
             try:
                 mode = index[index_path].mode
             except KeyError:
