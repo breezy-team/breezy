@@ -3,5 +3,4 @@
 13_spurious_test_failure
 14_test_server
 skip_readdir_on_python3
-setup_py_description
 exclude_broken
