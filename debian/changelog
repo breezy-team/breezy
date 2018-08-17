@@ -3,6 +3,7 @@ breezy (3.0.0~bzr7067-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
   * Simplify build dependencies for paramiko; also fixes broken
     alternative dependency for python3-paramiko. Closes #906446
+  * Bump minimum dulwich version to 0.19.6.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Aug 2018 18:29:11 +0100
 

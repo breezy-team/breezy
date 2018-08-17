@@ -13,7 +13,7 @@ Build-Depends: bash-completion,
                python-all-dbg (>= 2.6.6-3),
                python-all-dev (>= 2.6.6-3),
                python-configobj (>= 4.7.2+ds-2),
-               python-dulwich (>= 0.19.1),
+               python-dulwich (>= 0.19.6),
                python-docutils,
                python-fastimport (>= 0.9.8),
                python-lzma-dbg [!m68k !powerpcspe !sh4],
@@ -27,7 +27,7 @@ Build-Depends: bash-completion,
                python3-all-dbg (>= 2.6.6-3),
                python3-all-dev (>= 2.6.6-3),
                python3-configobj (>= 4.7.2+ds-2),
-               python3-dulwich (>= 0.19.1),
+               python3-dulwich (>= 0.19.6),
                python3-docutils,
                python3-fastimport (>= 0.9.8),
                python3-paramiko,
@@ -44,7 +44,7 @@ Homepage: https://www.breezy-vcs.org/
 XS-Testsuite: autopkgtest
 
 Package: brz
-Recommends: python-gpg, python-dulwich (>= 0.19.1)
+Recommends: python-gpg, python-dulwich (>= 0.19.6)
 Architecture: all
 Depends: python-breezy (<= ${source:Version}.1~),
          python-breezy (>= ${source:Version}),
@@ -82,7 +82,7 @@ Depends: python-configobj,
 Recommends: ca-certificates,
             python-launchpadlib,
             ssh-client | python-paramiko,
-            python-dulwich (>= 0.19.1)
+            python-dulwich (>= 0.19.6)
 Conflicts: python-paramiko (<< 1.14.1)
 Suggests: python-breezy-dbg,
           python-breezy.tests,
@@ -111,7 +111,7 @@ Depends: python3-configobj,
 Recommends: ca-certificates,
             python3-launchpadlib,
             ssh-client | python3-paramiko,
-            python3-dulwich (>= 0.19.1)
+            python3-dulwich (>= 0.19.6)
 Conflicts: python3-paramiko (<< 1.14.1)
 Suggests: python3-breezy-dbg,
           python3-breezy.tests,
