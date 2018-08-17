@@ -1,0 +1,16 @@
+Way to propose branches for merging
+
+Options:
+ * Source branch (and their public copy)
+ * Target branch
+ * Proposed commit message
+ * Merge proposal text
+ * Suggested reviewers
+
+How to find the proposer class?
+ * is_compatible function for target branch
+
+Later, or never:
+ * way to list proposals
+ * way to approve proposals
+ * way to comment on proposals
