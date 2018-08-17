@@ -36,8 +36,6 @@ Build-Depends: bash-completion,
                python3-testtools (>= 0.9.5~)
 Build-Conflicts: python-pyftpdlib
 Standards-Version: 4.1.1
-X-Python-Version: >= 2.7
-X-Python3-Version: >= 3.5
 Vcs-Bzr: https://code.breezy-vcs.org/breezy/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
 Homepage: https://www.breezy-vcs.org/
