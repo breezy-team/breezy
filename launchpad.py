@@ -16,7 +16,11 @@
 
 from __future__ import absolute_import
 
-from .propose import MergeProposer, MergeProposalExists
+from .propose import (
+    MergeProposal,
+    MergeProposer,
+    MergeProposalExists,
+    )
 
 from ... import (
     errors,
@@ -199,4 +203,4 @@ class LaunchpadMergeProposer(MergeProposer):
             self._call_webservice(
                 self.source_branch.lp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
-        return lp_api.canonical_url(mp)
+        return MergeProposal(lp_api.canonical_url(mp))

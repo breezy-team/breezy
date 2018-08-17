@@ -58,8 +58,8 @@ class cmd_propose_merge(Command):
         info = proposer.get_infotext()
         description = msgeditor.edit_commit_message(info, start_message=body)
         try:
-            proposal_url = proposer.create_proposal(description=description)
+            proposal = proposer.create_proposal(description=description)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
-        webbrowser.open(proposal_url)
+        webbrowser.open(proposal.url)

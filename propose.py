@@ -54,6 +54,16 @@ class ProposeMergeHooks(hooks.Hooks):
             "Return an initial body for the merge proposal message.", (3, 0))
 
 
+class MergeProposal(object):
+    """A merge proposal.
+
+    :ivar url: URL for the merge proposal
+    """
+
+    def __init__(self, url=None):
+        self.url = url
+
+
 class MergeProposer(object):
     """Merge proposal creator.
 
@@ -87,7 +97,7 @@ class MergeProposer(object):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
-        :return: URL for the merge proposal
+        :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
 
