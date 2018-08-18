@@ -1176,7 +1176,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEqual(b'./test-unreadable', e.filename)
+        self.assertEqual('./test-unreadable', osutils.safe_unicode(e.filename))
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\\./test-unreadable")
@@ -1249,7 +1249,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
-            dirdetail = (dirdetail[0].decode('utf-8'), dirdetail[1].decode('utf-8'))
+            dirdetail = (dirdetail[0].decode('utf-8'),
+                         osutils.safe_unicode(dirdetail[1]))
             result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
