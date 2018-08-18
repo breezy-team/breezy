@@ -36,7 +36,7 @@ from breezy.plugins.launchpad import (
 """)
 
 
-# TODO(jelmer): Make launcha
+# TODO(jelmer): Make selection of launchpad staging a configuration option.
 
 
 class LaunchpadMergeProposer(MergeProposer):
@@ -85,7 +85,7 @@ class LaunchpadMergeProposer(MergeProposer):
     def is_compatible(cls, target_branch, source_branch):
         (scheme, user, password, host, port, path) = urlutils.parse_url(
             target_branch.user_url)
-        return host in ('bazaar.launchpad.net')
+        return host in ('bazaar.launchpad.net', 'bazaar.staging.launchpad.net')
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""

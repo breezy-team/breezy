@@ -121,3 +121,6 @@ proposers = registry.Registry()
 proposers.register_lazy(
         "launchpad", "breezy.plugins.propose.launchpad",
         "LaunchpadMergeProposer")
+proposers.register_lazy(
+        "github", "breezy.plugins.propose.github",
+        "GitHubMergeProposer")

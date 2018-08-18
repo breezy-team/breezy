@@ -5,6 +5,9 @@ How to find the proposer class?
  * user can specify a proposer ("email-bundle", "launchpad", "github", ...) on
    the command-line or in config of the target branch
 
+Need to find a way to automatically push up the local branch to the remote
+system.
+
 Options:
  * Source branch (and their public copy)
  * Target branch
