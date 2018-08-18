@@ -130,7 +130,8 @@ cdef object _split_first_line_unicode(Py_UNICODE *line, int len,
 def _read_stanza_utf8(line_iter):
     cdef char *c_line
     cdef Py_ssize_t c_len
-    cdef char *accum_value, *new_accum_value
+    cdef char *accum_value
+    cdef char *new_accum_value
     cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
@@ -185,7 +186,8 @@ def _read_stanza_utf8(line_iter):
 def _read_stanza_unicode(unicode_iter):
     cdef Py_UNICODE *c_line
     cdef int c_len
-    cdef Py_UNICODE *accum_value, *new_accum_value
+    cdef Py_UNICODE *accum_value
+    cdef Py_UNICODE *new_accum_value
     cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None

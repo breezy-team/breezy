@@ -19,6 +19,8 @@
 import sys
 
 from .. import tests
+from ..sixish import PY3
+
 
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
@@ -90,7 +92,11 @@ class TestBencodeDecode(tests.TestCase):
         self._check([[b'Alice', b'Bob'], [2, 3]], b'll5:Alice3:Bobeli2ei3eee')
 
     def test_list_deepnested(self):
-        self._run_check_error(RuntimeError, (b"l" * 10000) + (b"e" * 10000))
+        serialized = (b"l" * 10000) + (b"e" * 10000)
+        if PY3:
+            self._run_check_error(RecursionError, serialized)
+        else:
+            self._run_check_error(RuntimeError, serialized)
 
     def test_malformed_list(self):
         self._run_check_error(ValueError, b'l')
@@ -113,8 +119,11 @@ class TestBencodeDecode(tests.TestCase):
         # _bencode_py.  This is harmless, so we temporarily override stderr to
         # avoid distracting noise in the test output.
         self.overrideAttr(sys, 'stderr', self._log_file)
-        self._run_check_error(
-            RuntimeError, (b"d0:" * 10000) + b'i1e' + (b"e" * 10000))
+        serialized = (b"d0:" * 10000) + b'i1e' + (b"e" * 10000)
+        if PY3:
+            self._run_check_error(RecursionError, serialized)
+        else:
+            self._run_check_error(RuntimeError, serialized)
 
     def test_malformed_dict(self):
         self._run_check_error(ValueError, b'd')

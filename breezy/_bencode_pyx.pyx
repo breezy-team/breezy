@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+from python_version cimport PY_MAJOR_VERSION
+
 from cpython.bytes cimport (
     PyBytes_CheckExact,
     PyBytes_FromStringAndSize,
@@ -115,7 +117,10 @@ cdef class Decoder:
             raise ValueError('stream underflow')
 
         if Py_EnterRecursiveCall("_decode_object"):
-            raise RuntimeError("too deeply nested")
+            if PY_MAJOR_VERSION < 3:
+                raise RuntimeError("too deeply nested")
+            else:
+                raise RecursionError("too deeply nested")
         try:
             ch = self.tail[0]
             if c'0' <= ch <= c'9':
@@ -380,7 +385,10 @@ cdef class Encoder:
 
     def process(self, object x):
         if Py_EnterRecursiveCall("encode"):
-            raise RuntimeError("too deeply nested")
+            if PY_MAJOR_VERSION < 3:
+                raise RuntimeError("too deeply nested")
+            else:
+                raise RecursionError("too deeply nested")
         try:
             if PyBytes_CheckExact(x):
                 self._encode_string(x)

@@ -80,10 +80,10 @@ cdef extern from 'fcntl.h':
 
 cdef extern from 'Python.h':
     int PyErr_CheckSignals() except -1
-    char * PyString_AS_STRING(object)
+    char * PyBytes_AS_STRING(object)
     ctypedef struct PyObject:
         pass
-    Py_ssize_t PyString_Size(object s)
+    Py_ssize_t PyBytes_Size(object s)
     object PyList_GetItem(object lst, Py_ssize_t index)
     void *PyList_GetItem_object_void "PyList_GET_ITEM" (object lst, int index)
     int PyList_Append(object lst, object item) except -1
@@ -92,7 +92,7 @@ cdef extern from 'Python.h':
     int PyTuple_SetItem_obj "PyTuple_SetItem" (void *, Py_ssize_t pos, PyObject * item) except -1
     void Py_INCREF(object o)
     void Py_DECREF(object o)
-    void PyString_Concat(PyObject **string, object newpart)
+    void PyBytes_Concat(PyObject **string, object newpart)
 
 
 cdef extern from 'dirent.h':
@@ -220,11 +220,11 @@ cdef class UTF8DirReader:
         cdef object name
         cdef PyObject * new_val_obj
 
-        if PyString_Size(prefix):
-            relprefix = prefix + '/'
+        if PyBytes_Size(prefix):
+            relprefix = prefix + b'/'
         else:
-            relprefix = ''
-        top_slash = top + '/'
+            relprefix = b''
+        top_slash = top + b'/'
 
         # read_dir supplies in should-stat order.
         # for _, name in sorted(_listdir(top)):
@@ -240,9 +240,9 @@ cdef class UTF8DirReader:
             # direct concat - faster than operator +.
             new_val_obj = <PyObject *>relprefix
             Py_INCREF(relprefix)
-            PyString_Concat(&new_val_obj, name)
+            PyBytes_Concat(&new_val_obj, name)
             if NULL == new_val_obj:
-                # PyString_Concat will have setup an exception, but how to get
+                # PyBytes_Concat will have setup an exception, but how to get
                 # at it?
                 raise Exception("failed to strcat")
             PyTuple_SetItem_obj(atuple, 0, new_val_obj)
@@ -256,9 +256,9 @@ cdef class UTF8DirReader:
             # direct concat - faster than operator +.
             new_val_obj = <PyObject *>top_slash
             Py_INCREF(top_slash)
-            PyString_Concat(&new_val_obj, name)
+            PyBytes_Concat(&new_val_obj, name)
             if NULL == new_val_obj:
-                # PyString_Concat will have setup an exception, but how to get
+                # PyBytes_Concat will have setup an exception, but how to get
                 # at it?
                 raise Exception("failed to strcat")
             PyTuple_SetItem_obj(atuple, 4, new_val_obj)
