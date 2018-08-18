@@ -93,10 +93,11 @@ class MergeProposer(object):
         """
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description):
+    def create_proposal(self, description, reviewers=None):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
+        :param reviewers: Optional list of people to ask reviews from
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -124,3 +125,6 @@ proposers.register_lazy(
 proposers.register_lazy(
         "github", "breezy.plugins.propose.github",
         "GitHubMergeProposer")
+proposers.register_lazy(
+        "gitlab", "breezy.plugins.propose.gitlab",
+        "GitlabMergeProposer")

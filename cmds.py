@@ -26,6 +26,7 @@ from ... import (
     )
 from ...i18n import gettext
 from ...commands import Command
+from ...option import RegistryOption
 from . import (
     propose as _mod_propose,
     )
@@ -39,26 +40,40 @@ class cmd_propose_merge(Command):
     proposal depends on the submit branch.
     """
 
-    takes_options = ['directory']
+    takes_options = ['directory',
+            RegistryOption(
+                'mechanism',
+                help='Use the specified proposal mechanism.',
+                lazy_registry=('breezy.plugins.propose.propose', 'proposers')),
+            ListOption('reviewers', short_name='R', type=text_type,
+                help='Requested reviewers.')]
+            ]
     takes_args = ['submit_branch?']
 
     aliases = ['propose']
 
-    def run(self, submit_branch=None, directory='.'):
+    def run(self, submit_branch=None, directory='.', mechanism=None, reviewers=None):
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory)
+        public_branch = branch.get_public_branch()
+        if public_branch:
+            branch = _mod_branch.Branch.open(public_branch)
         if submit_branch is None:
             submit_branch = branch.get_submit_branch()
         if submit_branch is None:
             raise errors.BzrCommandError(gettext("No location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)
-        proposer = _mod_propose.get_proposer(branch, target)
+        if mechanism is None:
+            proposer = _mod_propose.get_proposer(branch, target)
+        else:
+            proposer = mechanism(branch, target)
         body = proposer.get_initial_body()
         info = proposer.get_infotext()
         description = msgeditor.edit_commit_message(info, start_message=body)
         try:
-            proposal = proposer.create_proposal(description=description)
+            proposal = proposer.create_proposal(
+                description=description, reviewers=reviewers)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
