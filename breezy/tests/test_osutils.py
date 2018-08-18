@@ -1210,7 +1210,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs('.'):
+            for dirdetail, dirblock in osutils.walkdirs(b'.'):
                 pass
 
         self.assertRaises(errors.BadFilenameEncoding, attempt)
@@ -1244,13 +1244,15 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         result = []
         found_bzrdir = False
-        for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
-            if len(dirblock) and dirblock[0][1] == '.bzr':
+        for dirdetail, dirblock in osutils._walkdirs_utf8(b'.'):
+            if len(dirblock) and dirblock[0][1] == b'.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
-            dirdetail = (dirdetail[0].decode('utf-8'),
-                         osutils.safe_unicode(dirdetail[1]))
+            dirdetail = (dirdetail[0].decode('utf-8'), osutils.safe_unicode(dirdetail[1]))
+            dirblock = [
+                    (entry[0].decode('utf-8'), entry[1].decode('utf-8'), entry[2])
+                    for entry in dirblock]
             result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
