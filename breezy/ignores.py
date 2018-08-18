@@ -189,7 +189,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     # read in the existing ignores set
     ifn = tree.abspath(tree._format.ignore_filename)
     if tree.has_filename(ifn):
-        with open(ifn, 'rbU') as f:
+        with open(ifn, 'rb') as f:
             file_contents = f.read()
             if file_contents.endswith(b'\r\n'):
                 newline = b'\r\n'
