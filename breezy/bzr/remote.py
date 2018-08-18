@@ -279,7 +279,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                 make_working_trees=make_working_trees, shared_repo=shared_repo,
                 vfs_only=True)
         except errors.ErrorFromSmartServer as err:
-            _translate_error(err, path=path)
+            _translate_error(err, path=path.decode('utf-8'))
         repo_path = response[0]
         bzrdir_name = response[6]
         require_stacking = response[7]
