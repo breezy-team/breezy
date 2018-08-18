@@ -292,7 +292,7 @@ cdef _read_dir(path):
 
     # Avoid chdir('') because it causes problems on Sun OS, and avoid this if
     # staying in .
-    if path != "" and path != '.':
+    if path != b"" and path != b'.':
         # we change into the requested directory before reading, and back at the
         # end, because that turns out to make the stat calls measurably faster than
         # passing full paths every time.
@@ -308,7 +308,7 @@ cdef _read_dir(path):
         orig_dir_fd = -1
 
     try:
-        the_dir = opendir(".")
+        the_dir = opendir(b".")
         if NULL == the_dir:
             raise_os_error(errno, "opendir: ", path)
         try:
@@ -346,7 +346,7 @@ cdef _read_dir(path):
                     if stat_result != 0:
                         if errno != ENOENT:
                             raise_os_error(errno, "lstat: ",
-                                path + "/" + entry.d_name)
+                                path + b"/" + entry.d_name)
                         else:
                             # the file seems to have disappeared after being
                             # seen by readdir - perhaps a transient temporary
