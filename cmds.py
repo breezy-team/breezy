@@ -61,6 +61,7 @@ class cmd_propose_merge(Command):
             directory)
         public_branch = branch.get_public_branch()
         if public_branch:
+            # TODO(jelmer): Verify that the public branch is up to date
             branch = _mod_branch.Branch.open(public_branch)
         if submit_branch is None:
             submit_branch = branch.get_submit_branch()

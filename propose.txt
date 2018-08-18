@@ -8,6 +8,8 @@ How to find the proposer class?
 Need to find a way to automatically push up the local branch to the remote
 system.
 
+Allow "probing" rather than having to call is_compatible, and then construct a proposer.
+
 Options:
  * Source branch (and their public copy) [X]
  * Target branch [X]
