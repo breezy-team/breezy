@@ -100,25 +100,26 @@ class TestMergeImplementation(TestCaseWithTransport):
             self.expectFailure(
                 "lca merge doesn't conflict for move and change",
                 self.assertFileEqual,
-                b'line 1\n'
-                b'<<<<<<< TREE\n'
-                b'line 3\n'
-                b'line 2\n'
-                b'=======\n'
-                b'line 2 to 2.1\n'
-                b'line 3\n'
-                b'>>>>>>> MERGE-SOURCE\n'
-                b'line 4\n', 'this/file1')
+                'line 1\n'
+                '<<<<<<< TREE\n'
+                'line 3\n'
+                'line 2\n'
+                '=======\n'
+                'line 2 to 2.1\n'
+                'line 3\n'
+                '>>>>>>> MERGE-SOURCE\n'
+                'line 4\n', 'this/file1')
         else:
-            self.assertFileEqual(b'line 1\n'
-                b'<<<<<<< TREE\n'
-                b'line 3\n'
-                b'line 2\n'
-                b'=======\n'
-                b'line 2 to 2.1\n'
-                b'line 3\n'
-                b'>>>>>>> MERGE-SOURCE\n'
-                b'line 4\n', 'this/file1')
+            self.assertFileEqual(
+                'line 1\n'
+                '<<<<<<< TREE\n'
+                'line 3\n'
+                'line 2\n'
+                '=======\n'
+                'line 2 to 2.1\n'
+                'line 3\n'
+                '>>>>>>> MERGE-SOURCE\n'
+                'line 4\n', 'this/file1')
 
     def test_modify_conflicts_with_delete(self):
         # If one side deletes a line, and the other modifies that line, then
