@@ -28,6 +28,7 @@ from ... import (
     hooks,
     urlutils,
     )
+from ...config import AuthenticationConfig, GlobalStack
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from github import Github
@@ -45,10 +46,15 @@ class NotGitHubUrl(errors.BzrError):
 
 def connect_github():
     user_agent = user_agent="Breezy/%s" % breezy_version
-    # TODO(jelmer): using username and password
-    # g = Github("user", "password", user_agent=user_agent)
 
-    # TODO(jelmer): or using an access token
+    auth = AuthenticationConfig()
+
+    credentials = auth.get_credentials('https', 'github.com')
+    if credentials is not None:
+        return Github(credentials['username'], credentials['password'],
+                      user_agent=user_agent)
+
+    # TODO(jelmer): Support using an access token
     #return Github("token", user_agent=user_agent)
     return Github(user_agent=user_agent)
 
@@ -68,6 +74,10 @@ class GitHubMergeProposer(MergeProposer):
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
         self.target_branch = target_branch
+        (self.target_owner, self.target_repo_name, self.target_branch_name) = (
+                parse_github_url(self.target_branch))
+        (self.source_owner, self.source_repo_name, self.source_branch_name) = (
+                parse_github_url(self.source_branch))
 
     @classmethod
     def is_compatible(cls, target_branch, source_branch):
@@ -80,7 +90,11 @@ class GitHubMergeProposer(MergeProposer):
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        info = ["Source: %s\n" % self.source_branch.user_url]
+        info = []
+        info.append("Merge %s into %s:%s\n" % (
+            self.source_branch_name, self.target_owner,
+            self.target_branch_name))
+        info.append("Source: %s\n" % self.source_branch.user_url)
         info.append("Target: %s\n" % self.target_branch.user_url)
         return ''.join(info)
 
@@ -91,16 +105,18 @@ class GitHubMergeProposer(MergeProposer):
         """
         return None
 
-    def create_proposal(self, description):
+    def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
         gh = connect_github()
-        (target_owner, target_repo_name, target_branch_name) = parse_github_url(self.target_branch)
-        (source_owner, source_repo_name, source_branch_name) = parse_github_url(self.source_branch)
-        source_repo = gh.get_repo("%s/%s" % (source_owner, source_repo_name))
+        source_repo = gh.get_repo("%s/%s" % (self.source_owner, self.source_repo_name))
         # TODO(jelmer): Allow setting title explicitly?
         title = description.splitlines()[0]
         # TOOD(jelmer): Set maintainers_can_modify?
-        pull_request= source_repo.create_pull(
+        pull_request = source_repo.create_pull(
             title=title, body=description,
-            head=source_branch_name, base=target_branch_name)
+            head=self.source_branch_name, base=self.target_branch_name)
+        if reviewers:
+            for reviewer in reviewers:
+                pull_request.assignees.append(
+                    gh.get_user(reviewer))
         return MergeProposal(pull_request.html_url)

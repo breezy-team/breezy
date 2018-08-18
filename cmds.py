@@ -26,7 +26,11 @@ from ... import (
     )
 from ...i18n import gettext
 from ...commands import Command
-from ...option import RegistryOption
+from ...option import (
+    ListOption,
+    RegistryOption,
+    )
+from ...sixish import text_type
 from . import (
     propose as _mod_propose,
     )
@@ -46,7 +50,7 @@ class cmd_propose_merge(Command):
                 help='Use the specified proposal mechanism.',
                 lazy_registry=('breezy.plugins.propose.propose', 'proposers')),
             ListOption('reviewers', short_name='R', type=text_type,
-                help='Requested reviewers.')]
+                help='Requested reviewers.'),
             ]
     takes_args = ['submit_branch?']
 

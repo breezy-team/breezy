@@ -16,6 +16,11 @@
 
 from __future__ import absolute_import
 
+from ... import (
+    errors,
+    urlutils,
+    )
+
 from .propose import (
     MergeProposal,
     MergeProposer,
@@ -39,14 +44,15 @@ class DifferentGitLabInstances(errors.BzrError):
 
 
 def connect_gitlab(url):
-    return Gitlab()
+    # TODO(jelmer): Support authentication
+    return Gitlab(url)
 
 
 def parse_gitlab_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
-    return host, project, branch.name
+    return host, path.strip('/'), branch.name
 
 
 class GitlabMergeProposer(MergeProposer):
@@ -64,13 +70,13 @@ class GitlabMergeProposer(MergeProposer):
     @classmethod
     def is_compatible(cls, target_branch, source_branch):
         try:
-            (host, project, branch_name) = parse_gitlab_url(target_branch.user_url)
+            (host, project, branch_name) = parse_gitlab_url(target_branch)
         except ValueError:
             return False
         try:
             gl = connect_gitlab('https://%s' % host)
-            gl.projects.get_project(project)
-        except Exception:
+            gl.projects.get(project)
+        except ValueError:
             # TODO(jelmer): This is too broad
             return False
         return True
@@ -79,7 +85,7 @@ class GitlabMergeProposer(MergeProposer):
         """Determine the initial comment for the merge proposal."""
         info = []
         info.append("Gitlab instance: %s\n" % self.target_host)
-        info.append("Source: %s\n" % self.source_branch.user_url]
+        info.append("Source: %s\n" % self.source_branch.user_url)
         info.append("Target: %s\n" % self.target_branch.user_url)
         return ''.join(info)
 
@@ -101,9 +107,10 @@ class GitlabMergeProposer(MergeProposer):
         # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
-        merge_request = source_project.merge_requests.create(
-            target_project=target_project,
-            source_branch=self.source_branch_name,
-            target_branch=self.target_branch_name,
-            description=description)
+        merge_request = source_project.mergerequests.create({
+            'title': title,
+            'target_project_id': target_project.id,
+            'source_branch': self.source_branch_name,
+            'target_branch': self.target_branch_name,
+            'description': description})
         return MergeProposal(merge_request.web_url)

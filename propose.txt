@@ -9,13 +9,13 @@ Need to find a way to automatically push up the local branch to the remote
 system.
 
 Options:
- * Source branch (and their public copy)
- * Target branch
+ * Source branch (and their public copy) [X]
+ * Target branch [X]
  * Prerequisite branch
 
  * Proposed commit message
- * Merge proposal text
- * Suggested reviewers
+ * Merge proposal text [X]
+ * Suggested reviewers [X]
  * Bugs fixed
 
 Later, or never:

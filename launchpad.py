@@ -71,13 +71,6 @@ class LaunchpadMergeProposer(MergeProposer):
                 self.launchpad, target_branch)
         self.prerequisite_branch = self._get_prerequisite_branch()
         self.commit_message = message
-        # XXX: this is where bug lp:583638 could be tackled.
-        if not reviews:
-            self.reviews = []
-        else:
-            self.reviews = [(self.launchpad.people[reviewer], review_type)
-                            for reviewer, review_type in
-                            reviews]
         self.approve = approve
         self.fixes = fixes
 
@@ -175,7 +168,7 @@ class LaunchpadMergeProposer(MergeProposer):
             content=u"Rubberstamp! Proposer approves of own proposal.")
         self._call_webservice(mp.setStatus, status=u'Approved', revid=revid)
 
-    def create_proposal(self, description):
+    def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
         self.source_branch.update_lp()
         if self.prerequisite_branch is None:
@@ -183,18 +176,17 @@ class LaunchpadMergeProposer(MergeProposer):
         else:
             prereq = self.prerequisite_branch.lp
             self.prerequisite_branch.update_lp()
-        reviewers = []
-        review_types = []
-        for reviewer, review_type in self.reviews:
-            review_types.append(review_type)
-            reviewers.append(reviewer.self_link)
+        if reviewers is None:
+            reviewers = []
         mp = self._call_webservice(
             self.source_branch.lp.createMergeProposal,
             target_branch=self.target_branch.lp,
             prerequisite_branch=prereq,
             initial_comment=description.strip().encode('utf-8'),
-            commit_message=self.commit_message, reviewers=reviewers,
-            review_types=review_types)
+            commit_message=self.commit_message,
+            reviewers=[self.launchpad.people[reviewer].self_link 
+                       for reviewer in reviewers],
+            review_types=[None for reviewer in reviewers])
         if self.approve:
             self.approve_proposal(mp)
         if self.fixes:
