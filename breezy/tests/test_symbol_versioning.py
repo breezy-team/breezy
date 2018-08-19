@@ -216,14 +216,10 @@ class TestDeprecationWarnings(TestCase):
         err_message = symbol_versioning.deprecation_string(
             self.test_deprecation_string,
             deprecated_in((0, 11, 0)))
-        self.assertIn(err_message,
-                ('breezy.tests.test_symbol_versioning.TestDeprecationWarnings.'
-                 'test_deprecation_string was deprecated in '
-                 'version 0.11.0.',
+        self.assertEqual(err_message,
                  'breezy.tests.test_symbol_versioning.TestDeprecationWarnings.'
                  'test_deprecation_string was deprecated in '
                  'version 0.11.0.')
-            )
 
         self.assertEqual('breezy.symbol_versioning.deprecated_function was '
             'deprecated in version 0.11.0.',
