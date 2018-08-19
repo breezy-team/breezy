@@ -19,6 +19,7 @@
 import warnings
 
 from breezy import symbol_versioning
+from breezy.sixish import PY3
 from breezy.symbol_versioning import (
     deprecated_function,
     deprecated_in,
@@ -69,13 +70,19 @@ class TestDeprecationWarnings(TestCase):
         return 1
 
     def test_deprecated_static(self):
-        # XXX: The results are not quite right because the class name is not
-        # shown - however it is enough to give people a good indication of
-        # where the problem is.
-        expected_warning = (
-            "breezy.tests.test_symbol_versioning."
-            "deprecated_static "
-            "was deprecated in version 0.7.0.", DeprecationWarning, 2)
+        if PY3:
+            expected_warning = (
+                "breezy.tests.test_symbol_versioning.TestDeprecationWarnings."
+                "deprecated_static "
+                "was deprecated in version 0.7.0.", DeprecationWarning, 2)
+        else:
+            # XXX: The results are not quite right because the class name is not
+            # shown on Python 2- however it is enough to give people a good indication of
+            # where the problem is.
+            expected_warning = (
+                "breezy.tests.test_symbol_versioning."
+                "deprecated_static "
+                "was deprecated in version 0.7.0.", DeprecationWarning, 2)
         expected_docstring = (
             'Deprecated static.\n'
             '\n'
@@ -210,8 +217,8 @@ class TestDeprecationWarnings(TestCase):
             self.test_deprecation_string,
             deprecated_in((0, 11, 0)))
         self.assertIn(err_message,
-                ('breezy.tests.test_symbol_versioning.'
-                 'TestDeprecationWarnings.test_deprecation_string was deprecated in '
+                ('breezy.tests.test_symbol_versioning.TestDeprecationWarnings.'
+                 'test_deprecation_string was deprecated in '
                  'version 0.11.0.',
                  'breezy.tests.test_symbol_versioning.TestDeprecationWarnings.'
                  'test_deprecation_string was deprecated in '
