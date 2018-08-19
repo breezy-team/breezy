@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7067-2) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7067-2) unstable; urgency=medium
 
   * Drop use of python3-meliae for python 3 testsuite, as there is no
     such package. Closes: #906689
