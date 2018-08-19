@@ -666,16 +666,22 @@ def unescape(url):
 
     This returns a Unicode path from a URL
     """
+    # jam 20060427 URLs are supposed to be ASCII only strings
+    #       If they are passed in as unicode, unquote
+    #       will return a UNICODE string, which actually contains
+    #       utf-8 bytes. So we have to ensure that they are
+    #       plain ASCII strings, or the final .decode will
+    #       try to encode the UNICODE => ASCII, and then decode
+    #       it into utf-8.
+
     if PY3:
+        if isinstance(url, text_type):
+            try:
+                url.encode("ascii")
+            except UnicodeError as e:
+                raise InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
         return urlparse.unquote(url)
     else:
-        # jam 20060427 URLs are supposed to be ASCII only strings
-        #       If they are passed in as unicode, unquote
-        #       will return a UNICODE string, which actually contains
-        #       utf-8 bytes. So we have to ensure that they are
-        #       plain ASCII strings, or the final .decode will
-        #       try to encode the UNICODE => ASCII, and then decode
-        #       it into utf-8.
         if isinstance(url, text_type):
             try:
                 url = url.encode("ascii")
