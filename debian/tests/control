@@ -3,5 +3,5 @@ Depends: brz, python-breezy.tests, python-subunit, ca-certificates, python-melia
 Restrictions: allow-stderr
 
 Tests: testsuite3
-Depends: brz, python3-breezy.tests, python3-subunit, ca-certificates, python3-meliae, python3-lzma, python3-pycurl, python3-medusa
+Depends: brz, python3-breezy.tests, python3-subunit, ca-certificates, python3-lzma, python3-pycurl, python3-medusa
 Restrictions: allow-stderr
