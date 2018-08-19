@@ -496,7 +496,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
-                        if subp in self.index:
+                        (index, subpath) = self._lookup_index(subp.encode('utf-8'))
+                        if subpath in index:
                             # Already present
                             continue
                         if subp in conflicts_related:
