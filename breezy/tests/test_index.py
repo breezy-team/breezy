@@ -1463,7 +1463,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index2_1, index2_2 = cgi2._indices
         cgi1.set_sibling_indices([cgi2])
         # Trigger a reordering in cgi1.  cgi2 will be reordered as well.
-        list(cgi1.iter_entries([('index-1-2-key-1',)]))
+        list(cgi1.iter_entries([(b'index-1-2-key-1',)]))
         self.assertEqual([index2_2, index2_1], cgi2._indices)
         self.assertEqual(['two', 'one'], cgi2._index_names)
 
