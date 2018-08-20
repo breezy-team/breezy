@@ -1467,7 +1467,6 @@ class TestSmartTCPServer(tests.TestCase):
         self.assertThat(log, DocTestMatches("""\
     INFO  Requested to stop gracefully
 ... Stopping SmartServerSocketStreamMedium(client=('127.0.0.1', ...
-    INFO  Waiting for 1 client(s) to finish
 """, flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 
     def test_stop_gracefully_tells_handlers_to_stop(self):
