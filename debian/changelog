@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr7067-3) UNRELEASED; urgency=medium
+
+  * Drop python3-lzma as dependency in in the autopkgtest test; it's
+    bundled with python 3.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 20 Aug 2018 20:50:30 +0100
+
 breezy (3.0.0~bzr7067-2) unstable; urgency=medium
 
   * Drop use of python3-meliae for python 3 testsuite, as there is no
