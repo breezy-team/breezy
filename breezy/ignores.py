@@ -191,7 +191,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     if tree.has_filename(ifn):
         with open(ifn, 'rb') as f:
             file_contents = f.read()
-            if file_contents.endswith(b'\r\n'):
+            if file_contents.find(b'\r\n') != -1:
                 newline = b'\r\n'
             else:
                 newline = b'\n'
