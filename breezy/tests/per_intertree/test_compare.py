@@ -47,6 +47,15 @@ from breezy.tests import (
 #       that should just be the default for these tests, by changing
 #       make_branch_and_tree.  mbp 20070307
 
+
+def _change_key(change):
+    """Return a valid key for sorting Tree.iter_changes entries."""
+    (file_id, paths, content_changed, versioned, parent, name, kind,
+            executable) = change
+    return (file_id or b'', (paths[0] or '', paths[1] or ''), versioned,
+            parent, name, kind, executable)
+
+
 class TestCompare(TestCaseWithTwoTrees):
 
     def _make_abc_tree(self, tree):
@@ -619,12 +628,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (None, False))
 
     def sorted(self, changes):
-        def key(changes):
-            (file_id, paths, content_changed, versioned, parent, name, kind,
-                    executable) = changes
-            return (file_id or b'', (paths[0] or '', paths[1] or ''), versioned,
-                    parent, name, kind, executable)
-        return sorted(changes, key=key)
+        return sorted(changes, key=_change_key)
 
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
