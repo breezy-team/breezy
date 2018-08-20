@@ -904,12 +904,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 return super(DirStateWorkingTree, self).paths2ids(paths,
                     trees, require_versioned)
         search_indexes = [0] + [1 + parents.index(tree._revision_id) for tree in trees]
-        # -- make all paths utf8 --
         paths_utf8 = set()
         for path in paths:
             paths_utf8.add(path.encode('utf8'))
-        paths = paths_utf8
-        # -- paths is now a utf8 path set --
         # -- get the state object and prepare it.
         state = self.current_dirstate()
         if False and (state._dirblock_state == dirstate.DirState.NOT_IN_MEMORY
@@ -917,7 +914,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             paths2ids = self._paths2ids_using_bisect
         else:
             paths2ids = self._paths2ids_in_memory
-        return paths2ids(paths, search_indexes,
+        return paths2ids(paths_utf8, search_indexes,
                          require_versioned=require_versioned)
 
     def _paths2ids_in_memory(self, paths, search_indexes,
@@ -986,7 +983,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
             """
             for index in search_indexes:
                 if entry[1][index][0] == b'r': # relocated
-                    if not dirstate.is_inside_any(searched_paths, entry[1][index][1]):
+                    if not osutils.is_inside_any(searched_paths,
+                                                 entry[1][index][1]):
                         search_paths.add(entry[1][index][1])
                 elif entry[1][index][0] != b'a': # absent
                     found_ids.add(entry[0][2])
@@ -1004,7 +1002,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             initial_key = (current_root, b'', b'')
             block_index, _ = state._find_block_index_from_key(initial_key)
             while (block_index < len(state._dirblocks) and
-                dirstate.is_inside(current_root, state._dirblocks[block_index][0])):
+                osutils.is_inside(current_root, state._dirblocks[block_index][0])):
                 for entry in state._dirblocks[block_index][1]:
                     _process_entry(entry)
                 block_index += 1
