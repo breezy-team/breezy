@@ -664,7 +664,8 @@ class GraphIndex(object):
             node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
         return tuple(node_refs)
 
-    def _find_index(self, range_map, key):
+    @staticmethod
+    def _find_index(range_map, key):
         """Helper for the _parsed_*_index calls.
 
         Given a range map - [(start, end), ...], finds the index of the range
@@ -702,7 +703,7 @@ class GraphIndex(object):
         asking for 'b' will return 1
         asking for 'e' will return 1
         """
-        search_key = (key, None)
+        search_key = (key, b'')
         return self._find_index(self._parsed_key_map, search_key)
 
     def _is_parsed(self, offset):
@@ -1000,7 +1001,7 @@ class GraphIndex(object):
         # calculate the bytes we have processed
         header_end = (len(signature) + len(lines[0]) + len(lines[1]) +
             len(lines[2]) + 3)
-        self._parsed_bytes(0, None, header_end, None)
+        self._parsed_bytes(0, (), header_end, ())
         # setup parsing state
         self._expected_elements = 3 + self._key_length
         # raw data keyed by offset
