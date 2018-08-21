@@ -632,7 +632,7 @@ class TestLogDiff(TestLogWithLogCatcher):
         self.wt_commit(level0, 'merge branch level1')
 
     def _diff_file1_revno1(self):
-        return """=== added file 'file1'
+        return b"""=== added file 'file1'
 --- file1\t1970-01-01 00:00:00 +0000
 +++ file1\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
@@ -641,7 +641,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno2(self):
-        return """=== modified file 'file2'
+        return b"""=== modified file 'file2'
 --- file2\t2005-11-22 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
@@ -651,7 +651,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno1_1_1(self):
-        return """=== modified file 'file2'
+        return b"""=== modified file 'file2'
 --- file2\t2005-11-22 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
@@ -661,7 +661,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno1(self):
-        return """=== added file 'file2'
+        return b"""=== added file 'file2'
 --- file2\t1970-01-01 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
