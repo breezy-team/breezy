@@ -100,7 +100,7 @@ check-ci: docs extensions
 	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python2."; \
-	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -O \
+	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --load-list=python3.passing --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 
