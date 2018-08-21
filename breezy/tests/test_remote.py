@@ -463,7 +463,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
             b'error', (b'BranchReference',)),
         client.add_expected_call(
             b'BzrDir.open_branchV3', (b'quack/',),
-            b'success', (b'ref', self.get_url('referenced'))),
+            b'success', (b'ref', self.get_url('referenced').encode('utf-8'))),
         a_controldir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_controldir.cloning_metadir()
