@@ -632,7 +632,7 @@ class TestLogDiff(TestLogWithLogCatcher):
         self.wt_commit(level0, 'merge branch level1')
 
     def _diff_file1_revno1(self):
-        return """=== added file 'file1'
+        return b"""=== added file 'file1'
 --- file1\t1970-01-01 00:00:00 +0000
 +++ file1\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
@@ -641,7 +641,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno2(self):
-        return """=== modified file 'file2'
+        return b"""=== modified file 'file2'
 --- file2\t2005-11-22 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
@@ -651,7 +651,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno1_1_1(self):
-        return """=== modified file 'file2'
+        return b"""=== modified file 'file2'
 --- file2\t2005-11-22 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
@@ -661,7 +661,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno1(self):
-        return """=== added file 'file2'
+        return b"""=== added file 'file2'
 --- file2\t1970-01-01 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
@@ -814,7 +814,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         self.build_tree(['a'])
         brz('add a')
         brz(['commit', '-m', u'\u0422\u0435\u0441\u0442'])
-        stdout, stderr = self.run_bzr('log', encoding='cp866')
+        stdout, stderr = self.run_bzr_raw('log', encoding='cp866')
 
         message = stdout.splitlines()[-1]
 
@@ -824,8 +824,8 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         # in cp1251 encoding this is string '\xd2\xe5\xf1\xf2'
         # This test should check that output of log command
         # encoded to sys.stdout.encoding
-        test_in_cp866 = '\x92\xa5\xe1\xe2'
-        test_in_cp1251 = '\xd2\xe5\xf1\xf2'
+        test_in_cp866 = b'\x92\xa5\xe1\xe2'
+        test_in_cp1251 = b'\xd2\xe5\xf1\xf2'
         # Make sure the log string is encoded in cp866
         self.assertEqual(test_in_cp866, message[2:])
         # Make sure the cp1251 string is not found anywhere

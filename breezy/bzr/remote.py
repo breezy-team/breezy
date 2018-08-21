@@ -738,12 +738,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name != "":
             raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
-        if response[0] == b'ref':
+        if response[0] == 'ref':
             return response[1].decode('utf-8')
         else:
             return None
 
     def _get_branch_reference(self):
+        """Get branch reference information
+
+        :return: Tuple with (kind, location_or_format)
+            if kind == 'ref', then location_or_format contains a location
+            otherwise, it contains a format name
+        """
         path = self._path_for_remote_call(self._client)
         medium = self._client._medium
         candidate_calls = [
@@ -766,12 +772,12 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             if response[0] != b'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
             if response[1] != b'':
-                return (b'ref', response[1])
+                return ('ref', response[1])
             else:
-                return (b'branch', b'')
+                return ('branch', b'')
         if response[0] not in (b'ref', b'branch'):
             raise errors.UnexpectedSmartServerResponse(response)
-        return response
+        return (response[0].decode('ascii'), response[1])
 
     def _get_tree_branch(self, name=None):
         """See BzrDir._get_tree_branch()."""
@@ -783,7 +789,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
             return format.open(self, name=name, _found=True,
-                location=location_or_format, ignore_fallbacks=ignore_fallbacks,
+                location=location_or_format.decode('utf-8'),
+                ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports)
         branch_format_name = location_or_format
         if not branch_format_name:
@@ -4386,6 +4393,9 @@ no_context_error_translators.register(b'DirectoryNotEmpty',
 no_context_error_translators.register(b'UnknownFormat',
     lambda err: errors.UnknownFormatError(
         err.error_args[0].decode('ascii'), err.error_args[0].decode('ascii')))
+no_context_error_translators.register(b'InvalidURL',
+    lambda err: urlutils.InvalidURL(
+        err.error_args[0].decode('utf-8'), err.error_args[1].decode('ascii')))
 
 def _translate_short_readv_error(err):
     args = err.error_args
