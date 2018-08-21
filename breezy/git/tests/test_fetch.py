@@ -336,16 +336,24 @@ class ImportObjects(TestCaseWithTransport):
         factory = knit.make_file_factory(True, versionedfile.PrefixMapper())
         self._texts = factory(self.get_transport('texts'))
 
-    def test_import_blob_missing_in_parent(self):
-        wt = self.make_branch_and_tree('wt')
-        parent_id = wt.commit('parent')
-        parent_tree = wt.branch.repository.revision_tree(parent_id)
+    def test_import_blob_missing_in_one_parent(self):
+        builder = self.make_branch_builder('br')
+        builder.start_series()
+        rev_root = builder.build_snapshot(None, [
+            ('add', ('', b'rootid', 'directory', ''))])
+        rev1 = builder.build_snapshot([rev_root], [
+            ('add', ('bla', self._mapping.generate_file_id('bla'), 'file', b'content'))])
+        rev2 = builder.build_snapshot([rev_root], [])
+        builder.finish_series()
+        branch = builder.get_branch()
 
         blob = Blob.from_string(b"bar")
         objs = { "blobname": blob}
         ret = import_git_blob(self._texts, self._mapping, b"bla", b"bla",
             (None, "blobname"),
-            parent_tree, wt.get_root_id(), b"somerevid", [parent_tree], objs.__getitem__,
+            branch.repository.revision_tree(rev1), b'rootid', b"somerevid",
+            [branch.repository.revision_tree(r) for r in [rev1, rev2]],
+            objs.__getitem__,
             (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
             self._mapping.generate_file_id)
         self.assertEqual(set([(b'git:bla', b'somerevid')]), self._texts.keys())
