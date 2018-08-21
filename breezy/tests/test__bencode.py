@@ -19,7 +19,6 @@
 import sys
 
 from .. import tests
-from ..sixish import PY3
 
 
 def load_tests(loader, standard_tests, pattern):

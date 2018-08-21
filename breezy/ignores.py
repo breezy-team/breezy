@@ -93,7 +93,7 @@ def get_user_ignores():
     path = config.user_ignore_config_filename()
     patterns = set(USER_DEFAULTS)
     try:
-        f = open(path, 'rbU')
+        f = open(path, 'rb')
     except (IOError, OSError) as e:
         # open() shouldn't return an IOError without errno, but just in case
         err = getattr(e, 'errno', None)
@@ -192,7 +192,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     # read in the existing ignores set
     ifn = tree.abspath(tree._format.ignore_filename)
     if tree.has_filename(ifn):
-        with open(ifn, 'rb') as f:
+        with open(ifn, 'rbU') as f:
             file_contents = f.read()
             # figure out what kind of line endings are used
             newline = getattr(f, 'newlines', None)
