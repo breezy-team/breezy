@@ -93,7 +93,7 @@ def get_user_ignores():
     path = config.user_ignore_config_filename()
     patterns = set(USER_DEFAULTS)
     try:
-        f = open(path, 'rb')
+        f = open(path, 'rbU')
     except (IOError, OSError) as e:
         # open() shouldn't return an IOError without errno, but just in case
         err = getattr(e, 'errno', None)

@@ -124,6 +124,8 @@ class MockTree(object):
     def make_entry(self, file_id, path):
         from ..bzr.inventory import (InventoryFile, InventoryDirectory,
             InventoryLink)
+        if not isinstance(file_id, bytes):
+            raise TypeError(file_id)
         name = os.path.basename(path)
         kind = self.kind(path, file_id)
         parent_id = self.parent_id(file_id)
@@ -141,10 +143,14 @@ class MockTree(object):
         return ie
 
     def add_dir(self, file_id, path):
+        if not isinstance(file_id, bytes):
+            raise TypeError(file_id)
         self.paths[file_id] = path
         self.ids[path] = file_id
 
     def add_file(self, file_id, path, contents):
+        if not isinstance(file_id, bytes):
+            raise TypeError(file_id)
         self.add_dir(file_id, path)
         self.contents[file_id] = contents
 
@@ -316,7 +322,7 @@ class BTreeTester(tests.TestCase):
 
     def make_tree_3(self):
         btree, mtree = self.make_tree_1()
-        mtree.add_file("e", "grandparent/parent/topping", "Anchovies\n")
+        mtree.add_file(b"e", "grandparent/parent/topping", b"Anchovies\n")
         btree.note_rename("grandparent/parent/file",
                           "grandparent/alt_parent/file")
         btree.note_rename("grandparent/parent/topping",
@@ -480,8 +486,8 @@ class BundleTester(object):
         :return: The in-memory bundle
         """
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
-        new_text = bundle_txt.getvalue().replace('executable:no',
-                                               'executable:yes')
+        new_text = bundle_txt.getvalue().replace(b'executable:no',
+                                                 b'executable:yes')
         bundle_txt = BytesIO(new_text)
         bundle = read_bundle(bundle_txt)
         self.valid_apply_bundle(base_rev_id, bundle)
@@ -1778,7 +1784,7 @@ class TestBundleWriterReader(tests.TestCase):
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record({b'foo': b'bar'})
-        writer._add_record("Record body", {b'parents': [b'1', b'3'],
+        writer._add_record(b"Record body", {b'parents': [b'1', b'3'],
             b'storage_kind': b'fulltext'}, 'file', b'revid', b'fileid')
         writer.end()
         fileobj.seek(0)
@@ -1788,7 +1794,7 @@ class TestBundleWriterReader(tests.TestCase):
         self.assertEqual((None, {b'foo': b'bar', b'storage_kind': b'header'},
             'info', None, None), record)
         record = next(record_iter)
-        self.assertEqual(("Record body", {b'storage_kind': b'fulltext',
+        self.assertEqual((b"Record body", {b'storage_kind': b'fulltext',
                           b'parents': [b'1', b'3']}, 'file', b'revid', b'fileid'),
                           record)
 
@@ -1797,7 +1803,7 @@ class TestBundleWriterReader(tests.TestCase):
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record({b'foo': b'bar'})
-        writer._add_record("Record body", {b'parents': [b'1', b'3'],
+        writer._add_record(b"Record body", {b'parents': [b'1', b'3'],
             b'storage_kind': b'fulltext'}, 'file', b'revid', b'fileid')
         writer.end()
         fileobj.seek(0)
@@ -1807,7 +1813,7 @@ class TestBundleWriterReader(tests.TestCase):
         self.assertEqual((None, {b'foo': b'bar', b'storage_kind': b'header'},
             'info', None, None), record)
         record = next(record_iter)
-        self.assertEqual(("Record body", {b'storage_kind': b'fulltext',
+        self.assertEqual((b"Record body", {b'storage_kind': b'fulltext',
                           b'parents': [b'1', b'3']}, 'file', b'revid', b'fileid'),
                           record)
 
@@ -1832,7 +1838,7 @@ class TestBundleWriterReader(tests.TestCase):
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record({b'foo': b'bar'})
-        writer._container.add_bytes_record(b'blah', [b'two', b'names'])
+        writer._container.add_bytes_record(b'blah', [(b'two', ), (b'names', )])
         writer.end()
         fileobj.seek(0)
         record_iter = v4.BundleReader(fileobj).iter_records()

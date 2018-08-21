@@ -1998,7 +1998,7 @@ def compare_paths_prefix_order(path_a, path_b):
     """Compare path_a and path_b to generate the same order walkdirs uses."""
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
-    return cmp(key_a, key_b)
+    return (key_a > key_b) - (key_a < key_b)
 
 
 _cached_user_encoding = None

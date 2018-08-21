@@ -18,38 +18,36 @@
 
 from __future__ import absolute_import
 
-from python_version cimport PY_MAJOR_VERSION
-
+from cpython.bool cimport (
+    PyBool_Check,
+    )
 from cpython.bytes cimport (
     PyBytes_CheckExact,
     PyBytes_FromStringAndSize,
     PyBytes_AS_STRING,
     PyBytes_GET_SIZE,
     )
-from cpython.long cimport (
-    PyLong_CheckExact,
+from cpython.dict cimport (
+    PyDict_CheckExact,
     )
 from cpython.int cimport (
     PyInt_CheckExact,
     PyInt_FromString,
     )
-from cpython.tuple cimport (
-    PyTuple_CheckExact,
-    )
 from cpython.list cimport (
     PyList_CheckExact,
     PyList_Append,
     )
-from cpython.dict cimport (
-    PyDict_CheckExact,
-    )
-from cpython.bool cimport (
-    PyBool_Check,
+from cpython.long cimport (
+    PyLong_CheckExact,
     )
 from cpython.mem cimport (
     PyMem_Free,
     PyMem_Malloc,
     PyMem_Realloc,
+    )
+from cpython.tuple cimport (
+    PyTuple_CheckExact,
     )
 
 from libc.stdlib cimport (
@@ -59,14 +57,13 @@ from libc.string cimport (
     memcpy,
     )
 
-cdef extern from "Python.h":
-    # There is no cython module for ceval.h for some reason
-    int Py_GetRecursionLimit()
-    int Py_EnterRecursiveCall(char *)
-    void Py_LeaveRecursiveCall()
-
 cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
+    # Use wrapper with inverted error return so Cython can propogate
+    int BrzPy_EnterRecursiveCall(char *) except 0
+
+cdef extern from "Python.h":
+    void Py_LeaveRecursiveCall()
 
 cdef class Decoder
 cdef class Encoder
@@ -116,11 +113,7 @@ cdef class Decoder:
         if 0 == self.size:
             raise ValueError('stream underflow')
 
-        if Py_EnterRecursiveCall("_decode_object"):
-            if PY_MAJOR_VERSION < 3:
-                raise RuntimeError("too deeply nested")
-            else:
-                raise RecursionError("too deeply nested")
+        BrzPy_EnterRecursiveCall(" while bencode decoding")
         try:
             ch = self.tail[0]
             if c'0' <= ch <= c'9':
@@ -134,10 +127,9 @@ cdef class Decoder:
             elif ch == c'd':
                 D_UPDATE_TAIL(self, 1)
                 return self._decode_dict()
-            else:
-                raise ValueError('unknown object type identifier %r' % ch)
         finally:
             Py_LeaveRecursiveCall()
+        raise ValueError('unknown object type identifier %r' % ch)
 
     cdef int _read_digits(self, char stop_char) except -1:
         cdef int i
@@ -347,7 +339,7 @@ cdef class Encoder:
         cdef Py_ssize_t x_len
         x_len = PyBytes_GET_SIZE(x)
         self._ensure_buffer(x_len + INT_BUF_SIZE)
-        n = snprintf(self.tail, INT_BUF_SIZE, b'%d:', x_len)
+        n = snprintf(self.tail, INT_BUF_SIZE, b'%ld:', x_len)
         if n < 0:
             raise MemoryError('string %s too big to encode' % x)
         memcpy(<void *>(self.tail+n), PyBytes_AS_STRING(x), x_len)
@@ -383,12 +375,8 @@ cdef class Encoder:
         E_UPDATE_TAIL(self, 1)
         return 1
 
-    def process(self, object x):
-        if Py_EnterRecursiveCall("encode"):
-            if PY_MAJOR_VERSION < 3:
-                raise RuntimeError("too deeply nested")
-            else:
-                raise RecursionError("too deeply nested")
+    cpdef object process(self, object x):
+        BrzPy_EnterRecursiveCall(" while bencode encoding")
         try:
             if PyBytes_CheckExact(x):
                 self._encode_string(x)

@@ -1943,28 +1943,27 @@ class TestNonAscii(GrepTestBase):
 
         # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
         #                is mangled according to the user encoding.
-        streams = self.run_bzr(["grep", "--files-with-matches",
+        streams = self.run_bzr_raw(["grep", "--files-with-matches",
             u"contents"], encoding="UTF-8")
-        if not PY3:
-            as_utf8 = as_utf8.encode("UTF-8")
-        self.assertEqual(streams, (as_utf8 + "\n", ""))
+        as_utf8 = as_utf8.encode("UTF-8")
+        self.assertEqual(streams, (as_utf8 + b"\n", b""))
 
-        streams = self.run_bzr(["grep", "-r", "1", "--files-with-matches",
+        streams = self.run_bzr_raw(["grep", "-r", "1", "--files-with-matches",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, (as_utf8 + "~1\n", ""))
+        self.assertEqual(streams, (as_utf8 + b"~1\n", b""))
 
         fileencoding = osutils.get_user_encoding()
         as_mangled = as_utf8.decode(fileencoding, "replace").encode("UTF-8")
 
-        streams = self.run_bzr(["grep", "-n",
+        streams = self.run_bzr_raw(["grep", "-n",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, ("%s:1:contents of %s\n" %
-            (as_utf8, as_mangled), ""))
+        self.assertEqual(streams, (b"%s:1:contents of %s\n" %
+            (as_utf8, as_mangled), b""))
 
-        streams = self.run_bzr(["grep", "-n", "-r", "1",
+        streams = self.run_bzr_raw(["grep", "-n", "-r", "1",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, ("%s~1:1:contents of %s\n" %
-            (as_utf8, as_mangled), ""))
+        self.assertEqual(streams, (b"%s~1:1:contents of %s\n" %
+            (as_utf8, as_mangled), b""))
 
 
 class TestColorGrep(GrepTestBase):

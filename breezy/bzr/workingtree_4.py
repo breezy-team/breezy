@@ -1233,7 +1233,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # walk the state marking unversioned things as absent.
             # if there are any un-unversioned ids at the end, raise
             for key, details in state._dirblocks[0][1]:
-                if (details[0][0] not in ('a', 'r') and # absent or relocated
+                if (details[0][0] not in (b'a', b'r') and # absent or relocated
                     key[2] in ids_to_unversion):
                     # I haven't written the code to unversion / yet - it should be
                     # supported.
@@ -1261,7 +1261,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     entry_index = 0
                     while entry_index < len(block[1]):
                         entry = block[1][entry_index]
-                        if entry[1][0][0] in 'ar':
+                        if entry[1][0][0] in (b'a', b'r'):
                             # don't remove absent or renamed entries
                             entry_index += 1
                         else:
@@ -1277,13 +1277,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 entry_index = 0
                 while entry_index < len(block[1]):
                     entry = block[1][entry_index]
-                    if (entry[1][0][0] in ('a', 'r') or # absent, relocated
+                    if (entry[1][0][0] in (b'a', b'r') or # absent, relocated
                         # ^ some parent row.
                         entry[0][2] not in ids_to_unversion):
                         # ^ not an id to unversion
                         entry_index += 1
                         continue
-                    if entry[1][0][0] == 'd':
+                    if entry[1][0][0] == b'd':
                         paths_to_unversion.add(pathjoin(entry[0][0], entry[0][1]))
                     if not state._make_absent(entry):
                         entry_index += 1
