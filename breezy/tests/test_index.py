@@ -310,7 +310,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
             self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 (b'a%skey' % int2byte(bad_char), ), b'data')
         self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
-                (b'', ), b'data')
+                (), b'data')
         self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                 b'not-a-tuple', b'data')
         # not enough length
@@ -544,7 +544,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # And the regions of the file that have been parsed should be in the
         # parsed_byte_map and the parsed_key_map
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(26)),
+        self.assertEqual([((), self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
                          index._parsed_key_map)
 
@@ -560,7 +560,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # and we should have a parse map that includes the header and the
         # region that was parsed after trimming.
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(26)),
+        self.assertEqual([((), self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
 
@@ -584,7 +584,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # and we should have a parse map that includes the header and the
         # region that was parsed after trimming.
         self.assertEqual([(0, 4045), (11759, 15707)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(116)),
+        self.assertEqual([((), self.make_key(116)),
                           (self.make_key(35), self.make_key(51))],
             index._parsed_key_map)
         # now ask for two keys, right before and after the parsed region
@@ -608,7 +608,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
             [(index._size // 2, (b'40', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(26)),
+        self.assertEqual([((), self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         # reset the transport log
@@ -632,7 +632,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
             [(index._size // 2, (b'40', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(26)),
+        self.assertEqual([((), self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         # reset the transport log
@@ -659,10 +659,10 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
             [(index._size // 2, (b'30', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(26)),
+        self.assertEqual([((), self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
-        self.assertEqual([((index._size // 2, ('30', )), -1)],
+        self.assertEqual([((index._size // 2, (b'30', )), -1)],
             result)
 
     def test_lookup_key_above_probed_area(self):
@@ -675,7 +675,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
             [(index._size // 2, (b'50', ))])
         # check the parse map, this determines the test validity
         self.assertEqual([(0, 4008), (5046, 8996)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(26)),
+        self.assertEqual([((), self.make_key(26)),
                           (self.make_key(31), self.make_key(48))],
             index._parsed_key_map)
         self.assertEqual([((index._size // 2, (b'50', )), +1)],
@@ -698,7 +698,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # check the parse map - only the start and middle should have been
         # parsed.
         self.assertEqual([(0, 4027), (10198, 14028)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(17)),
+        self.assertEqual([((), self.make_key(17)),
                           (self.make_key(44), self.make_key(5))],
             index._parsed_key_map)
         # and check the transport activity likewise.
@@ -733,7 +733,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
         # check the parse map - only the start and middle should have been
         # parsed.
         self.assertEqual([(0, 3890), (6444, 10274)], index._parsed_byte_map)
-        self.assertEqual([(None, self.make_key(25)),
+        self.assertEqual([((), self.make_key(25)),
                           (self.make_key(37), self.make_key(52))],
             index._parsed_key_map)
         # and check the transport activity likewise.
@@ -1463,7 +1463,7 @@ class TestCombinedGraphIndex(tests.TestCaseWithMemoryTransport):
         index2_1, index2_2 = cgi2._indices
         cgi1.set_sibling_indices([cgi2])
         # Trigger a reordering in cgi1.  cgi2 will be reordered as well.
-        list(cgi1.iter_entries([('index-1-2-key-1',)]))
+        list(cgi1.iter_entries([(b'index-1-2-key-1',)]))
         self.assertEqual([index2_2, index2_1], cgi2._indices)
         self.assertEqual(['two', 'one'], cgi2._index_names)
 

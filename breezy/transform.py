@@ -1960,8 +1960,11 @@ class TransformPreview(DiskTreeTransform):
             path = self._tree_id_paths[parent_id]
         except KeyError:
             return
-        entry = next(self._tree.iter_entries_by_dir(
-                specific_files=[path]))[1]
+        try:
+            entry = next(self._tree.iter_entries_by_dir(
+                    specific_files=[path]))[1]
+        except StopIteration:
+            return
         children = getattr(entry, 'children', {})
         for child in children:
             childpath = joinpath(path, child)
