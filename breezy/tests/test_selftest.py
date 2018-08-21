@@ -1784,11 +1784,6 @@ def _get_test(name):
     return ExampleTests(name)
 
 
-def _get_skip_reasons(result):
-    # GZ 2017-06-06: Newer testtools doesn't have this, uses detail instead
-    return result.skip_reasons
-
-
 class TestTestCaseLogDetails(tests.TestCase):
 
     def _run_test(self, test_name):
@@ -1815,7 +1810,7 @@ class TestTestCaseLogDetails(tests.TestCase):
 
     def test_skip_has_no_log(self):
         result = self._run_test('test_skip')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
@@ -1826,7 +1821,7 @@ class TestTestCaseLogDetails(tests.TestCase):
         # testtools doesn't know about addNotSupported, so it just gets
         # considered as a skip
         result = self._run_test('test_missing_feature')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({str(missing_feature)}, set(reasons))
         skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
@@ -2246,7 +2241,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_skip')
         self.assertNotContainsRe(content, b'(?m)^log$')
         self.assertNotContainsRe(content, b'this test will be skipped')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
@@ -2258,7 +2253,7 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_missing_feature')
         self.assertNotContainsRe(content, b'(?m)^log$')
         self.assertNotContainsRe(content, b'missing the feature')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'_MissingFeature\n'}, set(reasons))
         skips = reasons['_MissingFeature\n']
         self.assertEqual(1, len(skips))
@@ -2294,11 +2289,12 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
 
 class TestRunBzr(tests.TestCase):
 
+    result = 0
     out = ''
     err = ''
 
-    def _run_bzr_core(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
+    def _run_bzr_core(self, argv, encoding=None, stdin=None,
+                      stdout=None, stderr=None, working_dir=None):
         """Override _run_bzr_core to test how it is invoked by run_bzr.
 
         Attempts to run bzr from inside this class don't actually run it.
@@ -2307,56 +2303,39 @@ class TestRunBzr(tests.TestCase):
         only need to test that it passes the right parameters to run_bzr.
         """
         self.argv = list(argv)
-        self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
-        return self.retcode, self.out, self.err
+        stdout.write(self.out)
+        stderr.write(self.err)
+        return self.result
 
     def test_run_bzr_error(self):
         self.out = "It sure does!\n"
+        self.result = 34
         out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=34)
         self.assertEqual(['rocks'], self.argv)
-        self.assertEqual(34, self.retcode)
         self.assertEqual('It sure does!\n', out)
         self.assertEqual(out, self.out)
         self.assertEqual('', err)
         self.assertEqual(err, self.err)
 
     def test_run_bzr_error_regexes(self):
-        self.out = b''
-        self.err = b"bzr: ERROR: foobarbaz is not versioned"
+        self.out = ''
+        self.err = "bzr: ERROR: foobarbaz is not versioned"
+        self.result = 3
         out, err = self.run_bzr_error(
-            [b"bzr: ERROR: foobarbaz is not versioned"],
+            ["bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
 
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""
         self.run_bzr('foo bar')
-        self.assertEqual(None, self.encoding)
+        self.assertEqual(osutils.get_user_encoding(), self.encoding)
         self.assertEqual(['foo', 'bar'], self.argv)
 
         self.run_bzr('foo bar', encoding='baz')
         self.assertEqual('baz', self.encoding)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-    def test_retcode(self):
-        """Test that run_bzr passes retcode to _run_bzr_core"""
-        # Default is retcode == 0
-        self.run_bzr('foo bar')
-        self.assertEqual(0, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr('foo bar', retcode=1)
-        self.assertEqual(1, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr('foo bar', retcode=None)
-        self.assertEqual(None, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr(['foo', 'bar'], retcode=3)
-        self.assertEqual(3, self.retcode)
         self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_stdin(self):
