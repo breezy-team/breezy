@@ -4392,6 +4392,9 @@ no_context_error_translators.register(b'DirectoryNotEmpty',
 no_context_error_translators.register(b'UnknownFormat',
     lambda err: errors.UnknownFormatError(
         err.error_args[0].decode('ascii'), err.error_args[0].decode('ascii')))
+no_context_error_translators.register(b'InvalidURL',
+    lambda err: urlutils.InvalidURL(
+        err.error_args[0].decode('utf-8'), err.error_args[1].decode('ascii')))
 
 def _translate_short_readv_error(err):
     args = err.error_args
