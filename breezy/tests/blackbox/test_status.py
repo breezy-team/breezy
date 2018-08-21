@@ -307,14 +307,14 @@ class BranchStatus(TestCaseWithTransport):
             [conflicts.ContentsConflict('dir2')]))
         tof = StringIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
-        self.assertEqualDiff(b'conflicts:\n  Contents conflict in dir2\n',
+        self.assertEqualDiff('conflicts:\n  Contents conflict in dir2\n',
                              tof.getvalue())
 
         tree.set_conflicts(conflicts.ConflictList(
             [conflicts.ContentsConflict('dir2/file1')]))
         tof = StringIO()
         show_tree_status(tree, specific_files=['dir2'], to_file=tof)
-        self.assertEqualDiff(b'conflicts:\n  Contents conflict in dir2/file1\n',
+        self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',
                              tof.getvalue())
 
     def _prepare_nonexistent(self):
