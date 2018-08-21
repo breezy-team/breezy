@@ -39,8 +39,10 @@ Some properties are common to all kinds:
 
 try:
     import http.client as http_client
+    parse_headers = http_client.parse_headers
 except ImportError:  # python < 3
     import httplib as http_client
+    parse_headers = http_client.HTTPMessage
 
 from .. import (
     errors,
@@ -719,7 +721,7 @@ class TestHandleResponse(tests.TestCase):
         status_and_headers = BytesIO(raw_headers)
         # Get rid of the status line
         status_and_headers.readline()
-        msg = http_client.HTTPMessage(status_and_headers)
+        msg = parse_headers(status_and_headers)
         return msg
 
     def get_response(self, a_response):

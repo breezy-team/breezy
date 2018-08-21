@@ -176,20 +176,23 @@ brz: ERROR: No changes to commit.\
         tree = self.make_branch_and_tree(".")
         self.build_tree(["f"])
         tree.add(["f"])
-        out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
+        out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", u"\xa7"],
             encoding="utf-8", retcode=3)
-        self.assertContainsRe(err, "(?m)not versioned: \"\xc2\xa7\"$")
+        self.assertContainsRe(err, b"(?m)not versioned: \"\xc2\xa7\"$")
 
     def test_non_ascii_file_unversioned_iso_8859_5(self):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree(".")
         self.build_tree(["f"])
         tree.add(["f"])
-        out, err = self.run_bzr(["commit", "-m", "Wrong filename", u"\xa7"],
+        out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", u"\xa7"],
             encoding="iso-8859-5", retcode=3)
-        self.expectFailure("Error messages are always written as UTF-8",
-            self.assertNotContainsString, err, "\xc2\xa7")
-        self.assertContainsRe(err, "(?m)not versioned: \"\xfd\"$")
+        if not PY3:
+            self.expectFailure("Error messages are always written as UTF-8",
+                self.assertNotContainsString, err, b"\xc2\xa7")
+        else:
+            self.assertNotContainsString(err, b"\xc2\xa7")
+        self.assertContainsRe(err, b"(?m)not versioned: \"\xfd\"$")
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
@@ -541,13 +544,13 @@ altered in u2
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        output, err = self.run_bzr(
+        output, err = self.run_bzr_raw(
             ['commit', '-m', 'hello',
              u'--fixes=generic:\u20ac', 'tree/hello.txt'],
             encoding='utf-8', retcode=3)
-        self.assertEqual('', output)
+        self.assertEqual(b'', output)
         self.assertContainsRe(err,
-            'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
+            b'brz: ERROR: Unrecognized bug generic:\xe2\x82\xac\\. Commit refused.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.

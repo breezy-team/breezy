@@ -47,6 +47,15 @@ from breezy.tests import (
 #       that should just be the default for these tests, by changing
 #       make_branch_and_tree.  mbp 20070307
 
+
+def _change_key(change):
+    """Return a valid key for sorting Tree.iter_changes entries."""
+    (file_id, paths, content_changed, versioned, parent, name, kind,
+            executable) = change
+    return (file_id or b'', (paths[0] or '', paths[1] or ''), versioned,
+            parent, name, kind, executable)
+
+
 class TestCompare(TestCaseWithTwoTrees):
 
     def _make_abc_tree(self, tree):
@@ -414,8 +423,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         :param left_changes: A list of the output from iter_changes.
         :param right_changes: A list of the output from iter_changes.
         """
-        left_changes = sorted(left_changes)
-        right_changes = sorted(right_changes)
+        left_changes = self.sorted(left_changes)
+        right_changes = self.sorted(right_changes)
         if left_changes == right_changes:
             return
         # setify to get item by item differences, but we can only do this
@@ -448,15 +457,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         :param **extra_args: Extra args to pass to iter_changes. This is not
             inspected by this test helper.
         """
-        tree1.lock_read()
-        tree2.lock_read()
-        try:
+        with tree1.lock_read(), tree2.lock_read():
             # sort order of output is not strictly defined
-            return sorted(self.intertree_class(tree1, tree2)
+            return self.sorted(self.intertree_class(tree1, tree2)
                 .iter_changes(**extra_args))
-        finally:
-            tree1.unlock()
-            tree2.unlock()
 
     def check_has_changes(self, expected, tree1, tree2):
         # has_changes is defined for mutable trees only
@@ -623,13 +627,16 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (None, basename), (None, kind),
                 (None, False))
 
+    def sorted(self, changes):
+        return sorted(changes, key=_change_key)
+
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        expected_results = sorted([
+        expected_results = self.sorted([
             self.added(tree2, b'root-id'),
             self.added(tree2, b'a-id'),
             self.added(tree2, b'b-id'),
@@ -653,7 +660,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        expected_results = sorted([
+        expected_results = self.sorted([
             self.added(tree2, b'root-id'),
             self.added(tree2, b'a-id'),
             self.added(tree2, b'b-id'),
@@ -669,7 +676,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.assertEqual(
-            sorted([self.added(tree2, b'root-id'),
+            self.sorted([self.added(tree2, b'root-id'),
              self.added(tree2, b'a-id'),
              self.deleted(tree1, b'empty-root-id')]),
             self.do_iter_changes(tree1, tree2, specific_files=['a']))
@@ -702,7 +709,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        expected_result = sorted([self.added(tree2, b'root-id'),
+        expected_result = self.sorted([self.added(tree2, b'root-id'),
             self.added(tree2, b'a-id'), self.added(tree2, b'b-id'),
             self.added(tree2, b'c-id'), self.deleted(tree1, b'empty-root-id')])
         self.assertEqual(expected_result,
@@ -714,7 +721,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        expected_results = sorted([
+        expected_results = self.sorted([
             self.added(tree2, b'empty-root-id'),
             self.deleted(tree1, b'root-id'), self.deleted(tree1, b'a-id'),
             self.deleted(tree1, b'b-id'), self.deleted(tree1, b'c-id')])
@@ -1047,7 +1054,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.not_applicable_if_missing_in('a', tree2)
         self.not_applicable_if_missing_in('b', tree2)
-        expected = sorted([
+        expected = self.sorted([
             self.missing(b'a-id', 'a', 'a', b'root-id', 'file'),
             self.missing(b'b-id', 'b', 'b', b'root-id', 'directory'),
             self.missing(b'c-id', 'b/c', 'b/c', b'b-id', 'file'),
@@ -1067,7 +1074,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.not_applicable_if_missing_in('directory', tree2)
 
         root_id = tree1.path2id('')
-        expected = sorted([
+        expected = self.sorted([
             self.missing(b'file-id', 'file', 'directory', root_id, 'file'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
@@ -1217,7 +1224,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         # We should ignore the fact that 'b' exists in tree-2
         # because the want_unversioned parameter was not given.
-        expected = sorted([
+        expected = self.sorted([
             self.content_changed(tree2, b'a-id'),
             self.content_changed(tree2, b'c-id'),
             ])
@@ -1242,7 +1249,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             ]
         if links_supported:
             expected.append(self.unversioned(tree2, 'link'))
-        expected = sorted(expected)
+        expected = self.sorted(expected)
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
             want_unversioned=True))
 
@@ -1265,7 +1272,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         if links_supported:
             expected.append(self.unversioned(tree2, 'link'))
             specific_files.append('link')
-        expected = sorted(expected)
+        expected = self.sorted(expected)
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
             specific_files=specific_files, require_versioned=False,
             want_unversioned=True))
@@ -1310,7 +1317,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             expected.append(self.renamed(tree1, tree2, b'link-id', False))
             expected.append(self.unversioned(tree2, 'link'))
             specific_files.append('link')
-        expected = sorted(expected)
+        expected = self.sorted(expected)
         # run once with, and once without specific files, to catch
         # potentially different code paths.
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
@@ -1351,7 +1358,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         self.assertEqual([], self.do_iter_changes(tree1, tree2,
                                                   want_unversioned=True))
-        expected = sorted([
+        expected = self.sorted([
             self.unchanged(tree2, tree2.get_root_id()),
             self.unchanged(tree2, b'a-id'),
             self.unchanged(tree2, b'b-id'),
@@ -1436,7 +1443,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.kind_changed(tree1, tree2, b'todir'),
             self.kind_changed(tree1, tree2, b'tofile'),
             ]
-        expected = sorted(expected)
+        expected = self.sorted(expected)
         self.assertEqual(expected,
             self.do_iter_changes(tree1, tree2, include_unchanged=True,
                 want_unversioned=True))
@@ -1455,7 +1462,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.kind_changed(tree1, tree2, b'todir'),
             self.kind_changed(tree1, tree2, b'tofile'),
             ]
-        expected = sorted(expected)
+        expected = self.sorted(expected)
         # we should get back just the changed links. We pass in 'unchanged' to
         # make sure that it is correctly not returned - and neither is the
         # unknown path 'unknown' which it points at.
@@ -1466,13 +1473,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def test_tree_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_tree_with_special_names()
-        expected = sorted(self.added(tree2, f_id) for f_id in path_ids)
+        expected = self.sorted(self.added(tree2, f_id) for f_id in path_ids)
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
         self.check_has_changes(True, tree1, tree2)
 
     def test_trees_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_trees_with_special_names()
-        expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
+        expected = self.sorted(self.content_changed(tree2, f_id) for f_id in path_ids
                           if f_id.endswith(b'_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
         self.check_has_changes(True, tree1, tree2)
@@ -1650,7 +1657,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.unchanged(tree1, root_id),
             self.unchanged(tree1, a_id),
             self.unchanged(tree1, subfile_id),
@@ -1661,7 +1668,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                                               include_unchanged=True))
 
         # We should also be able to select just a subset
-        expected = sorted([
+        expected = self.sorted([
             self.unchanged(tree1, a_id),
             self.unchanged(tree1, subfile_id),
             ])
@@ -1693,7 +1700,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.unversioned(tree2, u'\u03b1/unknown_dir'),
             self.unversioned(tree2, u'\u03b1/unknown_file'),
             self.unversioned(tree2, u'\u03c9-unknown_root_file'),
@@ -1710,7 +1717,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.check_has_changes(False, tree1, tree2)
 
         # We should also be able to select just a subset
-        expected = sorted([
+        expected = self.sorted([
             self.unversioned(tree2, u'\u03b1/unknown_dir'),
             self.unversioned(tree2, u'\u03b1/unknown_file'),
             ])
@@ -1745,7 +1752,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.unversioned(tree2, u'a/file'),
             self.unversioned(tree2, u'a/dir'),
             ])
@@ -1780,7 +1787,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.deleted(tree1, b'a-id'),
             self.deleted(tree1, b'd-id'),
             self.renamed(tree1, tree2, b'b-id', False),
@@ -1814,14 +1821,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.deleted(tree1, b'b-id'),
             self.unversioned(tree2, 'b'),
             ])
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2,
                                               want_unversioned=True))
-        expected = sorted([
+        expected = self.sorted([
             self.deleted(tree1, b'b-id'),
             ])
         self.assertEqual(expected,
@@ -1854,7 +1861,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.renamed(tree1, tree2, b'b1-id', False),
             self.renamed(tree1, tree2, b'c1-id', False),
             self.added(tree2, b'b2-id'),
@@ -1888,7 +1895,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_missing_in('a', tree2)
 
-        expected = sorted([
+        expected = self.sorted([
             self.missing(b'a-id', 'a', 'a', tree2.get_root_id(), 'file'),
             self.unversioned(tree2, 'a2'),
             ])
