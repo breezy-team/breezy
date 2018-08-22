@@ -307,6 +307,7 @@ breezy.git.tests.test_workingtree.ChangesBetweenGitTreeAndWorkingCopyTests.test_
 breezy.git.tests.test_workingtree.ChangesBetweenGitTreeAndWorkingCopyTests.test_versioned_replace_by_dir
 breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_add_conflict
 breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_conflict_list
+breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_is_ignored_directory
 breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_revert_empty
 breezy.git.tests.test_workingtree.TreeDeltaFromGitChangesTests.test_empty
 breezy.git.tests.test_workingtree.TreeDeltaFromGitChangesTests.test_missing
@@ -2008,6 +2009,7 @@ breezy.tests.blackbox.test_exceptions.TestDeprecationWarning.test_repository_dep
 breezy.tests.blackbox.test_exceptions.TestDeprecationWarning.test_repository_deprecation_warning_suppressed_locations
 breezy.tests.blackbox.test_exceptions.TestExceptionReporting.test_exception_exitcode
 breezy.tests.blackbox.test_exceptions.TestExceptionReporting.test_utf8_default_fs_enc
+breezy.tests.blackbox.test_exceptions.TestOptParseBugHandling.test_nonascii_optparse
 breezy.tests.blackbox.test_export_pot.TestExportPot.test_export_pot
 breezy.tests.blackbox.test_export_pot.TestExportPot.test_export_pot_plugin
 breezy.tests.blackbox.test_export_pot.TestExportPot.test_export_pot_plugin_unknown
@@ -8436,7 +8438,9 @@ breezy.tests.per_intertree.test_compare.TestCompare.test_content_modification(In
 breezy.tests.per_intertree.test_compare.TestCompare.test_content_modification(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestCompare.test_dangling(InterDirStateTree(C))
 breezy.tests.per_intertree.test_compare.TestCompare.test_dangling(InterDirStateTree(PY))
+breezy.tests.per_intertree.test_compare.TestCompare.test_dangling(InterTree)
 breezy.tests.per_intertree.test_compare.TestCompare.test_dangling(InterTree(CHKInventory))
+breezy.tests.per_intertree.test_compare.TestCompare.test_dangling(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestCompare.test_default_ignores_unversioned_files(InterDirStateTree(C))
 breezy.tests.per_intertree.test_compare.TestCompare.test_default_ignores_unversioned_files(InterDirStateTree(PY))
 breezy.tests.per_intertree.test_compare.TestCompare.test_default_ignores_unversioned_files(InterTree)
@@ -8548,7 +8552,10 @@ breezy.tests.per_intertree.test_compare.TestIterChanges.test_default_ignores_unv
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_default_ignores_unversioned_files(InterTree(CHKInventory))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_default_ignores_unversioned_files(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_and_unknown(InterDirStateTree(C))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_and_unknown(InterDirStateTree(PY))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_and_unknown(InterTree)
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_and_unknown(InterTree(CHKInventory))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_and_unknown(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_unicode(InterDirStateTree(C))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_unicode(InterDirStateTree(PY))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_deleted_unicode(InterTree)
@@ -8650,7 +8657,10 @@ breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_added(I
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_added(InterTree(CHKInventory))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_added(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_unknown(InterDirStateTree(C))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_unknown(InterDirStateTree(PY))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_unknown(InterTree)
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_unknown(InterTree(CHKInventory))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_and_unknown(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_unicode(InterDirStateTree(C))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_unicode(InterDirStateTree(PY))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_renamed_unicode(InterTree)
@@ -8747,7 +8757,10 @@ breezy.tests.per_intertree.test_compare.TestIterChanges.test_unknown_unicode(Int
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unknown_unicode(InterTree(CHKInventory))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unknown_unicode(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_target_matching_source_old_names(InterDirStateTree(C))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_target_matching_source_old_names(InterDirStateTree(PY))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_target_matching_source_old_names(InterTree)
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_target_matching_source_old_names(InterTree(CHKInventory))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_target_matching_source_old_names(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_tree(InterDirStateTree(C))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_tree(InterDirStateTree(PY))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_paths_in_tree(InterTree)
@@ -8764,7 +8777,10 @@ breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_subtree
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_subtree_only_emits_root(InterTree(CHKInventory))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_unversioned_subtree_only_emits_root(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks(InterDirStateTree(C))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks(InterDirStateTree(PY))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks(InterTree)
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks(InterTree(CHKInventory))
+breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks(InterTree(PreviewTree))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks_specific_files(InterDirStateTree(C))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks_specific_files(InterDirStateTree(PY))
 breezy.tests.per_intertree.test_compare.TestIterChanges.test_versioned_symlinks_specific_files(InterTree)
@@ -16240,6 +16256,8 @@ breezy.tests.per_transport.TransportTests.test_clone_url_unquote_unreserved(Unli
 breezy.tests.per_transport.TransportTests.test_connection_error(ChrootTransport,TestingChrootServer)
 breezy.tests.per_transport.TransportTests.test_connection_error(FakeNFSTransportDecorator,FakeNFSServer)
 breezy.tests.per_transport.TransportTests.test_connection_error(FakeVFATTransportDecorator,FakeVFATServer)
+breezy.tests.per_transport.TransportTests.test_connection_error(HTTPS_transport,HTTPSServer)
+breezy.tests.per_transport.TransportTests.test_connection_error(HttpTransport,HttpServer)
 breezy.tests.per_transport.TransportTests.test_connection_error(LocalTransport,LocalURLServer)
 breezy.tests.per_transport.TransportTests.test_connection_error(MemoryTransport,MemoryServer)
 breezy.tests.per_transport.TransportTests.test_connection_error(NoSmartTransportDecorator,NoSmartTransportServer)
@@ -30358,6 +30376,7 @@ breezy.tests.test_urlutils.TestUrlToPath.test_joinpath
 breezy.tests.test_urlutils.TestUrlToPath.test_join_segment_parameters
 breezy.tests.test_urlutils.TestUrlToPath.test_join_segment_parameters_raw
 breezy.tests.test_urlutils.TestUrlToPath.test_normalize_url_files
+breezy.tests.test_urlutils.TestUrlToPath.test_normalize_url_hybrid
 breezy.tests.test_urlutils.TestUrlToPath.test_posix_local_path_from_url
 breezy.tests.test_urlutils.TestUrlToPath.test_posix_local_path_to_url
 breezy.tests.test_urlutils.TestUrlToPath.test_relative_url
@@ -30366,6 +30385,7 @@ breezy.tests.test_urlutils.TestUrlToPath.test_split_segment_parameters
 breezy.tests.test_urlutils.TestUrlToPath.test_split_segment_parameters_raw
 breezy.tests.test_urlutils.TestUrlToPath.test_strip_trailing_slash
 breezy.tests.test_urlutils.TestUrlToPath.test_unescape
+breezy.tests.test_urlutils.TestUrlToPath.test_unescape_for_display_utf8
 breezy.tests.test_urlutils.TestUrlToPath.test_url_scheme_re
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_extract_drive_letter
 breezy.tests.test_urlutils.TestUrlToPath.test_win32_local_path_from_url
