@@ -113,6 +113,6 @@ class TestEncodeCache(TestCase):
 
     def test_decode_with_None(self):
         self.assertEqual(None, cache_utf8._utf8_decode_with_None(None))
-        self.assertEqual(u'foo', cache_utf8._utf8_decode_with_None('foo'))
+        self.assertEqual(u'foo', cache_utf8._utf8_decode_with_None(b'foo'))
         self.assertEqual(u'f\xb5',
-                         cache_utf8._utf8_decode_with_None('f\xc2\xb5'))
+                         cache_utf8._utf8_decode_with_None(b'f\xc2\xb5'))
