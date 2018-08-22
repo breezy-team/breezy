@@ -2111,6 +2111,8 @@ mbp@source\r
         # Remember that the request is ignored and that the ranges below
         # doesn't have to match the canned response.
         l = list(t.readv('/foo/bar', ((0, 255), (1000, 1050))))
+        # Force consumption of the last bytesrange boundary
+        t._get_connection().cleanup_pipe()
         self.assertEqual(2, len(l))
         self.assertActivitiesMatch()
 
