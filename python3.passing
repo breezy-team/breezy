@@ -307,6 +307,7 @@ breezy.git.tests.test_workingtree.ChangesBetweenGitTreeAndWorkingCopyTests.test_
 breezy.git.tests.test_workingtree.ChangesBetweenGitTreeAndWorkingCopyTests.test_versioned_replace_by_dir
 breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_add_conflict
 breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_conflict_list
+breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_is_ignored_directory
 breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_revert_empty
 breezy.git.tests.test_workingtree.TreeDeltaFromGitChangesTests.test_empty
 breezy.git.tests.test_workingtree.TreeDeltaFromGitChangesTests.test_missing
@@ -2150,8 +2151,10 @@ breezy.tests.blackbox.test_init.TestSFTPInit.test_init_without_username
 breezy.tests.blackbox.test_inventory.TestInventory.test_in_subdir
 breezy.tests.blackbox.test_inventory.TestInventory.test_inventory
 breezy.tests.blackbox.test_inventory.TestInventory.test_inventory_kind
+breezy.tests.blackbox.test_inventory.TestInventory.test_inventory_mixed
 breezy.tests.blackbox.test_inventory.TestInventory.test_inventory_revision
 breezy.tests.blackbox.test_inventory.TestInventory.test_inventory_show_ids
+breezy.tests.blackbox.test_inventory.TestInventory.test_inventory_specific_files
 breezy.tests.blackbox.test_inventory.TestInventory.test_missing_file
 breezy.tests.blackbox.test_join.TestJoin.test_join
 breezy.tests.blackbox.test_join.TestJoin.test_join_dot
@@ -2927,6 +2930,7 @@ breezy.tests.blackbox.test_split.TestSplit.test_split_tree_failure
 breezy.tests.blackbox.test_status.BranchStatus.test_branch_status
 breezy.tests.blackbox.test_status.BranchStatus.test_branch_status_revisions
 breezy.tests.blackbox.test_status.BranchStatus.test_pending
+breezy.tests.blackbox.test_status.BranchStatus.test_specific_files_conflicts
 breezy.tests.blackbox.test_status.BranchStatus.test_status_multiple_nonexistent_files
 breezy.tests.blackbox.test_status.BranchStatus.test_status_nonexistent_file
 breezy.tests.blackbox.test_status.BranchStatus.test_status_nonexistent_file_with_others
@@ -2940,6 +2944,7 @@ breezy.tests.blackbox.test_status.BranchStatus.test_tree_status_specific_files
 breezy.tests.blackbox.test_status.CheckoutStatus.test_branch_status
 breezy.tests.blackbox.test_status.CheckoutStatus.test_branch_status_revisions
 breezy.tests.blackbox.test_status.CheckoutStatus.test_pending
+breezy.tests.blackbox.test_status.CheckoutStatus.test_specific_files_conflicts
 breezy.tests.blackbox.test_status.CheckoutStatus.test_status_multiple_nonexistent_files
 breezy.tests.blackbox.test_status.CheckoutStatus.test_status_nonexistent_file
 breezy.tests.blackbox.test_status.CheckoutStatus.test_status_nonexistent_file_with_others
