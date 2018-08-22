@@ -2210,7 +2210,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
             return redirected_t
 
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
-        self.assertEqual('redirected once',
+        self.assertEqual(b'redirected once',
                          transport.do_catching_redirections(
                 self.get_a, self.old_transport, redirected).read())
         self.assertEqual(1, self.redirections)
@@ -2228,7 +2228,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once', t._perform(req).read())
+        self.assertEqual(b'redirected once', t._perform(req).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
