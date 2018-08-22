@@ -1,5 +1,6 @@
 # This is the list of tests that are known to pass with Python3.
 # "make check-nodocs3" verifies that these pass.
+breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_is_ignored_directory
 breezy.git.tests.test_blackbox.ShallowTests.test_log_shallow
 breezy.git.tests.test_blackbox.ShallowTests.test_version_info_custom_without_revno
 breezy.git.tests.test_blackbox.ShallowTests.test_version_info_custom_with_revno
@@ -22557,6 +22558,8 @@ breezy.tests.test__annotator.TestAnnotator.test_record_annotation_removes_texts(
 breezy.tests.test_atomicfile.TestAtomicFile.test_abort
 breezy.tests.test_atomicfile.TestAtomicFile.test_close
 breezy.tests.test_atomicfile.TestAtomicFile.test_commit
+breezy.tests.test_atomicfile.TestAtomicFile.test_context_manager_abort
+breezy.tests.test_atomicfile.TestAtomicFile.test_context_manager_commit
 breezy.tests.test_atomicfile.TestAtomicFile.test_mode_0400
 breezy.tests.test_atomicfile.TestAtomicFile.test_mode_0600
 breezy.tests.test_atomicfile.TestAtomicFile.test_mode_0640
@@ -25623,6 +25626,7 @@ breezy.tests.test_ignores.TestRuntimeIgnores.test_add
 breezy.tests.test_ignores.TestRuntimeIgnores.test_add_duplicate
 breezy.tests.test_ignores.TestTreeIgnores.test_adds_ending_newline
 breezy.tests.test_ignores.TestTreeIgnores.test_add_to_existing
+breezy.tests.test_ignores.TestTreeIgnores.test_crlf
 breezy.tests.test_ignores.TestTreeIgnores.test_does_not_add_dupe
 breezy.tests.test_ignores.TestTreeIgnores.test_new_file
 breezy.tests.test_ignores.TestTreeIgnores.test_non_ascii
