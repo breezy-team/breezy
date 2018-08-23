@@ -1085,7 +1085,7 @@ class RepositoryPackCollection(object):
             for index, key, value in self._iter_disk_pack_index():
                 name = key[0].decode('ascii')
                 self._names[name] = self._parse_index_sizes(value)
-                self._packs_at_load.add((key, value))
+                self._packs_at_load.add((name, value))
             result = True
         else:
             result = False
@@ -1334,14 +1334,14 @@ class RepositoryPackCollection(object):
         # load the disk nodes across
         disk_nodes = set()
         for index, key, value in self._iter_disk_pack_index():
-            disk_nodes.add((key, value))
+            disk_nodes.add((key[0].decode('ascii'), value))
         orig_disk_nodes = set(disk_nodes)
 
         # do a two-way diff against our original content
         current_nodes = set()
         for name, sizes in viewitems(self._names):
             current_nodes.add(
-                ((name.encode(), ), b' '.join(b'%d' % size for size in sizes)))
+                (name, b' '.join(b'%d' % size for size in sizes)))
 
         # Packs no longer present in the repository, which were present when we
         # locked the repository
@@ -1371,12 +1371,11 @@ class RepositoryPackCollection(object):
         new_names = dict(disk_nodes)
         # drop no longer present nodes
         for pack in self.all_packs():
-            if (pack.name,) not in new_names:
+            if pack.name not in new_names:
                 removed.append(pack.name)
                 self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
-        for key, value in disk_nodes:
-            name = key[0].decode()
+        for name, value in disk_nodes:
             sizes = self._parse_index_sizes(value)
             if name in self._names:
                 # existing
@@ -1423,8 +1422,8 @@ class RepositoryPackCollection(object):
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
             # changing it.
-            for key, value in disk_nodes:
-                builder.add_node(key, value)
+            for name, value in disk_nodes:
+                builder.add_node((name.encode('ascii'), ), value)
             self.transport.put_file('pack-names', builder.finish(),
                 mode=self.repo.controldir._get_file_mode())
             self._packs_at_load = disk_nodes
@@ -1446,7 +1445,7 @@ class RepositoryPackCollection(object):
             obsolete_packs = [o for o in obsolete_packs
                               if o.name not in already_obsolete]
             self._obsolete_packs(obsolete_packs)
-        return [new_node[0][0] for new_node in new_nodes]
+        return [new_node[0] for new_node in new_nodes]
 
     def reload_pack_names(self):
         """Sync our pack listing with what is present in the repository.
