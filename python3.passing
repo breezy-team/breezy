@@ -25299,6 +25299,10 @@ breezy.tests.test_http.TestActivity.test_post(urllib,http,HTTP/1.0)
 breezy.tests.test_http.TestActivity.test_post(urllib,http,HTTP/1.1)
 breezy.tests.test_http.TestActivity.test_post(urllib,https,HTTP/1.0)
 breezy.tests.test_http.TestActivity.test_post(urllib,https,HTTP/1.1)
+breezy.tests.test_http.TestActivity.test_readv(urllib,http,HTTP/1.0)
+breezy.tests.test_http.TestActivity.test_readv(urllib,http,HTTP/1.1)
+breezy.tests.test_http.TestActivity.test_readv(urllib,https,HTTP/1.0)
+breezy.tests.test_http.TestActivity.test_readv(urllib,https,HTTP/1.1)
 breezy.tests.test_http.TestAuthHeader.test_basic_extract_realm
 breezy.tests.test_http.TestAuthHeader.test_basic_header
 breezy.tests.test_http.TestAuthHeader.test_build_basic_header_with_long_creds
