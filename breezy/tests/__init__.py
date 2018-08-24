@@ -458,7 +458,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        self._post_mortem(self._traceback_from_test)
+        self._post_mortem(self._traceback_from_test or err[2])
         super(ExtendedTestResult, self).addError(test, err)
         self.error_count += 1
         self.report_error(test, err)
@@ -471,7 +471,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        self._post_mortem(self._traceback_from_test)
+        self._post_mortem(self._traceback_from_test or err[2])
         super(ExtendedTestResult, self).addFailure(test, err)
         self.failure_count += 1
         self.report_failure(test, err)
