@@ -950,9 +950,8 @@ class _TouchUpstreamProvider(UpstreamProvider):
 
     def provide(self, target_dir):
         path = os.path.join(target_dir, self.desired_tarball_name)
-        f = open(path, "wb")
-        f.write("I am a tarball, honest\n")
-        f.close()
+        with open(path, "wb") as f:
+            f.write(b"I am a tarball, honest\n")
         return [path]
 
 

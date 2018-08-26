@@ -20,7 +20,7 @@
 
 from __future__ import absolute_import
 
-from ... import errors
+from ... import urlutils
 from ...trace import note
 
 import apt_pkg
@@ -61,7 +61,7 @@ class VcsDirectory(object):
                     urls.setdefault(pkg_version,{})[vcs] = value
 
         if len(urls) == 0:
-            raise errors.InvalidURL(path=url, extra='no URLs found')
+            raise urlutils.InvalidURL(path=url, extra='no URLs found')
 
         if version is None:
             # Try the latest version
@@ -70,7 +70,7 @@ class VcsDirectory(object):
             version = sorted(urls,cmp=cmp)[0]
 
         if not version in urls:
-            raise errors.InvalidURL(path=url,
+            raise urlutils.InvalidURL(path=url,
                     extra='version %s not found' % version)
         
         note("Retrieving Vcs locating from %s Debian version %s", name, version)
@@ -114,7 +114,7 @@ class VcsDirectory(object):
             else:
                 return urls[version]["Hg"]
 
-        raise errors.InvalidURL(path=url,
+        raise urlutils.InvalidURL(path=url,
             extra='unsupported VCSes %r found' % urls[version].keys())
 
 

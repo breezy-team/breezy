@@ -54,11 +54,8 @@ ipsec-tools (%s) karmic; urgency=low
 
 def _prepend_log(text, path):
     content = open(path).read()
-    fh = open(path, 'wb')
-    try:
+    with open(path, 'w') as fh:
         fh.write(text+content)
-    finally:
-        fh.close()
 
 
 class MergePackageTests(TestCaseWithTransport):
@@ -564,7 +561,7 @@ class MergePackageTests(TestCaseWithTransport):
 
     def _setup_branch(self, name, vdata, tree=None, log_format=None):
         vids = list(string.ascii_uppercase)
-        days = range(len(string.ascii_uppercase))
+        days = list(range(len(string.ascii_uppercase)))
 
         if tree is None:
             tree = self.make_branch_and_tree(name)

@@ -1054,7 +1054,8 @@ class DistributionBranch(object):
 
     def get_changelog_from_source(self, dir, max_blocks=None):
         cl_filename = os.path.join(dir, "debian", "changelog")
-        content = open(cl_filename).read()
+        with open(cl_filename, 'r') as f:
+            content = f.read()
         # Older versions of python-debian were accepting various encodings in
         # the changelog. This is not true with 0.1.20ubuntu2 at least which
         # force an 'utf-8' encoding. This leads to failures when trying to
@@ -1207,8 +1208,9 @@ class DistributionBranch(object):
                                   time_tuple[9])
                  author = safe_decode(cl.author)
             versions = self._get_safe_versions_from_changelog(cl)
-            assert not self.has_version(version), \
-                "Trying to import version %s again" % str(version)
+            if self.has_version(version):
+                raise AssertionError(
+                        "Trying to import version %s again" % str(version))
             #TODO: check that the versions list is correctly ordered,
             # as some methods assume that, and it's not clear what
             # should happen if it isn't.
@@ -1438,7 +1440,7 @@ class OneZeroSourceExtractor(SourceExtractor):
                             os.path.join(osutils.dirname(self.dsc_path),
                                 part['name'])),
                             component_from_orig_tarball(part['name'], name, str(version.upstream_version)),
-                            part['md5sum']))
+                            str(part['md5sum'])))
                 elif part['name'].endswith(".diff.gz"):
                     self.unextracted_debian_md5 = part['md5sum']
 
@@ -1504,11 +1506,11 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                                     part['name'])),
                     component_from_orig_tarball(part['name'], name,
                         str(version.upstream_version)),
-                    part['md5sum']))
+                    str(part['md5sum'])))
             elif (part['name'].endswith(".debian.tar.gz")
                     or part['name'].endswith(".debian.tar.bz2")
                     or part['name'].endswith(".debian.tar.xz")):
-                self.unextracted_debian_md5 = part['md5sum']
+                self.unextracted_debian_md5 = str(part['md5sum'])
         assert self.upstream_tarballs is not None, \
             "Can't handle non gz|bz2|xz tarballs yet"
         assert self.unextracted_debian_md5 is not None, \

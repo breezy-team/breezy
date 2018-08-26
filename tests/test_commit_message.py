@@ -57,8 +57,8 @@ class CommitMessageTests(TestCaseWithTransport):
             f.write(content)
 
     def _set_commit_message_from_changelog(self, value):
-        with open("debian/bzr-builddeb.conf", 'wb') as f:
-            f.write(b"[BUILDDEB]\ncommit-message-from-changelog = %s" % value)
+        with open("debian/bzr-builddeb.conf", 'w') as f:
+            f.write("[BUILDDEB]\ncommit-message-from-changelog = %s" % value)
 
     def test_leaves_existing_message(self):
         wt = self.make_branch_and_tree(".")

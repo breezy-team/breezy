@@ -28,6 +28,7 @@ import signal
 import subprocess
 from ... import (
     errors,
+    osutils,
     trace,
     )
 
@@ -180,7 +181,7 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
         patch_basenames = []
         for patch in unapplied_patches:
             patch = os.path.basename(patch)
-            patch_basenames.append(patch)
+            patch_basenames.append(patch.decode(osutils._fs_enc))
         return patch_basenames
     except QuiltError as e:
         if e.retcode == 1:
@@ -194,9 +195,9 @@ def quilt_series(tree):
     :param tree: Tree to read from
     """
     try:
-        return [patch.rstrip(b"\n") for patch in
+        return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
             tree.get_file_lines("debian/patches/series")
-            if patch.strip() != ""]
+            if patch.strip() != b""]
     except (IOError, OSError) as e:
         if e.errno == errno.ENOENT:
             # File has already been removed

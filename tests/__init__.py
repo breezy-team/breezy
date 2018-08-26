@@ -334,7 +334,7 @@ class SourcePackageBuilder(object):
             if dirname is not None and dirname != "":
                 if not os.path.exists(os.path.join(basedir, dirname)):
                     os.makedirs(os.path.join(basedir, dirname))
-            f = open(os.path.join(basedir, path), 'wb')
+            f = open(os.path.join(basedir, path), 'w')
             try:
                 if content is None:
                     content = ''

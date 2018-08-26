@@ -76,6 +76,7 @@ from ..util import (
     )
 
 from .... import errors as bzr_errors
+from ....sixish import text_type
 from ....tests import (
     TestCase,
     )
@@ -93,11 +94,8 @@ class RecursiveCopyTests(TestCaseInTempDir):
         os.mkdir('c')
         os.mkdir('a/d')
         os.mkdir('a/d/e')
-        f = open('a/f', 'wb')
-        try:
+        with open('a/f', 'w') as f:
             f.write('f')
-        finally:
-            f.close()
         os.mkdir('b/g')
         recursive_copy('a', 'b')
         self.assertPathExists('a')
@@ -118,10 +116,10 @@ class SafeDecodeTests(TestCase):
 
     def test_utf8(self):
         self.assertSafeDecode(u'ascii', 'ascii')
-        self.assertSafeDecode(u'\xe7', '\xc3\xa7')
+        self.assertSafeDecode(u'\xe7', b'\xc3\xa7')
 
     def test_iso_8859_1(self):
-        self.assertSafeDecode(u'\xe7', '\xe7')
+        self.assertSafeDecode(u'\xe7', b'\xe7')
 
 
 cl_block1 = """\
@@ -139,7 +137,7 @@ bzr-builddeb (0.17) unstable; urgency=low
 class FindChangelogTests(TestCaseWithTransport):
 
     def write_changelog(self, filename):
-        f = open(filename, 'wb')
+        f = open(filename, 'w')
         try:
             f.write(cl_block1)
             f.write("""\
@@ -220,11 +218,8 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         tree = self.make_branch_and_tree('.')
         os.mkdir('debian')
         self.write_changelog('debian/changelog')
-        f = open('changelog', 'wb')
-        try:
+        with open('changelog', 'w') as f:
             f.write('Naughty, naughty')
-        finally:
-            f.close()
         tree.add(['changelog', 'debian', 'debian/changelog'])
         (cl, lq) = find_changelog(tree, True)
         self.assertEqual(str(cl), cl_block1)
@@ -355,11 +350,8 @@ class MoveFileTests(TestCaseInTempDir):
     def test_move_file_same_md5(self):
         self.build_tree(['a'])
         md5sum = md5.md5()
-        f = open('a', 'rb')
-        try:
+        with open('a', 'rb') as f:
             md5sum.update(f.read())
-        finally:
-            f.close()
         shutil.copy('a', 'b')
         move_file_if_different('a', 'b', md5sum.hexdigest())
         self.assertPathExists('a')
@@ -368,29 +360,20 @@ class MoveFileTests(TestCaseInTempDir):
     def test_move_file_diff_md5(self):
         self.build_tree(['a', 'b'])
         md5sum = md5.md5()
-        f = open('a', 'rb')
-        try:
+        with open('a', 'rb') as f:
             md5sum.update(f.read())
-        finally:
-            f.close()
         a_hexdigest = md5sum.hexdigest()
         md5sum = md5.md5()
-        f = open('b', 'rb')
-        try:
+        with open('b', 'rb') as f:
             md5sum.update(f.read())
-        finally:
-            f.close()
         b_hexdigest = md5sum.hexdigest()
         self.assertNotEqual(a_hexdigest, b_hexdigest)
         move_file_if_different('a', 'b', a_hexdigest)
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
         md5sum = md5.md5()
-        f = open('b', 'rb')
-        try:
+        with open('b', 'rb') as f:
             md5sum.update(f.read())
-        finally:
-            f.close()
         self.assertEqual(md5sum.hexdigest(), a_hexdigest)
 
 
@@ -504,14 +487,14 @@ class ChangelogInfoTests(TestCaseWithTransport):
                    "  [ B. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
         self.assertEqual([u"A. Hacker", u"B. Hacker"], authors)
-        self.assertEqual([unicode]*len(authors), map(type, authors))
+        self.assertEqual([text_type]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_utf8(self):
         changes = ["  * Do foo", "", "  [ \xc3\xa1. Hacker ]", "  * Do bar", "",
                    "  [ \xc3\xa7. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
         self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
-        self.assertEqual([unicode]*len(authors), map(type, authors))
+        self.assertEqual([text_type]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_iso_8859_1(self):
         # We try to treat lines as utf-8, but if that fails to decode, we fall
@@ -520,7 +503,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
                    "  [ \xe7. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
         self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
-        self.assertEqual([unicode]*len(authors), map(type, authors))
+        self.assertEqual([text_type]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_no_changes(self):
         authors = find_extra_authors([])
@@ -529,7 +512,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
     def assert_thanks_is(self, changes, expected_thanks):
         thanks = find_thanks(changes)
         self.assertEqual(expected_thanks, thanks)
-        self.assertEqual([unicode]*len(thanks), map(type, thanks))
+        self.assertEqual([text_type]*len(thanks), list(map(type, thanks)))
 
     def test_find_thanks_no_changes(self):
         self.assert_thanks_is([], [])
@@ -634,7 +617,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
                         _lplib=MockLaunchpad())
         self.assertEqual("\n".join(strip_changelog_message(changes)), message)
         self.assertEqual([author]+find_extra_authors(changes), authors)
-        self.assertEqual(unicode, type(authors[0]))
+        self.assertEqual(text_type, type(authors[0]))
         self.assertEqual(find_thanks(changes), thanks)
         self.assertEqual(find_bugs_fixed(changes, wt.branch,
                     _lplib=MockLaunchpad()), bugs)
@@ -652,7 +635,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
                          u'* Second change, thanks to \xde. Hacker',
                          message)
         self.assertEqual([author, u'\xc1. Hacker'], authors)
-        self.assertEqual(unicode, type(authors[0]))
+        self.assertEqual(text_type, type(authors[0]))
         self.assertEqual([u'\xde. Hacker'], thanks)
         self.assertEqual(['https://launchpad.net/bugs/12345 fixed'], bugs)
 

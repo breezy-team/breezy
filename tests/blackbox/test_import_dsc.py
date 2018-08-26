@@ -68,13 +68,13 @@ class TestBaseImportDsc(BuilddebTestCase):
         os.mkdir(debian_dir)
         cl = self.make_changelog(version=version)
         self.write_changelog(cl, os.path.join(debian_dir, 'changelog'))
-        with open(os.path.join(debian_dir, 'control'), 'wb') as f:
-            f.write(b'Source: %s\n' % self.package_name)
-            f.write(b'Maintainer: none\n')
-            f.write(b'Standards-Version: 3.7.2\n')
-            f.write(b'\n')
-            f.write(b'Package: %s\n' % self.package_name)
-            f.write(b'Architecture: all\n')
+        with open(os.path.join(debian_dir, 'control'), 'w') as f:
+            f.write('Source: %s\n' % self.package_name)
+            f.write('Maintainer: none\n')
+            f.write('Standards-Version: 3.7.2\n')
+            f.write('\n')
+            f.write('Package: %s\n' % self.package_name)
+            f.write('Architecture: all\n')
 
     def make_real_source_package(self, version=None):
         if version is None:

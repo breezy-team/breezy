@@ -32,8 +32,6 @@ import tempfile
 import os
 import re
 
-from ...trace import mutter
-
 from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError
 
@@ -43,7 +41,11 @@ from ... import (
     urlutils,
     version_info as bzr_version_info,
     )
-from ...trace import warning
+from ...sixish import text_type
+from ...trace import (
+    mutter,
+    warning,
+    )
 from ...transport import (
     do_catching_redirections,
     get_transport,
@@ -107,8 +109,8 @@ UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 def safe_decode(s):
     """Decode a string into a Unicode value."""
-    if isinstance(s, unicode): # Already unicode
-        mutter('safe_decode() called on an already-unicode string: %r' % (s,))
+    if isinstance(s, text_type): # Already unicode
+        mutter('safe_decode() called on an already-decoded string: %r' % (s,))
         return s
     try:
         return s.decode('utf-8')
@@ -223,12 +225,12 @@ def strip_changelog_message(changes):
         changes.pop(0)
 
     whitespace_column_re = re.compile(r'  |\t')
-    changes = map(lambda line: whitespace_column_re.sub('', line, 1), changes)
+    changes = [whitespace_column_re.sub('', line, 1) for line in changes]
 
     leader_re = re.compile(r'[ \t]*[*+-] ')
-    count = len(filter(leader_re.match, changes))
+    count = len([l for l in changes if leader_re.match(l)])
     if count == 1:
-        return map(lambda line: leader_re.sub('', line, 1).lstrip(), changes)
+        return [leader_re.sub('', line, 1).lstrip() for line in changes]
     else:
         return changes
 
