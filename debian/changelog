@@ -4,6 +4,7 @@ breezy (3.0.0~bzr7085-1) UNRELEASED; urgency=medium
     bundled with python 3.
   * Add Dulwich as a dependency for autopkgtests.
   * New upstream snapshot.
+  * Drop patch 13_spurious_test_failure; applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Aug 2018 15:55:11 +0100
 
