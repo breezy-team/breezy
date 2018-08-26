@@ -96,7 +96,6 @@ class VcsDirectory(object):
                         "access it with bzr then please install brz-git "
                         "and re-run the command.")
             else:
-                from breezy import urlutils
                 url = urls[version]["Git"]
                 if ' -b ' in url:
                     (url, branch) = url.split(' -b ', 1)
