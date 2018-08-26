@@ -668,7 +668,7 @@ def tree_get_source_format(tree):
         raise
     except errors.NoSuchFile:
         return FORMAT_1_0
-    return text.strip()
+    return text.strip().decode('ascii')
 
 
 FORMAT_1_0 = "1.0"
