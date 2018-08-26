@@ -29,8 +29,8 @@ import stat
 import sys
 
 from .. import cache_utf8, errors, osutils
-from .dirstate import DirState, DirstateCorrupt, is_inside_any, is_inside
-from ..osutils import parent_directories, pathjoin, splitpath
+from .dirstate import DirState, DirstateCorrupt
+from ..osutils import parent_directories, pathjoin, splitpath, is_inside_any, is_inside
 
 
 # This is the Windows equivalent of ENOTDIR

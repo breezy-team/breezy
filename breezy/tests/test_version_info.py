@@ -262,53 +262,40 @@ class PythonVersionInfoTests(VersionInfoTestCase):
 
     def regen(self, wt, **kwargs):
         """Create a test module, import and return it"""
-        with open('test_version_information.py', 'w') as outf:
-            builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
-                                               **kwargs)
-            builder.generate(outf)
-        import imp
-        module_info = imp.find_module('test_version_information',
-                                      [self.test_dir])
-        tvi = imp.load_module('tvi', *module_info)
-        # Make sure the module isn't cached
-        sys.modules.pop('tvi', None)
-        sys.modules.pop('test_version_information', None)
-        # Delete the compiled versions, because we are generating
-        # a new file fast enough that python doesn't detect it
-        # needs to recompile, and using sleep() just makes the
-        # test slow
-        if os.path.exists('test_version_information.pyc'):
-            os.remove('test_version_information.pyc')
-        if os.path.exists('test_version_information.pyo'):
-            os.remove('test_version_information.pyo')
-        return tvi
+        builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
+                                           **kwargs)
+        outf = StringIO()
+        builder.generate(outf)
+        local_vars = {}
+        exec(outf.getvalue(), {}, local_vars)
+        return local_vars
 
     def test_python_version(self):
         wt = self.create_branch()
 
         tvi = self.regen(wt)
-        self.assertEqual('3', tvi.version_info['revno'])
-        self.assertEqual(b'r3', tvi.version_info['revision_id'])
-        self.assertTrue('date' in tvi.version_info)
-        self.assertEqual(None, tvi.version_info['clean'])
+        self.assertEqual('3', tvi['version_info']['revno'])
+        self.assertEqual(b'r3', tvi['version_info']['revision_id'])
+        self.assertTrue('date' in tvi['version_info'])
+        self.assertEqual(None, tvi['version_info']['clean'])
 
         tvi = self.regen(wt, check_for_clean=True)
-        self.assertEqual(True, tvi.version_info['clean'])
+        self.assertTrue(tvi['version_info']['clean'])
 
         self.build_tree(['branch/c'])
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
-        self.assertEqual(False, tvi.version_info['clean'])
+        self.assertFalse(tvi['version_info']['clean'])
         self.assertEqual(['', 'a', 'b', 'c'],
-                         sorted(tvi.file_revisions.keys()))
-        self.assertEqual(b'r3', tvi.file_revisions['a'])
-        self.assertEqual(b'r2', tvi.file_revisions['b'])
-        self.assertEqual('unversioned', tvi.file_revisions['c'])
+                         sorted(tvi['file_revisions'].keys()))
+        self.assertEqual(b'r3', tvi['file_revisions']['a'])
+        self.assertEqual(b'r2', tvi['file_revisions']['b'])
+        self.assertEqual('unversioned', tvi['file_revisions']['c'])
         os.remove('branch/c')
 
         tvi = self.regen(wt, include_revision_history=True)
 
         rev_info = [(rev, message) for rev, message, timestamp, timezone
-                                   in tvi.revisions]
+                                   in tvi['revisions']]
         self.assertEqual([(b'r1', 'a'), (b'r2', 'b'), (b'r3', u'\xe52')], rev_info)
 
         # a was modified, so it should show up modified again
@@ -317,21 +304,21 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         wt.rename_one('b', 'd')
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['', 'a', 'b', 'c', 'd'],
-                          sorted(tvi.file_revisions.keys()))
-        self.assertEqual('modified', tvi.file_revisions['a'])
-        self.assertEqual('renamed to d', tvi.file_revisions['b'])
-        self.assertEqual('new', tvi.file_revisions['c'])
-        self.assertEqual('renamed from b', tvi.file_revisions['d'])
+                          sorted(tvi['file_revisions'].keys()))
+        self.assertEqual('modified', tvi['file_revisions']['a'])
+        self.assertEqual('renamed to d', tvi['file_revisions']['b'])
+        self.assertEqual('new', tvi['file_revisions']['c'])
+        self.assertEqual('renamed from b', tvi['file_revisions']['d'])
 
         wt.commit('modified', rev_id=b'r4')
         wt.remove(['c', 'd'])
         os.remove('branch/d')
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['', 'a', 'c', 'd'],
-                          sorted(tvi.file_revisions.keys()))
-        self.assertEqual('r4', tvi.file_revisions['a'])
-        self.assertEqual('unversioned', tvi.file_revisions['c'])
-        self.assertEqual('removed', tvi.file_revisions['d'])
+                          sorted(tvi['file_revisions'].keys()))
+        self.assertEqual(b'r4', tvi['file_revisions']['a'])
+        self.assertEqual('unversioned', tvi['file_revisions']['c'])
+        self.assertEqual('removed', tvi['file_revisions']['d'])
 
 
 class CustomVersionInfoTests(VersionInfoTestCase):

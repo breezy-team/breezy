@@ -307,38 +307,6 @@ class DefaultSHA1Provider(SHA1Provider):
         return statvalue, sha1
 
 
-def is_inside(dir, fname):
-    """True if fname is inside dir.
-
-    The parameters should typically be passed to osutils.normpath first, so
-    that . and .. and repeated slashes are eliminated, and the separators
-    are canonical for the platform.
-
-    The empty string as a dir name is taken as top-of-tree and matches
-    everything.
-
-    This is based on breezy.osutils.is_inside, which uses filesystem strings.
-    """
-    if dir == fname:
-        return True
-
-    if dir == b'':
-        return True
-
-    if not dir.endswith(b'/'):
-        dir += b'/'
-
-    return fname.startswith(dir)
-
-
-def is_inside_any(dir_list, fname):
-    """True if fname is inside any of given dirs."""
-    for dirname in dir_list:
-        if is_inside(dirname, fname):
-            return True
-    return False
-
-
 class DirState(object):
     """Record directory and metadata state for fast access.
 
@@ -3622,7 +3590,7 @@ class ProcessEntryPython(object):
             if source_minikind == b'r':
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
-                if not is_inside_any(self.searched_specific_files,
+                if not osutils.is_inside_any(self.searched_specific_files,
                                              source_details[1]):
                     self.search_specific_files.add(source_details[1])
                 # generate the old path; this is needed for stating later
@@ -3832,7 +3800,8 @@ class ProcessEntryPython(object):
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
-            if not is_inside_any(self.searched_specific_files, target_details[1]):
+            if not osutils.is_inside_any(self.searched_specific_files,
+                                         target_details[1]):
                 self.search_specific_files.add(target_details[1])
         elif source_minikind in _ra and target_minikind in _ra:
             # neither of the selected trees contain this file,
@@ -4006,7 +3975,8 @@ class ProcessEntryPython(object):
             # walk until both the directory listing and the versioned metadata
             # are exhausted.
             if (block_index < len(self.state._dirblocks) and
-                is_inside(current_root, self.state._dirblocks[block_index][0])):
+                osutils.is_inside(current_root,
+                                  self.state._dirblocks[block_index][0])):
                 current_block = self.state._dirblocks[block_index]
             else:
                 current_block = None
@@ -4076,7 +4046,7 @@ class ProcessEntryPython(object):
                                     yield result
                         block_index +=1
                         if (block_index < len(self.state._dirblocks) and
-                            is_inside(current_root,
+                            osutils.is_inside(current_root,
                                               self.state._dirblocks[block_index][0])):
                             current_block = self.state._dirblocks[block_index]
                         else:
@@ -4200,7 +4170,8 @@ class ProcessEntryPython(object):
                 if current_block is not None:
                     block_index += 1
                     if (block_index < len(self.state._dirblocks) and
-                        is_inside(current_root, self.state._dirblocks[block_index][0])):
+                        osutils.is_inside(current_root,
+                                          self.state._dirblocks[block_index][0])):
                         current_block = self.state._dirblocks[block_index]
                     else:
                         current_block = None
@@ -4219,7 +4190,7 @@ class ProcessEntryPython(object):
             # Even in extremely large trees this should be modest, so currently
             # no attempt is made to optimise.
             path_utf8 = self.search_specific_file_parents.pop()
-            if is_inside_any(self.searched_specific_files, path_utf8):
+            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
                 # We've examined this path.
                 continue
             if path_utf8 in self.searched_exact_paths:
@@ -4285,7 +4256,7 @@ class ProcessEntryPython(object):
                         current_block = None
                         if block_index < len(self.state._dirblocks):
                             current_block = self.state._dirblocks[block_index]
-                            if not is_inside(
+                            if not osutils.is_inside(
                                 entry_path_utf8, current_block[0]):
                                 # No entries for this directory at all.
                                 current_block = None

@@ -225,6 +225,11 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
+    def readinto(self, b):
+        s = self.filesock.readinto(b)
+        self.report_activity(s, 'read')
+        return s
+
     def __getattr__(self, name):
         return getattr(self.filesock, name)
 
@@ -770,7 +775,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                     url = request.get_full_url()
                     print('  Failed again, %s %r' % (method, url))
                     print('  Will raise: [%r]' % my_exception)
-                reraise(my_exception, None, exc_tb)
+                reraise(type(my_exception), my_exception, exc_tb)
         return response
 
     def do_open(self, http_class, request, first_try=True):
