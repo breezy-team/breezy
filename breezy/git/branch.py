@@ -1078,9 +1078,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         fetch_tags = c.get('branch.fetch_tags')
 
         if stop_revision is None:
-            refs = interrepo.fetch(branches=["HEAD"], include_tags=fetch_tags)
+            refs = interrepo.fetch(branches=[b"HEAD"], include_tags=fetch_tags)
             try:
-                head = refs["HEAD"]
+                head = refs[b"HEAD"]
             except KeyError:
                 stop_revision = revision.NULL_REVISION
             else:

@@ -154,7 +154,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_zip_export_stdout(self):
         tree = self.make_basic_tree()
-        contents = self.run_bzr('export -d tree --format=zip -')[0]
+        contents = self.run_bzr_raw('export -d tree --format=zip -')[0]
         self.assertZipANameAndContent(zipfile.ZipFile(BytesIO(contents)))
 
     def test_zip_export_file(self):
@@ -184,7 +184,7 @@ class TestExport(TestCaseWithTransport):
         mode = 'r|%s' % (tarfile_flags,)
         ball = tarfile.open(fname, mode=mode)
         self.assertTarANameAndContent(ball, root='test/')
-        content = self.run_bzr('export -d tree --format=%s -' % (extension,))[0]
+        content = self.run_bzr_raw('export -d tree --format=%s -' % (extension,))[0]
         ball = tarfile.open(mode=mode, fileobj=BytesIO(content))
         self.assertTarANameAndContent(ball, root='')
 

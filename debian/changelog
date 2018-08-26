@@ -1,10 +1,11 @@
-breezy (3.0.0~bzr7067-3) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7085-1) UNRELEASED; urgency=medium
 
   * Drop python3-lzma as dependency in in the autopkgtest test; it's
     bundled with python 3.
   * Add Dulwich as a dependency for autopkgtests.
+  * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 20 Aug 2018 20:50:30 +0100
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Aug 2018 15:55:11 +0100
 
 breezy (3.0.0~bzr7067-2) unstable; urgency=medium
 

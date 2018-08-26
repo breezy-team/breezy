@@ -1316,6 +1316,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
             pass
         else:
             self.overrideAttr(_dirstate_helpers_pyx, 'is_inside', is_inside_raises)
+        self.overrideAttr(osutils, 'is_inside', is_inside_raises)
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):

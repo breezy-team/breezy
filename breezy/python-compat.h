@@ -71,6 +71,8 @@ inline PyObject* PyBytes_InternFromStringAndSize(const char *v, Py_ssize_t len)
 
 #endif
 
+#define BrzPy_EnterRecursiveCall(where) (Py_EnterRecursiveCall(where) == 0)
+
 #if defined(_WIN32) || defined(WIN32)
     /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit
      * lighter weight.
