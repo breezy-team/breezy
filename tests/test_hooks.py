@@ -43,66 +43,45 @@ class HookTests(TestCaseInTempDir):
     run_hook(MockTree(), 'pre-build', config)
 
   def test_run_hook_raises_when_hook_fails(self):
-    f = open(self.default_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npre-build = false\n')
-    finally:
-      f.close()
+    with open(self.default_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npre-build = false\n')
     config = DebBuildConfig([(self.default_conf, False)])
     self.assertRaises(HookFailedError, run_hook, MockTree(), 'pre-build', config)
 
   def test_run_hook_when_hook_passes(self):
-    f = open(self.default_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npre-build = true\n')
-    finally:
-      f.close()
+    with open(self.default_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npre-build = true\n')
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'pre-build', config)
 
   def test_run_hook_uses_cwd_by_default(self):
-    f = open(self.default_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npre-build = touch a\n')
-    finally:
-      f.close()
+    with open(self.default_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npre-build = touch a\n')
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'pre-build', config)
     self.assertPathExists('a')
 
   def test_run_hook_uses_passed_wd(self):
     os.mkdir('dir')
-    f = open(self.default_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npre-build = touch a\n')
-    finally:
-      f.close()
+    with open(self.default_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npre-build = touch a\n')
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'pre-build', config, wd='dir')
     self.assertPathExists('dir/a')
 
   def test_run_hook_uses_shell(self):
-    f = open(self.default_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npost-build = touch a && touch b\n')
-    finally:
-      f.close()
+    with open(self.default_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npost-build = touch a && touch b\n')
     config = DebBuildConfig([(self.default_conf, False)])
     run_hook(MockTree(), 'post-build', config)
     self.assertPathExists('a')
     self.assertPathExists('b')
 
   def test_run_hook_uses_local_over_global(self):
-    f = open(self.default_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npost-build = touch a\n')
-    finally:
-      f.close()
-    f = open(self.local_conf, 'wb')
-    try:
-      f.write('[HOOKS]\npost-build = touch b\n')
-    finally:
-      f.close()
+    with open(self.default_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npost-build = touch a\n')
+    with open(self.local_conf, 'wb') as f:
+      f.write(b'[HOOKS]\npost-build = touch b\n')
     config = DebBuildConfig([(self.local_conf, False),
                              (self.default_conf, False)])
     run_hook(MockTree(), 'post-build', config)
