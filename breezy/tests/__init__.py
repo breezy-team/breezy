@@ -3605,8 +3605,9 @@ def fork_for_tests(suite):
                 # The traceback is formatted to a string and written in one go
                 # to avoid interleaving lines from multiple failing children.
                 try:
-                    stream.write(traceback.format_exc())
+                    stream.write(traceback.format_exc().encode('utf-8'))
                 finally:
+                    stream.flush()
                     os._exit(1)
             os._exit(0)
         else:
