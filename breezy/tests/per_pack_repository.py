@@ -262,10 +262,7 @@ class TestPackRepository(TestCaseWithTransport):
                     cur_names = set(repo._pack_collection._names)
                     # In this test, len(result) is always 1, so unordered is ok
                     new_names = list(cur_names - old_names)
-                    # TODO(jelmer): commit_write_group should probably return
-                    # pack names in the same type (text_type or bytes) as the
-                    # actual pack names.
-                    self.assertEqual(new_names, [p.decode('ascii') for p in result])
+                    self.assertEqual(new_names, result)
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
