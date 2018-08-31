@@ -415,7 +415,10 @@ class RemoteTransport(transport.ConnectedTransport):
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
                 yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = next_offset[0] = next(offset_stack)
+                try:
+                    cur_offset_and_size = next_offset[0] = next(offset_stack)
+                except StopIteration:
+                    return
 
     def rename(self, rel_from, rel_to):
         self._call(b'rename',
