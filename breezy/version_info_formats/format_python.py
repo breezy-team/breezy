@@ -52,12 +52,12 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file which is a python source module."""
 
     def generate(self, to_file):
-        info = {'build_date':create_date_str()
-                  , 'revno':None
-                  , 'revision_id':None
-                  , 'branch_nick':self._branch.nick
-                  , 'clean':None
-                  , 'date':None
+        info = {'build_date': create_date_str(),
+                'revno': None,
+                'revision_id': None,
+                'branch_nick': self._branch.nick,
+                'clean': None,
+                'date': None
         }
         revisions = []
 

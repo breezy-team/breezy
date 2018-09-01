@@ -2628,7 +2628,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if hint is None:
             body = b""
         else:
-            body = b"".join([l+b"\n" for l in hint])
+            body = b"".join([l.encode('ascii')+b"\n" for l in hint])
         with self.lock_write():
             path = self.controldir._path_for_remote_call(self._client)
             try:
