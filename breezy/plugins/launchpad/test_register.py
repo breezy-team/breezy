@@ -28,6 +28,7 @@ except ImportError:  # python < 3
         Transport,
         )
 
+from ...sixish import PY3
 from ...tests import TestCaseWithTransport
 
 # local import
@@ -98,6 +99,7 @@ class InstrumentedXMLRPCTransport(Transport):
 
     # Python 2.5's xmlrpclib looks for this.
     _use_datetime = False
+    _use_builtin_types = False
 
     def __init__(self, testcase):
         self.testcase = testcase
@@ -111,10 +113,23 @@ class InstrumentedXMLRPCTransport(Transport):
             raise AssertionError()
         return InstrumentedXMLRPCConnection(test)
 
-    def send_request(self, connection, handler_path, request_body,
-                     verbose=None):
-        test = self.testcase
-        self.got_request = True
+    if PY3:
+        def send_request(self, host, handler_path, request_body,
+                         verbose=None):
+            self.connected_host = host
+            test = self.testcase
+            self.got_request = True
+            unpacked, method = xmlrpc_loads(request_body)
+            if None in unpacked:
+                raise AssertionError(
+                    "xmlrpc result %r shouldn't contain None" % (unpacked,))
+            self.sent_params = unpacked
+            return InstrumentedXMLRPCConnection(test)
+    else:
+        def send_request(self, connection, handler_path, request_body,
+                         verbose=None):
+            test = self.testcase
+            self.got_request = True
 
     def send_host(self, conn, host):
         pass
