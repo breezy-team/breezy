@@ -279,7 +279,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                 make_working_trees=make_working_trees, shared_repo=shared_repo,
                 vfs_only=True)
         except errors.ErrorFromSmartServer as err:
-            _translate_error(err, path=path)
+            _translate_error(err, path=path.decode('utf-8'))
         repo_path = response[0]
         bzrdir_name = response[6]
         require_stacking = response[7]
@@ -2962,7 +2962,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
             stream = self._stop_stream_if_inventory_delta(stream)
         byte_stream = smart_repo._stream_to_byte_stream(
             stream, src_format)
-        resume_tokens = b' '.join(resume_tokens)
+        resume_tokens = b' '.join([token.encode('utf-8') for token in resume_tokens])
         response = client.call_with_body_stream(
             (verb, path, resume_tokens) + lock_args, byte_stream)
         if response[0][0] not in (b'ok', b'missing-basis'):
@@ -2975,7 +2975,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
             return self._resume_stream_with_vfs(response, src_format)
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
-            resume_tokens = tokens
+            resume_tokens = [token.decode('utf-8') for token in tokens]
             return resume_tokens, set((entry[0].decode('utf-8'), ) + entry[1:] for entry in missing_keys)
         else:
             self.target_repo.refresh_data()
@@ -2987,6 +2987,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
         """
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
+            tokens = [token.decode('utf-8') for token in tokens]
             # Ignore missing_keys, we haven't finished inserting yet
         else:
             tokens = []
@@ -3947,12 +3948,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if medium._is_remote_before((1, 15)):
             return self._vfs_set_parent_location(url)
         try:
-            call_url = url or ''
-            if not isinstance(call_url, str):
-                raise AssertionError('url must be a str or None (%s)' % url)
+            call_url = url or u''
+            if isinstance(call_url, text_type):
+                call_url = call_url.encode('utf-8')
             response = self._call(b'Branch.set_parent_location',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
-                call_url.encode('utf-8'))
+                call_url)
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 15))
             return self._vfs_set_parent_location(url)

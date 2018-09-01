@@ -742,7 +742,7 @@ message:
 
         revision = wt.branch.repository.get_revision(wt.branch.last_revision())
         formatter.show_properties(revision, '')
-        self.assertEqualDiff('''custom_prop_name: test_value\n''',
+        self.assertEqualDiff(b'''custom_prop_name: test_value\n''',
                              sio.getvalue())
 
     def test_show_ids(self):
