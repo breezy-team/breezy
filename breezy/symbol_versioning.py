@@ -81,9 +81,7 @@ def deprecation_string(a_callable, deprecation_version):
         symbol ='%s.%s' % (a_callable.__module__,
                            a_callable.__qualname__)
     else:
-        # We also want to handle old-style classes, in particular exception, and
-        # they don't have an im_class attribute.
-        if getattr(a_callable, 'im_class', None) is None:
+        if getattr(a_callable, '__self__', None) is None:
             symbol = "%s.%s" % (a_callable.__module__,
                                 a_callable.__name__)
         else:
