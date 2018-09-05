@@ -779,10 +779,9 @@ class Branch(controldir.ControlComponent):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file. RBC 20060125
         if url is not None:
-            # TODO(jelmer): Clean this up for pad.lv/1696545
-            if isinstance(url, text_type) and sys.version_info[0] == 2:
+            if isinstance(url, text_type):
                 try:
-                    url = url.encode('ascii')
+                    url.encode('ascii')
                 except UnicodeEncodeError:
                     raise urlutils.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
@@ -1074,7 +1073,7 @@ class Branch(controldir.ControlComponent):
         # This is an old-format absolute path to a local branch
         # turn it into a url
         if parent.startswith('/'):
-            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            parent = urlutils.local_path_to_url(parent)
         try:
             return urlutils.join(self.base[:-1], parent)
         except urlutils.InvalidURLJoin as e:
