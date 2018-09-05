@@ -1,6 +1,7 @@
 breezy (3.0.0~bzr7096-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
+  * Add dependency on coverage module, which the testsuite can use.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 05 Sep 2018 20:16:05 +0100
 
