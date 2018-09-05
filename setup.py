@@ -55,12 +55,16 @@ META_INFO = {
         'Topic :: Software Development :: Version Control',
         ],
     'install_requires': [
+        'configobj',
         'six>=1.9.0',
         ],
     'extras_require': {
         'fastimport': ['fastimport>=0.9.8'],
         'git': ['dulwich>=0.19.1'],
         },
+    'tests_require': [
+        'testtools',
+    ],
 }
 
 # The list of packages is automatically generated later. Add other things
