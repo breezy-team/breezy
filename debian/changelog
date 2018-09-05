@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7096-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7096-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Add dependency on coverage module, which the testsuite can use.
