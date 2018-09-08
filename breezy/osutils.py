@@ -1898,6 +1898,8 @@ class UnicodeDirReader(DirReader):
         See DirReader.read_dir for details.
         """
         _utf8_encode = self._utf8_encode
+        _fs_decode = lambda s: s.decode(_fs_enc)
+        _fs_encode = lambda s: s.encode(_fs_enc)
         _lstat = os.lstat
         _listdir = os.listdir
         _kind_from_mode = file_kind_from_stat_mode
@@ -1910,12 +1912,13 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in _listdir(top):
+        for name_native in _listdir(top.encode('utf-8')):
             try:
-                name_utf8 = _utf8_encode(name)[0]
+                name = _fs_decode(name_native)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    _utf8_encode(relprefix)[0] + name, _fs_enc)
+                    relprefix + name_native, _fs_enc)
+            name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
@@ -2381,6 +2384,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
 
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):
