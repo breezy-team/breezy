@@ -739,6 +739,7 @@ class cmd_merge_upstream(Command):
                 except NotBranchError:
                     upstream_branch = None
             elif upstream_branch is None and config.upstream_branch is not None:
+                note(gettext("Using upstream branch %s (from configuration)") % config.upstream_branch)
                 upstream_branch = Branch.open(config.upstream_branch)
             else:
                 upstream_branch = None

@@ -91,6 +91,23 @@ class DebBuildConfigTests(TestCaseWithTransport):
       f.close()
     DebBuildConfig([('invalid.conf', True, 'invalid.conf')])
 
+  def test_upstream_metadata(self):
+    cfg = DebBuildConfig([], tree=self.branch.basis_tree())
+    self.assertIs(None, cfg.upstream_branch)
+
+    self.build_tree_contents([
+      ('debian/',),
+      ('debian/upstream/',),
+      ('debian/upstream/metadata',
+        b'Name: example\n'
+        b'Repository: http://example.com/foo\n'
+        )])
+    self.tree.add(['debian', 'debian/upstream', 'debian/upstream/metadata'])
+
+    cfg = DebBuildConfig([], tree=self.tree)
+    self.assertEquals("http://example.com/foo", cfg.upstream_branch)
+
+
 try:
   from ...svn.config import SubversionBuildPackageConfig
 except ImportError:
@@ -136,5 +153,6 @@ else:
 
       cfg = DebBuildConfig([], tree=branch.basis_tree())
       self.assertEquals("someorigdir", cfg.orig_dir)
+
 
 # vim: ts=2 sts=2 sw=2

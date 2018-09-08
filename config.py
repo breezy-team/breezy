@@ -20,11 +20,14 @@
 
 from __future__ import absolute_import
 
+import yaml
+
 from ...config import (
   configobj,
   ConfigObj,
   TreeConfig,
   )
+from ...errors import NoSuchFile
 from ...trace import mutter, warning
 
 
@@ -53,6 +56,28 @@ class SvnBuildPackageMappedConfig(object):
       elif option == "build-dir":
         return self.bp_config.get("buildArea")
     return None
+
+
+class UpstreamMetadataConfig(object):
+  """Config object that represents debian/upstream/metadata.
+  """
+
+  filename = 'debian/upstream/metadata'
+
+  def __init__(self, text):
+    self.metadata = yaml.safe_load(text)
+
+  def get_value(self, section, option):
+    if section == "BUILDDEB":
+      if option == "upstream-branch":
+        return self.metadata.get('Repository')
+    raise KeyError
+
+  def get_bool(self, section, option):
+    raise KeyError
+
+  def as_bool(self, option):
+    raise KeyError
 
 
 class DebBuildConfig(object):
@@ -129,6 +154,12 @@ class DebBuildConfig(object):
           pass # Not a svn tree
       except ImportError:
         pass # No svn, apparently
+      try:
+        upstream_metadata_text = tree.get_file_text(UpstreamMetadataConfig.filename)
+      except NoSuchFile:
+        pass
+      else:
+        self._config_files.append((UpstreamMetadataConfig(upstream_metadata_text), False))
     self.user_config = None
 
   def set_user_config(self, user_conf):
