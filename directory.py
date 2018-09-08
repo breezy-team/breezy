@@ -89,20 +89,12 @@ class VcsDirectory(object):
                 return urls[version]["Svn"]
 
         if "Git" in urls[version]:
-            try:
-                from .. import git
-            except ImportError:
-                note("This package uses git. If you would like to "
-                        "access it with bzr then please install brz-git "
-                        "and re-run the command.")
-            else:
-                from breezy import urlutils
-                url = urls[version]["Git"]
-                if ' -b ' in url:
-                    (url, branch) = url.split(' -b ', 1)
-                    url = urlutils.join_segment_parameters(
-                        url, {'branch': branch})
-                return url
+            url = urls[version]["Git"]
+            if ' -b ' in url:
+                (url, branch) = url.split(' -b ', 1)
+                url = urlutils.join_segment_parameters(
+                    url, {'branch': branch})
+            return url
 
         if "Hg" in urls[version]:
             try:
