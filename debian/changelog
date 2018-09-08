@@ -1,4 +1,4 @@
-breezy-debian (2.8.14) UNRELEASED; urgency=medium
+breezy-debian (2.8.14) unstable; urgency=medium
 
   * Update Vcs-Bzr to reflect code hosting is now on code.breezy-
     vcs.org.
