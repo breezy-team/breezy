@@ -1,0 +1,22 @@
+language: python
+addons:
+  apt:
+    update: true
+sudo: false
+cache: pip
+git:
+  depth: false
+
+python:
+  - 2.7
+
+script:
+  - make check
+
+install:
+  - sudo apt install python-all-dev subunit python-debian python-apt python-testtools patchutils pristine-tar devscripts python-lzma libalgorithm-merge-perl python-distro-info quilt python-yaml
+  - travis_retry pip install -U setuptools
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich bzr+lp:brz yaml
+
+after_success:
+  - codecov
