@@ -1028,13 +1028,16 @@ def splitpath(p):
     """Turn string into list of parts."""
     # split on either delimiter because people might use either on
     # Windows
-    ps = re.split(r'[\\/]', p)
+    if isinstance(p, bytes):
+        ps = re.split(b'[\\\\/]', p)
+    else:
+        ps = re.split(r'[\\/]', p)
 
     rps = []
     for f in ps:
-        if f == '..':
+        if f in ('..', b'..'):
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif (f == '.') or (f == ''):
+        elif f in ('.', '', b'.', b''):
             pass
         else:
             rps.append(f)

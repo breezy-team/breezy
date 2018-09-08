@@ -649,37 +649,37 @@ class TestMemRChr(tests.TestCase):
         self.assertEqual(expected, _py_memrchr(s, c))
 
     def test_missing(self):
-        self.assertMemRChr(None, '', 'a')
-        self.assertMemRChr(None, '', 'c')
-        self.assertMemRChr(None, 'abcdefghijklm', 'q')
-        self.assertMemRChr(None, 'aaaaaaaaaaaaaaaaaaaaaaa', 'b')
+        self.assertMemRChr(None, b'', b'a')
+        self.assertMemRChr(None, b'', b'c')
+        self.assertMemRChr(None, b'abcdefghijklm', b'q')
+        self.assertMemRChr(None, b'aaaaaaaaaaaaaaaaaaaaaaa', b'b')
 
     def test_single_entry(self):
-        self.assertMemRChr(0, 'abcdefghijklm', 'a')
-        self.assertMemRChr(1, 'abcdefghijklm', 'b')
-        self.assertMemRChr(2, 'abcdefghijklm', 'c')
-        self.assertMemRChr(10, 'abcdefghijklm', 'k')
-        self.assertMemRChr(11, 'abcdefghijklm', 'l')
-        self.assertMemRChr(12, 'abcdefghijklm', 'm')
+        self.assertMemRChr(0, b'abcdefghijklm', b'a')
+        self.assertMemRChr(1, b'abcdefghijklm', b'b')
+        self.assertMemRChr(2, b'abcdefghijklm', b'c')
+        self.assertMemRChr(10, b'abcdefghijklm', b'k')
+        self.assertMemRChr(11, b'abcdefghijklm', b'l')
+        self.assertMemRChr(12, b'abcdefghijklm', b'm')
 
     def test_multiple(self):
-        self.assertMemRChr(10, 'abcdefjklmabcdefghijklm', 'a')
-        self.assertMemRChr(11, 'abcdefjklmabcdefghijklm', 'b')
-        self.assertMemRChr(12, 'abcdefjklmabcdefghijklm', 'c')
-        self.assertMemRChr(20, 'abcdefjklmabcdefghijklm', 'k')
-        self.assertMemRChr(21, 'abcdefjklmabcdefghijklm', 'l')
-        self.assertMemRChr(22, 'abcdefjklmabcdefghijklm', 'm')
-        self.assertMemRChr(22, 'aaaaaaaaaaaaaaaaaaaaaaa', 'a')
+        self.assertMemRChr(10, b'abcdefjklmabcdefghijklm', b'a')
+        self.assertMemRChr(11, b'abcdefjklmabcdefghijklm', b'b')
+        self.assertMemRChr(12, b'abcdefjklmabcdefghijklm', b'c')
+        self.assertMemRChr(20, b'abcdefjklmabcdefghijklm', b'k')
+        self.assertMemRChr(21, b'abcdefjklmabcdefghijklm', b'l')
+        self.assertMemRChr(22, b'abcdefjklmabcdefghijklm', b'm')
+        self.assertMemRChr(22, b'aaaaaaaaaaaaaaaaaaaaaaa', b'a')
 
     def test_with_nulls(self):
-        self.assertMemRChr(10, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'a')
-        self.assertMemRChr(11, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'b')
-        self.assertMemRChr(12, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'c')
-        self.assertMemRChr(20, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'k')
-        self.assertMemRChr(21, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'l')
-        self.assertMemRChr(22, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'm')
-        self.assertMemRChr(22, 'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', 'a')
-        self.assertMemRChr(9, '\0\0\0\0\0\0\0\0\0\0', '\0')
+        self.assertMemRChr(10, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'a')
+        self.assertMemRChr(11, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'b')
+        self.assertMemRChr(12, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'c')
+        self.assertMemRChr(20, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'k')
+        self.assertMemRChr(21, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'l')
+        self.assertMemRChr(22, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'm')
+        self.assertMemRChr(22, b'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', b'a')
+        self.assertMemRChr(9, b'\0\0\0\0\0\0\0\0\0\0', b'\0')
 
 
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
