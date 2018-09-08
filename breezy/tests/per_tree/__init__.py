@@ -31,6 +31,8 @@ from breezy import (
     transform,
     transport,
     )
+from breezy.git.tree import GitRevisionTree
+from breezy.git.workingtree import GitWorkingTreeFormat
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
@@ -91,10 +93,15 @@ def preview_tree_post(testcase, tree):
 
 class TestTreeImplementationSupport(tests.TestCaseWithTransport):
 
-    def test_revision_tree_from_workingtree(self):
-        tree = self.make_branch_and_tree('.')
+    def test_revision_tree_from_workingtree_bzr(self):
+        tree = self.make_branch_and_tree('.', format='bzr')
         tree = revision_tree_from_workingtree(self, tree)
         self.assertIsInstance(tree, RevisionTree)
+
+    def test_revision_tree_from_workingtree(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        tree = revision_tree_from_workingtree(self, tree)
+        self.assertIsInstance(tree, GitRevisionTree)
 
 
 class TestCaseWithTree(TestCaseWithControlDir):
@@ -279,6 +286,8 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     DirStateRevisionTree by committing a working tree to create the revision
     tree.
     """
+    # TODO(jelmer): Test MemoryTree here
+    # TODO(jelmer): Test GitMemoryTree here
     scenarios = wt_make_scenarios(transport_server, transport_readonly_server,
         formats)
     # now adjust the scenarios and add the non-working-tree tree scenarios.
@@ -290,6 +299,9 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     scenarios.append((RevisionTree.__name__,
         create_tree_scenario(transport_server, transport_readonly_server,
         workingtree_format, revision_tree_from_workingtree,)))
+    scenarios.append((GitRevisionTree.__name__,
+        create_tree_scenario(transport_server, transport_readonly_server,
+        GitWorkingTreeFormat(), revision_tree_from_workingtree,)))
 
     # also test WorkingTree4/5's RevisionTree implementation which is
     # specialised.
@@ -347,7 +359,7 @@ def load_tests(loader, standard_tests, pattern):
         'walkdirs',
         ]
     submod_tests = loader.loadTestsFromModuleNames(
-        ['breezy.tests.per_tree.test_' + name
+        [__name__ + '.test_' + name
          for name in per_tree_mod_names])
     scenarios = make_scenarios(
         tests.default_transport,

@@ -449,7 +449,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def iter_child_entries(self, path, file_id=None):
         (store, mode, tree_sha) = self._lookup_path(path)
 
-        if not stat.S_ISDIR(mode):
+        if mode is not None and not stat.S_ISDIR(mode):
             return
 
         encoded_path = path.encode('utf-8')
