@@ -3604,9 +3604,13 @@ def fork_for_tests(suite):
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
                 # to avoid interleaving lines from multiple failing children.
+                tb = traceback.format_exc()
+                if isinstance(tb, text_type):
+                    tb = tb.encode('utf-8')
                 try:
-                    stream.write(traceback.format_exc())
+                    stream.write(tb)
                 finally:
+                    stream.flush()
                     os._exit(1)
             os._exit(0)
         else:
