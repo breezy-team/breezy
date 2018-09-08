@@ -2,6 +2,7 @@ breezy-debian (2.8.14) UNRELEASED; urgency=medium
 
   * Update Vcs-Bzr to reflect code hosting is now on code.breezy-
     vcs.org.
+  * Read upstream branch from debian/upstream/metadata. LP: #1791456
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 May 2018 15:32:40 +0100
 
