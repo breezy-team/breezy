@@ -372,10 +372,12 @@ class TestMap(TestCaseWithStore):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
                                  sorted(node_two._items.keys()))
-                node_one_stack.extend([n for n, _ in
-                                       node_one._iter_nodes(map_one._store)])
-                node_two_stack.extend([n for n, _ in
-                                       node_two._iter_nodes(map_two._store)])
+                node_one_stack.extend(sorted(
+                    [n for n, _ in node_one._iter_nodes(map_one._store)],
+                    key=lambda a: a._search_prefix))
+                node_two_stack.extend(sorted(
+                    [n for n, _ in node_two._iter_nodes(map_two._store)],
+                    key=lambda a: a._search_prefix))
             else:
                 # Leaf nodes must have identical contents
                 self.assertEqual(node_one._items, node_two._items)
@@ -1440,7 +1442,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('3',) 'baz'\n"
                              "  '\\x83' LeafNode\n"
                              "      ('1',) 'foo'\n"
-                             , chkmap._dump_tree())
+                             , chkmap._dump_tree(encoding='latin1'))
         root_key = chkmap._save()
         chkmap = chk_map.CHKMap(chk_bytes, root_key,
                                 search_key_func=chk_map._search_key_255)
@@ -1454,7 +1456,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('3',) 'baz'\n"
                              "  '\\x83' LeafNode\n"
                              "      ('1',) 'foo'\n"
-                             , chkmap._dump_tree())
+                             , chkmap._dump_tree(encoding='latin1'))
 
     def test_search_key_collisions(self):
         chkmap = chk_map.CHKMap(self.get_chk_bytes(), None,
