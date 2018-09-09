@@ -16,8 +16,6 @@
 
 """Propose command implementations."""
 
-import webbrowser
-
 from ... import (
     branch as _mod_branch,
     controldir,
@@ -58,9 +56,9 @@ class cmd_publish(Command):
 
     takes_options = [
             'directory',
-            Option('owner', help='Owner of the new remote branch.'),
-            Option('project', help='Project name for the new remote branch.'),
-            Option('name', help='Name of the new remote branch.'),
+            Option('owner', help='Owner of the new remote branch.', type=str),
+            Option('project', help='Project name for the new remote branch.', type=str),
+            Option('name', help='Name of the new remote branch.', type=str),
             ]
     takes_args = ['submit_branch?']
 
@@ -93,40 +91,44 @@ class cmd_propose_merge(Command):
 
     takes_options = ['directory',
             RegistryOption(
-                'mechanism',
-                help='Use the specified proposal mechanism.',
-                lazy_registry=('breezy.plugins.propose.propose', 'proposers')),
+                'hoster',
+                help='Use the hoster.',
+                lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
             ListOption('reviewers', short_name='R', type=text_type,
                 help='Requested reviewers.'),
+            Option('name', help='Name of the new remote branch.', type=str),
             ]
     takes_args = ['submit_branch?']
 
     aliases = ['propose']
 
-    def run(self, submit_branch=None, directory='.', mechanism=None, reviewers=None):
+    def run(self, submit_branch=None, directory='.', hoster=None, reviewers=None, name=None):
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory)
-        public_branch = branch.get_public_branch()
-        if public_branch:
-            # TODO(jelmer): Verify that the public branch is up to date
-            branch = _mod_branch.Branch.open(public_branch)
         if submit_branch is None:
             submit_branch = branch.get_submit_branch()
         if submit_branch is None:
-            raise errors.BzrCommandError(gettext("No location specified or remembered"))
+            submit_branch = branch.get_parent()
+        if submit_branch is None:
+            raise errors.BzrCommandError(gettext("No target location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)
-        if mechanism is None:
-            proposer = _mod_propose.get_proposer(branch, target)
+        if hoster is None:
+            hoster = _mod_propose.get_hoster(target)
         else:
-            proposer = mechanism(branch, target)
-        body = proposer.get_initial_body()
-        info = proposer.get_infotext()
+            hoster = hoster.probe(target)
+        if name is None:
+            name = branch_name(branch)
+        remote_branch, public_branch_url = hoster.publish(branch, target, name=name)
+        note(gettext('Published branch to %s') % public_branch_url)
+        proposal_builder = hoster.get_proposer(remote_branch, target)
+        body = proposal_builder.get_initial_body()
+        info = proposal_builder.get_infotext()
         description = msgeditor.edit_commit_message(info, start_message=body)
         try:
-            proposal = proposer.create_proposal(
+            proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
-        webbrowser.open(proposal.url)
+        note(gettext('Merge proposal created: %s') % proposal.url)

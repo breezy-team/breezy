@@ -87,10 +87,6 @@ class MergeProposalBuilder(object):
         self.source_branch = source_branch
         self.target_branch = target_branch
 
-    @classmethod
-    def is_compatible(cls, target_branch, source_branch):
-        raise NotImplementedError(cls.is_compatible)
-
     def get_initial_body(self):
         """Get a body for the proposal for the user to modify.
 
@@ -151,32 +147,6 @@ def get_hoster(branch):
             return hoster_cls()
     raise UnsupportedHoster(branch)
 
-
-def get_proposer(branch, target_branch):
-    """Create a merge proposal for branch to target_branch.
-
-    :param branch: A branch object
-    :param target_branch: Target branch object
-    """
-    for name, proposer_cls in proposers.items():
-        if proposer_cls.is_compatible(target_branch, branch):
-            break
-    else:
-        raise ProposerUnavailable(target_branch.user_url)
-
-    return proposer_cls(branch, target_branch)
-
-
-proposers = registry.Registry()
-proposers.register_lazy(
-        "launchpad", "breezy.plugins.propose.launchpad",
-        "LaunchpadMergeProposalBuilder")
-proposers.register_lazy(
-        "github", "breezy.plugins.propose.github",
-        "GitHubMergeProposalBuilder")
-proposers.register_lazy(
-        "gitlab", "breezy.plugins.propose.gitlabs",
-        "GitlabMergeProposalBuilder")
 
 hosters = registry.Registry()
 hosters.register_lazy(
