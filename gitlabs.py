@@ -20,6 +20,7 @@ from ... import (
     errors,
     urlutils,
     )
+from ...config import AuthenticationConfig
 
 from .propose import (
     Hoster,
@@ -40,9 +41,14 @@ class DifferentGitLabInstances(errors.BzrError):
 
 
 def connect_gitlab(url):
-    from ....gitlab import Gitlab
+    from gitlab import Gitlab
     # TODO(jelmer): Support authentication
-    return Gitlab(url)
+    auth = AuthenticationConfig()
+
+    credentials = auth.get_credentials('https', url)
+    if credentials is None:
+        credentials = {}
+    return Gitlab('https://%s' % url, **credentials)
 
 
 def parse_gitlab_url(branch):
@@ -55,17 +61,23 @@ def parse_gitlab_url(branch):
 class GitLab(Hoster):
     """GitLab hoster implementation."""
 
+    def publish(self, local_branch, base_branch, name, project=None,
+                owner=None, revision_id=None, overwrite=False):
+        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        gl = connect_gitlab(host)
+        base_project = gl.projects.get(base_project)
+        import pdb; pdb.set_trace()
+
     @classmethod
     def is_compatible(cls, branch):
         try:
             (host, project, branch_name) = parse_gitlab_url(branch)
         except ValueError:
             return False
+        import gitlab
         try:
-            gl = connect_gitlab('https://%s' % host)
-            gl.projects.get(project)
-        except ValueError:
-            # TODO(jelmer): This is too broad
+            gl = connect_gitlab(host)
+        except gitlab.GitlabGetError:
             return False
         return True
 
@@ -100,7 +112,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
         # TODO(jelmer): Support reviewers
-        gl = connect_gitlab('https://%s' % self.source_host)
+        gl = connect_gitlab(self.source_host)
         source_project = gl.projects.get(self.source_project_name)
         target_project = gl.projects.get(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly

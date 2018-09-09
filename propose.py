@@ -141,6 +141,8 @@ class Hoster(object):
         """Checks whether this hoster hosts the specified branch."""
         raise NotImplementedError(cls.is_compatible)
 
+    # TODO(jelmer): Some way of cleaning up old branch proposals/branches
+
 
 def get_hoster(branch):
     """Find the hoster for a branch."""
@@ -173,7 +175,7 @@ proposers.register_lazy(
         "github", "breezy.plugins.propose.github",
         "GitHubMergeProposalBuilder")
 proposers.register_lazy(
-        "gitlab", "breezy.plugins.propose.gitlab",
+        "gitlab", "breezy.plugins.propose.gitlabs",
         "GitlabMergeProposalBuilder")
 
 hosters = registry.Registry()
@@ -184,5 +186,5 @@ hosters.register_lazy(
         "github", "breezy.plugins.propose.github",
         "GitHub")
 hosters.register_lazy(
-        "gitlab", "breezy.plugins.propose.gitlab",
+        "gitlab", "breezy.plugins.propose.gitlabs",
         "GitLab")
