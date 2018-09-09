@@ -131,4 +131,4 @@ class cmd_propose_merge(Command):
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+        note(gettext('Merge proposal created: %s') % proposal.url))

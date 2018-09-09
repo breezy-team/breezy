@@ -43,7 +43,6 @@ class MergeProposalExists(errors.BzrError):
         self.url = url
 
 
-
 class UnsupportedHoster(errors.BzrError):
 
     _fmt = "No supported hoster for %(branch)s."
@@ -72,6 +71,9 @@ class MergeProposal(object):
 
     def __init__(self, url=None):
         self.url = url
+
+    # TODO(jelmer): provide some way to check if this merge proposal has been
+    # merged.
 
 
 class MergeProposalBuilder(object):
@@ -138,6 +140,7 @@ class Hoster(object):
         raise NotImplementedError(cls.is_compatible)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
+    # TODO(jelmer): Some way of checking up on outstanding merge proposals
 
 
 def get_hoster(branch):
