@@ -147,16 +147,22 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
+        import github
         # TODO(jelmer): Probe for right repo name
         self.target_repo_name = self.target_repo_name.rstrip('.git')
         target_repo = self.gh.get_repo("%s/%s" % (self.target_owner, self.target_repo_name))
         # TODO(jelmer): Allow setting title explicitly?
         title = description.splitlines()[0]
         # TOOD(jelmer): Set maintainers_can_modify?
-        pull_request = target_repo.create_pull(
-            title=title, body=description,
-            head="%s:%s" % (self.source_owner, self.source_branch_name),
-            base=self.target_branch_name)
+        try:
+            pull_request = target_repo.create_pull(
+                title=title, body=description,
+                head="%s:%s" % (self.source_owner, self.source_branch_name),
+                base=self.target_branch_name)
+        except github.GithubException as e:
+            if e.status == 422:
+                raise MergeProposalExists(self.source_branch.user_url)
+            raise
         if reviewers:
             for reviewer in reviewers:
                 pull_request.assignees.append(

@@ -43,23 +43,42 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-def connect_gitlab(url):
+class GitLabLoginMissing(errors.BzrError):
+
+    _fmt = ("Please log into GitLab")
+
+
+def connect_gitlab(host):
     from gitlab import Gitlab
-    # TODO(jelmer): Support authentication
     auth = AuthenticationConfig()
 
-    credentials = auth.get_credentials('https', url)
+    url = 'https://%s' % host
+    credentials = auth.get_credentials('https', host)
     if credentials is None:
-        credentials = {}
-    return Gitlab('https://%s' % url, **credentials)
-    # return Gitlab.from_config('gitlab')
+        import configparser
+        from gitlab.config import _DEFAULT_FILES
+        config = configparser.ConfigParser()
+        config.read(_DEFAULT_FILES)
+        for name, section in config.iteritems():
+            if section.get('url') == url:
+                credentials = section
+                break
+        else:
+            raise GitLabLoginMissing()
+    else:
+        credentials['url'] = url
+    return Gitlab(**credentials)
 
 
 def parse_gitlab_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
-    return host, path.strip('/'), branch.name
+    path = path.strip('/')
+    # TODO(jelmer): This is a hack; we should just support catching redirections for git access.
+    # https://bugs.launchpad.net/brz/+bug/1791535
+    path = path.rstrip('.git')
+    return host, path, branch.name
 
 
 class GitLab(Hoster):
@@ -72,17 +91,14 @@ class GitLab(Hoster):
                 owner=None, revision_id=None, overwrite=False):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
-        gl.auth()
-        # TODO(jelmer): This is a hack; we should just support catching redirections for git access.
-        # https://bugs.launchpad.net/brz/+bug/1791535
-        base_project = base_project.rstrip('.git')
-        base_project = gl.projects.get(base_project)
+        self.gl.auth()
+        base_project = self.gl.projects.get(base_project)
         if owner is None:
-            owner = gl.user.username
+            owner = self.gl.user.username
         if project is None:
             project = base_project.name
         try:
-            target_project = gl.projects.get('%s/%s' % (owner, project))
+            target_project = self.gl.projects.get('%s/%s' % (owner, project))
         except gitlab.GitlabGetError:
             target_project = base_project.forks.create()
         remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
@@ -91,7 +107,7 @@ class GitLab(Hoster):
             overwrite=overwrite, name=name)
         public_url = urlutils.join_segment_parameters(
                 target_project.attributes['http_url_to_repo'],
-                {"branch": name})
+                {"branch": name.encode('utf-8')})
         return push_result.target_branch, public_url
 
     def get_proposer(self, source_branch, target_branch):
@@ -142,9 +158,9 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
         # TODO(jelmer): Support reviewers
-        gl.auth()
-        source_project = gl.projects.get(self.source_project_name)
-        target_project = gl.projects.get(self.target_project_name)
+        self.gl.auth()
+        source_project = self.gl.projects.get(self.source_project_name)
+        target_project = self.gl.projects.get(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
         title = description.splitlines()[0]
         # TODO(jelmer): Allow setting allow_collaboration field
