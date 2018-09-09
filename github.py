@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from .propose import (
     Hoster,
     MergeProposal,
-    MergeProposer,
+    MergeProposalBuilder,
     MergeProposalExists,
     )
 
@@ -76,7 +76,7 @@ class GitHub(Hoster):
         raise NotImplementedError(self.publish)
 
     def get_proposer(self, source_branch, target_branch):
-        return GitHubMergeProposer(source_branch, target_branch)
+        return GitHubMergeProposalBuilder(source_branch, target_branch)
 
     @classmethod
     def is_compatible(cls, branch):
@@ -88,7 +88,7 @@ class GitHub(Hoster):
             return True
 
 
-class GitHubMergeProposer(MergeProposer):
+class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch

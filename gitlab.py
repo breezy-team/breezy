@@ -22,15 +22,11 @@ from ... import (
     )
 
 from .propose import (
+    Hoster,
     MergeProposal,
-    MergeProposer,
+    MergeProposalBuilder,
     MergeProposalExists,
     )
-
-from ...lazy_import import lazy_import
-lazy_import(globals(), """
-from gitlab import Gitlab
-""")
 
 
 class DifferentGitLabInstances(errors.BzrError):
@@ -44,6 +40,7 @@ class DifferentGitLabInstances(errors.BzrError):
 
 
 def connect_gitlab(url):
+    from ....gitlab import Gitlab
     # TODO(jelmer): Support authentication
     return Gitlab(url)
 
@@ -73,7 +70,7 @@ class GitLab(Hoster):
         return True
 
 
-class GitlabMergeProposer(MergeProposer):
+class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
@@ -84,9 +81,6 @@ class GitlabMergeProposer(MergeProposer):
             parse_gitlab_url(target_branch))
         if self.source_host != self.target_host:
             raise DifferentGitLabInstances(self.source_host, self.target_host)
-
-    @classmethod
-    def is_compatible(cls, target_branch, source_branch):
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""

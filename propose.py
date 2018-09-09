@@ -43,6 +43,16 @@ class MergeProposalExists(errors.BzrError):
         self.url = url
 
 
+
+class UnsupportedHoster(errors.BzrError):
+
+    _fmt = "No supported hoster for %(branch)s."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self)
+        self.branch = branch
+
+
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
@@ -64,7 +74,7 @@ class MergeProposal(object):
         self.url = url
 
 
-class MergeProposer(object):
+class MergeProposalBuilder(object):
     """Merge proposal creator.
 
     :param source_branch: Branch to propose for merging
@@ -107,7 +117,7 @@ class Hoster(object):
     """A hosting site manager.
     """
 
-    def publish(self, base_branch, new_branch):
+    def publish(self, new_branch, base_branch):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
@@ -121,7 +131,7 @@ class Hoster(object):
 
         :param source_branch: Source branch
         :param target_branch: Target branch
-        :return: A MergeProposer object
+        :return: A MergeProposalBuilder object
         """
         raise NotImplementedError(self.get_proposer)
 
@@ -129,6 +139,14 @@ class Hoster(object):
     def is_compatible(cls, branch):
         """Checks whether this hoster hosts the specified branch."""
         raise NotImplementedError(cls.is_compatible)
+
+
+def get_hoster(branch):
+    """Find the hoster for a branch."""
+    for name, hoster_cls in hosters.items():
+        if hoster_cls.is_compatible(branch):
+            return hoster_cls()
+    raise UnsupportedHoster(branch)
 
 
 def get_proposer(branch, target_branch):
@@ -149,10 +167,21 @@ def get_proposer(branch, target_branch):
 proposers = registry.Registry()
 proposers.register_lazy(
         "launchpad", "breezy.plugins.propose.launchpad",
-        "LaunchpadMergeProposer")
+        "LaunchpadMergeProposalBuilder")
 proposers.register_lazy(
         "github", "breezy.plugins.propose.github",
-        "GitHubMergeProposer")
+        "GitHubMergeProposalBuilder")
 proposers.register_lazy(
         "gitlab", "breezy.plugins.propose.gitlab",
-        "GitlabMergeProposer")
+        "GitlabMergeProposalBuilder")
+
+hosters = registry.Registry()
+hosters.register_lazy(
+        "launchpad", "breezy.plugins.propose.launchpad",
+        "Launchpad")
+hosters.register_lazy(
+        "github", "breezy.plugins.propose.github",
+        "GitHub")
+hosters.register_lazy(
+        "gitlab", "breezy.plugins.propose.gitlab",
+        "GitLab")

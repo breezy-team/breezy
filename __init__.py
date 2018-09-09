@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Support for the propose command."""
+"""Management of hosted branches."""
 
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_publish", [], __name__ + ".cmds")

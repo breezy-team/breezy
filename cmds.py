@@ -23,17 +23,26 @@ from ... import (
     controldir,
     errors,
     msgeditor,
+    urlutils,
     )
 from ...i18n import gettext
 from ...commands import Command
 from ...option import (
     ListOption,
+    Option,
     RegistryOption,
     )
 from ...sixish import text_type
+from ...trace import note
 from . import (
     propose as _mod_propose,
     )
+
+
+def branch_name(branch):
+    if branch.name:
+        return branch.name
+    return urlutils.basename(branch.user_url)
 
 
 class cmd_publish(Command):
@@ -42,10 +51,36 @@ class cmd_publish(Command):
     Try to create a public copy of a local branch.
     How this is done depends on the submit branch and where it is
     hosted.
+
+    Reasonable defaults are picked for owner name, branch name and project
+    name, but they can also be overridden from the command-line.
     """
 
-    def run(self, submit_branch=None, directory='.'):
-        pass
+    takes_options = [
+            'directory',
+            Option('owner', help='Owner of the new remote branch.'),
+            Option('project', help='Project name for the new remote branch.'),
+            Option('name', help='Name of the new remote branch.'),
+            ]
+    takes_args = ['submit_branch?']
+
+    def run(self, submit_branch=None, owner=None, name=None, project=None,
+            directory='.'):
+        local_branch = _mod_branch.Branch.open_containing(directory)[0]
+        self.add_cleanup(local_branch.lock_write().unlock)
+        if submit_branch is None:
+            submit_branch = local_branch.get_submit_branch()
+            note(gettext('Using submit branch %s') % submit_branch)
+        submit_branch = _mod_branch.Branch.open(submit_branch)
+        if name is None:
+            name = branch_name(local_branch)
+        hoster = _mod_propose.get_hoster(submit_branch)
+        remote_branch, public_url = hoster.publish(
+                local_branch, submit_branch, name=name, project=project,
+                owner=owner)
+        local_branch.set_push_location(remote_branch.user_url)
+        local_branch.set_public_branch(public_url)
+        note(gettext("Pushed to %s") % public_url)
 
 
 class cmd_propose_merge(Command):
