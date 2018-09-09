@@ -29,6 +29,7 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
+    UnsupportedHoster,
     )
 
 
@@ -64,11 +65,13 @@ def parse_gitlab_url(branch):
 class GitLab(Hoster):
     """GitLab hoster implementation."""
 
+    def __init__(self, gl):
+        self.gl = gl
+
     def publish(self, local_branch, base_branch, name, project=None,
                 owner=None, revision_id=None, overwrite=False):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
-        gl = connect_gitlab(host)
         gl.auth()
         # TODO(jelmer): This is a hack; we should just support catching redirections for git access.
         # https://bugs.launchpad.net/brz/+bug/1791535
@@ -91,23 +94,27 @@ class GitLab(Hoster):
                 {"branch": name})
         return push_result.target_branch, public_url
 
+    def get_proposer(self, source_branch, target_branch):
+        return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
+
     @classmethod
-    def is_compatible(cls, branch):
+    def probe(cls, branch):
         try:
             (host, project, branch_name) = parse_gitlab_url(branch)
         except ValueError:
-            return False
+            raise UnsupportedHoster(branch)
         import gitlab
         try:
             gl = connect_gitlab(host)
         except gitlab.GitlabGetError:
-            return False
-        return True
+            raise UnsupportedHoster(branch)
+        return cls(gl)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, source_branch, target_branch):
+    def __init__(self, gl, source_branch, target_branch):
+        self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
             parse_gitlab_url(source_branch))
@@ -135,7 +142,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
         # TODO(jelmer): Support reviewers
-        gl = connect_gitlab(self.source_host)
         gl.auth()
         source_project = gl.projects.get(self.source_project_name)
         target_project = gl.projects.get(self.target_project_name)

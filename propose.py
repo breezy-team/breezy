@@ -25,15 +25,6 @@ from ... import (
     )
 
 
-class ProposerUnavailable(errors.BzrError):
-
-    _fmt = "Unable to determine how to propose a merge to %(branch)s."
-
-    def __init__(self, branch):
-        errors.BzrError.__init__(self)
-        self.branch = branch
-
-
 class MergeProposalExists(errors.BzrError):
 
     _fmt = "A merge proposal already exists: %(url)s."
@@ -135,9 +126,9 @@ class Hoster(object):
         raise NotImplementedError(self.get_proposer)
 
     @classmethod
-    def is_compatible(cls, branch):
-        """Checks whether this hoster hosts the specified branch."""
-        raise NotImplementedError(cls.is_compatible)
+    def probe(cls, branch):
+        """Create a Hoster object if this hoster knows about a branch."""
+        raise NotImplementedError(cls.probe)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
     # TODO(jelmer): Some way of checking up on outstanding merge proposals
@@ -146,8 +137,10 @@ class Hoster(object):
 def get_hoster(branch):
     """Find the hoster for a branch."""
     for name, hoster_cls in hosters.items():
-        if hoster_cls.is_compatible(branch):
-            return hoster_cls()
+        try:
+            return hoster_cls.probe(branch)
+        except UnsupportedHoster:
+            pass
     raise UnsupportedHoster(branch)
 
 

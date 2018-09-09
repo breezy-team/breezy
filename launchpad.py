@@ -45,9 +45,17 @@ from ...transport import get_transport
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
 
+    def __init__(self, staging=False):
+        if staging:
+            lp_instance = 'staging'
+        else:
+            lp_instance = 'production'
+        self.launchpad = connect_launchpad(lp_instance)
+
     @classmethod
-    def is_compatible(cls, branch):
-        return lp_api.LaunchpadBranch.plausible_launchpad_url(branch.user_url)
+    def probe(cls, branch):
+        if lp_api.LaunchpadBranch.plausible_launchpad_url(branch.user_url):
+            return Launchpad()
 
     def publish(self, local_branch, base_branch, name, project=None, owner=None,
                 revision_id=None, overwrite=False):
@@ -61,13 +69,12 @@ class Launchpad(Hoster):
         :return: resulting branch
         """
         # TODO(jelmer): Prevent publishing to development focus
-        launchpad = connect_launchpad()
         base_branch = lp_api.LaunchpadBranch.from_bzr(
-            launchpad, base_branch)
+            self.launchpad, base_branch)
         if project is None:
             project = base_branch.lp.project.name
         if owner is None:
-            owner = launchpad.me.name
+            owner = self.launchpad.me.name
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
         to_transport = get_transport("lp:~%s/%s/%s" % (owner, project, name))
         try:
@@ -88,7 +95,7 @@ class Launchpad(Hoster):
         return br_to, ("https://code.launchpad.net/~%s/%s/%s" % (owner, project, name))
 
     def get_proposer(self, source_branch, target_branch):
-        return LaunchpadMergeProposalBuilder(source_branch, target_branch)
+        return LaunchpadMergeProposalBuilder(self.launchpad, source_branch, target_branch)
 
 
 def connect_launchpad(lp_instance='production'):
@@ -98,7 +105,7 @@ def connect_launchpad(lp_instance='production'):
 
 class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, source_branch, target_branch, message=None,
+    def __init__(self, launchpad, source_branch, target_branch, message=None,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
@@ -112,11 +119,7 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             by the submitter (e.g. merges between release and deployment
             branches).
         """
-        if staging:
-            lp_instance = 'staging'
-        else:
-            lp_instance = 'production'
-        self.launchpad = connect_launchpad(lp_instance=lp_instance)
+        self.launchpad = launchpad
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:

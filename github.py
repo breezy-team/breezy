@@ -21,6 +21,7 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
+    UnsupportedHoster,
     )
 
 from ... import (
@@ -75,22 +76,24 @@ def parse_github_url(branch):
 
 class GitHub(Hoster):
 
+    def __init__(self):
+        self.gh = connect_github()
+
     def publish(self, local_branch, base_branch, name, project=None,
                 owner=None, revision_id=None, overwrite=False):
-        gh = connect_github()
         base_owner, base_project, base_branch_name = parse_github_url(base_branch)
         if owner is None:
-            owner = gh.get_user().login
+            owner = self.gh.get_user().login
         if project is None:
             project = base_project
         try:
-            remote_repo = gh.get_repo('%s/%s' % (owner, project))
+            remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
         except ValueError:
-            base_repo = gh.get_repo('%s/%s' % (base_owner, base_project))
-            if owner == gh.get_user().login:
-                owner_obj = gh.get_user()
+            base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
+            if owner == self.gh.get_user().login:
+                owner_obj = self.gh.get_user()
             else:
-                owner_obj = gh.get_organization(owner)
+                owner_obj = self.gh.get_organization(owner)
             note(gettext('Forking new repository %s from %s') %
                     (remote_repo.html_url, base_repo.html_url))
             remote_repo = owner_obj.create_fork(base_repo)
@@ -103,36 +106,27 @@ class GitHub(Hoster):
                 remote_repo.html_url, {"branch": name.encode('utf-8')})
 
     def get_proposer(self, source_branch, target_branch):
-        return GitHubMergeProposalBuilder(source_branch, target_branch)
+        return GitHubMergeProposalBuilder(self.gh, source_branch, target_branch)
 
     @classmethod
-    def is_compatible(cls, branch):
+    def probe(cls, branch):
         try:
             parse_github_url(branch)
         except NotGitHubUrl:
-            return False
-        else:
-            return True
+            raise UnsupportedHoster(branch)
+        return cls()
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, source_branch, target_branch):
+    def __init__(self, gh, source_branch, target_branch):
+        self.gh = gh
         self.source_branch = source_branch
         self.target_branch = target_branch
         (self.target_owner, self.target_repo_name, self.target_branch_name) = (
                 parse_github_url(self.target_branch))
         (self.source_owner, self.source_repo_name, self.source_branch_name) = (
                 parse_github_url(self.source_branch))
-
-    @classmethod
-    def is_compatible(cls, target_branch, source_branch):
-        try:
-            parse_github_url(target_branch)
-        except NotGitHubUrl:
-            return False
-        else:
-            return True
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
@@ -153,10 +147,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
-        gh = connect_github()
         # TODO(jelmer): Probe for right repo name
         self.target_repo_name = self.target_repo_name.rstrip('.git')
-        target_repo = gh.get_repo("%s/%s" % (self.target_owner, self.target_repo_name))
+        target_repo = self.gh.get_repo("%s/%s" % (self.target_owner, self.target_repo_name))
         # TODO(jelmer): Allow setting title explicitly?
         title = description.splitlines()[0]
         # TOOD(jelmer): Set maintainers_can_modify?
@@ -167,5 +160,5 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if reviewers:
             for reviewer in reviewers:
                 pull_request.assignees.append(
-                    gh.get_user(reviewer))
+                    self.gh.get_user(reviewer))
         return MergeProposal(pull_request.html_url)
