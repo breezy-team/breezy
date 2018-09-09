@@ -36,6 +36,18 @@ from . import (
     )
 
 
+class cmd_publish(Command):
+    __doc__ = """Publish a branch.
+
+    Try to create a public copy of a local branch.
+    How this is done depends on the submit branch and where it is
+    hosted.
+    """
+
+    def run(self, submit_branch=None, directory='.'):
+        pass
+
+
 class cmd_propose_merge(Command):
     __doc__ = """Propose a branch for merging.
 

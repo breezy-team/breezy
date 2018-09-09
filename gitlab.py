@@ -55,6 +55,24 @@ def parse_gitlab_url(branch):
     return host, path.strip('/'), branch.name
 
 
+class GitLab(Hoster):
+    """GitLab hoster implementation."""
+
+    @classmethod
+    def is_compatible(cls, branch):
+        try:
+            (host, project, branch_name) = parse_gitlab_url(branch)
+        except ValueError:
+            return False
+        try:
+            gl = connect_gitlab('https://%s' % host)
+            gl.projects.get(project)
+        except ValueError:
+            # TODO(jelmer): This is too broad
+            return False
+        return True
+
+
 class GitlabMergeProposer(MergeProposer):
 
     def __init__(self, source_branch, target_branch):
@@ -69,17 +87,6 @@ class GitlabMergeProposer(MergeProposer):
 
     @classmethod
     def is_compatible(cls, target_branch, source_branch):
-        try:
-            (host, project, branch_name) = parse_gitlab_url(target_branch)
-        except ValueError:
-            return False
-        try:
-            gl = connect_gitlab('https://%s' % host)
-            gl.projects.get(project)
-        except ValueError:
-            # TODO(jelmer): This is too broad
-            return False
-        return True
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""

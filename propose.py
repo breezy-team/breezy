@@ -103,6 +103,34 @@ class MergeProposer(object):
         raise NotImplementedError(self.create_proposal)
 
 
+class Hoster(object):
+    """A hosting site manager.
+    """
+
+    def publish(self, base_branch, new_branch):
+        """Publish a branch to the site, derived from base_branch.
+
+        :param base_branch: branch to derive the new branch from
+        :param new_branch: branch to publish
+        :return: resulting branch
+        """
+        raise NotImplementedError(self.publish)
+
+    def get_proposer(self, source_branch, target_branch):
+        """Get a merge proposal creator.
+
+        :param source_branch: Source branch
+        :param target_branch: Target branch
+        :return: A MergeProposer object
+        """
+        raise NotImplementedError(self.get_proposer)
+
+    @classmethod
+    def is_compatible(cls, branch):
+        """Checks whether this hoster hosts the specified branch."""
+        raise NotImplementedError(cls.is_compatible)
+
+
 def get_proposer(branch, target_branch):
     """Create a merge proposal for branch to target_branch.
 

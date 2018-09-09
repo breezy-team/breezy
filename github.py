@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 
 from .propose import (
+    Hoster,
     MergeProposal,
     MergeProposer,
     MergeProposalExists,
@@ -67,6 +68,24 @@ def parse_github_url(branch):
         raise NotGitHubUrl(url)
     (owner, repo_name) = path.strip('/').split('/')
     return owner, repo_name, branch.name
+
+
+class GitHub(Hoster):
+
+    def publish(self, base_branch, local_branch):
+        raise NotImplementedError(self.publish)
+
+    def get_proposer(self, source_branch, target_branch):
+        return GitHubMergeProposer(source_branch, target_branch)
+
+    @classmethod
+    def is_compatible(cls, branch):
+        try:
+            parse_github_url(branch)
+        except NotGitHubUrl:
+            return False
+        else:
+            return True
 
 
 class GitHubMergeProposer(MergeProposer):

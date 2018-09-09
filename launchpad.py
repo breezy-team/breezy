@@ -39,6 +39,10 @@ from breezy.plugins.launchpad import (
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
 
 
+class Launchpad(Hoster):
+    """The Launchpad hosting service."""
+
+
 class LaunchpadMergeProposer(MergeProposer):
 
     def __init__(self, source_branch, target_branch, message=None,
