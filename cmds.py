@@ -155,6 +155,7 @@ class cmd_autopropose(Command):
         import shutil
         import tempfile
         main_branch = _mod_branch.Branch.open(branch)
+        hoster = _mod_propose.get_hoster(main_branch)
         td = tempfile.mkdtemp()
         self.add_cleanup(shutil.rmtree, td)
         # preserve whatever source format we have.
@@ -174,10 +175,10 @@ class cmd_autopropose(Command):
         except PointlessCommit:
             raise errors.BzrCommandError(gettext(
                 "Script didn't make any changes"))
-        hoster = _mod_propose.get_hoster(main_branch)
         if name is None:
             name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
-        remote_branch, public_branch_url = hoster.publish(local_branch, main_branch, name=name, overwrite=overwrite)
+        remote_branch, public_branch_url = hoster.publish(
+                local_branch, main_branch, name=name, overwrite=overwrite)
         note(gettext('Published branch to %s') % public_branch_url)
         proposal_builder = hoster.get_proposer(remote_branch, main_branch)
         proposal = proposal_builder.create_proposal(description=description)
