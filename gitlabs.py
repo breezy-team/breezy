@@ -17,10 +17,12 @@
 from __future__ import absolute_import
 
 from ... import (
+    controldir,
     errors,
     urlutils,
     )
 from ...config import AuthenticationConfig
+from ...git.urls import git_url_to_bzr_url
 
 from .propose import (
     Hoster,
@@ -49,6 +51,7 @@ def connect_gitlab(url):
     if credentials is None:
         credentials = {}
     return Gitlab('https://%s' % url, **credentials)
+    # return Gitlab.from_config('gitlab')
 
 
 def parse_gitlab_url(branch):
@@ -63,10 +66,29 @@ class GitLab(Hoster):
 
     def publish(self, local_branch, base_branch, name, project=None,
                 owner=None, revision_id=None, overwrite=False):
+        import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
         gl = connect_gitlab(host)
+        gl.auth()
+        # TODO(jelmer): This is a hack; we should just support catching redirections for git access.
+        base_project = base_project.rstrip('.git')
         base_project = gl.projects.get(base_project)
-        import pdb; pdb.set_trace()
+        if owner is None:
+            owner = gl.user.username
+        if project is None:
+            project = base_project.name
+        try:
+            target_project = gl.projects.get('%s/%s' % (owner, project))
+        except gitlab.GitlabGetError:
+            target_project = base_project.forks.create()
+        remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
+        remote_dir = controldir.ControlDir.open(remote_repo_url)
+        push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+            overwrite=overwrite, name=name)
+        public_url = urlutils.join_segment_parameters(
+                target_project.attributes['http_url_to_repo'],
+                {"branch": name})
+        return push_result.target_branch, public_url
 
     @classmethod
     def is_compatible(cls, branch):
@@ -113,6 +135,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """Perform the submission."""
         # TODO(jelmer): Support reviewers
         gl = connect_gitlab(self.source_host)
+        gl.auth()
         source_project = gl.projects.get(self.source_project_name)
         target_project = gl.projects.get(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
