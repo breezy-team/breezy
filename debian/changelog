@@ -1,6 +1,7 @@
 breezy-debian (2.8.15) UNRELEASED; urgency=medium
 
   * Guess upstream tag names if none is explicitly set.
+  * Support retrieving/storing pristine-tar deltas in git branches.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 09 Sep 2018 13:24:02 +0100
 

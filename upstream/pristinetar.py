@@ -47,6 +47,8 @@ from ....errors import (
     BzrError,
     NoSuchRevision,
     NoSuchTag,
+    NoSuchFile,
+    NotBranchError,
     )
 from ....sixish import viewitems
 from ....trace import (
@@ -65,6 +67,37 @@ class PristineTarError(BzrError):
 
 class PristineTarDeltaTooLarge(PristineTarError):
     _fmt = 'The delta generated was too large: %(error)s.'
+
+
+class PristineTarDeltaAbsent(PristineTarError):
+    _fmt = 'There is not delta present for %(version)s.'
+
+
+def git_store_pristine_tar(controldir, filename, tree_id, delta, force=False):
+    try:
+        branch = controldir.open_branch(name='pristine-tar')
+    except NotBranchError:
+        branch = controldir.create_branch(name='pristine-tar')
+    tree = branch.create_memorytree()
+    with tree.lock_write():
+        id_filename = '%s.id' % filename
+        delta_filename = '%s.delta' % filename
+        try:
+            existing_id = tree.get_file_text(id_filename)
+            existing_delta = tree.get_file_text(delta_filename)
+        except NoSuchFile:
+            pass
+        else:
+            if existing_id == id_filename and delta == existing_delta:
+                # Nothing to do.
+                return
+            if not force:
+                raise PristineTarError("An existing pristine tar entry exists for %s" %
+                        filename)
+        tree.put_file_bytes_non_atomic(id_filename, tree_id.encode('ascii') + b'\n')
+        tree.put_file_bytes_non_atomic(delta_filename, delta)
+        tree.add([id_filename, delta_filename], [None, None], ['file', 'file'])
+        tree.commit('Add pristine tar data for %s' % filename)
 
 
 def reconstruct_pristine_tar(dest, delta, dest_filename):
@@ -119,6 +152,68 @@ def make_pristine_tar_delta(dest, tarball_path):
             raise PristineTarError("Generating delta from tar failed: %s" %
                     stderr)
     return stdout
+
+
+def make_pristine_tar_delta_from_tree(tree, tarball_path, subdir=None, exclude=None):
+    tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+    try:
+        dest = os.path.join(tmpdir, "orig")
+        with tree.lock_read():
+            export(tree, dest, format='dir', subdir=subdir)
+        try:
+            return make_pristine_tar_delta(dest, tarball_path)
+        except PristineTarDeltaTooLarge:
+            raise
+        except PristineTarError: # I.e. not PristineTarDeltaTooLarge
+            conf = debuild_config(tree, True)
+            if conf.debug_pristine_tar:
+                revno, revid = tree.branch.last_revision_info()
+                preserved = osutils.pathjoin(osutils.dirname(tarball_path),
+                                             'orig-%s' % (revno,))
+                mutter('pristine-tar failed for delta between %s rev: %s'
+                       ' and tarball %s'
+                       % (tree.basedir, (revno, revid), tarball_path))
+                osutils.copy_tree(
+                    dest, preserved)
+                mutter('The failure can be reproduced with:\n'
+                       '  cd %s\n'
+                       '  pristine-tar -vdk gendelta %s -'
+                       % (preserved, tarball_path))
+            raise
+    finally:
+        shutil.rmtree(tmpdir)
+
+
+def revision_has_pristine_tar_delta(rev):
+    return ('deb-pristine-delta' in rev.properties
+            or 'deb-pristine-delta-bz2' in rev.properties
+            or 'deb-pristine-delta-xz' in rev.properties)
+
+
+def revision_pristine_tar_delta(rev):
+    if 'deb-pristine-delta' in rev.properties:
+        uuencoded = rev.properties['deb-pristine-delta']
+    elif 'deb-pristine-delta-bz2' in rev.properties:
+        uuencoded = rev.properties['deb-pristine-delta-bz2']
+    elif 'deb-pristine-delta-xz' in rev.properties:
+        uuencoded = rev.properties['deb-pristine-delta-xz']
+    else:
+        assert revision_has_pristine_tar_delta(rev)
+        raise AssertionError("Not handled new delta type in "
+                "pristine_tar_delta")
+    return standard_b64decode(uuencoded)
+
+
+def revision_pristine_tar_format(rev):
+    if 'deb-pristine-delta' in rev.properties:
+        return 'gz'
+    elif 'deb-pristine-delta-bz2' in rev.properties:
+        return 'bz2'
+    elif 'deb-pristine-delta-xz' in rev.properties:
+        return 'xz'
+    assert revision_has_pristine_tar_delta(rev)
+    raise AssertionError("Not handled new delta type in "
+            "pristine_tar_format")
 
 
 class PristineTarSource(UpstreamSource):
@@ -193,28 +288,42 @@ class PristineTarSource(UpstreamSource):
                     return False
             else:
                 return True
+        message = "Import upstream version %s" % (version,)
+        if component is not None:
+            message += ", component %s" % component
+            if tree.branch.repository._format.supports_custom_revision_properties:
+                revprops["deb-component"] = component
         revprops = {}
+        git_delta = None
         if md5 is not None:
-            revprops["deb-md5"] = md5
-            delta = self.make_pristine_tar_delta(tree, tarball, subdir=subdir,
-                    exclude=exclude)
-            uuencoded = standard_b64encode(delta)
-            if tarball.endswith(".tar.bz2"):
-                revprops["deb-pristine-delta-bz2"] = uuencoded
-            elif tarball.endswith(".tar.xz"):
-                revprops["deb-pristine-delta-xz"] = uuencoded
+            if tree.branch.repository._format.supports_custom_revision_properties:
+                revprops["deb-md5"] = md5
             else:
-                revprops["deb-pristine-delta"] = uuencoded
+                message += ", md5 %s" % md5
+            delta = make_pristine_tar_delta_from_tree(tree, tarball, subdir=subdir,
+                    exclude=exclude)
+            if tree.branch.repository._format.supports_custom_revision_properties:
+                uuencoded = standard_b64encode(delta)
+                if tarball.endswith(".tar.bz2"):
+                    revprops["deb-pristine-delta-bz2"] = uuencoded
+                elif tarball.endswith(".tar.xz"):
+                    revprops["deb-pristine-delta-xz"] = uuencoded
+                else:
+                    revprops["deb-pristine-delta"] = uuencoded
+            else:
+                if getattr(tree.branch.repository, '_git', None):
+                    git_delta = delta
+                else:
+                    warning('Not setting pristine tar revision properties '
+                            'since the repository does not support it.')
+        else:
+            delta = None
         if author is not None:
             revprops['authors'] = author
         timezone = None
         if timestamp is not None:
             timezone = timestamp[1]
             timestamp = timestamp[0]
-        message = "Import upstream version %s" % (version,)
-        if component is not None:
-            message += ", component %s" % component
-            revprops["deb-component"] = component
         if len(parent_ids) == 0:
             base_revid = _mod_revision.NULL_REVISION
         else:
@@ -236,6 +345,11 @@ class PristineTarSource(UpstreamSource):
             tag_name, _ = self.tag_version(
                     version, revid=revid, component=component)
             tree.update_basis_by_delta(revid, builder.get_basis_delta())
+        if git_delta is not None:
+            revtree = tree.branch.repository.revision_tree(revid)
+            tree_id = revtree._lookup_path(u'')[2]
+            git_store_pristine_tar(self.branch.controldir,
+                    os.path.basename(tarball), tree_id, git_delta)
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)
@@ -247,8 +361,8 @@ class PristineTarSource(UpstreamSource):
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision:
             raise PackageVersionNotPresent(package, version, self)
-        if self.has_pristine_tar_delta(rev):
-            format = self.pristine_tar_format(rev)
+        if revision_has_pristine_tar_delta(rev):
+            format = revision_pristine_tar_format(rev)
         else:
             format = 'gz'
         target_filename = self._tarball_path(package, version, component,
@@ -347,34 +461,21 @@ class PristineTarSource(UpstreamSource):
             tags += ["upstream_%s" % version]
         return tags
 
-    def has_pristine_tar_delta(self, rev):
-        return ('deb-pristine-delta' in rev.properties
-                or 'deb-pristine-delta-bz2' in rev.properties
-                or 'deb-pristine-delta-xz' in rev.properties)
-
-    def pristine_tar_format(self, rev):
-        if 'deb-pristine-delta' in rev.properties:
-            return 'gz'
-        elif 'deb-pristine-delta-bz2' in rev.properties:
-            return 'bz2'
-        elif 'deb-pristine-delta-xz' in rev.properties:
-            return 'xz'
-        assert self.has_pristine_tar_delta(rev)
-        raise AssertionError("Not handled new delta type in "
-                "pristine_tar_format")
-
-    def pristine_tar_delta(self, rev):
-        if 'deb-pristine-delta' in rev.properties:
-            uuencoded = rev.properties['deb-pristine-delta']
-        elif 'deb-pristine-delta-bz2' in rev.properties:
-            uuencoded = rev.properties['deb-pristine-delta-bz2']
-        elif 'deb-pristine-delta-xz' in rev.properties:
-            uuencoded = rev.properties['deb-pristine-delta-xz']
+    def get_pristine_tar_delta(self, package, version, dest_filename, revid=None):
+        rev = self.branch.repository.get_revision(revid)
+        if revision_has_pristine_tar_delta(rev):
+            return revision_pristine_tar_delta(rev)
+        try:
+            pristine_tar_branch = self.branch.controldir.open_branch('pristine-tar')
+        except NotBranchError:
+            pass
         else:
-            assert self.has_pristine_tar_delta(rev)
-            raise AssertionError("Not handled new delta type in "
-                    "pristine_tar_delta")
-        return standard_b64decode(uuencoded)
+            revtree = pristine_tar_branch.repository.revision_tree(pristine_tar_branch.last_revision())
+            try:
+                return revtree.get_file_text('%s.delta' % osutils.basename(dest_filename))
+            except NoSuchFile:
+                raise PristineTarDeltaAbsent(version)
+        raise PristineTarDeltaAbsent(version)
 
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
@@ -383,42 +484,12 @@ class PristineTarSource(UpstreamSource):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
-            rev = self.branch.repository.get_revision(revid)
-            if self.has_pristine_tar_delta(rev):
-                export(tree, dest, format='dir')
-                delta = self.pristine_tar_delta(rev)
-                reconstruct_pristine_tar(dest, delta, dest_filename)
-            else:
-                export(tree, dest_filename, per_file_timestamps=True)
-        finally:
-            shutil.rmtree(tmpdir)
-
-    def make_pristine_tar_delta(self, tree, tarball_path, subdir=None, exclude=None):
-        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
-        try:
-            dest = os.path.join(tmpdir, "orig")
-            with tree.lock_read():
-                export(tree, dest, format='dir', subdir=subdir)
             try:
-                return make_pristine_tar_delta(dest, tarball_path)
-            except PristineTarDeltaTooLarge:
-                raise
-            except PristineTarError: # I.e. not PristineTarDeltaTooLarge
-                conf = debuild_config(tree, True)
-                if conf.debug_pristine_tar:
-                    revno, revid = tree.branch.last_revision_info()
-                    preserved = osutils.pathjoin(osutils.dirname(tarball_path),
-                                                 'orig-%s' % (revno,))
-                    mutter('pristine-tar failed for delta between %s rev: %s'
-                           ' and tarball %s'
-                           % (tree.basedir, (revno, revid), tarball_path))
-                    osutils.copy_tree(
-                        dest, preserved)
-                    mutter('The failure can be reproduced with:\n'
-                           '  cd %s\n'
-                           '  pristine-tar -vdk gendelta %s -'
-                           % (preserved, tarball_path))
-                raise
+                delta = self.get_pristine_tar_delta(package, version, dest_filename, revid)
+                export(tree, dest, format='dir')
+                reconstruct_pristine_tar(dest, delta, dest_filename)
+            except PristineTarDeltaAbsent:
+                export(tree, dest_filename, per_file_timestamps=True)
         finally:
             shutil.rmtree(tmpdir)
 
