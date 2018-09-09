@@ -624,9 +624,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def walkdirs(self, prefix=""):
         (store, mode, hexsha) = self._lookup_path(prefix)
-        todo = deque([(store, prefix, u"", hexsha, None)])
+        todo = deque([(store, prefix, hexsha, self.path2id(prefix))])
         while todo:
-            store, path, relpath, tree_sha, parent_id = todo.popleft()
+            store, path, tree_sha, parent_id = todo.popleft()
             path_decoded = path.decode('utf-8')
             tree = store[tree_sha]
             children = []
@@ -634,16 +634,15 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if self.mapping.is_special_file(name):
                     continue
                 child_path = posixpath.join(path, name)
-                child_relpath = posixpath.join(relpath, name.decode('utf-8'))
                 file_id = self.path2id(child_path.decode('utf-8'))
                 if stat.S_ISDIR(mode):
-                    todo.append((store, child_path, child_relpath, hexsha, file_id))
+                    todo.append((store, child_path, hexsha, file_id))
                 else:
                     children.append(
-                        (child_relpath, name.decode('utf-8'),
+                        (child_path.decode('utf-8'), name.decode('utf-8'),
                             mode_kind(mode), None,
                             file_id, mode_kind(mode)))
-            yield (relpath, parent_id), children
+            yield (path_decoded, parent_id), children
 
 
 def tree_delta_from_git_changes(changes, mapping,
