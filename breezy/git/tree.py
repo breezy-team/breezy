@@ -315,7 +315,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._fileid_map.lookup_file_id(osutils.safe_unicode(path))
 
     def all_file_ids(self):
-        return set(self._fileid_map.all_file_ids())
+        return {self.path2id(path) for path in self.all_versioned_paths()}
 
     def all_versioned_paths(self):
         ret = {u''}
@@ -638,7 +638,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 file_id = self.path2id(child_path.decode('utf-8'))
                 if stat.S_ISDIR(mode):
                     todo.append((store, child_path, child_relpath, hexsha, file_id))
-                elif specific_files is None or child_path in specific_files:
+                else:
                     children.append(
                         (child_relpath, name.decode('utf-8'),
                             mode_kind(mode), None,
