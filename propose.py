@@ -25,15 +25,6 @@ from ... import (
     )
 
 
-class ProposerUnavailable(errors.BzrError):
-
-    _fmt = "Unable to determine how to propose a merge to %(branch)s."
-
-    def __init__(self, branch):
-        errors.BzrError.__init__(self)
-        self.branch = branch
-
-
 class MergeProposalExists(errors.BzrError):
 
     _fmt = "A merge proposal already exists: %(url)s."
@@ -41,6 +32,15 @@ class MergeProposalExists(errors.BzrError):
     def __init__(self, url):
         errors.BzrError.__init__(self)
         self.url = url
+
+
+class UnsupportedHoster(errors.BzrError):
+
+    _fmt = "No supported hoster for %(branch)s."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self)
+        self.branch = branch
 
 
 class ProposeMergeHooks(hooks.Hooks):
@@ -63,8 +63,11 @@ class MergeProposal(object):
     def __init__(self, url=None):
         self.url = url
 
+    # TODO(jelmer): provide some way to check if this merge proposal has been
+    # merged.
 
-class MergeProposer(object):
+
+class MergeProposalBuilder(object):
     """Merge proposal creator.
 
     :param source_branch: Branch to propose for merging
@@ -76,10 +79,6 @@ class MergeProposer(object):
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
         self.target_branch = target_branch
-
-    @classmethod
-    def is_compatible(cls, target_branch, source_branch):
-        raise NotImplementedError(cls.is_compatible)
 
     def get_initial_body(self):
         """Get a body for the proposal for the user to modify.
@@ -103,28 +102,55 @@ class MergeProposer(object):
         raise NotImplementedError(self.create_proposal)
 
 
-def get_proposer(branch, target_branch):
-    """Create a merge proposal for branch to target_branch.
-
-    :param branch: A branch object
-    :param target_branch: Target branch object
+class Hoster(object):
+    """A hosting site manager.
     """
-    for name, proposer_cls in proposers.items():
-        if proposer_cls.is_compatible(target_branch, branch):
-            break
-    else:
-        raise ProposerUnavailable(target_branch.user_url)
 
-    return proposer_cls(branch, target_branch)
+    def publish(self, new_branch, base_branch, name, project=None, owner=None,
+                revision_id=None, overwrite=False):
+        """Publish a branch to the site, derived from base_branch.
+
+        :param base_branch: branch to derive the new branch from
+        :param new_branch: branch to publish
+        :return: resulting branch, public URL
+        """
+        raise NotImplementedError(self.publish)
+
+    def get_proposer(self, source_branch, target_branch):
+        """Get a merge proposal creator.
+
+        :param source_branch: Source branch
+        :param target_branch: Target branch
+        :return: A MergeProposalBuilder object
+        """
+        raise NotImplementedError(self.get_proposer)
+
+    @classmethod
+    def probe(cls, branch):
+        """Create a Hoster object if this hoster knows about a branch."""
+        raise NotImplementedError(cls.probe)
+
+    # TODO(jelmer): Some way of cleaning up old branch proposals/branches
+    # TODO(jelmer): Some way of checking up on outstanding merge proposals
 
 
-proposers = registry.Registry()
-proposers.register_lazy(
+def get_hoster(branch):
+    """Find the hoster for a branch."""
+    for name, hoster_cls in hosters.items():
+        try:
+            return hoster_cls.probe(branch)
+        except UnsupportedHoster:
+            pass
+    raise UnsupportedHoster(branch)
+
+
+hosters = registry.Registry()
+hosters.register_lazy(
         "launchpad", "breezy.plugins.propose.launchpad",
-        "LaunchpadMergeProposer")
-proposers.register_lazy(
+        "Launchpad")
+hosters.register_lazy(
         "github", "breezy.plugins.propose.github",
-        "GitHubMergeProposer")
-proposers.register_lazy(
-        "gitlab", "breezy.plugins.propose.gitlab",
-        "GitlabMergeProposer")
+        "GitHub")
+hosters.register_lazy(
+        "gitlab", "breezy.plugins.propose.gitlabs",
+        "GitLab")

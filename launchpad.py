@@ -17,12 +17,15 @@
 from __future__ import absolute_import
 
 from .propose import (
+    Hoster,
     MergeProposal,
-    MergeProposer,
+    MergeProposalBuilder,
     MergeProposalExists,
     )
 
 from ... import (
+    branch as _mod_branch,
+    controldir,
     errors,
     hooks,
     urlutils,
@@ -34,21 +37,81 @@ from breezy.plugins.launchpad import (
     lp_registration,
     )
 """)
+from ...transport import get_transport
 
 
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
 
+class Launchpad(Hoster):
+    """The Launchpad hosting service."""
 
-class LaunchpadMergeProposer(MergeProposer):
+    def __init__(self, staging=False):
+        if staging:
+            lp_instance = 'staging'
+        else:
+            lp_instance = 'production'
+        self.launchpad = connect_launchpad(lp_instance)
 
-    def __init__(self, source_branch, target_branch, message=None,
-                 reviews=None, staging=None, approve=None, fixes=None):
+    @classmethod
+    def probe(cls, branch):
+        if lp_api.LaunchpadBranch.plausible_launchpad_url(branch.user_url):
+            return Launchpad()
+
+    def publish(self, local_branch, base_branch, name, project=None, owner=None,
+                revision_id=None, overwrite=False):
+        """Publish a branch to the site, derived from base_branch.
+
+        :param base_branch: branch to derive the new branch from
+        :param new_branch: branch to publish
+        :param name: Name of the new branch on the remote host
+        :param project: Optional project name
+        :param owner: Optional owner
+        :return: resulting branch
+        """
+        # TODO(jelmer): Prevent publishing to development focus
+        base_branch = lp_api.LaunchpadBranch.from_bzr(
+            self.launchpad, base_branch)
+        if project is None:
+            project = base_branch.lp.project.name
+        if owner is None:
+            owner = self.launchpad.me.name
+        # TODO(jelmer): Surely there is a better way of creating one of these URLs?
+        to_transport = get_transport("lp:~%s/%s/%s" % (owner, project, name))
+        try:
+            dir_to = controldir.ControlDir.open_from_transport(to_transport)
+        except errors.NotBranchError:
+            # Didn't find anything
+            dir_to = None
+
+        if dir_to is None:
+            br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id)
+        else:
+            try:
+                br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
+            except errors.DivergedBranches:
+                raise errors.BzrCommandError(gettext('These branches have diverged.'
+                                        '  See "brz help diverged-branches"'
+                                        ' for more information.'))
+        return br_to, ("https://code.launchpad.net/~%s/%s/%s" % (owner, project, name))
+
+    def get_proposer(self, source_branch, target_branch):
+        return LaunchpadMergeProposalBuilder(self.launchpad, source_branch, target_branch)
+
+
+def connect_launchpad(lp_instance='production'):
+    service = lp_registration.LaunchpadService(lp_instance=lp_instance)
+    return lp_api.login(service)
+
+
+class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
+
+    def __init__(self, launchpad, source_branch, target_branch, message=None,
+                 staging=None, approve=None, fixes=None):
         """Constructor.
 
         :param source_branch: The branch to propose for merging.
         :param target_branch: The branch to merge into.
         :param message: The commit message to use.  (May be None.)
-        :param reviews: A list of tuples of reviewer, review type.
         :param staging: If True, propose the merge against staging instead of
             production.
         :param approve: If True, mark the new proposal as approved immediately.
@@ -56,12 +119,7 @@ class LaunchpadMergeProposer(MergeProposer):
             by the submitter (e.g. merges between release and deployment
             branches).
         """
-        if staging:
-            lp_instance = 'staging'
-        else:
-            lp_instance = 'production'
-        service = lp_registration.LaunchpadService(lp_instance=lp_instance)
-        self.launchpad = lp_api.login(service)
+        self.launchpad = launchpad
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:
@@ -73,12 +131,6 @@ class LaunchpadMergeProposer(MergeProposer):
         self.commit_message = message
         self.approve = approve
         self.fixes = fixes
-
-    @classmethod
-    def is_compatible(cls, target_branch, source_branch):
-        (scheme, user, password, host, port, path) = urlutils.parse_url(
-            target_branch.user_url)
-        return host in ('bazaar.launchpad.net', 'bazaar.staging.launchpad.net')
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""

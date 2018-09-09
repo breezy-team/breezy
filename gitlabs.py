@@ -17,20 +17,20 @@
 from __future__ import absolute_import
 
 from ... import (
+    controldir,
     errors,
     urlutils,
     )
+from ...config import AuthenticationConfig
+from ...git.urls import git_url_to_bzr_url
 
 from .propose import (
+    Hoster,
     MergeProposal,
-    MergeProposer,
+    MergeProposalBuilder,
     MergeProposalExists,
+    UnsupportedHoster,
     )
-
-from ...lazy_import import lazy_import
-lazy_import(globals(), """
-from gitlab import Gitlab
-""")
 
 
 class DifferentGitLabInstances(errors.BzrError):
@@ -43,21 +43,93 @@ class DifferentGitLabInstances(errors.BzrError):
         self.target_host = target_host
 
 
-def connect_gitlab(url):
-    # TODO(jelmer): Support authentication
-    return Gitlab(url)
+class GitLabLoginMissing(errors.BzrError):
+
+    _fmt = ("Please log into GitLab")
+
+
+def connect_gitlab(host):
+    from gitlab import Gitlab
+    auth = AuthenticationConfig()
+
+    url = 'https://%s' % host
+    credentials = auth.get_credentials('https', host)
+    if credentials is None:
+        import configparser
+        from gitlab.config import _DEFAULT_FILES
+        config = configparser.ConfigParser()
+        config.read(_DEFAULT_FILES)
+        for name, section in config.iteritems():
+            if section.get('url') == url:
+                credentials = section
+                break
+        else:
+            raise GitLabLoginMissing()
+    else:
+        credentials['url'] = url
+    return Gitlab(**credentials)
 
 
 def parse_gitlab_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
-    return host, path.strip('/'), branch.name
+    path = path.strip('/')
+    if path.endswith('.git'):
+        path = path[:-4]
+    return host, path, branch.name
 
 
-class GitlabMergeProposer(MergeProposer):
+class GitLab(Hoster):
+    """GitLab hoster implementation."""
 
-    def __init__(self, source_branch, target_branch):
+    def __init__(self, gl):
+        self.gl = gl
+
+    def publish(self, local_branch, base_branch, name, project=None,
+                owner=None, revision_id=None, overwrite=False):
+        import gitlab
+        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        self.gl.auth()
+        base_project = self.gl.projects.get(base_project)
+        if owner is None:
+            owner = self.gl.user.username
+        if project is None:
+            project = base_project.name
+        try:
+            target_project = self.gl.projects.get('%s/%s' % (owner, project))
+        except gitlab.GitlabGetError:
+            target_project = base_project.forks.create({})
+        remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
+        remote_dir = controldir.ControlDir.open(remote_repo_url)
+        push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+            overwrite=overwrite, name=name)
+        public_url = urlutils.join_segment_parameters(
+                target_project.attributes['http_url_to_repo'],
+                {"branch": name.encode('utf-8')})
+        return push_result.target_branch, public_url
+
+    def get_proposer(self, source_branch, target_branch):
+        return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
+
+    @classmethod
+    def probe(cls, branch):
+        try:
+            (host, project, branch_name) = parse_gitlab_url(branch)
+        except ValueError:
+            raise UnsupportedHoster(branch)
+        import gitlab
+        try:
+            gl = connect_gitlab(host)
+        except gitlab.GitlabGetError:
+            raise UnsupportedHoster(branch)
+        return cls(gl)
+
+
+class GitlabMergeProposalBuilder(MergeProposalBuilder):
+
+    def __init__(self, gl, source_branch, target_branch):
+        self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
             parse_gitlab_url(source_branch))
@@ -66,20 +138,6 @@ class GitlabMergeProposer(MergeProposer):
             parse_gitlab_url(target_branch))
         if self.source_host != self.target_host:
             raise DifferentGitLabInstances(self.source_host, self.target_host)
-
-    @classmethod
-    def is_compatible(cls, target_branch, source_branch):
-        try:
-            (host, project, branch_name) = parse_gitlab_url(target_branch)
-        except ValueError:
-            return False
-        try:
-            gl = connect_gitlab('https://%s' % host)
-            gl.projects.get(project)
-        except ValueError:
-            # TODO(jelmer): This is too broad
-            return False
-        return True
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
@@ -99,9 +157,9 @@ class GitlabMergeProposer(MergeProposer):
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
         # TODO(jelmer): Support reviewers
-        gl = connect_gitlab('https://%s' % self.source_host)
-        source_project = gl.projects.get(self.source_project_name)
-        target_project = gl.projects.get(self.target_project_name)
+        self.gl.auth()
+        source_project = self.gl.projects.get(self.source_project_name)
+        target_project = self.gl.projects.get(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
         title = description.splitlines()[0]
         # TODO(jelmer): Allow setting allow_collaboration field
