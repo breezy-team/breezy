@@ -117,12 +117,13 @@ class Hoster(object):
     """A hosting site manager.
     """
 
-    def publish(self, new_branch, base_branch):
+    def publish(self, new_branch, base_branch, name, project=None, owner=None,
+                revision_id=None, overwrite=False):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
         :param new_branch: branch to publish
-        :return: resulting branch
+        :return: resulting branch, public URL
         """
         raise NotImplementedError(self.publish)
 

@@ -24,12 +24,15 @@ from .propose import (
     )
 
 from ... import (
-    version_string as breezy_version,
+    controldir,
     errors,
     hooks,
     urlutils,
+    version_string as breezy_version,
     )
 from ...config import AuthenticationConfig, GlobalStack
+from ...i18n import gettext
+from ...trace import note
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from github import Github
@@ -52,7 +55,7 @@ def connect_github():
 
     credentials = auth.get_credentials('https', 'github.com')
     if credentials is not None:
-        return Github(credentials['username'], credentials['password'],
+        return Github(credentials['user'], credentials['password'],
                       user_agent=user_agent)
 
     # TODO(jelmer): Support using an access token
@@ -72,8 +75,32 @@ def parse_github_url(branch):
 
 class GitHub(Hoster):
 
-    def publish(self, base_branch, local_branch):
-        raise NotImplementedError(self.publish)
+    def publish(self, local_branch, base_branch, name, project=None,
+                owner=None, revision_id=None, overwrite=False):
+        gh = connect_github()
+        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        if owner is None:
+            owner = gh.get_user().login
+        if project is None:
+            project = base_project
+        try:
+            remote_repo = gh.get_repo('%s/%s' % (owner, project))
+        except ValueError:
+            base_repo = gh.get_repo('%s/%s' % (base_owner, base_project))
+            if owner == gh.get_user().login:
+                owner_obj = gh.get_user()
+            else:
+                owner_obj = gh.get_organization(owner)
+            note(gettext('Forking new repository %s from %s') %
+                    (remote_repo.html_url, base_repo.html_url))
+            remote_repo = owner_obj.create_fork(base_repo)
+        else:
+            note(gettext('Reusing existing repository %s') % remote_repo.html_url)
+        remote_dir = controldir.ControlDir.open(remote_repo.ssh_url)
+        push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+            overwrite=overwrite, name=name)
+        return push_result.target_branch, urlutils.join_segment_parameters(
+                remote_repo.html_url, {"branch": name.encode('utf-8')})
 
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(source_branch, target_branch)
