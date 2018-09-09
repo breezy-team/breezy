@@ -148,38 +148,5 @@ class cmd_autopropose(Command):
         ]
 
     def run(self, branch, script, name=None, overwrite=False):
-        from ... import osutils
-        from ...commit import PointlessCommit
-        import os
-        import subprocess
-        import shutil
-        import tempfile
-        main_branch = _mod_branch.Branch.open(branch)
-        hoster = _mod_propose.get_hoster(main_branch)
-        td = tempfile.mkdtemp()
-        self.add_cleanup(shutil.rmtree, td)
-        # preserve whatever source format we have.
-        to_dir = main_branch.controldir.sprout(
-                get_transport(td).base, None, create_tree_if_local=True,
-                source_branch=main_branch)
-        local_tree = to_dir.open_workingtree()
-        local_branch = to_dir.open_branch()
-        p = subprocess.Popen(script, cwd=td, stdout=subprocess.PIPE)
-        (description, err) = p.communicate("")
-        if p.returncode != 0:
-            raise errors.BzrCommandError(
-                gettext("Script %s failed with error code %d") % (
-                    script, p.returncode))
-        try:
-            local_tree.commit(description, allow_pointless=False)
-        except PointlessCommit:
-            raise errors.BzrCommandError(gettext(
-                "Script didn't make any changes"))
-        if name is None:
-            name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
-        remote_branch, public_branch_url = hoster.publish(
-                local_branch, main_branch, name=name, overwrite=overwrite)
-        note(gettext('Published branch to %s') % public_branch_url)
-        proposal_builder = hoster.get_proposer(remote_branch, main_branch)
-        proposal = proposal_builder.create_proposal(description=description)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+        from .autopropose import autopropose
+        autopropose(branch, script, name=name, overwrite=overwrite)
