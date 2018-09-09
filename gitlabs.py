@@ -75,9 +75,8 @@ def parse_gitlab_url(branch):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
     path = path.strip('/')
-    # TODO(jelmer): This is a hack; we should just support catching redirections for git access.
-    # https://bugs.launchpad.net/brz/+bug/1791535
-    path = path.rstrip('.git')
+    if path.endswith('.git'):
+        path = path[:-4]
     return host, path, branch.name
 
 
@@ -100,7 +99,7 @@ class GitLab(Hoster):
         try:
             target_project = self.gl.projects.get('%s/%s' % (owner, project))
         except gitlab.GitlabGetError:
-            target_project = base_project.forks.create()
+            target_project = base_project.forks.create({})
         remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
