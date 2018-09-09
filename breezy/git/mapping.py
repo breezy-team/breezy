@@ -429,7 +429,7 @@ class BzrGitMapping(foreign.VcsMapping):
                     parents.append(lookup_parent_revid(p))
                 except KeyError:
                     parents.append(self.revision_id_foreign_to_bzr(p))
-            rev.parent_ids = tuple(parents)
+            rev.parent_ids = list(parents)
         unknown_extra_fields = []
         extra_lines = []
         for k, v in commit.extra:
