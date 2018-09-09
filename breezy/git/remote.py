@@ -631,6 +631,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             ('GET' if data is None else 'POST'),
             url, data, headers,
             accepted_errors=[200, 404])
+        request.follow_redirections = True
 
         response = self.transport._perform(request)
 
