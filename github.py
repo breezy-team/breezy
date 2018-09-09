@@ -71,6 +71,8 @@ def parse_github_url(branch):
     if host != 'github.com':
         raise NotGitHubUrl(url)
     (owner, repo_name) = path.strip('/').split('/')
+    if repo_name.endswith('.git'):
+        repo_name = repo_name[:-4]
     return owner, repo_name, branch.name
 
 
@@ -81,6 +83,7 @@ class GitHub(Hoster):
 
     def publish(self, local_branch, base_branch, name, project=None,
                 owner=None, revision_id=None, overwrite=False):
+        import github
         base_owner, base_project, base_branch_name = parse_github_url(base_branch)
         if owner is None:
             owner = self.gh.get_user().login
@@ -88,15 +91,16 @@ class GitHub(Hoster):
             project = base_project
         try:
             remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
-        except ValueError:
+            remote_repo.id
+        except github.UnknownObjectException:
             base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
             if owner == self.gh.get_user().login:
                 owner_obj = self.gh.get_user()
             else:
                 owner_obj = self.gh.get_organization(owner)
+            remote_repo = owner_obj.create_fork(base_repo)
             note(gettext('Forking new repository %s from %s') %
                     (remote_repo.html_url, base_repo.html_url))
-            remote_repo = owner_obj.create_fork(base_repo)
         else:
             note(gettext('Reusing existing repository %s') % remote_repo.html_url)
         remote_dir = controldir.ControlDir.open(remote_repo.ssh_url)
@@ -149,7 +153,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         """Perform the submission."""
         import github
         # TODO(jelmer): Probe for right repo name
-        self.target_repo_name = self.target_repo_name.rstrip('.git')
+        if self.target_repo_name.endswith('.git'):
+            self.target_repo_name = self.target_repo_name[:-4]
         target_repo = self.gh.get_repo("%s/%s" % (self.target_owner, self.target_repo_name))
         # TODO(jelmer): Allow setting title explicitly?
         title = description.splitlines()[0]
