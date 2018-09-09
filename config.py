@@ -73,6 +73,9 @@ class UpstreamMetadataConfig(object):
         return self.metadata.get('Repository')
     raise KeyError
 
+  def __getitem__(self, key):
+    return self.get_value(key, "BUILDDEB")
+
   def get_bool(self, section, option):
     raise KeyError
 
