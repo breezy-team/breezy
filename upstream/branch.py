@@ -34,6 +34,7 @@ from ..errors import (
     MultipleUpstreamTarballsNotSupported,
     PackageVersionNotPresent,
     )
+from .. import gettext
 from . import UpstreamSource
 from ....export import (
     export,
@@ -218,6 +219,11 @@ def get_export_upstream_revision(config=None, version=None):
     return rev
 
 
+def guess_upstream_revspec(package, version):
+    """Guess revspecs matching an upstream version string."""
+    return ['tag:%s' % version]
+
+
 class UpstreamBranchSource(UpstreamSource):
     """Upstream source that uses the upstream branch.
 
@@ -245,6 +251,17 @@ class UpstreamBranchSource(UpstreamSource):
                 return RevisionSpec.from_string(
                     revspec).as_revision_id(self.upstream_branch)
             except (InvalidRevisionSpec, NoSuchTag):
+                raise PackageVersionNotPresent(package, version, self)
+        else:
+            for revspec in guess_upstream_revspec(package, version):
+                note(gettext('No upstream upstream-revision format '
+                             'specified, trying %s') % revspec)
+                try:
+                    return RevisionSpec.from_string(
+                        revspec).as_revision_id(self.upstream_branch)
+                except (InvalidRevisionSpec, NoSuchTag):
+                    pass
+            else:
                 raise PackageVersionNotPresent(package, version, self)
         raise PackageVersionNotPresent(package, version, self)
 

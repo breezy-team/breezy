@@ -1301,7 +1301,7 @@ class DistributionBranch(object):
                     package, previous_version)
         except PackageVersionNotPresent:
             raise BzrCommandError("Unable to find the tag for the "
-                    "previous upstream version, %s, in the branch: "
+                    "previous upstream version (%s) in the branch: "
                     "%s" % (
                 previous_version,
                 self.pristine_upstream_source.tag_name(previous_version)))

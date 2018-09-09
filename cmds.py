@@ -969,7 +969,7 @@ class cmd_import_dsc(Command):
                     if not db.pristine_upstream_source.has_version(
                             changelog.package, last_version.upstream_version):
                         raise BzrCommandError(gettext("Unable to find the tag "
-                            "for the previous upstream version, %(version)s, in the "
+                            "for the previous upstream version (%(version)s) in the "
                             "branch. Consider importing it via import-upstream."
                             "If it is already present in the branch please "
                             "make sure it is tagged as %(tag)r.") %

@@ -67,6 +67,7 @@ from ..util import (
     component_from_orig_tarball,
     )
 from ..upstream.branch import (
+    guess_upstream_revspec,
     get_export_upstream_revision,
     get_snapshot_revision,
     LazyUpstreamBranchSource,
@@ -392,6 +393,9 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
     def setUp(self):
         super(UpstreamBranchSourceTests, self).setUp()
         self.tree = self.make_branch_and_tree('.')
+
+    def test_guess_upstream_revspec(self):
+        self.assertEqual([u'tag:1.2'], guess_upstream_revspec('foo', '1.2'))
 
     def test_fetch_tarballs(self):
         self.tree.commit("msg")
