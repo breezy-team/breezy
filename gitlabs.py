@@ -71,6 +71,7 @@ class GitLab(Hoster):
         gl = connect_gitlab(host)
         gl.auth()
         # TODO(jelmer): This is a hack; we should just support catching redirections for git access.
+        # https://bugs.launchpad.net/brz/+bug/1791535
         base_project = base_project.rstrip('.git')
         base_project = gl.projects.get(base_project)
         if owner is None:
