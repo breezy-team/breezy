@@ -37,13 +37,7 @@ class VcsDirectory(object):
 
         apt_pkg.init()
 
-        # Older versions of apt_pkg don't have SourceRecords,
-        # newer versions give a deprecation warning when using
-        # GetPkgSrcRecords.
-        try:
-            sources = apt_pkg.SourceRecords()
-        except AttributeError:
-            sources = apt_pkg.GetPkgSrcRecords()
+        sources = apt_pkg.SourceRecords()
 
         urls = {}
         lookup = getattr(sources, 'lookup', None) or sources.Lookup
@@ -65,28 +59,19 @@ class VcsDirectory(object):
 
         if version is None:
             # Try the latest version
-            cmp = getattr(apt_pkg, 'version_compare',
-                    getattr(apt_pkg, 'VersionCompare', None))
-            version = sorted(urls,cmp=cmp)[0]
+            version = sorted(urls, cmp=apt_pkg.version_compare)[-1]
 
         if not version in urls:
             raise urlutils.InvalidURL(path=url,
                     extra='version %s not found' % version)
-        
+
         note("Retrieving Vcs locating from %s Debian version %s", name, version)
 
         if "Bzr" in urls[version]:
             return urls[version]["Bzr"]
 
         if "Svn" in urls[version]:
-            try:
-                from .. import svn
-            except ImportError:
-                note("This package uses subversion. If you would like to "
-                        "access it with bzr then please install brz-svn "
-                        "and re-run the command.")
-            else:
-                return urls[version]["Svn"]
+            return urls[version]["Svn"]
 
         if "Git" in urls[version]:
             url = urls[version]["Git"]
@@ -97,14 +82,7 @@ class VcsDirectory(object):
             return url
 
         if "Hg" in urls[version]:
-            try:
-                from .. import hg
-            except ImportError:
-                note("This package uses hg. If you would like to "
-                        "access it with bzr then please install brz-hg"
-                        "and re-run the command.")
-            else:
-                return urls[version]["Hg"]
+            return urls[version]["Hg"]
 
         raise urlutils.InvalidURL(path=url,
             extra='unsupported VCSes %r found' % urls[version].keys())
