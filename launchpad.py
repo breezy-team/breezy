@@ -69,15 +69,14 @@ class Launchpad(Hoster):
         :return: resulting branch
         """
         # TODO(jelmer): Prevent publishing to development focus
-        base_branch = lp_api.LaunchpadBranch.from_bzr(
-            self.launchpad, base_branch)
+        base_branch = self.launchpad.branches.getByUrl(url=base_branch.user_url)
         if project is None:
-            if base_branch.lp.project is not None:
-                project = base_branch.lp.project.name
-            elif base_branch.lp.sourcepackage is not None:
-                project = '%s/%s/%s' % (base_branch.lp.sourcepackage.distribution.name,
-                                        base_branch.lp.sourcepackage.distroseries.name,
-                                        base_branch.lp.sourcepackage.name)
+            if base_branch.project is not None:
+                project = base_branch.project.name
+            elif base_branch.sourcepackage is not None:
+                project = '%s/%s/%s' % (base_branch.sourcepackage.distribution.name,
+                                        base_branch.sourcepackage.distroseries.name,
+                                        base_branch.sourcepackage.name)
         if owner is None:
             owner = self.launchpad.me.name
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
@@ -120,13 +119,14 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             branches).
         """
         self.launchpad = launchpad
-        self.source_branch = lp_api.LaunchpadBranch.from_bzr(
-            self.launchpad, source_branch)
+        self.source_branch = source_branch
+        self.source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
         if target_branch is None:
-            self.target_branch = self.source_branch.get_target()
+            self.target_branch_lp = self.source_branch.get_target()
+            self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.bzr_identity)
         else:
-            self.target_branch = lp_api.LaunchpadBranch.from_bzr(
-                self.launchpad, target_branch)
+            self.target_branch = target_branch
+            self.target_branch_lp = self.launchpad.branches.getByUrl(url=target_branch.user_url)
         self.prerequisite_branch = self._get_prerequisite_branch()
         self.commit_message = message
         self.approve = approve
@@ -136,13 +136,10 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
         """Determine the initial comment for the merge proposal."""
         if self.commit_message is not None:
             return self.commit_message.strip().encode('utf-8')
-        info = ["Source: %s\n" % self.source_branch.lp.bzr_identity]
-        info.append("Target: %s\n" % self.target_branch.lp.bzr_identity)
+        info = ["Source: %s\n" % self.source_branch_lp.bzr_identity]
+        info.append("Target: %s\n" % self.target_branch_lp.bzr_identity)
         if self.prerequisite_branch is not None:
-            info.append("Prereq: %s\n" % self.prerequisite_branch.lp.bzr_identity)
-        for rdata in self.reviews:
-            uniquename = "%s (%s)" % (rdata[0].display_name, rdata[0].name)
-            info.append('Reviewer: %s, type "%s"\n' % (uniquename, rdata[1]))
+            info.append("Prereq: %s\n" % self.prerequisite_branch.bzr_identity)
         return ''.join(info)
 
     def get_initial_body(self):
@@ -151,15 +148,15 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
         :return: a str or None.
         """
         def list_modified_files():
-            lca_tree = self.source_branch.find_lca_tree(
-                self.target_branch)
-            source_tree = self.source_branch.bzr.basis_tree()
+            lca_tree = self.source_branch_lp.find_lca_tree(
+                self.target_branch_lp)
+            source_tree = self.source_branch.basis_tree()
             files = modified_files(lca_tree, source_tree)
             return list(files)
-        with self.target_branch.bzr.lock_read(), \
-                self.source_branch.bzr.lock_read():
+        with self.target_branch.lock_read(), \
+                self.source_branch.lock_read():
             target_loc = ('bzr+ssh://bazaar.launchpad.net/%s' %
-                           self.target_branch.lp.unique_name)
+                           self.target_branch_lp.unique_name)
             body = None
             for hook in self.hooks['merge_proposal_body']:
                 body = hook({
@@ -171,13 +168,13 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
 
     def check_proposal(self):
         """Check that the submission is sensible."""
-        if self.source_branch.lp.self_link == self.target_branch.lp.self_link:
+        if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
             raise errors.BzrCommandError(
                 'Source and target branches must be different.')
-        for mp in self.source_branch.lp.landing_targets:
+        for mp in self.source_branch_lp.landing_targets:
             if mp.queue_status in ('Merged', 'Rejected'):
                 continue
-            if mp.target_branch.self_link == self.target_branch.lp.self_link:
+            if mp.target_branch.self_link == self.target_branch_lp.self_link:
                 raise MergeProposalExists(lp_api.canonical_url(mp))
 
     def _get_prerequisite_branch(self):
@@ -186,8 +183,8 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
         for hook in hooks:
             prerequisite_branch = hook(
                 {'launchpad': self.launchpad,
-                 'source_branch': self.source_branch,
-                 'target_branch': self.target_branch,
+                 'source_branch': self.source_branch_lp,
+                 'target_branch': self.target_branch_lp,
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
@@ -211,7 +208,7 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             raise Exception(''.join(error_lines))
 
     def approve_proposal(self, mp):
-        with self.source_branch.bzr.lock_read():
+        with self.source_branch.lock_read():
             revid = source_branch.last_revision()
         self._call_webservice(
             mp.createComment,
@@ -222,7 +219,6 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None):
         """Perform the submission."""
-        self.source_branch.update_lp()
         if self.prerequisite_branch is None:
             prereq = None
         else:
@@ -231,8 +227,8 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
         if reviewers is None:
             reviewers = []
         mp = self._call_webservice(
-            self.source_branch.lp.createMergeProposal,
-            target_branch=self.target_branch.lp,
+            self.source_branch_lp.createMergeProposal,
+            target_branch=self.target_branch_lp,
             prerequisite_branch=prereq,
             initial_comment=description.strip().encode('utf-8'),
             commit_message=self.commit_message,
@@ -245,6 +241,6 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             if self.fixes.startswith('lp:'):
                 self.fixes = self.fixes[3:]
             self._call_webservice(
-                self.source_branch.lp.linkBug,
+                self.source_branch_lp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
         return MergeProposal(lp_api.canonical_url(mp))
