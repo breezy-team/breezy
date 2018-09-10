@@ -56,6 +56,7 @@ def connect_gitlab(host):
     credentials = auth.get_credentials('https', host)
     if credentials is None:
         import configparser
+        import gitlab
         from gitlab.config import _DEFAULT_FILES
         config = configparser.ConfigParser()
         config.read(_DEFAULT_FILES)
@@ -64,7 +65,10 @@ def connect_gitlab(host):
                 credentials = section
                 break
         else:
-            raise GitLabLoginMissing()
+            try:
+                return Gitlab(url)
+            except gitlab.GitlabGetError:
+                raise GitLabLoginMissing()
     else:
         credentials['url'] = url
     return Gitlab(**credentials)
@@ -121,8 +125,14 @@ class GitLab(Hoster):
         import gitlab
         try:
             gl = connect_gitlab(host)
+            gl.auth()
         except gitlab.GitlabGetError:
             raise UnsupportedHoster(branch)
+        except gitlab.GitlabHttpError as e:
+            if e.response_code == 404:
+                raise UnsupportedHoster(branch)
+            else:
+                raise
         return cls(gl)
 
 

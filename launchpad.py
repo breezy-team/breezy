@@ -72,7 +72,12 @@ class Launchpad(Hoster):
         base_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, base_branch)
         if project is None:
-            project = base_branch.lp.project.name
+            if base_branch.lp.project is not None:
+                project = base_branch.lp.project.name
+            elif base_branch.lp.sourcepackage is not None:
+                project = '%s/%s/%s' % (base_branch.lp.sourcepackage.distribution.name,
+                                        base_branch.lp.sourcepackage.distroseries.name,
+                                        base_branch.lp.sourcepackage.name)
         if owner is None:
             owner = self.launchpad.me.name
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
@@ -86,12 +91,7 @@ class Launchpad(Hoster):
         if dir_to is None:
             br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id)
         else:
-            try:
-                br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
-            except errors.DivergedBranches:
-                raise errors.BzrCommandError(gettext('These branches have diverged.'
-                                        '  See "brz help diverged-branches"'
-                                        ' for more information.'))
+            br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
         return br_to, ("https://code.launchpad.net/~%s/%s/%s" % (owner, project, name))
 
     def get_proposer(self, source_branch, target_branch):

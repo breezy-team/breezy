@@ -34,35 +34,40 @@ import shutil
 import tempfile
 
 
-def autopropose(branch, script, name=None, overwrite=False):
-    main_branch = _mod_branch.Branch.open(branch)
+def script_runner(branch, script):
+    local_tree = branch.controldir.create_workingtree()
+    p = subprocess.Popen(script, cwd=local_tree.basedir, stdout=subprocess.PIPE)
+    (description, err) = p.communicate("")
+    if p.returncode != 0:
+        raise errors.BzrCommandError(
+            gettext("Script %s failed with error code %d") % (
+                script, p.returncode))
+    try:
+        local_tree.commit(description, allow_pointless=False)
+    except PointlessCommit:
+        raise errors.BzrCommandError(gettext(
+            "Script didn't make any changes"))
+    return description
+
+
+def autopropose(main_branch, callback, name=None, overwrite=False):
     hoster = _mod_propose.get_hoster(main_branch)
     td = tempfile.mkdtemp()
     try:
         # preserve whatever source format we have.
         to_dir = main_branch.controldir.sprout(
-                get_transport(td).base, None, create_tree_if_local=True,
+                get_transport(td).base, None, create_tree_if_local=False,
                 source_branch=main_branch)
-        local_tree = to_dir.open_workingtree()
         local_branch = to_dir.open_branch()
-        p = subprocess.Popen(script, cwd=td, stdout=subprocess.PIPE)
-        (description, err) = p.communicate("")
-        if p.returncode != 0:
-            raise errors.BzrCommandError(
-                gettext("Script %s failed with error code %d") % (
-                    script, p.returncode))
-        try:
-            local_tree.commit(description, allow_pointless=False)
-        except PointlessCommit:
-            raise errors.BzrCommandError(gettext(
-                "Script didn't make any changes"))
+        orig_revid = local_branch.last_revision()
+        description = callback(local_branch)
+        if local_branch.last_revision() == orig_revid:
+            raise PointlessCommit()
         if name is None:
             name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
         remote_branch, public_branch_url = hoster.publish(
-                local_branch, main_branch, name=name, overwrite=overwrite)
+            local_branch, main_branch, name=name, overwrite=overwrite)
     finally:
         shutil.rmtree(td)
-    note(gettext('Published branch to %s') % public_branch_url)
     proposal_builder = hoster.get_proposer(remote_branch, main_branch)
-    proposal = proposal_builder.create_proposal(description=description)
-    note(gettext('Merge proposal created: %s') % proposal.url)
+    return proposal_builder.create_proposal(description=description)

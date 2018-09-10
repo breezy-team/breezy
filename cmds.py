@@ -148,5 +148,9 @@ class cmd_autopropose(Command):
         ]
 
     def run(self, branch, script, name=None, overwrite=False):
-        from .autopropose import autopropose
-        autopropose(branch, script, name=name, overwrite=overwrite)
+        from .autopropose import autopropose, script_runner
+        main_branch = _mod_branch.Branch.open(branch)
+        proposal = autopropose(
+                main_branch, lambda branch: script_runner(branch, script),
+                name=name, overwrite=overwrite)
+        note(gettext('Merge proposal created: %s') % proposal.url)
