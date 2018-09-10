@@ -19,16 +19,13 @@
 from ... import (
     branch as _mod_branch,
     errors,
-    osutils,
     )
 from ...i18n import gettext
 from ...commit import PointlessCommit
-from ...trace import note
 from ...transport import get_transport
 from . import (
     propose as _mod_propose,
     )
-import os
 import subprocess
 import shutil
 import tempfile
@@ -50,7 +47,7 @@ def script_runner(branch, script):
     return description
 
 
-def autopropose(main_branch, callback, name=None, overwrite=False):
+def autopropose(main_branch, callback, name, overwrite=False):
     hoster = _mod_propose.get_hoster(main_branch)
     td = tempfile.mkdtemp()
     try:
@@ -63,8 +60,6 @@ def autopropose(main_branch, callback, name=None, overwrite=False):
         description = callback(local_branch)
         if local_branch.last_revision() == orig_revid:
             raise PointlessCommit()
-        if name is None:
-            name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
         remote_branch, public_branch_url = hoster.publish(
             local_branch, main_branch, name=name, overwrite=overwrite)
     finally:

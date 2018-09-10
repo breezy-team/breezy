@@ -149,7 +149,11 @@ class cmd_autopropose(Command):
 
     def run(self, branch, script, name=None, overwrite=False):
         from .autopropose import autopropose, script_runner
+        import os
+        from ... import osutils
         main_branch = _mod_branch.Branch.open(branch)
+        if name is None:
+            name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
         proposal = autopropose(
                 main_branch, lambda branch: script_runner(branch, script),
                 name=name, overwrite=overwrite)

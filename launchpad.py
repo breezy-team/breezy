@@ -21,6 +21,7 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
+    UnsupportedHoster,
     )
 
 from ... import (
@@ -56,6 +57,7 @@ class Launchpad(Hoster):
     def probe(cls, branch):
         if lp_api.LaunchpadBranch.plausible_launchpad_url(branch.user_url):
             return Launchpad()
+        raise UnsupportedHoster(branch)
 
     def publish(self, local_branch, base_branch, name, project=None, owner=None,
                 revision_id=None, overwrite=False):
