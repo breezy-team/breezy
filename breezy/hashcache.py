@@ -223,9 +223,8 @@ class HashCache(object):
 
     def write(self):
         """Write contents of cache to file."""
-        outf = atomicfile.AtomicFile(self.cache_file_name(), 'wb',
-                                     new_mode=self._mode)
-        try:
+        with atomicfile.AtomicFile(self.cache_file_name(), 'wb',
+                new_mode=self._mode) as outf:
             outf.write(CACHE_HEADER)
 
             for path, c  in viewitems(self._cache):
@@ -233,14 +232,11 @@ class HashCache(object):
                 line_info.append(b'%d %d %d %d %d %d' % c[1])
                 line_info.append(b'\n')
                 outf.write(b''.join(line_info))
-            outf.commit()
             self.needs_write = False
             ## mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
             ##        self.cache_file_name(), self.hit_count, self.miss_count,
             ##        self.stat_count,
             ##        self.danger_count, self.update_count)
-        finally:
-            outf.close()
 
     def read(self):
         """Reinstate cache from file.

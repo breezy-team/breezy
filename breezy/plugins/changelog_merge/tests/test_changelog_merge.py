@@ -148,7 +148,9 @@ class TestMergeCoreLogic(tests.TestCase):
         # for now we just give up.)
         self.assertRaises(changelog_merge.EntryConflict,
             changelog_merge.merge_entries,
-            sample2_base_entries, [], sample2_other_entries)
+            [(entry, ) for entry in sample2_base_entries],
+            [],
+            [(entry, ) for entry in sample2_other_entries])
 
     def test_default_guess_edits(self):
         """default_guess_edits matches a new entry only once.

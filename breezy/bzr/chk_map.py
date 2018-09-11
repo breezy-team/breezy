@@ -1223,8 +1223,7 @@ class InternalNode(Node):
             new_parent.add_node(self._search_prefix[:len(new_prefix)+1],
                                 self)
             return new_parent.map(store, key, value)
-        children = [node for node, _
-                          in self._iter_nodes(store, key_filter=[key])]
+        children = [node for node, _ in self._iter_nodes(store, key_filter=[key])]
         if children:
             child = children[0]
         else:

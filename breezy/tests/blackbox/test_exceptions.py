@@ -52,6 +52,8 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         """
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
+        if PY3:
+            raise tests.TestNotApplicable("Unable to pass argv to subprocess as bytes")
         out, err = self.run_bzr_subprocess([b"\xa0"],
             env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
