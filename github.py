@@ -78,6 +78,8 @@ def parse_github_url(branch):
 
 class GitHub(Hoster):
 
+    supports_merge_proposal_labels = True
+
     def __init__(self):
         self.gh = connect_github()
 
@@ -149,7 +151,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None):
+    def create_proposal(self, description, reviewers=None, labels=None):
         """Perform the submission."""
         import github
         # TODO(jelmer): Probe for right repo name
@@ -172,4 +174,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             for reviewer in reviewers:
                 pull_request.assignees.append(
                     self.gh.get_user(reviewer))
+        if labels:
+            for label in labels:
+                pull_request.issue.labels.append(label)
         return MergeProposal(pull_request.html_url)

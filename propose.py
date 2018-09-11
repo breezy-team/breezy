@@ -54,6 +54,16 @@ class ProposeMergeHooks(hooks.Hooks):
             "Return an initial body for the merge proposal message.", (3, 0))
 
 
+class LabelsUnsupported(errors.BzrError):
+    """Labels not supported by this hoster."""
+
+    _fmt = "Labels are not supported by %(hoster)r."
+
+    def __init__(self, hoster):
+        errors.BzrError.__init__(self)
+        self.hoster = hoster
+
+
 class MergeProposal(object):
     """A merge proposal.
 
@@ -92,11 +102,12 @@ class MergeProposalBuilder(object):
         """
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description, reviewers=None):
+    def create_proposal(self, description, reviewers=None, labels=None):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
         :param reviewers: Optional list of people to ask reviews from
+        :param labels: Labels to attach to the proposal
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -105,6 +116,8 @@ class MergeProposalBuilder(object):
 class Hoster(object):
     """A hosting site manager.
     """
+
+    supports_merge_proposal_labels = None
 
     def publish(self, new_branch, base_branch, name, project=None, owner=None,
                 revision_id=None, overwrite=False):

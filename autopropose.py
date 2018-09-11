@@ -47,7 +47,7 @@ def script_runner(branch, script):
     return description
 
 
-def autopropose(main_branch, callback, name, overwrite=False):
+def autopropose(main_branch, callback, name, overwrite=False, labels=None):
     hoster = _mod_propose.get_hoster(main_branch)
     td = tempfile.mkdtemp()
     try:
@@ -65,4 +65,4 @@ def autopropose(main_branch, callback, name, overwrite=False):
     finally:
         shutil.rmtree(td)
     proposal_builder = hoster.get_proposer(remote_branch, main_branch)
-    return proposal_builder.create_proposal(description=description)
+    return proposal_builder.create_proposal(description=description, labels=labels)

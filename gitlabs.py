@@ -87,6 +87,8 @@ def parse_gitlab_url(branch):
 class GitLab(Hoster):
     """GitLab hoster implementation."""
 
+    supports_merge_proposal_labels = True
+
     def __init__(self, gl):
         self.gl = gl
 
@@ -164,7 +166,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None):
+    def create_proposal(self, description, reviewers=None, labels=None):
         """Perform the submission."""
         # TODO(jelmer): Support reviewers
         self.gl.auth()
@@ -175,10 +177,13 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
-        merge_request = source_project.mergerequests.create({
+        kwargs = {
             'title': title,
             'target_project_id': target_project.id,
             'source_branch': self.source_branch_name,
             'target_branch': self.target_branch_name,
-            'description': description})
+            'description': description}
+        if labels:
+            kwargs['labels'] = ','.join(labels)
+        merge_request = source_project.mergerequests.create(kwargs)
         return MergeProposal(merge_request.web_url)

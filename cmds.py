@@ -99,13 +99,15 @@ class cmd_propose_merge(Command):
                 help='Requested reviewers.'),
             Option('name', help='Name of the new remote branch.', type=str),
             Option('description', help='Description of the change.', type=str),
+            ListOption('labels', short_name='l', type=text_type,
+                help='Labels to apply.'),
             ]
     takes_args = ['submit_branch?']
 
     aliases = ['propose']
 
     def run(self, submit_branch=None, directory='.', hoster=None, reviewers=None, name=None,
-            description=None):
+            description=None, labels=None):
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory)
         if submit_branch is None:
@@ -131,7 +133,7 @@ class cmd_propose_merge(Command):
             description = msgeditor.edit_commit_message(info, start_message=body)
         try:
             proposal = proposal_builder.create_proposal(
-                description=description, reviewers=reviewers)
+                description=description, reviewers=reviewers, labels=labels)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
@@ -145,9 +147,11 @@ class cmd_autopropose(Command):
     takes_options = [
         Option('name', help='Name of the new remote branch.', type=str),
         Option('overwrite', help='Whether to overwrite changes'),
+        ListOption('labels', short_name='l', type=text_type,
+            help='Labels to apply.'),
         ]
 
-    def run(self, branch, script, name=None, overwrite=False):
+    def run(self, branch, script, name=None, overwrite=False, labels=None):
         from .autopropose import autopropose, script_runner
         import os
         from ... import osutils
@@ -156,5 +160,5 @@ class cmd_autopropose(Command):
             name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
         proposal = autopropose(
                 main_branch, lambda branch: script_runner(branch, script),
-                name=name, overwrite=overwrite)
+                name=name, overwrite=overwrite, labels=labels)
         note(gettext('Merge proposal created: %s') % proposal.url)

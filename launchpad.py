@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 from .propose import (
     Hoster,
+    LabelsUnsupported,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
@@ -45,6 +46,8 @@ from ...transport import get_transport
 
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
+
+    supports_merge_proposal_labels = False
 
     def __init__(self, staging=False):
         if staging:
@@ -219,8 +222,10 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             content=u"Rubberstamp! Proposer approves of own proposal.")
         self._call_webservice(mp.setStatus, status=u'Approved', revid=revid)
 
-    def create_proposal(self, description, reviewers=None):
+    def create_proposal(self, description, reviewers=None, labels=None):
         """Perform the submission."""
+        if labels:
+            raise LabelsUnsupported()
         if self.prerequisite_branch is None:
             prereq = None
         else:
