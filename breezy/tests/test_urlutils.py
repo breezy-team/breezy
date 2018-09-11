@@ -126,11 +126,12 @@ class TestUrlToPath(TestCase):
         eq('http://host/~bob%2525-._',
                 normalize_url(u'http://host/%7Ebob%2525%2D%2E%5F'))
 
-        # Normalize verifies URLs when they are not unicode
-        # (indicating they did not come from the user)
-        self.assertRaises(urlutils.InvalidURL, normalize_url,
-                'http://host/\xb5')
-        self.assertRaises(urlutils.InvalidURL, normalize_url, 'http://host/ ')
+        if not PY3:
+            # On Python 2, normalize verifies URLs when they are not unicode
+            # (indicating they did not come from the user)
+            self.assertRaises(urlutils.InvalidURL, normalize_url,
+                    b'http://host/\xb5')
+            self.assertRaises(urlutils.InvalidURL, normalize_url, b'http://host/ ')
 
     def test_url_scheme_re(self):
         # Test paths that may be URLs
