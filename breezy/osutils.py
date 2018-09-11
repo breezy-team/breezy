@@ -155,7 +155,10 @@ def minimum_path_selection(paths):
         return set(paths)
 
     def sort_key(path):
-        return path.split('/')
+        if isinstance(path, bytes):
+            return path.split(b'/')
+        else:
+            return path.split('/')
     sorted_paths = sorted(list(paths), key=sort_key)
 
     search_paths = [sorted_paths[0]]
@@ -636,11 +639,15 @@ def is_inside(dir, fname):
     if dir == fname:
         return True
 
-    if dir == '':
+    if dir in ('', b''):
         return True
 
-    if not dir.endswith('/'):
-        dir += '/'
+    if isinstance(dir, bytes):
+        if not dir.endswith(b'/'):
+            dir += b'/'
+    else:
+        if not dir.endswith('/'):
+            dir += '/'
 
     return fname.startswith(dir)
 
@@ -1021,13 +1028,16 @@ def splitpath(p):
     """Turn string into list of parts."""
     # split on either delimiter because people might use either on
     # Windows
-    ps = re.split(r'[\\/]', p)
+    if isinstance(p, bytes):
+        ps = re.split(b'[\\\\/]', p)
+    else:
+        ps = re.split(r'[\\/]', p)
 
     rps = []
     for f in ps:
-        if f == '..':
+        if f in ('..', b'..'):
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif (f == '.') or (f == ''):
+        elif f in ('.', '', b'.', b''):
             pass
         else:
             rps.append(f)

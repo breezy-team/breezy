@@ -335,7 +335,8 @@ class BasicAuthRequestHandler(AuthRequestHandler):
             scheme, raw_auth = auth_header.split(' ', 1)
             if scheme.lower() == tcs.auth_scheme:
                 user, password = base64.b64decode(raw_auth).split(b':')
-                return tcs.authorized(user, password)
+                return tcs.authorized(user.decode('ascii'),
+                                      password.decode('ascii'))
 
         return False
 

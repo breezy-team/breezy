@@ -225,6 +225,11 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
+    def readinto(self, b):
+        s = self.filesock.readinto(b)
+        self.report_activity(s, 'read')
+        return s
+
     def __getattr__(self, name):
         return getattr(self.filesock, name)
 

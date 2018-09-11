@@ -18,8 +18,6 @@ from __future__ import absolute_import
 
 import os
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
 import stat
 import warnings
 
@@ -27,11 +25,20 @@ from breezy import (
     errors,
     osutils,
     )
-""")
 
 # not forksafe - but we dont fork.
 _pid = os.getpid()
 _hostname = None
+
+
+class AtomicFileAlreadyClosed(errors.PathError):
+
+    _fmt = ('"%(function)s" called on an AtomicFile after it was closed:'
+            ' "%(path)s"')
+
+    def __init__(self, path, function):
+        errors.PathError.__init__(self, path=path, extra=None)
+        self.function = function
 
 
 class AtomicFile(object):
@@ -91,8 +98,8 @@ class AtomicFile(object):
     def _close_tmpfile(self, func_name):
         """Close the local temp file in preparation for commit or abort"""
         if self._fd is None:
-            raise errors.AtomicFileAlreadyClosed(path=self.realfilename,
-                                                 function=func_name)
+            raise AtomicFileAlreadyClosed(path=self.realfilename,
+                                          function=func_name)
         fd = self._fd
         self._fd = None
         os.close(fd)
@@ -111,3 +118,12 @@ class AtomicFile(object):
         """Discard the file unless already committed."""
         if self._fd is not None:
             self.abort()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.abort()
+            return False
+        self.commit()

@@ -142,10 +142,9 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     parent_keys = []
     for ptree in parent_bzr_trees:
         try:
-            ppaths = base_bzr_tree.find_related_paths_across_trees([decoded_path], trees=[ptree])
-        except errors.PathsNotVersionedError:
+            ppath = ptree.id2path(file_id)
+        except errors.NoSuchId:
             continue
-        ppath = ppaths.pop()
         pkind = ptree.kind(ppath, file_id)
         if (pkind == ie.kind and
             ((pkind == "symlink" and ptree.get_symlink_target(ppath, file_id) == ie.symlink_target) or
