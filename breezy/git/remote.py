@@ -175,6 +175,16 @@ class RemoteGitError(BzrError):
     _fmt = "Remote server error: %(msg)s"
 
 
+class HeadUpdateFailed(BzrError):
+
+    _fmt = ("Unable to update remote HEAD branch. To update the master "
+            "branch, specify the URL %(base_url)s,branch=master.")
+
+    def __init__(self, base_url):
+        super(HeadUpdateFailed, self).__init__()
+        self.base_url = base_url
+
+
 def parse_git_error(url, message):
     """Parse a remote git server error and return a bzr exception.
 
@@ -182,13 +192,12 @@ def parse_git_error(url, message):
     :param message: Message sent by the remote git server
     """
     message = str(message).strip()
-    if message.startswith("Could not find Repository "):
+    if (message.startswith("Could not find Repository ") or
+        message == 'Repository not found.'):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
         base_url, _ = urlutils.split_segment_parameters(url)
-        raise BzrError(
-            ("Unable to update remote HEAD branch. To update the master "
-             "branch, specify the URL %s,branch=master.") % base_url)
+        return HeadUpdateFailed(base_url)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 

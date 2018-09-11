@@ -41,6 +41,8 @@ from ..mapping import default_mapping
 from ..remote import (
     split_git_url,
     parse_git_error,
+    HeadUpdateFailed,
+    RemoteGitError,
     RemoteGitBranchFormat,
     )
 
@@ -79,11 +81,19 @@ class ParseGitErrorTests(TestCase):
 
     def test_unknown(self):
         e = parse_git_error("url", "foo")
-        self.assertIsInstance(e, BzrError)
+        self.assertIsInstance(e, RemoteGitError)
 
     def test_notbrancherror(self):
         e = parse_git_error("url", "\n Could not find Repository foo/bar")
         self.assertIsInstance(e, NotBranchError)
+
+    def test_notbrancherror_github(self):
+        e = parse_git_error("url", "Repository not found.\n")
+        self.assertIsInstance(e, NotBranchError)
+
+    def test_head_update(self):
+        e = parse_git_error("url", "HEAD failed to update\n")
+        self.assertIsInstance(e, HeadUpdateFailed)
 
 
 class TestRemoteGitBranchFormat(TestCase):
