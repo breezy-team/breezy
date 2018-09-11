@@ -3383,7 +3383,7 @@ class _Selftest(object):
             sio = TextIOWrapper(bio, 'utf-8')
         else:
             sio = bio = StringIO()
-        self._inject_stream_into_subunit(sio)
+        self._inject_stream_into_subunit(bio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         sio.flush()
         return bio.getvalue()
