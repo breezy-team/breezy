@@ -29,6 +29,7 @@ from ...errors import (
     DivergedBranches,
     NotBranchError,
     NoSuchTag,
+    PermissionDenied,
     )
 
 from ...tests import (
@@ -94,6 +95,12 @@ class ParseGitErrorTests(TestCase):
     def test_head_update(self):
         e = parse_git_error("url", "HEAD failed to update\n")
         self.assertIsInstance(e, HeadUpdateFailed)
+
+    def test_permission_dnied(self):
+        e = parse_git_error(
+            "url",
+            "access denied or repository not exported: /debian/altermime.git")
+        self.assertIsInstance(e, PermissionDenied)
 
 
 class TestRemoteGitBranchFormat(TestCase):
