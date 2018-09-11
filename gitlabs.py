@@ -168,6 +168,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None):
         """Perform the submission."""
+        import gitlab
         # TODO(jelmer): Support reviewers
         self.gl.auth()
         source_project = self.gl.projects.get(self.source_project_name)
@@ -185,5 +186,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'description': description}
         if labels:
             kwargs['labels'] = ','.join(labels)
-        merge_request = source_project.mergerequests.create(kwargs)
+        try:
+            merge_request = source_project.mergerequests.create(kwargs)
+        except gitlab.GitlabCreateError as e:
+            if e.response_code == 409:
+                raise MergeProposalExists(self.source_branch.user_url)
+            raise
         return MergeProposal(merge_request.web_url)
