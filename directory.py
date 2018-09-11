@@ -65,27 +65,31 @@ class VcsDirectory(object):
             raise urlutils.InvalidURL(path=url,
                     extra='version %s not found' % version)
 
-        note("Retrieving Vcs locating from %s Debian version %s", name, version)
-
         if "Bzr" in urls[version]:
-            return urls[version]["Bzr"]
-
-        if "Svn" in urls[version]:
-            return urls[version]["Svn"]
-
-        if "Git" in urls[version]:
+            url = urls[version]["Bzr"]
+        elif "Svn" in urls[version]:
+            url = urls[version]["Svn"]
+        elif "Git" in urls[version]:
             url = urls[version]["Git"]
             if ' -b ' in url:
                 (url, branch) = url.split(' -b ', 1)
                 url = urlutils.join_segment_parameters(
                     url, {'branch': branch})
-            return url
+        elif "Hg" in urls[version]:
+            url = urls[version]["Hg"]
+        else:
+            if "Browser" in urls[version]:
+                del urls[version]["Browser"]
 
-        if "Hg" in urls[version]:
-            return urls[version]["Hg"]
+            if not urls[version]:
+                raise urlutils.InvalidURL(path=url, extra='only Vcs-Browser set')
 
-        raise urlutils.InvalidURL(path=url,
-            extra='unsupported VCSes %r found' % urls[version].keys())
+            note("Retrieving Vcs locating from %s Debian version %s", name, version)
+            raise urlutils.InvalidURL(path=url,
+                extra='unsupported VCSes %r found' % urls[version].keys())
+
+        note("Resolved package URL from Debian package %s/%s: %s", name, version, url)
+        return url
 
 
 def upstream_branch_alias(b):
