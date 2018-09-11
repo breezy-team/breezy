@@ -1176,7 +1176,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEqual('./test-unreadable', e.filename)
+        self.assertEqual(b'./test-unreadable', e.filename)
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\\./test-unreadable")
