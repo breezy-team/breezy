@@ -1154,10 +1154,10 @@ class LowLevelKnitIndexTests(TestCase):
 
     def test__get_total_build_size(self):
         positions = {
-            (b'a',): ((b'fulltext', False), ((b'a',), 0, 100), None),
-            (b'b',): ((b'line-delta', False), ((b'b',), 100, 21), (b'a',)),
-            (b'c',): ((b'line-delta', False), ((b'c',), 121, 35), (b'b',)),
-            (b'd',): ((b'line-delta', False), ((b'd',), 156, 12), (b'b',)),
+            (b'a',): (('fulltext', False), ((b'a',), 0, 100), None),
+            (b'b',): (('line-delta', False), ((b'b',), 100, 21), (b'a',)),
+            (b'c',): (('line-delta', False), ((b'c',), 121, 35), (b'b',)),
+            (b'd',): (('line-delta', False), ((b'd',), 156, 12), (b'b',)),
             }
         self.assertTotalBuildSize(100, [(b'a',)], positions)
         self.assertTotalBuildSize(121, [(b'b',)], positions)
@@ -1327,7 +1327,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         rev_key = (b'rev-id',)
         ann._num_compression_children[rev_key] = 1
         res = ann._expand_record(rev_key, ((b'parent-id',),), None,
-                           [b'line1\n', b'line2\n'], (b'fulltext', True))
+                           [b'line1\n', b'line2\n'], ('fulltext', True))
         # The content object and text lines should be cached appropriately
         self.assertEqual([b'line1\n', b'line2'], res)
         content_obj = ann._content_objects[rev_key]
@@ -1360,7 +1360,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         details = ('line-delta', False)
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None, [b'line1\n', b'line2\n'],
-                           (b'fulltext', False))
+                           ('fulltext', False))
         res = ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
         self.assertEqual({parent_key: 1}, ann._num_compression_children)
@@ -1383,7 +1383,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None,
                            [b'line1\n', b'line2\n', b'line3\n'],
-                           (b'fulltext', False))
+                           ('fulltext', False))
         ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
         self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
                          ann._matching_blocks)
@@ -1426,7 +1426,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({}, ann._pending_annotation)
         # Now insert p1, and we should be able to expand the delta
         res = ann._expand_record(p1_key, (), None, p1_record,
-                                 (b'fulltext', False))
+                                 ('fulltext', False))
         self.assertEqual(p1_record, res)
         ann._annotations_cache[p1_key] = [(p1_key,)]*2
         res = ann._process_pending(p1_key)
@@ -1436,7 +1436,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
                          ann._pending_annotation)
         # Now fill in parent 2, and pending annotation should be satisfied
-        res = ann._expand_record(p2_key, (), None, [], (b'fulltext', False))
+        res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
         ann._annotations_cache[p2_key] = []
         res = ann._process_pending(p2_key)
         self.assertEqual([rev_key], res)
@@ -1446,7 +1446,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
     def test_record_delta_removes_basis(self):
         ann = self.make_annotator()
         ann._expand_record((b'parent-id',), (), None,
-                           [b'line1\n', b'line2\n'], (b'fulltext', False))
+                           [b'line1\n', b'line2\n'], ('fulltext', False))
         ann._num_compression_children[b'parent-id'] = 2
 
     def test_annotate_special_text(self):
@@ -2096,8 +2096,8 @@ class TestKnitVersionedFiles(KnitTests):
         self.assertEqual(expected_prefix_order, prefix_order)
 
     def test__group_keys_for_io(self):
-        ft_detail = (b'fulltext', False)
-        ld_detail = (b'line-delta', False)
+        ft_detail = ('fulltext', False)
+        ld_detail = ('line-delta', False)
         f_a = (b'f', b'a')
         f_b = (b'f', b'b')
         f_c = (b'f', b'c')

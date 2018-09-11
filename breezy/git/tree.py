@@ -666,11 +666,11 @@ def tree_delta_from_git_changes(changes, mapping,
                 continue
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.modified.append(
-                (newpath, file_id, mode_kind(newmode),
+                (newpath_decoded, file_id, mode_kind(newmode),
                 (oldsha != newsha), (oldmode != newmode)))
         else:
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
-            ret.unchanged.append((newpath, file_id, mode_kind(newmode)))
+            ret.unchanged.append((newpath_decoded, file_id, mode_kind(newmode)))
 
     return ret
 

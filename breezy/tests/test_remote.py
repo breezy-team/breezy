@@ -4270,7 +4270,7 @@ class TestRepositoryPack(TestRemoteRepository):
         client.add_expected_call(
             b'Repository.unlock', (b'quack/', b'token', b'False'),
             b'success', (b'ok', ))
-        repo.pack([b'hinta', b'hintb'])
+        repo.pack(['hinta', 'hintb'])
 
 
 class TestRepositoryIterInventories(TestRemoteRepository):

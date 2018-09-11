@@ -49,7 +49,10 @@ class TestErrors(tests.TestCase):
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)
             if init:
-                args = inspect.getargspec(init)[0]
+                if PY3:
+                    args = inspect.getfullargspec(init)[0]
+                else:
+                    args = inspect.getargspec(init)[0]
                 self.assertFalse('message' in args,
                     ('Argument name "message" not allowed for '
                     '"errors.%s.__init__"' % c.__name__))
