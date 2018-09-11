@@ -65,6 +65,9 @@ class VcsDirectory(object):
             raise urlutils.InvalidURL(path=url,
                     extra='version %s not found' % version)
 
+        # TODO(jelmer): some packages seem to use [PATH] behind the URL to
+        # indicate a subdirectory inside of the versioned tree.
+
         if "Bzr" in urls[version]:
             url = urls[version]["Bzr"]
         elif "Svn" in urls[version]:
