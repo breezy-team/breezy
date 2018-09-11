@@ -16,6 +16,8 @@
 
 from __future__ import absolute_import
 
+import re
+
 from .propose import (
     Hoster,
     LabelsUnsupported,
@@ -44,6 +46,17 @@ from ...transport import get_transport
 
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
 
+
+def plausible_launchpad_url(url):
+    if url is None:
+        return False
+    if url.startswith('lp:'):
+        return True
+    regex = re.compile('([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
+                       '://(bazaar|git).*.launchpad.net')
+    return bool(regex.match(url))
+
+
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
 
@@ -58,32 +71,34 @@ class Launchpad(Hoster):
 
     @classmethod
     def probe(cls, branch):
-        if lp_api.LaunchpadBranch.plausible_launchpad_url(branch.user_url):
+        if plausible_launchpad_url(branch.user_url):
             return Launchpad()
         raise UnsupportedHoster(branch)
 
-    def publish(self, local_branch, base_branch, name, project=None, owner=None,
-                revision_id=None, overwrite=False):
-        """Publish a branch to the site, derived from base_branch.
-
-        :param base_branch: branch to derive the new branch from
-        :param new_branch: branch to publish
-        :param name: Name of the new branch on the remote host
-        :param project: Optional project name
-        :param owner: Optional owner
-        :return: resulting branch
-        """
-        # TODO(jelmer): Prevent publishing to development focus
-        base_branch = self.launchpad.branches.getByUrl(url=base_branch.user_url)
+    def _publish_git(self, local_branch, base_path, name, owner, project=None,
+                     revision_id=None, overwrite=False):
+        base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
-            if base_branch.project is not None:
-                project = base_branch.project.name
-            elif base_branch.sourcepackage is not None:
-                project = '%s/%s/%s' % (base_branch.sourcepackage.distribution.name,
-                                        base_branch.sourcepackage.distroseries.name,
-                                        base_branch.sourcepackage.name)
-        if owner is None:
-            owner = self.launchpad.me.name
+            project = '/'.join(base_repo.unique_name.split('/')[1:])
+        # TODO(jelmer): Surely there is a better way of creating one of these URLs?
+        to_transport = get_transport("git+ssh://git.launchpad.net/~%s/%s" % (owner, project))
+        try:
+            dir_to = controldir.ControlDir.open_from_transport(to_transport)
+        except errors.NotBranchError:
+            # Didn't find anything
+            dir_to = None
+
+        if dir_to is None:
+            br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id, name=name)
+        else:
+            br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name).target_branch
+        return br_to, ("https://code.launchpad.net/~%s/%s/+ref/%s" % (owner, project, name))
+
+    def _publish_bzr(self, local_branch, base_path, name, owner, project=None,
+                revision_id=None, overwrite=False):
+        base_branch = self.launchpad.branches.getByPath(path=base_path)
+        if project is None:
+            project = '/'.join(base_branch.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
         to_transport = get_transport("lp:~%s/%s/%s" % (owner, project, name))
         try:
@@ -98,13 +113,42 @@ class Launchpad(Hoster):
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
         return br_to, ("https://code.launchpad.net/~%s/%s/%s" % (owner, project, name))
 
+    def publish(self, local_branch, base_branch, name, project=None, owner=None,
+                revision_id=None, overwrite=False):
+        """Publish a branch to the site, derived from base_branch.
+
+        :param base_branch: branch to derive the new branch from
+        :param new_branch: branch to publish
+        :param name: Name of the new branch on the remote host
+        :param project: Optional project name
+        :param owner: Optional owner
+        :return: resulting branch
+        """
+        if owner is None:
+            owner = self.launchpad.me.name
+        base_url, base_params = urlutils.split_segment_parameters(base_branch.user_url)
+        (base_scheme, base_user, base_password, base_host, base_port, base_path) = urlutils.parse_url(
+            base_url)
+        base_path = base_path.strip('/')
+        # TODO(jelmer): Prevent publishing to development focus
+        if base_host.startswith('bazaar.'):
+            return self._publish_bzr(local_branch, base_path, name,
+                    project=project, owner=owner, revision_id=revision_id,
+                    overwrite=overwrite)
+        elif base_host.startswith('git.'):
+            return self._publish_git(local_branch, base_path, name,
+                    project=project, owner=owner, revision_id=revision_id,
+                    overwrite=overwrite)
+        else:
+            raise AssertionError('not a valid Launchpad URL')
+
     def get_proposer(self, source_branch, target_branch):
         return LaunchpadMergeProposalBuilder(self.launchpad, source_branch, target_branch)
 
 
 def connect_launchpad(lp_instance='production'):
     service = lp_registration.LaunchpadService(lp_instance=lp_instance)
-    return lp_api.login(service)
+    return lp_api.login(service, version='devel')
 
 
 class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
@@ -239,7 +283,7 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             prerequisite_branch=prereq,
             initial_comment=description.strip().encode('utf-8'),
             commit_message=self.commit_message,
-            reviewers=[self.launchpad.people[reviewer].self_link 
+            reviewers=[self.launchpad.people[reviewer].self_link
                        for reviewer in reviewers],
             review_types=[None for reviewer in reviewers])
         if self.approve:
