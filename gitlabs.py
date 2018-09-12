@@ -105,8 +105,8 @@ class GitLab(Hoster):
     def __init__(self, gl):
         self.gl = gl
 
-    def publish(self, local_branch, base_branch, name, project=None,
-                owner=None, revision_id=None, overwrite=False):
+    def publish_derived(self, local_branch, base_branch, name, project=None,
+                        owner=None, revision_id=None, overwrite=False):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
         self.gl.auth()

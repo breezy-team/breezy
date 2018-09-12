@@ -73,7 +73,7 @@ class cmd_publish_derived(Command):
         if name is None:
             name = branch_name(local_branch)
         hoster = _mod_propose.get_hoster(submit_branch)
-        remote_branch, public_url = hoster.publish(
+        remote_branch, public_url = hoster.publish_derived(
                 local_branch, submit_branch, name=name, project=project,
                 owner=owner)
         local_branch.set_push_location(remote_branch.user_url)
@@ -123,7 +123,8 @@ class cmd_propose_merge(Command):
             hoster = hoster.probe(target)
         if name is None:
             name = branch_name(branch)
-        remote_branch, public_branch_url = hoster.publish(branch, target, name=name)
+        remote_branch, public_branch_url = hoster.publish_derived(
+                branch, target, name=name)
         note(gettext('Published branch to %s') % public_branch_url)
         proposal_builder = hoster.get_proposer(remote_branch, target)
         if description is None:

@@ -115,8 +115,8 @@ class Launchpad(Hoster):
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
         return br_to, ("https://code.launchpad.net/" + result_path)
 
-    def publish(self, local_branch, base_branch, name, project=None, owner=None,
-                revision_id=None, overwrite=False):
+    def publish_derived(self, local_branch, base_branch, name, project=None, owner=None,
+                        revision_id=None, overwrite=False):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
