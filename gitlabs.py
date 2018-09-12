@@ -33,6 +33,15 @@ from .propose import (
     )
 
 
+class NotGitLabUrl(errors.BzrError):
+
+    _fmt = "Not a GitLab URL: %(url)s"
+
+    def __init__(self, url):
+        errors.BzrError.__init__(self)
+        self.url = url
+
+
 class DifferentGitLabInstances(errors.BzrError):
 
     _fmt = ("Can't create merge proposals across GitLab instances: "
@@ -78,6 +87,10 @@ def parse_gitlab_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
+    if scheme not in ('git+ssh', 'https', 'http'):
+        raise NotGitLabUrl(branch.user_url)
+    if not host:
+        raise NotGitLabUrl(branch.user_url)
     path = path.strip('/')
     if path.endswith('.git'):
         path = path[:-4]
@@ -122,7 +135,7 @@ class GitLab(Hoster):
     def probe(cls, branch):
         try:
             (host, project, branch_name) = parse_gitlab_url(branch)
-        except ValueError:
+        except NotGitLabUrl:
             raise UnsupportedHoster(branch)
         import gitlab
         try:
