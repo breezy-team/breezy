@@ -60,7 +60,7 @@ def autopropose(main_branch, callback, name, overwrite=False, labels=None):
         description = callback(local_branch)
         if local_branch.last_revision() == orig_revid:
             raise PointlessCommit()
-        remote_branch, public_branch_url = hoster.publish(
+        remote_branch, public_branch_url = hoster.publish_derived(
             local_branch, main_branch, name=name, overwrite=overwrite)
     finally:
         shutil.rmtree(td)
