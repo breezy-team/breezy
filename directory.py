@@ -75,11 +75,13 @@ class VcsDirectory(object):
         elif "Svn" in urls[version]:
             url = urls[version]["Svn"]
         elif "Git" in urls[version]:
+            from breezy.git.urls import git_url_to_bzr_url
             url = urls[version]["Git"]
             if ' -b ' in url:
                 (url, branch) = url.split(' -b ', 1)
                 url = urlutils.join_segment_parameters(
                     url, {'branch': branch})
+            url = git_url_to_bzr_url(url)
         elif "Hg" in urls[version]:
             url = urls[version]["Hg"]
         else:
