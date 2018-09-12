@@ -87,10 +87,11 @@ class GitHub(Hoster):
                         owner=None, revision_id=None, overwrite=False):
         import github
         base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
             owner = self.gh.get_user().login
         if project is None:
-            project = base_project
+            project = base_repo.name
         try:
             remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
             remote_repo.id
@@ -110,6 +111,21 @@ class GitHub(Hoster):
             overwrite=overwrite, name=name)
         return push_result.target_branch, urlutils.join_segment_parameters(
                 remote_repo.html_url, {"branch": name.encode('utf-8')})
+
+    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+        import github
+        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
+        if owner is None:
+            owner = self.gh.get_user().login
+        if project is None:
+            project = base_repo.name
+        try:
+            remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
+            remote_dir = controldir.ControlDir.open(remote_repo.ssh_url)
+            return remote_dir.open_branch(name=name)
+        except github.UnknownObjectException:
+            raise errors.NotBranchError('https://github.com/%s/%s' % (owner, project))
 
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(self.gh, source_branch, target_branch)

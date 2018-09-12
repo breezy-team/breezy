@@ -128,6 +128,25 @@ class GitLab(Hoster):
                 {"branch": name.encode('utf-8')})
         return push_result.target_branch, public_url
 
+    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+        import gitlab
+        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        self.gl.auth()
+        base_project = self.gl.projects.get(base_project)
+        if owner is None:
+            owner = self.gl.user.username
+        if project is None:
+            project = base_project.name
+        try:
+            target_project = self.gl.projects.get('%s/%s' % (owner, project))
+        except gitlab.GitlabGetError as e:
+            if e.response_code == 404:
+                raise errors.NotBranchError('%s/%s/%s' % (self.gl.url, owner, project))
+            raise
+        remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
+        remote_dir = controldir.ControlDir.open(remote_repo_url)
+        return remote_dir.open_branch(name=name)
+
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
 

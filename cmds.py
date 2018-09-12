@@ -69,6 +69,9 @@ class cmd_publish_derived(Command):
         if submit_branch is None:
             submit_branch = local_branch.get_submit_branch()
             note(gettext('Using submit branch %s') % submit_branch)
+        if submit_branch is None:
+            submit_branch = local_branch.get_parent()
+            note(gettext('Using parent branch %s') % submit_branch)
         submit_branch = _mod_branch.Branch.open(submit_branch)
         if name is None:
             name = branch_name(local_branch)

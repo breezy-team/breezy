@@ -57,6 +57,26 @@ def plausible_launchpad_url(url):
     return bool(regex.match(url))
 
 
+def _call_webservice(call, *args, **kwargs):
+    """Make a call to the webservice, wrapping failures.
+
+    :param call: The call to make.
+    :param *args: *args for the call.
+    :param **kwargs: **kwargs for the call.
+    :return: The result of calling call(*args, *kwargs).
+    """
+    from lazr.restfulclient import errors as restful_errors
+    try:
+        return call(*args, **kwargs)
+    except restful_errors.HTTPError as e:
+        error_lines = []
+        for line in e.content.splitlines():
+            if line.startswith('Traceback (most recent call last):'):
+                break
+            error_lines.append(line)
+        raise Exception(''.join(error_lines))
+
+
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
 
@@ -75,14 +95,16 @@ class Launchpad(Hoster):
             return Launchpad()
         raise UnsupportedHoster(branch)
 
-    def _publish_git(self, local_branch, base_path, name, owner, project=None,
-                     revision_id=None, overwrite=False):
+    def _get_derived_git_transport(self, base_path, owner, project):
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
             project = '/'.join(base_repo.unique_name.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
-        result_path = "~%s/%s" % (owner, project)
-        to_transport = get_transport("git+ssh://git.launchpad.net/" + result_path)
+        return get_transport("git+ssh://git.launchpad.net/~%s/%s" % (owner, project))
+
+    def _publish_git(self, local_branch, base_path, name, owner, project=None,
+                     revision_id=None, overwrite=False):
+        to_transport = self._get_derived_git_transport(base_path, owner, project)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -95,14 +117,16 @@ class Launchpad(Hoster):
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name).target_branch
         return br_to, ("https://code.launchpad.net/%s/+ref/%s" % (result_path, name))
 
-    def _publish_bzr(self, local_branch, base_url, name, owner, project=None,
-                revision_id=None, overwrite=False):
+    def _get_derived_bzr_transport(self, base_url, name, owner, project):
         if project is None:
             base_branch_lp = self.launchpad.branches.getByUrl(url=base_url)
             project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
-        result_path = "~%s/%s/%s" % (owner, project, name)
-        to_transport = get_transport("lp:%s" % result_path)
+        return get_transport("lp:~%s/%s/%s" % (owner, project, name))
+
+    def _publish_bzr(self, local_branch, base_url, name, owner, project=None,
+                revision_id=None, overwrite=False):
+        to_transport = self._get_derived_bzr_transport(base_url, name, owner, project=project)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -113,7 +137,7 @@ class Launchpad(Hoster):
             br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id)
         else:
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
-        return br_to, ("https://code.launchpad.net/" + result_path)
+        return br_to, ("https://code.launchpad.net/~%s/%s" % (owner, project))
 
     def publish_derived(self, local_branch, base_branch, name, project=None, owner=None,
                         revision_id=None, overwrite=False):
@@ -144,8 +168,31 @@ class Launchpad(Hoster):
         else:
             raise AssertionError('not a valid Launchpad URL')
 
+    def get_derived_branch(self, base_branch, name, project=None, owner=None):
+        if owner is None:
+            owner = self.launchpad.me.name
+        base_url, base_params = urlutils.split_segment_parameters(base_branch.user_url)
+        (base_scheme, base_user, base_password, base_host, base_port, base_path) = urlutils.parse_url(
+            base_url)
+        if base_host.startswith('bazaar.'):
+            to_transport = self._get_derived_bzr_transport(base_url, name, owner, project)
+            return _mod_branch.Branch.open_from_transport(to_transport)
+        elif base_host.startswith('git.'):
+            to_transport = self._get_derived_git_transport(base_path.strip('/'), owner, project)
+            return _mod_branch.Branch.open_from_transport(to_transport, name)
+        else:
+            raise AssertionError('not a valid Launchpad URL')
+
     def get_proposer(self, source_branch, target_branch):
-        return LaunchpadMergeProposalBuilder(self.launchpad, source_branch, target_branch)
+        (base_scheme, base_user, base_password, base_host, base_port, base_path) = urlutils.parse_url(
+            target_branch.base_url)
+        if base_host.startswith('bazaar.'):
+            return LaunchpadBazaarMergeProposalBuilder(
+                    self.launchpad, source_branch, target_branch)
+        elif base_host.startswith('git.'):
+            raise NotImplementedError(self.get_proposer)
+        else:
+            raise AssertionError('not a valid Launchpad URL')
 
 
 def connect_launchpad(lp_instance='production'):
@@ -153,7 +200,7 @@ def connect_launchpad(lp_instance='production'):
     return lp_api.login(service, version='devel')
 
 
-class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
+class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
     def __init__(self, launchpad, source_branch, target_branch, message=None,
                  staging=None, approve=None, fixes=None):
@@ -198,6 +245,9 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
 
         :return: a str or None.
         """
+        if not self.hooks['merge_proposal_body']:
+            return None
+
         def list_modified_files():
             lca_tree = self.source_branch_lp.find_lca_tree(
                 self.target_branch_lp)
@@ -206,12 +256,10 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             return list(files)
         with self.target_branch.lock_read(), \
                 self.source_branch.lock_read():
-            target_loc = ('bzr+ssh://bazaar.launchpad.net/%s' %
-                           self.target_branch_lp.unique_name)
             body = None
             for hook in self.hooks['merge_proposal_body']:
                 body = hook({
-                    'target_branch': target_loc,
+                    'target_branch': self.target_branch_lp.bzr_identity,
                     'modified_files_callback': list_modified_files,
                     'old_body': body,
                 })
@@ -239,34 +287,14 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
-    def _call_webservice(self, call, *args, **kwargs):
-        """Make a call to the webservice, wrapping failures.
-
-        :param call: The call to make.
-        :param *args: *args for the call.
-        :param **kwargs: **kwargs for the call.
-        :return: The result of calling call(*args, *kwargs).
-        """
-        from lazr.restfulclient import errors as restful_errors
-        try:
-            return call(*args, **kwargs)
-        except restful_errors.HTTPError as e:
-            error_lines = []
-            for line in e.content.splitlines():
-                if line.startswith('Traceback (most recent call last):'):
-                    break
-                error_lines.append(line)
-            raise Exception(''.join(error_lines))
-
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
-            revid = source_branch.last_revision()
-        self._call_webservice(
-            mp.createComment,
-            vote=u'Approve',
-            subject='', # Use the default subject.
-            content=u"Rubberstamp! Proposer approves of own proposal.")
-        self._call_webservice(mp.setStatus, status=u'Approved', revid=revid)
+            _call_webservice(
+                mp.createComment,
+                vote=u'Approve',
+                subject='', # Use the default subject.
+                content=u"Rubberstamp! Proposer approves of own proposal.")
+            _call_webservice(mp.setStatus, status=u'Approved', revid=source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None):
         """Perform the submission."""
@@ -279,7 +307,7 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
             self.prerequisite_branch.update_lp()
         if reviewers is None:
             reviewers = []
-        mp = self._call_webservice(
+        mp = _call_webservice(
             self.source_branch_lp.createMergeProposal,
             target_branch=self.target_branch_lp,
             prerequisite_branch=prereq,
@@ -293,7 +321,7 @@ class LaunchpadMergeProposalBuilder(MergeProposalBuilder):
         if self.fixes:
             if self.fixes.startswith('lp:'):
                 self.fixes = self.fixes[3:]
-            self._call_webservice(
-                self.source_branch_lp.linkBug,
+            _call_webservice(
+                mp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
         return MergeProposal(lp_api.canonical_url(mp))

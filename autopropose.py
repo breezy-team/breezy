@@ -49,6 +49,12 @@ def script_runner(branch, script):
 
 def autopropose(main_branch, callback, name, overwrite=False, labels=None):
     hoster = _mod_propose.get_hoster(main_branch)
+    try:
+        existing_branch = hoster.get_derived_branch(main_branch, name=name)
+    except errors.NotBranchError:
+        pass
+    else:
+        raise errors.AlreadyBranchError(name)
     td = tempfile.mkdtemp()
     try:
         # preserve whatever source format we have.
