@@ -95,16 +95,17 @@ class Launchpad(Hoster):
             return Launchpad()
         raise UnsupportedHoster(branch)
 
-    def _get_derived_git_transport(self, base_path, owner, project):
+    def _get_derived_git_path(self, base_path, owner, project):
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
             project = '/'.join(base_repo.unique_name.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
-        return get_transport("git+ssh://git.launchpad.net/~%s/%s" % (owner, project))
+        return "~%s/%s" % (owner, project)
 
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
                      revision_id=None, overwrite=False):
-        to_transport = self._get_derived_git_transport(base_path, owner, project)
+        to_path = self._get_derived_git_path(base_path, owner, project)
+        to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -115,18 +116,19 @@ class Launchpad(Hoster):
             br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id, name=name)
         else:
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name).target_branch
-        return br_to, ("https://code.launchpad.net/%s/+ref/%s" % (result_path, name))
+        return br_to, ("https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
 
-    def _get_derived_bzr_transport(self, base_url, name, owner, project):
+    def _get_derived_bzr_path(self, base_url, name, owner, project):
         if project is None:
             base_branch_lp = self.launchpad.branches.getByUrl(url=base_url)
             project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
-        return get_transport("lp:~%s/%s/%s" % (owner, project, name))
+        return "~%s/%s/%s" % (owner, project, name)
 
     def _publish_bzr(self, local_branch, base_url, name, owner, project=None,
                 revision_id=None, overwrite=False):
-        to_transport = self._get_derived_bzr_transport(base_url, name, owner, project=project)
+        to_path = self._get_derived_bzr_path(base_url, name, owner, project)
+        to_transport = get_transport("lp:" + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -137,7 +139,7 @@ class Launchpad(Hoster):
             br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id)
         else:
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
-        return br_to, ("https://code.launchpad.net/~%s/%s" % (owner, project))
+        return br_to, ("https://code.launchpad.net/" + to_path)
 
     def publish_derived(self, local_branch, base_branch, name, project=None, owner=None,
                         revision_id=None, overwrite=False):
@@ -175,17 +177,18 @@ class Launchpad(Hoster):
         (base_scheme, base_user, base_password, base_host, base_port, base_path) = urlutils.parse_url(
             base_url)
         if base_host.startswith('bazaar.'):
-            to_transport = self._get_derived_bzr_transport(base_url, name, owner, project)
-            return _mod_branch.Branch.open_from_transport(to_transport)
+            to_path = self._get_derived_bzr_path(base_url, name, owner, project)
+            return _mod_branch.Branch.open("lp:" + to_path)
         elif base_host.startswith('git.'):
-            to_transport = self._get_derived_git_transport(base_path.strip('/'), owner, project)
-            return _mod_branch.Branch.open_from_transport(to_transport, name)
+            to_path = self._get_derived_git_path(base_path.strip('/'), owner, project)
+            return _mod_branch.Branch.open_from_transport(
+                    "git+ssh://git.launchpad.net/" + to_path, name)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
     def get_proposer(self, source_branch, target_branch):
         (base_scheme, base_user, base_password, base_host, base_port, base_path) = urlutils.parse_url(
-            target_branch.base_url)
+            target_branch.user_url)
         if base_host.startswith('bazaar.'):
             return LaunchpadBazaarMergeProposalBuilder(
                     self.launchpad, source_branch, target_branch)
