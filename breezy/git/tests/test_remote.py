@@ -88,6 +88,10 @@ class ParseGitErrorTests(TestCase):
         e = parse_git_error("url", "\n Could not find Repository foo/bar")
         self.assertIsInstance(e, NotBranchError)
 
+    def test_notbrancherror_launchpad(self):
+        e = parse_git_error("url", "Repository 'foo/bar' not found.")
+        self.assertIsInstance(e, NotBranchError)
+
     def test_notbrancherror_github(self):
         e = parse_git_error("url", "Repository not found.\n")
         self.assertIsInstance(e, NotBranchError)

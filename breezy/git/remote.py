@@ -194,7 +194,8 @@ def parse_git_error(url, message):
     """
     message = str(message).strip()
     if (message.startswith("Could not find Repository ") or
-        message == 'Repository not found.'):
+        message == 'Repository not found.' or
+        (message.startswith('Repository ') and message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
         base_url, _ = urlutils.split_segment_parameters(url)
