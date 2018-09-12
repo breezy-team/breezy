@@ -95,6 +95,17 @@ class Launchpad(Hoster):
             return Launchpad()
         raise UnsupportedHoster(branch)
 
+    def _get_lp_git_ref_from_branch(self, branch):
+        url, params = urlutils.split_segment_parameters(branch.user_url)
+        (scheme, user, password, host, port, path) = urlutils.parse_url(
+            url)
+        repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip('/'))
+        ref_lp = repo_lp.getRefByPath(path=params.get('branch', repo_lp.default_branch))
+        return (repo_lp, ref_lp)
+
+    def _get_lp_bzr_branch_from_branch(self, branch):
+        return self.launchpad.branches.getByUrl(url=urlutils.unescape(branch.user_url))
+
     def _get_derived_git_path(self, base_path, owner, project):
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
@@ -118,16 +129,16 @@ class Launchpad(Hoster):
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name).target_branch
         return br_to, ("https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
 
-    def _get_derived_bzr_path(self, base_url, name, owner, project):
+    def _get_derived_bzr_path(self, base_branch, name, owner, project):
         if project is None:
-            base_branch_lp = self.launchpad.branches.getByUrl(url=base_url)
+            base_branch_lp = self._get_lp_bzr_branch_from_branch(base_branch)
             project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
         return "~%s/%s/%s" % (owner, project, name)
 
-    def _publish_bzr(self, local_branch, base_url, name, owner, project=None,
+    def _publish_bzr(self, local_branch, base_branch, name, owner, project=None,
                 revision_id=None, overwrite=False):
-        to_path = self._get_derived_bzr_path(base_url, name, owner, project)
+        to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
         to_transport = get_transport("lp:" + to_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
@@ -160,7 +171,7 @@ class Launchpad(Hoster):
         base_path = base_path.strip('/')
         # TODO(jelmer): Prevent publishing to development focus
         if base_host.startswith('bazaar.'):
-            return self._publish_bzr(local_branch, base_url, name,
+            return self._publish_bzr(local_branch, base_branch, name,
                     project=project, owner=owner, revision_id=revision_id,
                     overwrite=overwrite)
         elif base_host.startswith('git.'):
@@ -177,7 +188,7 @@ class Launchpad(Hoster):
         (base_scheme, base_user, base_password, base_host, base_port, base_path) = urlutils.parse_url(
             base_url)
         if base_host.startswith('bazaar.'):
-            to_path = self._get_derived_bzr_path(base_url, name, owner, project)
+            to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
             return _mod_branch.Branch.open("lp:" + to_path)
         elif base_host.startswith('git.'):
             to_path = self._get_derived_git_path(base_path.strip('/'), owner, project)
@@ -332,14 +343,6 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
 
 class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
-
-    def _get_lp_ref_from_branch(self, branch):
-        url, params = urlutils.split_segment_parameters(branch.user_url)
-        (scheme, user, password, host, port, path) = urlutils.parse_url(
-            url)
-        repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip('/'))
-        ref_lp = repo_lp.getRefByPath(path=params.get('branch', repo_lp.default_branch))
-        return (repo_lp, ref_lp)
 
     def __init__(self, launchpad, source_branch, target_branch, message=None,
                  staging=None, approve=None, fixes=None):
