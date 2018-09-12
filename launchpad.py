@@ -81,7 +81,8 @@ class Launchpad(Hoster):
         if project is None:
             project = '/'.join(base_repo.unique_name.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
-        to_transport = get_transport("git+ssh://git.launchpad.net/~%s/%s" % (owner, project))
+        result_path = "~%s/%s" % (owner, project)
+        to_transport = get_transport("git+ssh://git.launchpad.net/" + result_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -92,15 +93,16 @@ class Launchpad(Hoster):
             br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id, name=name)
         else:
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name).target_branch
-        return br_to, ("https://code.launchpad.net/~%s/%s/+ref/%s" % (owner, project, name))
+        return br_to, ("https://code.launchpad.net/%s/+ref/%s" % (result_path, name))
 
-    def _publish_bzr(self, local_branch, base_path, name, owner, project=None,
+    def _publish_bzr(self, local_branch, base_url, name, owner, project=None,
                 revision_id=None, overwrite=False):
-        base_branch = self.launchpad.branches.getByPath(path=base_path)
         if project is None:
-            project = '/'.join(base_branch.unique_name.split('/')[1:-1])
+            base_branch_lp = self.launchpad.branches.getByUrl(url=base_url)
+            project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
         # TODO(jelmer): Surely there is a better way of creating one of these URLs?
-        to_transport = get_transport("lp:~%s/%s/%s" % (owner, project, name))
+        result_path = "~%s/%s/%s" % (owner, project, name)
+        to_transport = get_transport("lp:%s" % result_path)
         try:
             dir_to = controldir.ControlDir.open_from_transport(to_transport)
         except errors.NotBranchError:
@@ -111,7 +113,7 @@ class Launchpad(Hoster):
             br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id)
         else:
             br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
-        return br_to, ("https://code.launchpad.net/~%s/%s/%s" % (owner, project, name))
+        return br_to, ("https://code.launchpad.net/" + result_path)
 
     def publish(self, local_branch, base_branch, name, project=None, owner=None,
                 revision_id=None, overwrite=False):
@@ -132,7 +134,7 @@ class Launchpad(Hoster):
         base_path = base_path.strip('/')
         # TODO(jelmer): Prevent publishing to development focus
         if base_host.startswith('bazaar.'):
-            return self._publish_bzr(local_branch, base_path, name,
+            return self._publish_bzr(local_branch, base_url, name,
                     project=project, owner=owner, revision_id=revision_id,
                     overwrite=overwrite)
         elif base_host.startswith('git.'):
