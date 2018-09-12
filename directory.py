@@ -50,7 +50,7 @@ class VcsDirectory(object):
 
                 if field == "Version":
                     pkg_version = value
-                elif field.startswith("X-Vcs-") or field.startswith("Vcs-"):
+                elif field.startswith("X-Vcs-") or field.startswith("Vcs-") or field.startswith("XS-Vcs-"):
                     vcs = field.split("-")[-1]
                     urls.setdefault(pkg_version,{})[vcs] = value
 
