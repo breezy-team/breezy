@@ -70,6 +70,8 @@ class VcsDirectory(object):
 
         if "Bzr" in urls[version]:
             url = urls[version]["Bzr"]
+        elif "Darcs" in urls[version]:
+            url = urls[version]["Darcs"]
         elif "Svn" in urls[version]:
             url = urls[version]["Svn"]
         elif "Git" in urls[version]:

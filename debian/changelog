@@ -4,6 +4,7 @@ breezy-debian (2.8.15) UNRELEASED; urgency=medium
   * Support retrieving/storing pristine-tar deltas in git branches.
   * Simplify handling of apt: URLs.
   * Display resolved branch URL in apt: directory.
+  * Add support for Vcs-Darcs in directory.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 09 Sep 2018 13:24:02 +0100
 
