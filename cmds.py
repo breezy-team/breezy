@@ -44,12 +44,11 @@ def branch_name(branch):
     return urlutils.basename(branch.user_url)
 
 
-class cmd_publish(Command):
-    __doc__ = """Publish a branch.
+class cmd_publish_derived(Command):
+    __doc__ = """Publish a derived branch.
 
-    Try to create a public copy of a local branch.
-    How this is done depends on the submit branch and where it is
-    hosted.
+    Try to create a public copy of a local branch on a hosting site,
+    derived from the specified base branch.
 
     Reasonable defaults are picked for owner name, branch name and project
     name, but they can also be overridden from the command-line.
