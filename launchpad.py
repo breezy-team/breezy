@@ -193,7 +193,8 @@ class Launchpad(Hoster):
             return LaunchpadBazaarMergeProposalBuilder(
                     self.launchpad, source_branch, target_branch)
         elif base_host.startswith('git.'):
-            raise NotImplementedError(self.get_proposer)
+            return LaunchpadGitMergeProposalBuilder(
+                    self.launchpad, source_branch, target_branch)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -223,7 +224,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         self.source_branch = source_branch
         self.source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
         if target_branch is None:
-            self.target_branch_lp = self.source_branch.get_target()
+            self.target_branch_lp = self.source_branch_lp.get_target()
             self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.bzr_identity)
         else:
             self.target_branch = target_branch
@@ -319,6 +320,149 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             reviewers=[self.launchpad.people[reviewer].self_link
                        for reviewer in reviewers],
             review_types=[None for reviewer in reviewers])
+        if self.approve:
+            self.approve_proposal(mp)
+        if self.fixes:
+            if self.fixes.startswith('lp:'):
+                self.fixes = self.fixes[3:]
+            _call_webservice(
+                mp.linkBug,
+                bug=self.launchpad.bugs[int(self.fixes)])
+        return MergeProposal(lp_api.canonical_url(mp))
+
+
+class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
+
+    def _get_lp_ref_from_branch(self, branch):
+        url, params = urlutils.split_segment_parameters(branch.user_url)
+        (scheme, user, password, host, port, path) = urlutils.parse_url(
+            url)
+        repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip('/'))
+        ref_lp = repo_lp.getRefByPath(path=params.get('branch', repo_lp.default_branch))
+        return (repo_lp, ref_lp)
+
+    def __init__(self, launchpad, source_branch, target_branch, message=None,
+                 staging=None, approve=None, fixes=None):
+        """Constructor.
+
+        :param source_branch: The branch to propose for merging.
+        :param target_branch: The branch to merge into.
+        :param message: The commit message to use.  (May be None.)
+        :param staging: If True, propose the merge against staging instead of
+            production.
+        :param approve: If True, mark the new proposal as approved immediately.
+            This is useful when a project permits some things to be approved
+            by the submitter (e.g. merges between release and deployment
+            branches).
+        """
+        self.launchpad = launchpad
+        self.source_branch = source_branch
+        (self.source_repo_lp, self.source_branch_lp) = self._get_lp_ref_from_branch(source_branch)
+        if target_branch is None:
+            self.target_branch_lp = self.source_branch.get_target()
+            self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.bzr_identity)
+        else:
+            self.target_branch = target_branch
+            (self.target_repo_lp, self.target_branch_lp) = self._get_lp_ref_from_branch(target_branch)
+        self.prerequisite_branch = self._get_prerequisite_branch()
+        self.commit_message = message
+        self.approve = approve
+        self.fixes = fixes
+
+    def get_infotext(self):
+        """Determine the initial comment for the merge proposal."""
+        if self.commit_message is not None:
+            return self.commit_message.strip().encode('utf-8')
+        info = ["Source: %s\n" % self.source_branch.user_url]
+        info.append("Target: %s\n" % self.target_branch.user_url)
+        if self.prerequisite_branch is not None:
+            info.append("Prereq: %s\n" % self.prerequisite_branch.user_url)
+        return ''.join(info)
+
+    def get_initial_body(self):
+        """Get a body for the proposal for the user to modify.
+
+        :return: a str or None.
+        """
+        if not self.hooks['merge_proposal_body']:
+            return None
+
+        def list_modified_files():
+            lca_tree = self.source_branch_lp.find_lca_tree(
+                self.target_branch_lp)
+            source_tree = self.source_branch.basis_tree()
+            files = modified_files(lca_tree, source_tree)
+            return list(files)
+        with self.target_branch.lock_read(), \
+                self.source_branch.lock_read():
+            body = None
+            for hook in self.hooks['merge_proposal_body']:
+                body = hook({
+                    'target_branch': self.target_branch,
+                    'modified_files_callback': list_modified_files,
+                    'old_body': body,
+                })
+            return body
+
+    def check_proposal(self):
+        """Check that the submission is sensible."""
+        if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
+            raise errors.BzrCommandError(
+                'Source and target branches must be different.')
+        for mp in self.source_branch_lp.landing_targets:
+            if mp.queue_status in ('Merged', 'Rejected'):
+                continue
+            if mp.target_branch.self_link == self.target_branch_lp.self_link:
+                raise MergeProposalExists(lp_api.canonical_url(mp))
+
+    def _get_prerequisite_branch(self):
+        hooks = self.hooks['get_prerequisite']
+        prerequisite_branch = None
+        for hook in hooks:
+            prerequisite_branch = hook(
+                {'launchpad': self.launchpad,
+                 'source_branch': self.source_branch_lp,
+                 'target_branch': self.target_branch_lp,
+                 'prerequisite_branch': prerequisite_branch})
+        return prerequisite_branch
+
+    def approve_proposal(self, mp):
+        with self.source_branch.lock_read():
+            _call_webservice(
+                mp.createComment,
+                vote=u'Approve',
+                subject='', # Use the default subject.
+                content=u"Rubberstamp! Proposer approves of own proposal.")
+            _call_webservice(mp.setStatus, status=u'Approved', revid=source_branch.last_revision())
+
+    def create_proposal(self, description, reviewers=None, labels=None):
+        """Perform the submission."""
+        if labels:
+            raise LabelsUnsupported()
+        if self.prerequisite_branch is None:
+            prereq = None
+        else:
+            prereq = self.prerequisite_branch.lp
+            self.prerequisite_branch.update_lp()
+        if reviewers is None:
+            reviewers = []
+        try:
+            mp = _call_webservice(
+                self.source_branch_lp.createMergeProposal,
+                merge_target=self.target_branch_lp,
+                merge_prerequisite=prereq,
+                initial_comment=description.strip().encode('utf-8'),
+                commit_message=self.commit_message,
+                needs_review=True,
+                reviewers=[self.launchpad.people[reviewer].self_link
+                           for reviewer in reviewers],
+                review_types=[None for reviewer in reviewers])
+        except Exception as e:
+            # Urgh.
+            if ('There is already a branch merge proposal '
+                'registered for branch ') in e.message:
+                raise MergeProposalExists(self.source_branch.user_url)
+            raise
         if self.approve:
             self.approve_proposal(mp)
         if self.fixes:
