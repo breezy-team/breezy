@@ -100,7 +100,15 @@ class Launchpad(Hoster):
         (scheme, user, password, host, port, path) = urlutils.parse_url(
             url)
         repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip('/'))
-        ref_lp = repo_lp.getRefByPath(path=params.get('branch', repo_lp.default_branch))
+        try:
+            ref_path = params['ref']
+        except KeyError:
+            branch_name = params.get('branch', branch.name)
+            if branch_name:
+                ref_path = 'refs/heads/%s' % branch_name
+            else:
+                ref_path = repo_lp.default_branch
+        ref_lp = repo_lp.getRefByPath(path=ref_path)
         return (repo_lp, ref_lp)
 
     def _get_lp_bzr_branch_from_branch(self, branch):
@@ -192,7 +200,7 @@ class Launchpad(Hoster):
             return _mod_branch.Branch.open("lp:" + to_path)
         elif base_host.startswith('git.'):
             to_path = self._get_derived_git_path(base_path.strip('/'), owner, project)
-            return _mod_branch.Branch.open_from_transport(
+            return _mod_branch.Branch.open(
                     "git+ssh://git.launchpad.net/" + to_path, name)
         else:
             raise AssertionError('not a valid Launchpad URL')
@@ -202,10 +210,10 @@ class Launchpad(Hoster):
             target_branch.user_url)
         if base_host.startswith('bazaar.'):
             return LaunchpadBazaarMergeProposalBuilder(
-                    self.launchpad, source_branch, target_branch)
+                    self, source_branch, target_branch)
         elif base_host.startswith('git.'):
             return LaunchpadGitMergeProposalBuilder(
-                    self.launchpad, source_branch, target_branch)
+                    self, source_branch, target_branch)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -217,7 +225,7 @@ def connect_launchpad(lp_instance='production'):
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, launchpad, source_branch, target_branch, message=None,
+    def __init__(self, lp_host, source_branch, target_branch, message=None,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
@@ -231,7 +239,8 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             by the submitter (e.g. merges between release and deployment
             branches).
         """
-        self.launchpad = launchpad
+        self.lp_host = lp_host
+        self.launchpad = lp_host.launchpad
         self.source_branch = source_branch
         self.source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
         if target_branch is None:
@@ -344,7 +353,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
 class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, launchpad, source_branch, target_branch, message=None,
+    def __init__(self, lp_host, source_branch, target_branch, message=None,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
@@ -358,15 +367,16 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             by the submitter (e.g. merges between release and deployment
             branches).
         """
-        self.launchpad = launchpad
+        self.lp_host = lp_host
+        self.launchpad = lp_host.launchpad
         self.source_branch = source_branch
-        (self.source_repo_lp, self.source_branch_lp) = self._get_lp_ref_from_branch(source_branch)
+        (self.source_repo_lp, self.source_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(source_branch)
         if target_branch is None:
             self.target_branch_lp = self.source_branch.get_target()
-            self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.bzr_identity)
+            self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.git_https_url)
         else:
             self.target_branch = target_branch
-            (self.target_repo_lp, self.target_branch_lp) = self._get_lp_ref_from_branch(target_branch)
+            (self.target_repo_lp, self.target_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(target_branch)
         self.prerequisite_branch = self._get_prerequisite_branch()
         self.commit_message = message
         self.approve = approve
