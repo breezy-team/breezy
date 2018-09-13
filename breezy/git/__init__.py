@@ -148,7 +148,9 @@ class RemoteGitProber(Prober):
         base_url, _ = urlutils.split_segment_parameters(transport.external_url())
         url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
         from ..transport.http import Request
-        headers = {"Content-Type": "application/x-git-upload-pack-request"}
+        headers = {"Content-Type": "application/x-git-upload-pack-request",
+                   "Accept": "application/x-git-upload-pack-result",
+                   }
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                       headers=headers)
         (scheme, user, password, host, port, path) = urlutils.parse_url(req.get_full_url())
@@ -158,7 +160,6 @@ class RemoteGitProber(Prober):
         elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise bzr_errors.NotBranchError(transport.base)
-        req.follow_redirections = True
         resp = transport._perform(req)
         if resp.code in (404, 405):
             raise bzr_errors.NotBranchError(transport.base)

@@ -341,8 +341,13 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
         """
         from .transportgit import TransportRepo
-        gitrepo = TransportRepo(transport, self.bare,
+        def _open(transport):
+            return TransportRepo(transport, self.bare,
                 refs_text=getattr(self, "_refs_text", None))
+        def redirected(transport, e, redirection_notice):
+            trace.note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
+        gitrepo = do_catching_redirections(_open, transport, redirected)
         if not gitrepo._controltransport.has('HEAD'):
             raise bzr_errors.NotBranchError(path=transport.base)
         return LocalGitDir(transport, gitrepo, self)
