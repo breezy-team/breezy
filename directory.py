@@ -70,6 +70,8 @@ class VcsDirectory(object):
 
         if "Bzr" in urls[version]:
             url = urls[version]["Bzr"]
+            from ...directory_service import directories
+            url = directories.dereference(url)
         elif "Darcs" in urls[version]:
             url = urls[version]["Darcs"]
         elif "Svn" in urls[version]:
