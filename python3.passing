@@ -1,6 +1,5 @@
 # This is the list of tests that are known to pass with Python3.
 # "make check-nodocs3" verifies that these pass.
-breezy.git.tests.test_workingtree.GitWorkingTreeTests.test_is_ignored_directory
 breezy.git.tests.test_blackbox.ShallowTests.test_log_shallow
 breezy.git.tests.test_blackbox.ShallowTests.test_version_info_custom_without_revno
 breezy.git.tests.test_blackbox.ShallowTests.test_version_info_custom_with_revno
@@ -29012,6 +29011,7 @@ breezy.tests.test_selftest.TestConvenienceMakers.test_make_branch_and_tree_with_
 breezy.tests.test_selftest.TestConvenienceMakers.test_make_tree_for_local_vfs_backed_transport
 breezy.tests.test_selftest.TestCounterHooks.test_no_hook
 breezy.tests.test_selftest.TestCounterHooks.test_run_hook_once
+breezy.tests.test_selftest.TestDeprecations.test_applyDeprecated_not_deprecated
 breezy.tests.test_selftest.TestDeprecations.test_callDeprecated
 breezy.tests.test_selftest.TestDocTestSuiteIsolation.test_deleted_variable
 breezy.tests.test_selftest.TestDocTestSuiteIsolation.test_injected_variable
