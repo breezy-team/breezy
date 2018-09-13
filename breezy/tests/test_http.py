@@ -389,7 +389,7 @@ class TestHttpTransportUrls(tests.TestCase):
         self._transport('http://example.com/bzr/bzr.dev/')
         self.assertRaises(urlutils.InvalidURL,
                           self._transport,
-                          'http://http://example.com/bzr/bzr.dev/')
+                          'http://example.com:port/bzr/bzr.dev/')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
