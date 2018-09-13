@@ -611,7 +611,7 @@ class HttpTransport(ConnectedTransport):
         # determine the excess tail - the relative path that was in
         # the original request but not part of this transports' URL.
         excess_tail = parsed_source.path[pl:].strip("/")
-        if not target.endswith(excess_tail):
+        if not parsed_target.path.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
             return None

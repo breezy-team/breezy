@@ -929,11 +929,14 @@ class URL(object):
         if ':' in host and not (host[0] == '[' and host[-1] == ']'):
             # there *is* port
             host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                raise InvalidURL('invalid port number %s in url:\n%s' %
-                                 (port, url))
+            if port:
+                try:
+                    port = int(port)
+                except ValueError:
+                    raise InvalidURL('invalid port number %s in url:\n%s' %
+                                     (port, url))
+            else:
+                port = None
         if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
             host = host[1:-1]
 
