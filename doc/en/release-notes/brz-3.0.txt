@@ -70,6 +70,9 @@ External Compatibility Breaks
 New Features
 ************
 
+ * Add support for Python 3, version 3.5 or later.
+   (Martin Packman, Jelmer Vernooĳ, #1696545)
+
  * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
 
  * The 'fastimport' plugin is now bundled with Bazaar.
