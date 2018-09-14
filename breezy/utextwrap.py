@@ -70,6 +70,7 @@ class UTextWrapper(textwrap.TextWrapper):
         else:
             raise ValueError("ambiguous_width should be 1 or 2")
 
+        self.max_lines = kwargs.get('max_lines', None)
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _unicode_char_width(self, uc):
@@ -266,7 +267,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
     def wrap(self, text):
         # ensure text is unicode
-        return super(UTextWrapper, self).wrap(osutils.safe_unicode(text))
+        return textwrap.TextWrapper.wrap(self, osutils.safe_unicode(text))
 
 # -- Convenience interface ---------------------------------------------
 
