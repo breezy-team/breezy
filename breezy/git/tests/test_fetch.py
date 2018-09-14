@@ -137,7 +137,7 @@ class RepositoryFetchTests(object):
         bb = GitBranchBuilder()
         bb.set_file("mylink/somefile", b"foo\nbar\n", False)
         mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg1")
-        bb.delete_entry("mylink")
+        bb.delete_entry("mylink/somefile")
         bb.set_symlink("mylink", "target/")
         mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg2")
         marks = bb.finish()
