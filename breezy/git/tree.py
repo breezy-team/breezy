@@ -504,6 +504,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
                                    hexsha, parent_id))
             todo.extendleft(reversed(extradirs))
 
+    def iter_references(self):
+        if self.supports_tree_reference():
+            for path, entry in self.iter_entries_by_dir():
+                if entry.kind == 'tree-reference':
+                    yield path, self.mapping.generate_file_id(b'')
+
     def get_revision_id(self):
         """See RevisionTree.get_revision_id."""
         return self._revision_id
