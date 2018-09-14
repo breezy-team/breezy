@@ -10,10 +10,6 @@ python:
   - 3.6
   - 3.6-dev
 
-env:
-  - SELFTEST_OPTIONS="--load-list python3.passing"
-    EXTRA_MAKE_ARGS=""
-
 matrix:
   include:
     - python: 2.7
