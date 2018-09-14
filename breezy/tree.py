@@ -1366,11 +1366,12 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
         return None
 
 
-def get_canonical_path_ignore_case(tree, path):
+def get_canonical_path(tree, path, normalize):
     """Find the canonical path of an item, ignoring case.
 
     :param tree: Tree to traverse
     :param path: Case-insensitive path to look up
+    :param normalize: Function to normalize a filename for comparison
     :return: The canonical path
     """
     # go walkin...
@@ -1378,7 +1379,7 @@ def get_canonical_path_ignore_case(tree, path):
     cur_path = ''
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
-        lelt = elt.lower()
+        lelt = normalize(elt)
         new_path = None
         try:
             for child in self.iter_child_entries(cur_path, cur_id):
@@ -1391,7 +1392,7 @@ def get_canonical_path_ignore_case(tree, path):
                         cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                         break
-                    elif child.name.lower() == lelt:
+                    elif normalize(child.name) == lelt:
                         cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                 except errors.NoSuchId:

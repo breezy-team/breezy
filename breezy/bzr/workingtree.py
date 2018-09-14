@@ -78,7 +78,7 @@ from ..sixish import (
     )
 from ..trace import mutter, note
 from ..tree import (
-    get_canonical_path_ignore_case,
+    get_canonical_path,
     FileTimestampUnavailable,
     TreeDirectory,
     TreeFile,
@@ -1720,11 +1720,18 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             insensitively.
         """
         with self.lock_read():
+            if not self.case_sensitive:
+                normalize = lambda x: x.lower()
+            elif sys.platform == 'darwin':
+                import unicodedata
+                normalize = lambda x: unicodedata.normalize('NFC', x)
+            else:
+                normalize = None
             for path in paths:
-                if self.case_sensitive or self.is_versioned(path):
+                if normalize is None or self.is_versioned(path):
                     yield path
                 else:
-                    yield get_canonical_path_ignore_case(self, path)
+                    yield get_canonical_path(self, path, normalize)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
