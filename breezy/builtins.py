@@ -1053,7 +1053,7 @@ class cmd_mv(Command):
             # move into existing directory
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
-            rel_names = tree.get_canonical_paths(rel_names)
+            rel_names = list(tree.get_canonical_paths(rel_names))
             for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 if not is_quiet():
                     self.outf.write("%s => %s\n" % (src, dest))

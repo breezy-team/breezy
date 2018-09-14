@@ -27,7 +27,6 @@ from breezy.bzr.inventorytree import InventoryTree
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
 from breezy.transform import _PreviewTree
-from breezy.uncommit import uncommit
 from breezy.tests import (
     features,
     )
@@ -98,84 +97,3 @@ class TestInventory(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual(set([]), tree.paths2ids(['file'],
                          require_versioned=False))
-
-    def _make_canonical_test_tree(self, commit=True):
-        # make a tree used by all the 'canonical' tests below.
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/dir/', 'tree/dir/file'])
-        work_tree.add(['dir', 'dir/file'])
-        if commit:
-            work_tree.commit('commit 1')
-        # XXX: this isn't actually guaranteed to return the class we want to
-        # test -- mbp 2010-02-12
-        return work_tree
-
-    def test_canonical_path(self):
-        work_tree = self._make_canonical_test_tree()
-        if not isinstance(work_tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        self.assertEqual('dir/file',
-                         work_tree.get_canonical_path('Dir/File'))
-
-    def test_canonical_path_before_commit(self):
-        work_tree = self._make_canonical_test_tree(False)
-        if not isinstance(work_tree, InventoryTree):
-            # note: not committed.
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        self.assertEqual('dir/file',
-                         work_tree.get_canonical_path('Dir/File'))
-
-    def test_canonical_path_dir(self):
-        # check it works when asked for just the directory portion.
-        work_tree = self._make_canonical_test_tree()
-        if not isinstance(work_tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        self.assertEqual('dir', work_tree.get_canonical_path('Dir'))
-
-    def test_canonical_path_root(self):
-        work_tree = self._make_canonical_test_tree()
-        if not isinstance(work_tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        self.assertEqual('', work_tree.get_canonical_path(''))
-        self.assertEqual('/', work_tree.get_canonical_path('/'))
-
-    def test_canonical_path_invalid_all(self):
-        work_tree = self._make_canonical_test_tree()
-        if not isinstance(work_tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        self.assertEqual('foo/bar',
-                         work_tree.get_canonical_path('foo/bar'))
-
-    def test_canonical_invalid_child(self):
-        work_tree = self._make_canonical_test_tree()
-        if not isinstance(work_tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        self.assertEqual('dir/None',
-                         work_tree.get_canonical_path('Dir/None'))
-
-    def test_canonical_tree_name_mismatch(self):
-        # see <https://bugs.launchpad.net/bzr/+bug/368931>
-        # some of the trees we want to use can only exist on a disk, not in
-        # memory - therefore we can only test this if the filesystem is
-        # case-sensitive.
-        self.requireFeature(features.case_sensitive_filesystem_feature)
-        work_tree = self.make_branch_and_tree('.')
-        self.build_tree(['test/', 'test/file', 'Test'])
-        work_tree.add(['test/', 'test/file', 'Test'])
-
-        test_tree = self._convert_tree(work_tree)
-        if not isinstance(test_tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        test_tree.lock_read()
-        self.addCleanup(test_tree.unlock)
-
-        self.assertEqual(['test', 'test/file', 'Test', 'test/foo', 'Test/foo'],
-            test_tree.get_canonical_paths(
-                ['test', 'test/file', 'Test', 'test/foo', 'Test/foo']))

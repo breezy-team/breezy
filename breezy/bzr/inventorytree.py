@@ -73,33 +73,12 @@ class InventoryTree(Tree):
         """Like get_canonical_path() but works on multiple items.
 
         :param paths: A sequence of paths relative to the root of the tree.
-        :return: A list of paths, with each item the corresponding input path
-        adjusted to account for existing elements that match case
-        insensitively.
+        :return: A iterator over paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
         """
         with self.lock_read():
-            return list(self._yield_canonical_inventory_paths(paths))
-
-    def get_canonical_path(self, path):
-        """Returns the first item that case-insensitively matches path.
-
-        If a path matches exactly, it is returned. If no path matches exactly
-        but more than one path matches case-insensitively, it is implementation
-        defined which is returned.
-
-        If no path matches case-insensitively, the input path is returned, but
-        with as many path entries that do exist changed to their canonical
-        form.
-
-        If you need to resolve many names from the same tree, you should
-        use get_canonical_paths() to avoid O(N) behaviour.
-
-        :param path: A paths relative to the root of the tree.
-        :return: The input path adjusted to account for existing elements
-        that match case insensitively.
-        """
-        with self.lock_read():
-            return self.get_canonical_paths([path])[0]
+            return self._yield_canonical_inventory_paths(paths)
 
     def _yield_canonical_inventory_paths(self, paths):
         for path in paths:
