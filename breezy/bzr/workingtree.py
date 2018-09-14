@@ -78,6 +78,7 @@ from ..sixish import (
     )
 from ..trace import mutter, note
 from ..tree import (
+    get_canonical_path,
     FileTimestampUnavailable,
     TreeDirectory,
     TreeFile,
@@ -1709,6 +1710,28 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return iterator
         else:
             return self._check_for_tree_references(iterator)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A iterator over paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
+        """
+        with self.lock_read():
+            if not self.case_sensitive:
+                normalize = lambda x: x.lower()
+            elif sys.platform == 'darwin':
+                import unicodedata
+                normalize = lambda x: unicodedata.normalize('NFC', x)
+            else:
+                normalize = None
+            for path in paths:
+                if normalize is None or self.is_versioned(path):
+                    yield path
+                else:
+                    yield get_canonical_path(self, path, normalize)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
