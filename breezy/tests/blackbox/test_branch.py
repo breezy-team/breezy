@@ -98,13 +98,14 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_from_colocated(self):
         """Branch from a colocated branch into a regular branch."""
-        tree = self.example_branch('a', format='development-colo')
+        os.mkdir('b')
+        tree = self.example_branch('b/a', format='development-colo')
         tree.controldir.create_branch(name='somecolo')
         out, err = self.run_bzr('branch %s,branch=somecolo' %
-            local_path_to_url('a'))
+            local_path_to_url('b/a'))
         self.assertEqual('', out)
         self.assertEqual('Branched 0 revisions.\n', err)
-        self.assertPathExists("somecolo")
+        self.assertPathExists('a')
 
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
