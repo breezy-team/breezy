@@ -1,3 +1,9 @@
+breezy-debian (2.8.16) UNRELEASED; urgency=medium
+
+  * Properly escape slashes in git branch names.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 14 Sep 2018 14:41:09 +0100
+
 breezy-debian (2.8.15) unstable; urgency=medium
 
   * Guess upstream tag names if none is explicitly set.
