@@ -23,7 +23,7 @@ from .. import (
     errors,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 from ..status import show_tree_status
 from . import TestCaseWithTransport
@@ -34,7 +34,7 @@ from .features import (
 
 def verify_status(tester, tree, value):
     """Verify the output of show_tree_status"""
-    tof = BytesIO()
+    tof = StringIO()
     show_tree_status(tree, to_file=tof)
     tof.seek(0)
     tester.assertEqual(value, tof.readlines())
@@ -65,9 +65,9 @@ class TestBadFiles(TestCaseWithTransport):
         self.build_tree(['six'])
 
         verify_status(self, wt,
-                          [b'unknown:\n',
-                           b'  a-fifo\n',
-                           b'  six\n'
+                          ['unknown:\n',
+                           '  a-fifo\n',
+                           '  six\n'
                            ])
 
         # We should raise an error if we are adding a bogus file
@@ -75,23 +75,23 @@ class TestBadFiles(TestCaseWithTransport):
 
         # And the list of files shouldn't have been modified
         verify_status(self, wt,
-                          [b'unknown:\n',
-                           b'  a-fifo\n',
-                           b'  six\n'
+                          ['unknown:\n',
+                           '  a-fifo\n',
+                           '  six\n'
                            ])
 
         # Make sure smart_add can handle having a bogus
         # file in the way
         wt.smart_add([])
         verify_status(self, wt,
-                          [b'added:\n',
-                           b'  six\n',
-                           b'unknown:\n',
-                           b'  a-fifo\n',
+                          ['added:\n',
+                           '  six\n',
+                           'unknown:\n',
+                           '  a-fifo\n',
                            ])
         wt.commit("Commit four", rev_id=b"a@u-0-3")
 
         verify_status(self, wt,
-                          [b'unknown:\n',
-                           b'  a-fifo\n',
+                          ['unknown:\n',
+                           '  a-fifo\n',
                            ])

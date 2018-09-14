@@ -146,7 +146,6 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         return lock.LogicalLockResult(self.unlock)
 
     def _lock_write_tree(self):
-        # TODO(jelmer): Actually create index.lock
         if not self._lock_mode:
             self._lock_mode = 'w'
             self._lock_count = 1
@@ -205,8 +204,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     self._flush(self._index_file)
                     self._index_file.close()
                 else:
-                    # Somebody else already wrote the index file
-                    # by calling .flush()
+                    # Something else already triggered a write of the index
+                    # file by calling .flush()
                     self._index_file.abort()
                 self._index_file = None
             self._lock_mode = None
@@ -496,7 +495,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     if kind == "directory":
                         user_dirs.append(subp)
                     else:
-                        if subp in self.index:
+                        (index, subpath) = self._lookup_index(subp.encode('utf-8'))
+                        if subpath in index:
                             # Already present
                             continue
                         if subp in conflicts_related:
@@ -631,13 +631,12 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         match = self._global_ignoreglobster.match(filename)
         if match is not None:
             return match
-        encoded_filename = filename.encode('utf-8')
         try:
             if self.kind(filename) == 'directory':
-                encoded_filename += b'/'
+                filename += '/'
         except errors.NoSuchFile:
             pass
-        encoded_filename = encoded_filename.lstrip(b'/')
+        filename = filename.lstrip('/')
         ignore_manager = self._get_ignore_manager()
         ps = list(ignore_manager.find_matching(filename))
         if not ps:

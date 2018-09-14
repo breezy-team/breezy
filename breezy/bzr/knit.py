@@ -1240,7 +1240,6 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             for key, details in viewitems(build_details):
                 (index_memo, compression_parent, parents,
                  record_details) = details
-                method = record_details[0]
                 if compression_parent is not None:
                     pending_components.add(compression_parent)
                 component_data[key] = self._build_details_to_components(details)
@@ -2352,7 +2351,7 @@ class _NetworkContentMapGenerator(_ContentMapGenerator):
             # one line with method
             line_end = bytes.find(b'\n', start)
             line = bytes[start:line_end]
-            method = line
+            method = line.decode('ascii')
             start = line_end + 1
             # one line with noeol
             line_end = bytes.find(b'\n', start)

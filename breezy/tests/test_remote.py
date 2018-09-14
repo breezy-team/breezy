@@ -71,6 +71,7 @@ from ..revision import (
     )
 from ..sixish import (
     BytesIO,
+    PY3,
     text_type,
     )
 from ..bzr.smart import medium, request
@@ -337,10 +338,13 @@ class TestVfsHas(tests.TestCase):
         client = FakeClient('/')
         client.add_success_response(b'yes',)
         transport = RemoteTransport('bzr://localhost/', _client=client)
-        filename = u'/hell\u00d8'.encode('utf-8')
-        result = transport.has(filename)
+        filename = u'/hell\u00d8'
+        if PY3:
+            result = transport.has(filename)
+        else:
+            result = transport.has(filename.encode('utf-8'))
         self.assertEqual(
-            [('call', b'has', (filename,))],
+            [('call', b'has', (filename.encode('utf-8'),))],
             client._calls)
         self.assertTrue(result)
 
@@ -459,7 +463,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
             b'error', (b'BranchReference',)),
         client.add_expected_call(
             b'BzrDir.open_branchV3', (b'quack/',),
-            b'success', (b'ref', self.get_url('referenced'))),
+            b'success', (b'ref', self.get_url('referenced').encode('utf-8'))),
         a_controldir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_controldir.cloning_metadir()
@@ -4266,7 +4270,7 @@ class TestRepositoryPack(TestRemoteRepository):
         client.add_expected_call(
             b'Repository.unlock', (b'quack/', b'token', b'False'),
             b'success', (b'ok', ))
-        repo.pack([b'hinta', b'hintb'])
+        repo.pack(['hinta', 'hintb'])
 
 
 class TestRepositoryIterInventories(TestRemoteRepository):

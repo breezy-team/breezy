@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import errno
+from io import BytesIO
 import os
 
 import breezy
@@ -31,9 +32,6 @@ from breezy import (
     trace,
     )
 """)
-from breezy.sixish import (
-    BytesIO,
-    )
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -52,12 +50,11 @@ USER_DEFAULTS = [
 ]
 
 
-
 def parse_ignore_file(f):
     """Read in all of the lines in the file and turn it into an ignore list
-    
-    Continue in the case of utf8 decoding errors, and emit a warning when 
-    such and error is found. Optimise for the common case -- no decoding 
+
+    Continue in the case of utf8 decoding errors, and emit a warning when
+    such and error is found. Optimise for the common case -- no decoding
     errors.
     """
     ignored = set()
@@ -192,38 +189,29 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     # read in the existing ignores set
     ifn = tree.abspath(tree._format.ignore_filename)
     if tree.has_filename(ifn):
-        with open(ifn, 'rbU') as f:
+        with open(ifn, 'rb') as f:
             file_contents = f.read()
-            # figure out what kind of line endings are used
-            newline = getattr(f, 'newlines', None)
-            if isinstance(newline, tuple):
-                newline = newline[0]
-            elif newline is None:
-                newline = os.linesep.encode()
+            if file_contents.find(b'\r\n') != -1:
+                newline = b'\r\n'
+            else:
+                newline = b'\n'
     else:
         file_contents = b""
         newline = os.linesep.encode()
 
-    sio = BytesIO(file_contents)
-    try:
+    with BytesIO(file_contents) as sio:
         ignores = parse_ignore_file(sio)
-    finally:
-        sio.close()
 
     # write out the updated ignores set
-    f = atomicfile.AtomicFile(ifn, 'wb')
-    try:
+    with atomicfile.AtomicFile(ifn, 'wb') as f:
         # write the original contents, preserving original line endings
-        f.write(newline.join(file_contents.split(b'\n')))
+        f.write(file_contents)
         if len(file_contents) > 0 and not file_contents.endswith(b'\n'):
             f.write(newline)
         for pattern in name_pattern_list:
             if not pattern in ignores:
                 f.write(pattern.encode('utf-8'))
                 f.write(newline)
-        f.commit()
-    finally:
-        f.close()
 
     if not tree.is_versioned(tree._format.ignore_filename):
         tree.add([tree._format.ignore_filename])

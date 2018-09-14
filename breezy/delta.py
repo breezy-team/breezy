@@ -165,7 +165,9 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta.removed.sort()
     delta.added.sort()
     delta.renamed.sort()
-    delta.missing.sort()
+    def missing_key(change):
+        return (change[0] or '', change[1])
+    delta.missing.sort(key=missing_key)
     # TODO: jam 20060529 These lists shouldn't need to be sorted
     #       since we added them in alphabetical order.
     delta.modified.sort()
@@ -441,7 +443,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                 if show_more is not None:
                     show_more(item)
                 if show_ids:
-                    to_file.write(' %s' % file_id)
+                    to_file.write(' %s' % file_id.decode('utf-8'))
                 to_file.write('\n')
 
     show_list(delta.removed, 'removed', 'D')

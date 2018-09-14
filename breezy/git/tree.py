@@ -666,11 +666,11 @@ def tree_delta_from_git_changes(changes, mapping,
                 continue
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.modified.append(
-                (newpath, file_id, mode_kind(newmode),
+                (newpath_decoded, file_id, mode_kind(newmode),
                 (oldsha != newsha), (oldmode != newmode)))
         else:
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
-            ret.unchanged.append((newpath, file_id, mode_kind(newmode)))
+            ret.unchanged.append((newpath_decoded, file_id, mode_kind(newmode)))
 
     return ret
 
@@ -1294,6 +1294,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         kind = osutils.file_kind(self.abspath(relpath))
         if kind == 'directory':
             (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
+            if index is None:
+                return kind
             try:
                 mode = index[index_path].mode
             except KeyError:

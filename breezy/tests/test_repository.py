@@ -1301,23 +1301,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(removed_pack)
         names = packs.names()
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = {x[0][0] for x in new_nodes}
-        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        new_names = {x[0] for x in new_nodes}
+        self.assertEqual(names, sorted([x[0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
         self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
-                         sorted([x[0][0] for x in deleted_nodes]))
+                         sorted([x[0] for x in deleted_nodes]))
         packs.reload_pack_names()
         reloaded_names = packs.names()
         self.assertEqual(orig_at_load, packs._packs_at_load)
         self.assertEqual(names, reloaded_names)
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = {x[0][0] for x in new_nodes}
-        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        new_names = {x[0] for x in new_nodes}
+        self.assertEqual(names, sorted([x[0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
         self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
-                         sorted([x[0][0] for x in deleted_nodes]))
+                         sorted([x[0] for x in deleted_nodes]))
 
     def test_autopack_obsoletes_new_pack(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)

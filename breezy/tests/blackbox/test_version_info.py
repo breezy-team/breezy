@@ -171,11 +171,10 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(['a_file'])
         tree.add('a_file')
         tree.commit(commit_message)
-        out, err = self.run_bzr(
+        out, err = self.run_bzr_raw(
             ['version-info', '--include-history'], encoding='latin-1')
 
-        if not PY3:
-            commit_message = commit_message.encode('latin-1', 'replace')
+        commit_message = commit_message.encode('latin-1', 'replace')
         self.assertContainsString(out, commit_message)
 
     def test_revision(self):

@@ -33,6 +33,7 @@ import functools
 from io import (
     BytesIO,
     StringIO,
+    TextIOWrapper,
     )
 import itertools
 import logging
@@ -457,7 +458,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        self._post_mortem(self._traceback_from_test)
+        self._post_mortem(self._traceback_from_test or err[2])
         super(ExtendedTestResult, self).addError(test, err)
         self.error_count += 1
         self.report_error(test, err)
@@ -470,7 +471,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        self._post_mortem(self._traceback_from_test)
+        self._post_mortem(self._traceback_from_test or err[2])
         super(ExtendedTestResult, self).addFailure(test, err)
         self.failure_count += 1
         self.report_failure(test, err)
@@ -1916,42 +1917,20 @@ class TestCase(testtools.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
-    def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
-            working_dir):
-        """Run bazaar command line, splitting up a string command line."""
-        if isinstance(args, string_types):
-            args = shlex.split(args)
-        return self._run_bzr_core(args, retcode=retcode,
-                encoding=encoding, stdin=stdin, working_dir=working_dir,
-                )
-
-    def _run_bzr_core(self, args, retcode, encoding, stdin,
+    def _run_bzr_core(self, args, encoding, stdin, stdout, stderr,
             working_dir):
         # Clear chk_map page cache, because the contents are likely to mask
         # locking errors.
         chk_map.clear_cache()
-        if encoding is None:
-            encoding = osutils.get_user_encoding()
 
         self.log('run brz: %r', args)
 
-        if sys.version_info[0] == 2:
-            stdout = ui_testing.BytesIOWithEncoding()
-            stderr = ui_testing.BytesIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
+        if PY3:
+            self._last_cmd_stdout = stdout
+            self._last_cmd_stderr = stderr
         else:
-            stdout = ui_testing.StringIOWithEncoding()
-            stderr = ui_testing.StringIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-
-        # FIXME: don't call into logging here
-        handler = trace.EncodedStreamHandler(
-            stderr, errors="replace", level=logging.INFO)
-        logger = logging.getLogger('')
-        logger.addHandler(handler)
-
-        self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
-        self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
+            self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
+            self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
 
         old_ui_factory = ui.ui_factory
         ui.ui_factory = ui_testing.TestUIFactory(
@@ -1972,10 +1951,80 @@ class TestCase(testtools.TestCase):
                     _mod_commands.run_bzr_catch_user_errors,
                     args)
         finally:
-            logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
             if cwd is not None:
                 os.chdir(cwd)
+
+        return result
+
+    def run_bzr_raw(self, args, retcode=0, stdin=None, encoding=None,
+                working_dir=None, error_regexes=[]):
+        """Invoke brz, as if it were run from the command line.
+
+        The argument list should not include the brz program name - the
+        first argument is normally the brz command.  Arguments may be
+        passed in three ways:
+
+        1- A list of strings, eg ["commit", "a"].  This is recommended
+        when the command contains whitespace or metacharacters, or
+        is built up at run time.
+
+        2- A single string, eg "add a".  This is the most convenient
+        for hardcoded commands.
+
+        This runs brz through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the brz application (rather than a unit test
+        or a functional test of the library.)
+
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+
+        :keyword stdin: A string to be used as stdin for the command.
+        :keyword retcode: The status code the command should return;
+            default 0.
+        :keyword working_dir: The directory to run the command in
+        :keyword error_regexes: A list of expected error messages.  If
+            specified they must be seen in the error output of the command.
+        """
+        if isinstance(args, string_types):
+            args = shlex.split(args)
+
+        if encoding is None:
+            encoding = osutils.get_user_encoding()
+
+        if sys.version_info[0] == 2:
+            wrapped_stdout = stdout = ui_testing.BytesIOWithEncoding()
+            wrapped_stderr = stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
+        else:
+            stdout = BytesIO()
+            stderr = BytesIO()
+            wrapped_stdout = TextIOWrapper(stdout, encoding)
+            wrapped_stderr = TextIOWrapper(stderr, encoding)
+            handler = logging.StreamHandler(wrapped_stderr)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            result = self._run_bzr_core(
+                    args, encoding=encoding, stdin=stdin, stdout=wrapped_stdout,
+                    stderr=wrapped_stderr, working_dir=working_dir,
+                    )
+        finally:
+            logger.removeHandler(handler)
+
+        if PY3:
+            wrapped_stdout.flush()
+            wrapped_stderr.flush()
 
         out = stdout.getvalue()
         err = stderr.getvalue()
@@ -1986,7 +2035,10 @@ class TestCase(testtools.TestCase):
         if retcode is not None:
             self.assertEqual(retcode, result,
                               message='Unexpected return code')
-        return result, out, err
+        self.assertIsInstance(error_regexes, (list, tuple))
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
 
     def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
                 working_dir=None, error_regexes=[]):
@@ -2021,13 +2073,46 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        retcode, out, err = self._run_bzr_autosplit(
-            args=args,
-            retcode=retcode,
-            encoding=encoding,
-            stdin=stdin,
-            working_dir=working_dir,
-            )
+        if isinstance(args, string_types):
+            args = shlex.split(args)
+
+        if encoding is None:
+            encoding = osutils.get_user_encoding()
+
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+            handler = logging.StreamHandler(stream=stderr)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+
+        try:
+            result = self._run_bzr_core(args,
+                    encoding=encoding, stdin=stdin, stdout=stdout,
+                    stderr=stderr, working_dir=working_dir,
+                    )
+        finally:
+            logger.removeHandler(handler)
+
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%r', out)
+        if err:
+            self.log('errors:\n%r', err)
+        if retcode is not None:
+            self.assertEqual(retcode, result,
+                              message='Unexpected return code')
         self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
@@ -3519,9 +3604,13 @@ def fork_for_tests(suite):
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
                 # to avoid interleaving lines from multiple failing children.
+                tb = traceback.format_exc()
+                if isinstance(tb, text_type):
+                    tb = tb.encode('utf-8')
                 try:
-                    stream.write(traceback.format_exc())
+                    stream.write(tb)
                 finally:
+                    stream.flush()
                     os._exit(1)
             os._exit(0)
         else:

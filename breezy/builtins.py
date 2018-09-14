@@ -6074,6 +6074,8 @@ class cmd_tags(Command):
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
                 tags[index] = (tag, revno)
+        else:
+            tags = [(tag, revid.decode('utf-8')) for (tag, revid) in tags]
         self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
