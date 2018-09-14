@@ -1,8 +1,9 @@
 breezy (3.0.0~bzr7111-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
-  * Drop patches exclude_broken and skip_readdir_on_python3; applied
-    upstream.
+    + Drop patches exclude_broken and skip_readdir_on_python3; applied
+      upstream.
+    + Drop use of python3.passing; all python3 tests pass now.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 14 Sep 2018 13:05:24 +0100
 
