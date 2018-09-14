@@ -481,7 +481,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 specific_files = set([p.encode('utf-8') for p in specific_files])
         todo = deque([(self.store, b"", self.tree, self.get_root_id())])
         if specific_files is None or u"" in specific_files:
-            yield u"", self._get_dir_ie(u"", None)
+            yield u"", self._get_dir_ie(b"", None)
         while todo:
             store, path, tree_sha, parent_id = todo.popleft()
             tree = store[tree_sha]
