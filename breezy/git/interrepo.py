@@ -31,7 +31,10 @@ from dulwich.protocol import (
     CAPABILITY_THIN_PACK,
     ZERO_SHA,
     )
-from dulwich.refs import SYMREF
+from dulwich.refs import (
+    ANNOTATED_TAG_SUFFIX,
+    SYMREF,
+    )
 from dulwich.walk import Walker
 
 from ..errors import (
@@ -345,7 +348,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             raise NoPushSupport(self.source, self.target, self.mapping)
         unpeel_map = UnpeelMap.from_repository(self.source)
         revidmap = {}
-        def determine_wants(old_refs):
+        def git_update_refs(old_refs):
             ret = {}
             self.old_refs = dict([(k, (v, None)) for (k, v) in viewitems(old_refs)])
             self.new_refs = update_refs(self.old_refs)
@@ -360,7 +363,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             return ret
         self._warn_slow()
         with self.source_store.lock_read():
-            new_refs = self.target.send_pack(determine_wants,
+            new_refs = self.target.send_pack(git_update_refs,
                     self.source_store.generate_lossy_pack_data)
         # FIXME: revidmap?
         return revidmap, self.old_refs, self.new_refs
@@ -399,7 +402,7 @@ class InterFromGitRepository(InterRepository):
             potential = set(wants)
             if include_tags:
                 for k, unpeeled in viewitems(refs):
-                    if k.endswith(b"^{}"):
+                    if k.endswith(ANNOTATED_TAG_SUFFIX):
                         continue
                     if not is_tag(k):
                         continue
@@ -694,7 +697,9 @@ class InterGitGitRepository(InterFromGitRepository):
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def determine_wants_all(self, refs):
-        potential = set([v for v in refs.values() if not v == ZERO_SHA])
+        potential = set([
+            v for k, v in refs.items()
+            if not v == ZERO_SHA and not k.endswith(ANNOTATED_TAG_SUFFIX)])
         return list(potential - self._target_has_shas(potential))
 
 

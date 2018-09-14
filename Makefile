@@ -52,7 +52,7 @@ check-nodocs3:
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
 	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 --load-list=python3.passing --strict \
+	  ./brz selftest -Oselftest.timeout=120 --strict \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
 	# An empty log file should catch errors in the $(PYTHON3)
@@ -61,21 +61,6 @@ check-nodocs3:
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
-
-update-python3-passing:
-	# Generate a stream for PQM to watch.
-	-$(RM) -f selftest.log
-	-BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
-	  ./brz selftest -Oselftest.timeout=120 --strict \
-	  --subunit2 $(tests) > selftest.log
-	grep -v "^#" python3.passing > python3.passing.new
-	cat selftest.log | \
-	  subunit-filter --no-failure --no-error --success | \
-	  subunit-ls --no-passthrough >> python3.passing.new
-	cp python3.passing python3.passing.old
-	grep "^#" python3.passing.old > python3.passing
-	grep -Fvxf python3.flapping python3.passing.new > python3.passing.new.solid
-	sort -u python3.passing.new.solid >> python3.passing
 
 check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
@@ -101,7 +86,7 @@ check-ci: docs extensions
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python2."; \
 	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
-	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --load-list=python3.passing --subunit2 \
+	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 
 # Run Python style checker (apt-get install pyflakes)

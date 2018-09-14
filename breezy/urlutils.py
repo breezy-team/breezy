@@ -38,6 +38,7 @@ from posixpath import split as _posix_split
 """)
 
 from .sixish import (
+    int2byte,
     PY3,
     text_type,
     )
@@ -700,10 +701,10 @@ _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
 _no_decode_hex = (['%02x' % o for o in _no_decode_ords]
                 + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
-                    + [('%02X' % o, chr(o)) for o in range(256)]))
+_hex_display_map = dict(([('%02x' % o, int2byte(o)) for o in range(256)]
+                    + [('%02X' % o, int2byte(o)) for o in range(256)]))
 #These entries get mapped to themselves
-_hex_display_map.update((hex, '%'+hex) for hex in _no_decode_hex)
+_hex_display_map.update((hex, b'%'+hex.encode('ascii')) for hex in _no_decode_hex)
 
 # These characters shouldn't be percent-encoded, and it's always safe to
 # unencode them if they are.
@@ -723,6 +724,49 @@ _url_safe_characters = set(
    "/;?:@&=+$," # Reserved characters
    "%#"         # Extra reserved characters
 )
+
+
+def _unescape_segment_for_display(segment, encoding):
+    """Unescape a segment for display.
+
+    Helper for unescape_for_display
+
+    :param url: A 7-bit ASCII URL
+    :param encoding: The final output encoding
+
+    :return: A unicode string which can be safely encoded into the
+         specified encoding.
+    """
+    escaped_chunks = segment.split('%')
+    escaped_chunks[0] = escaped_chunks[0].encode('utf-8')
+    for j in range(1, len(escaped_chunks)):
+        item = escaped_chunks[j]
+        try:
+            escaped_chunks[j] = _hex_display_map[item[:2]]
+        except KeyError:
+            # Put back the percent symbol
+            escaped_chunks[j] = b'%' + (item[:2].encode('utf-8') if PY3 else item[:2])
+        except UnicodeDecodeError:
+            escaped_chunks[j] = unichr(int(item[:2], 16)).encode('utf-8')
+        escaped_chunks[j] +=  (item[2:].encode('utf-8') if PY3 else item[2:])
+    unescaped = b''.join(escaped_chunks)
+    try:
+        decoded = unescaped.decode('utf-8')
+    except UnicodeDecodeError:
+        # If this path segment cannot be properly utf-8 decoded
+        # after doing unescaping we will just leave it alone
+        return segment
+    else:
+        try:
+            decoded.encode(encoding)
+        except UnicodeEncodeError:
+            # If this chunk cannot be encoded in the local
+            # encoding, then we should leave it alone
+            return segment
+        else:
+            # Otherwise take the url decoded one
+            return decoded
+
 
 def unescape_for_display(url, encoding):
     """Decode what you can for a URL, so that we get a nice looking path.
@@ -752,36 +796,7 @@ def unescape_for_display(url, encoding):
     # Split into sections to try to decode utf-8
     res = url.split('/')
     for i in range(1, len(res)):
-        escaped_chunks = res[i].split('%')
-        for j in range(1, len(escaped_chunks)):
-            item = escaped_chunks[j]
-            try:
-                escaped_chunks[j] = _hex_display_map[item[:2]] + item[2:]
-            except KeyError:
-                # Put back the percent symbol
-                escaped_chunks[j] = '%' + item
-            except UnicodeDecodeError:
-                escaped_chunks[j] = unichr(int(item[:2], 16)) + item[2:]
-        unescaped = ''.join(escaped_chunks)
-        if sys.version_info[0] == 2:
-            try:
-                decoded = unescaped.decode('utf-8')
-            except UnicodeDecodeError:
-                # If this path segment cannot be properly utf-8 decoded
-                # after doing unescaping we will just leave it alone
-                pass
-            else:
-                try:
-                    decoded.encode(encoding)
-                except UnicodeEncodeError:
-                    # If this chunk cannot be encoded in the local
-                    # encoding, then we should leave it alone
-                    pass
-                else:
-                    # Otherwise take the url decoded one
-                    res[i] = decoded
-        else:
-            res[i] = unescaped
+        res[i] = _unescape_segment_for_display(res[i], encoding)
     return u'/'.join(res)
 
 
@@ -914,11 +929,14 @@ class URL(object):
         if ':' in host and not (host[0] == '[' and host[-1] == ']'):
             # there *is* port
             host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                raise InvalidURL('invalid port number %s in url:\n%s' %
-                                 (port, url))
+            if port:
+                try:
+                    port = int(port)
+                except ValueError:
+                    raise InvalidURL('invalid port number %s in url:\n%s' %
+                                     (port, url))
+            else:
+                port = None
         if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
             host = host[1:-1]
 
