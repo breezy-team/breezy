@@ -163,7 +163,7 @@ class GitLab(Hoster):
         except gitlab.GitlabGetError:
             raise UnsupportedHoster(branch)
         except gitlab.GitlabHttpError as e:
-            if e.response_code in (404, 405):
+            if e.response_code in (404, 405, 503):
                 raise UnsupportedHoster(branch)
             else:
                 raise
