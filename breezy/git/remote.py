@@ -914,11 +914,8 @@ class RemoteGitBranch(GitBranch):
                 continue
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
-                try:
-                    peeled = refs.peel_sha(unpeeled).id
-                except KeyError:
-                    # Let's just hope it's a commit
-                    peeled = unpeeled
+                # Let's just hope it's a commit
+                peeled = unpeeled
             if not isinstance(tag_name, text_type):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
