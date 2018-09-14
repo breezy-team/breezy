@@ -930,7 +930,6 @@ def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
             peeled[k[:-3]] = v
         else:
             base[k] = v
-            peeled[k] = v
     for name, target in symrefs_dict.items():
         base[name] = SYMREF + target
     ret = DictRefsContainer(base)
