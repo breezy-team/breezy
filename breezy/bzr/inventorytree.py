@@ -69,59 +69,6 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
-    def get_canonical_paths(self, paths):
-        """Like get_canonical_path() but works on multiple items.
-
-        :param paths: A sequence of paths relative to the root of the tree.
-        :return: A iterator over paths, with each item the corresponding input path
-            adjusted to account for existing elements that match case
-            insensitively.
-        """
-        with self.lock_read():
-            return self._yield_canonical_inventory_paths(paths)
-
-    def _yield_canonical_inventory_paths(self, paths):
-        for path in paths:
-            # First, if the path as specified exists exactly, just use it.
-            if self.path2id(path) is not None:
-                yield path
-                continue
-            # go walkin...
-            cur_id = self.get_root_id()
-            cur_path = ''
-            bit_iter = iter(path.split("/"))
-            for elt in bit_iter:
-                lelt = elt.lower()
-                new_path = None
-                try:
-                    for child in self.iter_child_entries(cur_path, cur_id):
-                        try:
-                            if child.name == elt:
-                                # if we found an exact match, we can stop now; if
-                                # we found an approximate match we need to keep
-                                # searching because there might be an exact match
-                                # later.
-                                cur_id = child.file_id
-                                new_path = osutils.pathjoin(cur_path, child.name)
-                                break
-                            elif child.name.lower() == lelt:
-                                cur_id = child.file_id
-                                new_path = osutils.pathjoin(cur_path, child.name)
-                        except errors.NoSuchId:
-                            # before a change is committed we can see this error...
-                            continue
-                except errors.NotADirectory:
-                    pass
-                if new_path:
-                    cur_path = new_path
-                else:
-                    # got to the end of this directory and no entries matched.
-                    # Return what matched so far, plus the rest as specified.
-                    cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
-                    break
-            yield cur_path
-        # all done.
-
     def _get_root_inventory(self):
         return self._inventory
 

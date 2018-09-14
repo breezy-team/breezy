@@ -1364,3 +1364,46 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
         return to_tree.id2path(file_id)
     except errors.NoSuchId:
         return None
+
+
+def get_canonical_path_ignore_case(tree, path):
+    """Find the canonical path of an item, ignoring case.
+
+    :param tree: Tree to traverse
+    :param path: Case-insensitive path to look up
+    :return: The canonical path
+    """
+    # go walkin...
+    cur_id = self.get_root_id()
+    cur_path = ''
+    bit_iter = iter(path.split("/"))
+    for elt in bit_iter:
+        lelt = elt.lower()
+        new_path = None
+        try:
+            for child in self.iter_child_entries(cur_path, cur_id):
+                try:
+                    if child.name == elt:
+                        # if we found an exact match, we can stop now; if
+                        # we found an approximate match we need to keep
+                        # searching because there might be an exact match
+                        # later.
+                        cur_id = child.file_id
+                        new_path = osutils.pathjoin(cur_path, child.name)
+                        break
+                    elif child.name.lower() == lelt:
+                        cur_id = child.file_id
+                        new_path = osutils.pathjoin(cur_path, child.name)
+                except errors.NoSuchId:
+                    # before a change is committed we can see this error...
+                    continue
+        except errors.NotADirectory:
+            pass
+        if new_path:
+            cur_path = new_path
+        else:
+            # got to the end of this directory and no entries matched.
+            # Return what matched so far, plus the rest as specified.
+            cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
+            break
+    return cur_path

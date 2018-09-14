@@ -329,7 +329,6 @@ def load_tests(loader, standard_tests, pattern):
     per_tree_mod_names = [
         'archive',
         'annotate_iter',
-        'canonical_path',
         'export',
         'get_file_mtime',
         'get_file_with_stat',

@@ -20,15 +20,15 @@
 from breezy import (
     tests,
     )
-from breezy.tests import (
-    per_tree,
+from breezy.tests.per_workingtree import (
+    TestCaseWithWorkingTree,
     )
 from breezy.tests import (
     features,
     )
 
 
-class TestCanonicalPaths(per_tree.TestCaseWithTree):
+class TestCanonicalPaths(TestCaseWithWorkingTree):
 
     def _make_canonical_test_tree(self, commit=True):
         # make a tree used by all the 'canonical' tests below.

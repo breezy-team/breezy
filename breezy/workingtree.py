@@ -1350,15 +1350,18 @@ class WorkingTree(mutabletree.MutableTree,
                 yield path
 
     def get_canonical_path(self, path):
-        """Returns the first item that case-insensitively matches path.
+        """Returns the first item in the tree that matches a path.
+
+        This is meant to allow case-insensitive path lookups on e.g.
+        FAT filesystems.
 
         If a path matches exactly, it is returned. If no path matches exactly
-        but more than one path matches case-insensitively, it is implementation
-        defined which is returned.
+        but more than one path matches according to the underlying file system,
+        it is implementation defined which is returned.
 
-        If no path matches case-insensitively, the input path is returned, but
-        with as many path entries that do exist changed to their canonical
-        form.
+        If no path matches according to the file system, the input path is
+        returned, but with as many path entries that do exist changed to their
+        canonical form.
 
         If you need to resolve many names from the same tree, you should
         use get_canonical_paths() to avoid O(N) behaviour.
