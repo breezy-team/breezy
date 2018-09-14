@@ -312,6 +312,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path2id(self, path):
         if self.mapping.is_special_file(path):
             return None
+        if not self.is_versioned(path):
+            return None
         return self._fileid_map.lookup_file_id(osutils.safe_unicode(path))
 
     def all_file_ids(self):
@@ -628,9 +630,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def _get_rules_searcher(self, default_searcher):
         return default_searcher
 
-    def walkdirs(self, prefix=""):
+    def walkdirs(self, prefix=u""):
         (store, mode, hexsha) = self._lookup_path(prefix)
-        todo = deque([(store, prefix, hexsha, self.path2id(prefix))])
+        todo = deque([(store, prefix.encode('utf-8'), hexsha, self.path2id(prefix))])
         while todo:
             store, path, tree_sha, parent_id = todo.popleft()
             path_decoded = path.decode('utf-8')
@@ -643,11 +645,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 file_id = self.path2id(child_path.decode('utf-8'))
                 if stat.S_ISDIR(mode):
                     todo.append((store, child_path, hexsha, file_id))
-                else:
-                    children.append(
-                        (child_path.decode('utf-8'), name.decode('utf-8'),
-                            mode_kind(mode), None,
-                            file_id, mode_kind(mode)))
+                children.append(
+                    (child_path.decode('utf-8'), name.decode('utf-8'),
+                        mode_kind(mode), None,
+                        file_id, mode_kind(mode)))
             yield (path_decoded, parent_id), children
 
 
