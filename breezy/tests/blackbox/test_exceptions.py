@@ -54,7 +54,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         if PY3:
             raise tests.TestNotApplicable("Unable to pass argv to subprocess as bytes")
-        out, err = self.run_bzr_subprocess(["\xa0"],
+        out, err = self.run_bzr_subprocess([b"\xa0"],
             env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
             retcode=errors.EXIT_ERROR)
@@ -75,8 +75,11 @@ class TestOptParseBugHandling(tests.TestCase):
     "Test that we handle http://bugs.python.org/issue2931"
 
     def test_nonascii_optparse(self):
-        """Reasonable error raised when non-ascii in option name"""
-        error_re = 'Only ASCII permitted in option names'
+        """Reasonable error raised when non-ascii in option name on Python 2"""
+        if PY3:
+            error_re = u'no such option: -\xe4'
+        else:
+            error_re = 'Only ASCII permitted in option names'
         out = self.run_bzr_error([error_re], ['st', u'-\xe4'])
 
 

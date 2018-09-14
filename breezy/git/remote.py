@@ -45,6 +45,7 @@ from ..errors import (
     NotBranchError,
     NotLocalUrl,
     NoWorkingTree,
+    PermissionDenied,
     UninitializableFormat,
     )
 from ..revisiontree import RevisionTree
@@ -175,6 +176,16 @@ class RemoteGitError(BzrError):
     _fmt = "Remote server error: %(msg)s"
 
 
+class HeadUpdateFailed(BzrError):
+
+    _fmt = ("Unable to update remote HEAD branch. To update the master "
+            "branch, specify the URL %(base_url)s,branch=master.")
+
+    def __init__(self, base_url):
+        super(HeadUpdateFailed, self).__init__()
+        self.base_url = base_url
+
+
 def parse_git_error(url, message):
     """Parse a remote git server error and return a bzr exception.
 
@@ -182,13 +193,16 @@ def parse_git_error(url, message):
     :param message: Message sent by the remote git server
     """
     message = str(message).strip()
-    if message.startswith("Could not find Repository "):
+    if (message.startswith("Could not find Repository ") or
+        message == 'Repository not found.' or
+        (message.startswith('Repository ') and message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
         base_url, _ = urlutils.split_segment_parameters(url)
-        raise BzrError(
-            ("Unable to update remote HEAD branch. To update the master "
-             "branch, specify the URL %s,branch=master.") % base_url)
+        return HeadUpdateFailed(base_url)
+    if message.startswith('access denied or repository not exported:'):
+        extra, path = message.split(': ', 1)
+        return PermissionDenied(path, extra)
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 
@@ -631,6 +645,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             ('GET' if data is None else 'POST'),
             url, data, headers,
             accepted_errors=[200, 404])
+        request.follow_redirections = True
 
         response = self.transport._perform(request)
 
@@ -899,11 +914,8 @@ class RemoteGitBranch(GitBranch):
                 continue
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
-                try:
-                    peeled = refs.peel_sha(unpeeled).id
-                except KeyError:
-                    # Let's just hope it's a commit
-                    peeled = unpeeled
+                # Let's just hope it's a commit
+                peeled = unpeeled
             if not isinstance(tag_name, text_type):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
@@ -917,7 +929,6 @@ def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
             peeled[k[:-3]] = v
         else:
             base[k] = v
-            peeled[k] = v
     for name, target in symrefs_dict.items():
         base[name] = SYMREF + target
     ret = DictRefsContainer(base)
