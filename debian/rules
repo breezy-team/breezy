@@ -5,8 +5,6 @@ DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/buildflags.mk
 include /usr/share/dpkg/pkg-info.mk
 
-# Get the supported Python versions
-PYVERS = $(shell pyversions -r -v) $(shell py3versions -r -v)
 # Get the default Python version
 PYVERSION = $(shell pyversions -d -v)
 PY3VERSION = $(shell py3versions -d -v)
