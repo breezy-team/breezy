@@ -402,7 +402,7 @@ class TestTreeScenarios(tests.TestCase):
         formats = [workingtree_4.WorkingTreeFormat4(),
                    workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
-        self.assertEqual(8, len(scenarios))
+        self.assertEqual(9, len(scenarios))
         default_wt_format = workingtree.format_registry.get_default()
         wt4_format = workingtree_4.WorkingTreeFormat4()
         wt5_format = workingtree_4.WorkingTreeFormat5()
