@@ -163,6 +163,31 @@ To start a new release cycle:
 Doing a particular release
 ==========================
 
+alpha releases
+--------------
+
+3.0.0 will start to be released as alpha as integrating plugins and porting
+to python3 (while maintaining python2 compatiblity) desserve to be testing
+in the wild by people understanding the risks.
+
+That being said, the whole test suite has been preserved and enriched in the
+process.
+
+Alpha releases will happen as source only (tarballs) and the process is
+simplified.
+
+Note that the intent is to come back to beta releases as soon as possible so
+the alpha releases won't happen again.
+
+The process for releasing an alpha release is therefore:
+- upload a tarball to launchpad,
+- upload a tarball to pypi,
+- mail bazaar@lists.canonical.com,
+- post an annoucement on the home page.  
+
+Uploading tarballs are described below, just use alpha versions (3, 0, 0,
+'alpha', 1) in ``./breezy/__init__.py``
+
 Update the source code
 ----------------------
 
@@ -460,10 +485,9 @@ for the new branch and inform translators.
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar@lists.canonical.com`` and
-   ``brz-packagers@lists.launchpad.net`` lists, saying that the source has
-   been frozen. Be extra clear that this is only a *source* release targeted
-   at packagers and installer builders (see
+#. Post to the ``bazaar@lists.canonical.com`` list, saying that the source
+   has been frozen. Be extra clear that this is only a *source* release
+   targeted at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
    platform maintainers and plugin authors to update their code.  This is
    done before the general public announcement of the release.
