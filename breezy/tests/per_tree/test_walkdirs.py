@@ -55,7 +55,7 @@ class TestWalkdirs(TestCaseWithTree):
                 ('symlink', 'symlink', 'symlink', None,
                  tree.path2id('symlink'), 'symlink'))
         return [((path, tree.path2id(path)), list(sorted(entries)))
-                for (path, entries) in dirblocks.items()]
+                for (path, entries) in sorted(dirblocks.items())]
 
     def test_walkdir_root(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(
