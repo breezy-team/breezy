@@ -64,6 +64,9 @@ from ..bzr import (
 from ..bzr import (
     groupcompress_repo,
     )
+from ..git import (
+    workingtree as git_workingtree,
+    )
 from ..sixish import (
     PY3,
     StringIO,
@@ -407,6 +410,7 @@ class TestTreeScenarios(tests.TestCase):
         wt4_format = workingtree_4.WorkingTreeFormat4()
         wt5_format = workingtree_4.WorkingTreeFormat5()
         wt6_format = workingtree_4.WorkingTreeFormat6()
+        git_wt_format = git_workingtree.GitWorkingTreeFormat()
         expected_scenarios = [
             ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingcontroldir,
@@ -438,6 +442,14 @@ class TestTreeScenarios(tests.TestCase):
               'transport_server': 'a',
               'workingtree_format': default_wt_format,
              }),
+             ('GitRevisionTree',
+              {'_workingtree_to_test_tree': revision_tree_from_workingtree,
+               'bzrdir_format': git_wt_format._matchingcontroldir,
+               'transport_readonly_server': 'b',
+               'transport_server': 'a',
+               'workingtree_format': git_wt_format,
+             }
+            ),
             ('DirStateRevisionTree,WT4',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
               'bzrdir_format': wt4_format._matchingcontroldir,
