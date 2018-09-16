@@ -1023,6 +1023,14 @@ class TransportTests(TestTransportImplementation):
 
         self.assertEqual(source_name, t.readlink(link_name))
 
+    def test_readlink_nonexistent(self):
+        t = self.get_transport()
+        try:
+            self.assertRaises(NoSuchFile, t.readlink, 'nonexistent')
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support symlinks." %
+                              self._server.__class__)
+
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()

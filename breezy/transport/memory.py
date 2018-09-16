@@ -309,7 +309,10 @@ class MemoryTransport(transport.Transport):
 
     def readlink(self, link_name):
         _abspath = self._abspath(link_name)
-        return '/'.join(self._symlinks[_abspath])
+        try:
+            return '/'.join(self._symlinks[_abspath])
+        except KeyError:
+            raise NoSuchFile(link_name)
 
 
 class _MemoryLock(object):
