@@ -811,6 +811,7 @@ def derive_to_location(from_location):
     is used without a path, e.g. c:foo-bar => foo-bar.
     If no /, path separator or : is found, the from_location is returned.
     """
+    from_location, unused_params = split_segment_parameters(from_location)
     if from_location.find("/") >= 0 or from_location.find(os.sep) >= 0:
         return os.path.basename(from_location.rstrip("/\\"))
     else:
