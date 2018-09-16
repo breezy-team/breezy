@@ -464,7 +464,7 @@ dist:
 	echo Building distribution of brz $$version && \
 	expbasedir=`mktemp -t -d tmp_brz_dist.XXXXXXXXXX` && \
 	expdir=$$expbasedir/brz-$$version && \
-	tarball=$$PWD/../brz-$$version.tar.gz && \
+	tarball=$$PWD/../breezy-$$version.tar.gz && \
 	$(MAKE) clean && \
 	$(MAKE) && \
 	$(PYTHON) setup.py sdist -d $$PWD/.. && \
@@ -475,7 +475,7 @@ dist:
 check-dist-tarball:
 	tmpdir=`mktemp -t -d tmp_brz_check_dist.XXXXXXXXXX` && \
 	version=`./brz version --short` && \
-	tarball=$$PWD/../brz-$$version.tar.gz && \
+	tarball=$$PWD/../breezy-$$version.tar.gz && \
 	tar Cxz $$tmpdir -f $$tarball && \
-	$(MAKE) -C $$tmpdir/brz-$$version check && \
+	$(MAKE) -C $$tmpdir/breezy-$$version check && \
 	rm -rf $$tmpdir
