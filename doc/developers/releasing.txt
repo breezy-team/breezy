@@ -281,7 +281,7 @@ Update the source code
 
 #. Commit these changes to the release branch, using a command like::
 
-     brz commit -m "Release 2.3.1"
+     brz commit -m "Release 3.0.0"
 
    The diff before you commit will be something like::
 
@@ -361,7 +361,7 @@ Update the source code
 
    Use a commit message formatted like::
   
-     (vila) Release 3.0.0 (Vincent Ladeuil)
+     Release 3.0.0
 
    Note that ``brz push`` should mention updating one tag (which you just
    created). If it doesn't, double-check that you created (and pushed) this
