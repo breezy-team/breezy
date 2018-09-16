@@ -23,15 +23,8 @@ good reasons to do that but he may also have missed some parts.
 Preconditions
 =============
 
-#. PQM access rights (or you won't be able to land any change)
-
-#. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
-
-     brz branch lp:brz-pqm ~/.bazaar/plugins/pqm
-
-#. Alternatively, you can download and install ``lp:hydrazine`` (the main
-   difference is that hydrazine requires the branch to land to be hosted on
-   launchpad).
+#. Be a member of https://launchpad.net/~brz (or you won't be able to land
+   any change)
 
 What do we release
 ==================
@@ -39,7 +32,7 @@ What do we release
 In this document, we're talking about source releases only, packages and
 installers are built from this but we won't talk about them here.
 
-Every release is part of a series, ``brz-2.4.1`` is part of series ``2.4``.
+Every release is part of a series, ``brz-3.0.0`` is part of series ``3.0``.
 
 We do two different kind of releases: the betas releases and the stable
 releases for a given series.
@@ -63,18 +56,7 @@ mentioned when needed.
 When do we relase ?
 ===================
 
-As of July 2011, we maintain four series (and one that is about to be EOLed).
-Concurrently releasing them all at the same time makes it harder to shorten
-the delay between the source availability and the package building longer
-than necessary (we delay the official announcement until most of our users
-can install the new release).
-
-In order to continue to do time-based releases, we need to plan the
-releases by series to minimize the collisions. In the end, it's the Release
-Manager call to decide whether he prefers to do all releases at once
-though, so the rules presented here are a conservative approach.
-
-We want to respect the following rules:
+As of September 2018, we maintain a single series: 3.0.
 
 #. as much as possible releases should not disturb development, and
    ongoing development should not disturb releases,
@@ -103,12 +85,6 @@ We want to respect the following rules:
    Release Manager is free to ignore this (get in touch with packagers
    though),
 
-#. the series are aligned with Ubuntu releases for convenience since we
-   create a new series every 6 months. This means that we support the
-   stable series for 18 months. Note that we also propose the most recent
-   stable series via the stable PPA but that the SRU processs allow us to
-   reach a wider audience.
-
 At the start of a series cycle
 ==============================
 
@@ -121,21 +97,21 @@ To start a new series cycle:
    expected dates. Only the milestone associated to the next release in
    this series should be left active to avoid clutter when targeting bugs.
 
-#. If you made a new series, you will need to create a new pqm-controlled
-   branch for this release series. This branch will be used only from the
-   first non-beta release onwards. It needs to be created by a Canonical
-   sysadmin (ask the core devs for instructions or to do it for you).
+#. If you made a new series, you will need to create a new branch for this
+   release series. This branch will be used only from the first non-beta
+   release onwards. It needs to be created by a https://launchpad.net/~brz
+   member (ask the core devs for instructions or to do it for you).
 
 #. Start a new release-notes file::
 
        cd doc/en/release-notes
-       cp series-template.txt brz-x.y.txt  # e.g. brz-2.3.txt
-       brz add brz-x.y.txt
+       cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
+       brz add brz-3.1.txt
 
 #. Start a new whats-new file::
 
        cd doc/en/whats-new
-       cp template.txt brz-x.y.txt  # e.g. brz-2.6.txt
+       cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
        brz add brz-x.y.txt
 
 #. Update ``doc/en/index.txt`` to point to the new whats-new file.
@@ -162,20 +138,7 @@ To start a new release cycle:
    Note that you will generally reuse the same branch for all releases in a
    given series.
 
-#. Configure pqm-submit for this branch, with a section like this (where
-   ``x.y`` is the series for your release). **Or use hydrazine for easier
-   setup** ``~/.bazaar/locations.conf``::
-
-	[/home/mbp/brz/x.y-dev]
-	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
-	submit_branch = http://bazaar.launchpad.net/~brz-pqm/brz/x.y
-	parent_branch = http://bazaar.launchpad.net/~brz-pqm/brz/x.y
-	public_branch = http://bazaar.example.com/x.y-dev
-	submit_to = bazaar@lists.canonical.com
-	smtp_server = mail.example.com:25
-
-    Please see <http://doc.bazaar.canonical.com/developers/HACKING.html#an-overview-of-pqm>
-    for more details on PQM
+#. Add a landing job for the release branch at https://ci.breezy-vcs.org/
 
 #. Update the version number in the ``brz`` script, and the
    ``breezy/__init__.py`` file::
@@ -193,11 +156,37 @@ To start a new release cycle:
    <https://launchpad.net/brz/x.y/x.y.z/+edit> allows you to toggle the
    active flag.
 
-#. Commit this and send it to PQM.
+#. Commit this and make a proposal against the release branch. Self approve
+   it (you're the release manager).
 
 
 Doing a particular release
 ==========================
+
+alpha releases
+--------------
+
+3.0.0 will start to be released as alpha as integrating plugins and porting
+to python3 (while maintaining python2 compatiblity) desserve to be testing
+in the wild by people understanding the risks.
+
+That being said, the whole test suite has been preserved and enriched in the
+process.
+
+Alpha releases will happen as source only (tarballs) and the process is
+simplified.
+
+Note that the intent is to come back to beta releases as soon as possible so
+the alpha releases won't happen again.
+
+The process for releasing an alpha release is therefore:
+- upload a tarball to launchpad,
+- upload a tarball to pypi,
+- mail bazaar@lists.canonical.com,
+- post an annoucement on the home page.  
+
+Uploading tarballs are described below, just use alpha versions (3, 0, 0,
+'alpha', 1) in ``./breezy/__init__.py``
 
 Update the source code
 ----------------------
@@ -208,17 +197,19 @@ Update the source code
    found at <https://launchpad.net/brz/+milestone/x.y.z>.
 
 #. Merge into your branch all previous stable series fixes that haven't been
-   merged yet. For example, if you're releasing 2.6.x, make sure the fixes
-   on 2.5, 2.4, 2.3, etc have already been merged up::
+   merged yet. For example, if you're releasing 3.2.x, make sure the fixes
+   on 3.1, 3.0 have already been merged up::
 
-     brz merge lp:brz/2.4
+     brz merge lp:brz/3.1
 
    and commit that merge in its own commit. This should happen only if the
    devs landing changes in previous releases forgot to merge them up. Since
    this can slow down the freeze, feel free to gently remind them about
    their duties ;) If you feel unsafe resolving the conflicts or it's too
    time consuming, contact the related devs and skip this merge.
- 
+     
+   Alternatively, think about automating these merges.
+    
 #. In the release branch, update  ``version_info`` in ``./breezy/__init__.py``.
    Make sure the corresponding milestone exists.
    Double check that ./brz ``_script_version`` matches ``version_info``. Check
@@ -226,30 +217,30 @@ Update the source code
 
    For beta releases use::
 
-       version_info = (2, 6, 0, 'beta', SERIAL)
+       version_info = (3, 0, 0, 'beta', SERIAL)
 
-   For instance 2.6b1::
+   For instance 3.0b1::
 
-       version_info = (2, 6, 0, 'beta', 1)
+       version_info = (3, 0, 0, 'beta', 1)
 
    For stable releases use::
 
-       version_info = (2, 6, 0, 'final', 0)
+       version_info = (3, 0, 0, 'final', 0)
 
 #. Update the ``./doc/en/release-notes/`` section for this release.
 
    Check that all news entries related to this release have been added in
-   the right section. For example, if you're releasing 2.6b2, the following
-   command should display a a single chuk diff for the 2.6b2 release::
+   the right section. For example, if you're releasing 3.0b3, the following
+   command should display a a single chuk diff for the 3.0b3 release::
 
-     brz diff -rbrz-2.6b2.. doc/en/release-notes/brz-2.6.txt
+     brz diff -rbrz-3.0b2.. doc/en/release-notes/brz-3.0.txt
 
    Fill out the date and a description of the release under the existing
    header (the diff above will help you summarizing). If there isn't one,
    follow the instructions above for using the ``release-template.txt`` file
    and remind people that they should document their changes there ;)
 
-   See *2.6b1* or similar for an example of what this looks like.
+   See *3.0b1* or similar for an example of what this looks like.
 
 #. Add or check the summary of the release into the "What's New" document.
 
@@ -290,7 +281,7 @@ Update the source code
 
 #. Commit these changes to the release branch, using a command like::
 
-     brz commit -m "Release 2.3.1"
+     brz commit -m "Release 3.0.0"
 
    The diff before you commit will be something like::
 
@@ -362,26 +353,21 @@ Update the source code
 
 #. Tag the new release::
 
-     brz tag brz-2.6.0
+     brz tag brz-3.0.0
 
-#. Push those changes to a brz branch that is public and accessible on the
-   Internet. PQM will pull from this branch when it attempts to merge your
-   changes. Then submit those changes to PQM for merge into the appropriate
-   release branch::
+#. Push those changes to a brz branch and make a merge proposal::
 
      brz push
-     brz pqm-submit -m "(vila) Release 2.6.0 (Vincent Ladeuil)"
+
+   Use a commit message formatted like::
+  
+     Release 3.0.0
 
    Note that ``brz push`` should mention updating one tag (which you just
    created). If it doesn't, double-check that you created (and pushed) this
    tag.
 
-   Or with hydrazine::
-
-     brz lp-propose -m "Release 1.14" --approve lp:brz/1.14
-     feed-pqm brz
-
-#. When PQM succeeds, pull down the master release branch.
+#. Once the merge proposal has landed, pull down the master release branch.
 
 
 Making the source tarball
@@ -403,19 +389,10 @@ Making the source tarball
    ``BRZ_DISABLE_PLUGINS`` or ``BRZ_PLUGIN_PATH=-site`` to disable one or
    all plugins.
 
-   Until <http://pad.lv/839461> is fixed, you may encounter issues if you
-   cut a release for old stable branches (<= 2.2) and use a more recent
-   OS/distro. If that's the case, check the bug status and use the following
-   workaround if no fix is available::
-
-     export TTPATH=<local branch of lp:testtools -r 0.9.2>
-     export SUPATH=<local branch of lp:subunit -r 0.0.6>
-     PYTHONPATH=$TTPATH:$SUPATH/python PATH=$SUPATH/filters:${PATH} BRZ_PLUGIN_PATH=-site make check-dist-tarball PYTHON=python2.6 | subunit2pyunit
-
-   Remember that PQM has just tested everything too, this step is
-   particularly testing that the cython extensions, which are updated
-   by your local cython version when you run make dist, are in good
-   shape.
+   Remember that this branch has already been tested on
+   https://ci.breezy-vcs.org, this step is particularly testing that the
+   cython extensions, which are updated by your local cython version when
+   you run make dist, are in good shape.
 
 
 Publishing the source tarball
@@ -464,7 +441,7 @@ to setup *two* branches for the next cycle:
 
 #. ``lp:brz/x.y`` needs to be opened for the next *release* ``x.y.0`` in the
    series. Since this is first real use of ``lp:brz/x.y``, this is also the
-   deadline for the PQM branch to be created.
+   deadline for the https://ci.breezy-vcs.org/ landing job to be created.
 
 Both are important as ``lp:brz`` should remain open so any change can be
 landed, ``lp:brz/x.y`` on the other hand should be ready to receive bug
@@ -478,12 +455,8 @@ In a nutshell:
 
 #. Open ``lp:brz`` for ``x.(y+1)``
 
-#. Create or update the ``x.y`` PQM branch based on whatever revision you
-   want to release. Since it takes time to create the PQM branch for the new
-   series you should plan to get it created a few days before you need it
-   and seed it with the revision from trunk you want to base your release of
-   (ask a LOSA for pulling this revision from trunk and pushing it to the
-   series branch (``lp:brz/x.y``) when you're ready).
+#. Create https://ci.breezy-vcs.org/ landing job and/or update the
+   ``lp:brz/x.y`` branch based on whatever revision you want to release.
 
 #. Release ``x.y.0`` from ``lp:brz/x.y``
 
@@ -512,10 +485,9 @@ for the new branch and inform translators.
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar@lists.canonical.com`` and
-   ``brz-packagers@lists.launchpad.net`` lists, saying that the source has
-   been frozen. Be extra clear that this is only a *source* release targeted
-   at packagers and installer builders (see
+#. Post to the ``bazaar@lists.canonical.com`` list, saying that the source
+   has been frozen. Be extra clear that this is only a *source* release
+   targeted at packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
    platform maintainers and plugin authors to update their code.  This is
    done before the general public announcement of the release.
@@ -606,47 +578,20 @@ Now that the release is publicly available, tell people about it.
    mentioning the milestone URL <https://launchpad.net/brz/+milestone/x.y.z>
    so people get an easy access to details.
 
-#. Announce on https://freecode.com/projects/bazaar-vcs
-
-   This should be done for beta releases and stable releases. If you do not
-   have a Freecode account yet, ask one of the existing admins.
-
-   The purpose here is to point users to the latest stable release
-   (i.e. SRUs are excluded) while still publishing announcements for beta
-   releases.
-
-   There are several kinds of modifications that could be done there via the
-   ``Administration`` box in the lower right area of the page:
-
-   * Edit the project: This is where most of the URLs proposed in the
-     ``Links`` box are edited. This should rarely change except for the URLs
-     related to the latest stable release.
-
-   * New announcement: When doing a release, put the summary of the release
-     (you can't embed URLs there, the moderation staff remove them). Users
-     can still access the releases notes via the ``Release Notes`` URL in
-     the ``Links`` box in the upper right area of the page. When doing the
-     first stable release in a series, delete the ``Unstable installers``
-     <https://launchpad.net/brz/x.y/x.ybn> and ``Unstable source tarball``
-     <http://launchpad.net/brz/x.y/x.ybn/+download/brz-x.ybn.tar.gz>
-     links. Conversely, when creating the first beta in a development
-     series, create these links again. Check all links when doing other
-     kinds of release.
-
 #. Update `<http://en.wikipedia.org/wiki/Breezy_(software)>`_ -- this should
    be done for the stable and beta releases.
 
-#. Update the python package index: <http://pypi.python.org/pypi/brz>
+#. Update the python package index: <http://pypi.python.org/pypi/breezy>
 
    From the tarball created and tested earlier ::
 
-     twine upload -s ../brz-2.7.0.tar.gz
+     twine upload ../breezy-3.0.0.tar.gz ../breezy-3.0.0.tar.gz.asc
 
    Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases nor SRUs.
 
    The ``twine`` command is provided by the ``twine`` package on Debian and
-   Ubuntu.
+   Ubuntu. Beware that you need at least ``twine-1.10``.
 
    If in doubt, you can test with <https://testpypi.python.org/pypi> where
    you can register yourself, register the brz project and upload (and then
@@ -666,13 +611,13 @@ Now that the release is publicly available, tell people about it.
      password:<password on testpypi>
      repository = https://testpypi.python.org/pypi
 
-   Registering the brz project if doesn't exist is achieved with::
+   Registering the breezy project if doesn't exist is achieved with::
 
      python setup.py -r https://testpypi.python.org/pypi register
 
   Uploading is done with::
 
-    twine upload -r testpypi -s ../brz-2.7.0.tar.gz
+    twine upload -r testpypi ../breezy-3.0.0.tar.gz ../breezy-3.0.0.tar.gz.asc
 
    To be able to upload the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of the
@@ -688,7 +633,7 @@ changes should be merged into the right place because each release series
 has its own release-notes file, but double-check.
 
 If it's not already done, advance the version number in ``brz`` and
-``breezy/__init__.py``.  Submit this back into pqm for brz.dev.
+``breezy/__init__.py``. File a merge proposal against ``lp:brz``.
 
 As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
@@ -713,6 +658,8 @@ aren't clear enough, please fix them.
 
 Getting the release into Ubuntu
 -------------------------------
+
+/!\ Nothing in this section has been validated for breezy yet.
 
 (Feel free to propose or add new sections here about what we should do to
 get brz into other places.)

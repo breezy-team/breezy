@@ -108,8 +108,9 @@ def get_cached_ascii(ascii_str,
     # real Unicode string. Unicode and plain strings of this type will have the
     # same hash, so we can just use it as the key in _uni_to_utf8, but we need
     # the return value to be different in _utf8_to_uni
-    ascii_str = _uni_to_utf8.setdefault(ascii_str, ascii_str)
-    _utf8_to_uni.setdefault(ascii_str, unicode(ascii_str))
+    uni_str = ascii_str.decode('ascii')
+    ascii_str = _uni_to_utf8.setdefault(uni_str, ascii_str)
+    _utf8_to_uni.setdefault(ascii_str, uni_str)
     return ascii_str
 
 

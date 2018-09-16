@@ -3080,7 +3080,7 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         builder = self.make_builder()
         builder.add_file(b'bar-id', builder.tree_root, 'bar', b'text1', True,
                          this=False)
-        builder.add_dir(b'bar-dir', builder.tree_root, b'bar-id',
+        builder.add_dir(b'bar-dir', builder.tree_root, 'bar-id',
                         base=False, other=False)
         return builder
 

@@ -24,7 +24,7 @@ import breezy
 def get_long_description():
     dirname = os.path.dirname(__file__)
     readme = os.path.join(dirname, 'README.rst')
-    with open(readme, 'rb') as f:
+    with open(readme, 'r') as f:
         return f.read()
 
 
@@ -55,12 +55,16 @@ META_INFO = {
         'Topic :: Software Development :: Version Control',
         ],
     'install_requires': [
+        'configobj',
         'six>=1.9.0',
         ],
     'extras_require': {
         'fastimport': ['fastimport>=0.9.8'],
         'git': ['dulwich>=0.19.1'],
         },
+    'tests_require': [
+        'testtools',
+    ],
 }
 
 # The list of packages is automatically generated later. Add other things
@@ -735,16 +739,16 @@ else:
     if not 'bdist_egg' in sys.argv:
         # generate and install brz.1 only with plain install, not the
         # easy_install one
-        DATA_FILES = [('man/man1', ['brz.1', 'breezy/plugins/git/git-remote-bzr.1'])]
+        DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
     DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
     ARGS = {'scripts': ['brz',
                         # TODO(jelmer): Only install the git scripts if
                         # Dulwich was found.
-                        'breezy/plugins/git/git-remote-bzr',
-                        'breezy/plugins/git/bzr-receive-pack',
-                        'breezy/plugins/git/bzr-upload-pack'],
+                        'breezy/git/git-remote-bzr',
+                        'breezy/git/bzr-receive-pack',
+                        'breezy/git/bzr-upload-pack'],
             'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,

@@ -29,8 +29,8 @@ import stat
 import sys
 
 from .. import cache_utf8, errors, osutils
-from .dirstate import DirState, DirstateCorrupt, is_inside_any, is_inside
-from ..osutils import parent_directories, pathjoin, splitpath
+from .dirstate import DirState, DirstateCorrupt
+from ..osutils import parent_directories, pathjoin, splitpath, is_inside_any, is_inside
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -99,15 +99,15 @@ cdef extern from "Python.h":
 
     unsigned long PyInt_AsUnsignedLongMask(object number) except? -1
 
-    char *PyString_AsString(object p)
-    char *PyString_AsString_obj "PyString_AsString" (PyObject *string)
-    char *PyString_AS_STRING_void "PyString_AS_STRING" (void *p)
-    int PyString_AsStringAndSize(object str, char **buffer, Py_ssize_t *length) except -1
-    object PyString_FromString(char *)
-    object PyString_FromStringAndSize(char *, Py_ssize_t)
-    int PyString_Size(object p)
-    int PyString_GET_SIZE_void "PyString_GET_SIZE" (void *p)
-    int PyString_CheckExact(object p)
+    char *PyBytes_AsString(object p)
+    char *PyBytes_AsString_obj "PyBytes_AsString" (PyObject *string)
+    char *PyBytes_AS_STRING_void "PyBytes_AS_STRING" (void *p)
+    int PyBytes_AsStringAndSize(object str, char **buffer, Py_ssize_t *length) except -1
+    object PyBytes_FromString(char *)
+    object PyBytes_FromStringAndSize(char *, Py_ssize_t)
+    int PyBytes_Size(object p)
+    int PyBytes_GET_SIZE_void "PyBytes_GET_SIZE" (void *p)
+    int PyBytes_CheckExact(object p)
     void Py_INCREF(object o)
     void Py_DECREF(object o)
 
@@ -144,10 +144,10 @@ def _py_memrchr(s, c):
     cdef int length
     cdef char *_c
 
-    assert PyString_Size(c) == 1, 'Expected single character string not %r' % c
-    _c = PyString_AsString(c)
-    _s = PyString_AsString(s)
-    length = PyString_Size(s)
+    assert PyBytes_Size(c) == 1, 'Expected single character string not %r' % c
+    _c = PyBytes_AsString(c)
+    _s = PyBytes_AsString(s)
+    length = PyBytes_Size(s)
 
     found = _my_memrchr(_s, _c[0], length)
     if found == NULL:
@@ -209,9 +209,9 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_
             cur2 = cur2 + 1
             continue
         # The current characters do not match
-        if cur1[0] == c'/':
+        if cur1[0] == b'/':
             return -1 # Reached the end of path1 segment first
-        elif cur2[0] == c'/':
+        elif cur2[0] == b'/':
             return 1 # Reached the end of path2 segment first
         elif cur1[0] < cur2[0]:
             return -1
@@ -242,16 +242,16 @@ def lt_by_dirs(path1, path2):
     :param path2: second path
     :return: True if path1 comes first, otherwise False
     """
-    if not PyString_CheckExact(path1):
-        raise TypeError("'path1' must be a plain string, not %s: %r"
+    if not PyBytes_CheckExact(path1):
+        raise TypeError("'path1' must be a bytes string, not %s: %r"
                         % (type(path1), path1))
-    if not PyString_CheckExact(path2):
-        raise TypeError("'path2' must be a plain string, not %s: %r"
+    if not PyBytes_CheckExact(path2):
+        raise TypeError("'path2' must be a bytes string, not %s: %r"
                         % (type(path2), path2))
-    return -1 == _cmp_by_dirs(PyString_AsString(path1),
-                              PyString_Size(path1),
-                              PyString_AsString(path2),
-                              PyString_Size(path2))
+    return -1 == _cmp_by_dirs(PyBytes_AsString(path1),
+                              PyBytes_Size(path1),
+                              PyBytes_AsString(path2),
+                              PyBytes_Size(path2))
 
 
 def _lt_path_by_dirblock(path1, path2):
@@ -268,17 +268,17 @@ def _lt_path_by_dirblock(path1, path2):
     :param path2: the second path
     :return: True if path1 comes first, otherwise False.
     """
-    if not PyString_CheckExact(path1):
+    if not PyBytes_CheckExact(path1):
         raise TypeError("'path1' must be a plain string, not %s: %r"
                         % (type(path1), path1))
-    if not PyString_CheckExact(path2):
+    if not PyBytes_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
     # GZ 2017-06-09: This internal function really only needs lt as well.
-    return (_cmp_path_by_dirblock_intern(PyString_AsString(path1),
-                                         PyString_Size(path1),
-                                         PyString_AsString(path2),
-                                         PyString_Size(path2)) < 0)
+    return (_cmp_path_by_dirblock_intern(PyBytes_AsString(path1),
+                                         PyBytes_Size(path1),
+                                         PyBytes_AsString(path2),
+                                         PyBytes_Size(path2)) < 0)
 
 
 cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
@@ -310,12 +310,12 @@ cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
     if path2_len == 0:
         return 1
 
-    basename1 = <char*>_my_memrchr(path1, c'/', path1_len)
+    basename1 = <char*>_my_memrchr(path1, b'/', path1_len)
 
     if basename1 == NULL:
         basename1 = path1
         basename1_len = path1_len
-        dirname1 = ''
+        dirname1 = b''
         dirname1_len = 0
     else:
         dirname1 = path1
@@ -323,12 +323,12 @@ cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
         basename1 = basename1 + 1
         basename1_len = path1_len - dirname1_len - 1
 
-    basename2 = <char*>_my_memrchr(path2, c'/', path2_len)
+    basename2 = <char*>_my_memrchr(path2, b'/', path2_len)
 
     if basename2 == NULL:
         basename2 = path2
         basename2_len = path2_len
-        dirname2 = ''
+        dirname2 = b''
         dirname2_len = 0
     else:
         dirname2 = path2
@@ -385,21 +385,21 @@ def _bisect_path_left(paths, path):
     if not PyList_CheckExact(paths):
         raise TypeError("you must pass a python list for 'paths' not: %s %r"
                         % (type(paths), paths))
-    if not PyString_CheckExact(path):
+    if not PyBytes_CheckExact(path):
         raise TypeError("you must pass a string for 'path' not: %s %r"
                         % (type(path), path))
 
     _hi = len(paths)
     _lo = 0
 
-    path_cstr = PyString_AsString(path)
-    path_size = PyString_Size(path)
+    path_cstr = PyBytes_AsString(path)
+    path_size = PyBytes_Size(path)
 
     while _lo < _hi:
         _mid = (_lo + _hi) / 2
         cur = PyList_GetItem_object_void(paths, _mid)
-        cur_cstr = PyString_AS_STRING_void(cur)
-        cur_size = PyString_GET_SIZE_void(cur)
+        cur_cstr = PyBytes_AS_STRING_void(cur)
+        cur_size = PyBytes_GET_SIZE_void(cur)
         if _cmp_path_by_dirblock_intern(cur_cstr, cur_size,
                                         path_cstr, path_size) < 0:
             _lo = _mid + 1
@@ -438,21 +438,21 @@ def _bisect_path_right(paths, path):
     if not PyList_CheckExact(paths):
         raise TypeError("you must pass a python list for 'paths' not: %s %r"
                         % (type(paths), paths))
-    if not PyString_CheckExact(path):
+    if not PyBytes_CheckExact(path):
         raise TypeError("you must pass a string for 'path' not: %s %r"
                         % (type(path), path))
 
     _hi = len(paths)
     _lo = 0
 
-    path_cstr = PyString_AsString(path)
-    path_size = PyString_Size(path)
+    path_cstr = PyBytes_AsString(path)
+    path_size = PyBytes_Size(path)
 
     while _lo < _hi:
         _mid = (_lo + _hi) / 2
         cur = PyList_GetItem_object_void(paths, _mid)
-        cur_cstr = PyString_AS_STRING_void(cur)
-        cur_size = PyString_GET_SIZE_void(cur)
+        cur_cstr = PyBytes_AS_STRING_void(cur)
+        cur_size = PyBytes_GET_SIZE_void(cur)
         if _cmp_path_by_dirblock_intern(path_cstr, path_size,
                                         cur_cstr, cur_size) < 0:
             _hi = _mid
@@ -483,7 +483,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     if not PyList_CheckExact(dirblocks):
         raise TypeError("you must pass a python list for 'dirblocks' not: %s %r"
                         % (type(dirblocks), dirblocks))
-    if not PyString_CheckExact(dirname):
+    if not PyBytes_CheckExact(dirname):
         raise TypeError("you must pass a string for dirname not: %s %r"
                         % (type(dirname), dirname))
     if hi is None:
@@ -492,8 +492,8 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
         _hi = hi
 
     _lo = lo
-    dirname_cstr = PyString_AsString(dirname)
-    dirname_size = PyString_Size(dirname)
+    dirname_cstr = PyBytes_AsString(dirname)
+    dirname_size = PyBytes_Size(dirname)
 
     while _lo < _hi:
         _mid = (_lo + _hi) / 2
@@ -501,8 +501,8 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
                 PyList_GetItem_object_void(dirblocks, _mid), 0)
-        cur_cstr = PyString_AS_STRING_void(cur)
-        cur_size = PyString_GET_SIZE_void(cur)
+        cur_cstr = PyBytes_AS_STRING_void(cur)
+        cur_size = PyBytes_GET_SIZE_void(cur)
         if _cmp_by_dirs(cur_cstr, cur_size, dirname_cstr, dirname_size) < 0:
             _lo = _mid + 1
         else:
@@ -525,8 +525,8 @@ cdef class Reader:
     def __init__(self, text, state):
         self.state = state
         self.text = text
-        self.text_cstr = PyString_AsString(text)
-        self.text_size = PyString_Size(text)
+        self.text_cstr = PyBytes_AsString(text)
+        self.text_size = PyBytes_Size(text)
         self.end_cstr = self.text_cstr + self.text_size
         self.cur_cstr = self.text_cstr
 
@@ -541,7 +541,7 @@ cdef class Reader:
             raise AssertionError('get_next() called when there are no chars'
                                  ' left')
         next = self.cur_cstr
-        self.cur_cstr = <char*>memchr(next, c'\0', self.end_cstr - next)
+        self.cur_cstr = <char*>memchr(next, b'\0', self.end_cstr - next)
         if self.cur_cstr == NULL:
             extra_len = self.end_cstr - next
             raise DirstateCorrupt(self.state,
@@ -571,7 +571,7 @@ cdef class Reader:
         cdef int size
         # The first field should be an empty string left over from the Header
         first = self.get_next(&size)
-        if first[0] != c'\0' and size == 0:
+        if first[0] != b'\0' and size == 0:
             raise AssertionError('First character should be null not: %s'
                                  % (first,))
         return 0
@@ -587,7 +587,7 @@ cdef class Reader:
         columns, then "current" columns, and then "parent" columns.
 
         :param num_trees: How many parent trees need to be parsed
-        :param p_current_dirname: A pointer to the current PyString
+        :param p_current_dirname: A pointer to the current PyBytes
             representing the directory name.
             We pass this in as a void * so that pyrex doesn't have to
             increment/decrement the PyObject reference counter for each
@@ -614,20 +614,20 @@ cdef class Reader:
         # Read the 'key' information (dirname, name, file_id)
         dirname_cstr = self.get_next(&cur_size)
         # Check to see if we have started a new directory block.
-        # If so, then we need to create a new dirname PyString, so that it can
+        # If so, then we need to create a new dirname PyBytes, so that it can
         # be used in all of the tuples. This saves time and memory, by re-using
         # the same object repeatedly.
 
         # Do the cheap 'length of string' check first. If the string is a
         # different length, then we *have* to be a different directory.
-        if (cur_size != PyString_GET_SIZE_void(p_current_dirname[0])
+        if (cur_size != PyBytes_GET_SIZE_void(p_current_dirname[0])
             or strncmp(dirname_cstr,
                        # Extract the char* from our current dirname string.  We
-                       # know it is a PyString, so we can use
-                       # PyString_AS_STRING, we use the _void version because
+                       # know it is a PyBytes, so we can use
+                       # PyBytes_AS_STRING, we use the _void version because
                        # we are tricking Pyrex by using a void* rather than an
                        # <object>
-                       PyString_AS_STRING_void(p_current_dirname[0]),
+                       PyBytes_AS_STRING_void(p_current_dirname[0]),
                        cur_size+1) != 0):
             dirname = safe_string_from_size(dirname_cstr, cur_size)
             p_current_dirname[0] = <void*>dirname
@@ -673,7 +673,7 @@ cdef class Reader:
             entry_size_cstr = self.get_next(&cur_size)
             entry_size = strtoul(entry_size_cstr, NULL, 10)
             executable_cstr = self.get_next(&cur_size)
-            is_executable = (executable_cstr[0] == c'y')
+            is_executable = (executable_cstr[0] == b'y')
             info = self.get_next_str()
             # TODO: If we want to use StaticTuple_New here we need to be pretty
             #       careful. We are relying on a bit of Pyrex
@@ -702,7 +702,7 @@ cdef class Reader:
         # ensures that we always finish parsing a line on an end-of-entry
         # marker.
         trailing = self.get_next(&cur_size)
-        if cur_size != 1 or trailing[0] != c'\n':
+        if cur_size != 1 or not trailing.startswith(b'\n'):
             raise DirstateCorrupt(self.state,
                 'Bad parse, we expected to end on \\n, not: %d %s: %s'
                 % (cur_size, safe_string_from_size(trailing, cur_size),
@@ -726,9 +726,9 @@ cdef class Reader:
         self._init()
 
         current_block = []
-        dirblocks = [('', current_block), ('', [])]
+        dirblocks = [(b'', current_block), (b'', [])]
         self.state._dirblocks = dirblocks
-        obj = ''
+        obj = b''
         current_dirname = <void*>obj
         new_block = 0
         entry_count = 0
@@ -809,7 +809,7 @@ cdef _pack_stat(stat_value):
     aliased[3] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_dev))
     aliased[4] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ino))
     aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
-    packed = PyString_FromStringAndSize(result, 6*4)
+    packed = PyBytes_FromStringAndSize(result, 6*4)
     return _encode(packed)[:-1]
 
 
@@ -842,9 +842,9 @@ cpdef update_entry(self, entry, abspath, stat_value):
         return None
     packed_stat = _pack_stat(stat_value)
     details = PyList_GetItem_void_void(PyTuple_GetItem_void_void(<void *>entry, 1), 0)
-    saved_minikind = PyString_AsString_obj(<PyObject *>PyTuple_GetItem_void_void(details, 0))[0]
-    if minikind == c'd' and saved_minikind == c't':
-        minikind = c't'
+    saved_minikind = PyBytes_AsString_obj(<PyObject *>PyTuple_GetItem_void_void(details, 0))[0]
+    if minikind == b'd' and saved_minikind == b't':
+        minikind = b't'
     saved_link_or_sha1 = PyTuple_GetItem_void_object(details, 1)
     saved_file_size = PyTuple_GetItem_void_object(details, 2)
     saved_executable = PyTuple_GetItem_void_object(details, 3)
@@ -861,7 +861,7 @@ cpdef update_entry(self, entry, abspath, stat_value):
         and packed_stat == saved_packed_stat):
         # The stat hasn't changed since we saved, so we can re-use the
         # saved sha hash.
-        if minikind == c'd':
+        if minikind == b'd':
             return None
 
         # size should also be in packed_stat
@@ -872,7 +872,7 @@ cpdef update_entry(self, entry, abspath, stat_value):
     # process this entry.
     link_or_sha1 = None
     worth_saving = 1
-    if minikind == c'f':
+    if minikind == b'f':
         executable = self._is_executable(stat_value.st_mode,
                                          saved_executable)
         if self._cutoff_time is None:
@@ -880,12 +880,12 @@ cpdef update_entry(self, entry, abspath, stat_value):
         if (stat_value.st_mtime < self._cutoff_time
             and stat_value.st_ctime < self._cutoff_time
             and len(entry[1]) > 1
-            and entry[1][1][0] != 'a'):
+            and entry[1][1][0] != b'a'):
                 # Could check for size changes for further optimised
                 # avoidance of sha1's. However the most prominent case of
                 # over-shaing is during initial add, which this catches.
             link_or_sha1 = self._sha1_file(abspath)
-            entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
+            entry[1][0] = (b'f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
             # This file is not worth caching the sha1. Either it is too new, or
@@ -893,12 +893,12 @@ cpdef update_entry(self, entry, abspath, stat_value):
             # are derived from the stat, and so are not worth caching. So we do
             # *not* set the IN_MEMORY_MODIFIED flag. (But we'll save the
             # updated values if there is *other* data worth saving.)
-            entry[1][0] = ('f', '', stat_value.st_size, executable,
+            entry[1][0] = (b'f', b'', stat_value.st_size, executable,
                            DirState.NULLSTAT)
             worth_saving = 0
-    elif minikind == c'd':
-        entry[1][0] = ('d', '', 0, False, packed_stat)
-        if saved_minikind != c'd':
+    elif minikind == b'd':
+        entry[1][0] = (b'd', b'', 0, False, packed_stat)
+        if saved_minikind != b'd':
             # This changed from something into a directory. Make sure we
             # have a directory block for it. This doesn't happen very
             # often, so this doesn't have to be super fast.
@@ -910,8 +910,8 @@ cpdef update_entry(self, entry, abspath, stat_value):
             # Any changes are derived trivially from the stat object, not worth
             # re-writing a dirstate for just this
             worth_saving = 0
-    elif minikind == c'l':
-        if saved_minikind == c'l':
+    elif minikind == b'l':
+        if saved_minikind == b'l':
             # If the object hasn't changed kind, it isn't worth saving the
             # dirstate just for a symlink. The default is 'fast symlinks' which
             # save the target in the inode entry, rather than separately. So to
@@ -922,10 +922,10 @@ cpdef update_entry(self, entry, abspath, stat_value):
             self._sha_cutoff_time()
         if (stat_value.st_mtime < self._cutoff_time
             and stat_value.st_ctime < self._cutoff_time):
-            entry[1][0] = ('l', link_or_sha1, stat_value.st_size,
+            entry[1][0] = (b'l', link_or_sha1, stat_value.st_size,
                            False, packed_stat)
         else:
-            entry[1][0] = ('l', '', stat_value.st_size,
+            entry[1][0] = (b'l', b'', stat_value.st_size,
                            False, DirState.NULLSTAT)
     if worth_saving:
         # Note, even though _mark_modified will only set
@@ -937,7 +937,7 @@ cpdef update_entry(self, entry, abspath, stat_value):
 # TODO: Do we want to worry about exceptions here?
 cdef char _minikind_from_string(object string) except? -1:
     """Convert a python string to a char."""
-    return PyString_AsString(string)[0]
+    return PyBytes_AsString(string)[0]
 
 
 cdef object _kind_absent
@@ -957,28 +957,28 @@ _kind_tree_reference = "tree-reference"
 cdef object _minikind_to_kind(char minikind):
     """Create a string kind for minikind."""
     cdef char _minikind[1]
-    if minikind == c'f':
+    if minikind == b'f':
         return _kind_file
-    elif minikind == c'd':
+    elif minikind == b'd':
         return _kind_directory
-    elif minikind == c'a':
+    elif minikind == b'a':
         return _kind_absent
-    elif minikind == c'r':
+    elif minikind == b'r':
         return _kind_relocated
-    elif minikind == c'l':
+    elif minikind == b'l':
         return _kind_symlink
-    elif minikind == c't':
+    elif minikind == b't':
         return _kind_tree_reference
     _minikind[0] = minikind
-    raise KeyError(PyString_FromStringAndSize(_minikind, 1))
+    raise KeyError(PyBytes_FromStringAndSize(_minikind, 1))
 
 
 cdef int _versioned_minikind(char minikind): # cannot_raise
     """Return non-zero if minikind is in fltd"""
-    return (minikind == c'f' or
-            minikind == c'd' or
-            minikind == c'l' or
-            minikind == c't')
+    return (minikind == b'f' or
+            minikind == b'd' or
+            minikind == b'l' or
+            minikind == b't')
 
 
 cdef class ProcessEntryC:
@@ -1132,14 +1132,14 @@ cdef class ProcessEntryC:
         # the rest of this function is 0.3 seconds on 50K paths, or
         # 0.000006 seconds per call.
         source_minikind = _minikind_from_string(source_details[0])
-        if ((_versioned_minikind(source_minikind) or source_minikind == c'r')
+        if ((_versioned_minikind(source_minikind) or source_minikind == b'r')
             and _versioned_minikind(target_minikind)):
             # claimed content in both: diff
             #   r    | fdlt   |      | add source to search, add id path move and perform
             #        |        |      | diff check on source-target
             #   r    | fdlt   |  a   | dangling file that was present in the basis.
             #        |        |      | ???
-            if source_minikind != c'r':
+            if source_minikind != b'r':
                 old_dirname = entry[0][0]
                 old_basename = entry[0][1]
                 old_path = path = None
@@ -1181,14 +1181,14 @@ cdef class ProcessEntryC:
                         old_path = path = self.pathjoin(old_dirname, old_basename)
                     file_id = entry[0][2]
                     self.new_dirname_to_file_id[path] = file_id
-                    if source_minikind != c'd':
+                    if source_minikind != b'd':
                         content_change = 1
                     else:
                         # directories have no fingerprint
                         content_change = 0
                     target_exec = False
                 elif target_kind == 'file':
-                    if source_minikind != c'f':
+                    if source_minikind != b'f':
                         content_change = 1
                     else:
                         # Check the sha. We can't just rely on the size as
@@ -1210,13 +1210,13 @@ cdef class ProcessEntryC:
                     else:
                         target_exec = target_details[3]
                 elif target_kind == 'symlink':
-                    if source_minikind != c'l':
+                    if source_minikind != b'l':
                         content_change = 1
                     else:
                         content_change = (link_or_sha1 != source_details[1])
                     target_exec = False
                 elif target_kind == 'tree-reference':
-                    if source_minikind != c't':
+                    if source_minikind != b't':
                         content_change = 1
                     else:
                         content_change = 0
@@ -1225,7 +1225,7 @@ cdef class ProcessEntryC:
                     if path is None:
                         path = self.pathjoin(old_dirname, old_basename)
                     raise errors.BadFileKindError(path, path_info[2])
-            if source_minikind == c'd':
+            if source_minikind == b'd':
                 if path is None:
                     old_path = path = self.pathjoin(old_dirname, old_basename)
                 if file_id is None:
@@ -1301,7 +1301,7 @@ cdef class ProcessEntryC:
                        (self.utf8_decode(old_basename)[0], self.utf8_decode(entry[0][1])[0]),
                        (source_kind, target_kind),
                        (source_exec, target_exec)), changed
-        elif source_minikind == c'a' and _versioned_minikind(target_minikind):
+        elif source_minikind == b'a' and _versioned_minikind(target_minikind):
             # looks like a new file
             path = self.pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
@@ -1344,7 +1344,7 @@ cdef class ProcessEntryC:
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, None),
                        (None, False)), True
-        elif _versioned_minikind(source_minikind) and target_minikind == c'a':
+        elif _versioned_minikind(source_minikind) and target_minikind == b'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
             # path [we dont know this in this routine at the moment -
@@ -1362,7 +1362,7 @@ cdef class ProcessEntryC:
                    (self.utf8_decode(entry[0][1])[0], None),
                    (_minikind_to_kind(source_minikind), None),
                    (source_details[3], None)), True
-        elif _versioned_minikind(source_minikind) and target_minikind == c'r':
+        elif _versioned_minikind(source_minikind) and target_minikind == b'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
@@ -1374,8 +1374,8 @@ cdef class ProcessEntryC:
                 # We don't expand the specific files parents list here as
                 # the path is absent in target and won't create a delta with
                 # missing parent.
-        elif ((source_minikind == c'r' or source_minikind == c'a') and
-              (target_minikind == c'r' or target_minikind == c'a')):
+        elif ((source_minikind == b'r' or source_minikind == b'a') and
+              (target_minikind == b'r' or target_minikind == b'a')):
             # neither of the selected trees contain this path,
             # so skip over it. This is not currently directly tested, but
             # is indirectly via test_too_much.TestCommands.test_conflicts.
@@ -1410,7 +1410,7 @@ cdef class ProcessEntryC:
                 osutils.parent_directories(new_path.encode('utf8')))
             # Add the root directory which parent_directories does not
             # provide.
-            self.search_specific_file_parents.add('')
+            self.search_specific_file_parents.add(b'')
         return 0
 
     cdef int _update_current_block(self) except -1:
@@ -1477,7 +1477,8 @@ cdef class ProcessEntryC:
         # TODO: jam 20070516 - Avoid the _get_entry lookup overhead by
         #       keeping a cache of directories that we have seen.
         cdef object current_dirname, current_blockname
-        cdef char * current_dirname_c, * current_blockname_c
+        cdef char * current_dirname_c
+        cdef char * current_blockname_c
         cdef int advance_entry, advance_path
         cdef int path_handled
         searched_specific_files = self.searched_specific_files
@@ -1516,7 +1517,7 @@ cdef class ProcessEntryC:
                     # some other random error: hand it up.
                     raise
             else:
-                self.root_dir_info = ('', self.current_root,
+                self.root_dir_info = (b'', self.current_root,
                     osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
                     self.root_abspath)
                 if self.root_dir_info[2] == 'directory':
@@ -1572,7 +1573,7 @@ cdef class ProcessEntryC:
                     prefix=self.current_root)
                 self.path_index = 0
                 try:
-                    self.current_dir_info = self.dir_iterator.next()
+                    self.current_dir_info = next(self.dir_iterator)
                     self.current_dir_list = self.current_dir_info[1]
                 except OSError, e:
                     # there may be directories in the inventory even though
@@ -1597,13 +1598,13 @@ cdef class ProcessEntryC:
                     else:
                         raise
                 else:
-                    if self.current_dir_info[0][0] == '':
+                    if self.current_dir_info[0][0] == b'':
                         # remove .bzr from iteration
-                        bzr_index = self.bisect_left(self.current_dir_list, ('.bzr',))
-                        if self.current_dir_list[bzr_index][0] != '.bzr':
+                        bzr_index = self.bisect_left(self.current_dir_list, (b'.bzr',))
+                        if self.current_dir_list[bzr_index][0] != b'.bzr':
                             raise AssertionError()
                         del self.current_dir_list[bzr_index]
-            initial_key = (self.current_root, '', '')
+            initial_key = (self.current_root, b'', b'')
             self.block_index, _ = self.state._find_block_index_from_key(initial_key)
             if self.block_index == 0:
                 # we have processed the total root already, but because the
@@ -1620,19 +1621,19 @@ cdef class ProcessEntryC:
                 # Work around pyrex broken heuristic - current_dirname has
                 # the same scope as current_dirname_c
                 current_dirname = self.current_dir_info[0][0]
-                current_dirname_c = PyString_AS_STRING_void(
+                current_dirname_c = PyBytes_AS_STRING_void(
                     <void *>current_dirname)
                 current_blockname = self.current_block[0]
-                current_blockname_c = PyString_AS_STRING_void(
+                current_blockname_c = PyBytes_AS_STRING_void(
                     <void *>current_blockname)
                 # In the python generator we evaluate this if block once per
                 # dir+block; because we reenter in the pyrex version its being
                 # evaluated once per path: we could cache the result before
                 # doing the while loop and probably save time.
                 if _cmp_by_dirs(current_dirname_c,
-                    PyString_Size(current_dirname),
+                    PyBytes_Size(current_dirname),
                     current_blockname_c,
-                    PyString_Size(current_blockname)) < 0:
+                    PyBytes_Size(current_blockname)) < 0:
                     # filesystem data refers to paths not covered by the
                     # dirblock.  this has two possibilities:
                     # A) it is versioned but empty, so there is no block for it
@@ -1673,7 +1674,7 @@ cdef class ProcessEntryC:
                     self.path_index = 0
                     self.current_dir_list = None
                     try:
-                        self.current_dir_info = self.dir_iterator.next()
+                        self.current_dir_info = next(self.dir_iterator)
                         self.current_dir_list = self.current_dir_info[1]
                     except StopIteration, _:
                         self.current_dir_info = None
@@ -1736,7 +1737,7 @@ cdef class ProcessEntryC:
             cdef int cmp_result
             # cdef char * temp_str
             # cdef Py_ssize_t temp_str_length
-            # PyString_AsStringAndSize(disk_kind, &temp_str, &temp_str_length)
+            # PyBytes_AsStringAndSize(disk_kind, &temp_str, &temp_str_length)
             # if not strncmp(temp_str, "directory", temp_str_length):
             if (self.current_block is not None and
                 self.current_block_pos < PyList_GET_SIZE(self.current_block_list)):
@@ -1776,8 +1777,9 @@ cdef class ProcessEntryC:
                 else:
                     minikind = _minikind_from_string(
                         current_entry[1][self.target_index][0])
-                    cmp_result = cmp(current_path_info[1], current_entry[0][1])
-                    if (cmp_result or minikind == c'a' or minikind == c'r'):
+                    cmp_result = ((current_path_info[1] > current_entry[0][1]) -
+                                  (current_path_info[1] < current_entry[0][1]))
+                    if (cmp_result or minikind == b'a' or minikind == b'r'):
                         # The current path on disk doesn't match the dirblock
                         # record. Either the dirblock record is marked as
                         # absent/renamed, or the file on disk is not present at all
@@ -1869,14 +1871,14 @@ cdef class ProcessEntryC:
                 self.path_index = 0
                 self.current_dir_list = None
                 try:
-                    self.current_dir_info = self.dir_iterator.next()
+                    self.current_dir_info = next(self.dir_iterator)
                     self.current_dir_list = self.current_dir_info[1]
                 except StopIteration, _:
                     self.current_dir_info = None
 
     cdef object _next_consistent_entries(self):
         """Grabs the next specific file parent case to consider.
-        
+
         :return: A list of the results, each of which is as for _process_entry.
         """
         results = []
@@ -1900,14 +1902,14 @@ cdef class ProcessEntryC:
             found_item = False
             for candidate_entry in path_entries:
                 # Find entries present in target at this path:
-                if candidate_entry[1][self.target_index][0] not in 'ar':
+                if candidate_entry[1][self.target_index][0] not in (b'a', b'r'):
                     found_item = True
                     selected_entries.append(candidate_entry)
                 # Find entries present in source at this path:
                 elif (self.source_index is not None and
-                    candidate_entry[1][self.source_index][0] not in 'ar'):
+                    candidate_entry[1][self.source_index][0] not in (b'a', b'r')):
                     found_item = True
-                    if candidate_entry[1][self.target_index][0] == 'a':
+                    if candidate_entry[1][self.target_index][0] == b'a':
                         # Deleted, emit it here.
                         selected_entries.append(candidate_entry)
                     else:
@@ -1937,12 +1939,12 @@ cdef class ProcessEntryC:
                         result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
-                        if entry[1][self.source_index][0] == 'r':
+                        if entry[1][self.source_index][0] == b'r':
                             # renamed, take the source path
                             entry_path_utf8 = entry[1][self.source_index][1]
                         else:
                             entry_path_utf8 = path_utf8
-                        initial_key = (entry_path_utf8, '', '')
+                        initial_key = (entry_path_utf8, b'', b'')
                         block_index, _ = self.state._find_block_index_from_key(
                             initial_key)
                         if block_index == 0:
@@ -1957,7 +1959,7 @@ cdef class ProcessEntryC:
                                 current_block = None
                         if current_block is not None:
                             for entry in current_block[1]:
-                                if entry[1][self.source_index][0] in 'ar':
+                                if entry[1][self.source_index][0] in (b'a', b'r'):
                                     # Not in the source tree, so doesn't have to be
                                     # included.
                                     continue
@@ -1983,7 +1985,7 @@ cdef class ProcessEntryC:
                 return None
             else:
                 raise
-        utf8_basename = utf8_path.rsplit('/', 1)[-1]
+        utf8_basename = utf8_path.rsplit(b'/', 1)[-1]
         dir_info = (utf8_path, utf8_basename,
             osutils.file_kind_from_stat_mode(stat.st_mode), stat,
             abspath)

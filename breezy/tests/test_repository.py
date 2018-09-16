@@ -255,7 +255,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
         tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
-        self.assertHasKnit(t, b'knits/e8/%254easty-%2549d%2543%253a',
+        self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
             b'\nfoo fulltext 0 81  :')
 
     def assertHasKnit(self, t, knit_name, extra_content=b''):
@@ -265,9 +265,9 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def check_knits(self, t):
         """check knit content for a repository."""
-        self.assertHasKnit(t, b'inventory')
-        self.assertHasKnit(t, b'revisions')
-        self.assertHasKnit(t, b'signatures')
+        self.assertHasKnit(t, 'inventory')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasKnit(t, 'signatures')
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -724,31 +724,31 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # would only get the newly created chk pages
         search = vf_search.SearchResult({b'rev-2'}, {b'rev-1'}, 1,
                                     {b'rev-2'})
-        simple_chk_records = []
+        simple_chk_records = set()
         for vf_name, substream in source.get_stream(search):
             if vf_name == 'chk_bytes':
                 for record in substream:
-                    simple_chk_records.append(record.key)
+                    simple_chk_records.add(record.key)
             else:
                 for _ in substream:
                     continue
         # 3 pages, the root (InternalNode), + 2 pages which actually changed
-        self.assertEqual([(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+        self.assertEqual({(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
                           (b'sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
                           (b'sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
-                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
-                         simple_chk_records)
+                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)},
+                         set(simple_chk_records))
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
         missing = [('inventories', b'rev-2')]
-        full_chk_records = []
+        full_chk_records = set()
         for vf_name, substream in source.get_stream_for_missing_keys(missing):
             if vf_name == 'inventories':
                 for record in substream:
                     self.assertEqual((b'rev-2',), record.key)
             elif vf_name == 'chk_bytes':
                 for record in substream:
-                    full_chk_records.append(record.key)
+                    full_chk_records.add(record.key)
             else:
                 self.fail('Should not be getting a stream of %s' % (vf_name,))
         # We have 257 records now. This is because we have 1 root page, and 256
@@ -956,13 +956,15 @@ class TestWithBrokenRepo(TestCaseWithTransport):
 
     def add_file(self, repo, inv, filename, revision, parents):
         file_id = filename.encode('utf-8') + b'-id'
+        content = [b'line\n']
         entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
+        entry.text_sha1 = osutils.sha_strings(content)
         entry.text_size = 0
         inv.add(entry)
         text_key = (file_id, revision)
         parent_keys = [(file_id, parent) for parent in parents]
-        repo.texts.add_lines(text_key, parent_keys, [b'line\n'])
+        repo.texts.add_lines(text_key, parent_keys, content)
 
     def test_insert_from_broken_repo(self):
         """Inserting a data stream from a broken repository won't silently
@@ -1299,23 +1301,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(removed_pack)
         names = packs.names()
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = {x[0][0] for x in new_nodes}
-        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        new_names = {x[0] for x in new_nodes}
+        self.assertEqual(names, sorted([x[0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
         self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
-                         sorted([x[0][0] for x in deleted_nodes]))
+                         sorted([x[0] for x in deleted_nodes]))
         packs.reload_pack_names()
         reloaded_names = packs.names()
         self.assertEqual(orig_at_load, packs._packs_at_load)
         self.assertEqual(names, reloaded_names)
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = {x[0][0] for x in new_nodes}
-        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        new_names = {x[0] for x in new_nodes}
+        self.assertEqual(names, sorted([x[0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
         self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
-                         sorted([x[0][0] for x in deleted_nodes]))
+                         sorted([x[0] for x in deleted_nodes]))
 
     def test_autopack_obsoletes_new_pack(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)

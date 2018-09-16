@@ -27,6 +27,7 @@ from .. import (
     )
 from ..controldir import ControlDir
 from ..bzr.smart import medium
+from ..sixish import PY3
 from ..transport import remote
 
 from . import (
@@ -97,14 +98,18 @@ class ImportTariffTestCase(TestCaseWithTransport):
         :param err: Standard error
         :param forbidden_imports: List of forbidden modules
         """
+        err = err.decode('utf-8')
         self.addDetail('subprocess_stderr',
-            content.Content(content.ContentType("text", "plain"),
-                lambda:[err]))
+            content.text_content(err))
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if err.find("\nimport %s " % module_name) != -1:
-                bad_modules.append(module_name)
+            if PY3:
+                if err.find("\nimport '%s' " % module_name) != -1:
+                    bad_modules.append(module_name)
+            else:
+                if err.find("\nimport %s " % module_name) != -1:
+                    bad_modules.append(module_name)
 
         if bad_modules:
             self.fail("command loaded forbidden modules %r"
@@ -185,6 +190,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.bzr.xml8',
             'getpass',
             'kerberos',
+            'shutil',
             'ssl',
             'socket',
             'smtplib',
@@ -192,7 +198,6 @@ class TestImportTariffs(ImportTariffTestCase):
             'tempfile',
             'termios',
             'tty',
-            'urllib',
             ] + old_format_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
@@ -225,7 +230,7 @@ class TestImportTariffs(ImportTariffTestCase):
         (out, err) = self.finish_bzr_subprocess(process,
             universal_newlines=False)
         stderr_file.close()
-        with open('bzr-serve.stderr', 'r') as stderr_file:
+        with open('bzr-serve.stderr', 'rb') as stderr_file:
             err = stderr_file.read()
         self.check_forbidden_modules(err,
             ['breezy.annotate',

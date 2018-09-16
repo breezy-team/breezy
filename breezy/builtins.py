@@ -23,6 +23,7 @@ import os
 import sys
 
 import breezy.bzr
+import breezy.git
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -1042,7 +1043,7 @@ class cmd_mv(Command):
                 into_existing = False
             else:
                 # 'fix' the case of a potential 'from'
-                from_path = tree.get_canonical_inventory_path(rel_names[0])
+                from_path = tree.get_canonical_path(rel_names[0])
                 if (not osutils.lexists(names_list[0]) and
                     tree.is_versioned(from_path) and
                     tree.stored_kind(from_path) == "directory"):
@@ -1052,7 +1053,7 @@ class cmd_mv(Command):
             # move into existing directory
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
-            rel_names = tree.get_canonical_inventory_paths(rel_names)
+            rel_names = list(tree.get_canonical_paths(rel_names))
             for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 if not is_quiet():
                     self.outf.write("%s => %s\n" % (src, dest))
@@ -1064,13 +1065,13 @@ class cmd_mv(Command):
 
             # for cicp file-systems: the src references an existing inventory
             # item:
-            src = tree.get_canonical_inventory_path(rel_names[0])
+            src = tree.get_canonical_path(rel_names[0])
             # Find the canonical version of the destination:  In all cases, the
             # parent of the target must be in the inventory, so we fetch the
             # canonical version from there (we do not always *use* the
             # canonicalized tail portion - we may be attempting to rename the
             # case of the tail)
-            canon_dest = tree.get_canonical_inventory_path(rel_names[1])
+            canon_dest = tree.get_canonical_path(rel_names[1])
             dest_parent = osutils.dirname(canon_dest)
             spec_tail = osutils.basename(rel_names[1])
             # For a CICP file-system, we need to avoid creating 2 inventory
@@ -1459,9 +1460,7 @@ class cmd_branch(Command):
             # RBC 20060209
             revision_id = br_from.last_revision()
         if to_location is None:
-            to_location = getattr(br_from, "name", None)
-            if not to_location:
-                to_location = urlutils.derive_to_location(from_location)
+            to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
             to_transport.mkdir('.')
@@ -6073,6 +6072,8 @@ class cmd_tags(Command):
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
                 tags[index] = (tag, revno)
+        else:
+            tags = [(tag, revid.decode('utf-8')) for (tag, revid) in tags]
         self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))

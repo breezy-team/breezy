@@ -80,7 +80,7 @@ except ImportError as e:
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
-                               SFTP_OK, CMD_HANDLE, CMD_OPEN)
+                               CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
 
@@ -294,7 +294,10 @@ class _SFTPReadvHelper(object):
                     input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
-                    cur_offset, cur_size = next(offset_iter)
+                    try:
+                        cur_offset, cur_size = next(offset_iter)
+                    except StopIteration:
+                        return
                 # at this point, we've consumed as much of buffered as we can,
                 # so break off the portion that we consumed
                 if buffered_offset == len(buffered_data):
@@ -343,7 +346,10 @@ class _SFTPReadvHelper(object):
                         ' We expected %d bytes, but only found %d'
                         % (cur_size, len(data)))
                 yield cur_offset, data
-                cur_offset, cur_size = next(offset_iter)
+                try:
+                    cur_offset, cur_size = next(offset_iter)
+                except StopIteration:
+                    return
 
 
 class SFTPTransport(ConnectedTransport):
@@ -852,11 +858,6 @@ class SFTPTransport(ConnectedTransport):
         try:
             conn = self._get_sftp()
             sftp_retval = conn.symlink(source, link_name)
-            if SFTP_OK != sftp_retval:
-                raise TransportError(
-                    '%r: unable to create symlink to %r' % (link_name, source),
-                    sftp_retval
-                )
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))

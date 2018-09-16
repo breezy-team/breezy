@@ -938,10 +938,8 @@ class IniBasedConfig(Config):
             raise AssertionError('We cannot save, self.file_name is None')
         conf_dir = os.path.dirname(self.file_name)
         ensure_config_dir_exists(conf_dir)
-        atomic_file = atomicfile.AtomicFile(self.file_name)
-        self._get_parser().write(atomic_file)
-        atomic_file.commit()
-        atomic_file.close()
+        with atomicfile.AtomicFile(self.file_name) as atomic_file:
+            self._get_parser().write(atomic_file)
         osutils.copy_ownership_from_path(self.file_name)
         for hook in OldConfigHooks['save']:
             hook(self)

@@ -123,16 +123,6 @@ If you want to version a file, but not upload it, you can create a file called
 but only applies to bzr-upload.
 
 
-Collaborating
--------------
-
-While we don't have any platform setup, you can branch from trunk:
-
-    brz branch lp:bzr-upload
-
-And change anything you'd like, and file a merge proposal on Launchpad.
-
-
 Known Issues
 ------------
 

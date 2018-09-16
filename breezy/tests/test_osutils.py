@@ -1176,11 +1176,10 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEqual('./test-unreadable', e.filename)
+        self.assertEqual('./test-unreadable', osutils.safe_unicode(e.filename))
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\\./test-unreadable")
-
 
     def test_walkdirs_encoding_error(self):
         # <https://bugs.launchpad.net/bzr/+bug/488519>
@@ -1202,8 +1201,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.build_tree(tree)
 
         # rename the 1file to a latin-1 filename
-        os.rename("./1file", "\xe8file")
-        if "\xe8file" not in os.listdir("."):
+        os.rename(b"./1file", b"\xe8file")
+        if b"\xe8file" not in os.listdir("."):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
@@ -1211,7 +1210,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs('.'):
+            for dirdetail, dirblock in osutils.walkdirs(b'.'):
                 pass
 
         self.assertRaises(errors.BadFilenameEncoding, attempt)
@@ -1245,11 +1244,15 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         result = []
         found_bzrdir = False
-        for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
-            if len(dirblock) and dirblock[0][1] == '.bzr':
+        for dirdetail, dirblock in osutils._walkdirs_utf8(b'.'):
+            if len(dirblock) and dirblock[0][1] == b'.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
+            dirdetail = (dirdetail[0].decode('utf-8'), osutils.safe_unicode(dirdetail[1]))
+            dirblock = [
+                    (entry[0].decode('utf-8'), entry[1].decode('utf-8'), entry[2])
+                    for entry in dirblock]
             result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
@@ -1274,39 +1277,38 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.overrideAttr(osutils, '_fs_enc')
         self.overrideAttr(osutils, '_selected_dir_reader')
 
-    def assertDirReaderIs(self, expected):
+    def assertDirReaderIs(self, expected, top):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
         # Force it to redetect
         osutils._selected_dir_reader = None
         # Nothing to list, but should still trigger the selection logic
-        self.assertEqual([((b'', '.'), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertEqual([((b'', top), [])], list(osutils._walkdirs_utf8('.')))
         self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         osutils._fs_enc = 'utf-8'
-        self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader)
+        self.assertDirReaderIs(UTF8DirReaderFeature.module.UTF8DirReader, b".")
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader)
+            UTF8DirReaderFeature.module.UTF8DirReader, b".")
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         osutils._fs_enc = 'iso-8859-1'
-        self.assertDirReaderIs(osutils.UnicodeDirReader)
+        self.assertDirReaderIs(osutils.UnicodeDirReader, ".")
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         from .._walkdirs_win32 import Win32ReadDir
-        self.assertDirReaderIs(Win32ReadDir)
+        self.assertDirReaderIs(Win32ReadDir, ".")
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
@@ -1720,7 +1722,10 @@ class TestSetUnsetEnv(tests.TestCase):
                 % (osutils.get_user_encoding(),))
 
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
-        self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        if PY3:
+            self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        else:
+            self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unset(self):
         """Test that passing None will remove the env var"""
@@ -1806,14 +1811,14 @@ class TestDirReader(tests.TestCaseInTempDir):
             ]
         expected_dirblocks = [
                 ((b'', '.'),
-                 [(b'0file', b'0file', 'file'),
-                  (b'1dir', b'1dir', 'directory'),
-                  (b'2file', b'2file', 'file'),
+                 [(b'0file', b'0file', 'file', './0file'),
+                  (b'1dir', b'1dir', 'directory', './1dir'),
+                  (b'2file', b'2file', 'file', './2file'),
                  ]
                 ),
                 ((b'1dir', './1dir'),
-                 [(b'1dir/0file', b'0file', 'file'),
-                  (b'1dir/1dir', b'1dir', 'directory'),
+                 [(b'1dir/0file', b'0file', 'file', './1dir/0file'),
+                  (b'1dir/1dir', b'1dir', 'directory', './1dir/1dir'),
                  ]
                 ),
                 ((b'1dir/1dir', './1dir/1dir'),
@@ -1829,18 +1834,16 @@ class TestDirReader(tests.TestCaseInTempDir):
         result = list(osutils._walkdirs_utf8('.'))
         # Filter out stat and abspath
         self.assertEqual(expected_dirblocks,
-                         [(dirinfo, [line[0:3] for line in block])
-                          for dirinfo, block in result])
+                self._filter_out(result))
 
     def test_walk_sub_dir(self):
         tree, expected_dirblocks = self._get_ascii_tree()
         self.build_tree(tree)
         # you can search a subdir only, with a supplied prefix.
-        result = list(osutils._walkdirs_utf8('./1dir', '1dir'))
+        result = list(osutils._walkdirs_utf8(b'./1dir', b'1dir'))
         # Filter out stat and abspath
         self.assertEqual(expected_dirblocks[1:],
-                         [(dirinfo, [line[0:3] for line in block])
-                          for dirinfo, block in result])
+                self._filter_out(result))
 
     def _get_unicode_tree(self):
         name0u = u'0file-\xb6'
@@ -2150,11 +2153,16 @@ class TestPathFromEnviron(tests.TestCase):
         self.assertEqual(u'/home/\xa7test',
             osutils._posix_path_from_environ('BRZ_TEST_PATH'))
         osutils._fs_enc = "iso8859-5"
-        self.assertEqual(u'/home/\u0407test',
-            osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-        osutils._fs_enc = "utf-8"
-        self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
+        if PY3:
+            # In Python 3, os.environ returns unicode.
+            self.assertEqual(u'/home/\xa7test',
+                osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+        else:
+            self.assertEqual(u'/home/\u0407test',
+                osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+            osutils._fs_enc = "utf-8"
+            self.assertRaises(errors.BadFilenameEncoding,
+                osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
 
 
 class TestGetHomeDir(tests.TestCase):
@@ -2180,10 +2188,14 @@ class TestGetHomeDir(tests.TestCase):
         self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
         self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
         osutils._fs_enc = "iso8859-5"
-        self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
-        osutils._fs_enc = "utf-8"
-        self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_get_home_dir)
+        if PY3:
+            # In python 3, os.environ returns unicode
+            self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        else:
+            self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
+            osutils._fs_enc = "utf-8"
+            self.assertRaises(errors.BadFilenameEncoding,
+                osutils._posix_get_home_dir)
 
 
 class TestGetuserUnicode(tests.TestCase):
@@ -2212,7 +2224,10 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        self.overrideEnv(self.envvar_to_override(), encoded_username)
+        if PY3:
+            self.overrideEnv(self.envvar_to_override(), uni_username)
+        else:
+            self.overrideEnv(self.envvar_to_override(), encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
 
 

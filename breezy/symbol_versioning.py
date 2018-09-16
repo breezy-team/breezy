@@ -38,6 +38,7 @@ from warnings import warn
 
 import breezy
 
+from .sixish import PY3
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 
@@ -75,16 +76,16 @@ def deprecation_string(a_callable, deprecation_version):
         have a single %s operator in it. a_callable will be turned into a nice
         python symbol and then substituted into deprecation_version.
     """
-    # We also want to handle old-style classes, in particular exception, and
-    # they don't have an im_class attribute.
-    if getattr(a_callable, 'im_class', None) is None:
-        symbol = "%s.%s" % (a_callable.__module__,
-                            a_callable.__name__)
-    else:
+    if getattr(a_callable, '__self__', None) is not None:
         symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
                                a_callable.__self__.__class__.__name__,
-                               a_callable.__name__
-                               )
+                               a_callable.__name__)
+    elif getattr(a_callable, '__qualname__', None) is not None and not '<' in a_callable.__qualname__:
+        symbol = "%s.%s" % (a_callable.__module__,
+                            a_callable.__qualname__)
+    else:
+        symbol = "%s.%s" % (a_callable.__module__,
+                            a_callable.__name__)
     return deprecation_version % symbol
 
 

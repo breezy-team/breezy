@@ -70,6 +70,7 @@ class UTextWrapper(textwrap.TextWrapper):
         else:
             raise ValueError("ambiguous_width should be 1 or 2")
 
+        self.max_lines = kwargs.get('max_lines', None)
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _unicode_char_width(self, uc):
@@ -160,6 +161,13 @@ class UTextWrapper(textwrap.TextWrapper):
         lines = []
         if self.width <= 0:
             raise ValueError("invalid width %r (must be > 0)" % self.width)
+        if self.max_lines is not None:
+            if self.max_lines > 1:
+                indent = self.subsequent_indent
+            else:
+                indent = self.initial_indent
+            if self._width(indent) + self._width(self.placeholder.lstrip()) > self.width:
+                raise ValueError("placeholder too large for max width")
 
         # Arrange in reverse order so items can be efficiently popped
         # from a stack of chucks.
@@ -203,6 +211,7 @@ class UTextWrapper(textwrap.TextWrapper):
             # fit on *any* line (not just this one).
             if chunks and self._width(chunks[-1]) > width:
                 self._handle_long_word(chunks, cur_line, cur_len, width)
+                cur_len = sum(map(len, cur_line))
 
             # If the last chunk on this line is all whitespace, drop it.
             if self.drop_whitespace and cur_line and not cur_line[-1].strip():
@@ -211,7 +220,33 @@ class UTextWrapper(textwrap.TextWrapper):
             # Convert current line back to a string and store it in list
             # of all lines (return value).
             if cur_line:
-                lines.append(indent + u''.join(cur_line))
+                if (self.max_lines is None or
+                    len(lines) + 1 < self.max_lines or
+                    (not chunks or
+                     self.drop_whitespace and
+                     len(chunks) == 1 and
+                     not chunks[0].strip()) and cur_len <= width):
+                    # Convert current line back to a string and store it in
+                    # list of all lines (return value).
+                    lines.append(indent + u''.join(cur_line))
+                else:
+                    while cur_line:
+                        if (cur_line[-1].strip() and
+                            cur_len + self._width(self.placeholder) <= width):
+                            cur_line.append(self.placeholder)
+                            lines.append(indent + ''.join(cur_line))
+                            break
+                        cur_len -= self._width(cur_line[-1])
+                        del cur_line[-1]
+                    else:
+                        if lines:
+                            prev_line = lines[-1].rstrip()
+                            if (self._width(prev_line) + self._width(self.placeholder) <=
+                                    self.width):
+                                lines[-1] = prev_line + self.placeholder
+                                break
+                        lines.append(indent + self.placeholder.lstrip())
+                    break
 
         return lines
 

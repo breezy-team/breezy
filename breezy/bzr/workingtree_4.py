@@ -904,12 +904,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 return super(DirStateWorkingTree, self).paths2ids(paths,
                     trees, require_versioned)
         search_indexes = [0] + [1 + parents.index(tree._revision_id) for tree in trees]
-        # -- make all paths utf8 --
         paths_utf8 = set()
         for path in paths:
             paths_utf8.add(path.encode('utf8'))
-        paths = paths_utf8
-        # -- paths is now a utf8 path set --
         # -- get the state object and prepare it.
         state = self.current_dirstate()
         if False and (state._dirblock_state == dirstate.DirState.NOT_IN_MEMORY
@@ -917,7 +914,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             paths2ids = self._paths2ids_using_bisect
         else:
             paths2ids = self._paths2ids_in_memory
-        return paths2ids(paths, search_indexes,
+        return paths2ids(paths_utf8, search_indexes,
                          require_versioned=require_versioned)
 
     def _paths2ids_in_memory(self, paths, search_indexes,
@@ -986,7 +983,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
             """
             for index in search_indexes:
                 if entry[1][index][0] == b'r': # relocated
-                    if not dirstate.is_inside_any(searched_paths, entry[1][index][1]):
+                    if not osutils.is_inside_any(searched_paths,
+                                                 entry[1][index][1]):
                         search_paths.add(entry[1][index][1])
                 elif entry[1][index][0] != b'a': # absent
                     found_ids.add(entry[0][2])
@@ -1004,7 +1002,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             initial_key = (current_root, b'', b'')
             block_index, _ = state._find_block_index_from_key(initial_key)
             while (block_index < len(state._dirblocks) and
-                dirstate.is_inside(current_root, state._dirblocks[block_index][0])):
+                osutils.is_inside(current_root, state._dirblocks[block_index][0])):
                 for entry in state._dirblocks[block_index][1]:
                     _process_entry(entry)
                 block_index += 1
@@ -1233,7 +1231,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # walk the state marking unversioned things as absent.
             # if there are any un-unversioned ids at the end, raise
             for key, details in state._dirblocks[0][1]:
-                if (details[0][0] not in ('a', 'r') and # absent or relocated
+                if (details[0][0] not in (b'a', b'r') and # absent or relocated
                     key[2] in ids_to_unversion):
                     # I haven't written the code to unversion / yet - it should be
                     # supported.
@@ -1261,7 +1259,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     entry_index = 0
                     while entry_index < len(block[1]):
                         entry = block[1][entry_index]
-                        if entry[1][0][0] in 'ar':
+                        if entry[1][0][0] in (b'a', b'r'):
                             # don't remove absent or renamed entries
                             entry_index += 1
                         else:
@@ -1277,13 +1275,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 entry_index = 0
                 while entry_index < len(block[1]):
                     entry = block[1][entry_index]
-                    if (entry[1][0][0] in ('a', 'r') or # absent, relocated
+                    if (entry[1][0][0] in (b'a', b'r') or # absent, relocated
                         # ^ some parent row.
                         entry[0][2] not in ids_to_unversion):
                         # ^ not an id to unversion
                         entry_index += 1
                         continue
-                    if entry[1][0][0] == 'd':
+                    if entry[1][0][0] == b'd':
                         paths_to_unversion.add(pathjoin(entry[0][0], entry[0][1]))
                     if not state._make_absent(entry):
                         entry_index += 1
@@ -2088,7 +2086,7 @@ class DirStateRevisionTree(InventoryTree):
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
-                    pending.append((dir[0].decode('utf-8'), dir[4]))
+                    pending.append((dir[0], dir[4]))
 
 
 class InterDirStateTree(InterTree):

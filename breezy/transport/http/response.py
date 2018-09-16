@@ -209,7 +209,7 @@ class RangeFile(ResponseFile):
                     % (self._boundary, boundary_line))
 
     def _unquote_boundary(self, b):
-        return b[:2] + email_utils.unquote(b[2:-2]) + b[-2:]
+        return b[:2] + email_utils.unquote(b[2:-2].decode('ascii')).encode('ascii') + b[-2:]
 
     def read_range_definition(self):
         """Read a new range definition in a multi parts message.

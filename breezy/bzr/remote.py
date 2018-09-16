@@ -279,7 +279,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                 make_working_trees=make_working_trees, shared_repo=shared_repo,
                 vfs_only=True)
         except errors.ErrorFromSmartServer as err:
-            _translate_error(err, path=path)
+            _translate_error(err, path=path.decode('utf-8'))
         repo_path = response[0]
         bzrdir_name = response[6]
         require_stacking = response[7]
@@ -738,12 +738,18 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if name != "":
             raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
-        if response[0] == b'ref':
+        if response[0] == 'ref':
             return response[1].decode('utf-8')
         else:
             return None
 
     def _get_branch_reference(self):
+        """Get branch reference information
+
+        :return: Tuple with (kind, location_or_format)
+            if kind == 'ref', then location_or_format contains a location
+            otherwise, it contains a format name
+        """
         path = self._path_for_remote_call(self._client)
         medium = self._client._medium
         candidate_calls = [
@@ -766,12 +772,12 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             if response[0] != b'ok':
                 raise errors.UnexpectedSmartServerResponse(response)
             if response[1] != b'':
-                return (b'ref', response[1])
+                return ('ref', response[1])
             else:
-                return (b'branch', b'')
+                return ('branch', b'')
         if response[0] not in (b'ref', b'branch'):
             raise errors.UnexpectedSmartServerResponse(response)
-        return response
+        return (response[0].decode('ascii'), response[1])
 
     def _get_tree_branch(self, name=None):
         """See BzrDir._get_tree_branch()."""
@@ -783,7 +789,8 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
             return format.open(self, name=name, _found=True,
-                location=location_or_format, ignore_fallbacks=ignore_fallbacks,
+                location=location_or_format.decode('utf-8'),
+                ignore_fallbacks=ignore_fallbacks,
                 possible_transports=possible_transports)
         branch_format_name = location_or_format
         if not branch_format_name:
@@ -2621,7 +2628,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         if hint is None:
             body = b""
         else:
-            body = b"".join([l+b"\n" for l in hint])
+            body = b"".join([l.encode('ascii')+b"\n" for l in hint])
         with self.lock_write():
             path = self.controldir._path_for_remote_call(self._client)
             try:
@@ -2767,7 +2774,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self.refresh_data()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        self._write_group_tokens = response[1:]
+        self._write_group_tokens = [token.decode('utf-8') for token in response[1:]]
 
     def has_signature_for_revision_id(self, revision_id):
         path = self.controldir._path_for_remote_call(self._client)
@@ -2955,7 +2962,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
             stream = self._stop_stream_if_inventory_delta(stream)
         byte_stream = smart_repo._stream_to_byte_stream(
             stream, src_format)
-        resume_tokens = b' '.join(resume_tokens)
+        resume_tokens = b' '.join([token.encode('utf-8') for token in resume_tokens])
         response = client.call_with_body_stream(
             (verb, path, resume_tokens) + lock_args, byte_stream)
         if response[0][0] not in (b'ok', b'missing-basis'):
@@ -2968,7 +2975,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
             return self._resume_stream_with_vfs(response, src_format)
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
-            resume_tokens = tokens
+            resume_tokens = [token.decode('utf-8') for token in tokens]
             return resume_tokens, set((entry[0].decode('utf-8'), ) + entry[1:] for entry in missing_keys)
         else:
             self.target_repo.refresh_data()
@@ -2980,6 +2987,7 @@ class RemoteStreamSink(vf_repository.StreamSink):
         """
         if response[0][0] == b'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
+            tokens = [token.decode('utf-8') for token in tokens]
             # Ignore missing_keys, we haven't finished inserting yet
         else:
             tokens = []
@@ -3940,12 +3948,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if medium._is_remote_before((1, 15)):
             return self._vfs_set_parent_location(url)
         try:
-            call_url = url or ''
-            if not isinstance(call_url, str):
-                raise AssertionError('url must be a str or None (%s)' % url)
+            call_url = url or u''
+            if isinstance(call_url, text_type):
+                call_url = call_url.encode('utf-8')
             response = self._call(b'Branch.set_parent_location',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
-                call_url.encode('utf-8'))
+                call_url)
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 15))
             return self._vfs_set_parent_location(url)
@@ -4385,6 +4393,9 @@ no_context_error_translators.register(b'DirectoryNotEmpty',
 no_context_error_translators.register(b'UnknownFormat',
     lambda err: errors.UnknownFormatError(
         err.error_args[0].decode('ascii'), err.error_args[0].decode('ascii')))
+no_context_error_translators.register(b'InvalidURL',
+    lambda err: urlutils.InvalidURL(
+        err.error_args[0].decode('utf-8'), err.error_args[1].decode('ascii')))
 
 def _translate_short_readv_error(err):
     args = err.error_args

@@ -389,7 +389,7 @@ class TestHttpTransportUrls(tests.TestCase):
         self._transport('http://example.com/bzr/bzr.dev/')
         self.assertRaises(urlutils.InvalidURL,
                           self._transport,
-                          'http://http://example.com/bzr/bzr.dev/')
+                          'http://example.com:port/bzr/bzr.dev/')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
@@ -2111,6 +2111,8 @@ mbp@source\r
         # Remember that the request is ignored and that the ranges below
         # doesn't have to match the canned response.
         l = list(t.readv('/foo/bar', ((0, 255), (1000, 1050))))
+        # Force consumption of the last bytesrange boundary
+        t._get_connection().cleanup_pipe()
         self.assertEqual(2, len(l))
         self.assertActivitiesMatch()
 
@@ -2159,7 +2161,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     def setUp(self):
         super(TestNoReportActivity, self).setUp()
-        self._transport =HttpTransport
+        self._transport = HttpTransport
         TestActivityMixin.setUp(self)
 
     def assertActivitiesMatch(self):
@@ -2210,7 +2212,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
             return redirected_t
 
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
-        self.assertEqual('redirected once',
+        self.assertEqual(b'redirected once',
                          transport.do_catching_redirections(
                 self.get_a, self.old_transport, redirected).read())
         self.assertEqual(1, self.redirections)
@@ -2228,7 +2230,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once', t._perform(req).read())
+        self.assertEqual(b'redirected once', t._perform(req).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts

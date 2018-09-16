@@ -58,12 +58,10 @@ from .sixish import (
 
 
 def transform_tree(from_tree, to_tree, interesting_files=None):
-    from_tree.lock_tree_write()
-    operation = cleanup.OperationWithCleanups(merge_inner)
-    operation.add_cleanup(from_tree.unlock)
-    operation.run_simple(from_tree.branch, to_tree, from_tree,
-        ignore_zero=True, this_tree=from_tree,
-        interesting_files=interesting_files)
+    with from_tree.lock_tree_write():
+        merge_inner(from_tree.branch, to_tree, from_tree,
+            ignore_zero=True, this_tree=from_tree,
+            interesting_files=interesting_files)
 
 
 class MergeHooks(hooks.Hooks):
@@ -788,17 +786,10 @@ class Merge3Merger(object):
             pass
 
     def make_preview_transform(self):
-        operation = cleanup.OperationWithCleanups(self._make_preview_transform)
-        self.base_tree.lock_read()
-        operation.add_cleanup(self.base_tree.unlock)
-        self.other_tree.lock_read()
-        operation.add_cleanup(self.other_tree.unlock)
-        return operation.run_simple()
-
-    def _make_preview_transform(self):
-        self.tt = transform.TransformPreview(self.working_tree)
-        self._compute_transform()
-        return self.tt
+        with self.base_tree.lock_read(), self.other_tree.lock_read():
+            self.tt = transform.TransformPreview(self.working_tree)
+            self._compute_transform()
+            return self.tt
 
     def _compute_transform(self):
         if self._lca_trees is None:

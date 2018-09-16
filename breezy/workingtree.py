@@ -32,13 +32,13 @@ from __future__ import absolute_import
 import errno
 import os
 import re
-import shutil
 import sys
 
 import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import shutil
 import stat
 
 from breezy import (
@@ -1336,6 +1336,42 @@ class WorkingTree(mutabletree.MutableTree,
     def get_shelf_manager(self):
         """Return the ShelfManager for this WorkingTree."""
         raise NotImplementedError(self.get_shelf_manager)
+
+    def get_canonical_paths(self, paths):
+        """Like get_canonical_path() but works on multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A list of paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
+        """
+        with self.lock_read():
+            for path in paths:
+                yield path
+
+    def get_canonical_path(self, path):
+        """Returns the first item in the tree that matches a path.
+
+        This is meant to allow case-insensitive path lookups on e.g.
+        FAT filesystems.
+
+        If a path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches according to the underlying file system,
+        it is implementation defined which is returned.
+
+        If no path matches according to the file system, the input path is
+        returned, but with as many path entries that do exist changed to their
+        canonical form.
+
+        If you need to resolve many names from the same tree, you should
+        use get_canonical_paths() to avoid O(N) behaviour.
+
+        :param path: A paths relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements
+        that match case insensitively.
+        """
+        with self.lock_read():
+            return next(self.get_canonical_paths([path]))
 
 
 class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):

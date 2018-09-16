@@ -464,7 +464,7 @@ class _DefaultLogGenerator(LogGenerator):
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
-                if levels != 0 and merge_depth >= levels:
+                if levels != 0 and merge_depth is not None and merge_depth >= levels:
                     continue
                 if omit_merges and len(rev.parent_ids) > 1:
                     continue
@@ -1684,7 +1684,7 @@ class ShortLogFormatter(LogFormatter):
         self.show_properties(revision.rev, indent+offset)
         if self.show_ids or revision.revno is None:
             to_file.write(indent + offset + 'revision-id:%s\n'
-                          % (revision.rev.revision_id,))
+                          % (revision.rev.revision_id.decode('utf-8'),))
         if not revision.rev.message:
             to_file.write(indent + offset + '(no message)\n')
         else:

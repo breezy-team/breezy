@@ -372,10 +372,12 @@ class TestMap(TestCaseWithStore):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
                                  sorted(node_two._items.keys()))
-                node_one_stack.extend([n for n, _ in
-                                       node_one._iter_nodes(map_one._store)])
-                node_two_stack.extend([n for n, _ in
-                                       node_two._iter_nodes(map_two._store)])
+                node_one_stack.extend(sorted(
+                    [n for n, _ in node_one._iter_nodes(map_one._store)],
+                    key=lambda a: a._search_prefix))
+                node_two_stack.extend(sorted(
+                    [n for n, _ in node_two._iter_nodes(map_two._store)],
+                    key=lambda a: a._search_prefix))
             else:
                 # Leaf nodes must have identical contents
                 self.assertEqual(node_one._items, node_two._items)
@@ -407,20 +409,20 @@ class TestMap(TestCaseWithStore):
         map_two = CHKMap(store, None)
         map_two._root_node.set_maximum_size(20)
         self.assertMapLayoutEqual(map_one, map_two)
-        map_one.map(b'aaa', b'value')
+        map_one.map((b'aaa', ), b'value')
         self.assertRaises(AssertionError,
             self.assertMapLayoutEqual, map_one, map_two)
-        map_two.map(b'aaa', b'value')
+        map_two.map((b'aaa', ), b'value')
         self.assertMapLayoutEqual(map_one, map_two)
         # Split the tree, so we ensure that internal nodes and leaf nodes are
         # properly checked
-        map_one.map(b'aab', b'value')
+        map_one.map((b'aab', ), b'value')
         self.assertIsInstance(map_one._root_node, InternalNode)
         self.assertRaises(AssertionError,
             self.assertMapLayoutEqual, map_one, map_two)
-        map_two.map(b'aab', b'value')
+        map_two.map((b'aab', ), b'value')
         self.assertMapLayoutEqual(map_one, map_two)
-        map_one.map(b'aac', b'value')
+        map_one.map((b'aac', ), b'value')
         self.assertRaises(AssertionError,
             self.assertMapLayoutEqual, map_one, map_two)
         self.assertCanonicalForm(map_one)
@@ -434,7 +436,7 @@ class TestMap(TestCaseWithStore):
 
     def test_from_dict_ab(self):
         chk_bytes = self.get_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes, {b"a": b"b"})
+        root_key = CHKMap.from_dict(chk_bytes, {(b"a", ): b"b"})
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, root_key)
@@ -445,7 +447,7 @@ class TestMap(TestCaseWithStore):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {})
         chkmap = CHKMap(chk_bytes, root_key)
-        new_root = chkmap.apply_delta([(None, b"a", b"b")])
+        new_root = chkmap.apply_delta([(None, (b"a", ), b"b")])
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, new_root)
@@ -1143,7 +1145,7 @@ class TestMap(TestCaseWithStore):
     def test_iteritems_two_items(self):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes,
-            {b"a": b"content here", b"b": b"more content"})
+            {(b"a", ): b"content here", (b"b", ): b"more content"})
         chkmap = CHKMap(chk_bytes, root_key)
         self.assertEqual([((b"a",), b"content here"), ((b"b",), b"more content")],
             sorted(list(chkmap.iteritems())))
@@ -1440,7 +1442,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('3',) 'baz'\n"
                              "  '\\x83' LeafNode\n"
                              "      ('1',) 'foo'\n"
-                             , chkmap._dump_tree())
+                             , chkmap._dump_tree(encoding='latin1'))
         root_key = chkmap._save()
         chkmap = chk_map.CHKMap(chk_bytes, root_key,
                                 search_key_func=chk_map._search_key_255)
@@ -1454,7 +1456,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('3',) 'baz'\n"
                              "  '\\x83' LeafNode\n"
                              "      ('1',) 'foo'\n"
-                             , chkmap._dump_tree())
+                             , chkmap._dump_tree(encoding='latin1'))
 
     def test_search_key_collisions(self):
         chkmap = chk_map.CHKMap(self.get_chk_bytes(), None,
@@ -1561,8 +1563,8 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(None, node.key())
 
     def test_key_after_map(self):
-        node = LeafNode.deserialise("chkleaf:\n10\n1\n0\n\n", ("sha1:1234",))
-        node.map(None, ("foo bar",), "baz quux")
+        node = LeafNode.deserialise(b"chkleaf:\n10\n1\n0\n\n", (b"sha1:1234",))
+        node.map(None, (b"foo bar",), b"baz quux")
         self.assertEqual(None, node.key())
 
     def test_key_after_unmap(self):

@@ -155,7 +155,10 @@ def minimum_path_selection(paths):
         return set(paths)
 
     def sort_key(path):
-        return path.split('/')
+        if isinstance(path, bytes):
+            return path.split(b'/')
+        else:
+            return path.split('/')
     sorted_paths = sorted(list(paths), key=sort_key)
 
     search_paths = [sorted_paths[0]]
@@ -636,11 +639,15 @@ def is_inside(dir, fname):
     if dir == fname:
         return True
 
-    if dir == '':
+    if dir in ('', b''):
         return True
 
-    if not dir.endswith('/'):
-        dir += '/'
+    if isinstance(dir, bytes):
+        if not dir.endswith(b'/'):
+            dir += b'/'
+    else:
+        if not dir.endswith('/'):
+            dir += '/'
 
     return fname.startswith(dir)
 
@@ -1021,13 +1028,16 @@ def splitpath(p):
     """Turn string into list of parts."""
     # split on either delimiter because people might use either on
     # Windows
-    ps = re.split(r'[\\/]', p)
+    if isinstance(p, bytes):
+        ps = re.split(b'[\\\\/]', p)
+    else:
+        ps = re.split(r'[\\/]', p)
 
     rps = []
     for f in ps:
-        if f == '..':
+        if f in ('..', b'..'):
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif (f == '.') or (f == ''):
+        elif f in ('.', '', b'.', b''):
             pass
         else:
             rps.append(f)
@@ -1888,6 +1898,8 @@ class UnicodeDirReader(DirReader):
         See DirReader.read_dir for details.
         """
         _utf8_encode = self._utf8_encode
+        _fs_decode = lambda s: s.decode(_fs_enc)
+        _fs_encode = lambda s: s.encode(_fs_enc)
         _lstat = os.lstat
         _listdir = os.listdir
         _kind_from_mode = file_kind_from_stat_mode
@@ -1900,12 +1912,13 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in _listdir(top):
+        for name_native in _listdir(top.encode('utf-8')):
             try:
-                name_utf8 = _utf8_encode(name)[0]
+                name = _fs_decode(name_native)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    _utf8_encode(relprefix)[0] + name, _fs_enc)
+                    relprefix + name_native, _fs_enc)
+            name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
@@ -1992,7 +2005,7 @@ def compare_paths_prefix_order(path_a, path_b):
     """Compare path_a and path_b to generate the same order walkdirs uses."""
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
-    return cmp(key_a, key_b)
+    return (key_a > key_b) - (key_a < key_b)
 
 
 _cached_user_encoding = None
@@ -2371,6 +2384,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
 
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):

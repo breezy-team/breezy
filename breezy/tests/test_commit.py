@@ -117,7 +117,7 @@ class TestCommit(TestCaseWithTransport):
         with open('hello', 'w') as f: f.write('hello world')
         wt.add('hello')
         revid = wt.commit(message='add hello', rev_id=b'revid', lossy=True)
-        self.assertEqual('revid', revid)
+        self.assertEqual(b'revid', revid)
 
     def test_commit_lossy_foreign(self):
         """Attempt a lossy commit to a foreign branch."""
@@ -129,7 +129,7 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEqual(b'dummy-v1:1302659388.0-0-UNKNOWN', revid)
+        self.assertEqual(b'dummy-v1:1302659388-0-UNKNOWN', revid)
 
     def test_commit_bound_lossy_foreign(self):
         """Attempt a lossy commit to a bzr branch bound to a foreign branch."""
@@ -142,10 +142,10 @@ class TestCommit(TestCaseWithTransport):
         wt.add('hello')
         revid = wt.commit(message='add hello', lossy=True,
             timestamp=1302659388, timezone=0)
-        self.assertEqual(b'dummy-v1:1302659388.0-0-0', revid)
-        self.assertEqual(b'dummy-v1:1302659388.0-0-0',
+        self.assertEqual(b'dummy-v1:1302659388-0-0', revid)
+        self.assertEqual(b'dummy-v1:1302659388-0-0',
             foreign_branch.last_revision())
-        self.assertEqual(b'dummy-v1:1302659388.0-0-0',
+        self.assertEqual(b'dummy-v1:1302659388-0-0',
             wt.branch.last_revision())
 
     def test_missing_commit(self):
@@ -357,7 +357,7 @@ class TestCommit(TestCaseWithTransport):
             with open('hello', 'w') as f: f.write((str(i) * 4) + '\n')
             if i == 0:
                 wt.add(['hello'], [b'hello-id'])
-            rev_id = 'test@rev-%d' % (i+1)
+            rev_id = b'test@rev-%d' % (i+1)
             rev_ids.append(rev_id)
             wt.commit(message='rev %d' % (i+1),
                      rev_id=rev_id)
@@ -423,7 +423,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id=b'A')
-        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
             from ..testament import Testament
             # monkey patch gpg signing mechanism
@@ -438,8 +438,8 @@ create_signatures=always
                 return breezy.gpg.LoopbackGPGStrategy(None).sign(
                         text, breezy.gpg.MODE_CLEAR)
             self.assertEqual(sign(Testament.from_revision(branch.repository,
-                                                          'B').as_short_text()),
-                             branch.repository.get_signature_text('B'))
+                                                          b'B').as_short_text()),
+                             branch.repository.get_signature_text(b'B'))
         finally:
             breezy.gpg.GPGStrategy = oldstrategy
 
