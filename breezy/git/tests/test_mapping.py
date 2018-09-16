@@ -117,7 +117,7 @@ class TestImportCommit(tests.TestCase):
         self.assertEqual(u"Committer", rev.committer)
         self.assertEqual(u"Author", rev.properties[u'author'])
         self.assertEqual(300, rev.timezone)
-        self.assertEqual((), rev.parent_ids)
+        self.assertEqual([], rev.parent_ids)
         self.assertEqual("5", rev.properties[u'author-timestamp'])
         self.assertEqual("180", rev.properties[u'author-timezone'])
         self.assertEqual(b"git-v1:" + c.id, rev.revision_id)

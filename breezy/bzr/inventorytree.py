@@ -69,89 +69,6 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
-    def get_canonical_inventory_paths(self, paths):
-        """Like get_canonical_inventory_path() but works on multiple items.
-
-        :param paths: A sequence of paths relative to the root of the tree.
-        :return: A list of paths, with each item the corresponding input path
-        adjusted to account for existing elements that match case
-        insensitively.
-        """
-        with self.lock_read():
-            return list(self._yield_canonical_inventory_paths(paths))
-
-    def get_canonical_inventory_path(self, path):
-        """Returns the first inventory item that case-insensitively matches path.
-
-        If a path matches exactly, it is returned. If no path matches exactly
-        but more than one path matches case-insensitively, it is implementation
-        defined which is returned.
-
-        If no path matches case-insensitively, the input path is returned, but
-        with as many path entries that do exist changed to their canonical
-        form.
-
-        If you need to resolve many names from the same tree, you should
-        use get_canonical_inventory_paths() to avoid O(N) behaviour.
-
-        :param path: A paths relative to the root of the tree.
-        :return: The input path adjusted to account for existing elements
-        that match case insensitively.
-        """
-        with self.lock_read():
-            return next(self._yield_canonical_inventory_paths([path]))
-
-    def _yield_canonical_inventory_paths(self, paths):
-        for path in paths:
-            # First, if the path as specified exists exactly, just use it.
-            if self.path2id(path) is not None:
-                yield path
-                continue
-            # go walkin...
-            cur_id = self.get_root_id()
-            cur_path = ''
-            bit_iter = iter(path.split("/"))
-            for elt in bit_iter:
-                lelt = elt.lower()
-                new_path = None
-                try:
-                    for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
-                        try:
-                            # XXX: it seem like if the child is known to be in the
-                            # tree, we shouldn't need to go from its id back to
-                            # its path -- mbp 2010-02-11
-                            #
-                            # XXX: it seems like we could be more efficient
-                            # by just directly looking up the original name and
-                            # only then searching all children; also by not
-                            # chopping paths so much. -- mbp 2010-02-11
-                            child_base = os.path.basename(self.id2path(child.file_id))
-                            if (child_base == elt):
-                                # if we found an exact match, we can stop now; if
-                                # we found an approximate match we need to keep
-                                # searching because there might be an exact match
-                                # later.  
-                                cur_id = child.file_id
-                                new_path = osutils.pathjoin(cur_path, child_base)
-                                break
-                            elif child_base.lower() == lelt:
-                                cur_id = child.file_id
-                                new_path = osutils.pathjoin(cur_path, child_base)
-                        except errors.NoSuchId:
-                            # before a change is committed we can see this error...
-                            continue
-                except errors.NotADirectory:
-                    pass
-                if new_path:
-                    cur_path = new_path
-                else:
-                    # got to the end of this directory and no entries matched.
-                    # Return what matched so far, plus the rest as specified.
-                    cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
-                    break
-            yield cur_path
-        # all done.
-
     def _get_root_inventory(self):
         return self._inventory
 
@@ -451,7 +368,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
     def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
         if not self.case_sensitive:
-            path = self.get_canonical_inventory_path(path)
+            path = self.get_canonical_path(path)
         return path
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
