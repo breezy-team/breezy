@@ -2,6 +2,7 @@ breezy (3.0.0~bzr7119-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
   * Support alpha releases in watch.
+  * Add upstream signing keys.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 16 Sep 2018 09:32:53 +0100
 
