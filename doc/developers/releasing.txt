@@ -585,13 +585,13 @@ Now that the release is publicly available, tell people about it.
 
    From the tarball created and tested earlier ::
 
-     twine upload -s ../breezy-3.0.0.tar.gz
+     twine upload ../breezy-3.0.0.tar.gz ../breezy-3.0.0.tar.gz.asc
 
    Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases nor SRUs.
 
    The ``twine`` command is provided by the ``twine`` package on Debian and
-   Ubuntu.
+   Ubuntu. Beware that you need at least ``twine-1.10``.
 
    If in doubt, you can test with <https://testpypi.python.org/pypi> where
    you can register yourself, register the brz project and upload (and then
@@ -617,7 +617,7 @@ Now that the release is publicly available, tell people about it.
 
   Uploading is done with::
 
-    twine upload -r testpypi -s ../breezy-3.0.0.tar.gz
+    twine upload -r testpypi ../breezy-3.0.0.tar.gz ../breezy-3.0.0.tar.gz.asc
 
    To be able to upload the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of the
