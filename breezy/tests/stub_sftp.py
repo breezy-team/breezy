@@ -224,6 +224,14 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
+    def readlink(self, path):
+        path = self._realpath(path)
+        try:
+            target_path = os.readlink(path)
+        except OSError as e:
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return target_path
+
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
@@ -248,7 +256,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
-    # removed: chattr, symlink, readlink
+    # removed: chattr
     # (nothing in bzr's sftp transport uses those)
 
 

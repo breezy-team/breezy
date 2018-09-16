@@ -1021,6 +1021,8 @@ class TransportTests(TestTransportImplementation):
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
 
+        self.assertEqual(source_name, t.readlink(link_name))
+
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()
