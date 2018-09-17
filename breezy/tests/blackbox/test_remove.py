@@ -273,3 +273,16 @@ class TestRemove(TestCaseWithTransport):
                      error_regexes=["removed a", "removed b", "removed b/c"])
         tree = WorkingTree.open('.')
         self.assertFilesUnversioned(files)
+
+    def test_remove_backslash(self):
+        # pad.lv/176263
+        if os.path.sep == '\\':
+            raise tests.TestNotApplicable(
+                'unable to add filenames with backslashes where '
+                ' it is the path separator')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['\\'])
+        self.assertEqual('adding \\\n', self.run_bzr('add \\\\')[0])
+        self.assertEqual('\\\n', self.run_bzr('ls --versioned')[0])
+        self.assertEqual('', self.run_bzr('rm \\\\')[0])
+        self.assertEqual('', self.run_bzr('ls --versioned')[0])
