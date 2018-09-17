@@ -211,20 +211,20 @@ class BzrUploader(object):
         self._force_clear(relpath)
         self.upload_file(relpath, relpath, id, mode)
 
-    def upload_symlink(self, relpath, source):
-        self.to_transport.symlink(source, relpath)
+    def upload_symlink(self, relpath, target):
+        self.to_transport.symlink(target, relpath)
 
-    def upload_symlink_robustly(self, relpath, source):
+    def upload_symlink_robustly(self, relpath, target):
         """Handle uploading symlinks.
         """
         self._force_clear(relpath)
         # Target might not be there at this time; dummy file should be
         # overwritten at some point, possibly by another upload.
-        source = osutils.normpath(osutils.pathjoin(
+        target = osutils.normpath(osutils.pathjoin(
             osutils.dirname(relpath),
-            source)
+            target)
         )
-        self.upload_symlink(relpath, source)
+        self.upload_symlink(relpath, target)
 
     def make_remote_dir(self, relpath, mode=None):
         if mode is None:
@@ -374,10 +374,7 @@ class BzrUploader(object):
                 elif kind is  'directory':
                     self.delete_remote_dir_maybe(path)
                 elif kind == 'symlink':
-                    if not self.quiet:
-                        target = self.tree.path_content_summary(path)[3]
-                        self.outf.write('Not deleting remote symlink %s -> %s\n'
-                                        % (path, target))
+                    self.delete_remote_file(path)
                 else:
                     raise NotImplementedError
 
@@ -392,12 +389,7 @@ class BzrUploader(object):
                     # We update the old_path content because renames and
                     # deletions are differed.
                     self.upload_file(old_path, new_path, id)
-                if kind == 'symlink':
-                    if not self.quiet:
-                        self.outf.write('Not renaming remote symlink %s to %s\n'
-                                        % (old_path, new_path))
-                else:
-                    self.rename_remote(old_path, new_path)
+                self.rename_remote(old_path, new_path)
             self.finish_renames()
             self.finish_deletions()
 
@@ -416,7 +408,8 @@ class BzrUploader(object):
                 if new_kind == 'file':
                     self.upload_file(path, path, id)
                 elif new_kind == 'symlink':
-                    self.upload_symlink(path, self.tree.get_symlink_target(path))
+                    target = self.tree.get_symlink_target(path)
+                    self.upload_symlink(path, target)
                 elif new_kind is 'directory':
                     self.make_remote_dir(path)
                 else:
@@ -432,10 +425,13 @@ class BzrUploader(object):
                 elif kind == 'directory':
                     self.make_remote_dir(path)
                 elif kind == 'symlink':
-                    if not self.quiet:
-                        target = self.tree.get_symlink_target(path)
-                        self.outf.write('Not uploading symlink %s -> %s\n'
-                                        % (path, target))
+                    target = self.tree.get_symlink_target(path)
+                    try:
+                        self.upload_symlink(path, target)
+                    except errors.TransportNotPossible:
+                        if not self.quiet:
+                            self.outf.write('Not uploading symlink %s -> %s\n'
+                                            % (path, target))
                 else:
                     raise NotImplementedError
 
@@ -448,6 +444,9 @@ class BzrUploader(object):
                     continue
                 if kind == 'file':
                     self.upload_file(path, path, id)
+                elif kind == 'symlink':
+                    target = self.tree.get_symlink_target(path)
+                    self.upload_symlink(path, target)
                 else:
                     raise NotImplementedError
 
@@ -571,14 +570,11 @@ class cmd_upload(commands.Command):
             locked.unlock()
 
         # We uploaded successfully, remember it
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             upload_location = conf.get('upload_location')
             if upload_location is None or remember:
                 conf.set('upload_location',
                          urlutils.unescape(to_transport.base))
             if auto is not None:
                 conf.set('upload_auto', auto)
-        finally:
-            branch.unlock()
 
