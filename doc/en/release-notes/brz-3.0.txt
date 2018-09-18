@@ -171,6 +171,8 @@ Bug Fixes
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
 
+* Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)
+
 Documentation
 *************
 
