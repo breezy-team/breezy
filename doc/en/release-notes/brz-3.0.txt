@@ -171,8 +171,6 @@ Bug Fixes
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
 
-* Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)
-
 Documentation
 *************
 
@@ -275,6 +273,8 @@ Internals
 
 Testing
 *******
+
+ * Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)
 
  * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
    which caused ``output_encoding = iso-8859-1`` to be added to the
