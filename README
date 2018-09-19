@@ -1,13 +1,13 @@
-bzr-builddeb
-============
+brz-debian
+==========
 
 Overview
 --------
 
-This is bzr-builddeb, a plugin for `bzr`_ that allows you to build `Debian`_
-packages from a bzr branch. 
+This is brz-debian, a plugin for `brz`_ that allows you to build `Debian`_
+packages from a brz branch.
 
-.. _bzr: http://bazaar-vcs.org/
+.. _brz: https://www.breezy-vcs.org/
 .. _Debian: http://www.debian.org/
 
 Note that there is a user manual available at
@@ -18,7 +18,7 @@ Installation
 ------------
 
 This plugin requires `python-debian`_ (at least version 0.1.11),
-and a version of bzr at least 2.1. These are available in Debian
+and a version of brz at least 2.1. These are available in Debian
 (though maybe not at the required versions for a development version
 of builddeb).
 
@@ -33,22 +33,22 @@ This plugin can be installed in two ways. As you are probably using a Debian
 system you can probably just use the Debian packages. The other way is to 
 branch it in to ``~/.bazaar/plugins/builddeb``, i.e::
 
-  bzr branch http://jameswestby.net/bzr/bzr-builddeb/ \
-    ~/.bazaar/plugins/builddeb
+  brz branch https://code.breezy-vcs.org/breezy-debian/trunk/ \
+    ~/.config/breezy/plugins/debian
 
-This will give you a ``bzr builddeb`` command (alias ``bd``).
+This will give you a ``brz builddeb`` command (alias ``bd``).
 
-Help for this plugin can be found by running ``bzr help builddeb``.
+Help for this plugin can be found by running ``brz help builddeb``.
 
-There is also a script named ``bzr-buildpackage`` provided in /usr/bin
+There is also a script named ``brz-buildpackage`` provided in /usr/bin
 that provides access to the tool as well. It is just a wrapper script that
-calls ``bzr builddeb`` with the arguments you provide, so the rest of the
+calls ``brz builddeb`` with the arguments you provide, so the rest of the
 documentation applies equally well to using this script. Probably the only
-difference is that help will be got with ``bzr-buildpackage ---help`` 
-(as ``bzr builddeb --help`` also works and does the same as
-``bzr help builddeb``). The script is provided for two reasons, the first
+difference is that help will be got with ``brz-buildpackage ---help`` 
+(as ``brz builddeb --help`` also works and does the same as
+``brz help builddeb``). The script is provided for two reasons, the first
 is similarity to the other ``-buildpackage`` systems, and the second is so
-that the Debian package can provide the ``bzr-buildpackage`` package, and
+that the Debian package can provide the ``brz-buildpackage`` package, and
 so make it easier for people to find the package.
 
 Configuration
@@ -139,7 +139,7 @@ on the type of package you are building.
 
   * ``export-upstream = path``
 
-    This option takes a path (remote or local) to a bzr branch that contains
+    This option takes a path (remote or local) to a brz branch that contains
     the upstream code. If this is set then the plugin will export the code
     from that branch to create the ``.orig.tar.gz``. This option only has any
     effect if ``merge`` is set.
@@ -188,7 +188,7 @@ Below are instructions for creating a package. These instructions differ
 depending on whether you want to use merge mode or not.
 
 First the common start create a directory to hold your work. This is not
-absolutely necessary, but as you still get all the power of bzr when using 
+absolutely necessary, but as you still get all the power of brz when using 
 this plugin, so you might want to branch etc. and so this will be useful 
 later on::
 
@@ -197,7 +197,7 @@ later on::
 If you are going to be using branches then the following is a good optimisation
 you can use::
 
-  $ bzr init-repo --trees path/to/project
+  $ brz init-repo --trees path/to/project
 
 Now create your global config file if you want to change something like the
 builder in use, or have a global result directory or similar::
@@ -208,7 +208,7 @@ builder in use, or have a global result directory or similar::
 and any options that you want.
 
 I will describe creating a new project, but for existing projects you can
-copy the code over and call ``bzr init`` then continue in the same way.
+copy the code over and call ``brz init`` then continue in the same way.
 
 I will also describe the setup that conforms to the default options for
 directories. If you wish to use a different layout set up the options to 
@@ -228,7 +228,7 @@ plugin will automatically retrieve the tarballs as they are needed.
 
 Now create the branch for the ``debian/`` directory::
 
-  $ bzr init project
+  $ brz init project
 
 Now you can either create a ``project/debian/`` directory for all the files, 
 or add them in the ``project`` directory.
@@ -242,8 +242,8 @@ Now tell bzr-builddeb that this is a merge mode project::
 Now you are ready to create the project. Create the usual files, and edit them 
 to your satisfaction. When you have the files run::
 
-  $ bzr add
-  $ bzr ci
+  $ brz add
+  $ brz ci
 
 from the root of the project branch.
 
@@ -256,13 +256,13 @@ Non-merge mode
 This is a little simpler to set up. Create the branch for the project::
 
   $ cd path/to/project
-  $ bzr init project
+  $ brz init project
 
 Now add all the project files to the branch, and add the to bzr::
 
   $ cd project
-  $ bzr add
-  $ bzr ci
+  $ brz add
+  $ brz ci
 
 There are two options when you want to build a Debian package, whether
 it is a native package or not. Most packages are non-native so I will describe
@@ -298,7 +298,7 @@ Once your package is set up then building it is easy. Run the following
 command from the top-level of the project branch, after checking in all 
 changes::
 
-  $ bzr bd
+  $ brz bd
 
 If you used the default options this should build the package and leave the
 resulting files in ``../build-area``. 
@@ -306,7 +306,7 @@ resulting files in ``../build-area``.
 Note that most of the options can be used as parameters to this command as well
 by prefixing their name with ``--``. So you can do for example::
 
-  $ bzr bd --builder pdebuild
+  $ brz bd --builder pdebuild
 
 to change from what is in the configuration files. Note that there is currently
 no way to set the binary options to false if they are set to true in the
@@ -326,7 +326,7 @@ you do not want to unpack it at every build you can speed things up even more.
 This involves reusing the tarball each build, so saving the need to unpack it.
 To do this run::
 
-  $ bzr bd --export-only 
+  $ brz bd --export-only 
 
 once to create a build-dir to use. (``-e`` is the short option for this). Then 
 on the next builds you can use the ``--reuse`` and ``--dont-purge`` options to
@@ -338,7 +338,7 @@ especially if files are removed**, it is advisable to run a build without
 Workflow
 --------
 
-bzr-builddeb is designed to fit in with the workflow that bzr encourages. It
+bzr-builddeb is designed to fit in with the workflow that brz encourages. It
 is designed as a plugin, so that it just becomes one more ``bzr`` command that
 you run while working on the package.
 
@@ -352,7 +352,7 @@ Copyright
 This README is Copyright (C) 2006 James Westby <jw+debian@jameswestby.net> and
 is distributed under the following terms::
 
-   This file is part of bzr-builddeb.
+   This file is part of breezy-debian.
 
    bzr-builldeb is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
