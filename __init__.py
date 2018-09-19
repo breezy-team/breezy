@@ -84,6 +84,9 @@ except ImportError:
     directories.register_lazy("apt:", __name__ + '.directory',
             'VcsDirectory',
             "Directory that uses Debian Vcs-* control fields to look up branches")
+    directories.register_lazy("dgit:", __name__ + '.directory',
+            'DgitDirectory',
+            "Directory that uses Debian Dgit control fields to look up branches")
 
     branch_aliases = getattr(AliasDirectory, "branch_aliases", None)
     if branch_aliases is not None:

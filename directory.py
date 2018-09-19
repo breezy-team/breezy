@@ -40,10 +40,8 @@ class VcsDirectory(object):
         sources = apt_pkg.SourceRecords()
 
         urls = {}
-        lookup = getattr(sources, 'lookup', None) or sources.Lookup
-        while lookup(name):
-            record = getattr(sources, 'record', None) or sources.Record
-            for l in record.splitlines():
+        while sources.lookup(name):
+            for l in sources.record.splitlines():
                 if not ": " in l:
                     continue
                 (field, value) = l.strip("\n").split(": ", 1)
@@ -102,6 +100,50 @@ class VcsDirectory(object):
                 extra='unsupported VCSes %r found' % urls[version].keys())
 
         note("Resolved package URL from Debian package %s/%s: %s", name, version, url)
+        return url
+
+
+class DgitDirectory(object):
+
+    def look_up(self, name, url):
+        if "/" in name:
+            (name, version) = name.split("/", 1)
+        else:
+            version = None
+
+        apt_pkg.init()
+
+        sources = apt_pkg.SourceRecords()
+
+        urls = {}
+        while sources.lookup(name):
+            for l in sources.record.splitlines():
+                if not ": " in l:
+                    continue
+                (field, value) = l.strip("\n").split(": ", 1)
+
+                if field == "Version":
+                    pkg_version = value
+                elif field == "Dgit":
+                    urls[pkg_version] = value.split(' ')
+
+        if len(urls) == 0:
+            raise urlutils.InvalidURL(path=url, extra='no URLs found')
+
+        if version is None:
+            # Try the latest version
+            version = sorted(urls, cmp=apt_pkg.version_compare)[-1]
+
+        if not version in urls:
+            raise urlutils.InvalidURL(path=url,
+                    extra='version %s not found' % version)
+
+        url = urlutils.join_segment_parameters(
+                urls[version][3],
+                {"tag": urlutils.quote(urls[version][2], '')})
+
+        note("Resolved package URL from Debian package %s/%s: %s",
+             name, version, url)
         return url
 
 
