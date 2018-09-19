@@ -132,6 +132,10 @@ class Hoster(object):
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         raise NotImplementedError(self.get_derived_branch)
 
+    def get_push_url(self, branch):
+        """Get the push URL for a branch."""
+        raise NotImplementedError(self.get_push_url)
+
     def get_proposer(self, source_branch, target_branch):
         """Get a merge proposal creator.
 

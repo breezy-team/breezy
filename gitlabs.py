@@ -105,6 +105,13 @@ class GitLab(Hoster):
     def __init__(self, gl):
         self.gl = gl
 
+    def get_push_url(self, branch):
+        (host, project_name, branch_name) = parse_gitlab_url(branch)
+        project = self.gl.projects.get(project_name)
+        remote_repo_url = git_url_to_bzr_url(project.attributes['ssh_url_to_repo'])
+        return urlutils.join_segment_parameters(
+                remote_repo_url, {"branch": branch_name.encode('utf-8')})
+
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False):
         import gitlab
