@@ -116,7 +116,7 @@ class GitHub(Hoster):
         owner, project, branch_name = parse_github_url(branch)
         repo = self.gh.get_repo('%s/%s' % (owner, project))
         return urlutils.join_segment_parameters(
-            repo.ssh_url, {"branch": name.encode('utf-8')})
+            repo.ssh_url, {"branch": branch_name.encode('utf-8')})
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import github

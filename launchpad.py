@@ -81,6 +81,7 @@ def _call_webservice(call, *args, **kwargs):
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
 
+    # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
     def __init__(self, staging=False):
