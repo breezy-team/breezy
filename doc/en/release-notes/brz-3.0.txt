@@ -274,6 +274,8 @@ Internals
 Testing
 *******
 
+ * Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)
+
  * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
    which caused ``output_encoding = iso-8859-1`` to be added to the
    users' bazaar.conf. (Jelmer Vernooĳ)
