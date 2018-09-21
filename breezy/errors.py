@@ -592,6 +592,15 @@ class UnknownFormatError(BzrError):
         self.format = format
 
 
+class LineEndingError(BzrError):
+
+    _fmt = ("Line ending corrupted for file: %(file)s; "
+            "Maybe your files got corrupted in transport?")
+
+    def __init__(self, file):
+        self.file = file
+
+
 class IncompatibleFormat(BzrError):
 
     _fmt = "Format %(format)s is not compatible with .bzr version %(controldir)s."
