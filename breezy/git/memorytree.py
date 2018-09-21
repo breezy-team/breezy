@@ -57,6 +57,9 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         self._lock_mode = None
         self._populate_from_branch()
 
+    def _supports_executable(self):
+        return True
+
     @property
     def controldir(self):
         return self.branch.controldir
