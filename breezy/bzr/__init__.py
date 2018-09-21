@@ -44,7 +44,10 @@ class BzrProber(controldir.Prober):
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
-            raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
+            if first_line.endswith(b"\r\n"):
+                raise errors.LineEndingError(file=".bzr/branch-format")
+            else:
+                raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
         return cls.from_string(format_string)
 
     @classmethod
