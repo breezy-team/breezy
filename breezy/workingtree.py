@@ -157,10 +157,7 @@ class WorkingTree(mutabletree.MutableTree,
         return self._format.supports_merge_modified
 
     def _supports_executable(self):
-        if sys.platform == 'win32':
-            return False
-        # FIXME: Ideally this should check the file system
-        return True
+        return osutils.supports_executable(self.basedir)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
