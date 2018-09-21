@@ -1140,7 +1140,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self.user_transport.local_abspath('.'),
             self.control_transport.local_abspath("index"),
             self.store,
-            None if self.branch.head is None else self.store[self.branch.head].tree)
+            None if self.branch.head is None else self.store[self.branch.head].tree,
+            honor_filemode=self._supports_executable())
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
