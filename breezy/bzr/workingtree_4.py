@@ -2224,10 +2224,8 @@ class InterDirStateTree(InterTree):
             # would be good here.
             search_specific_files_utf8.add(path.encode('utf8'))
 
-        # -- specific_files is now a utf8 path set --
-        use_filesystem_for_exec = (sys.platform != 'win32')
         iter_changes = self.target._iter_changes(include_unchanged,
-            use_filesystem_for_exec, search_specific_files_utf8, state,
+            self.target._supports_executable(), search_specific_files_utf8, state,
             source_index, target_index, want_unversioned, self.target)
         return iter_changes.iter_changes()
 
