@@ -64,7 +64,7 @@ class MemoryStat(object):
         elif kind == 'symlink':
             self.st_mode = S_IFLNK | 0o644
         else:
-            raise AssertionError
+            raise AssertionError('unknown kind %r' % kind)
 
 
 class MemoryTransport(transport.Transport):
