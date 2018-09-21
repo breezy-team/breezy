@@ -366,7 +366,8 @@ class DirState(object):
     HEADER_FORMAT_2 = b'#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = b'#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path, sha1_provider, worth_saving_limit=0):
+    def __init__(self, path, sha1_provider, worth_saving_limit=0,
+                 use_filesystem_for_exec=True):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
@@ -375,6 +376,8 @@ class DirState(object):
             entries is known, only bother saving the dirstate if more than
             this count of entries have changed.
             -1 means never save hash changes, 0 means always save hash changes.
+        :param use_filesystem_for_exec: Whether to trust the filesystem
+            for executable bit information
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -423,6 +426,7 @@ class DirState(object):
         self._worth_saving_limit = worth_saving_limit
         self._config_stack = config.LocationStack(urlutils.local_path_to_url(
             path))
+        self._use_filesystem_for_exec = use_filesystem_for_exec
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1937,14 +1941,10 @@ class DirState(object):
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
-        return bool(S_IEXEC & mode)
-
-    def _is_executable_win32(self, mode, old_executable):
-        """On win32 the executable bit is stored in the dirstate."""
-        return old_executable
-
-    if sys.platform == 'win32':
-        _is_executable = _is_executable_win32
+        if self._use_filesystem_for_exec:
+            return bool(S_IEXEC & mode)
+        else:
+            return old_executable
 
     def _read_link(self, abspath, old_link):
         """Read the target of a symlink"""
@@ -2391,7 +2391,8 @@ class DirState(object):
         return len(self._parents) - len(self._ghosts)
 
     @classmethod
-    def on_file(cls, path, sha1_provider=None, worth_saving_limit=0):
+    def on_file(cls, path, sha1_provider=None, worth_saving_limit=0,
+                use_filesystem_for_exec=True):
         """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
@@ -2400,12 +2401,15 @@ class DirState(object):
         :param worth_saving_limit: when the exact number of hash changed
             entries is known, only bother saving the dirstate if more than
             this count of entries have changed. -1 means never save.
+        :param use_filesystem_for_exec: Whether to trust the filesystem
+            for executable bit information
         :return: An unlocked DirState object, associated with the given path.
         """
         if sha1_provider is None:
             sha1_provider = DefaultSHA1Provider()
         result = cls(path, sha1_provider,
-                     worth_saving_limit=worth_saving_limit)
+                     worth_saving_limit=worth_saving_limit,
+                     use_filesystem_for_exec=use_filesystem_for_exec)
         return result
 
     def _read_dirblocks_if_needed(self):

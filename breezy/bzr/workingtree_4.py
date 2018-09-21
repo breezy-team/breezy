@@ -260,7 +260,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         local_path = self.controldir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider(), self._worth_saving_limit())
+            self._sha1_provider(), self._worth_saving_limit(),
+            self._supports_executable())
         return self._dirstate
 
     def _sha1_provider(self):
