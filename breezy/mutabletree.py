@@ -197,14 +197,32 @@ class MutableTree(tree.Tree):
             if _from_tree is None:
                 _from_tree = self.basis_tree()
             changes = self.iter_changes(_from_tree)
-            try:
-                change = next(changes)
-                # Exclude root (talk about black magic... --vila 20090629)
-                if change[4] == (None, None):
+            if osutils.has_symlinks():
+                # Fast path for has_changes.
+                try:
                     change = next(changes)
-                return True
-            except StopIteration:
-                # No changes
+                    # Exclude root (talk about black magic... --vila 20090629)
+                    if change[4] == (None, None):
+                        change = next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in plantforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                if len(changes) > 0:
+                    return True
                 return False
 
     def check_changed_or_out_of_date(self, strict, opt_name,

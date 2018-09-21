@@ -986,6 +986,10 @@ class DiffTree(object):
             # is, missing) in both trees are skipped as well.
             if parent == (None, None) or kind == (None, None):
                 continue
+            if kind[0] == 'symlink' and not osutils.has_symlinks():
+                warning('bzr: warning: Ignoring "%s" as symlinks are not '
+                    'supported on this platform.' % (paths[0],))
+                continue
             oldpath, newpath = paths
             oldpath_encoded = get_encoded_path(paths[0])
             newpath_encoded = get_encoded_path(paths[1])

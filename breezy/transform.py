@@ -52,8 +52,7 @@ from breezy.i18n import gettext
 """)
 from .errors import (DuplicateKey, MalformedTransform,
                      ReusingTransform, CantMoveRoot,
-                     ImmortalLimbo, NoFinalPath,
-                     UnableCreateSymlink)
+                     ImmortalLimbo, NoFinalPath)
 from .filters import filtered_output_bytes, ContentFilterContext
 from .mutabletree import MutableTree
 from .osutils import (
@@ -654,6 +653,9 @@ class TreeTransformBase(object):
         conflicts = []
         for trans_id in self._new_id:
             kind = self.final_kind(trans_id)
+            if kind == 'symlink' and not has_symlinks():
+                # Ignore symlinks as they are not supported on this platform
+                continue
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
@@ -1392,13 +1394,17 @@ class DiskTreeTransform(TreeTransformBase):
         """
         if has_symlinks():
             os.symlink(target, self._limbo_name(trans_id))
-            unique_add(self._new_contents, trans_id, 'symlink')
         else:
             try:
                 path = FinalPaths(self).get_path(trans_id)
             except KeyError:
                 path = None
-            raise UnableCreateSymlink(path=path)
+            trace.warning('bzr: warning: Unable to create symlink "%s" on '
+                'this platform.' % (path,))
+        # We add symlink to _new_contents even if they are unsupported
+        # and not created. These entries are subsequently used to avoid
+        # conflicts on platforms that don't support symlink
+        unique_add(self._new_contents, trans_id, 'symlink')
 
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""

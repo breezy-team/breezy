@@ -386,20 +386,6 @@ class TestErrors(tests.TestCase):
             "you wish to keep, and delete it when you are done.",
             str(err))
 
-    def test_unable_create_symlink(self):
-        err = errors.UnableCreateSymlink()
-        self.assertEqual(
-            "Unable to create symlink on this platform",
-            str(err))
-        err = errors.UnableCreateSymlink(path=u'foo')
-        self.assertEqual(
-            "Unable to create symlink 'foo' on this platform",
-            str(err))
-        err = errors.UnableCreateSymlink(path=u'\xb5')
-        self.assertEqual(
-            "Unable to create symlink %s on this platform" % repr(u'\xb5'),
-            str(err))
-
     def test_invalid_url_join(self):
         """Test the formatting of InvalidURLJoin."""
         e = urlutils.InvalidURLJoin('Reason', 'base path', ('args',))

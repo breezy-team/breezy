@@ -130,6 +130,11 @@ Improvements
    ``RevisionTree.annotate_iter`` have been added. (Jelmer Vernooĳ,
    #897781)
 
+ * Branches with symlinks are now supported on Windows. Symlinks are
+   ignored by operations like branch, diff etc. with a warning as Symlinks
+   are not created on Windows.
+   (Parth Malwankar, #81689)
+
 Bug Fixes
 *********
 

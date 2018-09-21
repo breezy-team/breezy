@@ -16,12 +16,14 @@
 
 
 import os
+from StringIO import StringIO
 
 import breezy
 from .. import (
     config,
     controldir,
     errors,
+    trace,
     )
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
@@ -650,6 +652,35 @@ create_signatures=always
             self.assertEqual(kind, basis.kind(path))
         finally:
             basis.unlock()
+
+    def test_unsupported_symlink_commit(self):
+        self.requireFeature(SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello'])
+        tree.add('hello')
+        tree.commit('added hello', rev_id='hello_id')
+        os.symlink('hello', 'foo')
+        tree.add('foo')
+        tree.commit('added foo', rev_id='foo_id')
+        log = StringIO()
+        trace.push_log_file(log)
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            # At this point as bzr thinks symlinks are not supported
+            # we should get a warning about symlink foo and bzr should
+            # not think its removed.
+            os.unlink('foo')
+            self.build_tree(['world'])
+            tree.add('world')
+            tree.commit('added world', rev_id='world_id')
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+        self.assertContainsRe(
+            log.getvalue(),
+                'Ignoring "foo" as symlinks are not '
+                'supported on this platform.')
 
     def test_commit_kind_changes(self):
         self.requireFeature(SymlinkFeature)
