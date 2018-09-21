@@ -1651,9 +1651,13 @@ else:
 
 
 def supports_executable(path):
+    """Return if filesystem at path supports executable bit.
+
+    :param path: Path for which to check the file system
+    :return: boolean indicating whether executable bit can be stored/relied upon
+    """
     if sys.platform == 'win32':
         return False
-    import pdb; pdb.set_trace()
     if get_fs_type(path) in ('vfat', 'ntfs'):
         # filesystems known to not support executable bit
         return False
