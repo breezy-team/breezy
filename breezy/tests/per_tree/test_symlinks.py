@@ -23,7 +23,6 @@ from breezy import (
 from breezy.tests import (
     per_tree,
     )
-from breezy.bzr.inventorytree import InventoryTree
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
 from breezy.transform import _PreviewTree
@@ -36,12 +35,12 @@ def get_entry(tree, path):
     return next(tree.iter_entries_by_dir(specific_files=[path]))[1]
 
 
-class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
+class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
 
     _test_needs_features = [features.SymlinkFeature]
 
     def setUp(self):
-        super(TestInventoryWithSymlinks, self).setUp()
+        super(TestTreeWithSymlinks, self).setUp()
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
@@ -67,33 +66,3 @@ class TestInventoryWithSymlinks(per_tree.TestCaseWithTree):
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
 
-
-class TestInventory(per_tree.TestCaseWithTree):
-
-    def test_paths2ids_recursive(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/dir/', 'tree/dir/file'])
-        work_tree.add(['dir', 'dir/file'])
-        tree = self._convert_tree(work_tree)
-        if not isinstance(tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertEqual({tree.path2id('dir'), tree.path2id('dir/file')},
-                         tree.paths2ids(['dir']))
-
-    def test_paths2ids_forget_old(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        work_tree.add('file')
-        work_tree.commit('commit old state')
-        work_tree.remove('file')
-        tree = self._convert_tree(work_tree)
-        if not isinstance(tree, InventoryTree):
-            raise tests.TestNotApplicable(
-                "test not applicable on non-inventory tests")
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertEqual(set([]), tree.paths2ids(['file'],
-                         require_versioned=False))
