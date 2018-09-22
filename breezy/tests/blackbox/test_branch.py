@@ -121,7 +121,7 @@ class TestBranch(tests.TestCaseWithTransport):
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
             if c == b'\xFF':
-                corrupt = 'b\x00'
+                corrupt = b'\x00'
             else:
                 corrupt = b'\xFF'
             f.write(corrupt) # make sure we corrupt something
