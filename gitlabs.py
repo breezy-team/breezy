@@ -121,11 +121,14 @@ class GitLab(Hoster):
         if owner is None:
             owner = self.gl.user.username
         if project is None:
-            project = base_project.name
+            project = base_project.path
         try:
             target_project = self.gl.projects.get('%s/%s' % (owner, project))
-        except gitlab.GitlabGetError:
-            target_project = base_project.forks.create({})
+        except gitlab.GitlabGetError as e:
+            if e.response_code == 404:
+                target_project = base_project.forks.create({})
+            else:
+                raise
         remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
@@ -143,7 +146,7 @@ class GitLab(Hoster):
         if owner is None:
             owner = self.gl.user.username
         if project is None:
-            project = base_project.name
+            project = base_project.path
         try:
             target_project = self.gl.projects.get('%s/%s' % (owner, project))
         except gitlab.GitlabGetError as e:
