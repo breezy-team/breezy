@@ -16,6 +16,8 @@
 
 """Autopropose implementation."""
 
+from __future__ import absolute_import
+
 from ... import (
     branch as _mod_branch,
     errors,

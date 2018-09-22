@@ -16,6 +16,8 @@
 
 """Management of hosted branches."""
 
+from __future__ import absolute_import
+
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
