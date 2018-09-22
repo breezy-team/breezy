@@ -130,6 +130,8 @@ class Hoster(object):
         raise NotImplementedError(self.publish)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
+        """Get a derived branch ('a fork').
+        """
         raise NotImplementedError(self.get_derived_branch)
 
     def get_push_url(self, branch):
@@ -138,6 +140,8 @@ class Hoster(object):
 
     def get_proposer(self, source_branch, target_branch):
         """Get a merge proposal creator.
+
+        :note: source_branch does not have to be hosted by the hoster.
 
         :param source_branch: Source branch
         :param target_branch: Target branch

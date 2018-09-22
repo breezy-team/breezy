@@ -32,7 +32,6 @@ from ...option import (
     )
 from ...sixish import text_type
 from ...trace import note
-from ...transport import get_transport
 from . import (
     propose as _mod_propose,
     )
@@ -140,28 +139,4 @@ class cmd_propose_merge(Command):
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
-
-
-class cmd_autopropose(Command):
-    __doc__ = """Propose a change based on a script."""
-
-    takes_args = ['branch', 'script']
-    takes_options = [
-        Option('name', help='Name of the new remote branch.', type=str),
-        Option('overwrite', help='Whether to overwrite changes'),
-        ListOption('labels', short_name='l', type=text_type,
-            help='Labels to apply.'),
-        ]
-
-    def run(self, branch, script, name=None, overwrite=False, labels=None):
-        from .autopropose import autopropose, script_runner
-        import os
-        from ... import osutils
-        main_branch = _mod_branch.Branch.open(branch)
-        if name is None:
-            name = os.path.splitext(osutils.basename(script.split(' ')[0]))[0]
-        proposal = autopropose(
-                main_branch, lambda branch: script_runner(branch, script),
-                name=name, overwrite=overwrite, labels=labels)
         note(gettext('Merge proposal created: %s') % proposal.url)
