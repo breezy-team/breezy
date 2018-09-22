@@ -28,7 +28,7 @@ from io import (
     )
 import os
 import errno
-from stat import S_IFREG, S_IFDIR
+from stat import S_IFREG, S_IFDIR, S_IFLNK
 
 from .. import (
     transport,
@@ -39,6 +39,7 @@ from ..errors import (
     LockError,
     InProcessTransport,
     NoSuchFile,
+    TransportNotPossible,
     )
 from ..transport import (
     AppendBasedFileStream,
@@ -50,16 +51,20 @@ from ..transport import (
 
 class MemoryStat(object):
 
-    def __init__(self, size, is_dir, perms):
+    def __init__(self, size, kind, perms):
         self.st_size = size
-        if not is_dir:
+        if kind == 'file':
             if perms is None:
                 perms = 0o644
             self.st_mode = S_IFREG | perms
-        else:
+        elif kind == 'directory':
             if perms is None:
                 perms = 0o755
             self.st_mode = S_IFDIR | perms
+        elif kind == 'symlink':
+            self.st_mode = S_IFLNK | 0o644
+        else:
+            raise AssertionError('unknown kind %r' % kind)
 
 
 class MemoryTransport(transport.Transport):
@@ -77,6 +82,7 @@ class MemoryTransport(transport.Transport):
         self._cwd = url[split:]
         # dictionaries from absolute path to file mode
         self._dirs = {'/':None}
+        self._symlinks = {}
         self._files = {}
         self._locks = {}
 
@@ -88,6 +94,7 @@ class MemoryTransport(transport.Transport):
         url = self._scheme + path
         result = self.__class__(url)
         result._dirs = self._dirs
+        result._symlinks = self._symlinks
         result._files = self._files
         result._locks = self._locks
         return result
@@ -122,7 +129,9 @@ class MemoryTransport(transport.Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return (_abspath in self._files) or (_abspath in self._dirs)
+        return ((_abspath in self._files) or
+                (_abspath in self._dirs) or
+                (_abspath in self._symlinks))
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -254,10 +263,12 @@ class MemoryTransport(transport.Transport):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
         if _abspath in self._files:
-            return MemoryStat(len(self._files[_abspath][0]), False,
+            return MemoryStat(len(self._files[_abspath][0]), 'file',
                               self._files[_abspath][1])
         elif _abspath in self._dirs:
-            return MemoryStat(0, True, self._dirs[_abspath])
+            return MemoryStat(0, 'directory', self._dirs[_abspath])
+        elif _abspath in self._symlinks:
+            return MemoryStat(0, 'symlink', 0)
         else:
             raise NoSuchFile(_abspath)
 
@@ -287,7 +298,21 @@ class MemoryTransport(transport.Transport):
                 pass
             else:
                 r.append(i)
+                r = self._symlinks.get('/'.join(r), r)
         return '/' + '/'.join(r)
+
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name."""
+        _abspath = self._abspath(link_name)
+        self._check_parent(_abspath)
+        self._symlinks[_abspath] = source.split('/')
+
+    def readlink(self, link_name):
+        _abspath = self._abspath(link_name)
+        try:
+            return '/'.join(self._symlinks[_abspath])
+        except KeyError:
+            raise NoSuchFile(link_name)
 
 
 class _MemoryLock(object):
