@@ -30,6 +30,11 @@ from debian.deb822 import Deb822
 
 def vcs_git_url_to_bzr_url(url):
     """Convert a Vcs-Git string to a Breezy URL."""
+
+    # TODO(jelmer): some packages seem to use [PATH] behind the URL to
+    # indicate a subdirectory inside of the versioned tree.
+    # (this is not documented in policy)
+
     from breezy.git.urls import git_url_to_bzr_url
     if ' -b ' in url:
         (url, branch) = url.split(' -b ', 1)
@@ -47,6 +52,42 @@ def vcs_bzr_url_to_bzr_url(url):
     return directories.dereference(url)
 
 
+def vcs_darcs_url_to_bzr_url(url):
+    return url
+
+
+def vcs_hg_url_to_bzr_url(url):
+    return url
+
+
+def vcs_svn_url_to_bzr_url(url):
+    return url
+
+
+vcs_field_to_bzr_url_converters = [
+    ("Bzr", vcs_bzr_url_to_bzr_url),
+    ("Darcs", vcs_darcs_url_to_bzr_url),
+    ("Svn", vcs_svn_url_to_bzr_url),
+    ("Git", vcs_git_url_to_bzr_url),
+    ("Hg", vcs_hg_url_to_bzr_url)
+]
+
+
+def source_package_vcs_url(control):
+    """Extract a Breezy-compatible URL from a source package.
+    """
+    for vcs, converter in vcs_field_to_bzr_url_converters:
+        for prefix in ("Vcs-", "X-Vcs-", "XS-Vcs-"):
+            try:
+                vcs_url = control[prefix + vcs]
+            except KeyError:
+                pass
+            else:
+                return converter(vcs_url)
+    else:
+        raise KeyError
+
+
 class VcsDirectory(object):
     """Simple Bazaar directory service which uses dpkg Vcs-* fields."""
 
@@ -60,49 +101,28 @@ class VcsDirectory(object):
 
         sources = apt_pkg.SourceRecords()
 
-        urls = {}
+        by_version = {}
         while sources.lookup(name):
-            control = Deb822(sources.record)
-            pkg_version = control["Version"]
-            for field, value in control.items():
-                if field.startswith("X-Vcs-") or field.startswith("Vcs-") or field.startswith("XS-Vcs-"):
-                    vcs = field.split("-")[-1]
-                    urls.setdefault(pkg_version,{})[vcs] = value
+            by_version[sources.version] = sources.record
 
-        if len(urls) == 0:
-            raise urlutils.InvalidURL(path=url, extra='no URLs found')
+        if len(by_version) == 0:
+            raise urlutils.InvalidURL(path=url, extra='package not found')
 
         if version is None:
             # Try the latest version
-            version = sorted(urls, cmp=apt_pkg.version_compare)[-1]
+            version = sorted(by_version, cmp=apt_pkg.version_compare)[-1]
 
-        if not version in urls:
+        if not version in by_version:
             raise urlutils.InvalidURL(path=url,
                     extra='version %s not found' % version)
 
-        # TODO(jelmer): some packages seem to use [PATH] behind the URL to
-        # indicate a subdirectory inside of the versioned tree.
+        control = Deb822(by_version[version])
 
-        if "Bzr" in urls[version]:
-            url = vcs_bzr_url_to_bzr_url(urls[version]["Bzr"])
-        elif "Darcs" in urls[version]:
-            url = urls[version]["Darcs"]
-        elif "Svn" in urls[version]:
-            url = urls[version]["Svn"]
-        elif "Git" in urls[version]:
-            url = vcs_git_url_to_bzr_url(urls[version]["Git"])
-        elif "Hg" in urls[version]:
-            url = urls[version]["Hg"]
-        else:
-            if "Browser" in urls[version]:
-                del urls[version]["Browser"]
-
-            if not urls[version]:
-                raise urlutils.InvalidURL(path=url, extra='only Vcs-Browser set')
-
+        try:
+            url = source_package_vcs_url(control)
+        except KeyError:
             note("Retrieving Vcs locating from %s Debian version %s", name, version)
-            raise urlutils.InvalidURL(path=url,
-                extra='unsupported VCSes %r found' % urls[version].keys())
+            raise urlutils.InvalidURL(path=url, extra='no VCS URL found')
 
         note("Resolved package URL from Debian package %s/%s: %s", name, version, url)
         return url
