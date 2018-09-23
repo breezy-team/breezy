@@ -31,7 +31,6 @@ import getpass
 import locale
 import ntpath
 import posixpath
-import psutil
 import select
 # We need to import both shutil and rmtree as we export the later on posix
 # and need the former on windows
@@ -1658,9 +1657,15 @@ def supports_executable(path):
     """
     if sys.platform == 'win32':
         return False
-    if get_fs_type(path) in ('vfat', 'ntfs'):
-        # filesystems known to not support executable bit
-        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent:
+        # TODO(jelmer): Warn here?
+        pass
+    else:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support executable bit
+            return False
     return True
 
 
@@ -2590,8 +2595,19 @@ def is_environment_error(evalue):
 
 
 def get_fs_type(path):
-    """Return the filesystem type for the partition a path is in."""
-    import psutil
+    """Return the filesystem type for the partition a path is in.
+
+    :param path: Path to search filesystem type for
+    :return: A FS type, as string. E.g. "ext2"
+    """
+    # TODO(jelmer): It would be nice to avoid an extra dependency here, but the only
+    # alternative is reading platform-specific files under /proc :(
+    try:
+        import psutil
+    except ImportError as e:
+        raise errors.DependencyNotPresent('psutil', e)
     for part in sorted(psutil.disk_partitions(), key=lambda x: len(x.mountpoint), reverse=True):
         if is_inside(part.mountpoint, path):
             return part.fstype
+    # Unable to parse the file? Since otherwise at least the entry for / should match..
+    return None
