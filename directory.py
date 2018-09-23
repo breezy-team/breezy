@@ -26,6 +26,26 @@ from ...trace import note
 import apt_pkg
 
 
+def vcs_git_url_to_bzr_url(url):
+    """Convert a Vcs-Git string to a Breezy URL."""
+    from breezy.git.urls import git_url_to_bzr_url
+    if ' -b ' in url:
+        (url, branch) = url.split(' -b ', 1)
+    else:
+        branch = None
+    url = git_url_to_bzr_url(url)
+    if branch:
+        branch = urlutils.quote(branch, '')
+        url = urlutils.join_segment_parameters(
+            url, {'branch': branch})
+    return url
+
+
+def vcs_bzr_url_to_bzr_url(url):
+    from ...directory_service import directories
+    return directories.dereference(url)
+
+
 class VcsDirectory(object):
     """Simple Bazaar directory service which uses dpkg Vcs-* fields."""
 
@@ -67,25 +87,13 @@ class VcsDirectory(object):
         # indicate a subdirectory inside of the versioned tree.
 
         if "Bzr" in urls[version]:
-            url = urls[version]["Bzr"]
-            from ...directory_service import directories
-            url = directories.dereference(url)
+            url = vcs_bzr_url_to_bzr_url(urls[version]["Bzr"])
         elif "Darcs" in urls[version]:
             url = urls[version]["Darcs"]
         elif "Svn" in urls[version]:
             url = urls[version]["Svn"]
         elif "Git" in urls[version]:
-            from breezy.git.urls import git_url_to_bzr_url
-            url = urls[version]["Git"]
-            if ' -b ' in url:
-                (url, branch) = url.split(' -b ', 1)
-            else:
-                branch = None
-            url = git_url_to_bzr_url(url)
-            if branch:
-                branch = urlutils.quote(branch, '')
-                url = urlutils.join_segment_parameters(
-                    url, {'branch': branch})
+            url = vcs_git_url_to_bzr_url(urls[version]["Git"])
         elif "Hg" in urls[version]:
             url = urls[version]["Hg"]
         else:
@@ -104,6 +112,7 @@ class VcsDirectory(object):
 
 
 class DgitDirectory(object):
+    """Directory that looks up the URL according to a Dgit control field."""
 
     def look_up(self, name, url):
         if "/" in name:
