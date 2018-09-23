@@ -186,7 +186,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.assertFalse(b_executable)
 
     def test_use_exec_from_basis(self):
-        self.wt._supports_executable = lambda: False
+        self.wt.trust_executable_bit = False
         self.addCleanup(self.wt.lock_read().unlock)
         self.assertTrue(self.wt.is_executable('a'))
         self.assertFalse(self.wt.is_executable('b'))

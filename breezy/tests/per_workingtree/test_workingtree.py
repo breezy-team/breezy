@@ -1033,17 +1033,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = tree.controldir.open_workingtree()
         self.assertFalse(tree.case_sensitive)
 
-    def test_supports_executable(self):
+    def test_trust_executable(self):
         self.build_tree(['filename'])
         tree = self.make_branch_and_tree('.')
         tree.add('filename')
-        self.assertIsInstance(tree._supports_executable(), bool)
-        if tree._supports_executable():
-            tree.lock_read()
-            try:
+        self.assertIsInstance(tree.trust_executable_bit, bool)
+        if tree.trust_executable_bit:
+            with tree.lock_read():
                 self.assertFalse(tree.is_executable('filename'))
-            finally:
-                tree.unlock()
             os.chmod('filename', 0o755)
             self.addCleanup(tree.lock_read().unlock)
             self.assertTrue(tree.is_executable('filename'))
@@ -1291,4 +1288,13 @@ class TestFormatAttributes(TestCaseWithWorkingTree):
     def test_supports_store_uncommitted(self):
         self.assertSubset(
             [self.workingtree_format.supports_store_uncommitted],
+            (True, False))
+
+
+class TestTreeAttributes(TestCaseWithWorkingTree):
+
+    def test_trust_executable_bit(self):
+        wt = self.make_branch_and_tree('wt')
+        self.assertSubset(
+            [wt.trust_executable_bit],
             (True, False))

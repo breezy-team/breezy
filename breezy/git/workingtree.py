@@ -119,6 +119,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
+        self._detect_trust_executable_bit()
         self._reset_data()
 
     def supports_tree_reference(self):
@@ -223,6 +224,12 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self.case_sensitive = True
         else:
             self.case_sensitive = False
+
+    def _detect_trust_executable_bit(self):
+        config_stack = self.repository._git.get_config_stack()
+        self.trust_executable_bit = config_stack.get_boolean(('core', ), 'filemode', default=None)
+        if self.trust_executable_bit is None:
+            self.trust_executable_bit = osutils.supports_executable(self.basedir)
 
     def merge_modified(self):
         return {}
@@ -729,7 +736,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
 
     def is_executable(self, path, file_id=None):
         with self.lock_read():
-            if self._supports_executable():
+            if self.trust_executable_bit:
                 mode = self._lstat(path).st_mode
             else:
                 (index, subpath) = self._lookup_index(path.encode('utf-8'))
@@ -740,7 +747,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
-        if self._supports_executable():
+        if self.trust_executable_bit:
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
@@ -1141,7 +1148,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             self.control_transport.local_abspath("index"),
             self.store,
             None if self.branch.head is None else self.store[self.branch.head].tree,
-            honor_filemode=self._supports_executable())
+            honor_filemode=self.trust_executable_bit)
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.

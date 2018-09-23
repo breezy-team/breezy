@@ -758,7 +758,7 @@ class TreeTransformBase(object):
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        if self._tree._supports_executable():
+        if self._tree.trust_executable_bit:
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode

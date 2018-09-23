@@ -1400,7 +1400,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     # Report dirified directories to commit_tree first, so that they can be
     # replaced with non-empty directories if they have contents.
     dirified = []
-    trust_executable = target._supports_executable()
+    trust_executable = target.trust_executable_bit
     for path, index_entry in target._recurse_index_entries():
         try:
             live_entry = target._live_entry(path)
