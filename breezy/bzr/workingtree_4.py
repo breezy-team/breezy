@@ -260,7 +260,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         local_path = self.controldir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider(), self._worth_saving_limit())
+            self._sha1_provider(), self._worth_saving_limit(),
+            self._supports_executable())
         return self._dirstate
 
     def _sha1_provider(self):
@@ -2224,10 +2225,8 @@ class InterDirStateTree(InterTree):
             # would be good here.
             search_specific_files_utf8.add(path.encode('utf8'))
 
-        # -- specific_files is now a utf8 path set --
-        use_filesystem_for_exec = (sys.platform != 'win32')
         iter_changes = self.target._iter_changes(include_unchanged,
-            use_filesystem_for_exec, search_specific_files_utf8, state,
+            self.target._supports_executable(), search_specific_files_utf8, state,
             source_index, target_index, want_unversioned, self.target)
         return iter_changes.iter_changes()
 

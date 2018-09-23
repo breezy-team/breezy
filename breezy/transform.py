@@ -1259,8 +1259,7 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _limbo_supports_executable(self):
         """Check if the limbo path supports the executable bit."""
-        # FIXME: Check actual file system capabilities of limbodir
-        return osutils.supports_executable()
+        return osutils.supports_executable(self._limbodir)
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
