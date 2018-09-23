@@ -1739,6 +1739,8 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
 
     ignore_filename = '.bzrignore'
 
+    case_sensitive_filename = "FoRMaT"
+
     def __init__(self):
         WorkingTreeFormat.__init__(self)
         bzrdir.BzrFormat.__init__(self)

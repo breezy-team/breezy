@@ -1424,8 +1424,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     requires_normalized_unicode_filenames = False
 
-    case_sensitive_filename = "FoRMaT"
-
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
 
