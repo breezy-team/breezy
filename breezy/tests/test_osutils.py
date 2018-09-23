@@ -2325,6 +2325,12 @@ class SupportsExecutableTests(tests.TestCaseInTempDir):
         self.assertIsInstance(osutils.supports_executable(self.test_dir), bool)
 
 
+class SupportsSymlinksTests(tests.TestCaseInTempDir):
+
+    def test_returns_bool(self):
+        self.assertIsInstance(osutils.supports_symlinks(self.test_dir), bool)
+
+
 class GetFsTypeTests(tests.TestCaseInTempDir):
 
     def test_returns_string(self):

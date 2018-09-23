@@ -1669,6 +1669,24 @@ def supports_executable(path):
     return True
 
 
+def supports_symlinks(path):
+    """Return if the filesystem at path supports the creation of symbolic links.
+
+    """
+    if not has_symlinks():
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent:
+        # TODO(jelmer): Warn here?
+        pass
+    else:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support executable bit
+            return False
+    return True
+
+
 def supports_posix_readonly():
     """Return True if 'readonly' has POSIX semantics, False otherwise.
 
