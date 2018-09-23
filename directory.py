@@ -21,9 +21,11 @@
 from __future__ import absolute_import
 
 from ... import urlutils
+from ...directory_service import directories
 from ...trace import note
 
 import apt_pkg
+from debian.deb822 import Deb822
 
 
 def vcs_git_url_to_bzr_url(url):
@@ -42,7 +44,6 @@ def vcs_git_url_to_bzr_url(url):
 
 
 def vcs_bzr_url_to_bzr_url(url):
-    from ...directory_service import directories
     return directories.dereference(url)
 
 
@@ -61,14 +62,10 @@ class VcsDirectory(object):
 
         urls = {}
         while sources.lookup(name):
-            for l in sources.record.splitlines():
-                if not ": " in l:
-                    continue
-                (field, value) = l.strip("\n").split(": ", 1)
-
-                if field == "Version":
-                    pkg_version = value
-                elif field.startswith("X-Vcs-") or field.startswith("Vcs-") or field.startswith("XS-Vcs-"):
+            control = Deb822(sources.record)
+            pkg_version = control["Version"]
+            for field, value in control.items():
+                if field.startswith("X-Vcs-") or field.startswith("Vcs-") or field.startswith("XS-Vcs-"):
                     vcs = field.split("-")[-1]
                     urls.setdefault(pkg_version,{})[vcs] = value
 
@@ -126,15 +123,12 @@ class DgitDirectory(object):
 
         urls = {}
         while sources.lookup(name):
-            for l in sources.record.splitlines():
-                if not ": " in l:
-                    continue
-                (field, value) = l.strip("\n").split(": ", 1)
-
-                if field == "Version":
-                    pkg_version = value
-                elif field == "Dgit":
-                    urls[pkg_version] = value.split(' ')
+            control = Deb822(sources.record)
+            pkg_version = control["Version"]
+            try:
+                urls[pkg_version] = control["Dgit"].split(' ')
+            except KeyError:
+                pass
 
         if len(urls) == 0:
             raise urlutils.InvalidURL(path=url, extra='no URLs found')
@@ -157,7 +151,6 @@ class DgitDirectory(object):
 
 
 def upstream_branch_alias(b):
-    from ...directory_service import directories
     from .util import debuild_config
     with b.lock_read():
         tree = b.basis_tree()
