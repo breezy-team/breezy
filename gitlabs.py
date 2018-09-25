@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 
 from ... import (
+    branch as _mod_branch,
     controldir,
     errors,
     urlutils,
@@ -154,8 +155,8 @@ class GitLab(Hoster):
                 raise errors.NotBranchError('%s/%s/%s' % (self.gl.url, owner, project))
             raise
         remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
-        remote_dir = controldir.ControlDir.open(remote_repo_url)
-        return remote_dir.open_branch(name=name)
+        return _mod_branch.Branch.open(urlutils.join_segment_parameters(
+                remote_repo_url, {"branch": name.encode('utf-8')}))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)

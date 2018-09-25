@@ -25,6 +25,7 @@ from .propose import (
     )
 
 from ... import (
+    branch as _mod_branch,
     controldir,
     errors,
     hooks,
@@ -129,8 +130,9 @@ class GitHub(Hoster):
             project = base_repo.name
         try:
             remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
-            remote_dir = controldir.ControlDir.open(git_url_to_bzr_url(remote_repo.ssh_url))
-            return remote_dir.open_branch(name=name)
+            full_url = urlutils.join_segment_parameters(
+                git_url_to_bzr_url(remote_repo.ssh_url), {"branch": name.encode('utf-8')})
+            return _mod_branch.Branch.open(full_url)
         except github.UnknownObjectException:
             raise errors.NotBranchError('https://github.com/%s/%s' % (owner, project))
 
