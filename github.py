@@ -32,6 +32,7 @@ from ... import (
     version_string as breezy_version,
     )
 from ...config import AuthenticationConfig, GlobalStack
+from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...trace import note
 from ...lazy_import import lazy_import
@@ -106,7 +107,7 @@ class GitHub(Hoster):
                     (remote_repo.html_url, base_repo.html_url))
         else:
             note(gettext('Reusing existing repository %s') % remote_repo.html_url)
-        remote_dir = controldir.ControlDir.open(remote_repo.ssh_url)
+        remote_dir = controldir.ControlDir.open(git_url_to_bzr_url(remote_repo.ssh_url))
         push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
             overwrite=overwrite, name=name)
         return push_result.target_branch, urlutils.join_segment_parameters(
@@ -116,7 +117,7 @@ class GitHub(Hoster):
         owner, project, branch_name = parse_github_url(branch)
         repo = self.gh.get_repo('%s/%s' % (owner, project))
         return urlutils.join_segment_parameters(
-            repo.ssh_url, {"branch": branch_name.encode('utf-8')})
+            git_url_to_bzr_url(repo.ssh_url), {"branch": branch_name.encode('utf-8')})
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import github
@@ -128,7 +129,7 @@ class GitHub(Hoster):
             project = base_repo.name
         try:
             remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
-            remote_dir = controldir.ControlDir.open(remote_repo.ssh_url)
+            remote_dir = controldir.ControlDir.open(git_url_to_bzr_url(remote_repo.ssh_url))
             return remote_dir.open_branch(name=name)
         except github.UnknownObjectException:
             raise errors.NotBranchError('https://github.com/%s/%s' % (owner, project))

@@ -20,4 +20,3 @@ from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_publish_derived", ['publish'], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_autopropose", [], __name__ + ".cmds")
