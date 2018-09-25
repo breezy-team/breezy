@@ -272,6 +272,14 @@ class BranchTests(tests.TestCaseInTempDir):
         self.assertEqual(revid1, newbranch.last_revision())
         self.assertTrue(newbranch.repository.has_revision(revid2))
 
+    def test_bzr_branch_bound_to_git(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        br = Branch.open(path).create_checkout('co')
+        self.build_tree_contents([('co/foobar', b'blah')])
+        self.assertRaises(errors.NoRoundtrippingSupport, br.commit,
+            'commit from bound branch.')
+        br.commit('commit from bound branch.', lossy=True)
+
 
 class ForeignTestsBranchFactory(object):
 
