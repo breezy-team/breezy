@@ -232,6 +232,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         try:
             merge_request = source_project.mergerequests.create(kwargs)
         except gitlab.GitlabCreateError as e:
+            if e.response_code == 403:
+                raise PermissionDenied(e.error_message)
             if e.response_code == 409:
                 raise MergeProposalExists(self.source_branch.user_url)
             raise
