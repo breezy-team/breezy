@@ -261,6 +261,7 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch_refs(self, update_refs, lossy, overwrite=False):
         self._warn_slow()
+        result_refs = {}
         with self.source_store.lock_read():
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
@@ -281,7 +282,8 @@ class InterToLocalGitRepository(InterToGitRepository):
                         self.target_refs.add_if_new(name, gitid)
                     else:
                         self.target_refs.set_if_equals(name, old_git_id, gitid)
-        return revidmap, old_refs, new_refs
+                    result_refs[name] = (gitid, revid if not lossy else self.mapping.revision_id_foreign_to_bzr(gitid))
+        return revidmap, old_refs, result_refs
 
     def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
@@ -351,8 +353,8 @@ class InterToRemoteGitRepository(InterToGitRepository):
         def git_update_refs(old_refs):
             ret = {}
             self.old_refs = dict([(k, (v, None)) for (k, v) in viewitems(old_refs)])
-            self.new_refs = update_refs(self.old_refs)
-            for name, (gitid, revid) in viewitems(self.new_refs):
+            new_refs = update_refs(self.old_refs)
+            for name, (gitid, revid) in viewitems(new_refs):
                 if gitid is None:
                     git_sha = self.source_store._lookup_revision_sha1(revid)
                     gitid = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
@@ -366,7 +368,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             new_refs = self.target.send_pack(git_update_refs,
                     self.source_store.generate_lossy_pack_data)
         # FIXME: revidmap?
-        return revidmap, self.old_refs, self.new_refs
+        return revidmap, self.old_refs, new_refs
 
     @staticmethod
     def is_compatible(source, target):

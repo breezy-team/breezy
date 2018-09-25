@@ -592,8 +592,9 @@ class GitBranch(ForeignBranch):
         :return: Tuple with the new revision number and revision id
             (should only be different from the arguments when lossy=True)
         """
-        source.push(self, stop_revision=revid, lossy=lossy, _stop_revno=revno)
-        return (revno, revid)
+        push_result = source.push(
+            self, stop_revision=revid, lossy=lossy, _stop_revno=revno)
+        return (push_result.new_revno, push_result.new_revid)
 
 
 class LocalGitBranch(GitBranch):
