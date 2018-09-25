@@ -44,7 +44,7 @@ def vcs_git_url_to_bzr_url(url):
     if branch:
         branch = urlutils.quote(branch, '')
         url = urlutils.join_segment_parameters(
-            url, {'branch': branch})
+            url, {'branch': branch.encode('utf-8')})
     return url
 
 
