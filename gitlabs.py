@@ -161,6 +161,25 @@ class GitLab(Hoster):
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
 
+    def get_proposal(self, source_branch, target_branch):
+        (source_host, source_project_name, source_branch_name) = (
+            parse_gitlab_url(source_branch))
+        (target_host, target_project_name, target_branch_name) = (
+            parse_gitlab_url(target_branch))
+        if source_host != target_host:
+            raise DifferentGitLabInstances(source_host, target_host)
+        self.gl.auth()
+        source_project = self.gl.projects.get(source_project_name)
+        target_project = self.gl.projects.get(target_project_name)
+        for mr in target_project.mergerequests.list(state='all'):
+            if (mr.attributes['source_project_id'] != source_project.id or
+                mr.attributes['source_branch'] != source_branch_name or
+                mr.attributes['target_project_id'] != target_project.id or
+                mr.attributes['target_branch'] != target_branch_name):
+                continue
+            return MergeProposal(mr.web_url)
+        raise NoMergeProposal()
+
     @classmethod
     def probe(cls, branch):
         try:

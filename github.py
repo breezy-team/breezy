@@ -21,6 +21,7 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
+    NoMergeProposal,
     UnsupportedHoster,
     )
 
@@ -138,6 +139,21 @@ class GitHub(Hoster):
 
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(self.gh, source_branch, target_branch)
+
+    def get_proposal(self, source_branch, target_branch):
+        (source_owner, source_repo_name, source_branch_name) = (
+                parse_github_url(source_branch))
+        (target_owner, target_repo_name, target_branch_name) = (
+                parse_github_url(target_branch))
+        target_repo = self.gh.get_repo("%s/%s" % (target_owner, target_repo_name))
+        for pull in target_repo.get_pulls(head=target_branch_name):
+            if pull.head.ref != source_branch_name:
+                continue
+            if (pull.head.repo.owner.login != source_owner or
+                pull.head.repo.name != source_repo_name):
+                continue
+            return MergeProposal(pull.html_url)
+        raise NoMergeProposal()
 
     @classmethod
     def probe(cls, branch):

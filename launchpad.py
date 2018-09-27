@@ -227,6 +227,33 @@ class Launchpad(Hoster):
         else:
             raise AssertionError('not a valid Launchpad URL')
 
+    def get_proposal(self, source_branch, target_branch):
+        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
+                target_branch.user_url)
+        if base_vcs == 'bzr':
+            target_branch_lp = self.launchpad.branches.getByUrl(url=target_branch.user_url)
+            source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
+            for mp in target_branch_lp.getMergeProposals():
+                if mp.target_branch != target_branch_lp:
+                    continue
+                if mp.source_branch != source_branch_lp:
+                    continue
+                return MergeProposal(lp_api.canonical_url(mp))
+            raise NoMergeProposal()
+        elif base_vcs == 'git':
+            (source_repo_lp, source_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(source_branch)
+            (target_repo_lp, target_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(target_branch)
+            for mp in target_branch_lp.getMergeProposals():
+                if (target_branch_lp.path != mp.target_git_path or
+                    target_repo_lp != mp.target_git_repository or
+                    source_branch_lp.path != mp.source_git_path or
+                    source_repo_lp != mp.source_git_repository):
+                    continue
+                return MergeProposalBuilder(lp_api.canonical_url(mp))
+            raise NoMergeProposal()
+        else:
+            raise AssertionError('not a valid Launchpad URL')
+
     def get_proposer(self, source_branch, target_branch):
         (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
                 target_branch.user_url)
