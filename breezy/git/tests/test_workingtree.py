@@ -22,7 +22,9 @@ from __future__ import absolute_import
 import os
 import stat
 
+from dulwich.index import IndexEntry
 from dulwich.objects import (
+    S_IFGITLINK,
     Blob,
     Tree,
     ZERO_SHA,
@@ -115,17 +117,19 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
     def setUp(self):
         super(ChangesBetweenGitTreeAndWorkingCopyTests, self).setUp()
         self.wt = self.make_branch_and_tree('.', format='git')
+        self.store = self.wt.branch.repository._git.object_store
 
     def expectDelta(self, expected_changes,
-                    expected_extras=None, want_unversioned=False):
-        store = self.wt.branch.repository._git.object_store
-        try:
-            tree_id = store[self.wt.branch.repository._git.head()].tree
-        except KeyError:
-            tree_id = None
+                    expected_extras=None, want_unversioned=False,
+                    tree_id=None):
+        if tree_id is None:
+            try:
+                tree_id = self.store[self.wt.branch.repository._git.head()].tree
+            except KeyError:
+                tree_id = None
         with self.wt.lock_read():
             changes, extras = changes_between_git_tree_and_working_copy(
-                store, tree_id, self.wt, want_unversioned=want_unversioned)
+                self.store, tree_id, self.wt, want_unversioned=want_unversioned)
             self.assertEqual(expected_changes, list(changes))
         if expected_extras is None:
             expected_extras = set()
@@ -221,3 +225,16 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
             (None, newt.id)),
             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, newa.id))
             ], [b'a'], want_unversioned=True)
+
+    def test_submodule(self):
+        self.build_tree(['a/'])
+        a = Blob.from_string(b'irrelevant\n')
+        with self.wt.lock_tree_write():
+            (index, index_path) = self.wt._lookup_index('a')
+            index[b'a'] = IndexEntry(
+                    0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
+            self.wt._index_dirty = True
+        t = Tree()
+        t.add(b"a", S_IFGITLINK , a.id)
+        self.store.add_object(t)
+        self.expectDelta([], tree_id=t.id)
