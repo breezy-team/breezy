@@ -161,6 +161,11 @@ class DgitDirectory(object):
             raise urlutils.InvalidURL(path=url,
                     extra='version %s not found' % version)
 
+        if len(urls[version]) < 3:
+            raise urlutils.InvalidURL(
+                path=url,
+                extra='dgit header does not have location information')
+
         url = urlutils.join_segment_parameters(
                 urls[version][3],
                 {"tag": urlutils.quote(urls[version][2], '')})
