@@ -112,6 +112,14 @@ class ParseGitErrorTests(TestCase):
             'GitLab: You are not allowed to push code to this project.\n')
         self.assertIsInstance(e, PermissionDenied)
 
+    def test_permission_denied_github(self):
+        e = parse_git_error(
+            "url",
+            'Permission to porridge/gaduhistory.git denied to jelmer.')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, 'porridge/gaduhistory.git')
+        self.assertEqual(e.extra, ': denied to jelmer')
+
 
 class TestRemoteGitBranchFormat(TestCase):
 
