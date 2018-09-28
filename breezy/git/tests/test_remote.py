@@ -106,6 +106,12 @@ class ParseGitErrorTests(TestCase):
             "access denied or repository not exported: /debian/altermime.git")
         self.assertIsInstance(e, PermissionDenied)
 
+    def test_permission_denied_gitlab(self):
+        e = parse_git_error(
+            "url",
+            'GitLab: You are not allowed to push code to this project.\n')
+        self.assertIsInstance(e, PermissionDenied)
+
 
 class TestRemoteGitBranchFormat(TestCase):
 
