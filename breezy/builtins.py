@@ -2972,7 +2972,8 @@ class cmd_ls(Command):
             Option('ignored', short_name='i',
                 help='Print ignored files.'),
             Option('kind', short_name='k',
-                   help='List entries of a particular kind: file, directory, symlink.',
+                   help=('List entries of a particular kind: file, '
+                         'directory, symlink, tree-reference.'),
                    type=text_type),
             'null',
             'show-ids',
@@ -6687,8 +6688,12 @@ class cmd_reference(Command):
     hidden = True
 
     takes_args = ['path?', 'location?']
+    takes_options = [
+        Option('force',
+               help='Set reference even if path is not versioned.'),
+        ]
 
-    def run(self, path=None, location=None):
+    def run(self, path=None, location=None, force=False):
         branchdir = '.'
         if path is not None:
             branchdir = path
@@ -6702,7 +6707,7 @@ class cmd_reference(Command):
             info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
-            if not tree.is_versioned(path):
+            if not tree.is_versioned(path) and not force:
                 raise errors.NotVersionedError(path)
             if location is None:
                 info = [(path, branch.get_reference_info(path))]
