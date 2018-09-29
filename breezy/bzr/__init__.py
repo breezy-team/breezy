@@ -291,7 +291,7 @@ register_metadir(controldir.format_registry, 'development-subtree',
         'this format can only be read by bzr.dev. Please read '
         'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
-    branch_format='breezy.bzr.branch.BzrBranchFormat7',
+    branch_format='breezy.bzr.branch.BzrBranchFormat8',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,

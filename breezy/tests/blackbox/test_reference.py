@@ -27,9 +27,7 @@ from breezy.tests import TestCaseWithTransport
 class TestReference(TestCaseWithTransport):
 
     def get_default_format(self):
-        format = controldir.format_registry.make_controldir('1.9')
-        format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
-        return format
+        return controldir.format_registry.make_controldir('development-subtree')
 
     def test_no_args_lists(self):
         branch = self.make_branch('branch')
