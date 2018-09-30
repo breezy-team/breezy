@@ -127,6 +127,7 @@ class cmd_propose_merge(Command):
             name = branch_name(branch)
         remote_branch, public_branch_url = hoster.publish_derived(
                 branch, target, name=name)
+        branch.set_push_location(remote_branch.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
         proposal_builder = hoster.get_proposer(remote_branch, target)
         if description is None:
@@ -140,3 +141,31 @@ class cmd_propose_merge(Command):
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
         note(gettext('Merge proposal created: %s') % proposal.url)
+
+
+class cmd_find_merge_proposal(Command):
+    __doc__ = """Find a merge proposal.
+
+    """
+
+    takes_options = ['directory']
+    takes_args = ['submit_branch?']
+    aliases = ['find-proposal']
+
+    def run(self, directory='.', submit_branch=None):
+        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
+            directory)
+        public_location = branch.get_public_branch()
+        if public_location:
+            branch = _mod_branch.Branch.open(public_location)
+        if submit_branch is None:
+            submit_branch = branch.get_submit_branch()
+        if submit_branch is None:
+            submit_branch = branch.get_parent()
+        if submit_branch is None:
+            raise errors.BzrCommandError(gettext("No target location specified or remembered"))
+        else:
+            target = _mod_branch.Branch.open(submit_branch)
+        hoster = _mod_propose.get_hoster(branch)
+        mp = hoster.get_proposal(branch, target)
+        self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
