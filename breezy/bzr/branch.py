@@ -847,6 +847,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
     def supports_set_append_revisions_only(self):
         return True
 
+    supports_reference_locations = True
+
 
 class BzrBranchFormat8(BranchFormatMetadir):
     """Metadir format supporting storing locations of subtree branches."""
