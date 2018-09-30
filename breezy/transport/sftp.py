@@ -849,7 +849,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.readlink."""
         path = self._remote_path(relpath)
         try:
-            return self._get_sftp().readlink(path)
+            return self._get_sftp().readlink(self._remote_path(path))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to readlink')
 
@@ -857,7 +857,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.symlink."""
         try:
             conn = self._get_sftp()
-            sftp_retval = conn.symlink(source, link_name)
+            sftp_retval = conn.symlink(source, self._remote_path(link_name))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))

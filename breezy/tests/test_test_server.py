@@ -66,7 +66,7 @@ class TCPClient(object):
                 self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
             except socket.error as e:
-                if e.errno in (errno.EBADF, errno.ENOTCONN):
+                if e.errno in (errno.EBADF, errno.ENOTCONN, errno.ECONNRESET):
                     # Right, the socket is already down
                     pass
                 else:
@@ -291,8 +291,12 @@ class TestTCPServerInAThread(tests.TestCase):
         server = self.get_server()
         client = self.get_client()
         server.server.serving = False
-        client.connect((server.host, server.port))
-        self.assertEqual(b'', client.read())
+        try:
+            client.connect((server.host, server.port))
+            self.assertEqual(b'', client.read())
+        except socket.error as e:
+            if e.errno != errno.ECONNRESET:
+                raise
 
 
 class TestTestingSmartServer(tests.TestCase):

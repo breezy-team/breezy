@@ -313,7 +313,9 @@ class TestKind(tests.TestCaseInTempDir):
             if e.errno not in (errno.ENOENT,):
                 raise
         else:
-            self.assertEqual('chardev', osutils.file_kind('/dev/null'))
+            self.assertEqual(
+                    'chardev',
+                    osutils.file_kind(os.path.realpath('/dev/null')))
 
         mkfifo = getattr(os, 'mkfifo', None)
         if mkfifo:

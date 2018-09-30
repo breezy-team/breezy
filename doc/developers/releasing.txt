@@ -281,7 +281,7 @@ Update the source code
 
 #. Commit these changes to the release branch, using a command like::
 
-     brz commit -m "Release 2.3.1"
+     brz commit -m "Release 3.0.0"
 
    The diff before you commit will be something like::
 
@@ -361,7 +361,7 @@ Update the source code
 
    Use a commit message formatted like::
   
-     (vila) Release 3.0.0 (Vincent Ladeuil)
+     Release 3.0.0
 
    Note that ``brz push`` should mention updating one tag (which you just
    created). If it doesn't, double-check that you created (and pushed) this
@@ -585,13 +585,13 @@ Now that the release is publicly available, tell people about it.
 
    From the tarball created and tested earlier ::
 
-     twine upload -s ../breezy-3.0.0.tar.gz
+     twine upload ../breezy-3.0.0.tar.gz ../breezy-3.0.0.tar.gz.asc
 
    Remember to check the results afterward -- this should be done for
    stable releases but not for beta releases nor SRUs.
 
    The ``twine`` command is provided by the ``twine`` package on Debian and
-   Ubuntu.
+   Ubuntu. Beware that you need at least ``twine-1.10``.
 
    If in doubt, you can test with <https://testpypi.python.org/pypi> where
    you can register yourself, register the brz project and upload (and then
@@ -617,7 +617,7 @@ Now that the release is publicly available, tell people about it.
 
   Uploading is done with::
 
-    twine upload -r testpypi -s ../breezy-3.0.0.tar.gz
+    twine upload -r testpypi ../breezy-3.0.0.tar.gz ../breezy-3.0.0.tar.gz.asc
 
    To be able to upload the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of the
