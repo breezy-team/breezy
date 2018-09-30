@@ -30,6 +30,7 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
+    NoMergeProposal,
     UnsupportedHoster,
     )
 
