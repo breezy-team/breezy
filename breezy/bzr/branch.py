@@ -679,7 +679,9 @@ class BzrBranch7(BzrBranch8):
     def set_reference_info(self, tree_path, branch_location, file_id=None):
         super(BzrBranch7, self).set_reference_info(
                 tree_path, branch_location, file_id=file_id)
-        self._transport.put_bytes('format', BzrBranchFormat8.get_format_string())
+        format_string = BzrBranchFormat8.get_format_string()
+        mutter('Upgrading branch to format %r', format_string)
+        self._transport.put_bytes('format', format_string)
 
 
 class BzrBranch6(BzrBranch7):
