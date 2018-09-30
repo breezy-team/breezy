@@ -47,6 +47,8 @@ def get_transport_scenarios():
     if features.paramiko.available():
         from ....transport import sftp
         usable_classes.add(sftp.SFTPTransport)
+    from ....transport import local
+    usable_classes.add(local.LocalTransport)
     for name, d in basis:
         t_class = d['transport_class']
         if t_class in usable_classes:
@@ -411,19 +413,19 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.assertUpPathDoesNotExist('link')
+        self.assertUpPathExists('link')
 
     def test_rename_symlink(self):
         self.make_branch_and_working_tree()
         old_name, new_name = 'old-link', 'new-link'
         self.add_symlink(old_name, 'target')
         self.do_full_upload()
+
         self.rename_any(old_name, new_name)
 
         self.do_upload()
 
-        self.assertUpPathDoesNotExist(old_name)
-        self.assertUpPathDoesNotExist(new_name)
+        self.assertUpPathExists(new_name)
 
     def get_upload_auto(self):
         # We need a fresh branch to check what has been saved on disk
