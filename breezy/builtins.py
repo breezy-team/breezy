@@ -3517,6 +3517,8 @@ class cmd_commit(Command):
              Option('commit-time', type=text_type,
                     help="Manually set a commit time using commit date "
                     "format, e.g. '2009-10-10 08:00:00 +0100'."),
+             ListOption('bugs', type=text_type,
+                    help="Link to a related bug. (see \"brz help bugs\")."),
              ListOption('fixes', type=text_type,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"brz help bugs\")."),
@@ -3539,11 +3541,11 @@ class cmd_commit(Command):
              ]
     aliases = ['ci', 'checkin']
 
-    def _iter_bug_fix_urls(self, fixes, branch):
+    def _iter_bug_urls(self, bugs, branch, status):
         default_bugtracker  = None
         # Configure the properties for bug fixing attributes.
-        for fixed_bug in fixes:
-            tokens = fixed_bug.split(':')
+        for bug in bugs:
+            tokens = bug.split(':')
             if len(tokens) == 1:
                 if default_bugtracker is None:
                     branch_config = branch.get_config_stack()
@@ -3555,29 +3557,30 @@ class cmd_commit(Command):
                         "'tracker:id' or specify a default bug tracker "
                         "using the `bugtracker` option.\nSee "
                         "\"brz help bugs\" for more information on this "
-                        "feature. Commit refused.") % fixed_bug)
+                        "feature. Commit refused.") % bug)
                 tag = default_bugtracker
                 bug_id = tokens[0]
             elif len(tokens) != 2:
                 raise errors.BzrCommandError(gettext(
                     "Invalid bug %s. Must be in the form of 'tracker:id'. "
                     "See \"brz help bugs\" for more information on this "
-                    "feature.\nCommit refused.") % fixed_bug)
+                    "feature.\nCommit refused.") % bug)
             else:
                 tag, bug_id = tokens
             try:
-                yield bugtracker.get_bug_url(tag, branch, bug_id)
+                yield bugtracker.get_bug_url(tag, branch, bug_id), status
             except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
-                    'Unrecognized bug %s. Commit refused.') % fixed_bug)
+                    'Unrecognized bug %s. Commit refused.') % bug)
             except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     u"%s\nCommit refused.") % (e,))
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None,
+            unchanged=False, strict=False, local=False, fixes=None, bugs=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
+        import itertools
         from .commit import (
             PointlessCommit,
             )
@@ -3611,8 +3614,12 @@ class cmd_commit(Command):
 
         if fixes is None:
             fixes = []
+        if bugs is None:
+            bugs = []
         bug_property = bugtracker.encode_fixes_bug_urls(
-            self._iter_bug_fix_urls(fixes, tree.branch))
+            itertools.chain(
+                self._iter_bug_urls(bugs, tree.branch, bugtracker.RELATED),
+                self._iter_bug_urls(fixes, tree.branch, bugtracker.FIXED)))
         if bug_property:
             properties[u'bugs'] = bug_property
 
