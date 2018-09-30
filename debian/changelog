@@ -1,7 +1,7 @@
-breezy (3.0.0~bzr7131-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7131-1) unstable; urgency=medium
 
   * New upstream snapshot.
-  * Drop 14_test_server: applied upstream.
+   + Drop 14_test_server: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 30 Sep 2018 20:23:52 +0100
 
