@@ -568,6 +568,21 @@ class DiffKindChange(object):
                                      None, new_kind)
 
 
+class DiffTreeReference(DiffPath):
+
+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+        """Perform comparison between two tree references.  (dummy)
+
+        """
+        if 'tree-reference' not in (old_kind, new_kind):
+            return self.CANNOT_DIFF
+        if old_kind not in ('tree-reference', None):
+            return self.CANNOT_DIFF
+        if new_kind not in ('tree-reference', None):
+            return self.CANNOT_DIFF
+        return self.CHANGED
+
+
 class DiffDirectory(DiffPath):
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
@@ -888,7 +903,8 @@ class DiffTree(object):
     # list of factories that can provide instances of DiffPath objects
     # may be extended by plugins.
     diff_factories = [DiffSymlink.from_diff_tree,
-                      DiffDirectory.from_diff_tree]
+                      DiffDirectory.from_diff_tree,
+                      DiffTreeReference.from_diff_tree]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  diff_text=None, extra_factories=None):
