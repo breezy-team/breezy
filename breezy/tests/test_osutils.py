@@ -1052,7 +1052,10 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         check(['a', 'b'], 'a/b')
         check(['a', 'b'], 'a/./b')
         check(['a', '.b'], 'a/.b')
-        check(['a', '.b'], 'a\\.b')
+        if os.path.sep == '\\':
+            check(['a', '.b'], 'a\\.b')
+        else:
+            check(['a\\.b'], 'a\\.b')
 
         self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
 
