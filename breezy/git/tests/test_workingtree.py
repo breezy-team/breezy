@@ -32,6 +32,7 @@ from dulwich.objects import (
 
 from ... import (
     conflicts as _mod_conflicts,
+    workingtree as _mod_workingtree,
     )
 from ...delta import TreeDelta
 from ..mapping import (
@@ -88,6 +89,20 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.build_tree_contents([('.gitignore', 'a/\n')])
         self.tree._ignoremanager = None
         self.assertTrue(self.tree.is_ignored('a'))
+
+
+class GitWorkingTreeFileTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(GitWorkingTreeFileTests, self).setUp()
+        self.tree = self.make_branch_and_tree('actual', format="git")
+        self.build_tree_contents([('linked/',), ('linked/.git', 'gitdir: ../actual/.git')])
+        self.wt = _mod_workingtree.WorkingTree.open('linked')
+
+    def test_add(self):
+        self.build_tree(['linked/somefile'])
+        self.wt.add(["somefile"])
+        self.wt.commit("Add somefile")
 
 
 class TreeDeltaFromGitChangesTests(TestCase):
