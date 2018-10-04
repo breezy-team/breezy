@@ -1409,9 +1409,13 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                 # Entry was removed; keep it listed, but mark it as gone.
                 blobs[path] = (ZERO_SHA, 0)
             elif e.errno == errno.EISDIR:
-                # Entry was turned into a directory
-                dirified.append((path, Tree().id, stat.S_IFDIR))
-                store.add_object(Tree())
+                # TODO(jelmer): Only do this if 'path' appears in .gitmodules?
+                if S_ISGITLINK(index_entry.mode):
+                    blobs[path] = (index_entry.sha, index_entry.mode)
+                else:
+                    # Entry was turned into a directory
+                    dirified.append((path, Tree().id, stat.S_IFDIR))
+                    store.add_object(Tree())
             else:
                 raise
         else:
