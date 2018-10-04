@@ -622,7 +622,6 @@ class TransportObjectStore(PackBasedObjectStore):
     def _load_packs(self):
         ret = []
         for name in self._pack_names():
-            name = name.decode(sys.getfilesystemencoding())
             if name.startswith("pack-") and name.endswith(".pack"):
                 try:
                     size = self.pack_transport.stat(name).st_size
