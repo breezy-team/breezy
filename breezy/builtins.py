@@ -4414,11 +4414,6 @@ class cmd_merge(Command):
             raise errors.BzrCommandError(gettext('Merging into empty branches not currently supported, '
                                          'https://bugs.launchpad.net/bzr/+bug/308562'))
 
-        try:
-            basis_tree = tree.revision_tree(tree.last_revision())
-        except errors.NoSuchRevision:
-            basis_tree = tree.basis_tree()
-
         # die as quickly as possible if there are uncommitted changes
         if not force:
             if tree.has_changes():
