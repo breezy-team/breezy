@@ -920,6 +920,19 @@ class RemoteGitBranch(GitBranch):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 
+    def set_last_revision_info(self, revno, revid):
+        self.generate_revision_history(revid)
+
+    def generate_revision_history(self, revision_id, last_rev=None,
+                                  other_branch=None):
+        sha = self.lookup_bzr_revision_id(revision_id)[0]
+        def get_changed_refs(old_refs):
+            return {self.ref: sha}
+        def generate_pack_data(have, want, ofs_delta=False):
+            return pack_objects_to_data([])
+        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        self._sha = sha
+
 
 def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
     base = {}
