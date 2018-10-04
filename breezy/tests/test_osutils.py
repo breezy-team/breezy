@@ -64,6 +64,8 @@ UTF8DirReaderFeature = _UTF8DirReaderFeature('breezy._readdir_pyx')
 
 term_ios_feature = features.ModuleAvailableFeature('termios')
 
+psutil_feature = features.ModuleAvailableFeature('psutil')
+
 
 def _already_unicode(s):
     return s
@@ -2276,7 +2278,7 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
         self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
-        
+
     def test_windows_app_path(self):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
@@ -2317,3 +2319,16 @@ class TestEnvironmentErrors(tests.TestCase):
         import pywintypes
         self.assertTrue(osutils.is_environment_error(
             pywintypes.error(errno.EINVAL, "Invalid parameter", "Caller")))
+
+
+class SupportsExecutableTests(tests.TestCaseInTempDir):
+
+    def test_returns_bool(self):
+        self.assertIsInstance(osutils.supports_executable(self.test_dir), bool)
+
+
+class GetFsTypeTests(tests.TestCaseInTempDir):
+
+    def test_returns_string(self):
+        self.requireFeature(psutil_feature)
+        self.assertIsInstance(osutils.get_fs_type(self.test_dir), str)

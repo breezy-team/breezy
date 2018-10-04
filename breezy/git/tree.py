@@ -1400,6 +1400,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
     # Report dirified directories to commit_tree first, so that they can be
     # replaced with non-empty directories if they have contents.
     dirified = []
+    trust_executable = target.trust_executable_bit
     for path, index_entry in target._recurse_index_entries():
         try:
             live_entry = target._live_entry(path)
@@ -1414,7 +1415,13 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
             else:
                 raise
         else:
-            blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
+            mode = live_entry.mode
+            if not trust_executable:
+                if mode_is_executable(index_entry.mode):
+                    mode |= 0o111
+                else:
+                    mode &= ~0o111
+            blobs[path] = (live_entry.sha, cleanup_mode(mode))
     if want_unversioned:
         for e in target.extras():
             st = target._lstat(e)

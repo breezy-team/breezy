@@ -125,6 +125,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         self._control_files = _control_files
         self._detect_case_handling()
+        self._detect_trust_executable()
 
         if _inventory is None:
             # This will be acquired on lock_read() or lock_write()
@@ -160,6 +161,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.case_sensitive = False
 
         self._setup_directory_is_tree_reference()
+
+    def _detect_trust_executable(self):
+        config_stack = self.get_config_stack()
+        self.trust_executable_bit = config_stack.get('trust_executable_bit')
+        if self.trust_executable_bit is None:
+            self.trust_executable_bit = osutils.supports_executable(self.basedir)
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(
@@ -743,7 +750,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def is_executable(self, path, file_id=None):
-        if not self._supports_executable():
+        if not self.trust_executable_bit:
             ie = self._path2ie(path)
             return ie.executable
         else:
@@ -751,7 +758,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
-        if not self._supports_executable():
+        if not self.trust_executable_bit:
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
@@ -1735,6 +1742,8 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""
 
     ignore_filename = '.bzrignore'
+
+    case_sensitive_filename = "FoRMaT"
 
     def __init__(self):
         WorkingTreeFormat.__init__(self)

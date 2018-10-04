@@ -125,6 +125,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         #-------------
         self._setup_directory_is_tree_reference()
         self._detect_case_handling()
+        self._detect_trust_executable()
         self._rules_searcher = None
         self.views = self._make_views()
         #--- allow tests to select the dirstate iter_changes implementation
@@ -260,7 +261,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         local_path = self.controldir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider(), self._worth_saving_limit())
+            self._sha1_provider(), self._worth_saving_limit(),
+            self.trust_executable_bit)
         return self._dirstate
 
     def _sha1_provider(self):
@@ -507,7 +509,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
         Note: The caller is expected to take a read-lock before calling this.
         """
-        if not self._supports_executable():
+        if not self.trust_executable_bit:
             entry = self._get_entry(file_id=file_id, path=path)
             if entry == (None, None):
                 return False
@@ -2225,7 +2227,7 @@ class InterDirStateTree(InterTree):
             search_specific_files_utf8.add(path.encode('utf8'))
 
         iter_changes = self.target._iter_changes(include_unchanged,
-            self.target._supports_executable(), search_specific_files_utf8, state,
+            self.target.trust_executable_bit, search_specific_files_utf8, state,
             source_index, target_index, want_unversioned, self.target)
         return iter_changes.iter_changes()
 

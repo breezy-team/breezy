@@ -56,6 +56,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         self._locks = 0
         self._lock_mode = None
         self._populate_from_branch()
+        self.trust_executable_bit = True
 
     @property
     def controldir(self):

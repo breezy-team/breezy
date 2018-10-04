@@ -758,7 +758,7 @@ class TreeTransformBase(object):
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
-        if self._tree._supports_executable():
+        if self._tree.trust_executable_bit:
             new_executability = self._new_executability[trans_id]
             abspath = self._tree.abspath(path)
             current_mode = os.stat(abspath).st_mode
@@ -1257,8 +1257,7 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _limbo_supports_executable(self):
         """Check if the limbo path supports the executable bit."""
-        # FIXME: Check actual file system capabilities of limbodir
-        return osutils.supports_executable()
+        return osutils.supports_executable(self._limbodir)
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""

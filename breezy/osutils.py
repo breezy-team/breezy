@@ -1649,8 +1649,24 @@ else:
     _terminal_size = _ioctl_terminal_size
 
 
-def supports_executable():
-    return sys.platform != "win32"
+def supports_executable(path):
+    """Return if filesystem at path supports executable bit.
+
+    :param path: Path for which to check the file system
+    :return: boolean indicating whether executable bit can be stored/relied upon
+    """
+    if sys.platform == 'win32':
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent:
+        # TODO(jelmer): Warn here?
+        pass
+    else:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support executable bit
+            return False
+    return True
 
 
 def supports_posix_readonly():
@@ -2576,3 +2592,22 @@ def is_environment_error(evalue):
     if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
         return True
     return False
+
+
+def get_fs_type(path):
+    """Return the filesystem type for the partition a path is in.
+
+    :param path: Path to search filesystem type for
+    :return: A FS type, as string. E.g. "ext2"
+    """
+    # TODO(jelmer): It would be nice to avoid an extra dependency here, but the only
+    # alternative is reading platform-specific files under /proc :(
+    try:
+        import psutil
+    except ImportError as e:
+        raise errors.DependencyNotPresent('psutil', e)
+    for part in sorted(psutil.disk_partitions(), key=lambda x: len(x.mountpoint), reverse=True):
+        if is_inside(part.mountpoint, path):
+            return part.fstype
+    # Unable to parse the file? Since otherwise at least the entry for / should match..
+    return None

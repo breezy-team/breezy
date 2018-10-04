@@ -156,12 +156,6 @@ class WorkingTree(mutabletree.MutableTree,
         """
         return self._format.supports_merge_modified
 
-    def _supports_executable(self):
-        if sys.platform == 'win32':
-            return False
-        # FIXME: Ideally this should check the file system
-        return True
-
     def break_lock(self):
         """Break a lock if one is present from another instance.
 
@@ -951,7 +945,7 @@ class WorkingTree(mutabletree.MutableTree,
         else:
             mode = stat_value.st_mode
             kind = osutils.file_kind_from_stat_mode(mode)
-            if not self._supports_executable():
+            if not self.trust_executable_bit:
                 executable = entry is not None and entry.executable
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -1426,8 +1420,6 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     upgrade_recommended = False
 
     requires_normalized_unicode_filenames = False
-
-    case_sensitive_filename = "FoRMaT"
 
     missing_parent_conflicts = False
     """If this format supports missing parent conflicts."""
