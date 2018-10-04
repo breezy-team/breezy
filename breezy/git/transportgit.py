@@ -164,7 +164,7 @@ class TransportRefsContainer(RefsContainer):
                 return {}
             try:
                 first_line = next(iter(f)).rstrip()
-                if (first_line.startswith("# pack-refs") and " peeled" in
+                if (first_line.startswith(b"# pack-refs") and b" peeled" in
                         first_line):
                     for sha, name, peeled in read_packed_refs_with_peeled(f):
                         self._packed_refs[name] = sha
@@ -622,6 +622,7 @@ class TransportObjectStore(PackBasedObjectStore):
     def _load_packs(self):
         ret = []
         for name in self._pack_names():
+            name = name.decode(sys.getfilesystemencoding())
             if name.startswith("pack-") and name.endswith(".pack"):
                 try:
                     size = self.pack_transport.stat(name).st_size
