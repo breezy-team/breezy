@@ -96,6 +96,10 @@ class ParseGitErrorTests(TestCase):
         e = parse_git_error("url", "Repository not found.\n")
         self.assertIsInstance(e, NotBranchError)
 
+    def test_notbrancherror_normal(self):
+        e = parse_git_error("url", "fatal: '/srv/git/lintian-brush' does not appear to be a git repository")
+        self.assertIsInstance(e, NotBranchError)
+
     def test_head_update(self):
         e = parse_git_error("url", "HEAD failed to update\n")
         self.assertIsInstance(e, HeadUpdateFailed)
