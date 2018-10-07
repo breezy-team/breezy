@@ -25,6 +25,15 @@ from ... import (
     )
 
 
+class NoSuchProject(errors.BzrError):
+
+    _fmt = "Project does not exist: %(project)s."
+
+    def __init__(self, project):
+        errors.BzrError.__init__(self)
+        self.project = project
+
+
 class MergeProposalExists(errors.BzrError):
 
     _fmt = "A merge proposal already exists: %(url)s."

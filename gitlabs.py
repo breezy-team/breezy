@@ -31,6 +31,7 @@ from .propose import (
     MergeProposalBuilder,
     MergeProposalExists,
     NoMergeProposal,
+    NoSuchProject,
     UnsupportedHoster,
     )
 
@@ -119,7 +120,13 @@ class GitLab(Hoster):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
         self.gl.auth()
-        base_project = self.gl.projects.get(base_project)
+        try:
+            base_project = self.gl.projects.get(base_project)
+        except gitlab.GitlabGetError as e:
+            if e.response_code == 404:
+                raise NoSuchProject(base_project)
+            else:
+                raise
         if owner is None:
             owner = self.gl.user.username
         if project is None:
@@ -144,7 +151,13 @@ class GitLab(Hoster):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
         self.gl.auth()
-        base_project = self.gl.projects.get(base_project)
+        try:
+            base_project = self.gl.projects.get(base_project)
+        except gitlab.GitlabGetError as e:
+            if e.response_code == 404:
+                raise NoSuchProject(base_project)
+            else:
+                raise
         if owner is None:
             owner = self.gl.user.username
         if project is None:
