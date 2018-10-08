@@ -72,7 +72,7 @@ def connect_gitlab(host):
         from gitlab.config import _DEFAULT_FILES
         config = configparser.ConfigParser()
         config.read(_DEFAULT_FILES)
-        for name, section in config.iteritems():
+        for name, section in config.items():
             if section.get('url') == url:
                 credentials = section
                 break
@@ -160,7 +160,7 @@ class GitLab(Hoster):
             overwrite=overwrite, name=name)
         public_url = urlutils.join_segment_parameters(
                 target_project.attributes['http_url_to_repo'],
-                {"branch": name.encode('utf-8')})
+                {"branch": name})
         return push_result.target_branch, public_url
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
