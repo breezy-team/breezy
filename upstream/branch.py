@@ -47,13 +47,13 @@ def upstream_tag_to_version(tag_name, package=None):
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):
-        return tag_name[len(package)+1:].encode("utf-8")
+        return tag_name[len(package)+1:]
     if tag_name.startswith("release-"):
-        return tag_name[len("release-"):].encode("utf-8")
+        return tag_name[len("release-"):]
     if tag_name[0] == "v" and tag_name[1].isdigit():
-        return tag_name[1:].encode("utf-8")
+        return tag_name[1:]
     if all([c.isdigit() or c in (".", "~") for c in tag_name]):
-        return tag_name.encode("utf-8")
+        return tag_name
     return None
 
 
@@ -210,7 +210,6 @@ def get_export_upstream_revision(config=None, version=None):
     """
     rev = None
     if version is not None:
-        assert type(version) is str
         rev = get_snapshot_revision(version)
     if rev is None and config is not None:
         rev = config._get_best_opt('export-upstream-revision')
@@ -241,7 +240,6 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_revision_map = upstream_revision_map
 
     def version_as_revision(self, package, version, tarballs=None):
-        assert isinstance(version, str)
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
         else:
@@ -277,20 +275,16 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_branch.last_revision())
 
     def get_version(self, package, current_version, revision):
-        self.upstream_branch.lock_read()
-        try:
+        with self.upstream_branch.lock_read():
             return upstream_branch_version(self.upstream_branch,
                 revision, package, current_version)
-        finally:
-            self.upstream_branch.unlock()
 
     def fetch_tarballs(self, package, version, target_dir, components=None,
                        revisions=None):
         if components is not None and components != [None]:
             # Multiple components are not supported
             raise PackageVersionNotPresent(package, version, self)
-        self.upstream_branch.lock_read()
-        try:
+        with self.upstream_branch.lock_read():
             if revisions is not None:
                 revid = revisions[None]
             else:
@@ -303,8 +297,6 @@ class UpstreamBranchSource(UpstreamSource):
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
             export(rev_tree, target_filename, 'tgz', tarball_base)
-        finally:
-            self.upstream_branch.unlock()
         return [target_filename]
 
     def __repr__(self):

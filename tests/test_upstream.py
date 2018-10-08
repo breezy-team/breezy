@@ -46,6 +46,7 @@ from ..errors import (
     PackageVersionNotPresent,
     WatchFileMissing,
     )
+from ....sixish import text_type
 from . import (
     LzmaFeature,
     XzFeature,
@@ -435,8 +436,8 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             config=config)
         revid2 = self.tree.commit("msg")
         self.assertEquals(revid2,
-            source.version_as_revision("foo", "2.1+bzr2"))
-        self.assertEquals({None: revid1}, source.version_as_revisions("foo", "2.1"))
+            source.version_as_revision("foo", u"2.1+bzr2"))
+        self.assertEquals({None: revid1}, source.version_as_revisions("foo", u"2.1"))
 
     def test_version_as_revision(self):
         revid1 = self.tree.commit("msg")
@@ -478,7 +479,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         source = UpstreamBranchSource(self.tree.branch, {"2.1": "tag:foo"},
             config=config)
         self.assertRaises(PackageVersionNotPresent,
-            source.version_as_revision, "foo", "2.1")
+            source.version_as_revision, "foo", u"2.1")
 
 
 class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
@@ -599,7 +600,9 @@ class TestUpstreamTagToVersion(TestCase):
         self.assertEquals("42.0", upstream_tag_to_version(u"bla-42.0", "bla"))
 
     def test_unicode(self):
-        self.assertEquals("42.0\xc2\xa9", upstream_tag_to_version("bla-42.0\xc2\xa9".decode("utf-8"), "bla"))
+        self.assertEquals(
+                "42.0\xc2\xa9".decode('utf-8'),
+                upstream_tag_to_version("bla-42.0\xc2\xa9".decode("utf-8"), "bla"))
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
@@ -875,9 +878,9 @@ class TarfileSourceTests(TestCaseWithTransport):
 
     def test_version_unicode_not_specified(self):
         source = TarfileSource(u"foo-1.0.tar.gz")
-        latest_version = source.get_latest_version("foo", "0.9")
+        latest_version = source.get_latest_version("foo", u"0.9")
         self.assertEquals("1.0", latest_version)
-        self.assertIsInstance(latest_version, str)
+        self.assertIsInstance(latest_version, text_type)
 
     def test_get_latest_version_parses(self):
         source = TarfileSource("foo-1.0.tar.gz")

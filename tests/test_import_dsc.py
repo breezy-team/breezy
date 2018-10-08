@@ -156,7 +156,6 @@ class DistributionBranchTests(BuilddebTestCase):
             tip of self.pristine_upstream_branch.
         :return The tag name, revid of the added tag.
         """
-        assert isinstance(version, str)
         tag_name = db.pristine_upstream_source.tag_name(version)
         revid = db.pristine_upstream_branch.last_revision()
         db.pristine_upstream_source.tag_version(version, revid)
@@ -527,13 +526,13 @@ class DistributionBranchTests(BuilddebTestCase):
         revid3 = self.tree1.commit("three")
         self.db1.tag_version(version3)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.tag_upstream_version(self.db1, version1.upstream_version)
+        self.tag_upstream_version(self.db1, version1.upstream_version.decode())
         self.up_tree2.pull(self.up_tree1.branch)
-        self.tag_upstream_version(self.db2, version2.upstream_version)
+        self.tag_upstream_version(self.db2, version2.upstream_version.decode())
         up_revid2 = self.up_tree1.commit("upstream two")
-        self.tag_upstream_version(self.db1, version3.upstream_version)
+        self.tag_upstream_version(self.db1, version3.upstream_version.decode())
         self.up_tree2.pull(self.up_tree1.branch)
-        self.tag_upstream_version(self.db2, version4.upstream_version)
+        self.tag_upstream_version(self.db2, version4.upstream_version.decode())
         versions = [version4, version3, version2, version1]
         # no upstream parent as the lesser branch has already merged it
         self.assertEqual(self.db2.get_parents_with_upstream(

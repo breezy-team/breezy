@@ -53,7 +53,7 @@ from ...errors import (
     UnrelatedBranches,
     )
 from ...revision import NULL_REVISION
-from ...sixish import viewitems
+from ...sixish import text_type, viewitems
 from ...trace import warning, mutter
 from ...transport import (
     get_transport,
@@ -793,7 +793,6 @@ class DistributionBranch(object):
         # from lesser branches first? For now we'll just dump it on.
         # TODO: this method needs a lot of work for when we will make
         # the branches writeable by others.
-        assert isinstance(version, str)
         mutter("Importing upstream version %s from %s with parents %r" \
                 % (version, upstream_part, upstream_parents))
         assert self.pristine_upstream_tree is not None, \
@@ -1105,7 +1104,7 @@ class DistributionBranch(object):
             # Work out if we need the upstream part first.
             imported_upstream = False
             if not self.pristine_upstream_source.has_version(package,
-                    version.upstream_version):
+                    version.upstream_version.decode('utf-8')):
                 up_pull_branch = \
                     self.branch_to_pull_upstream_from(package, version.upstream_version,
                             upstream_tarballs)
@@ -1294,8 +1293,6 @@ class DistributionBranch(object):
             raise
 
     def _export_previous_upstream_tree(self, package, previous_version, tempdir):
-        assert isinstance(previous_version, str), \
-            "Should pass upstream version as str, not Version."
         try:
             upstream_tips = self.pristine_upstream_source.version_as_revisions(
                     package, previous_version)
@@ -1316,11 +1313,6 @@ class DistributionBranch(object):
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
             upstream_branch=None, upstream_revisions=None, merge_type=None,
             force=False):
-        assert isinstance(version, str), \
-            "Should pass version as str not %s" % str(type(version))
-        assert isinstance(previous_version, str) or previous_version is None, \
-            "Should pass previous_version as str not %s" % str(
-                    type(previous_version))
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:

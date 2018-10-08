@@ -26,6 +26,7 @@ from ...trace import note
 
 import apt_pkg
 from debian.deb822 import Deb822
+from debian.changelog import Version
 
 
 def vcs_git_url_to_bzr_url(url):
@@ -110,7 +111,7 @@ class VcsDirectory(object):
 
         if version is None:
             # Try the latest version
-            version = sorted(by_version, cmp=apt_pkg.version_compare)[-1]
+            version = sorted(by_version, key=Version)[-1]
 
         if not version in by_version:
             raise urlutils.InvalidURL(path=url,

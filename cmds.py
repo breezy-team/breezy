@@ -42,6 +42,7 @@ from ...errors import (
 from ...option import Option
 from ...sixish import text_type
 from ...trace import note, warning
+from ...transport import get_transport
 from ...workingtree import WorkingTree
 
 from . import (
@@ -109,7 +110,7 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
                          "assuming '%s'"), distribution)
     else:
         if last_version is None:
-            current_version = changelog.version.upstream_version
+            current_version = changelog.version.upstream_version.decode('utf-8')
         if package is None:
             package = changelog.package
         if distribution is None:
@@ -204,11 +205,16 @@ class cmd_builddeb(Command):
         package_merge_opt]
 
     def _get_tree_and_branch(self, location):
-        import urlparse
         if location is None:
             location = "."
-        is_local = urlparse.urlsplit(location)[0] in ('', 'file')
-        controldir, relpath = ControlDir.open_containing(location)
+        transport = get_transport(location)
+        try:
+            transport.local_abspath('.')
+        except errors.NotLocalUrl:
+            is_local = False
+        else:
+            is_local = True
+        controldir, relpath = ControlDir.open_containing_from_transport(transport)
         tree, branch = controldir._get_tree_branch()
         return tree, branch, is_local, controldir.user_url
 
@@ -349,7 +355,7 @@ class cmd_builddeb(Command):
         location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local, location = self._get_tree_and_branch(location)
-        tree, working_tree = self._get_build_tree(revision, tree, branch)
+        tree, is_working_tree = self._get_build_tree(revision, tree, branch)
         if strict:
             for unknown in tree.unknowns():
                 raise StrictBuildFailed()
@@ -360,7 +366,7 @@ class cmd_builddeb(Command):
                 "You must resolve these before building.")
 
         with tree.lock_read():
-            config = debuild_config(tree, working_tree)
+            config = debuild_config(tree, is_working_tree)
             if reuse:
                 note(gettext("Reusing existing build dir"))
                 dont_purge = True
@@ -427,7 +433,7 @@ class cmd_builddeb(Command):
 
             distiller = distiller_cls(tree, upstream_provider,
                     top_level=top_level, use_existing=use_existing,
-                    is_working_tree=working_tree)
+                    is_working_tree=is_working_tree)
 
             build_source_dir = os.path.join(build_dir,
                     "%s-%s" % (changelog.package,
@@ -584,7 +590,7 @@ class cmd_merge_upstream(Command):
                            short_name='d', type=text_type)
     last_version_opt = Option('last-version',
                               help='The full version of the last time '
-                              'upstream was merged.', type=str)
+                              'upstream was merged.', type=text_type)
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
                              'has not changed.'))
@@ -794,7 +800,6 @@ class cmd_merge_upstream(Command):
                 else:
                     raise BzrCommandError(gettext("You must specify the "
                         "version number using --version."))
-            assert isinstance(version, str)
             note(gettext("Using version string %s.") % (version))
             # Look up the revision id from the version string
             if upstream_revisions is None and upstream_branch_source is not None:
@@ -1036,7 +1041,6 @@ class cmd_import_upstream(Command):
             md5sum_filename,
             )
         # TODO: search for similarity etc.
-        version = version.encode('utf8')
         branch, _ = Branch.open_containing('.')
         if upstream_branch is None:
             upstream = None

@@ -205,7 +205,7 @@ class UScanSource(UpstreamSource):
         if len(upstream_version_tags) != 1:
             return None
         upstream_version_tag = upstream_version_tags[0]
-        return upstream_version_tag.firstChild.wholeText.encode("utf-8")
+        return upstream_version_tag.firstChild.wholeText
 
     def get_latest_version(self, package, current_version):
         try:
@@ -434,11 +434,11 @@ def extract_tarball_version(path, packagename):
     # Debian style tarball
     m = re.match(packagename+"_(.*).orig", basename)
     if m:
-        return str(m.group(1))
+        return m.group(1)
     # Traditional, PACKAGE-VERSION.tar.gz
     m = re.match(packagename+"-(.*)", basename)
     if m:
-        return str(m.group(1))
+        return m.group(1)
     return None
 
 
@@ -541,4 +541,4 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         for release in self.project_series.releases:
             versions.append((release.date_released, release.version))
         versions.sort()
-        return versions[-1][1].encode("utf-8")
+        return versions[-1][1]

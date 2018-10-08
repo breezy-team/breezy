@@ -50,7 +50,10 @@ from ....errors import (
     NoSuchFile,
     NotBranchError,
     )
-from ....sixish import viewitems
+from ....sixish import (
+    text_type,
+    viewitems,
+    )
 from ....trace import (
     mutter,
     note,
@@ -88,7 +91,7 @@ def git_store_pristine_tar(controldir, filename, tree_id, delta, force=False):
         except NoSuchFile:
             pass
         else:
-            if existing_id == id_filename and delta == existing_delta:
+            if existing_id.strip(b'\n') == tree_id.encode('ascii') and delta == existing_delta:
                 # Nothing to do.
                 return
             if not force:
@@ -235,7 +238,6 @@ class PristineTarSource(UpstreamSource):
         :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
-        assert isinstance(version, str)
         if distro is None:
             name = "upstream-" + version
         else:
@@ -259,7 +261,6 @@ class PristineTarSource(UpstreamSource):
             tip of self.pristine_upstream_branch.
         :return The tag name, revid of the added tag.
         """
-        assert isinstance(version, str)
         tag_name = self.tag_name(version, component=component)
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
@@ -412,7 +413,6 @@ class PristineTarSource(UpstreamSource):
         return ret
 
     def version_component_as_revision(self, package, version, component, md5=None):
-        assert isinstance(version, str)
         for tag_name in self.possible_tag_names(version, component=component):
             try:
                 revid = self.branch.tags.lookup_tag(tag_name)
@@ -437,7 +437,6 @@ class PristineTarSource(UpstreamSource):
             return True
 
     def has_version_component(self, package, version, component, md5=None):
-        assert isinstance(version, str), str(type(version))
         for tag_name in self.possible_tag_names(version, component=component):
             try:
                 revid = self.branch.tags.lookup_tag(tag_name)
@@ -449,7 +448,6 @@ class PristineTarSource(UpstreamSource):
         return False
 
     def possible_tag_names(self, version, component):
-        assert isinstance(version, str)
         tags = [self.tag_name(version, component=component),
                 self.tag_name(version, component=component, distro="debian"),
                 self.tag_name(version, component=component, distro="ubuntu"),
