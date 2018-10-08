@@ -201,13 +201,17 @@ class GitLab(Hoster):
         self.gl.auth()
         source_project = self.gl.projects.get(source_project_name)
         target_project = self.gl.projects.get(target_project_name)
-        for mr in target_project.mergerequests.list(state='all'):
-            if (mr.attributes['source_project_id'] != source_project.id or
-                mr.attributes['source_branch'] != source_branch_name or
-                mr.attributes['target_project_id'] != target_project.id or
-                mr.attributes['target_branch'] != target_branch_name):
-                continue
-            return GitLabMergeProposal(mr)
+        try:
+            for mr in target_project.mergerequests.list(state='all'):
+                if (mr.attributes['source_project_id'] != source_project.id or
+                    mr.attributes['source_branch'] != source_branch_name or
+                    mr.attributes['target_project_id'] != target_project.id or
+                    mr.attributes['target_branch'] != target_branch_name):
+                    continue
+                return GitLabMergeProposal(mr)
+        except gitlab.GitlabListError as e:
+            if e.response_code == 403:
+                raise PermissionDenied(e.error_message)
         raise NoMergeProposal()
 
     @classmethod
@@ -217,9 +221,13 @@ class GitLab(Hoster):
         except NotGitLabUrl:
             raise UnsupportedHoster(branch)
         import gitlab
+        import requests.exceptions
         try:
             gl = connect_gitlab(host)
             gl.auth()
+        except requests.exceptions.SSLError:
+            # Well, I guess it could be.. 
+            raise UnsupportedHoster(branch)
         except gitlab.GitlabGetError:
             raise UnsupportedHoster(branch)
         except gitlab.GitlabHttpError as e:
