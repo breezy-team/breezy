@@ -43,6 +43,10 @@ from github import Github
 """)
 
 
+def determine_title(description):
+    return description.splitlines()[0]
+
+
 class NotGitHubUrl(errors.BzrError):
 
     _fmt = "Not a GitHub URL: %(url)s"
@@ -65,6 +69,22 @@ def connect_github():
     # TODO(jelmer): Support using an access token
     #return Github("token", user_agent=user_agent)
     return Github(user_agent=user_agent)
+
+
+class GitHubMergeProposal(MergeProposal):
+
+    def __init__(self, pr):
+        self._pr = pr
+
+    @property
+    def url(self):
+        return self._pr.html_url
+
+    def get_description(self):
+        return self._pr.body
+
+    def set_description(self, description):
+        self._pr.edit(body=description, title=determine_title(description))
 
 
 def parse_github_url(branch):
@@ -152,7 +172,7 @@ class GitHub(Hoster):
             if (pull.head.repo.owner.login != source_owner or
                 pull.head.repo.name != source_repo_name):
                 continue
-            return MergeProposal(pull.html_url)
+            return GitHubMergeProposal(pull)
         raise NoMergeProposal()
 
     @classmethod
@@ -200,7 +220,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             self.target_repo_name = self.target_repo_name[:-4]
         target_repo = self.gh.get_repo("%s/%s" % (self.target_owner, self.target_repo_name))
         # TODO(jelmer): Allow setting title explicitly?
-        title = description.splitlines()[0]
+        title = determine_title(description)
         # TOOD(jelmer): Set maintainers_can_modify?
         try:
             pull_request = target_repo.create_pull(
@@ -218,4 +238,4 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if labels:
             for label in labels:
                 pull_request.issue.labels.append(label)
-        return MergeProposal(pull_request.html_url)
+        return GitHubMergeProposal(pull_request)
