@@ -385,7 +385,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 self.source_branch_lp.createMergeProposal,
                 target_branch=self.target_branch_lp,
                 prerequisite_branch=prereq,
-                initial_comment=description.strip().encode('utf-8'),
+                initial_comment=description.strip(),
                 commit_message=self.commit_message,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
