@@ -93,6 +93,18 @@ class MergeProposal(object):
     # TODO(jelmer): provide some way to check if this merge proposal has been
     # merged.
 
+    def get_description(self):
+        """Get the description of the merge proposal."""
+        raise NotImplementedError(self.get_description)
+
+    def set_description(self, description):
+        """Set the description of the merge proposal."""
+        raise NotImplementedError(self.set_description)
+
+    def close(self):
+        """Close the merge proposal (without merging it)."""
+        raise NotImplementedError(self.close)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.

@@ -100,6 +100,22 @@ def parse_gitlab_url(branch):
     return host, path, branch.name
 
 
+class GitLabMergeProposal(MergeProposal):
+
+    def __init__(self, mr):
+        self._mr = mr
+
+    @property
+    def url(self):
+        return self._mr.web_url
+
+    def get_description(self):
+        return self._mr.description
+
+    def set_description(self, description):
+        self._mr.description = description
+
+
 class GitLab(Hoster):
     """GitLab hoster implementation."""
 
@@ -191,7 +207,7 @@ class GitLab(Hoster):
                 mr.attributes['target_project_id'] != target_project.id or
                 mr.attributes['target_branch'] != target_branch_name):
                 continue
-            return MergeProposal(mr.web_url)
+            return GitLabMergeProposal(mr)
         raise NoMergeProposal()
 
     @classmethod
@@ -270,4 +286,4 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             if e.response_code == 409:
                 raise MergeProposalExists(self.source_branch.user_url)
             raise
-        return MergeProposal(merge_request.web_url)
+        return GitLabMergeProposal(merge_request)
