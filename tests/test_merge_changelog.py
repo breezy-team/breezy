@@ -169,7 +169,7 @@ class TestMergeChangelog(tests.TestCase):
             self.assertEqual('conflicted', status)
         else:
             self.assertEqual('success', status)
-        self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
+        self.assertEqualDiff(b''.join(expected_lines), b''.join(merged_lines))
         return True
 
     def test_merge_by_version(self):

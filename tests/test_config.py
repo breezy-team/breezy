@@ -36,32 +36,23 @@ class DebBuildConfigTests(TestCaseWithTransport):
     super(DebBuildConfigTests, self).setUp()
     self.tree = self.make_branch_and_tree('.')
     self.branch = self.tree.branch
-    f = open('default.conf', 'wb')
-    try:
+    with open('default.conf', 'w') as f:
       f.write('['+DebBuildConfig.section+']\n')
       f.write('builder = invalid builder\n') # shouldn't be read as it needs
                                              # to be trusted
       f.write('build-dir = default build dir\n')
       f.write('orig-dir = default orig dir\n')
       f.write('result-dir = default result dir\n')
-    finally:
-      f.close()
-    f = open('user.conf', 'wb')
-    try:
+    with open('user.conf', 'w') as f:
       f.write('['+DebBuildConfig.section+']\n')
       f.write('builder = valid builder\n')
       f.write('quick-builder = valid quick builder\n')
       f.write('orig-dir = user orig dir\n')
       f.write('result-dir = user result dir\n')
-    finally:
-      f.close()
-    f = open('.bzr/branch/branch.conf', 'wb')
-    try:
+    with open('.bzr/branch/branch.conf', 'w') as f:
       f.write('['+DebBuildConfig.section+']\n')
       f.write('quick-builder = invalid quick builder\n')
       f.write('result-dir = branch result dir\n')
-    finally:
-      f.close()
     self.tree.add(['default.conf', 'user.conf'])
     self.config = DebBuildConfig([('user.conf', True),
                                   ('default.conf', False)], branch=self.branch)
@@ -84,11 +75,8 @@ class DebBuildConfigTests(TestCaseWithTransport):
     self.assertEqual(self.config.build_type, None)
 
   def test_parse_error(self):
-    f = open('invalid.conf', 'wb')
-    try:
+    with open('invalid.conf', 'w') as f:
       f.write('['+DebBuildConfig.section+'\n')
-    finally:
-      f.close()
     DebBuildConfig([('invalid.conf', True, 'invalid.conf')])
 
   def test_upstream_metadata(self):

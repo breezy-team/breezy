@@ -55,7 +55,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     tmpdir = tempfile.mkdtemp('deb_changelog_merge')
     try:
         def writelines(filename, lines):
-            with open(filename, 'w') as f:
+            with open(filename, 'wb') as f:
                 for line in lines:
                     f.write(line)
         base_filename = os.path.join(tmpdir, 'changelog.base')
@@ -99,7 +99,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             def replace_func(match_obj):
                 match_text = match_obj.group(0)
                 return match_text[0] * 7
-            stdout = re.sub('(?m)^[<=>]{6}$', replace_func, stdout)
+            stdout = re.sub(b'(?m)^[<=>]{6}$', replace_func, stdout)
             return 'conflicted', stdout
         elif retcode != 0:
             # dpkg-mergechangelogs exited with an error. There is probably no

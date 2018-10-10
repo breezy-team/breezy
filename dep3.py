@@ -95,11 +95,13 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
     """
     authors = set()
     bugs = set()
-    last_update = None
+    last_update = -0.0
     for rev in repository.get_revisions(interesting_revision_ids):
         last_update = max(rev.timestamp, last_update)
         authors.update(rev.get_apparent_authors())
         bugs.update(rev.iter_bugs())
+    if last_update == -0.0:
+        last_update = None
     return (bugs, authors, last_update)
 
 

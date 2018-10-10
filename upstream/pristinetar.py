@@ -91,7 +91,7 @@ def git_store_pristine_tar(controldir, filename, tree_id, delta, force=False):
         except NoSuchFile:
             pass
         else:
-            if existing_id.strip(b'\n') == tree_id.encode('ascii') and delta == existing_delta:
+            if existing_id.strip(b'\n') == tree_id and delta == existing_delta:
                 # Nothing to do.
                 return
             if not force:
@@ -188,18 +188,18 @@ def make_pristine_tar_delta_from_tree(tree, tarball_path, subdir=None, exclude=N
 
 
 def revision_has_pristine_tar_delta(rev):
-    return ('deb-pristine-delta' in rev.properties
-            or 'deb-pristine-delta-bz2' in rev.properties
-            or 'deb-pristine-delta-xz' in rev.properties)
+    return (u'deb-pristine-delta' in rev.properties
+            or u'deb-pristine-delta-bz2' in rev.properties
+            or u'deb-pristine-delta-xz' in rev.properties)
 
 
 def revision_pristine_tar_delta(rev):
-    if 'deb-pristine-delta' in rev.properties:
-        uuencoded = rev.properties['deb-pristine-delta']
-    elif 'deb-pristine-delta-bz2' in rev.properties:
-        uuencoded = rev.properties['deb-pristine-delta-bz2']
-    elif 'deb-pristine-delta-xz' in rev.properties:
-        uuencoded = rev.properties['deb-pristine-delta-xz']
+    if u'deb-pristine-delta' in rev.properties:
+        uuencoded = rev.properties[u'deb-pristine-delta']
+    elif u'deb-pristine-delta-bz2' in rev.properties:
+        uuencoded = rev.properties[u'deb-pristine-delta-bz2']
+    elif u'deb-pristine-delta-xz' in rev.properties:
+        uuencoded = rev.properties[u'deb-pristine-delta-xz']
     else:
         assert revision_has_pristine_tar_delta(rev)
         raise AssertionError("Not handled new delta type in "
@@ -208,11 +208,11 @@ def revision_pristine_tar_delta(rev):
 
 
 def revision_pristine_tar_format(rev):
-    if 'deb-pristine-delta' in rev.properties:
+    if u'deb-pristine-delta' in rev.properties:
         return 'gz'
-    elif 'deb-pristine-delta-bz2' in rev.properties:
+    elif u'deb-pristine-delta-bz2' in rev.properties:
         return 'bz2'
-    elif 'deb-pristine-delta-xz' in rev.properties:
+    elif u'deb-pristine-delta-xz' in rev.properties:
         return 'xz'
     assert revision_has_pristine_tar_delta(rev)
     raise AssertionError("Not handled new delta type in "
@@ -304,13 +304,13 @@ class PristineTarSource(UpstreamSource):
             delta = make_pristine_tar_delta_from_tree(tree, tarball, subdir=subdir,
                     exclude=exclude)
             if tree.branch.repository._format.supports_custom_revision_properties:
-                uuencoded = standard_b64encode(delta)
+                uuencoded = standard_b64encode(delta).decode('ascii')
                 if tarball.endswith(".tar.bz2"):
-                    revprops["deb-pristine-delta-bz2"] = uuencoded
+                    revprops[u"deb-pristine-delta-bz2"] = uuencoded
                 elif tarball.endswith(".tar.xz"):
-                    revprops["deb-pristine-delta-xz"] = uuencoded
+                    revprops[u"deb-pristine-delta-xz"] = uuencoded
                 else:
-                    revprops["deb-pristine-delta"] = uuencoded
+                    revprops[u"deb-pristine-delta"] = uuencoded
             else:
                 if getattr(tree.branch.repository, '_git', None):
                     git_delta = delta

@@ -42,13 +42,10 @@ from . import make_new_upstream_tarball_xz
 
 ## Copied from bzrlib.tests.test_fetch from bzr-2.5
 def revision_history(branch):
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         graph = branch.repository.get_graph()
         history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
             [_mod_revision.NULL_REVISION]))
-    finally:
-        branch.unlock()
     history.reverse()
     return history
 
@@ -902,7 +899,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue('deb-pristine-delta' in rev.properties)
+        self.assertTrue(u'deb-pristine-delta' in rev.properties)
 
     def test_import_upstream_with_bzip2_tarball(self):
         self.requireFeature(PristineTarFeature)
@@ -930,7 +927,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue('deb-pristine-delta-bz2' in rev.properties)
+        self.assertTrue(u'deb-pristine-delta-bz2' in rev.properties)
 
     def test_import_upstream_with_lzma_tarball(self):
         self.requireFeature(PristineTarFeature)
@@ -973,7 +970,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
-        self.assertTrue('deb-pristine-delta-xz' in rev.properties)
+        self.assertTrue(u'deb-pristine-delta-xz' in rev.properties)
 
     def test_import_package_init_from_other(self):
         self.requireFeature(PristineTarFeature)
@@ -1622,7 +1619,7 @@ class DistributionBranchTests(BuilddebTestCase):
         tf = tarfile.open(tarball_filename, 'w:gz')
         try:
             with open("a", "wb") as f:
-                f.write("aaa")
+                f.write(b"aaa")
             tf.add("a")
         finally:
             tf.close()
@@ -1659,7 +1656,7 @@ class DistributionBranchTests(BuilddebTestCase):
         tf = tarfile.open(tarball_filename, 'w:gz')
         try:
             with open("a", "wb") as f:
-                f.write("aaa")
+                f.write(b"aaa")
             tf.add("a")
         finally:
             tf.close()
@@ -1696,7 +1693,7 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.build()
         upstream_tree = self.make_branch_and_tree("upstream")
         self.build_tree(['upstream/a'])
-        upstream_tree.add(['a'], ['a-id'])
+        upstream_tree.add(['a'], [b'a-id'])
         upstream_tree.commit("one")
         upstream_rev = upstream_tree.branch.last_revision()
         db = DistributionBranch(tree.branch, tree.branch, tree=tree)
@@ -1716,7 +1713,7 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(2, len(revtree.get_parent_ids()))
         self.assertEqual(upstream_rev, revtree.get_parent_ids()[1])
         # And the file has the new id in our tree
-        self.assertEqual("a-id", tree.path2id("a"))
+        self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_merge_upstream_with_dash_in_version_number(self):
         tree = self.make_branch_and_tree('work')

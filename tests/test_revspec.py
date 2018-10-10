@@ -46,8 +46,8 @@ class TestRevisionSpec_package(TestRevisionSpec):
         self.assertEqual(spec.spec, '0.1-1')
 
     def test_simple_package(self):
-        self.tree.branch.tags.set_tag('0.1-1', 'r1')
-        self.assertInHistoryIs(1, 'r1', 'package:0.1-1')
+        self.tree.branch.tags.set_tag('0.1-1', b'r1')
+        self.assertInHistoryIs(1, b'r1', 'package:0.1-1')
 
     def test_unkown_version(self):
         self.assertRaises(UnknownVersion,

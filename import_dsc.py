@@ -1053,7 +1053,7 @@ class DistributionBranch(object):
 
     def get_changelog_from_source(self, dir, max_blocks=None):
         cl_filename = os.path.join(dir, "debian", "changelog")
-        with open(cl_filename, 'r') as f:
+        with open(cl_filename, 'rb') as f:
             content = f.read()
         # Older versions of python-debian were accepting various encodings in
         # the changelog. This is not true with 0.1.20ubuntu2 at least which
@@ -1104,7 +1104,7 @@ class DistributionBranch(object):
             # Work out if we need the upstream part first.
             imported_upstream = False
             if not self.pristine_upstream_source.has_version(package,
-                    version.upstream_version.decode('utf-8')):
+                    version.upstream_version):
                 up_pull_branch = \
                     self.branch_to_pull_upstream_from(package, version.upstream_version,
                             upstream_tarballs)
@@ -1199,8 +1199,8 @@ class DistributionBranch(object):
             author = None
             if use_time_from_changelog and len(cl._blocks) > 0:
                  raw_timestamp = cl.date
-                 import rfc822, time
-                 time_tuple = rfc822.parsedate_tz(raw_timestamp)
+                 import email.utils, time
+                 time_tuple = email.utils.parsedate_tz(raw_timestamp)
                  if time_tuple is not None:
                      timestamp = (calendar.timegm(
                                   time_tuple[:9]) - time_tuple[9],

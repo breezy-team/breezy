@@ -154,8 +154,8 @@ def debian_changelog_commit_message(commit, start_message):
                 new_text).get_grouped_opcodes(0):
             j1, j2 = group[0][3], group[-1][4]
             for line in new_text[j1:j2]:
-                if line.startswith("  "):
-                    changes.append(line)
+                if line.startswith(b"  "):
+                    changes.append(line.decode('utf-8'))
     if not changes:
         return start_message
     from .util import strip_changelog_message

@@ -202,7 +202,7 @@ class FullDep3PatchTests(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([("foo", "data")])
         tree.add("foo")
-        revid = tree.commit("msg", rev_id="arevid", timestamp=1304849661,
+        revid = tree.commit("msg", rev_id=b"arevid", timestamp=1304849661,
             timezone=0)
         write_dep3_patch(f, tree.branch, NULL_REVISION, revid,
             description="Nutter alert",

@@ -71,7 +71,7 @@ def ubuntu_bugs_for_debian_bug(bug_id):
         for task in tasks:
             if task.bug_target_name.endswith("(Ubuntu)"):
                 return str(bug.id)
-    except Exception, e:
+    except Exception as e:
         mutter(str(e))
         return []
     return []
@@ -95,7 +95,7 @@ def debian_bugs_for_ubuntu_bug(bug_id):
                 if watch is None:
                     break
                 return watch.remote_bug.encode("utf-8")
-    except Exception, e:
+    except Exception as e:
         mutter(str(e))
         return []
     return []

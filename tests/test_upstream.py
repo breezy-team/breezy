@@ -601,8 +601,8 @@ class TestUpstreamTagToVersion(TestCase):
 
     def test_unicode(self):
         self.assertEquals(
-                "42.0\xc2\xa9".decode('utf-8'),
-                upstream_tag_to_version("bla-42.0\xc2\xa9".decode("utf-8"), "bla"))
+                u"42.0\xa9",
+                upstream_tag_to_version(u"bla-42.0\xa9", "bla"))
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
@@ -748,17 +748,17 @@ class GenericPristineTarSourceTests(TestCase):
 
     def test_pristine_tar_format_gz(self):
         rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta"] = "1"
+        rev.properties[u"deb-pristine-delta"] = "1"
         self.assertEquals("gz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_bz2(self):
         rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta-bz2"] = "1"
+        rev.properties[u"deb-pristine-delta-bz2"] = "1"
         self.assertEquals("bz2", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_xz(self):
         rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta-xz"] = "1"
+        rev.properties[u"deb-pristine-delta-xz"] = "1"
         self.assertEquals("xz", revision_pristine_tar_format(rev))
 
     def test_pristine_tar_format_unknown(self):
@@ -773,8 +773,8 @@ class GenericPristineTarSourceTests(TestCase):
 
     def test_pristine_tar_delta_gz(self):
         rev = Revision("myrevid")
-        rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
-        self.assertEquals("bla", revision_pristine_tar_delta(rev))
+        rev.properties[u"deb-pristine-delta"] = standard_b64encode(b"bla")
+        self.assertEquals(b"bla", revision_pristine_tar_delta(rev))
 
 
 class PristineTarSourceTests(TestCaseWithTransport):
