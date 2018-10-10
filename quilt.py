@@ -73,7 +73,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
     if quiet is None:
         quiet = trace.is_quiet()
     if not quiet:
-        stderr =  subprocess.STDOUT
+        stderr = subprocess.STDOUT
     else:
         stderr = subprocess.PIPE
     command = ["quilt"] + args
@@ -88,12 +88,16 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
         if e.errno != errno.ENOENT:
             raise
         raise errors.BzrError("quilt is not installed, please install it")
-    output = proc.communicate()
+    (stdout, stderr) = proc.communicate()
     if proc.returncode not in (0, 2):
-        raise QuiltError(proc.returncode, output[0], output[1])
-    if output[0] is None:
+        if stdout is not None:
+            stdout = stdout.decode()
+        if stderr is not None:
+            stderr = stderr.decode()
+        raise QuiltError(proc.returncode, stdout, stderr)
+    if stdout is None:
         return ""
-    return output[0]
+    return stdout
 
 
 def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None,
@@ -155,9 +159,9 @@ def quilt_applied(tree):
 
     """
     try:
-        return [patch.rstrip("\n") for patch in
+        return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
             tree.get_file_lines(".pc/applied-patches")
-            if patch.strip() != ""]
+            if patch.strip() != b""]
     except errors.NoSuchFile:
         return []
     except (IOError, OSError) as e:

@@ -28,6 +28,7 @@ import zipfile
 import doctest
 import os
 
+from ....sixish import PY3
 from .... import tests
 
 from debian.changelog import Version, Changelog
@@ -99,7 +100,10 @@ def make_new_upstream_tarball_xz(source, dest):
 
 def make_new_upstream_tarball_lzma(source, dest):
     import lzma
-    f = lzma.LZMAFile(dest, 'w', options={'format': 'alone'})
+    if PY3:
+        f = lzma.LZMAFile(dest, 'w', format=lzma.FORMAT_ALONE)
+    else:
+        f = lzma.LZMAFile(dest, 'w', options={'format': 'alone'})
     try:
         tar = tarfile.open(None, 'w', f)
         try:

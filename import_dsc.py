@@ -1239,7 +1239,7 @@ class DistributionBranch(object):
         to_location = os.path.join(basedir, "upstream")
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
-        assert upstream_tips.keys() == [None]
+        assert list(upstream_tips.keys()) == [None], "Upstream tips: %r" % list(upstream_tips.keys())
         dir_to = source_branch.controldir.sprout(to_location,
                 revision_id=upstream_tips[None],
                 accelerator_tree=self.tree)

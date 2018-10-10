@@ -367,7 +367,7 @@ class UScanSourceTests(TestCaseWithTransport):
         self.assertTrue(src._export_watchfile() is not None)
 
     def test__xml_report_extract_upstream_version(self):
-        self.assertEquals(b"1.2.9",
+        self.assertEquals("1.2.9",
             UScanSource._xml_report_extract_upstream_version("""
 <dehs>
 <package>tdb</package>
@@ -1037,11 +1037,8 @@ class TestGatherOrigTarballs(TestCaseWithTransport):
             set(gather_orig_files("mypkg", "1.0", ".")))
 
     def test_utf8_invalid_file(self):
-        f = open("\xf6o.tar.gz", "w")
-        try:
+        with open("\xf6o.tar.gz", "w") as f:
             f.write("foo")
-        finally:
-            f.close()
         self.build_tree(["mypkg_1.0.orig.tar.gz"])
         self.assertEquals(
             [os.path.join(self.test_dir, "mypkg_1.0.orig.tar.gz")],

@@ -97,7 +97,7 @@ def git_store_pristine_tar(controldir, filename, tree_id, delta, force=False):
             if not force:
                 raise PristineTarError("An existing pristine tar entry exists for %s" %
                         filename)
-        tree.put_file_bytes_non_atomic(id_filename, tree_id.encode('ascii') + b'\n')
+        tree.put_file_bytes_non_atomic(id_filename, tree_id + b'\n')
         tree.put_file_bytes_non_atomic(delta_filename, delta)
         tree.add([id_filename, delta_filename], [None, None], ['file', 'file'])
         tree.commit('Add pristine tar data for %s' % filename)

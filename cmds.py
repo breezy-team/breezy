@@ -110,7 +110,7 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
                          "assuming '%s'"), distribution)
     else:
         if last_version is None:
-            current_version = changelog.version.upstream_version.decode('utf-8')
+            current_version = changelog.version.upstream_version
         if package is None:
             package = changelog.package
         if distribution is None:

@@ -84,11 +84,8 @@ PristineTarFeature = _PristineTarFeature()
 
 
 def write_to_file(filename, contents):
-    f = open(filename, 'wb')
-    try:
+    with open(filename, 'wb') as f:
         f.write(contents)
-    finally:
-        f.close()
 
 
 class DistributionBranchTests(BuilddebTestCase):
@@ -526,13 +523,13 @@ class DistributionBranchTests(BuilddebTestCase):
         revid3 = self.tree1.commit("three")
         self.db1.tag_version(version3)
         up_revid1 = self.up_tree1.commit("upstream one")
-        self.tag_upstream_version(self.db1, version1.upstream_version.decode())
+        self.tag_upstream_version(self.db1, version1.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.tag_upstream_version(self.db2, version2.upstream_version.decode())
+        self.tag_upstream_version(self.db2, version2.upstream_version)
         up_revid2 = self.up_tree1.commit("upstream two")
-        self.tag_upstream_version(self.db1, version3.upstream_version.decode())
+        self.tag_upstream_version(self.db1, version3.upstream_version)
         self.up_tree2.pull(self.up_tree1.branch)
-        self.tag_upstream_version(self.db2, version4.upstream_version.decode())
+        self.tag_upstream_version(self.db2, version4.upstream_version)
         versions = [version4, version3, version2, version1]
         # no upstream parent as the lesser branch has already merged it
         self.assertEqual(self.db2.get_parents_with_upstream(
@@ -849,16 +846,16 @@ class DistributionBranchTests(BuilddebTestCase):
         name = "package"
         basedir = name + "-" + str(version1.upstream_version)
         os.mkdir(basedir)
-        write_to_file(os.path.join(basedir, "README"), "Hi\n")
-        write_to_file(os.path.join(basedir, "BUGS"), "")
-        write_to_file(os.path.join(basedir, "COPYING"), "")
+        write_to_file(os.path.join(basedir, "README"), b"Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), b"")
+        write_to_file(os.path.join(basedir, "COPYING"), b"")
         self.db1.import_upstream(basedir, "package", version1.upstream_version, {},
             [(None, None, None)])
         basedir = name + "-" + str(version2.upstream_version)
         os.mkdir(basedir)
-        write_to_file(os.path.join(basedir, "README"), "Now even better\n")
-        write_to_file(os.path.join(basedir, "BUGS"), "")
-        write_to_file(os.path.join(basedir, "NEWS"), "")
+        write_to_file(os.path.join(basedir, "README"), b"Now even better\n")
+        write_to_file(os.path.join(basedir, "BUGS"), b"")
+        write_to_file(os.path.join(basedir, "NEWS"), b"")
         self.db1.import_upstream(basedir, "package", version2.upstream_version,
                 { None: [self.up_tree1.branch.last_revision()] }, [(None, None, None)])
         tree = self.up_tree1
@@ -885,8 +882,8 @@ class DistributionBranchTests(BuilddebTestCase):
         name = "package"
         basedir = name + "-" + str(version.upstream_version)
         os.mkdir(basedir)
-        write_to_file(os.path.join(basedir, "README"), "Hi\n")
-        write_to_file(os.path.join(basedir, "BUGS"), "")
+        write_to_file(os.path.join(basedir, "README"), b"Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), b"")
         tar_path = "package_0.1.orig.tar.gz"
         tf = tarfile.open(tar_path, 'w:gz')
         try:
@@ -913,8 +910,8 @@ class DistributionBranchTests(BuilddebTestCase):
         name = "package"
         basedir = name + "-" + str(version.upstream_version)
         os.mkdir(basedir)
-        write_to_file(os.path.join(basedir, "README"), "Hi\n")
-        write_to_file(os.path.join(basedir, "BUGS"), "")
+        write_to_file(os.path.join(basedir, "README"), b"Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), b"")
         tar_path = "package_0.1.orig.tar.bz2"
         tf = tarfile.open(tar_path, 'w:bz2')
         try:
@@ -942,23 +939,23 @@ class DistributionBranchTests(BuilddebTestCase):
         name = "package"
         basedir = name + "-" + str(version.upstream_version)
         os.mkdir(basedir)
-        write_to_file(os.path.join(basedir, "README"), "Hi\n")
-        write_to_file(os.path.join(basedir, "BUGS"), "")
+        write_to_file(os.path.join(basedir, "README"), b"Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), b"")
         # Some versions of tar, including that in Ubuntu lucid and maverick,
         # but not natty and later, have a bug which prevents them from
         # autodetecting the compression type of files less than 512 bytes in
         # length. So, add some extra verbiage to push us just above that
         # boundary. This matters for lzma, but not gz and bz2, because
         # pristine-tar has its own decompression support for those.
-        write_to_file(os.path.join(basedir, "LOREM"), 
-                "Lorem ipsum dolor sit amet, consectetur adipisicing elit, "
-                "sed do eiusmod tempor incididunt ut labore et dolore magna "
-                "aliqua.  Ut enim ad minim veniam, quis nostrud exercitation "
-                "ullamco laboris nisi ut aliquip ex ea commodo consequat. "
-                "Duis aute irure dolor in reprehenderit in voluptate velit "
-                "esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
-                "occaecat cupidatat non proident, sunt in culpa qui officia "
-                "deserunt mollit anim id est laborum.")
+        write_to_file(os.path.join(basedir, "LOREM"),
+                b"Lorem ipsum dolor sit amet, consectetur adipisicing elit, "
+                b"sed do eiusmod tempor incididunt ut labore et dolore magna "
+                b"aliqua.  Ut enim ad minim veniam, quis nostrud exercitation "
+                b"ullamco laboris nisi ut aliquip ex ea commodo consequat. "
+                b"Duis aute irure dolor in reprehenderit in voluptate velit "
+                b"esse cillum dolore eu fugiat nulla pariatur. Excepteur sint "
+                b"occaecat cupidatat non proident, sunt in culpa qui officia "
+                b"deserunt mollit anim id est laborum.")
         tar_path = "package_0.1.orig.tar.xz"
         make_new_upstream_tarball_xz(basedir, tar_path)
         try:

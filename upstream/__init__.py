@@ -319,11 +319,13 @@ def gather_orig_files(package, version, path):
     :param version: package upstream version string
     :return: List of orig tarfile paths, or None if none were found
     """
-    prefix = "%s_%s.orig" % (package.encode('ascii'), version.encode('ascii'))
+    prefix = ("%s_%s.orig" % (package, version))
     ret = []
     path = os.path.abspath(path)
     if not os.path.isdir(path):
         return None
+    if isinstance(path, bytes):
+        prefix = prefix.encode(osutils._fs_enc)
     for filename in os.listdir(path):
         if filename.endswith('.asc'):
             continue

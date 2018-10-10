@@ -86,7 +86,7 @@ class DebBuild(object):
         format_path = os.path.join(self.target_dir, "debian/source/format")
         if not os.path.isfile(format_path):
             return
-        with file(format_path, 'r') as f:
+        with open(format_path, 'r') as f:
             if f.read().strip() == FORMAT_3_0_QUILT:
                 quilt_push_all(os.path.abspath(self.target_dir))
 

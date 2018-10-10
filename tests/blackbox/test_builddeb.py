@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 
+from breezy.sixish import text_type
 
 import os
 
@@ -57,7 +58,7 @@ class TestBuilddeb(BuilddebTestCase):
 
   def assertNotInBuildDir(self, files):
     build_dir = self.build_dir()
-    if isinstance(files, basestring):
+    if isinstance(files, (bytes, text_type):
       files = [files]
     for filename in files:
       self.assertPathDoesNotExist(os.path.join(build_dir, filename))
