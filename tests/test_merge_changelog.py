@@ -41,7 +41,7 @@ from ....tests.features import ExecutableFeature
 dpkg_mergechangelogs_feature = ExecutableFeature('dpkg-mergechangelogs')
 
 
-v_111_2 = """\
+v_111_2 = b"""\
 pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
@@ -52,7 +52,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 """.splitlines(True)
 
 
-v_111_2b = """\
+v_111_2b = b"""\
 pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
@@ -64,7 +64,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 """.splitlines(True)
 
 
-v_111_2c = """\
+v_111_2c = b"""\
 pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
@@ -77,7 +77,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 
 # Merge of 2b and 2c using 2 as the base (b adds a line, c adds a line and
 # deletes a line).
-v_111_2bc = """\
+v_111_2bc = b"""\
 pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
@@ -91,7 +91,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 
 # Merge of 2b and 2c using an empty base. (As calculated by
 # dpkg-mergechangelogs.)
-v_111_2bc_empty_base = """\
+v_111_2bc_empty_base = b"""\
 pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
@@ -107,7 +107,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 """.splitlines(True)
 
 
-v_112_1 = """\
+v_112_1 = b"""\
 pseudo-prog (1.1.2-1) unstable; urgency=low
 
   * New upstream release.
@@ -118,7 +118,7 @@ pseudo-prog (1.1.2-1) unstable; urgency=low
 """.splitlines(True)
 
 
-v_001_1 = """\
+v_001_1 = b"""\
 pseudo-prog (0.0.1-1) unstable; urgency=low
 
   * New project released!!!!
@@ -229,7 +229,7 @@ class TestMergeChangelog(tests.TestCase):
             conflicted=True)
 
     def test_not_valid_changelog(self):
-        invalid_changelog = """\
+        invalid_changelog = b"""\
 pseudo-prog (1.1.1-2) unstable; urgency=low
 
   * New upstream release.
@@ -250,9 +250,9 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
         #  - Andrew Bennetts, 25 July 2011.
         #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
         self.assertMergeChangelog(v_112_1 + 
-                                  ['<<<<<<<\n'] +
+                                  [b'<<<<<<<\n'] +
                                   v_111_2 +
-                                  ['=======\n>>>>>>>\n'],
+                                  [b'=======\n>>>>>>>\n'],
                                   this_lines=v_111_2,
                                   other_lines=v_112_1,
                                   base_lines=invalid_changelog,
@@ -267,7 +267,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
         In that case, the result should not be a success with a zero byte
         merge result file. See lp:893495 for such an issue.
         """
-        invalid_changelog = """\
+        invalid_changelog = b"""\
 pseudo-prog (ss-0) unstable; urgency=low
 
   * New project released!!!!
@@ -288,11 +288,11 @@ pseudo-prog (ss-0) unstable; urgency=low
 
     def test_invalid_version_non_ascii(self):
         """Invalid version with non-ascii data is rejected or correctly merged
-        
+
         Such a version has always been treated as invalid so fails
         consistently across dpkg versions currently.
         """
-        invalid_changelog = """\
+        invalid_changelog = b"""\
 pseudo-prog (\xc2\xa7) unstable; urgency=low
 
   * New project released!!!!
@@ -348,8 +348,8 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
     def test_changelog_merge_hook_successful(self):
         params, merger = self.make_params()
-        params.other_lines = ['']
-        params.base_lines = ['']
+        params.other_lines = [b'']
+        params.base_lines = [b'']
         file_merger = debian.changelog_merge_hook_factory(merger)
         result, new_content = file_merger.merge_text(params)
         self.assertEqual('success', result)

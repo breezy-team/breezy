@@ -51,14 +51,14 @@ class TestBuilddeb(BuilddebTestCase):
 
   def assertInBuildDir(self, files):
     build_dir = self.build_dir()
-    if isinstance(files, basestring):
+    if isinstance(files, (text_type, bytes)):
       files = [files]
     for filename in files:
       self.assertPathExists(os.path.join(build_dir, filename))
 
   def assertNotInBuildDir(self, files):
     build_dir = self.build_dir()
-    if isinstance(files, (bytes, text_type):
+    if isinstance(files, (bytes, text_type)):
       files = [files]
     for filename in files:
       self.assertPathDoesNotExist(os.path.join(build_dir, filename))
@@ -164,9 +164,9 @@ class TestBuilddeb(BuilddebTestCase):
     tree = self.make_unpacked_source()
     self.make_upstream_tarball()
     os.mkdir('.bzr-builddeb/')
-    with open('.bzr-builddeb/default.conf', 'wb') as f:
-      f.write(b'[HOOKS]\npre-export = touch pre-export\n')
-      f.write(b'pre-build = touch pre-build\npost-build = touch post-build\n')
+    with open('.bzr-builddeb/default.conf', 'w') as f:
+      f.write('[HOOKS]\npre-export = touch pre-export\n')
+      f.write('pre-build = touch pre-build\npost-build = touch post-build\n')
     self.run_bzr('add .bzr-builddeb/default.conf')
     self.run_bzr('bd --dont-purge --builder true')
     self.assertPathExists('pre-export')
@@ -178,13 +178,13 @@ class TestBuilddeb(BuilddebTestCase):
     hooks.install_named_hook("set_commit_message",
       debian_changelog_commit, "Test builddeb set commit msg hook")
     tree = self.make_unpacked_source()
-    with open("debian/bzr-builddeb.conf", 'wb') as f:
-      f.write(b"[BUILDDEB]\ncommit-message-from-changelog = true")
+    with open("debian/bzr-builddeb.conf", 'w') as f:
+      f.write("[BUILDDEB]\ncommit-message-from-changelog = true")
     tree.add("debian/bzr-builddeb.conf")
     # The changelog is only used for commit message when it already exists and
     # is then changed, so need to clear it, commit, then set the contents.
     open("debian/changelog", "w").close()
-    tree.commit("Prepare for release", rev_id="prerel")
+    tree.commit("Prepare for release", rev_id=b"prerel")
     # Would be nice to use debian.changelog to make one, but it's changed
     # across versions as to how it wants non-ascii bytes provided.
     with open("debian/changelog", "wb") as f:

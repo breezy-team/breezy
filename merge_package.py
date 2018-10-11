@@ -51,7 +51,7 @@ def _upstream_version_data(branch, revid):
     changelog, _ignore = find_changelog(tree, False)
     uver = changelog.version.upstream_version
     upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
-    if upstream_revids.keys() != [None]:
+    if list(upstream_revids.keys()) != [None]:
         raise MultipleUpstreamTarballsNotSupported()
     upstream_revid = upstream_revids[None]
     return (Version(uver), upstream_revid)

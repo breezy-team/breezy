@@ -225,11 +225,8 @@ class TestMergeUpstream(BuilddebTestCase):
         rel2 = self.release_upstream(changed_upstream)
         package_path = package.tree.basedir
         os.mkdir(os.path.join(package_path, '.bzr-builddeb/'))
-        f = open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'wb')
-        try:
+        with open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'w') as f:
           f.write('[BUILDDEB]\nupstream-branch = %s\n' % changed_upstream.tree.basedir)
-        finally:
-          f.close()
 
         (out, err) = self.run_bzr(
             ['merge-upstream', '-rrevid:%s' % changed_upstream.tree.last_revision()],
@@ -256,11 +253,8 @@ class TestMergeUpstream(BuilddebTestCase):
         package = self.import_upstream(rel1, upstream)
         package_path = package.tree.basedir
         os.mkdir(os.path.join(package_path, '.bzr-builddeb/'))
-        f = open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'wb')
-        try:
+        with open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'w') as f:
           f.write('[HOOKS]\nmerge-upstream = touch muhook\n')
-        finally:
-          f.close()
         changed_upstream = self.file_moved_replaced_upstream(upstream)
         rel2 = self.release_upstream(changed_upstream)
         self.run_bzr(['merge-upstream', '--version', str(rel2.version),

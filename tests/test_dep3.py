@@ -21,6 +21,7 @@
 from __future__ import absolute_import
 
 from email.parser import Parser
+from io import BytesIO
 
 from ....revision import (
     NULL_REVISION,
@@ -67,7 +68,7 @@ class Dep3HeaderTests(TestCase):
         self.assertEquals("2011-05-08", ret["Last-Update"])
 
     def test_revision_id(self):
-        ret = self.dep3_header(revision_id="myrevid")
+        ret = self.dep3_header(revision_id=b"myrevid")
         self.assertEquals("myrevid", ret["X-Bzr-Revision-Id"])
 
     def test_authors(self):
@@ -184,7 +185,7 @@ class DescribeOriginTests(TestCaseWithTransport):
     def test_no_public_branch(self):
         tree = self.make_branch_and_tree(".")
         revid1 = tree.commit(message="msg1")
-        self.assertEquals("commit, revision id: %s" % revid1,
+        self.assertEquals("commit, revision id: %s" % revid1.decode('utf-8'),
             describe_origin(tree.branch, revid1))
 
     def test_public_branch(self):

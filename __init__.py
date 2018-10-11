@@ -155,20 +155,22 @@ def debian_changelog_commit_message(commit, start_message):
             j1, j2 = group[0][3], group[-1][4]
             for line in new_text[j1:j2]:
                 if line.startswith(b"  "):
+                    # Debian Policy Manual states that debian/changelog must be UTF-8
                     changes.append(line.decode('utf-8'))
     if not changes:
         return start_message
+
     from .util import strip_changelog_message
     changes = strip_changelog_message(changes)
-    return "".join(changes)
+
+    return ''.join(changes)
 
 
 def debian_changelog_commit(commit, start_message):
     """hooked into breezy.msgeditor set_commit_message.
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
-    from .util import (
-        debuild_config, find_bugs_fixed)
+    from .util import debuild_config, find_bugs_fixed
 
     t = commit.work_tree
     config = debuild_config(t, False)
@@ -182,8 +184,7 @@ def debian_changelog_commit(commit, start_message):
     bugs_fixed = find_bugs_fixed([changes], commit.work_tree.branch)
     commit.builder._revprops["bugs"] = "\n".join(bugs_fixed)
 
-    # Debian Policy Manual states that debian/changelog must be UTF-8
-    return changes.decode("utf-8")
+    return changes
 
 
 def changelog_merge_hook_factory(merger):

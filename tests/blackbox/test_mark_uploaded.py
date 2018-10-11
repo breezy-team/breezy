@@ -42,11 +42,8 @@ class TestMarkUploaded(BuilddebTestCase):
         cl.add_change('');
         cl.add_change('  * Initial packaging.');
         cl.add_change('');
-        f = open('debian/changelog', 'wb')
-        try:
+        with open('debian/changelog', 'w') as f:
             cl.write_to_open_file(f)
-        finally:
-            f.close()
         self.wt.add(["debian/", "debian/changelog"])
         self.wt.commit("one")
 
@@ -74,11 +71,8 @@ class TestMarkUploaded(BuilddebTestCase):
         cl.add_change('');
         cl.add_change('  * Initial packaging.');
         cl.add_change('');
-        f = open('debian/changelog', 'wb')
-        try:
+        with open('debian/changelog', 'w') as f:
             cl.write_to_open_file(f)
-        finally:
-            f.close()
         self.wt.commit("two")
         self.run_bzr_error(["The changelog still targets 'UNRELEASED', so "
                 "apparently hasn't been uploaded."], "mark-uploaded")

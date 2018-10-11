@@ -52,12 +52,10 @@ ipsec-tools (%s) karmic; urgency=low
 
 
 def _prepend_log(text, path):
-    content = open(path).read()
-    fh = open(path, 'wb')
-    try:
+    with open(path, 'r') as f:
+        content = f.read()
+    with open(path, 'w') as fh:
         fh.write(text+content)
-    finally:
-        fh.close()
 
 
 class TestMergePackageBB(BuilddebTestCase):
@@ -172,7 +170,7 @@ class TestMergePackageBB(BuilddebTestCase):
 
     def _setup_branch(self, name, vdata, tree=None, log_format=None):
         vids = list(string.ascii_uppercase)
-        days = range(len(string.ascii_uppercase))
+        days = list(range(len(string.ascii_uppercase)))
 
         if tree is None:
             tree = self.make_branch_and_tree(name)
@@ -213,10 +211,8 @@ class TestMergePackageBB(BuilddebTestCase):
 
         def tree_nick(tree):
             return str(tree)[1:-1].split('/')[-1]
-            
-        tree.lock_write()
 
-        try:
+        with tree.lock_write():
             for version, paths, utree, urevid in vdata:
                 msg = ''
                 if utree is not None:
@@ -231,7 +227,5 @@ class TestMergePackageBB(BuilddebTestCase):
                     msg += 'Added paths: %s. ' % str(paths)
 
                 commit(msg, version)
-        finally:
-            tree.unlock()
 
         return tree

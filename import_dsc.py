@@ -114,6 +114,10 @@ class DscComp(object):
     def __init__(self, cache):
         self.cache = cache
 
+    def key(self, dscname):
+        dsc = self.cache.get_dsc(dscname)
+        return Version(dsc['Version'])
+
     def cmp(self, dscname1, dscname2):
         dsc1 = self.cache.get_dsc(dscname1)
         dsc2 = self.cache.get_dsc(dscname2)
@@ -1037,7 +1041,7 @@ class DistributionBranch(object):
             if not pull_branch.is_version_native(pull_version):
                 pull_revids = pull_branch.pristine_upstream_source.version_as_revisions(
                     package, pull_version.upstream_version)
-                if pull_revids.keys() != [None]:
+                if list(pull_revids.keys()) != [None]:
                     raise MultipleUpstreamTarballsNotSupported()
                 pull_revid = pull_revids[None]
                 mutter("Initialising upstream from %s, version %s",

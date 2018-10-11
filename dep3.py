@@ -83,7 +83,7 @@ def write_dep3_patch_header(f, description=None, origin=None, forwarded=None,
     if applied_upstream is not None:
         f.write("Applied-Upstream: %s\n" % applied_upstream)
     if revision_id is not None:
-        f.write("X-Bzr-Revision-Id: %s\n" % revision_id)
+        f.write("X-Bzr-Revision-Id: %s\n" % revision_id.decode('utf-8'))
     f.write("\n")
 
 
@@ -155,7 +155,7 @@ def describe_origin(branch, revid):
             public_branch_url,
             ".".join(str(x) for x in branch.revision_id_to_dotted_revno(revid)), )
     else:
-        return "commit, revision id: %s" % revid
+        return "commit, revision id: %s" % revid.decode('utf-8')
 
 
 def write_dep3_patch(f, branch, base_revid, target_revid, description=None,

@@ -896,7 +896,7 @@ class cmd_import_dsc(Command):
             open_file_via_transport,
             )
         cache = DscCache()
-        files_list.sort(cmp=DscComp(cache).cmp)
+        files_list.sort(key=DscComp(cache).key)
         if not os.path.exists(orig_target):
             os.makedirs(orig_target)
         for dscname in files_list:
@@ -904,11 +904,8 @@ class cmd_import_dsc(Command):
             def get_dsc_part(from_transport, filename):
                 from_f = open_file_via_transport(filename, from_transport)
                 contents = from_f.read()
-                to_f = open(os.path.join(orig_target, filename), 'wb')
-                try:
+                with open(os.path.join(orig_target, filename), 'wb') as to_f:
                     to_f.write(contents)
-                finally:
-                    to_f.close()
             base, filename = urlutils.split(dscname)
             from_transport = cache.get_transport(dscname)
             get_dsc_part(from_transport, filename)
@@ -1069,7 +1066,7 @@ class cmd_import_upstream(Command):
                     upstream.repository.fetch(branch.repository, parent)
             db.extract_upstream_tree(base_revisions, tempdir)
             parents = {}
-            for name, base_revid in base_revisions.iteritems():
+            for name, base_revid in base_revisions.items():
                 parents[name] = [base_revid]
         else:
             parents = {}
@@ -1399,9 +1396,9 @@ class cmd_dep3_patch(Command):
             # that revisions commits message
             lhs_history = graph.iter_lefthand_ancestry(revision_id,
                 [base_revid])
-            rev = branch.repository.get_revision(lhs_history.next())
+            rev = branch.repository.get_revision(next(lhs_history))
             try:
-                lhs_history.next()
+                next(lhs_history)
             except StopIteration:
                 description = rev.message
         origin = describe_origin(branch, revision_id)

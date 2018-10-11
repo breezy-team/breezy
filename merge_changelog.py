@@ -100,14 +100,14 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
                 match_text = match_obj.group(0)
                 return match_text[0] * 7
             stdout = re.sub(b'(?m)^[<=>]{6}$', replace_func, stdout)
-            return 'conflicted', stdout
+            return 'conflicted', stdout.splitlines(True)
         elif retcode != 0:
             # dpkg-mergechangelogs exited with an error. There is probably no
             # output at all, but regardless the merge should fall back to
             # another method.
             _logger.warning("dpkg-mergechangelogs failed with status %d", retcode)
-            return 'not_applicable', stdout
+            return 'not_applicable', stdout.splitlines(True)
         else:
-            return 'success', stdout
+            return 'success', stdout.splitlines(True)
     finally:
         shutil.rmtree(tmpdir)
