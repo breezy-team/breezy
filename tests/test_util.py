@@ -490,8 +490,8 @@ class ChangelogInfoTests(TestCaseWithTransport):
         self.assertEqual([text_type]*len(authors), list(map(type, authors)))
 
     def test_find_extra_authors_utf8(self):
-        changes = ["  * Do foo", "", "  [ \xc3\xa1. Hacker ]", "  * Do bar", "",
-                   "  [ \xc3\xa7. Hacker ]", "  [ A. Hacker}"]
+        changes = [u"  * Do foo", u"", "  [ \xe1. Hacker ]", "  * Do bar", "",
+                   u"  [ \xe7. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
         self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
         self.assertEqual([text_type]*len(authors), list(map(type, authors)))
@@ -540,9 +540,9 @@ class ChangelogInfoTests(TestCaseWithTransport):
         self.assert_thanks_is(changes, [u"Mark A. Super-Hacker"])
         changes = ["  * Thanks to A. Hacker <ahacker@example.com>"]
         self.assert_thanks_is(changes, [u"A. Hacker <ahacker@example.com>"])
-        changes = ["  * Thanks to Adeodato Sim\xc3\x83\xc2\xb3"]
+        changes = [u"  * Thanks to Adeodato Sim\xc3\xb3"]
         self.assert_thanks_is(changes, [u"Adeodato Sim\xc3\xb3"])
-        changes = ["  * Thanks to \xc3\x81deodato Sim\xc3\x83\xc2\xb3"]
+        changes = [u"  * Thanks to \xc1deodato Sim\xc3\xb3"]
         self.assert_thanks_is(changes, [u"\xc1deodato Sim\xc3\xb3"])
 
     def test_find_bugs_fixed_no_changes(self):
@@ -639,18 +639,10 @@ class ChangelogInfoTests(TestCaseWithTransport):
         self.assertEqual([u'\xde. Hacker'], thanks)
         self.assertEqual(['https://launchpad.net/bugs/12345 fixed'], bugs)
 
-    def test_get_commit_info_utf8(self):
-        changes = ["  [ \xc3\x81. Hacker ]",
-                   "  * First ch\xc3\xa1nge, LP: #12345",
-                   "  * Second change, thanks to \xc3\x9e. Hacker"]
-        self.assertUnicodeCommitInfo(changes)
-
-    def test_get_commit_info_iso_8859_1(self):
-        # Changelogs aren't always well-formed UTF-8, so we fall back to
-        # iso-8859-1 if we fail to decode utf-8.
-        changes = ["  [ \xc1. Hacker ]",
-                   "  * First ch\xe1nge, LP: #12345",
-                   "  * Second change, thanks to \xde. Hacker"]
+    def test_get_commit_info_unicode(self):
+        changes = [u"  [ \xc1. Hacker ]",
+                   u"  * First ch\xe1nge, LP: #12345",
+                   u"  * Second change, thanks to \xde. Hacker"]
         self.assertUnicodeCommitInfo(changes)
 
 
