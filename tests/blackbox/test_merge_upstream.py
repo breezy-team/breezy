@@ -229,7 +229,7 @@ class TestMergeUpstream(BuilddebTestCase):
           f.write('[BUILDDEB]\nupstream-branch = %s\n' % changed_upstream.tree.basedir)
 
         (out, err) = self.run_bzr(
-            ['merge-upstream', '-rrevid:%s' % changed_upstream.tree.last_revision()],
+            ['merge-upstream', '-rrevid:%s' % changed_upstream.tree.last_revision().decode('utf-8')],
             working_dir=package.tree.basedir)
         self.assertEquals(out, "")
         self.assertContainsRe(err, "Using version string 8.")
