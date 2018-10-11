@@ -27,6 +27,7 @@ from ....tests.features import Feature
 class _LaunchpadConnectionFeature(Feature):
 
     def _probe(self):
+        import ssl
         try:
             from httplib2 import Http, ServerNotFoundError
         except ImportError:
@@ -34,6 +35,8 @@ class _LaunchpadConnectionFeature(Feature):
         try:
             Http().request("https://code.launchpad.net/")
         except ServerNotFoundError:
+            return False
+        except ssl.CertificateError:
             return False
         return True
 
