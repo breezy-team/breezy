@@ -44,16 +44,16 @@ Homepage: https://www.breezy-vcs.org/
 XS-Testsuite: autopkgtest
 
 Package: brz
-Recommends: python-gpg, python-dulwich (>= 0.19.6)
+Recommends: python3-gpg, python3-dulwich (>= 0.19.6)
 Architecture: all
-Depends: python-breezy (<= ${source:Version}.1~),
-         python-breezy (>= ${source:Version}),
+Depends: python3-breezy (<= ${source:Version}.1~),
+         python3-breezy (>= ${source:Version}),
          ${misc:Depends},
          ${python:Depends}
 Conflicts: bzr (<< 2.7.0+bzr6622-1)
 Suggests: brz-doc,
-          python-breezy.tests,
-          python-fastimport (>= 0.9.8)
+          python3-breezy.tests,
+          python3-fastimport (>= 0.9.8)
 Description: easy to use distributed version control system
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
