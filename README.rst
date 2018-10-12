@@ -30,7 +30,7 @@ It also requires the ``dpkg-dev`` package to be installed (for the
   apt-get install dpkg-dev
 
 This plugin can be installed in two ways. As you are probably using a Debian
-system you can probably just use the Debian packages. The other way is to 
+system you can probably just use the Debian packages. The other way is to
 branch it in to ``~/.bazaar/plugins/builddeb``, i.e::
 
   brz branch https://code.breezy-vcs.org/breezy-debian/trunk/ \
@@ -44,7 +44,7 @@ There is also a script named ``brz-buildpackage`` provided in /usr/bin
 that provides access to the tool as well. It is just a wrapper script that
 calls ``brz builddeb`` with the arguments you provide, so the rest of the
 documentation applies equally well to using this script. Probably the only
-difference is that help will be got with ``brz-buildpackage ---help`` 
+difference is that help will be got with ``brz-buildpackage ---help``
 (as ``brz builddeb --help`` also works and does the same as
 ``brz help builddeb``). The script is provided for two reasons, the first
 is similarity to the other ``-buildpackage`` systems, and the second is so
@@ -92,7 +92,7 @@ These change the directories that the plugin uses for various things.
 
   * ``build-dir = path``
 
-    The directory in which the build takes place. (Defaults to 
+    The directory in which the build takes place. (Defaults to
     ``../build-area`` relative to the branch).
 
   * ``result-dir = path``
@@ -101,7 +101,7 @@ These change the directories that the plugin uses for various things.
 
   * ``orig-dir = path``
 
-    The directory to search for the ``.orig.tar.gz`` when not in native mode. 
+    The directory to search for the ``.orig.tar.gz`` when not in native mode.
     (Defaults to ``..`` relative to the branch).
 
 Modes
@@ -112,10 +112,10 @@ on the type of package you are building.
 
   * ``merge = True``
 
-    Turns on merge mode. This is where only the ``debian/`` directory is 
+    Turns on merge mode. This is where only the ``debian/`` directory is
     versioned. It uses and ``orig.tar.gz`` for the upstream and combines the
-    two before building. It works with both the ``debian/`` directory in the 
-    branch, or the contents of ``debian/`` (e.g. ``rules``, ``control``) 
+    two before building. It works with both the ``debian/`` directory in the
+    branch, or the contents of ``debian/`` (e.g. ``rules``, ``control``)
     directly in the top level directory of the branch. (Defaults to ``False``).
 
   * ``native = True``
@@ -164,32 +164,32 @@ situations.
 
   * ``quick-builder = command``
 
-    The command used to build the package if the ``--quick`` option is used. 
+    The command used to build the package if the ``--quick`` option is used.
     (Defaults to ``fakeroot debian/rules binary``). Will only be read from
     the file in your home directory.
 
-The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
-that apply to the package on all systems, or that there is a default that is 
-wanted that differs from the default provided. ``merge = True`` is a perfect 
+The idea is that certain options can be set in ``.bzr-builddeb/default.conf``
+that apply to the package on all systems, or that there is a default that is
+wanted that differs from the default provided. ``merge = True`` is a perfect
 example of this.
 
 Then the user can override this locally if they want for all of their packages
-(they prefer ``builder = pdebuild``), so they can set this in 
-``~/.bazaar/builddeb.conf``. They can override it for the package if they want 
+(they prefer ``builder = pdebuild``), so they can set this in
+``~/.bazaar/builddeb.conf``. They can override it for the package if they want
 (e.g. they have a different location for upstream tarballs of a package if
-they are involved with upstream as well, so they set ``orig_dir = 
+they are involved with upstream as well, so they set ``orig_dir =
 /home/.../releases/``), this can be done in ``.bzr-builddeb/local.conf``).
 
 
 Creating a package
 ------------------
 
-Below are instructions for creating a package. These instructions differ 
+Below are instructions for creating a package. These instructions differ
 depending on whether you want to use merge mode or not.
 
 First the common start create a directory to hold your work. This is not
-absolutely necessary, but as you still get all the power of brz when using 
-this plugin, so you might want to branch etc. and so this will be useful 
+absolutely necessary, but as you still get all the power of brz when using
+this plugin, so you might want to branch etc. and so this will be useful
 later on::
 
   $ mkdir path/to/project
@@ -211,7 +211,7 @@ I will describe creating a new project, but for existing projects you can
 copy the code over and call ``brz init`` then continue in the same way.
 
 I will also describe the setup that conforms to the default options for
-directories. If you wish to use a different layout set up the options to 
+directories. If you wish to use a different layout set up the options to
 your liking and tweak the commands below as necessary.
 
 Using merge mode
@@ -230,16 +230,16 @@ Now create the branch for the ``debian/`` directory::
 
   $ brz init project
 
-Now you can either create a ``project/debian/`` directory for all the files, 
+Now you can either create a ``project/debian/`` directory for all the files,
 or add them in the ``project`` directory.
-    
-Now tell bzr-builddeb that this is a merge mode project:: 
+
+Now tell bzr-builddeb that this is a merge mode project::
 
   $ cd project/
   $ mkdir .bzr-builddeb/
   $ echo -e "[BUILDDEB]\nmerge = True" > .bzr-builddeb/default.conf
 
-Now you are ready to create the project. Create the usual files, and edit them 
+Now you are ready to create the project. Create the usual files, and edit them
 to your satisfaction. When you have the files run::
 
   $ brz add
@@ -294,14 +294,14 @@ Now you are ready to build using the plugin.
 Building a Package
 ------------------
 
-Once your package is set up then building it is easy. Run the following 
-command from the top-level of the project branch, after checking in all 
+Once your package is set up then building it is easy. Run the following
+command from the top-level of the project branch, after checking in all
 changes::
 
   $ brz bd
 
 If you used the default options this should build the package and leave the
-resulting files in ``../build-area``. 
+resulting files in ``../build-area``.
 
 Note that most of the options can be used as parameters to this command as well
 by prefixing their name with ``--``. So you can do for example::
@@ -316,7 +316,7 @@ the code and the help listings quite a lot, so I will only it if asked to.
 Tips
 ----
 
-If you have a slow builder defined in your configuration (for instance 
+If you have a slow builder defined in your configuration (for instance
 ``pdebuild``, you can bypass this by using the ``--quick`` option. This uses
 whatever the ``quick_builder`` option is (defaults to ``fakeroot debian/rules
 binary``).
@@ -326,12 +326,12 @@ you do not want to unpack it at every build you can speed things up even more.
 This involves reusing the tarball each build, so saving the need to unpack it.
 To do this run::
 
-  $ brz bd --export-only 
+  $ brz bd --export-only
 
-once to create a build-dir to use. (``-e`` is the short option for this). Then 
+once to create a build-dir to use. (``-e`` is the short option for this). Then
 on the next builds you can use the ``--reuse`` and ``--dont-purge`` options to
-keep using this build directory. **N.B. This may cause build problems, 
-especially if files are removed**, it is advisable to run a build without 
+keep using this build directory. **N.B. This may cause build problems,
+especially if files are removed**, it is advisable to run a build without
 ``--reuse`` after removing any files.
 
 
@@ -342,7 +342,7 @@ bzr-builddeb is designed to fit in with the workflow that brz encourages. It
 is designed as a plugin, so that it just becomes one more ``bzr`` command that
 you run while working on the package.
 
-It also works fine with the frequent branching approach of bzr, so that you 
+It also works fine with the frequent branching approach of bzr, so that you
 can branch to test something new for the package, or for a bug fix, and then
 merge it back in to your main branch when it is done.
 
