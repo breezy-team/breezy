@@ -1,7 +1,7 @@
 #    config.py -- Configuration of bzr-builddeb from files
 #    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
 #    
-#    This file is part of bzr-builddeb.
+#    This file is part of breezy-debian.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by

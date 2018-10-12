@@ -1,7 +1,7 @@
 #    builder.py -- Classes for building packages
 #    Copyright (C) 2006, 2007 James Westby <jw+debian@jameswestby.net>
 #    
-#    This file is part of bzr-builddeb.
+#    This file is part of breezy-debian.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
