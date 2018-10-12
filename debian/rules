@@ -31,7 +31,7 @@ endif
 	rst2html --stylesheet-path=$(doc_dir)/user_manual.css $< > $@
 
 override_dh_auto_build-indep: $(html_docs)
-	rst2html README > README.html
+	rst2html README.rst > README.html
 
 override_dh_auto_clean:
 	dh_auto_clean
