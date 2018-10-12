@@ -21,7 +21,7 @@
 from __future__ import absolute_import
 
 from email.parser import Parser
-from io import BytesIO
+from io import BytesIO, TextIOWrapper
 
 from ....revision import (
     NULL_REVISION,
@@ -209,7 +209,8 @@ class FullDep3PatchTests(TestCaseWithTransport):
             description="Nutter alert",
             forwarded="not needed",
             authors=set(["Jelmer <jelmer@samba.org>"]))
-        self.assertEquals("Description: Nutter alert\n"
+        self.assertEqual(
+            "Description: Nutter alert\n"
             "Forwarded: not needed\n"
             "Author: Jelmer <jelmer@samba.org>\n"
             "X-Bzr-Revision-Id: arevid\n"

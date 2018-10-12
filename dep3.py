@@ -24,6 +24,8 @@ from __future__ import absolute_import
 
 from ... import diff
 
+from io import BytesIO
+
 import time
 
 
@@ -181,5 +183,8 @@ def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
         applied_upstream=applied_upstream, forwarded=forwarded)
     old_tree = branch.repository.revision_tree(base_revid)
     new_tree = branch.repository.revision_tree(target_revid)
-    diff.show_diff_trees(old_tree, new_tree, f, old_label='old/',
+    bf = BytesIO()
+    diff.show_diff_trees(old_tree, new_tree, bf, old_label='old/',
                          new_label='new/')
+    # TODO(jelmer)
+    f.write(bf.getvalue().decode('utf-8'))
