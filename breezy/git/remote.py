@@ -629,9 +629,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         :param data: Request data.
         :param allow_compression: Allow GZipped communication.
         :return: Tuple (`response`, `read`), where response is an `urllib3`
-            response object with additional `content_type` and
-            `redirect_location` properties, and `read` is a consumable read
-            method for the response data.
+            response object with additional `content_type` property,
+            and `read` is a consumable read method for the response data.
         """
         from breezy.transport.http._urllib2_wrappers import Request
         headers['User-agent'] = user_agent_for_github()
@@ -671,7 +670,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
                 self._response = response
                 self.status = response.code
                 self.content_type = response.getheader("Content-Type")
-                self.redirect_location = response.geturl()
 
             def close(self):
                 self._response.close()
