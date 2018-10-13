@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr7131-3) UNRELEASED; urgency=medium
+
+  * Add patch 05_pack_files: cherry-pick fixes for pack files on Python
+    3.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 13 Oct 2018 14:34:31 +0100
+
 breezy (3.0.0~bzr7131-2) unstable; urgency=medium
 
   * Use Python 3 version in brz package.

@@ -69,7 +69,7 @@ Description: easy to use distributed version control system
  spurious conflicts, deals well with repeated merges between branches,
  and is able to handle modifications to renamed files correctly.
  .
- Install python-paramiko if you are going to push branches to remote
+ Install python3-paramiko if you are going to push branches to remote
  hosts with sftp.
 
 Package: python-breezy
