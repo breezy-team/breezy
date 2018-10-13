@@ -203,6 +203,13 @@ def parse_git_error(url, message):
     if message.startswith('access denied or repository not exported:'):
         extra, path = message.split(': ', 1)
         return PermissionDenied(path, extra)
+    if message.endswith('You are not allowed to push code to this project.'):
+        return PermissionDenied(url, message)
+    if message.endswith(' does not appear to be a git repository'):
+        return NotBranchError(url, message)
+    m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
+    if m:
+        return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
     # Don't know, just return it to the user as-is
     return RemoteGitError(message)
 
@@ -350,7 +357,7 @@ class DefaultProgressReporter(object):
     def progress(self, text):
         text = text.rstrip(b"\r\n")
         text = text.decode('utf-8')
-        if text.startswith('error: '):
+        if text.lower().startswith('error: '):
             trace.show_error('git: %s', text[len(b'error: '):])
         else:
             trace.mutter("git: %s", text)
