@@ -37,6 +37,19 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         PackBasedObjectStoreTests.tearDown(self)
         TestCaseWithTransport.tearDown(self)
 
+    def test_prefers_pack_listdir(self):
+        self.store.add_object(make_object(Blob, data=b"data"))
+        self.assertEqual(0, len(self.store.packs))
+        self.store.pack_loose_objects()
+        self.assertEqual(1, len(self.store.packs))
+        packname = list(self.store.packs)[0].name()
+        self.assertEqual({'pack-%s.pack' % packname.decode('ascii'), 'pack-%s.idx' % packname.decode('ascii')},
+                         set(self.store._pack_names()))
+        self.store.transport.put_bytes_non_atomic('info/packs',
+                b'P foo-pack.pack\n')
+        self.assertEqual({'pack-%s.pack' % packname.decode('ascii'), 'pack-%s.idx' % packname.decode('ascii')},
+                         set(self.store._pack_names()))
+
     def test_remembers_packs(self):
         self.store.add_object(make_object(Blob, data=b"data"))
         self.assertEqual(0, len(self.store.packs))
