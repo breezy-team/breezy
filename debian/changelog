@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7131-2) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7131-2) unstable; urgency=medium
 
   * Use Python 3 version in brz package.
 
