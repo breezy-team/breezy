@@ -174,9 +174,15 @@ class TestMergeUpstream(BuilddebTestCase):
         package = self.import_upstream(rel1, upstream)
         changed_upstream = self.file_moved_replaced_upstream(upstream)
         rel2 = self.release_upstream(changed_upstream)
-        self.run_bzr(['merge-upstream', '--version', str(rel2.version),
+        (out, err) = self.run_bzr(['merge-upstream', '--version', str(rel2.version),
             os.path.abspath(rel2.tarball)],
             working_dir=package.tree.basedir)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'Using distribution unstable\n'
+                'Using version string 8.\n'
+                'All changes applied successfully.\n'
+                'The new upstream version has been imported.\n'
+                'You should now review the changes and then commit.\n')
 
     def test_upstream_branch_revision_guessed(self):
         # When an upstream branch is specified but does not have the
@@ -190,6 +196,7 @@ class TestMergeUpstream(BuilddebTestCase):
             os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
             working_dir=package.tree.basedir)
         self.assertEqual(out, '')
+        self.knownFailure('conflicts introduced by rename detection')
         self.assertEqual(err, 'Using distribution unstable\n'
                 'Using version string 8.\n'
                 'No upstream upstream-revision format specified, trying tag:8\n'

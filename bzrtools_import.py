@@ -69,7 +69,8 @@ def import_zip(tree, zip_input, file_ids_from=None, target_tree=None):
             target_tree=target_tree)
 
 def import_dir(tree, dir, file_ids_from=None, target_tree=None):
-    dir_input = StringIO(dir)
+    dir_input = BytesIO(dir.encode('utf-8'))
+    dir_input.seek(0)
     dir_file = DirWrapper(dir_input)
     import_archive(tree, dir_file, file_ids_from=file_ids_from,
             target_tree=target_tree)
@@ -271,8 +272,6 @@ def do_import(source, tree_directory=None):
         elif source.endswith('.zip'):
             import_zip(tree, open_from_url(source))
         elif file_kind(source) == 'directory':
-            s = StringIO(source)
-            s.seek(0)
-            import_dir(tree, s)
+            import_dir(tree, source)
         else:
             raise BzrCommandError('Unhandled import source')

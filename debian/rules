@@ -9,7 +9,7 @@ rst_docs=$(wildcard $(addsuffix /*.rst, $(doc_dir)))
 html_docs=$(patsubst %.rst, %.html, $(rst_docs))
 
 %:
-	dh $* --with python3 --buildsystem=python_distutils
+	dh $* --with python3 --buildsystem=pybuild
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 SELFTEST_CONCURRENCY = BRZ_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
