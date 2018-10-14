@@ -164,7 +164,7 @@ class RemoteGitProber(Prober):
         if resp.code in (404, 405):
             raise bzr_errors.NotBranchError(transport.base)
         headers = resp.headers
-        ct = headers.getheader("Content-Type")
+        ct = headers.get("Content-Type")
         if ct is None:
             raise bzr_errors.NotBranchError(transport.base)
         if ct.startswith("application/x-git"):
