@@ -127,8 +127,7 @@ class FileMovedReplacedUpstream(Fixture):
         branchpath = test_case.getUniqueString()
         tree = self.upstream.tree.controldir.sprout(branchpath).open_workingtree()
         self.tree = tree
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             newpath = test_case.getUniqueString()
             for child in iter_child_entries(tree, tree.get_root_id()):
                 if child.kind == 'file':
@@ -138,8 +137,6 @@ class FileMovedReplacedUpstream(Fixture):
                 oldpath)])
             tree.add([oldpath])
             tree.commit('yo, renaming and replacing')
-        finally:
-            tree.unlock()
 
 
 
