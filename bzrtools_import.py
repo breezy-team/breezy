@@ -13,6 +13,7 @@ import stat
 import tarfile
 import zipfile
 
+from ...upstream_import import common_directory
 from ... import generate_ids
 from ...controldir import ControlDir
 from ...errors import NoSuchFile, BzrCommandError, NotBranchError
@@ -125,20 +126,6 @@ def top_path(path):
         return components[0]
     else:
         return ''
-
-
-def common_directory(names):
-    """Determine a single directory prefix from a list of names"""
-    prefixes = set()
-    prefixes.update(map(top_path, names))
-    if '' in prefixes:
-        prefixes.remove('')
-    if len(prefixes) != 1:
-        return None
-    prefix = prefixes.pop()
-    if prefix == '':
-        return None
-    return prefix
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
