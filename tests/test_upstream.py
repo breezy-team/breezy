@@ -398,7 +398,9 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree = self.make_branch_and_tree('.')
 
     def test_guess_upstream_revspec(self):
-        self.assertEqual([u'tag:1.2'], guess_upstream_revspec('foo', '1.2'))
+        self.assertEqual(
+                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2'],
+                guess_upstream_revspec('foo', '1.2'))
 
     def test_fetch_tarballs(self):
         self.tree.commit("msg")
