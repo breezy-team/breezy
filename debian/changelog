@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr7141-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+   + Fixes Git operations over HTTP.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 14 Oct 2018 16:48:21 +0000
+
 breezy (3.0.0~bzr7140-1) unstable; urgency=medium
 
   * New upstream snapshot.
