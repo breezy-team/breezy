@@ -85,11 +85,19 @@ class Launchpad(Hoster):
     supports_merge_proposal_labels = False
 
     def __init__(self, staging=False):
+        self._staging = staging
         if staging:
             lp_instance = 'staging'
         else:
             lp_instance = 'production'
         self.launchpad = connect_launchpad(lp_instance)
+
+    def __repr__(self):
+        return "Launchpad(staging=%s)" % self._staging
+
+    def hosts(self, branch):
+        # TODO(jelmer): staging vs non-staging?
+        return plausible_launchpad_url(branch.user_url)
 
     @classmethod
     def probe(cls, branch):

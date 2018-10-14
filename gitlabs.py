@@ -121,6 +121,9 @@ class GitLab(Hoster):
 
     supports_merge_proposal_labels = True
 
+    def __repr__(self):
+        return "<GitLab(%r)>" % self.gl.url
+
     def __init__(self, gl):
         self.gl = gl
 
@@ -209,6 +212,13 @@ class GitLab(Hoster):
                 continue
             return GitLabMergeProposal(mr)
         raise NoMergeProposal()
+
+    def hosts(self, branch):
+        try:
+            (host, project, branch_name) = parse_gitlab_url(branch)
+        except NotGitLabUrl:
+            return False
+        return (self.gl.url == ('https://%s' % host))
 
     @classmethod
     def probe(cls, branch):

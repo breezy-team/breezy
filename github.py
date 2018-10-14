@@ -83,6 +83,9 @@ class GitHub(Hoster):
 
     supports_merge_proposal_labels = True
 
+    def __repr__(self):
+        return "GitHub()"
+
     def __init__(self):
         self.gh = connect_github()
 
@@ -154,6 +157,14 @@ class GitHub(Hoster):
                 continue
             return MergeProposal(pull.html_url)
         raise NoMergeProposal()
+
+    def hosts(self, branch):
+        try:
+            parse_github_url(branch)
+        except NotGitHubUrl:
+            return False
+        else:
+            return True
 
     @classmethod
     def probe(cls, branch):
