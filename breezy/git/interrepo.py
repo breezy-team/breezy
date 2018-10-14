@@ -710,7 +710,15 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
             raise FetchLimitUnsupported(self)
-        refs = self.source._git.fetch(self.target._git, determine_wants)
+        from .remote import DefaultProgressReporter
+        pb = ui.ui_factory.nested_progress_bar()
+        progress = DefaultProgressReporter(pb).progress
+        try:
+            refs = self.source._git.fetch(
+                    self.target._git, determine_wants,
+                    progress=progress)
+        finally:
+            pb.finished()
         return (None, None, refs)
 
     @staticmethod
