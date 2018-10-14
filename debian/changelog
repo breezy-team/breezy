@@ -2,6 +2,8 @@ breezy (3.0.0~bzr7141-2) UNRELEASED; urgency=medium
 
   * Use correct machine-readable copyright file URI.
   * Trim trailing whitespace.
+  * Transition to automatic debug packages (from: python-breezy-dbg,
+    python3-breezy-dbg).
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 14 Oct 2018 19:16:26 +0000
 
