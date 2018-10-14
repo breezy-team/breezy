@@ -100,7 +100,7 @@ class TestMergePackageBB(BuilddebTestCase):
             'merge %s' % merge_source)
 
     def make_conflicting_branches_setup(self):
-        """
+        r"""
         Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H

@@ -58,7 +58,7 @@ def _upstream_version_data(branch, revid):
 
 
 def fix_ancestry_as_needed(tree, source, source_revid=None):
-    """Manipulate the merge target's ancestry to avoid upstream conflicts.
+    r"""Manipulate the merge target's ancestry to avoid upstream conflicts.
 
     Merging J->I given the following ancestry tree is likely to result in
     upstream merge conflicts:

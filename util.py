@@ -432,21 +432,21 @@ def find_bugs_fixed(changes, branch, _lplib=None):
         from . import launchpad as _lplib
     bugs = []
     for change in changes:
-        for match in re.finditer("closes:\s*(?:bug)?\#?\s?\d+"
-                "(?:,\s*(?:bug)?\#?\s?\d+)*", change,
+        for match in re.finditer("closes:\\s*(?:bug)?\\#?\\s?\\d+"
+                "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*", change,
                 re.IGNORECASE):
             closes_list = match.group(0)
-            for match in re.finditer("\d+", closes_list):
+            for match in re.finditer("\\d+", closes_list):
                 bug_url = bugtracker.get_bug_url("deb", branch, match.group(0))
                 bugs.append(bug_url + " fixed")
                 lp_bugs = _lplib.ubuntu_bugs_for_debian_bug(match.group(0))
                 if len(lp_bugs) == 1:
                     bug_url = bugtracker.get_bug_url("lp", branch, lp_bugs[0])
                     bugs.append(bug_url + " fixed")
-        for match in re.finditer("lp:\s+\#\d+(?:,\s*\#\d+)*",
+        for match in re.finditer("lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*",
                 change, re.IGNORECASE):
             closes_list = match.group(0)
-            for match in re.finditer("\d+", closes_list):
+            for match in re.finditer("\\d+", closes_list):
                 bug_url = bugtracker.get_bug_url("lp", branch, match.group(0))
                 bugs.append(bug_url + " fixed")
                 deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(0))
@@ -485,8 +485,8 @@ def find_thanks(changes):
     :return: List of people thanked, optionally including email address.
     """
     thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-            "((?:\s+(?:(?:\w\.)|(?:\w+(?:-\w+)*)))+"
-            "(?:\s+<[^@>]+@[^@>]+>)?)",
+            "((?:\\s+(?:(?:\\w\\.)|(?:\\w+(?:-\\w+)*)))+"
+            "(?:\\s+<[^@>]+@[^@>]+>)?)",
             re.UNICODE)
     thanks = []
     changes_str = safe_decode(" ".join(changes))

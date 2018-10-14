@@ -267,7 +267,7 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
     def _setup_debian_upstream_newer(self):
-        """
+        r"""
         Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
@@ -341,7 +341,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_conflicts(self):
-        """
+        r"""
         Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
@@ -415,7 +415,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_older(self):
-        """
+        r"""
         Set up the following test configuration (debian upstream older).
 
         debian-upstream                 ,----H-------------.
@@ -489,7 +489,7 @@ class MergePackageTests(TestCaseWithTransport):
         return (ubup_n, debp_o, ubuu_n, debu_o)
 
     def _setup_upstreams_not_diverged(self):
-        """
+        r"""
         Set up a test configuration where the usptreams have not diverged.
 
         debian-upstream                       .-----G
@@ -497,7 +497,7 @@ class MergePackageTests(TestCaseWithTransport):
         ubuntu-upstream     \           \     \       \
                              \           \     \       \
         debian-packaging      \ ,---------D-----\-------J
-                               C                 \ 
+                               C                 \
         ubuntu-packaging        `----E------------I
 
         where:
