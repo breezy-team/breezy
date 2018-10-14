@@ -1,4 +1,4 @@
-breezy-debian (2.8.16) UNRELEASED; urgency=medium
+breezy-debian (2.8.16) unstable; urgency=medium
 
   * Properly escape slashes in git branch names.
   * Add dgit: directory.
