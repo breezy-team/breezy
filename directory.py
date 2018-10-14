@@ -22,6 +22,7 @@ from __future__ import absolute_import
 
 from ... import urlutils
 from ...directory_service import directories
+from ...sixish import PY3
 from ...trace import note
 
 import apt_pkg
@@ -44,8 +45,10 @@ def vcs_git_url_to_bzr_url(url):
     url = git_url_to_bzr_url(url)
     if branch:
         branch = urlutils.quote(branch, '')
+        if not PY3:
+            branch = branch.encode('utf-8')
         url = urlutils.join_segment_parameters(
-            url, {'branch': branch.encode('utf-8')})
+            url, {'branch': branch})
     return url
 
 
