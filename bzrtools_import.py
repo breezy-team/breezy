@@ -13,7 +13,14 @@ import stat
 import tarfile
 import zipfile
 
-from ...upstream_import import common_directory
+from ...upstream_import import (
+    add_implied_parents,
+    common_directory,
+    do_directory,
+    names_of_files,
+    DirWrapper,
+    ZipFileWrapper,
+    )
 from ... import generate_ids
 from ...controldir import ControlDir
 from ...errors import NoSuchFile, BzrCommandError, NotBranchError
@@ -26,128 +33,10 @@ from ...workingtree import WorkingTree
 from .bzrtools_bzrtools import open_from_url
 from .errors import UnknownType
 
-class ZipFileWrapper(object):
-
-    def __init__(self, fileobj, mode):
-        self.zipfile = zipfile.ZipFile(fileobj, mode)
-
-    def getmembers(self):
-        for info in self.zipfile.infolist():
-            yield ZipInfoWrapper(self.zipfile, info)
-
-    def extractfile(self, infowrapper):
-        return BytesIO(self.zipfile.read(infowrapper.name))
-
-    def add(self, filename):
-        if isdir(filename):
-            self.zipfile.writestr(filename+'/', '')
-        else:
-            self.zipfile.write(filename)
-
-    def close(self):
-        self.zipfile.close()
-
-
-class ZipInfoWrapper(object):
-
-    def __init__(self, zipfile, info):
-        self.info = info
-        self.type = None
-        self.name = info.filename
-        self.zipfile = zipfile
-        self.mode = 0o666
-
-    def isdir(self):
-        # Really? Eeeew!
-        return bool(self.name.endswith('/'))
-
-    def isreg(self):
-        # Really? Eeeew!
-        return not self.isdir()
-
 
 files_to_ignore = set(
     ['.shelf', '.bzr', '.bzr.backup', '.bzrtags',
      '.bzr-builddeb'])
-
-
-class DirWrapper(object):
-    def __init__(self, fileobj, mode='r'):
-        assert mode == 'r', mode
-        self.root = os.path.realpath(fileobj.read())
-
-    def __repr__(self):
-        return 'DirWrapper(%r)' % self.root
-
-    def getmembers(self):
-        for _, dir_block in walkdirs(self.root):
-            for relpath, _, _, stat_result, _ in dir_block:
-                yield FileInfo(self.root, relpath, stat_result)
-
-    def extractfile(self, member):
-        return open(member.fullpath, 'rb')
-
-
-class FileInfo(object):
-
-    def __init__(self, root, filepath, stat):
-        self.fullpath = pathjoin(root, filepath)
-        self.root = root
-        if filepath != '':
-            self.name = pathjoin(basename(root), filepath)
-        else:
-            self.name = basename(root)
-        self.type = None
-        self.mode = stat.st_mode
-        if self.isdir():
-            self.name += '/'
-
-    def __repr__(self):
-        return 'FileInfo(%r)' % self.name
-
-    def isreg(self):
-        return stat.S_ISREG(self.mode)
-
-    def isdir(self):
-        return stat.S_ISDIR(self.mode)
-
-    def issym(self):
-        if stat.S_ISLNK(self.mode):
-            self.linkname = os.readlink(self.fullpath)
-            return True
-        else:
-            return False
-
-
-def top_path(path):
-    """Return the top directory given in a path."""
-    components = splitpath(normpath(path))
-    if len(components) > 0:
-        return components[0]
-    else:
-        return ''
-
-
-def do_directory(tt, trans_id, tree, relative_path, path):
-    if isdir(path) and tree.is_versioned(relative_path):
-        tt.cancel_deletion(trans_id)
-    else:
-        tt.create_directory(trans_id)
-
-
-def add_implied_parents(implied_parents, path):
-    """Update the set of implied parents from a path"""
-    parent = os.path.dirname(path)
-    if parent in implied_parents:
-        return
-    implied_parents.add(parent)
-    add_implied_parents(implied_parents, parent)
-
-
-def names_of_files(tar_file):
-    for member in tar_file.getmembers():
-        if member.type != "g":
-            yield member.name
 
 
 def should_ignore(relative_path):
