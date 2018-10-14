@@ -5,6 +5,8 @@ breezy (3.0.0~bzr7141-2) UNRELEASED; urgency=medium
   * Transition to automatic debug packages (from: python-breezy-dbg,
     python3-breezy-dbg).
   * Remove unnecessary XS-Testsuite field in debian/control.
+  * Add patch 04_spurious_test_failure: ignore failures frmo
+    test_missing_chk_leaf_for_inventory tests, which occasionally fail.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 14 Oct 2018 19:16:26 +0000
 
