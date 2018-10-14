@@ -352,7 +352,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
             tt.unversion_file(tt.trans_id_tree_path(path))
 
         for conflict in cook_conflicts(resolve_conflicts(tt), tt):
-            warning(conflict)
+            warning('%s', conflict)
         tt.apply()
     finally:
         tt.finalize()

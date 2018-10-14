@@ -106,7 +106,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
                 to_apply.append(p)
         if to_apply == []:
             return
-        trace.note(gettext("Applying %d quilt patches."), to_apply)
+        trace.note(gettext("Applying %d quilt patches."), len(to_apply))
         for p in to_apply:
             quilt_push(tree.basedir, p)
     elif policy == "unapplied":
@@ -118,7 +118,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
                 to_unapply.append(p)
         if to_unapply == []:
             return
-        trace.note(gettext("Unapplying %d quilt patches."), to_unapply)
+        trace.note(gettext("Unapplying %d quilt patches."), len(to_unapply))
         for p in to_unapply:
             quilt_pop(tree.basedir, p)
 
