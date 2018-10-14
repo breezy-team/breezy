@@ -112,7 +112,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         self.store = self.repository._git.object_store
         self.mapping = self.repository.get_mapping()
         self._branch = branch
-        self._transport = controldir.transport
+        self._transport = self.repository._git._controltransport
         self._format = GitWorkingTreeFormat()
         self.index = None
         self._index_file = None

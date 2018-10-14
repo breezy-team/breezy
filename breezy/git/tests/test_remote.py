@@ -96,6 +96,10 @@ class ParseGitErrorTests(TestCase):
         e = parse_git_error("url", "Repository not found.\n")
         self.assertIsInstance(e, NotBranchError)
 
+    def test_notbrancherror_normal(self):
+        e = parse_git_error("url", "fatal: '/srv/git/lintian-brush' does not appear to be a git repository")
+        self.assertIsInstance(e, NotBranchError)
+
     def test_head_update(self):
         e = parse_git_error("url", "HEAD failed to update\n")
         self.assertIsInstance(e, HeadUpdateFailed)
@@ -105,6 +109,20 @@ class ParseGitErrorTests(TestCase):
             "url",
             "access denied or repository not exported: /debian/altermime.git")
         self.assertIsInstance(e, PermissionDenied)
+
+    def test_permission_denied_gitlab(self):
+        e = parse_git_error(
+            "url",
+            'GitLab: You are not allowed to push code to this project.\n')
+        self.assertIsInstance(e, PermissionDenied)
+
+    def test_permission_denied_github(self):
+        e = parse_git_error(
+            "url",
+            'Permission to porridge/gaduhistory.git denied to jelmer.')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, 'porridge/gaduhistory.git')
+        self.assertEqual(e.extra, ': denied to jelmer')
 
 
 class TestRemoteGitBranchFormat(TestCase):

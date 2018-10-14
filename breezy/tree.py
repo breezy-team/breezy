@@ -1375,14 +1375,14 @@ def get_canonical_path(tree, path, normalize):
     :return: The canonical path
     """
     # go walkin...
-    cur_id = self.get_root_id()
+    cur_id = tree.get_root_id()
     cur_path = ''
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
         lelt = normalize(elt)
         new_path = None
         try:
-            for child in self.iter_child_entries(cur_path, cur_id):
+            for child in tree.iter_child_entries(cur_path, cur_id):
                 try:
                     if child.name == elt:
                         # if we found an exact match, we can stop now; if

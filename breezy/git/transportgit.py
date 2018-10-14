@@ -164,7 +164,7 @@ class TransportRefsContainer(RefsContainer):
                 return {}
             try:
                 first_line = next(iter(f)).rstrip()
-                if (first_line.startswith("# pack-refs") and " peeled" in
+                if (first_line.startswith(b"# pack-refs") and b" peeled" in
                         first_line):
                     for sha, name, peeled in read_packed_refs_with_peeled(f):
                         self._packed_refs[name] = sha
@@ -600,20 +600,21 @@ class TransportObjectStore(PackBasedObjectStore):
 
     def _pack_names(self):
         try:
-            f = self.transport.get('info/packs')
-        except NoSuchFile:
             return self.pack_transport.list_dir(".")
-        else:
-            with f:
-                ret = []
-                for line in f.read().splitlines():
-                    if not line:
-                        continue
-                    (kind, name) = line.split(b" ", 1)
-                    if kind != b"P":
-                        continue
-                    ret.append(name)
-                return ret
+        except TransportNotPossible:
+            try:
+                f = self.transport.get('info/packs')
+            except NoSuchFile:
+                # Hmm, warn about running 'git update-server-info' ?
+                return iter([])
+            else:
+                # TODO(jelmer): Move to top-level after dulwich
+                # 0.19.7 is released.
+                from dulwich.object_store import read_packs_file
+                with f:
+                    return read_packs_file(f)
+        except NoSuchFile:
+            return iter([])
 
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
