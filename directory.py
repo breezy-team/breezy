@@ -156,7 +156,7 @@ class DgitDirectory(object):
 
         if version is None:
             # Try the latest version
-            version = sorted(urls, cmp=apt_pkg.version_compare)[-1]
+            version = sorted(urls, key=Version)[-1]
 
         if not version in urls:
             raise urlutils.InvalidURL(path=url,
