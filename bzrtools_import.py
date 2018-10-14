@@ -7,11 +7,8 @@ from __future__ import absolute_import
 
 import errno
 import os
-import sys
 from io import BytesIO
-import stat
 import tarfile
-import zipfile
 
 from ...upstream_import import (
     add_implied_parents,
@@ -22,16 +19,24 @@ from ...upstream_import import (
     ZipFileWrapper,
     )
 from ... import generate_ids
+from ... import urlutils
 from ...controldir import ControlDir
 from ...errors import NoSuchFile, BzrCommandError, NotBranchError
-from ...osutils import (pathjoin, isdir, file_iterator, basename,
-                        file_kind, splitpath, normpath, walkdirs)
+from ...osutils import file_iterator, basename, file_kind, splitpath, normpath
 from ...sixish import StringIO
 from ...trace import warning
 from ...transform import TreeTransform, resolve_conflicts, cook_conflicts
+from ...transport import get_transport
 from ...workingtree import WorkingTree
-from .bzrtools_bzrtools import open_from_url
 from .errors import UnknownType
+
+
+def open_from_url(location):
+    location = urlutils.normalize_url(location)
+    dirname, basename = urlutils.split(location)
+    if location.endswith('/') and not basename.endswith('/'):
+        basename += '/'
+    return get_transport(dirname).get(basename)
 
 
 files_to_ignore = set(
