@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: debhelper (>= 9), python-all (>= 2.6.6-3), xz-utils
-Build-Depends-Indep: brz, python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts (>= 2.10.59), python-subunit, python-breezy.tests (>= 3.0.0~bzr6876), python-lzma, libalgorithm-merge-perl, python-distro-info, quilt, python-dulwich (>= 0.19), python-yaml
+Build-Depends-Indep: brz (>= 3.0.0~bzr7131-2), python3-docutils, python3-debian, python3-apt, patchutils, python3-testtools, pristine-tar, devscripts (>= 2.10.59), python3-subunit, python3-breezy.tests, libalgorithm-merge-perl, python3-distro-info, quilt, python3-dulwich (>= 0.19), python3-yaml
 Vcs-Bzr: https://code.breezy-vcs.org/breezy-debian/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy-debian/unstable
 Standards-Version: 4.1.1
@@ -12,9 +12,9 @@ XS-Testsuite: autopkgtest
 
 Package: brz-debian
 Architecture: all
-Depends: brz (>= 3.0.0~bzr6876), python-breezy (>= 3.0.0~bzr6876), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}, python-yaml
-Recommends: python-launchpadlib, libalgorithm-merge-perl, python-distro-info
-Suggests: python-lzma
+Depends: brz (>= 3.0.0~bzr7131-2), python3-breezy, python3-debian, python3-apt, ${python:Depends}, dpkg-dev, fakeroot, devscripts (>= 2.10.59), patchutils, pristine-tar, quilt, ${misc:Depends}, python3-yaml
+Recommends: python3-launchpadlib, libalgorithm-merge-perl, python3-distro-info, python3-dulwich
+Suggests: python3-lzma
 Provides: brz-buildpackage
 Description: breezy plugin for Debian package management
  brz-debian is a plugin for the breezy version control system that helps to

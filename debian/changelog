@@ -4,6 +4,7 @@ breezy-debian (2.8.16) UNRELEASED; urgency=medium
   * Add dgit: directory.
   * Cope with Dgit headers without location.
   * Drop outdated X-Python-Version header.
+  * Update to run with Python 3 version of Breezy.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 14 Sep 2018 14:41:09 +0100
 
