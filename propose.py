@@ -188,6 +188,10 @@ class Hoster(object):
         """
         raise NotImplementedError(self.get_proposal)
 
+    def hosts(self, branch):
+        """Return true if this hoster hosts given branch."""
+        raise NotImplementedError(self.hosts)
+
     @classmethod
     def probe(cls, branch):
         """Create a Hoster object if this hoster knows about a branch."""
@@ -197,13 +201,21 @@ class Hoster(object):
     # TODO(jelmer): Some way of checking up on outstanding merge proposals
 
 
-def get_hoster(branch):
+def get_hoster(branch, possible_hosters=None):
     """Find the hoster for a branch."""
+    if possible_hosters:
+        for hoster in possible_hosters:
+            if hoster.hosts(branch):
+                return hoster
     for name, hoster_cls in hosters.items():
         try:
-            return hoster_cls.probe(branch)
+            hoster = hoster_cls.probe(branch)
         except UnsupportedHoster:
             pass
+        else:
+            if possible_hosters is not None:
+                possible_hosters.append(hoster)
+            return hoster
     raise UnsupportedHoster(branch)
 
 

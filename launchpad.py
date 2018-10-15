@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Support for Launchpad."""
+
 from __future__ import absolute_import
 
 import re
@@ -85,11 +87,19 @@ class Launchpad(Hoster):
     supports_merge_proposal_labels = False
 
     def __init__(self, staging=False):
+        self._staging = staging
         if staging:
             lp_instance = 'staging'
         else:
             lp_instance = 'production'
         self.launchpad = connect_launchpad(lp_instance)
+
+    def __repr__(self):
+        return "Launchpad(staging=%s)" % self._staging
+
+    def hosts(self, branch):
+        # TODO(jelmer): staging vs non-staging?
+        return plausible_launchpad_url(branch.user_url)
 
     @classmethod
     def probe(cls, branch):

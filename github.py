@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Support for GitHub."""
+
 from __future__ import absolute_import
 
 from .propose import (
@@ -36,6 +38,7 @@ from ... import (
 from ...config import AuthenticationConfig, GlobalStack
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
+from ...sixish import PY3
 from ...trace import note
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
@@ -99,9 +102,19 @@ def parse_github_url(branch):
     return owner, repo_name, branch.name
 
 
+def github_url_to_bzr_url(url, branch_name):
+    if not PY3:
+        branch_name = branch_name.encode('utf-8')
+    return urlutils.join_segment_parameters(
+            git_url_to_bzr_url(url), {"branch": branch_name})
+
+
 class GitHub(Hoster):
 
     supports_merge_proposal_labels = True
+
+    def __repr__(self):
+        return "GitHub()"
 
     def __init__(self):
         self.gh = connect_github()
@@ -132,14 +145,13 @@ class GitHub(Hoster):
         remote_dir = controldir.ControlDir.open(git_url_to_bzr_url(remote_repo.ssh_url))
         push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
             overwrite=overwrite, name=name)
-        return push_result.target_branch, urlutils.join_segment_parameters(
-                remote_repo.html_url, {"branch": name.encode('utf-8')})
+        return push_result.target_branch, github_url_to_bzr_url(
+                remote_repo.html_url, name)
 
     def get_push_url(self, branch):
         owner, project, branch_name = parse_github_url(branch)
         repo = self.gh.get_repo('%s/%s' % (owner, project))
-        return urlutils.join_segment_parameters(
-            git_url_to_bzr_url(repo.ssh_url), {"branch": branch_name.encode('utf-8')})
+        return github_url_to_bzr_url(repo.ssh_url, branch_name)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import github
@@ -151,8 +163,7 @@ class GitHub(Hoster):
             project = base_repo.name
         try:
             remote_repo = self.gh.get_repo('%s/%s' % (owner, project))
-            full_url = urlutils.join_segment_parameters(
-                git_url_to_bzr_url(remote_repo.ssh_url), {"branch": name.encode('utf-8')})
+            full_url = github_url_to_bzr_url(remote_repo.ssh_url, name)
             return _mod_branch.Branch.open(full_url)
         except github.UnknownObjectException:
             raise errors.NotBranchError('https://github.com/%s/%s' % (owner, project))
@@ -174,6 +185,14 @@ class GitHub(Hoster):
                 continue
             return GitHubMergeProposal(pull)
         raise NoMergeProposal()
+
+    def hosts(self, branch):
+        try:
+            parse_github_url(branch)
+        except NotGitHubUrl:
+            return False
+        else:
+            return True
 
     @classmethod
     def probe(cls, branch):

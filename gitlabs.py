@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Support for GitLab."""
+
 from __future__ import absolute_import
 
 from ... import (
@@ -24,6 +26,7 @@ from ... import (
     )
 from ...config import AuthenticationConfig
 from ...git.urls import git_url_to_bzr_url
+from ...sixish import PY3
 
 from .propose import (
     Hoster,
@@ -116,10 +119,20 @@ class GitLabMergeProposal(MergeProposal):
         self._mr.description = description
 
 
+def gitlab_url_to_bzr_url(url, name):
+    if not PY3:
+        name = name.encode('utf-8')
+    return urlutils.join_segment_parameters(
+            git_url_to_bzr_url(url), {"branch": name})
+
+
 class GitLab(Hoster):
     """GitLab hoster implementation."""
 
     supports_merge_proposal_labels = True
+
+    def __repr__(self):
+        return "<GitLab(%r)>" % self.gl.url
 
     def __init__(self, gl):
         self.gl = gl
@@ -127,9 +140,8 @@ class GitLab(Hoster):
     def get_push_url(self, branch):
         (host, project_name, branch_name) = parse_gitlab_url(branch)
         project = self.gl.projects.get(project_name)
-        remote_repo_url = git_url_to_bzr_url(project.attributes['ssh_url_to_repo'])
-        return urlutils.join_segment_parameters(
-                remote_repo_url, {"branch": branch_name.encode('utf-8')})
+        return gitlab_url_to_bzr_url(
+            project.attributes['ssh_url_to_repo'], branch_name)
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False):
@@ -158,9 +170,8 @@ class GitLab(Hoster):
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
             overwrite=overwrite, name=name)
-        public_url = urlutils.join_segment_parameters(
-                target_project.attributes['http_url_to_repo'],
-                {"branch": name})
+        public_url = gitlab_url_to_bzr_url(
+            target_project.attributes['http_url_to_repo'], name)
         return push_result.target_branch, public_url
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
@@ -184,9 +195,8 @@ class GitLab(Hoster):
             if e.response_code == 404:
                 raise errors.NotBranchError('%s/%s/%s' % (self.gl.url, owner, project))
             raise
-        remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
-        return _mod_branch.Branch.open(urlutils.join_segment_parameters(
-                remote_repo_url, {"branch": name.encode('utf-8')}))
+        return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
+                target_project.attributes['ssh_url_to_repo'], name))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
@@ -213,6 +223,13 @@ class GitLab(Hoster):
             if e.response_code == 403:
                 raise PermissionDenied(e.error_message)
         raise NoMergeProposal()
+
+    def hosts(self, branch):
+        try:
+            (host, project, branch_name) = parse_gitlab_url(branch)
+        except NotGitLabUrl:
+            return False
+        return (self.gl.url == ('https://%s' % host))
 
     @classmethod
     def probe(cls, branch):
