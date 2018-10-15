@@ -48,11 +48,8 @@ def get_launchpad():
         if not os.path.exists(creds_path):
             return None
         creds = Credentials("bzr-builddeb")
-        f = open(creds_path)
-        try:
+        with open(creds_path) as f:
             creds.load(f)
-        finally:
-            f.close()
         return Launchpad(creds, service_root=LPNET_SERVICE_ROOT)
 
 

@@ -82,11 +82,8 @@ class TarTgzRepacker(TgzRepacker):
     """A TgzRepacker that just gzips the input."""
 
     def repack(self, target_f):
-        gz = gzip.GzipFile(mode='w', fileobj=target_f)
-        try:
+        with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
             shutil.copyfileobj(self.source_f, gz)
-        finally:
-            gz.close()
 
 
 class Tbz2TgzRepacker(TgzRepacker):
@@ -94,11 +91,8 @@ class Tbz2TgzRepacker(TgzRepacker):
 
     def repack(self, target_f):
         content = bz2.decompress(self.source_f.read())
-        gz = gzip.GzipFile(mode='w', fileobj=target_f)
-        try:
+        with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
             gz.write(content)
-        finally:
-            gz.close()
 
 
 class TarLzma2TgzRepacker(TgzRepacker):
@@ -110,11 +104,8 @@ class TarLzma2TgzRepacker(TgzRepacker):
         except ImportError as e:
             raise DependencyNotPresent('lzma', e)
         content = lzma.decompress(self.source_f.read())
-        gz = gzip.GzipFile(mode='w', fileobj=target_f)
-        try:
+        with gzip.GzipFile(mode='w', fileobj=target_f) as gz:
             gz.write(content)
-        finally:
-            gz.close()
 
 
 class ZipTgzRepacker(TgzRepacker):
@@ -178,16 +169,10 @@ def get_repacker_class(source_format, target_format):
 
 def _error_if_exists(target_transport, new_name, source_name):
     source_filetype = get_filetype(source_name)
-    source_f = open_file(source_name)
-    try:
+    with open_file(source_name) as source_f:
         source_sha = new_sha(source_f.read()).hexdigest()
-    finally:
-        source_f.close()
-    target_f = open_file_via_transport(new_name, target_transport)
-    try:
+    with open_file_via_transport(new_name, target_transport) as target_f:
         target_sha = new_sha(target_f.read()).hexdigest()
-    finally:
-        target_f.close()
     if source_sha != target_sha:
         raise FileExists(new_name)
 
@@ -212,16 +197,10 @@ def _repack_other(target_transport, new_name, source_name):
     if repacker_cls is None:
         raise UnsupportedRepackFormat(source_name)
     target_transport.ensure_base()
-    target_f = target_transport.open_write_stream(new_name)
-    try:
-        source_f = open_file(source_name)
-        try:
+    with target_transport.open_write_stream(new_name) as target_f:
+        with open_file(source_name) as source_f:
             repacker = repacker_cls(source_f)
             repacker.repack(target_f)
-        finally:
-            source_f.close()
-    finally:
-        target_f.close()
 
 
 def repack_tarball(source_name, new_name, target_dir=None):

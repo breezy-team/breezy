@@ -92,9 +92,8 @@ class TestBuilddeb(BuilddebTestCase):
     tree.commit("two", rev_id=b'revid2')
 
     p = '%s/work/newtree/%s' % (self.test_base_dir, self.uncommited_file)
-    fh = open(p, 'w')
-    fh.write('** This is the conflicting line.')
-    fh.close()
+    with open(p, 'w') as fh:
+      fh.write('** This is the conflicting line.')
     newtree.add([self.uncommited_file])
     newtree.commit("new-two", rev_id=b'revidn2')
     conflicts = tree.merge_from_branch(newtree.branch) 
@@ -183,7 +182,8 @@ class TestBuilddeb(BuilddebTestCase):
     tree.add("debian/bzr-builddeb.conf")
     # The changelog is only used for commit message when it already exists and
     # is then changed, so need to clear it, commit, then set the contents.
-    open("debian/changelog", "w").close()
+    with open("debian/changelog", "w") as f:
+      pass
     tree.commit("Prepare for release", rev_id=b"prerel")
     # Would be nice to use debian.changelog to make one, but it's changed
     # across versions as to how it wants non-ascii bytes provided.

@@ -193,9 +193,8 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
         return c
 
     def write_changelog(self, changelog, filename):
-        f = open(filename, 'w')
-        changelog.write_to_open_file(f)
-        f.close()
+        with open(filename, 'w') as f:
+            changelog.write_to_open_file(f)
 
     def check_tarball_contents(self, tarball, expected, basedir=None,
                              skip_basedir=False, mode=None):
@@ -338,13 +337,10 @@ class SourcePackageBuilder(object):
             if dirname is not None and dirname != "":
                 if not os.path.exists(os.path.join(basedir, dirname)):
                     os.makedirs(os.path.join(basedir, dirname))
-            f = open(os.path.join(basedir, path), 'w')
-            try:
+            with open(os.path.join(basedir, path), 'w') as f:
                 if content is None:
                     content = ''
                 f.write(content)
-            finally:
-                f.close()
 
     def _make_symlinks(self, files_list, basedir):
         for (path, target) in files_list.items():

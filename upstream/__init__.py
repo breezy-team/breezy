@@ -518,20 +518,14 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         hosted_file = release_files[0]
         tmpdir = tempfile.mkdtemp(prefix="builddeb-launchpad-source-")
         try:
-            inf = hosted_file.open()
-            try:
+            with hosted_file.open() as inf:
                 note("Downloading upstream tarball %s from Launchpad",
                      inf.filename)
                 filename = inf.filename.encode(osutils._fs_enc)
                 filename = filename.replace("/", "")
                 tmppath = os.path.join(tmpdir, filename)
-                outf = open(tmppath, 'wb')
-                try:
+                with open(tmppath, 'wb') as outf:
                     outf.write(inf.read())
-                finally:
-                    outf.close()
-            finally:
-                inf.close()
             dest_name = new_tarball_name(package, version, filename)
             repack_tarball(tmppath, dest_name, target_dir=target_dir)
             return os.path.join(target_dir, dest_name)
