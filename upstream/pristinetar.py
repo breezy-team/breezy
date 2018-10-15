@@ -238,10 +238,17 @@ class PristineTarSource(UpstreamSource):
         :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
-        if distro is None:
-            name = "upstream-" + version
+        if getattr(self.branch.repository, '_git', None):
+            # In git, the convention is to use a slash
+            if distro is None:
+                name = "upstream/" + version
+            else:
+                name = "upstream-%s/%s" % (distro, version)
         else:
-            name = "upstream-%s-%s" % (distro, version)
+            if distro is None:
+                name = "upstream-" + version
+            else:
+                name = "upstream-%s-%s" % (distro, version)
         if component is not None:
             name += "/%s" % component
         return name
