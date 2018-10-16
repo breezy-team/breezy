@@ -27,6 +27,7 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
+    NoMergeProposal,
     UnsupportedHoster,
     )
 
@@ -48,6 +49,17 @@ from ...transport import get_transport
 
 
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
+
+MERGE_PROPOSAL_STATUSES = [
+    'Work in progress',
+    'Needs review',
+    'Approved',
+    'Rejected',
+    'Merged',
+    'Code failed to merge',
+    'Queued',
+    'Superseded',
+    ]
 
 
 def plausible_launchpad_url(url):
@@ -78,6 +90,19 @@ def _call_webservice(call, *args, **kwargs):
                 break
             error_lines.append(line)
         raise Exception(''.join(error_lines))
+
+
+class LaunchpadMergeProposal(MergeProposal):
+
+    def __init__(self, mp):
+        self._mp = mp
+
+    @property
+    def url(self):
+        return lp_api.canonical_url(self._mp)
+
+    def is_merged(self):
+        return (self._mp.queue_status == 'Merged')
 
 
 class Launchpad(Hoster):
@@ -243,23 +268,23 @@ class Launchpad(Hoster):
         if base_vcs == 'bzr':
             target_branch_lp = self.launchpad.branches.getByUrl(url=target_branch.user_url)
             source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
-            for mp in target_branch_lp.getMergeProposals():
+            for mp in target_branch_lp.getMergeProposals(status=MERGE_PROPOSAL_STATUSES):
                 if mp.target_branch != target_branch_lp:
                     continue
                 if mp.source_branch != source_branch_lp:
                     continue
-                return MergeProposal(lp_api.canonical_url(mp))
+                return LaunchpadMergeProposal(mp)
             raise NoMergeProposal()
         elif base_vcs == 'git':
             (source_repo_lp, source_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(source_branch)
             (target_repo_lp, target_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(target_branch)
-            for mp in target_branch_lp.getMergeProposals():
+            for mp in target_branch_lp.getMergeProposals(status=MERGE_PROPOSAL_STATUSES):
                 if (target_branch_lp.path != mp.target_git_path or
                     target_repo_lp != mp.target_git_repository or
                     source_branch_lp.path != mp.source_git_path or
                     source_repo_lp != mp.source_git_repository):
                     continue
-                return MergeProposalBuilder(lp_api.canonical_url(mp))
+                return LaunchpadMergeProposal(mp)
             raise NoMergeProposal()
         else:
             raise AssertionError('not a valid Launchpad URL')
@@ -415,7 +440,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(
                 mp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
-        return MergeProposal(lp_api.canonical_url(mp))
+        return LaunchpadMergeProposal(mp)
 
 
 class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
@@ -551,4 +576,4 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(
                 mp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
-        return MergeProposal(lp_api.canonical_url(mp))
+        return LaunchpadMergeProposal(mp)

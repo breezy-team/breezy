@@ -118,6 +118,9 @@ class GitLabMergeProposal(MergeProposal):
     def set_description(self, description):
         self._mr.description = description
 
+    def is_merged(self):
+        return (self._mr.attributes['state'] == 'merged')
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:

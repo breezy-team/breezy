@@ -105,6 +105,10 @@ class MergeProposal(object):
         """Close the merge proposal (without merging it)."""
         raise NotImplementedError(self.close)
 
+    def is_merged(self):
+        """Check whether this merge proposal has been merged."""
+        raise NotImplementedError(self.is_merged)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.

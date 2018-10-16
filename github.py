@@ -89,6 +89,9 @@ class GitHubMergeProposal(MergeProposal):
     def set_description(self, description):
         self._pr.edit(body=description, title=determine_title(description))
 
+    def is_merged(self):
+        return self._pr.merged
+
 
 def parse_github_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
