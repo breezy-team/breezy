@@ -53,6 +53,7 @@ commands = {
         "import_upstream": [],
         "mark_uploaded": [],
         "merge_upstream": ["mu"],
+        "debrelease": [],
         }
 
 for command, aliases in viewitems(commands):
