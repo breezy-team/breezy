@@ -109,6 +109,7 @@ def _check_tree(tree, strict=False):
 
 
 def _get_build_architecture():
+    import subprocess
     try:
         return subprocess.check_output(
             ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
