@@ -179,6 +179,36 @@ def _get_upstream_branch_source(export_upstream, export_upstream_revision,
     return upstream_source
 
 
+def _get_upstream_sources(local_tree, branch, build_type, config,
+                          upstream_version, top_level, export_upstream=None,
+                          export_upstream_revision=None):
+    from .upstream import (
+        AptSource,
+        SelfSplitSource,
+        UScanSource,
+        )
+    from .upstream.pristinetar import (
+        PristineTarSource,
+        )
+    from .upstream.branch import (
+        LazyUpstreamBranchSource,
+        )
+    yield PristineTarSource(local_tree, branch)
+    yield AptSource()
+    if build_type == BUILD_TYPE_MERGE:
+        upstream_branch_source = _get_upstream_branch(
+            export_upstream, export_upstream_revision, config,
+            upstream_version)
+        if upstream_branch_source:
+            yield upstream_branch_source
+    elif config.upstream_branch is not None:
+        upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
+    yield UScanSource(local_tree, top_level)
+
+    if build_type == BUILD_TYPE_SPLIT:
+        yield SelfSplitSource(local_tree)
+
+
 class cmd_builddeb(Command):
     """Builds a Debian package from a branch.
 
@@ -367,17 +397,8 @@ class cmd_builddeb(Command):
             NoPreviousUpload,
             )
         from .hooks import run_hook
-        from .upstream.branch import (
-            LazyUpstreamBranchSource,
-            )
         from .upstream import (
-            AptSource,
-            SelfSplitSource,
-            UScanSource,
             UpstreamProvider,
-            )
-        from .upstream.pristinetar import (
-            PristineTarSource,
             )
         from .util import (
             dget_changes,
@@ -429,23 +450,11 @@ class cmd_builddeb(Command):
             result_dir, build_dir, orig_dir = self._get_dirs(config,
                 location or ".", is_local, result_dir, build_dir, orig_dir)
 
-            upstream_sources = [
-                PristineTarSource(tree, branch),
-                AptSource(),
-                ]
-            if build_type == BUILD_TYPE_MERGE:
-                upstream_branch_source = _get_upstream_branch_source(
-                    export_upstream, export_upstream_revision, config,
-                    changelog.version.upstream_version)
-                if upstream_branch_source:
-                    upstream_sources.append(upstream_branch_source)
-            elif not native and config.upstream_branch is not None:
-                upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
-            upstream_sources.extend([
-                UScanSource(tree, top_level),
-                ])
-            if build_type == BUILD_TYPE_SPLIT:
-                upstream_sources.append(SelfSplitSource(tree))
+            upstream_sources = _get_upstream_sources(
+                tree, branch, build_type=build_type, config=config,
+                upstream_version=changelog.version.upstream_version,
+                top_level=top_level, export_upstream=export_upstream,
+                export_upstream_revision=export_upstream_revision)
 
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, orig_dir, upstream_sources)
@@ -1488,6 +1497,9 @@ class cmd_debrelease(Command):
             guess_build_type,
             contains_upstream_source,
             )
+        from .upstream import (
+            UpstreamProvider,
+            )
         branch = Branch.open(directory)
         # preserve whatever source format we have.
         # TODO(jelmer): Use the local tree if there is one, but check it's clean.
@@ -1504,37 +1516,21 @@ class cmd_debrelease(Command):
                 subprocess.check_call(["dch", "--release", ""], cwd=local_tree.basedir)
                 subprocess.check_call(["debcommit", "-ar"], cwd=local_tree.basedir)
 
-            upstream_sources = [
-                PristineTarSource(local_tree, branch),
-                AptSource(),
-                ]
-            if build_type == BUILD_TYPE_MERGE:
-                upstream_branch_source = _get_upstream_branch(
-                    export_upstream, export_upstream_revision, config,
-                    changelog.version.upstream_version)
-                if upstream_branch_source:
-                    upstream_sources.append(upstream_branch_source)
-            elif not native and config.upstream_branch is not None:
-                upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
-            upstream_sources.extend([
-                UScanSource(local_tree, top_level),
-                ])
-            if build_type == BUILD_TYPE_SPLIT:
-                upstream_sources.append(SelfSplitSource(tree))
+            upstream_sources = _get_upstream_sources(
+                    local_tree, branch, build_type=build_type, config=config,
+                    upstream_version=changelog.version.upstream_version,
+                    top_level=top_level, )
 
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, orig_dir, upstream_sources)
 
             if build_type == BUILD_TYPE_MERGE:
-                distiller_cls = MergeModeDistiller
+                distiller = MergeModeDistiller(local_tree, upstream_provider,
+                        top_level=top_level, use_existing=use_existing)
             elif build_type == BUILD_TYPE_NATIVE:
-                distiller_cls = NativeSourceDistiller
+                distiller = NativeSourceDistiller(tree)
             else:
-                distiller_cls = FullSourceDistiller
-
-            distiller = distiller_cls(local_tree, upstream_provider,
-                    top_level=top_level, use_existing=False,
-                    is_working_tree=True)
+                distiller = FullSourceDistiller(local_tree, upstream_provider)
 
             bd = tempfile.mkdtemp()
             try:
