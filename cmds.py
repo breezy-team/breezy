@@ -1473,14 +1473,20 @@ class LocalTree(object):
 
 class cmd_debrelease(Command):
 
-    takes_args = ['directory?']
+    strict_opt = Option('strict',
+               help='Refuse to build if there are unknown files in'
+               ' the working tree, --no-strict disables the check.')
 
-    def run(self, directory='.'):
+    takes_args = ['directory?']
+    takes_options = [strict_opt]
+
+    def run(self, directory='.', strict=True):
         from debian.changelog import Changelog
         branch = Branch.open(directory)
         # preserve whatever source format we have.
         # TODO(jelmer): Use the local tree if there is one, but check it's clean.
         with LocalTree(branch) as local_tree:
+            _check_tree(tree, strict)
             with local_tree.lock_read(), local_tree.get_file('debian/changelog') as f:
                 cl = Changelog(f)
 
@@ -1494,11 +1500,7 @@ class cmd_debrelease(Command):
                         [local_tree.basedir, "--source", "--source-only-changes"],
                         build_dir=bd, builder='sbuild')
 
-                non_epoch_version = cl.version.upstream_version
-                if cl.version.debian_version is not None:
-                    non_epoch_version += "-%s" % cl.version.debian_version
-                changes_file = "%s_%s_source.changes" % (
-                            cl.package, non_epoch_version)
+                changes_file = changes_filename(cl.package, cl.version, 'source')
 
                 subprocess.check_call(["dput", changes_file], cwd=bd)
             finally:
