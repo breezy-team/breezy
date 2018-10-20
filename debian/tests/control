@@ -1,3 +1,3 @@
 Tests: testsuite
-Depends: @, python3-breezy.tests, python3-subunit, python3-testtools, python3-lzma, python3-distro-info, libalgorithm-merge-perl, python3-dulwich
+Depends: @, python3-breezy.tests, python3-subunit, python3-testtools, python3-distro-info, libalgorithm-merge-perl, python3-dulwich
 Restrictions: allow-stderr
