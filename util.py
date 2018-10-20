@@ -780,3 +780,9 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
     for tarball_filename, component in tarballs:
         extract_orig_tarball(tarball_filename, component, target,
             strip_components=strip_components)
+
+
+def dput_changes(path):
+    """Upload a package."""
+    (bd, changes_file) = os.path.split(path)
+    subprocess.check_call(["dput", changes_file], cwd=bd)

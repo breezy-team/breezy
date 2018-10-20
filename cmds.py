@@ -1481,16 +1481,24 @@ class cmd_debrelease(Command):
     takes_options = [strict_opt]
 
     def run(self, directory='.', strict=True):
-        from debian.changelog import Changelog
+        from .util import (
+            find_changelog,
+            dput_changes,
+            guess_build_type,
+            contains_upstream_source,
+            )
         branch = Branch.open(directory)
         # preserve whatever source format we have.
         # TODO(jelmer): Use the local tree if there is one, but check it's clean.
         with LocalTree(branch) as local_tree:
             _check_tree(tree, strict)
-            with local_tree.lock_read(), local_tree.get_file('debian/changelog') as f:
-                cl = Changelog(f)
+            (changelog, top_level) = find_changelog(local_tree, False, max_blocks=2)
 
-            if cl.distributions == "UNRELEASED":
+            contains_upstream_source = tree_contains_upstream_source(local_tree)
+            build_type = guess_build_type(local_tree, changelog.version,
+                contains_upstream_source)
+
+            if changelog.distributions == "UNRELEASED":
                 subprocess.check_call(["dch", "--release", ""], cwd=local_tree.basedir)
                 subprocess.check_call(["debcommit", "-ar"], cwd=local_tree.basedir)
 
@@ -1500,9 +1508,9 @@ class cmd_debrelease(Command):
                         [local_tree.basedir, "--source", "--source-only-changes"],
                         build_dir=bd, builder='sbuild')
 
-                changes_file = changes_filename(cl.package, cl.version, 'source')
+                changes_file = changes_filename(changelog.package, changelog.version, 'source')
 
-                subprocess.check_call(["dput", changes_file], cwd=bd)
+                dput_changes(os.path.join(bd, changes_file))
             finally:
                 shutil.rmtree(bd)
 
