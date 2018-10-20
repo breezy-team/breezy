@@ -447,15 +447,12 @@ class cmd_builddeb(Command):
                 changelog.version.upstream_version, orig_dir, upstream_sources)
 
             if build_type == BUILD_TYPE_MERGE:
-                distiller_cls = MergeModeDistiller
+                distiller = MergeModeDistiller(tree, upstream_provider,
+                        top_level=top_level, use_existing=use_existing)
             elif build_type == BUILD_TYPE_NATIVE:
-                distiller_cls = NativeSourceDistiller
+                distiller = NativeSourceDistiller(tree)
             else:
-                distiller_cls = FullSourceDistiller
-
-            distiller = distiller_cls(tree, upstream_provider,
-                    top_level=top_level, use_existing=use_existing,
-                    is_working_tree=is_working_tree)
+                distiller = FullSourceDistiller(tree, upstream_provider)
 
             build_source_dir = os.path.join(build_dir,
                     "%s-%s" % (changelog.package,
