@@ -43,27 +43,12 @@ class SourceDistiller(object):
     a location of your choice.
     """
 
-    supports_use_existing = False
-
-    def __init__(self, tree, upstream_provider, top_level=False,
-            use_existing=False, is_working_tree=False):
+    def __init__(self, tree):
         """Create a SourceDistiller to distill from the specified tree.
 
         :param tree: The tree to use as the source.
-        :param upstream_provider: an UpstreamProvider to provide the upstream
-            tarball if needed.
-        :param top_level: if the tree is in the top level directory instead of inside debian/.
-        :param use_existing: whether the distiller should re-use an existing
-            target if the distiller supports it.
-        :param is_working_tree: if `tree` is a working tree.
         """
         self.tree = tree
-        self.upstream_provider = upstream_provider
-        self.top_level = top_level
-        self.use_existing = use_existing
-        if not self.supports_use_existing:
-            assert not self.use_existing, "distiller doesn't support use_existing"
-        self.is_working_tree = is_working_tree
 
     def distill(self, target):
         """Extract the source to a tree rooted at the given location.
@@ -74,30 +59,57 @@ class SourceDistiller(object):
         :param target: a string containing the location at which to 
             place the tree containing the buildable source.
         """
-        if not self.supports_use_existing or not self.use_existing:
-            if os.path.exists(target):
-                raise bzr_errors.FileExists(target)
-        elif self.supports_use_existing and self.use_existing:
-            if not os.path.exists(target):
-                raise bzr_errors.NotADirectory(target)
-        self._distill(target)
-
-    def _distill(self, target):
-        """Subclasses should override this to implement distill."""
-        raise NotImplementedError(self._distill)
+        raise NotImplementedError(self.distill)
 
 
 class NativeSourceDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a native package from a branch."""
 
-    def _distill(self, target):
+    def __init__(self, tree):
+        """Create a SourceDistiller to distill from the specified tree.
+
+        :param tree: The tree to use as the source.
+        """
+        super(NativeSourceDistiller, self).__init__(tree)
+
+    def distill(self, target):
+        """Extract the source to a tree rooted at the given location.
+
+        The passed location cannot already exist. If it does then
+        FileExists will be raised.
+
+        :param target: a string containing the location at which to 
+            place the tree containing the buildable source.
+        """
+        if os.path.exists(target):
+            raise bzr_errors.FileExists(target)
         export(self.tree, target, None, None)
 
 
 class FullSourceDistiller(SourceDistiller):
     """A SourceDistiller for full-source branches, a.k.a. normal mode"""
 
-    def _distill(self, target):
+    def __init__(self, tree, upstream_provider):
+        """Create a SourceDistiller to distill from the specified tree.
+
+        :param tree: The tree to use as the source.
+        :param upstream_provider: an UpstreamProvider to provide the upstream
+            tarball if needed.
+        """
+        super(FullSourceDistiller, self).__init__(tree)
+        self.upstream_provider = upstream_provider
+
+    def distill(self, target):
+        """Extract the source to a tree rooted at the given location.
+
+        The passed location cannot already exist. If it does then
+        FileExists will be raised.
+
+        :param target: a string containing the location at which to 
+            place the tree containing the buildable source.
+        """
+        if os.path.exists(target):
+            raise bzr_errors.FileExists(target)
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
         export(self.tree, target)
@@ -105,9 +117,38 @@ class FullSourceDistiller(SourceDistiller):
 
 class MergeModeDistiller(SourceDistiller):
 
-    supports_use_existing = True
+    def __init__(self, tree, upstream_provider, top_level=False,
+                 use_existing=False):
+        """Create a SourceDistiller to distill from the specified tree.
 
-    def _distill(self, target):
+        :param tree: The tree to use as the source.
+        :param upstream_provider: an UpstreamProvider to provide the upstream
+            tarball if needed.
+        :param top_level: if the tree is in the top level directory instead of inside debian/.
+        :param use_existing: whether the distiller should re-use an existing
+            target if the distiller supports it.
+        """
+        super(MergeModeDistiller, self).__init__(tree)
+        self.upstream_provider = upstream_provider
+        self.top_level = top_level
+        self.use_existing = use_existing
+
+    def distill(self, target):
+        """Extract the source to a tree rooted at the given location.
+
+        The passed location cannot already exist. If it does then
+        FileExists will be raised.
+
+        :param target: a string containing the location at which to 
+            place the tree containing the buildable source.
+        """
+        if not self.use_existing:
+            if os.path.exists(target):
+                raise bzr_errors.FileExists(target)
+        elif self.use_existing:
+            if not os.path.exists(target):
+                raise bzr_errors.NotADirectory(target)
+
         # Get the upstream tarball
         parent_dir = get_parent_dir(target)
         if parent_dir != '' and not os.path.exists(parent_dir):
