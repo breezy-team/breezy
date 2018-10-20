@@ -1,8 +1,8 @@
-breezy-debian (2.8.19) UNRELEASED; urgency=medium
+breezy-debian (2.8.19) unstable; urgency=medium
 
   * Fix autopgktests; use Python 3 dependencies.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 23:20:21 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 23:20:30 +0000
 
 breezy-debian (2.8.18) unstable; urgency=medium
 
