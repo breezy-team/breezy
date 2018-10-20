@@ -100,6 +100,15 @@ def _check_tree(tree, strict=False):
             "You must resolve these before building.")
 
 
+def _get_build_architecture():
+    try:
+        return subprocess.check_output(
+            ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
+    except subprocess.CalledProcessError as e:
+        raise BzrCommandError(
+            "Could not find the build architecture: %s" % e)
+
+
 def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
     from .util import (
         find_changelog,
@@ -457,12 +466,7 @@ class cmd_builddeb(Command):
                 if source:
                     arch = "source"
                 else:
-                    try:
-                        arch = subprocess.check_output(
-                            ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
-                    except subprocess.CalledProcessError as e:
-                        raise BzrCommandError(
-                            "Could not find the build architecture: %s" % e)
+                    arch = _get_build_architecture()
                 non_epoch_version = changelog.version.upstream_version
                 if changelog.version.debian_version is not None:
                     non_epoch_version += "-%s" % changelog.version.debian_version
