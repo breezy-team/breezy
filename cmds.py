@@ -1256,6 +1256,7 @@ class cmd_mark_uploaded(Command):
             "marked.")
 
     takes_options = [merge_opt, force]
+    hidden = True
 
     def run(self, merge=None, force=None):
         from .import_dsc import (
