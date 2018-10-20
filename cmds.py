@@ -111,6 +111,7 @@ def _check_tree(tree, strict=False):
 
 
 def _get_build_architecture():
+    import subprocess
     try:
         return subprocess.check_output(
             ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
@@ -161,6 +162,21 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
     return (current_version, package, distribution, distribution_name,
             changelog, top_level)
 
+
+def _get_upstream_branch_source(export_upstream, export_upstream_revision,
+        config, version):
+    if export_upstream is None and config.upstream_branch:
+        export_upstream = config.upstream_branch
+    if export_upstream is None:
+        return None
+    from .upstream.branch import (
+        LazyUpstreamBranchSource,
+        )
+    upstream_source = LazyUpstreamBranchSource(export_upstream,
+        config=config)
+    if export_upstream_revision:
+        upstream_source.upstream_revision_map[version.encode("utf-8")] = export_upstream_revision
+    return upstream_source
 
 
 class cmd_builddeb(Command):
@@ -331,17 +347,6 @@ class cmd_builddeb(Command):
             source = True
         return branch, build_options, source
 
-    def _get_upstream_branch(self, export_upstream, export_upstream_revision,
-            config, version):
-        from .upstream.branch import (
-            LazyUpstreamBranchSource,
-            )
-        upstream_source = LazyUpstreamBranchSource(export_upstream,
-            config=config)
-        if export_upstream_revision:
-            upstream_source.upstream_revision_map[version.encode("utf-8")] = export_upstream_revision
-        return upstream_source
-
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
@@ -429,12 +434,10 @@ class cmd_builddeb(Command):
                 AptSource(),
                 ]
             if build_type == BUILD_TYPE_MERGE:
-                if export_upstream is None and config.upstream_branch:
-                    export_upstream = config.upstream_branch
-                if export_upstream:
-                    upstream_branch_source = self._get_upstream_branch(
-                        export_upstream, export_upstream_revision, config,
-                        changelog.version.upstream_version)
+                upstream_branch_source = _get_upstream_branch_source(
+                    export_upstream, export_upstream_revision, config,
+                    changelog.version.upstream_version)
+                if upstream_branch_source:
                     upstream_sources.append(upstream_branch_source)
             elif not native and config.upstream_branch is not None:
                 upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
@@ -1206,8 +1209,8 @@ class cmd_builddeb_do(Command):
                  AptSource(),
                  UScanSource(t, top_level) ])
 
-        distiller = MergeModeDistiller(t, upstream_provider,
-                top_level=top_level)
+        distiller = MergeModeDistiller(
+                t, upstream_provider, top_level=top_level)
 
         build_source_dir = os.path.join(build_dir,
                 changelog.package + "-" + changelog.version.upstream_version)
@@ -1494,6 +1497,7 @@ class cmd_debrelease(Command):
             _check_tree(tree, strict)
             (changelog, top_level) = find_changelog(local_tree, False, max_blocks=2)
 
+            config = debuild_config(local_tree, local_tree)
             contains_upstream_source = tree_contains_upstream_source(local_tree)
             build_type = guess_build_type(local_tree, changelog.version,
                 contains_upstream_source)
@@ -1502,12 +1506,53 @@ class cmd_debrelease(Command):
                 subprocess.check_call(["dch", "--release", ""], cwd=local_tree.basedir)
                 subprocess.check_call(["debcommit", "-ar"], cwd=local_tree.basedir)
 
+            upstream_sources = [
+                PristineTarSource(local_tree, branch),
+                AptSource(),
+                ]
+            if build_type == BUILD_TYPE_MERGE:
+                upstream_branch_source = _get_upstream_branch(
+                    export_upstream, export_upstream_revision, config,
+                    changelog.version.upstream_version)
+                if upstream_branch_source:
+                    upstream_sources.append(upstream_branch_source)
+            elif not native and config.upstream_branch is not None:
+                upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
+            upstream_sources.extend([
+                UScanSource(local_tree, top_level),
+                ])
+            if build_type == BUILD_TYPE_SPLIT:
+                upstream_sources.append(SelfSplitSource(tree))
+
+            upstream_provider = UpstreamProvider(changelog.package,
+                changelog.version.upstream_version, orig_dir, upstream_sources)
+
+            if build_type == BUILD_TYPE_MERGE:
+                distiller_cls = MergeModeDistiller
+            elif build_type == BUILD_TYPE_NATIVE:
+                distiller_cls = NativeSourceDistiller
+            else:
+                distiller_cls = FullSourceDistiller
+
+            distiller = distiller_cls(local_tree, upstream_provider,
+                    top_level=top_level, use_existing=False,
+                    is_working_tree=True)
+
             bd = tempfile.mkdtemp()
             try:
-                cmd_builddeb().run(
-                        [local_tree.basedir, "--source", "--source-only-changes"],
-                        build_dir=bd, builder='sbuild')
-
+                build_source_dir = os.path.join(bd,
+                        changelog.package + "-" + changelog.version.upstream_version)
+                builder = DebBuild(
+                        distiller, build_source_dir, "sbuild --source --source-only-changes",
+                        use_existing=False)
+                builder.prepare()
+                run_hook(tree, 'pre-export', config)
+                builder.export()
+                run_hook(tree, 'pre-build', config, wd=build_source_dir)
+                builder.build()
+                run_hook(tree, 'post-build', config, wd=build_source_dir)
+                changes = changes_filename(changelog.package, changelog.version, 'source')
+                changes_path = os.path.join(bd, changes)
                 changes_file = changes_filename(changelog.package, changelog.version, 'source')
 
                 dput_changes(os.path.join(bd, changes_file))
