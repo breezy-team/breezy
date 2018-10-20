@@ -1,3 +1,10 @@
+breezy-debian (2.8.18) UNRELEASED; urgency=medium
+
+  * Fix test_merge_upstream.ChangelogAddNewVersionTests.test_add_new
+    when run with non-ascii username and LC_ALL=C.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 23:05:28 +0000
+
 breezy-debian (2.8.17) unstable; urgency=medium
 
   * Hide the mark-uploaded command.

@@ -84,7 +84,8 @@ class ChangelogAddNewVersionTests(TestCaseWithTransport):
         tree.mkdir("debian")
         changelog_add_new_version(tree, "1.0", "sid", None, "somepkg")
         # changelog_add_new_version will version the changelog if it was created
-        cl = Changelog(open('debian/changelog'))
+        with open('debian/changelog', 'rb') as f:
+            cl = Changelog(f)
         self.assertEquals(cl._blocks[0].package, "somepkg")
         self.assertEquals(cl._blocks[0].distributions, "UNRELEASED")
         self.assertEquals(cl._blocks[0].version, Version("1.0-1"))
