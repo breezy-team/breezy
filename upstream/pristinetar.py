@@ -350,8 +350,8 @@ class PristineTarSource(UpstreamSource):
                 builder.abort()
                 raise
             revid = builder.commit(message)
-            tag_name, _ = self.tag_version(
-                    version, revid=revid, component=component)
+            tag_name = self.tag_name(version, component=component)
+            tree.branch.tags.set_tag(tag_name, revid)
             tree.update_basis_by_delta(revid, builder.get_basis_delta())
         if git_delta is not None:
             revtree = tree.branch.repository.revision_tree(revid)

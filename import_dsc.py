@@ -1244,6 +1244,7 @@ class DistributionBranch(object):
         # Use upstream_branch if it has been set, otherwise self.branch.
         source_branch = self.pristine_upstream_branch or self.branch
         assert list(upstream_tips.keys()) == [None], "Upstream tips: %r" % list(upstream_tips.keys())
+        # TODO(jelmer): Use colocated branches rather than creating a copy.
         dir_to = source_branch.controldir.sprout(to_location,
                 revision_id=upstream_tips[None],
                 accelerator_tree=self.tree)
@@ -1253,12 +1254,14 @@ class DistributionBranch(object):
             # Handle shared treeless repo's.
             self.pristine_upstream_tree = dir_to.create_workingtree()
         self.pristine_upstream_branch = self.pristine_upstream_tree.branch
+        self.pristine_upstream_branch.get_config_stack().set('branch.fetch_tags', True)
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
         to_transport = get_transport(to_location)
         to_transport.ensure_base()
-        format = controldir.format_registry.make_controldir('default')
+        source_branch = self.pristine_upstream_branch or self.branch
+        format = source_branch.controldir._format
         try:
             existing_controldir = controldir.ControlDir.open_from_transport(
                     to_transport)
@@ -1282,8 +1285,8 @@ class DistributionBranch(object):
             tip = self.branch.basis_tree()
             with tip.lock_read():
                 root_id = tip.path2id('')
-        if root_id:
-            self.pristine_upstream_tree.set_root_id(root_id)
+        if root_id and self.pristine_upstream_tree.supports_setting_file_ids():
+                self.pristine_upstream_tree.set_root_id(root_id)
 
     def _extract_tarballs_to_tempdir(self, tarballs):
         tempdir = tempfile.mkdtemp()
