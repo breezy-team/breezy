@@ -450,11 +450,11 @@ class cmd_builddeb(Command):
             result_dir, build_dir, orig_dir = self._get_dirs(config,
                 location or ".", is_local, result_dir, build_dir, orig_dir)
 
-            upstream_sources = _get_upstream_sources(
+            upstream_sources = list(_get_upstream_sources(
                 tree, branch, build_type=build_type, config=config,
                 upstream_version=changelog.version.upstream_version,
                 top_level=top_level, export_upstream=export_upstream,
-                export_upstream_revision=export_upstream_revision)
+                export_upstream_revision=export_upstream_revision))
 
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, orig_dir, upstream_sources)
