@@ -90,6 +90,35 @@ export_upstream_revision_opt = Option('export-upstream-revision',
     type=str, argname="REVISION")
 
 
+def changes_filename(package, version, arch):
+    non_epoch_version = version.upstream_version
+    if version.debian_version is not None:
+        non_epoch_version += "-%s" % version.debian_version
+    return "%s_%s_%s.changes" % (package,
+            non_epoch_version, arch)
+
+
+def _check_tree(tree, strict=False):
+    if strict:
+        for unknown in tree.unknowns():
+            from .errors import StrictBuildFailed
+            raise StrictBuildFailed()
+
+    if len(tree.conflicts()) > 0:
+        raise BzrCommandError(
+            "There are conflicts in the working tree. "
+            "You must resolve these before building.")
+
+
+def _get_build_architecture():
+    try:
+        return subprocess.check_output(
+            ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
+    except subprocess.CalledProcessError as e:
+        raise BzrCommandError(
+            "Could not find the build architecture: %s" % e)
+
+
 def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
     from .util import (
         find_changelog,
@@ -331,7 +360,6 @@ class cmd_builddeb(Command):
         from .builder import DebBuild
         from .errors import (
             NoPreviousUpload,
-            StrictBuildFailed
             )
         from .hooks import run_hook
         from .upstream.branch import (
@@ -358,14 +386,7 @@ class cmd_builddeb(Command):
                 branch_or_build_options_list, source)
         tree, branch, is_local, location = self._get_tree_and_branch(location)
         tree, is_working_tree = self._get_build_tree(revision, tree, branch)
-        if strict:
-            for unknown in tree.unknowns():
-                raise StrictBuildFailed()
-
-        if len(tree.conflicts()) > 0:
-            raise BzrCommandError(
-                "There are conflicts in the working tree. "
-                "You must resolve these before building.")
+        _check_tree(tree, strict=strict)
 
         with tree.lock_read():
             config = debuild_config(tree, is_working_tree)
@@ -455,17 +476,8 @@ class cmd_builddeb(Command):
                 if source:
                     arch = "source"
                 else:
-                    try:
-                        arch = subprocess.check_output(
-                            ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
-                    except subprocess.CalledProcessError as e:
-                        raise BzrCommandError(
-                            "Could not find the build architecture: %s" % e)
-                non_epoch_version = changelog.version.upstream_version
-                if changelog.version.debian_version is not None:
-                    non_epoch_version += "-%s" % changelog.version.debian_version
-                changes = "%s_%s_%s.changes" % (changelog.package,
-                        non_epoch_version, arch)
+                    arch = _get_build_architecture()
+                changes = changes_filename(changelog.package, changelog.version, arch)
                 changes_path = os.path.join(build_dir, changes)
                 if not os.path.exists(changes_path):
                     if result_dir is not None:
