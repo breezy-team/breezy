@@ -88,6 +88,14 @@ export_upstream_revision_opt = Option('export-upstream-revision',
     type=str, argname="REVISION")
 
 
+def changes_filename(package, version, arch):
+    non_epoch_version = version.upstream_version
+    if version.debian_version is not None:
+        non_epoch_version += "-%s" % version.debian_version
+    return "%s_%s_%s.changes" % (package,
+            non_epoch_version, arch)
+
+
 def _check_tree(tree, strict=False):
     if strict:
         for unknown in tree.unknowns():
@@ -467,11 +475,7 @@ class cmd_builddeb(Command):
                     arch = "source"
                 else:
                     arch = _get_build_architecture()
-                non_epoch_version = changelog.version.upstream_version
-                if changelog.version.debian_version is not None:
-                    non_epoch_version += "-%s" % changelog.version.debian_version
-                changes = "%s_%s_%s.changes" % (changelog.package,
-                        non_epoch_version, arch)
+                changes = changes_filename(changelog.package, changelog.version, arch)
                 changes_path = os.path.join(build_dir, changes)
                 if not os.path.exists(changes_path):
                     if result_dir is not None:
