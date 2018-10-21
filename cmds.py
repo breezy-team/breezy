@@ -1495,9 +1495,11 @@ class cmd_debrelease(Command):
                ' the working tree, --no-strict disables the check.')
 
     takes_args = ['location?']
-    takes_options = [strict_opt]
+    takes_options = [strict_opt,
+            Option('skip-upload', help='Skip upload.'), builder_opt]
 
-    def run(self, location='.', strict=True):
+    def run(self, location='.', strict=True, skip_upload=False,
+            builder="sbuild --source --source-only-changes"):
         from .util import (
             find_changelog,
             dput_changes,
@@ -1541,14 +1543,15 @@ class cmd_debrelease(Command):
             upstream_sources = _get_upstream_sources(
                     local_tree, branch, build_type=build_type, config=config,
                     upstream_version=changelog.version.upstream_version,
-                    top_level=top_level, )
+                    top_level=top_level)
 
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, default_orig_dir,
                 upstream_sources)
 
             if build_type == BUILD_TYPE_MERGE:
-                distiller = MergeModeDistiller(local_tree, upstream_provider,
+                distiller = MergeModeDistiller(
+                        local_tree, upstream_provider,
                         top_level=top_level, use_existing=use_existing)
             elif build_type == BUILD_TYPE_NATIVE:
                 distiller = NativeSourceDistiller(local_tree)
@@ -1561,7 +1564,7 @@ class cmd_debrelease(Command):
                         changelog.package + "-" + changelog.version.upstream_version)
                 builder = DebBuild(
                         distiller, build_source_dir,
-                        "sbuild --source --source-only-changes",
+                        builder,
                         use_existing=False)
                 builder.prepare()
                 run_hook(local_tree, 'pre-export', config)
@@ -1571,9 +1574,11 @@ class cmd_debrelease(Command):
                 run_hook(local_tree, 'post-build', config, wd=build_source_dir)
                 changes = changes_filename(changelog.package, changelog.version, 'source')
                 changes_path = os.path.join(bd, changes)
-                changes_file = changes_filename(changelog.package, changelog.version, 'source')
+                changes_file = changes_filename(
+                        changelog.package, changelog.version, 'source')
 
-                dput_changes(os.path.join(bd, changes_file))
+                if not skip_upload:
+                    dput_changes(os.path.join(bd, changes_file))
             finally:
                 shutil.rmtree(bd)
 

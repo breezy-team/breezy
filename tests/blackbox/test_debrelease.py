@@ -45,15 +45,31 @@ breezy-debian (2.8.17) UNRELEASED; urgency=medium
 Source: breezy-debian
 Maintainer: none\
 Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 9)
 
 Package: brz-debian
 Architecture: all
 """),
+            ('package/debian/rules', b"""\
+#!/usr/bin/make -f
+
+%:
+\tdh $*
+"""),
+            ('package/debian/compat', b'9\n'),
             ])
-        wt.add(["debian", "debian/changelog", "debian/control"])
-        (out, err) = self.run_bzr("debrelease package", retcode=0)
-        self.assertEquals("brz: ERROR: No unmerged revisions\n", err)
+        os.chmod('package/debian/rules', 0o755)
+        wt.add(["debian", "debian/changelog", "debian/control",
+                "debian/rules", "debian/compat"])
+        wt.commit('initial commit')
+        (out, err) = self.run_bzr("debrelease package --skip-upload --builder true", retcode=0)
+        self.assertContainsRe(
+            err, 'Building the package in .*/breezy-debian-2.8.17, using true\n')
         self.assertEquals("", out)
+        self.assertEqual(2, wt.branch.revno())
+        self.assertEqual(
+                'releasing package breezy-debian version 2.8.17',
+                wt.branch.repository.get_revision(wt.last_revision()).message)
 
     def test_unknowns(self):
         wt = self.make_branch_and_tree('package')
