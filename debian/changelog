@@ -1,24 +1,9 @@
 breezy-debian (2.8.20) unstable; urgency=medium
 
   * Add 'brz debrelease' command.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 21 Oct 2018 02:43:39 +0100
-
-breezy-debian (2.8.19) unstable; urgency=medium
-
   * Fix autopgktests; use Python 3 dependencies.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 23:20:30 +0000
-
-breezy-debian (2.8.18) unstable; urgency=medium
-
   * Fix test_merge_upstream.ChangelogAddNewVersionTests.test_add_new
     when run with non-ascii username and LC_ALL=C.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 23:07:14 +0000
-
-breezy-debian (2.8.17) unstable; urgency=medium
-
   * Hide the mark-uploaded command.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 22:57:16 +0000
