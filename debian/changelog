@@ -1,3 +1,9 @@
+breezy-debian (2.8.20) UNRELEASED; urgency=medium
+
+  * Add 'brz debrelease' command.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 21 Oct 2018 01:41:19 +0000
+
 breezy-debian (2.8.19) unstable; urgency=medium
 
   * Fix autopgktests; use Python 3 dependencies.

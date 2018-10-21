@@ -37,7 +37,9 @@ from ...errors import (
     BzrCommandError,
     FileExists,
     NotBranchError,
+    NotLocalUrl,
     NoWorkingTree,
+    UnsupportedOperation,
     )
 from ...option import Option
 from ...sixish import text_type
@@ -1440,3 +1442,144 @@ class cmd_dep3_patch(Command):
             revision_id, bugs=bugs, authors=authors, origin=origin,
             forwarded=forwarded, applied_upstream=applied_upstream,
             description=description, last_update=last_update)
+
+
+class LocalTree(object):
+
+    def __init__(self, branch):
+        self.branch = branch
+        self._td = None
+
+    def __enter__(self):
+        try:
+            return self.branch.controldir.open_workingtree()
+        except NotLocalUrl:
+            tree = self.branch.basis_tree()
+            try:
+                tree.get_file_text('debian/changelog')
+            except UnsupportedOperation:
+                pass
+            else:
+                return tree
+        # Remote, inaccessible
+        self._td = tempfile.mkdtemp()
+        to_dir = self.branch.controldir.sprout(
+                get_transport(self._td).base, None,
+                create_tree_if_local=True,
+                source_branch=self.branch)
+        try:
+            pristine_tar_branch = self.branch.controldir.open_branch(name="pristine-tar")
+        except NotBranchError:
+            pass
+        else:
+            pristine_tar_branch.push(to_dir.create_branch("pristine-tar"))
+        return to_dir.open_workingtree()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._td is not None:
+            shutil.rmtree(self._td)
+        return False
+
+
+class cmd_debrelease(Command):
+    """Release a new version of a package.
+
+    This will update the latest distribution in the changelog,
+    build the package and upload.
+
+    Location can be remote.
+    """
+
+    strict_opt = Option('strict',
+               help='Refuse to build if there are unknown files in'
+               ' the working tree, --no-strict disables the check.')
+
+    takes_args = ['location?']
+    takes_options = [strict_opt,
+            Option('skip-upload', help='Skip upload.'), builder_opt]
+
+    def run(self, location='.', strict=True, skip_upload=False,
+            builder="sbuild --source --source-only-changes"):
+        from .util import (
+            find_changelog,
+            dput_changes,
+            guess_build_type,
+            tree_contains_upstream_source,
+            )
+        from .hooks import run_hook
+        from .upstream import (
+            UpstreamProvider,
+            )
+        from .source_distiller import (
+            FullSourceDistiller,
+            MergeModeDistiller,
+            NativeSourceDistiller,
+            )
+        from .builder import (
+            DebBuild,
+            )
+        import subprocess
+
+        branch = Branch.open(location)
+        # preserve whatever source format we have.
+        # TODO(jelmer): Use the local tree if there is one, but check it's
+        # clean.
+        with LocalTree(branch) as local_tree:
+            _check_tree(local_tree, strict)
+            (changelog, top_level) = find_changelog(
+                local_tree, False, max_blocks=2)
+
+            config = debuild_config(local_tree, local_tree)
+            contains_upstream_source = tree_contains_upstream_source(local_tree)
+            build_type = guess_build_type(local_tree, changelog.version,
+                contains_upstream_source)
+
+            if changelog.distributions == "UNRELEASED":
+                subprocess.check_call(
+                    ["dch", "--release", ""], cwd=local_tree.basedir)
+                subprocess.check_call(
+                    ["debcommit", "-ar"], cwd=local_tree.basedir)
+
+            upstream_sources = _get_upstream_sources(
+                    local_tree, branch, build_type=build_type, config=config,
+                    upstream_version=changelog.version.upstream_version,
+                    top_level=top_level)
+
+            upstream_provider = UpstreamProvider(changelog.package,
+                changelog.version.upstream_version, default_orig_dir,
+                upstream_sources)
+
+            if build_type == BUILD_TYPE_MERGE:
+                distiller = MergeModeDistiller(
+                        local_tree, upstream_provider,
+                        top_level=top_level, use_existing=use_existing)
+            elif build_type == BUILD_TYPE_NATIVE:
+                distiller = NativeSourceDistiller(local_tree)
+            else:
+                distiller = FullSourceDistiller(local_tree, upstream_provider)
+
+            bd = tempfile.mkdtemp()
+            try:
+                build_source_dir = os.path.join(bd,
+                        changelog.package + "-" + changelog.version.upstream_version)
+                builder = DebBuild(
+                        distiller, build_source_dir,
+                        builder,
+                        use_existing=False)
+                builder.prepare()
+                run_hook(local_tree, 'pre-export', config)
+                builder.export()
+                run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
+                builder.build()
+                run_hook(local_tree, 'post-build', config, wd=build_source_dir)
+                changes = changes_filename(changelog.package, changelog.version, 'source')
+                changes_path = os.path.join(bd, changes)
+                changes_file = changes_filename(
+                        changelog.package, changelog.version, 'source')
+
+                if not skip_upload:
+                    dput_changes(os.path.join(bd, changes_file))
+            finally:
+                shutil.rmtree(bd)
+
+            local_tree.branch.push(branch)
