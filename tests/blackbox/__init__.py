@@ -23,6 +23,7 @@ from __future__ import absolute_import
 def load_tests(loader, basic_tests, pattern):
   testmod_names = [
           'test_builddeb',
+          'test_debrelease',
           'test_dep3',
           'test_do',
           'test_get_tar',

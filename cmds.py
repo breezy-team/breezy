@@ -1482,30 +1482,50 @@ class LocalTree(object):
 
 
 class cmd_debrelease(Command):
+    """Release a new version of a package.
+
+    This will update the latest distribution in the changelog,
+    build the package and upload.
+
+    Location can be remote.
+    """
 
     strict_opt = Option('strict',
                help='Refuse to build if there are unknown files in'
                ' the working tree, --no-strict disables the check.')
 
-    takes_args = ['directory?']
+    takes_args = ['location?']
     takes_options = [strict_opt]
 
-    def run(self, directory='.', strict=True):
+    def run(self, location='.', strict=True):
         from .util import (
             find_changelog,
             dput_changes,
             guess_build_type,
-            contains_upstream_source,
+            tree_contains_upstream_source,
             )
+        from .hooks import run_hook
         from .upstream import (
             UpstreamProvider,
             )
-        branch = Branch.open(directory)
+        from .source_distiller import (
+            FullSourceDistiller,
+            MergeModeDistiller,
+            NativeSourceDistiller,
+            )
+        from .builder import (
+            DebBuild,
+            )
+        import subprocess
+
+        branch = Branch.open(location)
         # preserve whatever source format we have.
-        # TODO(jelmer): Use the local tree if there is one, but check it's clean.
+        # TODO(jelmer): Use the local tree if there is one, but check it's
+        # clean.
         with LocalTree(branch) as local_tree:
-            _check_tree(tree, strict)
-            (changelog, top_level) = find_changelog(local_tree, False, max_blocks=2)
+            _check_tree(local_tree, strict)
+            (changelog, top_level) = find_changelog(
+                local_tree, False, max_blocks=2)
 
             config = debuild_config(local_tree, local_tree)
             contains_upstream_source = tree_contains_upstream_source(local_tree)
@@ -1513,8 +1533,10 @@ class cmd_debrelease(Command):
                 contains_upstream_source)
 
             if changelog.distributions == "UNRELEASED":
-                subprocess.check_call(["dch", "--release", ""], cwd=local_tree.basedir)
-                subprocess.check_call(["debcommit", "-ar"], cwd=local_tree.basedir)
+                subprocess.check_call(
+                    ["dch", "--release", ""], cwd=local_tree.basedir)
+                subprocess.check_call(
+                    ["debcommit", "-ar"], cwd=local_tree.basedir)
 
             upstream_sources = _get_upstream_sources(
                     local_tree, branch, build_type=build_type, config=config,
@@ -1522,13 +1544,14 @@ class cmd_debrelease(Command):
                     top_level=top_level, )
 
             upstream_provider = UpstreamProvider(changelog.package,
-                changelog.version.upstream_version, orig_dir, upstream_sources)
+                changelog.version.upstream_version, default_orig_dir,
+                upstream_sources)
 
             if build_type == BUILD_TYPE_MERGE:
                 distiller = MergeModeDistiller(local_tree, upstream_provider,
                         top_level=top_level, use_existing=use_existing)
             elif build_type == BUILD_TYPE_NATIVE:
-                distiller = NativeSourceDistiller(tree)
+                distiller = NativeSourceDistiller(local_tree)
             else:
                 distiller = FullSourceDistiller(local_tree, upstream_provider)
 
@@ -1537,14 +1560,15 @@ class cmd_debrelease(Command):
                 build_source_dir = os.path.join(bd,
                         changelog.package + "-" + changelog.version.upstream_version)
                 builder = DebBuild(
-                        distiller, build_source_dir, "sbuild --source --source-only-changes",
+                        distiller, build_source_dir,
+                        "sbuild --source --source-only-changes",
                         use_existing=False)
                 builder.prepare()
-                run_hook(tree, 'pre-export', config)
+                run_hook(local_tree, 'pre-export', config)
                 builder.export()
-                run_hook(tree, 'pre-build', config, wd=build_source_dir)
+                run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
                 builder.build()
-                run_hook(tree, 'post-build', config, wd=build_source_dir)
+                run_hook(local_tree, 'post-build', config, wd=build_source_dir)
                 changes = changes_filename(changelog.package, changelog.version, 'source')
                 changes_path = os.path.join(bd, changes)
                 changes_file = changes_filename(changelog.package, changelog.version, 'source')
