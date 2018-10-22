@@ -5,6 +5,8 @@ breezy-debian (2.8.20) unstable; urgency=medium
   * Fix test_merge_upstream.ChangelogAddNewVersionTests.test_add_new
     when run with non-ascii username and LC_ALL=C.
   * Hide the mark-uploaded command.
+  * Support tag names starting with debian/ or ubuntu/, for
+    compatibility with git-buildpackage.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 20 Oct 2018 22:57:16 +0000
 

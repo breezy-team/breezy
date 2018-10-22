@@ -306,6 +306,7 @@ class DistributionBranch(object):
         if md5 is None:
             return True
         rev = branch.repository.get_revision(revid)
+        # TODO(jelmer): Check the commit message for git repositories
         try:
             return rev.properties['deb-md5'] == md5
         except KeyError:
@@ -330,12 +331,13 @@ class DistributionBranch(object):
         tag_name = self.tag_name(version)
         if self._has_version(self.branch, tag_name, md5=md5):
             return True
-        debian_tag_name = "debian-" + tag_name
-        if self._has_version(self.branch, debian_tag_name, md5=md5):
-            return True
-        ubuntu_tag_name = "ubuntu-" + tag_name
-        if self._has_version(self.branch, ubuntu_tag_name, md5=md5):
-            return True
+        # TODO(jelmer): There is some overlap here with revid_of_version
+        for debian_tag_name in ["debian-" + tag_name, "debian/" + tag_name]:
+            if self._has_version(self.branch, debian_tag_name, md5=md5):
+                return True
+        for ubuntu_tag_name in ["ubuntu-" + tag_name, "ubuntu/" + tag_name]:
+            if self._has_version(self.branch, ubuntu_tag_name, md5=md5):
+                return True
         return False
 
     def contained_versions(self, versions):
@@ -417,12 +419,12 @@ class DistributionBranch(object):
         tag_name = self.tag_name(version)
         if self._has_version(self.branch, tag_name):
             return self.branch.tags.lookup_tag(tag_name)
-        debian_tag_name = "debian-" + tag_name
-        if self._has_version(self.branch, debian_tag_name):
-            return self.branch.tags.lookup_tag(debian_tag_name)
-        ubuntu_tag_name = "ubuntu-" + tag_name
-        if self._has_version(self.branch, ubuntu_tag_name):
-            return self.branch.tags.lookup_tag(ubuntu_tag_name)
+        for debian_tag_name in ["debian-" + tag_name, "debian/" + tag_name]:
+            if self._has_version(self.branch, debian_tag_name):
+                return self.branch.tags.lookup_tag(debian_tag_name)
+        for ubuntu_tag_name in ["ubuntu-" + tag_name, "ubuntu/" + tag_name]:
+            if self._has_version(self.branch, ubuntu_tag_name):
+                return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(tag_name)
 
     def tag_version(self, version, revid=None):
