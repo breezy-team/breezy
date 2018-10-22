@@ -1500,6 +1500,7 @@ class cmd_debrelease(Command):
 
     def run(self, location='.', strict=True, skip_upload=False,
             builder="sbuild --source --source-only-changes"):
+        from .release import release
         from .util import (
             find_changelog,
             dput_changes,
@@ -1534,11 +1535,7 @@ class cmd_debrelease(Command):
             build_type = guess_build_type(local_tree, changelog.version,
                 contains_upstream_source)
 
-            if changelog.distributions == "UNRELEASED":
-                subprocess.check_call(
-                    ["dch", "--release", ""], cwd=local_tree.basedir)
-                subprocess.check_call(
-                    ["debcommit", "-ar"], cwd=local_tree.basedir)
+            release(local_tree)
 
             upstream_sources = _get_upstream_sources(
                     local_tree, branch, build_type=build_type, config=config,
