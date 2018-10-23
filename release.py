@@ -33,5 +33,11 @@ def release(local_tree):
     # TODO(jelmer): If this changelog is automatically updated,
     # insert missing entries now.
     if changelog.distributions == "UNRELEASED":
-        subprocess.check_call(["dch", "--release", ""], cwd=local_tree.basedir)
-        subprocess.check_call(["debcommit", "-ar"], cwd=local_tree.basedir)
+        if top_level:
+            changelog_path = 'changelog'
+        else:
+            changelog_path = 'debian/changelog'
+        changelog_arg = "--changelog=%s" % changelog_path
+        # TODO(jelmer): don't send output to stderr
+        subprocess.check_call(["dch", changelog_arg, "--release", ""], cwd=local_tree.basedir)
+        subprocess.check_call(["debcommit", changelog_arg, "-ar"], cwd=local_tree.basedir)

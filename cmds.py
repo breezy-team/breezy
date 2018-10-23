@@ -114,7 +114,7 @@ def _get_build_architecture():
     import subprocess
     try:
         return subprocess.check_output(
-            ['dpkg-architecture', '-qDEB_BUILD_ARCH'])
+            ['dpkg-architecture', '-qDEB_BUILD_ARCH']).strip()
     except subprocess.CalledProcessError as e:
         raise BzrCommandError(
             "Could not find the build architecture: %s" % e)
@@ -207,6 +207,48 @@ def _get_upstream_sources(local_tree, branch, build_type, config,
 
     if build_type == BUILD_TYPE_SPLIT:
         yield SelfSplitSource(local_tree)
+
+
+def _get_distiller(tree, branch, changelog, build_type, config,
+                   contains_upstream_source=True, top_level=False,
+                   orig_dir=default_orig_dir, use_existing=False,
+                   export_upstream=None, export_upstream_revision=None):
+    from .util import (
+        guess_build_type,
+        )
+    from .upstream import (
+        UpstreamProvider,
+        )
+    from .source_distiller import (
+        FullSourceDistiller,
+        MergeModeDistiller,
+        NativeSourceDistiller,
+        )
+
+    if build_type is None:
+        build_type = config.build_type
+    if build_type is None:
+        build_type = guess_build_type(tree, changelog.version,
+            contains_upstream_source)
+
+    note(gettext("Building package in %s mode") % build_type)
+
+    upstream_sources = list(_get_upstream_sources(
+        tree, branch, build_type=build_type, config=config,
+        upstream_version=changelog.version.upstream_version,
+        top_level=top_level, export_upstream=export_upstream,
+        export_upstream_revision=export_upstream_revision))
+
+    upstream_provider = UpstreamProvider(changelog.package,
+        changelog.version.upstream_version, orig_dir, upstream_sources)
+
+    if build_type == BUILD_TYPE_MERGE:
+        return MergeModeDistiller(tree, upstream_provider,
+                top_level=top_level, use_existing=use_existing)
+    elif build_type == BUILD_TYPE_NATIVE:
+        return NativeSourceDistiller(tree)
+    else:
+        return FullSourceDistiller(tree, upstream_provider)
 
 
 class cmd_builddeb(Command):
@@ -387,19 +429,11 @@ class cmd_builddeb(Command):
             source=False, revision=None, package_merge=None,
             strict=False):
         import subprocess
-        from .source_distiller import (
-                FullSourceDistiller,
-                MergeModeDistiller,
-                NativeSourceDistiller,
-                )
         from .builder import DebBuild
         from .errors import (
             NoPreviousUpload,
             )
         from .hooks import run_hook
-        from .upstream import (
-            UpstreamProvider,
-            )
         from .util import (
             dget_changes,
             find_changelog,
@@ -421,15 +455,9 @@ class cmd_builddeb(Command):
                 dont_purge = True
                 use_existing = True
             build_type = self._build_type(merge, native, split)
-            if build_type is None:
-                build_type = config.build_type
+
             contains_upstream_source = tree_contains_upstream_source(tree)
             (changelog, top_level) = find_changelog(tree, not contains_upstream_source)
-            if build_type is None:
-                build_type = guess_build_type(tree, changelog.version,
-                    contains_upstream_source)
-
-            note(gettext("Building package in %s mode") % build_type)
 
             if package_merge:
                 try:
@@ -450,22 +478,12 @@ class cmd_builddeb(Command):
             result_dir, build_dir, orig_dir = self._get_dirs(config,
                 location or ".", is_local, result_dir, build_dir, orig_dir)
 
-            upstream_sources = list(_get_upstream_sources(
+            distiller = _get_distiller(
                 tree, branch, build_type=build_type, config=config,
-                upstream_version=changelog.version.upstream_version,
-                top_level=top_level, export_upstream=export_upstream,
-                export_upstream_revision=export_upstream_revision))
-
-            upstream_provider = UpstreamProvider(changelog.package,
-                changelog.version.upstream_version, orig_dir, upstream_sources)
-
-            if build_type == BUILD_TYPE_MERGE:
-                distiller = MergeModeDistiller(tree, upstream_provider,
-                        top_level=top_level, use_existing=use_existing)
-            elif build_type == BUILD_TYPE_NATIVE:
-                distiller = NativeSourceDistiller(tree)
-            else:
-                distiller = FullSourceDistiller(tree, upstream_provider)
+                changelog=changelog, contains_upstream_source=contains_upstream_source,
+                orig_dir=orig_dir, use_existing=use_existing, top_level=top_level,
+                export_upstream=export_upstream,
+                export_upstream_revision=export_upstream_revision)
 
             build_source_dir = os.path.join(build_dir,
                     "%s-%s" % (changelog.package,
@@ -1481,6 +1499,57 @@ class LocalTree(object):
         return False
 
 
+def _build_helper(local_tree, branch, target_dir, builder):
+    # TODO(jelmer): Integrate this with cmd_builddeb
+    import subprocess
+    from .hooks import run_hook
+    from .builder import (
+        DebBuild,
+        )
+    from .util import (
+        find_changelog,
+        dget_changes,
+        tree_contains_upstream_source,
+        )
+
+    (changelog, top_level) = find_changelog(
+        local_tree, False, max_blocks=2)
+
+    config = debuild_config(local_tree, local_tree)
+    contains_upstream_source = tree_contains_upstream_source(local_tree)
+
+    distiller = _get_distiller(
+            local_tree, local_tree.branch,
+            build_type=None, config=config,
+            changelog=changelog,
+            contains_upstream_source=contains_upstream_source,
+            top_level=top_level)
+
+    bd = tempfile.mkdtemp()
+    try:
+        build_source_dir = os.path.join(bd,
+                changelog.package + "-" + changelog.version.upstream_version)
+        builder = DebBuild(
+                distiller, build_source_dir,
+                builder,
+                use_existing=False)
+        builder.prepare()
+        run_hook(local_tree, 'pre-export', config)
+        builder.export()
+        run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
+        builder.build()
+        run_hook(local_tree, 'post-build', config, wd=build_source_dir)
+        changes = changes_filename(changelog.package, changelog.version, 'source')
+        changes_path = os.path.join(bd, changes)
+        if target_dir is not None:
+            if not os.path.exists(changes_path):
+                raise BzrCommandError("Could not find the .changes "
+                        "file from the build: %s" % changes_path)
+            return dget_changes(changes, target_dir)
+    finally:
+        shutil.rmtree(bd)
+
+
 class cmd_debrelease(Command):
     """Release a new version of a package.
 
@@ -1502,24 +1571,8 @@ class cmd_debrelease(Command):
             builder="sbuild --source --source-only-changes"):
         from .release import release
         from .util import (
-            find_changelog,
             dput_changes,
-            guess_build_type,
-            tree_contains_upstream_source,
             )
-        from .hooks import run_hook
-        from .upstream import (
-            UpstreamProvider,
-            )
-        from .source_distiller import (
-            FullSourceDistiller,
-            MergeModeDistiller,
-            NativeSourceDistiller,
-            )
-        from .builder import (
-            DebBuild,
-            )
-        import subprocess
 
         branch = Branch.open(location)
         # preserve whatever source format we have.
@@ -1527,56 +1580,13 @@ class cmd_debrelease(Command):
         # clean.
         with LocalTree(branch) as local_tree:
             _check_tree(local_tree, strict)
-            (changelog, top_level) = find_changelog(
-                local_tree, False, max_blocks=2)
-
-            config = debuild_config(local_tree, local_tree)
-            contains_upstream_source = tree_contains_upstream_source(local_tree)
-            build_type = guess_build_type(local_tree, changelog.version,
-                contains_upstream_source)
-
             release(local_tree)
 
-            upstream_sources = _get_upstream_sources(
-                    local_tree, branch, build_type=build_type, config=config,
-                    upstream_version=changelog.version.upstream_version,
-                    top_level=top_level)
-
-            upstream_provider = UpstreamProvider(changelog.package,
-                changelog.version.upstream_version, default_orig_dir,
-                upstream_sources)
-
-            if build_type == BUILD_TYPE_MERGE:
-                distiller = MergeModeDistiller(
-                        local_tree, upstream_provider,
-                        top_level=top_level, use_existing=use_existing)
-            elif build_type == BUILD_TYPE_NATIVE:
-                distiller = NativeSourceDistiller(local_tree)
-            else:
-                distiller = FullSourceDistiller(local_tree, upstream_provider)
-
-            bd = tempfile.mkdtemp()
+            td = tempfile.mkdtemp()
             try:
-                build_source_dir = os.path.join(bd,
-                        changelog.package + "-" + changelog.version.upstream_version)
-                builder = DebBuild(
-                        distiller, build_source_dir,
-                        builder,
-                        use_existing=False)
-                builder.prepare()
-                run_hook(local_tree, 'pre-export', config)
-                builder.export()
-                run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
-                builder.build()
-                run_hook(local_tree, 'post-build', config, wd=build_source_dir)
-                changes = changes_filename(changelog.package, changelog.version, 'source')
-                changes_path = os.path.join(bd, changes)
-                changes_file = changes_filename(
-                        changelog.package, changelog.version, 'source')
-
+                changes_file = _build_helper(local_tree, local_tree.branch, target_dir=(td if not skip_upload else None), builder=builder)
                 if not skip_upload:
-                    dput_changes(os.path.join(bd, changes_file))
+                    dput_changes(changes_file)
             finally:
-                shutil.rmtree(bd)
-
+                shutil.rmtree(td)
             local_tree.branch.push(branch)

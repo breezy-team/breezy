@@ -392,6 +392,15 @@ def open_file_via_transport(filename, transport):
 
 
 def _dget(cls, dsc_location, target_dir):
+    """Copy all files referenced by a .dsc file.
+
+    Args:
+      cls: Parser class
+      dsc_location: Source file location
+      target_dir: Target directory
+    Return:
+      path to target source file
+    """
     if not os.path.isdir(target_dir):
         raise errors.NotADirectory(target_dir)
     path, dsc_t = open_transport(dsc_location)

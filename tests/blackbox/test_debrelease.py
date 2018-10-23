@@ -35,14 +35,14 @@ class TestDebrelease(ExternalBase):
         self.build_tree_contents([
             ('package/debian/', ),
             ('package/debian/changelog', b"""\
-breezy-debian (2.8.17) UNRELEASED; urgency=medium
+breezy-foo (2.8.17) UNRELEASED; urgency=medium
 
   * Hide the mark-uploaded command.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sat, 20 Oct 2018 13:05:44 +0000
 """),
             ('package/debian/control', b"""\
-Source: breezy-debian
+Source: breezy-foo
 Maintainer: none\
 Standards-Version: 3.7.2
 Build-Depends: debhelper (>= 9)
@@ -64,11 +64,11 @@ Architecture: all
         wt.commit('initial commit')
         (out, err) = self.run_bzr("debrelease package --skip-upload --builder true", retcode=0)
         self.assertContainsRe(
-            err, 'Building the package in .*/breezy-debian-2.8.17, using true\n')
+            err, 'Building the package in .*/breezy-foo-2.8.17, using true\n')
         self.assertEquals("", out)
         self.assertEqual(2, wt.branch.revno())
         self.assertEqual(
-                'releasing package breezy-debian version 2.8.17',
+                'releasing package breezy-foo version 2.8.17',
                 wt.branch.repository.get_revision(wt.last_revision()).message)
 
     def test_unknowns(self):
