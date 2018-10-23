@@ -193,7 +193,7 @@ def _get_upstream_sources(local_tree, branch, build_type, config,
     from .upstream.branch import (
         LazyUpstreamBranchSource,
         )
-    yield PristineTarSource(local_tree, branch)
+    yield PristineTarSource(branch)
     yield AptSource()
     if build_type == BUILD_TYPE_MERGE:
         upstream_branch_source = _get_upstream_branch(
@@ -558,7 +558,7 @@ class cmd_get_orig_source(Command):
 
         upstream_provider = UpstreamProvider(changelog.package,
                 str(version), orig_dir,
-                [PristineTarSource(tree, tree.branch),
+                [PristineTarSource(tree.branch),
                  AptSource(),
                  UScanSource(tree, larstiq) ])
 
@@ -1229,7 +1229,7 @@ class cmd_builddeb_do(Command):
 
         upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, orig_dir,
-                [PristineTarSource(t, t.branch),
+                [PristineTarSource(t.branch),
                  AptSource(),
                  UScanSource(t, top_level) ])
 
@@ -1519,8 +1519,7 @@ def _build_helper(local_tree, branch, target_dir, builder):
     contains_upstream_source = tree_contains_upstream_source(local_tree)
 
     distiller = _get_distiller(
-            local_tree, local_tree.branch,
-            build_type=None, config=config,
+            local_tree, branch, build_type=None, config=config,
             changelog=changelog,
             contains_upstream_source=contains_upstream_source,
             top_level=top_level)
@@ -1584,7 +1583,10 @@ class cmd_debrelease(Command):
 
             td = tempfile.mkdtemp()
             try:
-                changes_file = _build_helper(local_tree, local_tree.branch, target_dir=(td if not skip_upload else None), builder=builder)
+                changes_file = _build_helper(
+                        local_tree, local_tree.branch,
+                        target_dir=(td if not skip_upload else None),
+                        builder=builder)
                 if not skip_upload:
                     dput_changes(changes_file)
             finally:

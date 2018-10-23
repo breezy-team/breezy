@@ -785,7 +785,7 @@ class PristineTarSourceTests(TestCaseWithTransport):
         super(PristineTarSourceTests, self).setUp()
         self.tree = self.make_branch_and_tree('unstable')
         root_id = self.tree.path2id("")
-        self.source = PristineTarSource(self.tree, self.tree.branch)
+        self.source = PristineTarSource(self.tree.branch)
 
     def test_upstream_tag_name(self):
         upstream_v_no = "0.1"
