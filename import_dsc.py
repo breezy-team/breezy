@@ -243,7 +243,7 @@ class DistributionBranch(object):
         self.pristine_upstream_tree = pristine_upstream_tree
         if pristine_upstream_branch is not None:
             self.pristine_upstream_source = PristineTarSource(
-                branch=pristine_upstream_branch, tree=pristine_upstream_tree)
+                branch=pristine_upstream_branch)
         else:
             self.pristine_upstream_source = None
         self.get_lesser_branches = None

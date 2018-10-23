@@ -95,7 +95,7 @@ class RevisionSpec_upstream(RevisionSpec):
             else:
                 version_spec = self.spec
 
-        pristine_tar_source = PristineTarSource(tree, branch)
+        pristine_tar_source = PristineTarSource(branch)
         try:
             revision_id = pristine_tar_source.version_as_revisions(cl.package,
                 version_spec)[None]

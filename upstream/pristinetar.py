@@ -222,9 +222,8 @@ def revision_pristine_tar_format(rev):
 class PristineTarSource(UpstreamSource):
     """Source that uses the pristine-tar revisions in the packaging branch."""
 
-    def __init__(self, tree, branch):
+    def __init__(self, branch):
         self.branch = branch
-        self.tree = tree
 
     def __repr__(self):
         return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
