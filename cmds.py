@@ -1545,7 +1545,7 @@ def _build_helper(local_tree, branch, target_dir, builder):
             if not os.path.exists(changes_path):
                 raise BzrCommandError("Could not find the .changes "
                         "file from the build: %s" % changes_path)
-            return dget_changes(changes, target_dir)
+            return dget_changes(changes_path, target_dir)
     finally:
         shutil.rmtree(bd)
 
