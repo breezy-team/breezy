@@ -615,10 +615,10 @@ def find_previous_upload(tree, merge):
         cl, top_level = find_changelog(tree, merge, max_blocks=None)
     except UnparseableChangelog:
         raise UnableToFindPreviousUpload()
-    return _find_previous_upload(cl)
+    return changelog_find_previous_upload(cl)
 
 
-def _find_previous_upload(cl):
+def changelog_find_previous_upload(cl):
     """Find the version of the previous upload.
 
     :param cl: Changelog object
@@ -795,3 +795,8 @@ def dput_changes(path):
     """Upload a package."""
     (bd, changes_file) = os.path.split(path)
     subprocess.check_call(["dput", changes_file], cwd=bd)
+
+
+def debsign(path):
+    (bd, changes_file) = os.path.split(path)
+    subprocess.check_call(["debsign", changes_file], cwd=bd)
