@@ -171,6 +171,9 @@ Bug Fixes
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
 
+* Report correct path in output of ``brz add``.
+  (Brian de Alwis, Jelmer Vernooĳ, #1799482)
+
 Documentation
 *************
 
