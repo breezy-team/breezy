@@ -501,7 +501,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                             continue
                         if subp in conflicts_related:
                             continue
-                        call_action(filepath, kind)
+                        call_action(subp, kind)
                         if save:
                             self._index_add_entry(subp, kind)
                         added.append(subp)
