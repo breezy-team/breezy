@@ -196,13 +196,13 @@ def _get_upstream_sources(local_tree, branch, build_type, config,
     yield PristineTarSource(branch)
     yield AptSource()
     if build_type == BUILD_TYPE_MERGE:
-        upstream_branch_source = _get_upstream_branch(
+        upstream_branch_source = _get_upstream_branch_source(
             export_upstream, export_upstream_revision, config,
             upstream_version)
         if upstream_branch_source:
             yield upstream_branch_source
     elif config.upstream_branch is not None:
-        upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
+        yield LazyUpstreamBranchSource(config.upstream_branch)
     yield UScanSource(local_tree, top_level)
 
     if build_type == BUILD_TYPE_SPLIT:
