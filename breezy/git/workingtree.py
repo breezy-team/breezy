@@ -432,6 +432,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         ignored = {}
         user_dirs = []
         def call_action(filepath, kind):
+            if filepath == '':
+                return
             if action is not None:
                 parent_path = posixpath.dirname(filepath)
                 parent_id = self.path2id(parent_path)
