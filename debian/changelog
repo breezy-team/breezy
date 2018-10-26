@@ -7,6 +7,8 @@ breezy (3.0.0~bzr7141-2) UNRELEASED; urgency=medium
   * Remove unnecessary XS-Testsuite field in debian/control.
   * Add patch 04_spurious_test_failure: ignore failures frmo
     test_missing_chk_leaf_for_inventory tests, which occasionally fail.
+  * Drop build-dependency on python-lzma-dbg, now gone from the archive.
+    Closes: #911945
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 14 Oct 2018 19:16:26 +0000
 
@@ -16,13 +18,6 @@ breezy (3.0.0~bzr7141-1) unstable; urgency=medium
    + Fixes Git operations over HTTP.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 14 Oct 2018 16:48:21 +0000
-
-breezy (3.0.0~bzr7140-2) UNRELEASED; urgency=medium
-
-  * Drop build-dependency on python-lzma-dbg, now gone from the archive.
-    Closes: #911945
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 26 Oct 2018 18:05:05 +0100
 
 breezy (3.0.0~bzr7140-1) unstable; urgency=medium
 
