@@ -1471,14 +1471,8 @@ class LocalTree(object):
     def __enter__(self):
         try:
             return self.branch.controldir.open_workingtree()
-        except NotLocalUrl:
-            tree = self.branch.basis_tree()
-            try:
-                tree.get_file_text('debian/changelog')
-            except UnsupportedOperation:
-                pass
-            else:
-                return tree
+        except (NoWorkingTree, NotLocalUrl):
+            pass
         # Remote, inaccessible
         self._td = tempfile.mkdtemp()
         to_dir = self.branch.controldir.sprout(
@@ -1486,7 +1480,8 @@ class LocalTree(object):
                 create_tree_if_local=True,
                 source_branch=self.branch)
         try:
-            pristine_tar_branch = self.branch.controldir.open_branch(name="pristine-tar")
+            pristine_tar_branch = self.branch.controldir.open_branch(
+                name="pristine-tar")
         except NotBranchError:
             pass
         else:
