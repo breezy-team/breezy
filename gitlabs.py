@@ -72,9 +72,12 @@ def connect_gitlab(host):
     if credentials is None:
         import configparser
         import gitlab
+        import os
         from gitlab.config import _DEFAULT_FILES
+        from breezy.config import config_dir
         config = configparser.ConfigParser()
-        config.read(_DEFAULT_FILES)
+        config.read(_DEFAULT_FILES +
+                    [os.path.join(config_dir(), 'gitlab.conf')])
         for name, section in config.items():
             if section.get('url') == url:
                 credentials = section
