@@ -171,3 +171,36 @@ class cmd_find_merge_proposal(Command):
         hoster = _mod_propose.get_hoster(branch)
         mp = hoster.get_proposal(branch, target)
         self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
+
+
+class cmd_github_login(Command):
+    __doc__ = """Log into GitHub.
+
+    """
+
+    takes_args = ['username?']
+
+    def run(self, username=None):
+        import configparser
+        from github import Github, GithubException
+        from breezy.config import AuthenticationConfig
+        authconfig = AuthenticationConfig()
+        if username is None:
+            username = authconfig.get_user(
+                    'https', 'github.com', prompt='GitHub username', ask=True)
+        password = authconfig.get_password('https', 'github.com', username)
+        client = Github(username, password)
+        user = client.get_user()
+        try:
+            authorization = user.create_authorization(
+                    scopes=['user', 'repo', 'delete_repo'], note='Breezy',
+                    note_url='https://github.com/breezy-team/breezy')
+        except GithubException as e:
+            raise errors.BzrCommandError(e.data['message'])
+        config_parser = configparser.ConfigParser()
+        config_parser.add_section('credentials')
+        config_parser.set('credentials', 'username', username)
+        config_parser.set('credentials', 'token', authorization.token)
+        os.umask(0o77)  # Want permissions of 0600.
+        with open(get_config_filename(), 'w') as f:
+            config_parser.write(f)
