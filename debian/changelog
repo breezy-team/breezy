@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7141-3) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7141-3) unstable; urgency=medium
 
   * Add patch 15_executable: Don't asssume 'python' is available now
     that breezy uses Python 3 by default. Closes: #912102
