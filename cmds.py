@@ -197,11 +197,14 @@ class cmd_github_login(Command):
                     scopes=['user', 'repo', 'delete_repo'], note='Breezy',
                     note_url='https://github.com/breezy-team/breezy')
         except GithubException as e:
+            errs = e.data.get('errors', [])
+            if errs:
+                err_code = errs[0].get('code')
+                if err_code == u'already_exists':
+                    raise errors.BzrCommandError('token already exists')
             raise errors.BzrCommandError(e.data['message'])
-        config_parser = configparser.ConfigParser()
-        config_parser.add_section('credentials')
-        config_parser.set('credentials', 'username', username)
-        config_parser.set('credentials', 'token', authorization.token)
-        os.umask(0o77)  # Want permissions of 0600.
-        with open(get_config_filename(), 'w') as f:
-            config_parser.write(f)
+        # TODO(jelmer): This should really use something in
+        # AuthenticationConfig
+        from .github import store_github_token
+        store_github_token(scheme='https', host='github.com',
+                           token=authorization.token)

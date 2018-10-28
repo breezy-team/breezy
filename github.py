@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+import os
+
 from .propose import (
     Hoster,
     MergeProposal,
@@ -35,7 +37,7 @@ from ... import (
     urlutils,
     version_string as breezy_version,
     )
-from ...config import AuthenticationConfig, GlobalStack
+from ...config import AuthenticationConfig, GlobalStack, config_dir
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...sixish import PY3
@@ -44,6 +46,19 @@ from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from github import Github
 """)
+
+
+def store_github_token(scheme, host, token):
+    with open(os.path.join(config_dir(), 'github.conf'), 'w') as f:
+        f.write(token)
+
+
+def retrieve_github_token(scheme, host):
+    path = os.path.join(config_dir(), 'github.conf')
+    if not os.path.exists(path):
+        return None
+    with open(path, 'w') as f:
+        return f.read().strip()
 
 
 def determine_title(description):
@@ -69,9 +84,13 @@ def connect_github():
         return Github(credentials['user'], credentials['password'],
                       user_agent=user_agent)
 
-    # TODO(jelmer): Support using an access token
-    #return Github("token", user_agent=user_agent)
-    return Github(user_agent=user_agent)
+    # TODO(jelmer): token = auth.get_token('https', 'github.com')
+    token = retrieve_github_token('https', 'github.com')
+    if token is not None:
+        return Github("token", user_agent=user_agent)
+    else:
+        note('Accessing GitHub anonymously. To log in, run \'brz gh-login\'.')
+        return Github(user_agent=user_agent)
 
 
 class GitHubMergeProposal(MergeProposal):
