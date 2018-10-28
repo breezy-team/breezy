@@ -5766,12 +5766,12 @@ class cmd_send(Command):
       branch.
 
     `brz send` creates a compact data set that, when applied using brz
-    merge, has the same effect as merging from the source branch.  
-    
+    merge, has the same effect as merging from the source branch.
+
     By default the merge directive is self-contained and can be applied to any
     branch containing submit_branch in its ancestory without needing access to
     the source branch.
-    
+
     If --no-bundle is specified, then Bazaar doesn't send the contents of the
     revisions, but only a structured request to merge from the
     public_location.  In that case the public_branch is needed and it must be
@@ -5803,22 +5803,15 @@ class cmd_send(Command):
     If the preferred client can't be found (or used), your editor will be used.
 
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
-    Mail.app), "mutt", and "thunderbird"; generic options are "default",
-    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
-    supported clients.
+    Supported values for specific clients are "claws", "evolution", "kmail",
+    "mail.app" (MacOS X's Mail.app), "mutt", and "thunderbird"; generic options
+    are "default", "editor", "emacsclient", "mapi", and "xdg-email".  Plugins
+    may also add supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
     option in the branch itself or the child_submit_to configuration option
     in the submit branch.
-
-    Two formats are currently supported: "4" uses revision bundle format 4 and
-    merge directive format 2.  It is significantly faster and smaller than
-    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
-    default.  "0.9" uses revision bundle format 0.9 and merge directive
-    format 1.  It is compatible with Bazaar 0.12 - 0.18.
 
     The merge directives created by brz send may be applied using brz merge or
     brz pull by specifying a file containing a merge directive as the location.
@@ -5900,12 +5893,6 @@ class cmd_bundle_revisions(cmd_send):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
-
-    Two formats are currently supported: "4" uses revision bundle format 4 and
-    merge directive format 2.  It is significantly faster and smaller than
-    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
-    default.  "0.9" uses revision bundle format 0.9 and merge directive
-    format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
     takes_options = [
