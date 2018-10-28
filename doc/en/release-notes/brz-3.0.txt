@@ -180,6 +180,9 @@ Bug Fixes
   backslashes in where backslash is not the path separator.
   (Jelmer Vernooĳ, #176263, #165151)
 
+* Report correct path in output of ``brz add``.
+  (Brian de Alwis, Jelmer Vernooĳ, #1799482)
+
 Documentation
 *************
 
