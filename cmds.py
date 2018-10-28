@@ -182,12 +182,13 @@ class cmd_github_login(Command):
 
     def run(self, username=None):
         import configparser
+        import os
         from github import Github, GithubException
         from breezy.config import AuthenticationConfig
         authconfig = AuthenticationConfig()
         if username is None:
             username = authconfig.get_user(
-                    'https', 'github.com', prompt='GitHub username', ask=True)
+                    'https', 'github.com', prompt=u'GitHub username', ask=True)
         password = authconfig.get_password('https', 'github.com', username)
         client = Github(username, password)
         user = client.get_user()
