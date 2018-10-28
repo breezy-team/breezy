@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr7141-3) UNRELEASED; urgency=medium
+
+  * Add patch 15_executable: Don't asssume 'python' is available now
+    that breezy uses Python 3 by default. Closes: #912102
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 28 Oct 2018 11:44:00 +0000
+
 breezy (3.0.0~bzr7141-2) unstable; urgency=medium
 
   * Use correct machine-readable copyright file URI.
