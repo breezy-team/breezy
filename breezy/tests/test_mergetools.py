@@ -78,9 +78,6 @@ class TestCheckAvailability(tests.TestCaseInTempDir):
     def test_full_path(self):
         self.assertTrue(mergetools.check_availability(sys.executable))
 
-    def test_exe_on_path(self):
-        self.assertTrue(mergetools.check_availability('python'))
-
     def test_nonexistent(self):
         self.assertFalse(mergetools.check_availability('DOES NOT EXIST'))
 

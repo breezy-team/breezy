@@ -17,6 +17,7 @@
 import os
 import re
 import subprocess
+import sys
 import tempfile
 
 from .. import (
@@ -1430,7 +1431,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
 
     def test_execute(self):
         output = BytesIO()
-        diff_obj = diff.DiffFromTool(['python', '-c',
+        diff_obj = diff.DiffFromTool([sys.executable, '-c',
                                       'print("@old_path @new_path")'],
                                      None, None, output)
         self.addCleanup(diff_obj.finish)
@@ -1458,7 +1459,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
-        diff_obj = diff.DiffFromTool(['python', '-c',
+        diff_obj = diff.DiffFromTool([sys.executable, '-c',
                                       'print "@old_path @new_path"'],
                                      basis_tree, tree, output)
         diff_obj._prepare_files('file', 'file', file_id=b'file-id')
@@ -1494,7 +1495,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.addCleanup(old_tree.unlock)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        diff_obj = diff.DiffFromTool(['python', '-c',
+        diff_obj = diff.DiffFromTool([sys.executable, '-c',
                                       'print "@old_path @new_path"'],
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
