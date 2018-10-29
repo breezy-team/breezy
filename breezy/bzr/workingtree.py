@@ -430,7 +430,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         else:
                             new_status = '?'
                         # XXX: Really should be a more abstract reporter interface
-                        kind_ch = osutils.kind_marker(self.kind(f, fid))
+                        kind_ch = osutils.kind_marker(self.kind(f))
                         to_file.write(new_status + '       ' + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
@@ -721,7 +721,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             mode=self.controldir._get_file_mode())
         self._inventory_is_modified = False
 
-    def get_file_mtime(self, path, file_id=None):
+    def get_file_mtime(self, path):
         """See Tree.get_file_mtime."""
         try:
             return os.lstat(self.abspath(path)).st_mtime
@@ -742,7 +742,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    def is_executable(self, path, file_id=None):
+    def is_executable(self, path):
         if not self._supports_executable():
             ie = self._path2ie(path)
             return ie.executable
@@ -792,7 +792,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # raise if there was no inventory, or if we read the wrong inventory.
         raise errors.NoSuchRevisionInTree(self, revision_id)
 
-    def annotate_iter(self, path, file_id=None,
+    def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter
 
@@ -804,8 +804,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         attribution will be correct).
         """
         with self.lock_read():
-            if file_id is None:
-                file_id = self.path2id(path)
+            file_id = self.path2id(path)
             if file_id is None:
                 raise errors.NoSuchFile(path)
             maybe_file_parent_keys = []
@@ -818,7 +817,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 with parent_tree.lock_read():
 
                     try:
-                        kind = parent_tree.kind(path, file_id)
+                        kind = parent_tree.kind(path)
                     except errors.NoSuchFile:
                         continue
                     if kind != 'file':
@@ -829,7 +828,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     parent_path = parent_tree.id2path(file_id)
                     parent_text_key = (
                         file_id,
-                        parent_tree.get_file_revision(parent_path, file_id))
+                        parent_tree.get_file_revision(parent_path))
                     if parent_text_key not in maybe_file_parent_keys:
                         maybe_file_parent_keys.append(parent_text_key)
             graph = self.branch.repository.get_file_graph()
@@ -841,7 +840,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             # Now we have the parents of this content
             annotator = self.branch.repository.texts.get_annotator()
-            text = self.get_file_text(path, file_id)
+            text = self.get_file_text(path)
             this_key = (file_id, default_revision)
             annotator.add_special_text(this_key, file_parent_keys, text)
             annotations = [(key[-1], line)
@@ -891,7 +890,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         continue
                     text_hash = s.get("hash").encode('ascii')
                     path = self.id2path(file_id)
-                    if text_hash == self.get_file_sha1(path, file_id):
+                    if text_hash == self.get_file_sha1(path):
                         merge_hashes[file_id] = text_hash
                 return merge_hashes
             finally:
@@ -936,7 +935,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     self.add_parent_tree_id(parent_id)
             other_tree.controldir.retire_bzrdir()
 
-    def extract(self, sub_path, file_id=None, format=None):
+    def extract(self, sub_path, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -977,8 +976,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # FIXME: Support nested trees
             my_inv = self.root_inventory
             child_inv = inventory.Inventory(root_id=None)
-            if file_id is None:
-                file_id = self.path2id(sub_path)
+            file_id = self.path2id(sub_path)
             new_root = my_inv.get_entry(file_id)
             my_inv.remove_recursive_id(file_id)
             new_root.parent_id = None
@@ -1416,29 +1414,22 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             inv.remove_recursive_id(to_id)
         inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
-    def unversion(self, paths, file_ids=None):
+    def unversion(self, paths):
         """Remove the paths in paths from the current versioned set.
 
         When a path is unversioned, all of its children are automatically
         unversioned.
 
         :param paths: The paths to stop versioning.
-        :param file_ids: Optional file_ids for the paths
         :raises NoSuchFile: if any path is not currently versioned.
-        :raises NoSuchId: if any fileid is not currently versioned.
         """
         with self.lock_tree_write():
-            if file_ids is not None:
-                for file_id in file_ids:
-                    if not self._inventory.has_id(file_id):
-                        raise errors.NoSuchId(self, file_id)
-            else:
-                file_ids = set()
-                for path in paths:
-                    file_id = self._inventory.path2id(path)
-                    if file_id is None:
-                        raise errors.NoSuchFile(self, path)
-                    file_ids.add(file_id)
+            file_ids = set()
+            for path in paths:
+                file_id = self._inventory.path2id(path)
+                if file_id is None:
+                    raise errors.NoSuchFile(path, self)
+                file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)

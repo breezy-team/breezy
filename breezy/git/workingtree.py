@@ -608,7 +608,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         else:
             return True
 
-    def get_file_mtime(self, path, file_id=None):
+    def get_file_mtime(self, path):
         """See Tree.get_file_mtime."""
         try:
             return self._lstat(path).st_mtime
@@ -677,7 +677,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                 self.store.__getitem__, self.store[head].tree)
         self._fileid_map = self._basis_fileid_map.copy()
 
-    def get_file_verifier(self, path, file_id=None, stat_value=None):
+    def get_file_verifier(self, path, stat_value=None):
         with self.lock_read():
             (index, subpath) = self._lookup_index(path.encode('utf-8'))
             try:
@@ -687,7 +687,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     return ("GIT", None)
                 raise errors.NoSuchFile(path)
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():
             if not self.is_versioned(path):
                 raise errors.NoSuchFile(path)
@@ -709,7 +709,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         return self.basis_tree().is_executable(path)
 
-    def stored_kind(self, path, file_id=None):
+    def stored_kind(self, path):
         with self.lock_read():
             encoded_path = path.encode('utf-8')
             (index, subpath) = self._lookup_index(encoded_path)
@@ -727,7 +727,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def _live_entry(self, path):
         return index_entry_from_path(self.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
 
-    def is_executable(self, path, file_id=None):
+    def is_executable(self, path):
         with self.lock_read():
             if getattr(self, "_supports_executable", osutils.supports_executable)():
                 mode = self._lstat(path).st_mode
@@ -831,7 +831,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     paths.add(path)
             return paths
 
-    def iter_child_entries(self, path, file_id=None):
+    def iter_child_entries(self, path):
         encoded_path = path.encode('utf-8')
         with self.lock_read():
             parent_id = self.path2id(path)
@@ -1074,7 +1074,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     self._index_add_entry(new_path, ie.kind)
         self.flush()
 
-    def annotate_iter(self, path, file_id=None,
+    def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter
 
@@ -1212,13 +1212,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))
 
-    def get_reference_revision(self, path, file_id=None):
+    def get_reference_revision(self, path):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
             return _mod_revision.NULL_REVISION
         return self.branch.lookup_foreign_revision_id(hexsha)
 
-    def get_nested_tree(self, path, file_id=None):
+    def get_nested_tree(self, path):
         return workingtree.WorkingTree.open(self.abspath(path))
 
     def _directory_is_tree_reference(self, relpath):
@@ -1226,7 +1226,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         # it's a tree reference, except that the root of the tree is not
         return relpath and osutils.lexists(self.abspath(relpath) + u"/.git")
 
-    def extract(self, sub_path, file_id=None, format=None):
+    def extract(self, sub_path, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.

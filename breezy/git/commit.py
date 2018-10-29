@@ -113,7 +113,7 @@ class GitCommitBuilder(CommitBuilder):
             if kind[1] == "file":
                 entry.executable = executable[1]
                 blob = Blob()
-                f, st = workingtree.get_file_with_stat(path[1], file_id)
+                f, st = workingtree.get_file_with_stat(path[1])
                 try:
                     blob.data = f.read()
                 finally:
@@ -123,7 +123,7 @@ class GitCommitBuilder(CommitBuilder):
                 self.store.add_object(blob)
                 sha = blob.id
             elif kind[1] == "symlink":
-                symlink_target = workingtree.get_symlink_target(path[1], file_id)
+                symlink_target = workingtree.get_symlink_target(path[1])
                 blob = Blob()
                 blob.data = symlink_target.encode("utf-8")
                 self.store.add_object(blob)
@@ -132,7 +132,7 @@ class GitCommitBuilder(CommitBuilder):
                 st = None
             elif kind[1] == "tree-reference":
                 sha = read_submodule_head(workingtree.abspath(path[1]))
-                reference_revision = workingtree.get_reference_revision(path[1], file_id)
+                reference_revision = workingtree.get_reference_revision(path[1])
                 entry.reference_revision = reference_revision
                 st = None
             else:

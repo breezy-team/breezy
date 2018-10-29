@@ -257,14 +257,14 @@ class InventoryTree(Tree):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, t.get_file_revision(path, file_id)) for t in
+            parent_keys = [(file_id, t.get_file_revision(path)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file_lines(path, file_id))
+                         self.get_file_lines(path))
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = self.get_file_revision(path, file_id)
+            last_revision = self.get_file_revision(path)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
@@ -339,7 +339,7 @@ def _find_children_across_trees(specified_ids, trees):
                 except errors.NoSuchId:
                     continue
                 try:
-                    for child in tree.iter_child_entries(path, file_id):
+                    for child in tree.iter_child_entries(path):
                         if child.file_id not in interesting_ids:
                             new_pending.add(child.file_id)
                 except errors.NotADirectory:
@@ -709,27 +709,27 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         RevisionTree.__init__(self, repository, revision_id)
         self._inventory = inv
 
-    def get_file_mtime(self, path, file_id=None):
+    def get_file_mtime(self, path):
         ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:
-            raise FileTimestampUnavailable(self.id2path(file_id))
+            raise FileTimestampUnavailable(path)
         return revision.timestamp
 
-    def get_file_size(self, path, file_id=None):
+    def get_file_size(self, path):
         return self._path2ie(path).text_size
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         ie = self._path2ie(path)
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
-    def get_file_revision(self, path, file_id=None):
+    def get_file_revision(self, path):
         return self._path2ie(path).revision
 
-    def is_executable(self, path, file_id=None):
+    def is_executable(self, path):
         ie = self._path2ie(path)
         if ie.kind != "file":
             return False
@@ -755,18 +755,18 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 
-    def get_symlink_target(self, path, file_id=None):
+    def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
         return self._path2ie(path).symlink_target
 
-    def get_reference_revision(self, path, file_id=None):
+    def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision
 
     def get_root_id(self):
         if self.root_inventory.root:
             return self.root_inventory.root.file_id
 
-    def kind(self, path, file_id=None):
+    def kind(self, path):
         return self._path2ie(path).kind
 
     def path_content_summary(self, path):
@@ -828,12 +828,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         except errors.RevisionNotPresent as e:
             raise errors.NoSuchFile(e.file_id)
 
-    def annotate_iter(self, path, file_id=None,
-                      default_revision=revision.CURRENT_REVISION):
+    def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        if file_id is None:
-            file_id = self.path2id(path)
-        text_key = (file_id, self.get_file_revision(path, file_id))
+        file_id = self.path2id(path)
+        text_key = (file_id, self.get_file_revision(path))
         annotator = self._repository.texts.get_annotator()
         annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]

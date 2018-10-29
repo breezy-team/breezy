@@ -180,7 +180,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(second_revision)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        root_revision = rev_tree.get_file_revision(u'', rev_tree.get_root_id())
+        root_revision = rev_tree.get_file_revision(u'')
         rich_root = (root_revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
@@ -290,8 +290,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree(rev1)
         tree.lock_read()
         try:
-            self.assertEqual(rev1,
-                tree.get_file_revision(u'', tree.get_root_id()))
+            self.assertEqual(rev1, tree.get_file_revision(u''))
             expected = inventory.InventoryDirectory(root_id, '', None)
             expected.revision = rev1
             self.assertEqual([('', 'V', 'directory', root_id, expected)],
@@ -481,7 +480,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         root_id = rev_tree.get_root_id()
-        self.assertEqual(revid, rev_tree.get_file_revision(u'', root_id))
+        self.assertEqual(revid, rev_tree.get_file_revision(u''))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
@@ -964,7 +963,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         revtree = branch.repository.revision_tree(rev1)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
+        contents = revtree.get_file_text('foo')
         self.assertEqual(contents, b'contents of repo/foo\n')
 
     def test_create_bundle(self):

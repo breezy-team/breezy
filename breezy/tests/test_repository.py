@@ -505,28 +505,21 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format)
         tree.commit("Dull commit", rev_id=b"dull")
         revision_tree = tree.branch.repository.revision_tree(b'dull')
-        revision_tree.lock_read()
-        try:
+        with revision_tree.lock_read():
             self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-                u'', revision_tree.get_root_id())
-        finally:
-            revision_tree.unlock()
+                u'')
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree(b'dull')
-        revision_tree.lock_read()
-        try:
-            revision_tree.get_file_lines(u'', revision_tree.get_root_id())
-        finally:
-            revision_tree.unlock()
+        with revision_tree.lock_read():
+            revision_tree.get_file_lines(u'')
         tree.commit("Another dull commit", rev_id=b'dull2')
         revision_tree = tree.branch.repository.revision_tree(b'dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
-        self.assertEqual(b'dull',
-                revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
+        self.assertEqual(b'dull', revision_tree.get_file_revision(u''))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()

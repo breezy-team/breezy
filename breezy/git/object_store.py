@@ -303,7 +303,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         obj.chunked = chunks
         if add_cache_entry is not None:
             add_cache_entry(obj, (file_id, tree.get_file_revision(path)), path)
-        yield path, obj, (file_id, tree.get_file_revision(path, file_id))
+        yield path, obj, (file_id, tree.get_file_revision(path))
         shamap[path] = obj.id
 
     for path in unusual_modes:

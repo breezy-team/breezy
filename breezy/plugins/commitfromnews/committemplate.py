@@ -68,8 +68,7 @@ class CommitTemplate(object):
             # final diff: because we want to grab the sections for regions 
             # changed in new version of the file. So for now a direct diff
             # using patiencediff is done.
-            old_revision = self.commit.basis_tree.get_file_revision(
-                old_path, found_entry.file_id)
+            old_revision = self.commit.basis_tree.get_file_revision(old_path)
             needed = [(found_entry.file_id, found_entry.revision, 'new'),
                       (found_entry.file_id, old_revision, 'old')]
             contents = self.commit.builder.repository.iter_files_bytes(needed)

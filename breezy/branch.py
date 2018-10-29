@@ -1401,7 +1401,7 @@ class Branch(controldir.ControlComponent):
             for path, file_id in basis_tree.iter_references():
                 reference_parent = self.reference_parent(path, file_id)
                 reference_parent.create_checkout(tree.abspath(path),
-                    basis_tree.get_reference_revision(path, file_id),
+                    basis_tree.get_reference_revision(path),
                     lightweight)
         return tree
 

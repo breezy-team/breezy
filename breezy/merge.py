@@ -640,9 +640,9 @@ class Merger(object):
             hook(merge)
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
-                sub_tree = self.this_tree.get_nested_tree(relpath, file_id)
+                sub_tree = self.this_tree.get_nested_tree(relpath)
                 other_revision = self.other_tree.get_reference_revision(
-                    relpath, file_id)
+                    relpath)
                 if  other_revision == sub_tree.last_revision():
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
@@ -653,7 +653,7 @@ class Merger(object):
                 base_tree_path = _mod_tree.find_previous_path(
                     self.this_tree, self.base_tree, relpath)
                 base_revision = self.base_tree.get_reference_revision(
-                    base_tree_path, file_id)
+                    base_tree_path)
                 sub_merge.base_tree = \
                     sub_tree.branch.repository.revision_tree(base_revision)
                 sub_merge.base_rev_id = base_revision
@@ -996,7 +996,7 @@ class Merge3Merger(object):
                         if path is None:
                             return None
                         try:
-                            return tree.get_file_sha1(path, file_id)
+                            return tree.get_file_sha1(path)
                         except errors.NoSuchFile:
                             return None
                     base_sha1 = get_sha1(self.base_tree, base_path)
@@ -1022,7 +1022,7 @@ class Merge3Merger(object):
                     def get_target(ie, tree, path):
                         if ie.kind != 'symlink':
                             return None
-                        return tree.get_symlink_target(path, file_id)
+                        return tree.get_symlink_target(path)
                     base_target = get_target(base_ie, self.base_tree, base_path)
                     lca_targets = [get_target(ie, tree, lca_path) for ie, tree, lca_path
                                    in zip(lca_entries, self._lca_trees, lca_paths)]
@@ -1071,7 +1071,7 @@ class Merge3Merger(object):
             file_id = self.working_tree.path2id(wt_relpath)
             if file_id is None:
                 continue
-            hash = self.working_tree.get_file_sha1(wt_relpath, file_id)
+            hash = self.working_tree.get_file_sha1(wt_relpath)
             if hash is None:
                 continue
             modified_hashes[file_id] = hash
@@ -1107,7 +1107,7 @@ class Merge3Merger(object):
                 return False
         except errors.NoSuchFile:
             return None
-        return tree.is_executable(path, file_id)
+        return tree.is_executable(path)
 
     @staticmethod
     def kind(tree, path, file_id=None):
@@ -1258,13 +1258,13 @@ class Merge3Merger(object):
             if path is None:
                 return (None, None)
             try:
-                kind = tree.kind(path, file_id)
+                kind = tree.kind(path)
             except errors.NoSuchFile:
                 return (None, None)
             if kind == "file":
-                contents = tree.get_file_sha1(path, file_id)
+                contents = tree.get_file_sha1(path)
             elif kind == "symlink":
-                contents = tree.get_symlink_target(path, file_id)
+                contents = tree.get_symlink_target(path)
             else:
                 contents = None
             return kind, contents
@@ -1427,13 +1427,13 @@ class Merge3Merger(object):
         if path is None:
             return []
         try:
-            kind = tree.kind(path, file_id)
+            kind = tree.kind(path)
         except errors.NoSuchFile:
             return []
         else:
             if kind != 'file':
                 return []
-            return tree.get_file_lines(path, file_id)
+            return tree.get_file_lines(path)
 
     def text_merge(self, trans_id, paths, file_id):
         """Perform a three-way text merge on a file_id"""
@@ -1727,7 +1727,7 @@ class Diff3Merger(Merge3Merger):
     def dump_file(self, temp_dir, name, tree, path, file_id=None):
         out_path = osutils.pathjoin(temp_dir, name)
         with open(out_path, "wb") as out_file:
-            in_file = tree.get_file(path, file_id=None)
+            in_file = tree.get_file(path)
             for line in in_file:
                 out_file.write(line)
         return out_path

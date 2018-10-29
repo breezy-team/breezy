@@ -278,7 +278,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def supports_rename_tracking(self):
         return False
 
-    def get_file_revision(self, path, file_id=None):
+    def get_file_revision(self, path):
         change_scanner = self._repository._file_change_scanner
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
@@ -286,9 +286,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             path.encode('utf-8'), self.commit_id)
         return self._repository.lookup_foreign_revision_id(commit_id, self.mapping)
 
-    def get_file_mtime(self, path, file_id=None):
+    def get_file_mtime(self, path):
         try:
-            revid = self.get_file_revision(path, file_id)
+            revid = self.get_file_revision(path)
         except KeyError:
             raise errors.NoSuchFile(path)
         try:
@@ -364,14 +364,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return (self.store, mode, hexsha)
 
-    def is_executable(self, path, file_id=None):
+    def is_executable(self, path):
         (store, mode, hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
             return False
         return mode_is_executable(mode)
 
-    def kind(self, path, file_id=None):
+    def kind(self, path):
         (store, mode, hexsha) = self._lookup_path(path)
         if mode is None:
             # the tree root is a directory
@@ -516,22 +516,22 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_revision_id."""
         return self._revision_id
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         if self.tree is None:
             raise errors.NoSuchFile(path)
-        return osutils.sha_string(self.get_file_text(path, file_id))
+        return osutils.sha_string(self.get_file_text(path))
 
-    def get_file_verifier(self, path, file_id=None, stat_value=None):
+    def get_file_verifier(self, path, stat_value=None):
         (store, mode, hexsha) = self._lookup_path(path)
         return ("GIT", hexsha)
 
-    def get_file_size(self, path, file_id=None):
+    def get_file_size(self, path):
         (store, mode, hexsha) = self._lookup_path(path)
         if stat.S_ISREG(mode):
             return len(store[hexsha].data)
         return None
 
-    def get_file_text(self, path, file_id=None):
+    def get_file_text(self, path):
         """See RevisionTree.get_file_text."""
         (store, mode, hexsha) = self._lookup_path(path)
         if stat.S_ISREG(mode):
@@ -539,7 +539,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return b""
 
-    def get_symlink_target(self, path, file_id=None):
+    def get_symlink_target(self, path):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if stat.S_ISLNK(mode):
@@ -547,7 +547,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return None
 
-    def get_reference_revision(self, path, file_id=None):
+    def get_reference_revision(self, path):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
@@ -604,14 +604,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self.store.iter_tree_contents(
                 self.tree, include_trees=include_trees)
 
-    def annotate_iter(self, path, file_id=None,
-                      default_revision=CURRENT_REVISION):
+    def annotate_iter(self, path, default_revision=CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
-        :param file_id: The file to produce an annotated version from
         :param default_revision: For lines that don't match a basis, mark them
             with this revision id. Not all implementations will make use of
             this value.
@@ -1115,12 +1113,12 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         kind = mode_kind(mode)
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
-            ie.symlink_target = self.get_symlink_target(path, file_id)
+            ie.symlink_target = self.get_symlink_target(path)
         elif kind == 'tree-reference':
-            ie.reference_revision = self.get_reference_revision(path, file_id)
+            ie.reference_revision = self.get_reference_revision(path)
         else:
             try:
-                data = self.get_file_text(path, file_id)
+                data = self.get_file_text(path)
             except errors.NoSuchFile:
                 data = None
             except IOError as e:
@@ -1170,7 +1168,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._versioned_dirs = None
         return count
 
-    def unversion(self, paths, file_ids=None):
+    def unversion(self, paths):
         with self.lock_tree_write():
             for path in paths:
                 if self._unversion_path(path) == 0:
@@ -1336,7 +1334,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         else:
             return (kind, None, None, None)
 
-    def kind(self, relpath, file_id=None):
+    def kind(self, relpath):
         kind = osutils.file_kind(self.abspath(relpath))
         if kind == 'directory':
             (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
