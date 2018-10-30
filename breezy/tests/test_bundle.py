@@ -174,7 +174,7 @@ class MockTree(object):
         return self.inventory.get_entry_by_path(path).revision
 
     def get_file_size(self, path):
-        return self.inventory.get_entry_by_path(file_id).text_size
+        return self.inventory.get_entry_by_path(path).text_size
 
     def get_file_sha1(self, path, file_id=None):
         return self.inventory.get_entry_by_path(path).text_sha1

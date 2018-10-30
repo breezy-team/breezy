@@ -494,15 +494,15 @@ class BzrFastExporter(object):
         # Record modifications
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
-                text = tree_new.get_file_text(path, id_)
+                text = tree_new.get_file_text(path)
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                     helpers.kind_to_mode(
-                        'file', tree_new.is_executable(path, id_)),
+                        'file', tree_new.is_executable(path)),
                     None, text))
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(path, id_)))
+                    None, tree_new.get_symlink_target(path)))
             elif kind == 'directory':
                 if not self.plain_format:
                     file_cmds.append(

@@ -2274,9 +2274,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         entry2_state = entry2[1][0]
         # Now, make sure that we don't have to re-read the content. The
         # packed_stat should match exactly.
-        self.assertEqual(entry1_sha, target.get_file_sha1('file1', b'file1-id'))
-        self.assertEqual(entry2_sha,
-                         target.get_file_sha1('dir/file2', b'file2-id'))
+        self.assertEqual(entry1_sha, target.get_file_sha1('file1'))
+        self.assertEqual(entry2_sha, target.get_file_sha1('dir/file2'))
         self.assertEqual(entry1_state, entry1[1][0])
         self.assertEqual(entry2_state, entry2[1][0])
 
@@ -2851,7 +2850,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.adjust_path('renamed', preview.root, file_trans_id)
         preview_tree = preview.get_preview_tree()
         preview_mtime = preview_tree.get_file_mtime('renamed')
-        work_mtime = work_tree.get_file_mtime('file', b'file-id')
+        work_mtime = work_tree.get_file_mtime('file')
 
     def test_get_file_size(self):
         work_tree = self.make_branch_and_tree('tree')
