@@ -272,7 +272,7 @@ class BundleSerializerV08(BundleSerializer):
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, path, require_text=False):
-                if tree.has_filename(path):
+                if tree.has_id(file_id):
                     tree_file = tree.get_file(path)
                     if require_text is True:
                         tree_file = text_file(tree_file)
@@ -338,7 +338,7 @@ class BundleSerializerV08(BundleSerializer):
             new_rev = new_tree.get_file_revision(path)
             if new_rev is None:
                 continue
-            old_rev = old_tree.get_file_revision(path)
+            old_rev = old_tree.get_file_revision(old_tree.id2path(file_id))
             if new_rev != old_rev:
                 action = Action('modified', [new_tree.kind(path),
                                              path])

@@ -618,7 +618,7 @@ class BundleTree(Tree):
 
     def get_file(self, path):
         """Return a file-like object containing the new contents of the
-        file given by path.
+        file given by file_id.
 
         TODO:   It might be nice if this actually generated an entry
                 in the text-store, so that the file contents would
@@ -680,7 +680,7 @@ class BundleTree(Tree):
         old_path = self.old_path(path)
         return self.base_tree.get_file_revision(old_path)
 
-    def get_size_and_sha1(self, new_path):
+    def get_size_and_sha1(self, new_path, file_id=None):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
         from the base_tree. Rather than re-reading the file.
@@ -728,8 +728,7 @@ class BundleTree(Tree):
             ie.revision = revision_id
 
             if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(
-                        path)
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(path)
                 if ie.text_size is None:
                     raise BzrError(
                         'Got a text_size of None for file_id %r' % file_id)

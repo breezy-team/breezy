@@ -63,11 +63,8 @@ def get_text(vf, key):
 
 def get_inventory_text(repo, revision_id):
     """Get the fulltext for the inventory at revision id"""
-    repo.lock_read()
-    try:
+    with repo.lock_read():
         return get_text(repo.inventories, (revision_id,))
-    finally:
-        repo.unlock()
 
 
 class MockTree(object):
@@ -102,6 +99,9 @@ class MockTree(object):
         else:
             return self.make_entry(file_id, self.paths[file_id])
 
+    def get_entry_by_path(self, path):
+        return self[self.path2id(path)]
+
     def parent_id(self, file_id):
         parent_dir = os.path.dirname(self.paths[file_id])
         if parent_dir == "":
@@ -125,9 +125,9 @@ class MockTree(object):
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         name = os.path.basename(path)
-        kind = self.kind(path, file_id)
+        kind = self.kind(path)
         parent_id = self.parent_id(file_id)
-        text_sha_1, text_size = self.contents_stats(path, file_id)
+        text_sha_1, text_size = self.contents_stats(path)
         if kind == 'directory':
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
