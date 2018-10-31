@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7141-4) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7141-4) unstable; urgency=medium
 
   * Refresh patch 15_executable to include other uses of 'python'.
 
