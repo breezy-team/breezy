@@ -1,6 +1,45 @@
+=== modified file 'breezy/tests/test_diff.py'
+--- old/breezy/tests/test_diff.py	2018-07-11 21:06:20 +0000
++++ new/breezy/tests/test_diff.py	2018-10-28 11:33:30 +0000
+@@ -17,6 +17,7 @@
+ import os
+ import re
+ import subprocess
++import sys
+ import tempfile
+ 
+ from .. import (
+@@ -1430,7 +1431,7 @@
+ 
+     def test_execute(self):
+         output = BytesIO()
+-        diff_obj = diff.DiffFromTool(['python', '-c',
++        diff_obj = diff.DiffFromTool([sys.executable, '-c',
+                                       'print("@old_path @new_path")'],
+                                      None, None, output)
+         self.addCleanup(diff_obj.finish)
+@@ -1458,7 +1459,7 @@
+         basis_tree = tree.basis_tree()
+         basis_tree.lock_read()
+         self.addCleanup(basis_tree.unlock)
+-        diff_obj = diff.DiffFromTool(['python', '-c',
++        diff_obj = diff.DiffFromTool([sys.executable, '-c',
+                                       'print "@old_path @new_path"'],
+                                      basis_tree, tree, output)
+         diff_obj._prepare_files('file', 'file', file_id=b'file-id')
+@@ -1494,7 +1495,7 @@
+         self.addCleanup(old_tree.unlock)
+         tree.lock_read()
+         self.addCleanup(tree.unlock)
+-        diff_obj = diff.DiffFromTool(['python', '-c',
++        diff_obj = diff.DiffFromTool([sys.executable, '-c',
+                                       'print "@old_path @new_path"'],
+                                      old_tree, tree, output)
+         self.addCleanup(diff_obj.finish)
+
 === modified file 'breezy/tests/test_mergetools.py'
 --- old/breezy/tests/test_mergetools.py	2018-06-20 10:28:56 +0000
-+++ new/breezy/tests/test_mergetools.py	2018-10-28 11:41:20 +0000
++++ new/breezy/tests/test_mergetools.py	2018-10-28 11:41:24 +0000
 @@ -78,9 +78,6 @@
      def test_full_path(self):
          self.assertTrue(mergetools.check_availability(sys.executable))

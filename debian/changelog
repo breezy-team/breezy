@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7141-4) UNRELEASED; urgency=medium
+
+  * Refresh patch 15_executable to include other uses of 'python'.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 31 Oct 2018 22:37:51 +0000
+
 breezy (3.0.0~bzr7141-3) unstable; urgency=medium
 
   * Add patch 15_executable: Don't asssume 'python' is available now
