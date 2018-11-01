@@ -6689,11 +6689,11 @@ class cmd_reference(Command):
 
     takes_args = ['path?', 'location?']
     takes_options = [
-        Option('force',
+        Option('force-unversioned',
                help='Set reference even if path is not versioned.'),
         ]
 
-    def run(self, path=None, location=None, force=False):
+    def run(self, path=None, location=None, force_unversioned=False):
         branchdir = '.'
         if path is not None:
             branchdir = path
@@ -6707,7 +6707,7 @@ class cmd_reference(Command):
             info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
-            if not tree.is_versioned(path) and not force:
+            if not tree.is_versioned(path) and not force_unversioned:
                 raise errors.NotVersionedError(path)
             if location is None:
                 info = [(path, branch.get_reference_info(path))]

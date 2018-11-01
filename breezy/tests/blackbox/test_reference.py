@@ -90,8 +90,9 @@ class TestReference(TestCaseWithTransport):
 
     def test_missing_file_forced(self):
         tree = self.make_branch_and_tree('tree')
-        out, err = self.run_bzr('reference --force file http://example.org',
-                                working_dir='tree')
+        out, err = self.run_bzr(
+                'reference --force-unversioned file http://example.org',
+                working_dir='tree')
         location, file_id = tree.branch.get_reference_info('file')
         self.assertEqual('http://example.org', location)
         self.assertEqual('', out)
