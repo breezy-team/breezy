@@ -77,7 +77,10 @@ from .refs import (
 from .unpeel_map import (
     UnpeelMap,
     )
-from .urls import git_url_to_bzr_url
+from .urls import (
+    git_url_to_bzr_url,
+    bzr_url_to_git_url,
+    )
 
 
 
@@ -444,49 +447,72 @@ class GitBranch(ForeignBranch):
         # Git doesn't do stacking (yet...)
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
-    def _get_parent_location(self):
-        """See Branch.get_parent()."""
-        # FIXME: Set "origin" url from .git/config ?
-        cs = self.repository._git.get_config_stack()
+    def _get_push_origin(self, cs):
         try:
-            location = cs.get((b"remote", b'origin'), b"url")
+            return cs.get((b'remote', self.name.encode('utf-8')), b'pushRemote')
+        except KeyError:
+            try:
+                return cs.get((b'remote', ), b'remote')
+            except KeyError:
+                try:
+                    return cs.get((b'remote', self.name.encode('utf-8')), b'remote')
+                except KeyError:
+                    return b'origin'
+
+    def _get_origin(self, cs):
+        try:
+            return cs.get((b'remote', self.name.encode('utf-8')), b'remote')
+        except KeyError:
+            return b'origin'
+
+    def _get_related_push_branch(self, cs):
+        remote = self._get_push_origin(cs)
+        try:
+            location = cs.get((b"remote", remote), b"url")
         except KeyError:
             return None
 
-        params = {}
+        return git_url_to_bzr_url(location.decode('utf-8'), ref=self.ref)
+
+    def _get_related_merge_branch(self, cs):
+        remote = self._get_origin(cs)
         try:
-            ref = cs.get((b"remote", b"origin"), b"merge")
+            location = cs.get((b"remote", remote), b"url")
         except KeyError:
-            pass
-        else:
-            if ref != b'HEAD':
-                try:
-                    params['branch'] = urlutils.escape(ref_to_branch_name(ref))
-                except ValueError:
-                    params['ref'] = urlutils.quote_from_bytes(ref)
+            return None
 
-        url = git_url_to_bzr_url(location.decode('utf-8'))
-        return urlutils.join_segment_parameters(url, params)
+        try:
+            ref = cs.get((b"remote", remote), b"merge")
+        except KeyError:
+            ref = self.ref
 
-    def set_parent(self, location):
-        # FIXME: Set "origin" url in .git/config ?
-        cs = self.repository._git.get_config()
-        this_url = urlutils.split_segment_parameters(self.user_url)[0]
-        target_url, target_params = urlutils.split_segment_parameters(location)
-        location = urlutils.relative_url(this_url, target_url)
-        cs.set((b"remote", b"origin"), b"url", location)
-        if 'branch' in target_params:
-            cs.set((b"remote", b"origin"), b"merge",
-                   branch_name_to_ref(target_params['branch']))
-        elif 'ref' in target_params:
-            cs.set((b"remote", b"origin"), b"merge",
-                   target_params['ref'])
-        else:
-            # TODO(jelmer): Maybe unset rather than setting to HEAD?
-            cs.set((b"remote", b"origin"), b"merge", 'HEAD')
+        return git_url_to_bzr_url(location.decode('utf-8'), ref=ref)
+
+    def _get_parent_location(self):
+        """See Branch.get_parent()."""
+        cs = self.repository._git.get_config_stack()
+        return self._get_related_merge_branch(cs)
+
+    def _write_git_config(self, cs):
         f = BytesIO()
         cs.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
+
+    def set_parent(self, location):
+        cs = self.repository._git.get_config()
+        remote = self._get_origin(cs)
+        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        target_url, branch, ref = bzr_url_to_git_url(location)
+        location = urlutils.relative_url(this_url, target_url)
+        cs.set((b"remote", remote), b"url", location)
+        if branch:
+            cs.set((b"remote", remote), b"merge", branch_name_to_ref(branch))
+        elif ref:
+            cs.set((b"remote", remote), b"merge", ref)
+        else:
+            # TODO(jelmer): Maybe unset rather than setting to HEAD?
+            cs.set((b"remote", remote), b"merge", b'HEAD')
+        self._write_git_config(cs)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
@@ -671,12 +697,18 @@ class LocalGitBranch(GitBranch):
     def get_push_location(self):
         """See Branch.get_push_location."""
         push_loc = self.get_config_stack().get('push_location')
-        return push_loc
+        if push_loc is not None:
+            return push_loc
+        cs = self.repository._git.get_config_stack()
+        return self._get_related_push_branch(cs)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self.get_config().set_user_option('push_location', location,
                                           store=config.STORE_LOCATION)
+        # cs = self.repository._git.get_config_stack()
+        # remote = self._get_push_origin(cs)
+        # self._write_git_config(cs)
 
     def supports_tags(self):
         return True
