@@ -1,3 +1,10 @@
+breezy-debian (2.8.21) UNRELEASED; urgency=medium
+
+  * Fix error when attempting to release from branch without colocated
+    branch support.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 02 Nov 2018 03:00:37 +0000
+
 breezy-debian (2.8.20) unstable; urgency=medium
 
   * Add 'brz debrelease' command.

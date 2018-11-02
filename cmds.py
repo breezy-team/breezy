@@ -37,6 +37,7 @@ from ...errors import (
     BzrCommandError,
     FileExists,
     NotBranchError,
+    NoColocatedBranchSupport,
     NotLocalUrl,
     NoWorkingTree,
     UnsupportedOperation,
@@ -1482,7 +1483,7 @@ class LocalTree(object):
         try:
             pristine_tar_branch = self.branch.controldir.open_branch(
                 name="pristine-tar")
-        except NotBranchError:
+        except (NotBranchError, NoColocatedBranchSupport):
             pass
         else:
             pristine_tar_branch.push(to_dir.create_branch("pristine-tar"))
