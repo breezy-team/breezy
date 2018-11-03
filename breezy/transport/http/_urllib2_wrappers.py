@@ -283,6 +283,12 @@ class Response(http_client.HTTPResponse):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
+    if PY3:
+        def __init__(self, sock, debuglevel=0, method=None, url=None):
+            self.url = url
+            super(Response, self).__init__(sock, debuglevel=debuglevel,
+                    method=method, url=url)
+
     def begin(self):
         """Begin to read the response from the server.
 
