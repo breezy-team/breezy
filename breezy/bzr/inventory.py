@@ -631,6 +631,10 @@ class TreeReference(InventoryEntry):
             compatible = False
         return compatible
 
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return '+'
+
 
 class CommonInventory(object):
     """Basic inventory logic, defined in terms of primitives like has_id.
