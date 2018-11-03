@@ -50,6 +50,7 @@ from . import (
     TestCaseWithTransport,
     )
 from ..util import (
+    changelog_find_previous_upload,
     component_from_orig_tarball,
     dget,
     dget_changes,
@@ -58,7 +59,7 @@ from ..util import (
     find_changelog,
     find_extra_authors,
     find_last_distribution,
-    _find_previous_upload,
+    find_previous_upload,
     find_thanks,
     get_commit_info_from_changelog,
     guess_build_type,
@@ -713,41 +714,41 @@ class FindPreviousUploadTests(TestCase):
     def test_find_previous_upload_debian(self):
         cl = self.make_changelog([("0.1-1", "unstable"),
                 ("0.1-2", "unstable")])
-        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
         cl = self.make_changelog([("0.1-1", "unstable"),
                 ("0.1-1.1", "stable-security"), ("0.1-2", "unstable")])
-        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_ubuntu(self):
         cl = self.make_changelog([("0.1-1", "lucid"),
                 ("0.1-2", "lucid")])
-        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
         cl = self.make_changelog([("0.1-1", "lucid"),
                 ("0.1-1.1", "unstable"), ("0.1-2", "maverick")])
         self.requireFeature(DistroInfoFeature)
-        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_ubuntu_pocket(self):
         cl = self.make_changelog([("0.1-1", "lucid-updates"),
                 ("0.1-2", "lucid-updates")])
-        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_unknown(self):
         cl = self.make_changelog([("0.1-1", "lucid"),
                 ("0.1-2", "dunno")])
-        self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
+        self.assertRaises(NoPreviousUpload, changelog_find_previous_upload, cl)
 
     def test_find_previous_upload_missing(self):
         cl = self.make_changelog([("0.1-1", "unstable"),
                 ("0.1-2", "lucid")])
-        self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
+        self.assertRaises(NoPreviousUpload, changelog_find_previous_upload, cl)
         cl = self.make_changelog([("0.1-1", "unstable")])
-        self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
+        self.assertRaises(NoPreviousUpload, changelog_find_previous_upload, cl)
 
     def test_find_previous_upload_unreleased(self):
         cl = self.make_changelog([("0.1-1", "unstable"),
                 ("0.1-2", "UNRELEASED")])
-        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
 
 class SourceFormatTests(TestCaseWithTransport):

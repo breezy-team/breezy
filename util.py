@@ -143,7 +143,7 @@ def recursive_copy(fromdir, todir):
             shutil.copy(path, todir)
 
 
-def find_changelog(t, merge, max_blocks=1):
+def find_changelog(t, merge=False, max_blocks=1):
     """Find the changelog in the given tree.
 
     First looks for 'debian/changelog'. If "merge" is true will also
@@ -594,7 +594,7 @@ def debuild_config(tree, working_tree):
     return config
 
 
-def find_previous_upload(tree, merge):
+def find_previous_upload(tree, merge=False):
     """Given a tree, find the previous upload to the distribution.
 
     When e.g. Ubuntu merges from Debian they want to build with

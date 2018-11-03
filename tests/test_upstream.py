@@ -390,17 +390,30 @@ ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 """))
 
 
+class GuessUpstreamRevspecTests(TestCase):
+
+    def test_guess_upstream_revspec(self):
+        self.assertEqual(
+                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2'],
+                list(guess_upstream_revspec('foo', '1.2')))
+
+    def test_snapshot(self):
+        self.assertEqual(
+                [u'revno:1200', u'tag:1.2+bzr1200', u'tag:foo-1.2+bzr1200',
+                 u'tag:v1.2+bzr1200'],
+                list(guess_upstream_revspec('foo', '1.2+bzr1200')))
+        self.assertEqual(
+                [u'revno:1200', u'tag:1.2~bzr1200', u'tag:foo-1.2~bzr1200',
+                 u'tag:v1.2~bzr1200'],
+                list(guess_upstream_revspec('foo', '1.2~bzr1200')))
+
+
 class UpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for UpstreamBranchSource."""
 
     def setUp(self):
         super(UpstreamBranchSourceTests, self).setUp()
         self.tree = self.make_branch_and_tree('.')
-
-    def test_guess_upstream_revspec(self):
-        self.assertEqual(
-                [u'tag:1.2', u'tag:foo-1.2', u'tag:v1.2'],
-                guess_upstream_revspec('foo', '1.2'))
 
     def test_fetch_tarballs(self):
         self.tree.commit("msg")

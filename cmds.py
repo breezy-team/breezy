@@ -780,7 +780,7 @@ class cmd_merge_upstream(Command):
 
             if upstream_branch is not None:
                 upstream_branch = Branch.open(upstream_branch)
-            elif location is not None:
+            elif location is not None and not os.path.isfile(location):
                 try:
                     upstream_branch = Branch.open(location)
                 except NotBranchError:

@@ -220,7 +220,12 @@ def get_export_upstream_revision(config=None, version=None):
 
 def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
-    return ['tag:%s' % version, 'tag:%s-%s' % (package, version), 'tag:v%s' % version]
+    if "+bzr" in version or "~bzr" in version:
+        yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
+
+    yield 'tag:%s' % version
+    yield 'tag:%s-%s' % (package, version)
+    yield 'tag:v%s' % version
 
 
 class UpstreamBranchSource(UpstreamSource):
