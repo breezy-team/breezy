@@ -87,7 +87,7 @@ def source_package_vcs_url(control):
             except KeyError:
                 pass
             else:
-                return converter(vcs_url)
+                return (vcs, converter(vcs_url))
     else:
         raise KeyError
 
@@ -123,7 +123,7 @@ class VcsDirectory(object):
         control = Deb822(by_version[version])
 
         try:
-            url = source_package_vcs_url(control)
+            vcs, url = source_package_vcs_url(control)
         except KeyError:
             note("Retrieving Vcs locating from %s Debian version %s", name, version)
             raise urlutils.InvalidURL(path=url, extra='no VCS URL found')
