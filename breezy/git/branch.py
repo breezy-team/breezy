@@ -877,7 +877,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
               _override_hook_target, _hook_master):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = GitBranchPullResult()
         result.source_branch = self.source
@@ -962,7 +962,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def _basic_push(self, overwrite, stop_revision):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = branch.BranchPushResult()
         result.source_branch = self.source
@@ -1052,7 +1052,7 @@ class InterGitLocalGitBranch(InterGitBranch):
     def _basic_push(self, overwrite=False, stop_revision=None):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = GitBranchPushResult()
         result.source_branch = self.source
@@ -1097,7 +1097,7 @@ class InterGitLocalGitBranch(InterGitBranch):
             raise errors.LocalRequiresBoundBranch()
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
 
         result = GitPullResult()
