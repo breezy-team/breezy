@@ -301,7 +301,7 @@ class GitBranchFormat(branch.BranchFormat):
         raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
-        return controldir.get_branch_reference(name)
+        return controldir.get_branch_reference(name=name)
 
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
