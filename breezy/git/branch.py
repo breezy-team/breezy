@@ -301,7 +301,7 @@ class GitBranchFormat(branch.BranchFormat):
         raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
-        return controldir.get_branch_reference(name)
+        return controldir.get_branch_reference(name=name)
 
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
@@ -391,11 +391,12 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
-        cs = self.repository._git.get_config_stack()
-        try:
-            return cs.get((b"branch", self.name.encode('utf-8')), b"nick").decode("utf-8")
-        except KeyError:
-            pass
+        if getattr(self.repository, '_git', None):
+            cs = self.repository._git.get_config_stack()
+            try:
+                return cs.get((b"branch", self.name.encode('utf-8')), b"nick").decode("utf-8")
+            except KeyError:
+                pass
         return self.name or u"HEAD"
 
     def _set_nick(self, nick):
