@@ -142,7 +142,8 @@ class GitHub(Hoster):
         self.gh = connect_github()
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
-                        owner=None, revision_id=None, overwrite=False):
+                        owner=None, revision_id=None, overwrite=False,
+                        allow_lossy=True):
         import github
         base_owner, base_project, base_branch_name = parse_github_url(base_branch)
         base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
@@ -165,8 +166,14 @@ class GitHub(Hoster):
         else:
             note(gettext('Reusing existing repository %s') % remote_repo.html_url)
         remote_dir = controldir.ControlDir.open(git_url_to_bzr_url(remote_repo.ssh_url))
-        push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
-            overwrite=overwrite, name=name)
+        try:
+            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+                overwrite=overwrite, name=name)
+        except errors.NoRoundtrippingSupport:
+            if not allow_lossy:
+                raise
+            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+                overwrite=overwrite, name=name, lossy=True)
         return push_result.target_branch, github_url_to_bzr_url(
                 remote_repo.html_url, name)
 

@@ -60,11 +60,12 @@ class cmd_publish_derived(Command):
             Option('owner', help='Owner of the new remote branch.', type=str),
             Option('project', help='Project name for the new remote branch.', type=str),
             Option('name', help='Name of the new remote branch.', type=str),
+            Option('no-allow-lossy', help='Allow fallback to lossy push, if necessary.'),
             ]
     takes_args = ['submit_branch?']
 
     def run(self, submit_branch=None, owner=None, name=None, project=None,
-            directory='.'):
+            no_allow_lossy=False, directory='.'):
         local_branch = _mod_branch.Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_write().unlock)
         if submit_branch is None:
@@ -79,7 +80,7 @@ class cmd_publish_derived(Command):
         hoster = _mod_propose.get_hoster(submit_branch)
         remote_branch, public_url = hoster.publish_derived(
                 local_branch, submit_branch, name=name, project=project,
-                owner=owner)
+                owner=owner, allow_lossy=not no_allow_lossy)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
         note(gettext("Pushed to %s") % public_url)
@@ -104,13 +105,14 @@ class cmd_propose_merge(Command):
             Option('description', help='Description of the change.', type=str),
             ListOption('labels', short_name='l', type=text_type,
                 help='Labels to apply.'),
+            Option('no-allow-lossy', help='Allow fallback to lossy push, if necessary.'),
             ]
     takes_args = ['submit_branch?']
 
     aliases = ['propose']
 
     def run(self, submit_branch=None, directory='.', hoster=None, reviewers=None, name=None,
-            description=None, labels=None):
+            no_allow_lossy=False, description=None, labels=None):
         tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
             directory)
         if submit_branch is None:
@@ -128,7 +130,7 @@ class cmd_propose_merge(Command):
         if name is None:
             name = branch_name(branch)
         remote_branch, public_branch_url = hoster.publish_derived(
-                branch, target, name=name)
+                branch, target, name=name, allow_lossy=not no_allow_lossy)
         branch.set_push_location(remote_branch.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
         proposal_builder = hoster.get_proposer(remote_branch, target)

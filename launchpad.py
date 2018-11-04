@@ -159,7 +159,7 @@ class Launchpad(Hoster):
         return "~%s/%s" % (owner, project)
 
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
-                     revision_id=None, overwrite=False):
+                     revision_id=None, overwrite=False, allow_lossy=True):
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
         try:
@@ -169,9 +169,22 @@ class Launchpad(Hoster):
             dir_to = None
 
         if dir_to is None:
-            br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id, name=name, stacked_on=main_branch.user_url)
+            try:
+                br_to = local_branch.create_clone_on_transport(
+                        to_transport, revision_id=revision_id, name=name,
+                        stacked_on=main_branch.user_url)
+            except errors.NoRoundtrippingSupport:
+                br_to = local_branch.create_clone_on_transport(
+                        to_transport, revision_id=revision_id, name=name,
+                        stacked_on=main_branch.user_url, lossy=True)
         else:
-            br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name).target_branch
+            try:
+                dir_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name)
+            except errors.NoRoundtrippingSupport:
+                if not allow_lossy:
+                    raise
+                dir_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name, lossy=True)
+            br_to = dir_to.target_branch
         return br_to, ("https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
 
     def _get_derived_bzr_path(self, base_branch, name, owner, project):
@@ -193,7 +206,7 @@ class Launchpad(Hoster):
             raise AssertionError
 
     def _publish_bzr(self, local_branch, base_branch, name, owner, project=None,
-                revision_id=None, overwrite=False):
+                revision_id=None, overwrite=False, allow_lossy=True):
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
         to_transport = get_transport("lp:" + to_path)
         try:
@@ -221,7 +234,7 @@ class Launchpad(Hoster):
         return (vcs, user, password, path, params)
 
     def publish_derived(self, local_branch, base_branch, name, project=None, owner=None,
-                        revision_id=None, overwrite=False):
+                        revision_id=None, overwrite=False, allow_lossy=True):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
@@ -239,11 +252,11 @@ class Launchpad(Hoster):
         if base_vcs == 'bzr':
             return self._publish_bzr(local_branch, base_branch, name,
                     project=project, owner=owner, revision_id=revision_id,
-                    overwrite=overwrite)
+                    overwrite=overwrite, allow_lossy=allow_lossy)
         elif base_vcs == 'git':
             return self._publish_git(local_branch, base_path, name,
                     project=project, owner=owner, revision_id=revision_id,
-                    overwrite=overwrite)
+                    overwrite=overwrite, allow_lossy=allow_lossy)
         else:
             raise AssertionError('not a valid Launchpad URL')
 

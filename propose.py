@@ -153,7 +153,8 @@ class Hoster(object):
     supports_merge_proposal_labels = None
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
-                        owner=None, revision_id=None, overwrite=False):
+                        owner=None, revision_id=None, overwrite=False,
+                        allow_lossy=True):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from

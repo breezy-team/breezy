@@ -150,7 +150,8 @@ class GitLab(Hoster):
             project.attributes['ssh_url_to_repo'], branch_name)
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
-                        owner=None, revision_id=None, overwrite=False):
+                        owner=None, revision_id=None, overwrite=False,
+                        allow_lossy=True):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
         self.gl.auth()
@@ -174,8 +175,14 @@ class GitLab(Hoster):
                 raise
         remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
-        push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
-            overwrite=overwrite, name=name)
+        try:
+            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+                overwrite=overwrite, name=name)
+        except errors.NoRoundtrippingSupport:
+            if not allow_lossy:
+                raise
+            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+                overwrite=overwrite, name=name, lossy=True)
         public_url = gitlab_url_to_bzr_url(
             target_project.attributes['http_url_to_repo'], name)
         return push_result.target_branch, public_url
