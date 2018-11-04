@@ -37,6 +37,7 @@ from dulwich.objects import (
 from dulwich.object_store import (
     PackBasedObjectStore,
     PACKDIR,
+    read_packs_file,
     )
 from dulwich.pack import (
     MemoryPackIndex,
