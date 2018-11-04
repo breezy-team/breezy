@@ -134,6 +134,7 @@ class _ChooseUI(object):
     def interact(self):
         """Keep asking the user until a valid choice is made.
         """
+        import pdb; pdb.set_trace()
         if self.line_based:
             getchoice = self._getline
         else:

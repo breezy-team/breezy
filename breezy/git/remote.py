@@ -784,6 +784,12 @@ class GitRemoteRevisionTree(RevisionTree):
         f.seek(0)
         return osutils.file_iterator(f)
 
+    def get_file(self, path, file_id=None):
+        raise GitSmartRemoteNotSupported(self.get_file, self)
+
+    def get_file_text(self, path, file_id=None):
+        raise GitSmartRemoteNotSupported(self.get_file_text, self)
+
 
 class RemoteGitRepository(GitRepository):
 
