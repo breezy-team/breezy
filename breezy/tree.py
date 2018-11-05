@@ -68,12 +68,16 @@ class TreeEntry(object):
         return (isinstance(other, TreeEntry)
                 and other.__class__ == self.__class__)
 
+    kind = None
+
     def kind_character(self):
         return "???"
 
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
+
+    kind = 'directory'
 
     def kind_character(self):
         return "/"
@@ -82,12 +86,16 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
+    kind = 'file'
+
     def kind_character(self):
         return ''
 
 
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
+
+    kind = 'symlink'
 
     def kind_character(self):
         return ''
@@ -96,8 +104,10 @@ class TreeLink(TreeEntry):
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
+    kind = 'tree-reference'
+
     def kind_character(self):
-        return '/'
+        return '+'
 
 
 class Tree(object):

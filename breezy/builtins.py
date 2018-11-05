@@ -3049,19 +3049,19 @@ class cmd_ls(Command):
             ui.ui_factory.clear_term()
             if verbose:
                 outstring = '%-8s %s' % (fc, outstring)
-                if show_ids and entry.file_id is not None:
+                if show_ids and getattr(entry, 'file_id', None) is not None:
                     outstring = "%-50s %s" % (outstring, entry.file_id.decode('utf-8'))
                 self.outf.write(outstring + '\n')
             elif null:
                 self.outf.write(fp + '\0')
                 if show_ids:
-                    if entry.file_id is not None:
+                    if getattr(entry, 'file_id', None) is not None:
                         self.outf.write(entry.file_id.decode('utf-8'))
                     self.outf.write('\0')
                 self.outf.flush()
             else:
                 if show_ids:
-                    if entry.file_id is not None:
+                    if getattr(entry, 'file_id', None) is not None:
                         my_id = entry.file_id.decode('utf-8')
                     else:
                         my_id = ''
@@ -3201,7 +3201,7 @@ class cmd_ignore(Command):
         matches = []
         self.add_cleanup(tree.lock_read().unlock)
         for filename, fc, entry in tree.list_files():
-            id = entry.file_id
+            id = getattr(entry, 'file_id', None)
             if id is not None:
                 if ignored.match(filename):
                     matches.append(filename)
