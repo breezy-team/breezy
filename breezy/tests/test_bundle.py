@@ -603,12 +603,12 @@ class BundleTester(object):
         for base_file, to_file in zip(base_files, to_files):
             self.assertEqual(base_file, to_file)
 
-        for path, status, kind, fileid, entry in base_files:
+        for path, status, entry in base_files:
             # Check that the meta information is the same
-            self.assertEqual(base_tree.get_file_size(path, fileid),
-                    to_tree.get_file_size(to_tree.id2path(fileid)))
-            self.assertEqual(base_tree.get_file_sha1(path, fileid),
-                    to_tree.get_file_sha1(to_tree.id2path(fileid)))
+            self.assertEqual(base_tree.get_file_size(path),
+                    to_tree.get_file_size(to_tree.id2path(entry.file_id)))
+            self.assertEqual(base_tree.get_file_sha1(path, entry.file_id),
+                    to_tree.get_file_sha1(to_tree.id2path(entry.file_id)))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),

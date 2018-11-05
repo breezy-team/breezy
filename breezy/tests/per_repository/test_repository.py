@@ -288,23 +288,17 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev1 = wt.commit('lala!', allow_pointless=True)
         root_id = wt.path2id('')
         tree = wt.branch.repository.revision_tree(rev1)
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertEqual(rev1,
                 tree.get_file_revision(u'', tree.get_root_id()))
             expected = inventory.InventoryDirectory(root_id, '', None)
             expected.revision = rev1
-            self.assertEqual([('', 'V', 'directory', root_id, expected)],
+            self.assertEqual([('', 'V', expected)],
                              list(tree.list_files(include_root=True)))
-        finally:
-            tree.unlock()
         self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
         tree = wt.branch.repository.revision_tree(_mod_revision.NULL_REVISION)
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertEqual([], list(tree.list_files(include_root=True)))
-        finally:
-            tree.unlock()
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')

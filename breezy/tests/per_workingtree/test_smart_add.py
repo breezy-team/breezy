@@ -44,13 +44,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(['tree/a'])
         tree.smart_add(['tree'])
 
-        tree.lock_read()
-        try:
-            files = [(path, status, kind)
-                     for path, status, kind, file_id, parent_id
+        with tree.lock_read():
+            files = [(path, status, ie.kind)
+                     for path, status, ie
                       in tree.list_files(include_root=True)]
-        finally:
-            tree.unlock()
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)
 
@@ -239,7 +236,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.commit("Add dir contents")
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
-            [(t[0], t[2]) for t in tree.list_files()])
+            [(t[0], t[2].kind) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_add_subdir_file_bug_205636(self):
@@ -253,7 +250,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.commit("Add file in dir")
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
-            [(t[0], t[2]) for t in tree.list_files()])
+            [(t[0], t[2].kind) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_custom_ids(self):

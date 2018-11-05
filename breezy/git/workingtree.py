@@ -798,10 +798,10 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     continue
                 if value is not None:
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                    yield posixpath.relpath(path, from_dir), "V", ie.kind, ie.file_id, ie
+                    yield posixpath.relpath(path, from_dir), "V", ie
                 else:
                     ie = fk_entries[kind]()
-                    yield posixpath.relpath(path, from_dir), ("I" if self.is_ignored(path) else "?"), kind, None, ie
+                    yield posixpath.relpath(path, from_dir), ("I" if self.is_ignored(path) else "?"), ie
 
     def all_file_ids(self):
         with self.lock_read():
