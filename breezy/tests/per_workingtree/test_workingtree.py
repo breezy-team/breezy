@@ -100,7 +100,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])
         with tree.lock_read():
-            files = [(path, kind) for (path, v, entry) in tree.list_files()]
+            files = [(path, entry.kind) for (path, v, entry) in tree.list_files()]
         self.assertEqual([
             ('a', 'file'),
             ('dir', 'directory'),
@@ -152,11 +152,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.has_versioned_directories():
             self.assertEqual(
                     ('filename', 'V', 'directory', tree.path2id('filename')),
-                    (result[0][0], resul[0][1], result[0][2].kind, result[0][2].file_id))
+                    (result[0][0], result[0][1], result[0][2].kind, result[0][2].file_id))
         else:
             self.assertEqual(
                     ('filename', '?', 'directory', None),
-                    (result[0][0], resul[0][1], result[0][2].kind, result[0][2].file_id))
+                    (result[0][0], result[0][1], result[0][2].kind, result[0][2].file_id))
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config
@@ -840,7 +840,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.unlock()
         self.assertEqual(
                 (u'.bzrignore', '?', 'file', None),
-                (files[0][0], files[0][1], files[0][2].kind, files[0][2].file_id))
+                (files[0][0], files[0][1], files[0][2].kind,
+                    getattr(files[0][2], 'file_id', None)))
         self.assertEqual(
                 (u'foo.pyc', 'V', 'file', anid),
                 (files[1][0], files[1][1], files[1][2].kind, files[1][2].file_id))
