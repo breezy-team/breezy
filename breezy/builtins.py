@@ -615,7 +615,7 @@ class cmd_revno(Command):
                 revid = b.last_revision()
         try:
             revno_t = b.revision_id_to_dotted_revno(revid)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
             revno_t = ('???',)
         revno = ".".join(str(n) for n in revno_t)
         self.cleanup_now()
@@ -1520,7 +1520,12 @@ class cmd_branch(Command):
                 branch.get_stacked_on_url())
         except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
-            note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
+            revno = branch.revno()
+            if revno is not None:
+                note(ngettext('Branched %d revision.', 'Branched %d revisions.',
+                     branch.revno()) % revno)
+            else:
+                note(gettext('Created new branch.'))
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
