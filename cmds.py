@@ -61,11 +61,12 @@ class cmd_publish_derived(Command):
             Option('project', help='Project name for the new remote branch.', type=str),
             Option('name', help='Name of the new remote branch.', type=str),
             Option('no-allow-lossy', help='Allow fallback to lossy push, if necessary.'),
+            Option('overwrite', help="Overwrite existing commits."),
             ]
     takes_args = ['submit_branch?']
 
     def run(self, submit_branch=None, owner=None, name=None, project=None,
-            no_allow_lossy=False, directory='.'):
+            no_allow_lossy=False, overwrite=False, directory='.'):
         local_branch = _mod_branch.Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_write().unlock)
         if submit_branch is None:
@@ -80,7 +81,8 @@ class cmd_publish_derived(Command):
         hoster = _mod_propose.get_hoster(submit_branch)
         remote_branch, public_url = hoster.publish_derived(
                 local_branch, submit_branch, name=name, project=project,
-                owner=owner, allow_lossy=not no_allow_lossy)
+                owner=owner, allow_lossy=not no_allow_lossy,
+                overwrite=overwrite)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
         note(gettext("Pushed to %s") % public_url)

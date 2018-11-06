@@ -2,3 +2,5 @@
 * Support for BitBucket
 
 * Support for "bzr merge <merge-proposal-url>"
+
+* Relationship with breezy.merge_directive ?
