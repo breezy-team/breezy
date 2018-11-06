@@ -57,7 +57,7 @@ def retrieve_github_token(scheme, host):
     path = os.path.join(config_dir(), 'github.conf')
     if not os.path.exists(path):
         return None
-    with open(path, 'w') as f:
+    with open(path, 'r') as f:
         return f.read().strip()
 
 
