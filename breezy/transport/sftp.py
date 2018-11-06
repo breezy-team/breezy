@@ -80,7 +80,7 @@ except ImportError as e:
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
-                               SFTP_OK, CMD_HANDLE, CMD_OPEN)
+                               CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
 
@@ -262,7 +262,7 @@ class _SFTPReadvHelper(object):
                 if buffered_len > 0:
                     # We haven't consumed the buffer so far, so put it into
                     # data_chunks, and continue.
-                    buffered = ''.join(buffered_data)
+                    buffered = b''.join(buffered_data)
                     data_chunks.append((input_start, buffered))
                 input_start = start
                 buffered_data = [data]
@@ -273,7 +273,7 @@ class _SFTPReadvHelper(object):
                 # into a single string. We also have the nice property that
                 # when there is only one string ''.join([x]) == x, so there is
                 # no data copying.
-                buffered = ''.join(buffered_data)
+                buffered = b''.join(buffered_data)
                 # Clean out buffered data so that we keep memory
                 # consumption low
                 del buffered_data[:]
@@ -294,7 +294,10 @@ class _SFTPReadvHelper(object):
                     input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
-                    cur_offset, cur_size = next(offset_iter)
+                    try:
+                        cur_offset, cur_size = next(offset_iter)
+                    except StopIteration:
+                        return
                 # at this point, we've consumed as much of buffered as we can,
                 # so break off the portion that we consumed
                 if buffered_offset == len(buffered_data):
@@ -308,7 +311,7 @@ class _SFTPReadvHelper(object):
         # now that the data stream is done, close the handle
         fp.close()
         if buffered_len:
-            buffered = ''.join(buffered_data)
+            buffered = b''.join(buffered_data)
             del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
@@ -343,7 +346,10 @@ class _SFTPReadvHelper(object):
                         ' We expected %d bytes, but only found %d'
                         % (cur_size, len(data)))
                 yield cur_offset, data
-                cur_offset, cur_size = next(offset_iter)
+                try:
+                    cur_offset, cur_size = next(offset_iter)
+                except StopIteration:
+                    return
 
 
 class SFTPTransport(ConnectedTransport):
@@ -628,7 +634,7 @@ class SFTPTransport(ConnectedTransport):
     def put_bytes_non_atomic(self, relpath, raw_bytes, mode=None,
                              create_parent_dir=False,
                              dir_mode=None):
-        if not isinstance(raw_bytes, str):
+        if not isinstance(raw_bytes, bytes):
             raise TypeError(
                 'raw_bytes must be a plain string, not %s' % type(raw_bytes))
 
@@ -691,7 +697,7 @@ class SFTPTransport(ConnectedTransport):
         # api more than once per write_group at the moment so
         # it is a tolerable overhead. Better would be to truncate
         # the file after opening. RBC 20070805
-        self.put_bytes_non_atomic(relpath, "", mode)
+        self.put_bytes_non_atomic(relpath, b"", mode)
         abspath = self._remote_path(relpath)
         # TODO: jam 20060816 paramiko doesn't publicly expose a way to
         #       set the file mode at create time. If it does, use it.
@@ -843,7 +849,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.readlink."""
         path = self._remote_path(relpath)
         try:
-            return self._get_sftp().readlink(path)
+            return self._get_sftp().readlink(self._remote_path(path))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to readlink')
 
@@ -851,12 +857,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.symlink."""
         try:
             conn = self._get_sftp()
-            sftp_retval = conn.symlink(source, link_name)
-            if SFTP_OK != sftp_retval:
-                raise TransportError(
-                    '%r: unable to create symlink to %r' % (link_name, source),
-                    sftp_retval
-                )
+            sftp_retval = conn.symlink(source, self._remote_path(link_name))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))

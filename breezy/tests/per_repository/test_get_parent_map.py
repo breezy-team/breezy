@@ -27,7 +27,7 @@ class TestGetParentMap(TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({}, repo.get_parent_map(['non-existant']))
+        self.assertEqual({}, repo.get_parent_map([b'non-existant']))
 
     def test_multiple_parents(self):
         tree = self.make_branch_and_tree('.')

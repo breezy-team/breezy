@@ -22,7 +22,6 @@ import sys
 
 from .. import (
     atomicfile,
-    errors,
     osutils,
     )
 from . import TestCaseInTempDir, TestSkipped
@@ -37,9 +36,9 @@ class TestAtomicFile(TestCaseInTempDir):
         f.commit()
 
         self.assertEqual(['test'], os.listdir('.'))
-        self.check_file_contents('test', 'foo\n')
-        self.assertRaises(errors.AtomicFileAlreadyClosed, f.commit)
-        self.assertRaises(errors.AtomicFileAlreadyClosed, f.abort)
+        self.check_file_contents('test', b'foo\n')
+        self.assertRaises(atomicfile.AtomicFileAlreadyClosed, f.commit)
+        self.assertRaises(atomicfile.AtomicFileAlreadyClosed, f.abort)
         # close is re-entrant safe
         f.close()
 
@@ -49,8 +48,8 @@ class TestAtomicFile(TestCaseInTempDir):
         f.abort()
         self.assertEqual([], os.listdir('.'))
 
-        self.assertRaises(errors.AtomicFileAlreadyClosed, f.abort)
-        self.assertRaises(errors.AtomicFileAlreadyClosed, f.commit)
+        self.assertRaises(atomicfile.AtomicFileAlreadyClosed, f.abort)
+        self.assertRaises(atomicfile.AtomicFileAlreadyClosed, f.commit)
 
         # close is re-entrant safe
         f.close()
@@ -62,8 +61,8 @@ class TestAtomicFile(TestCaseInTempDir):
         f.close()
         self.assertEqual([], os.listdir('.'))
 
-        self.assertRaises(errors.AtomicFileAlreadyClosed, f.abort)
-        self.assertRaises(errors.AtomicFileAlreadyClosed, f.commit)
+        self.assertRaises(atomicfile.AtomicFileAlreadyClosed, f.abort)
+        self.assertRaises(atomicfile.AtomicFileAlreadyClosed, f.commit)
 
         # close is re-entrant safe
         f.close()
@@ -75,9 +74,9 @@ class TestAtomicFile(TestCaseInTempDir):
 
         contents = open('test', 'rb').read()
         if sys.platform == 'win32':
-            self.assertEqual('foo\r\n', contents)
+            self.assertEqual(b'foo\r\n', contents)
         else:
-            self.assertEqual('foo\n', contents)
+            self.assertEqual(b'foo\n', contents)
 
     def can_sys_preserve_mode(self):
         # PLATFORM DEFICIENCY/ TestSkipped
@@ -123,3 +122,19 @@ class TestAtomicFile(TestCaseInTempDir):
         f.commit()
         st = os.lstat('test')
         self.assertEqualMode(0o666 & ~umask, stat.S_IMODE(st.st_mode))
+
+    def test_context_manager_commit(self):
+        with atomicfile.AtomicFile('test') as f:
+            self.assertPathDoesNotExist('test')
+            f.write(b'foo\n')
+
+        self.assertEqual(['test'], os.listdir('.'))
+        self.check_file_contents('test', b'foo\n')
+
+    def test_context_manager_abort(self):
+        def abort():
+            with atomicfile.AtomicFile('test') as f:
+                f.write(b'foo\n')
+                raise AssertionError
+        self.assertRaises(AssertionError, abort)
+        self.assertEqual([], os.listdir('.'))

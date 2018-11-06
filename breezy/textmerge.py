@@ -41,9 +41,9 @@ class TextMerge(object):
     """
     # TODO: Show some version information (e.g. author, date) on conflicted
     # regions.
-    A_MARKER = '<<<<<<< \n'
-    B_MARKER = '>>>>>>> \n'
-    SPLIT_MARKER = '=======\n'
+    A_MARKER = b'<<<<<<< \n'
+    B_MARKER = b'>>>>>>> \n'
+    SPLIT_MARKER = b'=======\n'
     def __init__(self, a_marker=A_MARKER, b_marker=B_MARKER,
                  split_marker=SPLIT_MARKER):
         self.a_marker = a_marker

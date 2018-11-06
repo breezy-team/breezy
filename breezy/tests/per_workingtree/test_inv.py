@@ -31,7 +31,7 @@ class TestRevert(TestCaseWithWorkingTree):
         wt.lock_tree_write()
         self.addCleanup(wt.unlock)
         self.assertEqual(len(list(wt.all_versioned_paths())), 1)
-        with open('b1/a', 'wb') as f: f.write('a test\n')
+        with open('b1/a', 'wb') as f: f.write(b'a test\n')
         wt.add('a')
         self.assertEqual(len(list(wt.all_versioned_paths())), 2)
         wt.flush() # workaround revert doing wt._write_inventory for now.
@@ -156,8 +156,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
         root_id = wt.get_root_id()
         wt.apply_inventory_delta([('', None, root_id, None),
-            (None, '', 'root-id',
-             inventory.InventoryDirectory('root-id', '', None))])
+            (None, '', b'root-id',
+             inventory.InventoryDirectory(b'root-id', '', None))])
 
 
 class TestTreeReference(TestCaseWithWorkingTree):
@@ -169,15 +169,19 @@ class TestTreeReference(TestCaseWithWorkingTree):
                 "format does not support inventory deltas")
         if not base.supports_tree_reference():
             raise tests.TestNotApplicable("wt doesn't support nested trees")
-        # We add it as a directory, but it becomes a tree-reference
-        base.add(['subdir'], [b'subdir-id'], ['directory'])
-        subdir = self.make_branch_and_tree('base/subdir')
+        if base.has_versioned_directories():
+            # We add it as a directory, but it becomes a tree-reference
+            base.add(['subdir'], [None], ['directory'])
+            subdir = self.make_branch_and_tree('base/subdir')
+        else:
+            subdir = self.make_branch_and_tree('base/subdir')
+            subdir.commit('')
+            # We add it as a directory, but it becomes a tree-reference
+            base.add(['subdir'], [None], ['tree-reference'])
         self.addCleanup(base.lock_read().unlock)
         # Note: we aren't strict about ie.kind being 'directory' here, what we
         # are strict about is that wt.inventory should match
         # wt.current_dirstate()'s idea about what files are where.
-        ie = base.inventory[b'subdir-id']
-        self.assertEqual('directory', ie.kind)
         path, ie = next(base.iter_entries_by_dir(specific_files=['subdir']))
         self.assertEqual('subdir', path)
         self.assertEqual('tree-reference', ie.kind)

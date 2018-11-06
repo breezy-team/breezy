@@ -29,6 +29,7 @@ from breezy.tree import (
     FileTimestampUnavailable,
     InterTree,
     find_previous_paths,
+    get_canonical_path,
     )
 
 
@@ -401,27 +402,27 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertWalkerNext(u'c/e', b'a-id', True, [u'a', u'a'], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
-    def assertCmpByDirblock(self, cmp_val, path1, path2):
-        self.assertEqual(cmp_val,
-            _mod_tree.MultiWalker._cmp_path_by_dirblock(path1, path2))
+    def assertLtByDirblock(self, lt_val, path1, path2):
+        self.assertEqual(lt_val,
+            _mod_tree.MultiWalker._lt_path_by_dirblock(path1, path2))
 
-    def test__cmp_path_by_dirblock(self):
+    def test__lt_path_by_dirblock(self):
         # We only support Unicode strings at this point
         self.assertRaises(TypeError,
-            _mod_tree.MultiWalker._cmp_path_by_dirblock, '', 'b')
-        self.assertCmpByDirblock(0, u'', u'')
-        self.assertCmpByDirblock(0, u'a', u'a')
-        self.assertCmpByDirblock(0, u'a/b', u'a/b')
-        self.assertCmpByDirblock(0, u'a/b/c', u'a/b/c')
-        self.assertCmpByDirblock(1, u'a-a', u'a')
-        self.assertCmpByDirblock(-1, u'a-a', u'a/a')
-        self.assertCmpByDirblock(-1, u'a=a', u'a/a')
-        self.assertCmpByDirblock(1, u'a-a/a', u'a/a')
-        self.assertCmpByDirblock(1, u'a=a/a', u'a/a')
-        self.assertCmpByDirblock(1, u'a-a/a', u'a/a/a')
-        self.assertCmpByDirblock(1, u'a=a/a', u'a/a/a')
-        self.assertCmpByDirblock(1, u'a-a/a/a', u'a/a/a')
-        self.assertCmpByDirblock(1, u'a=a/a/a', u'a/a/a')
+            _mod_tree.MultiWalker._lt_path_by_dirblock, b'', b'b')
+        self.assertLtByDirblock(False, u'', u'')
+        self.assertLtByDirblock(False, u'a', u'a')
+        self.assertLtByDirblock(False, u'a/b', u'a/b')
+        self.assertLtByDirblock(False, u'a/b/c', u'a/b/c')
+        self.assertLtByDirblock(False, u'a-a', u'a')
+        self.assertLtByDirblock(True, u'a-a', u'a/a')
+        self.assertLtByDirblock(True, u'a=a', u'a/a')
+        self.assertLtByDirblock(False, u'a-a/a', u'a/a')
+        self.assertLtByDirblock(False, u'a=a/a', u'a/a')
+        self.assertLtByDirblock(False, u'a-a/a', u'a/a/a')
+        self.assertLtByDirblock(False, u'a=a/a', u'a/a/a')
+        self.assertLtByDirblock(False, u'a-a/a/a', u'a/a/a')
+        self.assertLtByDirblock(False, u'a=a/a/a', u'a/a/a')
 
     def assertPathToKey(self, expected, path):
         self.assertEqual(expected, _mod_tree.MultiWalker._path_to_key(path))
@@ -461,3 +462,44 @@ class FindPreviousPathsTests(TestCaseWithTransport):
 
         self.assertEqual({'c': 'b', 'b': None},
                          find_previous_paths(tree2, tree1, ['b', 'c']))
+
+
+class GetCanonicalPath(TestCaseWithTransport):
+
+    def test_existing_case(self):
+        # Test that we can find a file from a path with different case
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/b'])
+        tree.add(['b'])
+        self.assertEqual(
+                'b',
+                get_canonical_path(tree, 'b', lambda x: x.lower()))
+        self.assertEqual(
+                'b',
+                get_canonical_path(tree, 'B', lambda x: x.lower()))
+
+    def test_nonexistant_preserves_case(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertEqual(
+                'b',
+                get_canonical_path(tree, 'b', lambda x: x.lower()))
+        self.assertEqual(
+                'B',
+                get_canonical_path(tree, 'B', lambda x: x.lower()))
+
+    def test_in_directory_with_case(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a/', 'tree/a/b'])
+        tree.add(['a', 'a/b'])
+        self.assertEqual(
+                'a/b',
+                get_canonical_path(tree, 'a/b', lambda x: x.lower()))
+        self.assertEqual(
+                'a/b',
+                get_canonical_path(tree, 'A/B', lambda x: x.lower()))
+        self.assertEqual(
+                'a/b',
+                get_canonical_path(tree, 'A/b', lambda x: x.lower()))
+        self.assertEqual(
+                'a/C',
+                get_canonical_path(tree, 'A/C', lambda x: x.lower()))

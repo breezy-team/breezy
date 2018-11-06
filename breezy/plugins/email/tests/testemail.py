@@ -30,39 +30,39 @@ def test_suite():
     return TestLoader().loadTestsFromName(__name__)
 
 
-sample_config=("[DEFAULT]\n"
-               "post_commit_to=demo@example.com\n"
-               "post_commit_sender=Sample <foo@example.com>\n"
-               "revision_mail_headers=X-Cheese: to the rescue!\n")
+sample_config=(b"[DEFAULT]\n"
+               b"post_commit_to=demo@example.com\n"
+               b"post_commit_sender=Sample <foo@example.com>\n"
+               b"revision_mail_headers=X-Cheese: to the rescue!\n")
 
-unconfigured_config=("[DEFAULT]\n"
-                     "email=Robert <foo@example.com>\n")
+unconfigured_config=(b"[DEFAULT]\n"
+                     b"email=Robert <foo@example.com>\n")
 
-sender_configured_config=("[DEFAULT]\n"
-                          "post_commit_sender=Sample <foo@example.com>\n")
+sender_configured_config=(b"[DEFAULT]\n"
+                          b"post_commit_sender=Sample <foo@example.com>\n")
 
-to_configured_config=("[DEFAULT]\n"
-                      "post_commit_to=Sample <foo@example.com>\n")
+to_configured_config=(b"[DEFAULT]\n"
+                      b"post_commit_to=Sample <foo@example.com>\n")
 
-multiple_to_configured_config=("[DEFAULT]\n"
-              "post_commit_sender=Sender <from@example.com>\n"
-              "post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
+multiple_to_configured_config=(b"[DEFAULT]\n"
+              b"post_commit_sender=Sender <from@example.com>\n"
+              b"post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
 
-customized_mail_config=("[DEFAULT]\n"
-                        "post_commit_to=demo@example.com\n"
-                        "post_commit_sender=Sample <foo@example.com>\n"
-                        "post_commit_subject=[commit] $message\n"
-                        "post_commit_body='''$committer has committed "
-                            "revision 1 at $url.\n\n'''\n")
+customized_mail_config=(b"[DEFAULT]\n"
+                        b"post_commit_to=demo@example.com\n"
+                        b"post_commit_sender=Sample <foo@example.com>\n"
+                        b"post_commit_subject=[commit] $message\n"
+                        b"post_commit_body='''$committer has committed "
+                            b"revision 1 at $url.\n\n'''\n")
 
-push_config=("[DEFAULT]\n"
-    "post_commit_to=demo@example.com\n"
-    "post_commit_push_pull=True\n")
+push_config=(b"[DEFAULT]\n"
+    b"post_commit_to=demo@example.com\n"
+    b"post_commit_push_pull=True\n")
 
-with_url_config=("[DEFAULT]\n"
-                 "post_commit_url=http://some.fake/url/\n"
-                 "post_commit_to=demo@example.com\n"
-                 "post_commit_sender=Sample <foo@example.com>\n")
+with_url_config=(b"[DEFAULT]\n"
+                 b"post_commit_url=http://some.fake/url/\n"
+                 b"post_commit_to=demo@example.com\n"
+                 b"post_commit_sender=Sample <foo@example.com>\n")
 
 # FIXME: this should not use a literal log, rather grab one from breezy.log
 sample_log=('------------------------------------------------------------\n'
@@ -136,15 +136,15 @@ class TestGetTo(TestCaseInTempDir):
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
     def test_public_url_set(self):
-        config=("[DEFAULT]\n"
-                "public_branch=http://the.publication/location/\n")
+        config=(b"[DEFAULT]\n"
+                b"public_branch=http://the.publication/location/\n")
         sender = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://the.publication/location/')
 
     def test_url_precedence(self):
-        config=("[DEFAULT]\n"
-                "post_commit_url=http://some.fake/url/\n"
-                "public_branch=http://the.publication/location/\n")
+        config=(b"[DEFAULT]\n"
+                b"post_commit_url=http://some.fake/url/\n"
+                b"public_branch=http://the.publication/location/\n")
         sender = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
@@ -182,7 +182,7 @@ class TestGetTo(TestCaseInTempDir):
             timezone=0,
             committer="Sample <john@example.com>",
             )
-        sender = EmailSender(self.branch, 'A', my_config)
+        sender = EmailSender(self.branch, b'A', my_config)
         # This is usually only done after the EmailSender has locked the branch
         # and repository during send(), however, for testing, we need to do it
         # earlier, since send() is not called.

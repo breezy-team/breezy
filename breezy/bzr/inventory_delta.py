@@ -289,7 +289,7 @@ class InventoryDeltaDeserializer(object):
         :return: (parent_id, new_id, versioned_root, tree_references,
             inventory_delta)
         """
-        if bytes[-1:] != b'\n':
+        if not bytes.endswith(b'\n'):
             last_line = bytes.rsplit(b'\n', 1)[-1]
             raise InventoryDeltaError(
                 'last line not empty: %(line)r', line=last_line)

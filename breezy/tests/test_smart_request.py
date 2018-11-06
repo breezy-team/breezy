@@ -107,19 +107,19 @@ class TestSmartRequest(TestCase):
         # Create a SmartServerRequestHandler with a SmartServerRequest subclass
         # that does not implement do_body.
         handler = request.SmartServerRequestHandler(
-            None, {'foo': NoBodyRequest}, '/')
+            None, {b'foo': NoBodyRequest}, '/')
         # Emulate a request with no body (i.e. just args).
-        handler.args_received(('foo',))
+        handler.args_received((b'foo',))
         handler.end_received()
         # Request done, no exception was raised.
 
     def test_only_request_code_is_jailed(self):
         transport = 'dummy transport'
         handler = request.SmartServerRequestHandler(
-            transport, {'foo': CheckJailRequest}, '/')
-        handler.args_received(('foo',))
+            transport, {b'foo': CheckJailRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertEqual(None, request.jail_info.transports)
-        handler.accept_body('bytes')
+        handler.accept_body(b'bytes')
         self.assertEqual(None, request.jail_info.transports)
         handler.end_received()
         self.assertEqual(None, request.jail_info.transports)
@@ -147,39 +147,39 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
         self.assertEqual(None, handler.response)
 
     def assertResponseIsTranslatedError(self, handler):
-        expected_translation = ('NoSuchFile', 'xyzzy')
+        expected_translation = (b'NoSuchFile', b'xyzzy')
         self.assertEqual(
             request.FailedSmartServerResponse(expected_translation),
             handler.response)
 
     def test_error_translation_from_args_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': DoErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': DoErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertResponseIsTranslatedError(handler)
 
     def test_error_translation_from_chunk_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': ChunkErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': ChunkErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertNoResponse(handler)
-        handler.accept_body('bytes')
+        handler.accept_body(b'bytes')
         self.assertResponseIsTranslatedError(handler)
 
     def test_error_translation_from_end_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': EndErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': EndErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertNoResponse(handler)
         handler.end_received()
         self.assertResponseIsTranslatedError(handler)
 
     def test_unexpected_error_translation(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': DoUnexpectedErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': DoUnexpectedErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertEqual(
-            request.FailedSmartServerResponse(('error', 'KeyError', "1")),
+            request.FailedSmartServerResponse((b'error', b'KeyError', b"1")),
             handler.response)
 
 
@@ -191,35 +191,40 @@ class TestRequestHanderErrorTranslation(TestCase):
 
     def test_NoSuchFile(self):
         self.assertTranslationEqual(
-            ('NoSuchFile', 'path'), errors.NoSuchFile('path'))
+            (b'NoSuchFile', b'path'), errors.NoSuchFile('path'))
 
     def test_LockContention(self):
         # For now, LockContentions are always transmitted with no details.
         # Eventually they should include a relpath or url or something else to
         # identify which lock is busy.
         self.assertTranslationEqual(
-            ('LockContention',), errors.LockContention('lock', 'msg'))
+            (b'LockContention',), errors.LockContention('lock', 'msg'))
 
     def test_TokenMismatch(self):
         self.assertTranslationEqual(
-            ('TokenMismatch', 'some-token', 'actual-token'),
-            errors.TokenMismatch('some-token', 'actual-token'))
+            (b'TokenMismatch', b'some-token', b'actual-token'),
+            errors.TokenMismatch(b'some-token', b'actual-token'))
 
     def test_MemoryError(self):
-        self.assertTranslationEqual(("MemoryError",), MemoryError())
+        self.assertTranslationEqual((b"MemoryError",), MemoryError())
+
+    def test_GhostRevisionsHaveNoRevno(self):
+        self.assertTranslationEqual(
+            (b"GhostRevisionsHaveNoRevno", b'revid1', b'revid2'),
+            errors.GhostRevisionsHaveNoRevno(b'revid1', b'revid2'))
 
     def test_generic_Exception(self):
-        self.assertTranslationEqual(('error', 'Exception', ""),
+        self.assertTranslationEqual((b'error', b'Exception', b""),
             Exception())
 
     def test_generic_BzrError(self):
-        self.assertTranslationEqual(('error', 'BzrError', "some text"),
+        self.assertTranslationEqual((b'error', b'BzrError', b"some text"),
             errors.BzrError(msg="some text"))
 
     def test_generic_zlib_error(self):
         from zlib import error
         msg = "Error -3 while decompressing data: incorrect data check"
-        self.assertTranslationEqual(('error', 'zlib.error', msg),
+        self.assertTranslationEqual((b'error', b'zlib.error', msg.encode('utf-8')),
             error(msg))
 
 

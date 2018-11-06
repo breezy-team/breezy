@@ -49,7 +49,7 @@ class BisectCurrent(object):
     def _save(self):
         """Save the current revision."""
         self._controldir.control_transport.put_bytes(
-            self._filename, self._revid + "\n")
+            self._filename, self._revid + b"\n")
 
     def get_current_revid(self):
         """Return the current revision id."""
@@ -57,8 +57,7 @@ class BisectCurrent(object):
 
     def get_current_revno(self):
         """Return the current revision number as a tuple."""
-        revdict = self._branch.get_revision_id_to_revno_map()
-        return revdict[self.get_current_revid()]
+        return self._branch.revision_id_to_dotted_revno(self._revid)
 
     def get_parent_revids(self):
         """Return the IDs of the current revision's predecessors."""
@@ -173,7 +172,7 @@ class BisectLog(object):
         if spread < 2:
             middle_index = 0
         else:
-            middle_index = (spread / 2) - 1
+            middle_index = (spread // 2) - 1
 
         if len(between_revs) > 0:
             self._middle_revid = between_revs[middle_index]
@@ -207,12 +206,12 @@ class BisectLog(object):
             revlog = self._open_for_read()
             for line in revlog:
                 (revid, status) = line.split()
-                self._items.append((revid, status))
+                self._items.append((revid, status.decode('ascii')))
 
     def save(self):
         """Save the bisection log."""
-        contents = ''.join(
-            ("%s %s\n" % (revid, status))
+        contents = b''.join(
+            (b"%s %s\n" % (revid, status.encode('ascii')))
             for (revid, status) in self._items)
         if self._filename:
             self._controldir.control_transport.put_bytes(

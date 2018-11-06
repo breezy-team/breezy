@@ -56,7 +56,7 @@ class WSGITestMixin(object):
         return environ
 
     def read_response(self, iterable):
-        response = ''
+        response = b''
         for string in iterable:
             response += string
         return response
@@ -117,7 +117,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         # object in the environ dict, and returns the response via the iterable
         # returned to the WSGI handler.
         transport = memory.MemoryTransport()
-        transport.put_bytes('foo', 'some bytes')
+        transport.put_bytes('foo', b'some bytes')
         wsgi_app = wsgi.SmartWSGIApp(transport)
         wsgi_app.make_request = self._fake_make_request
         fake_input = BytesIO(b'fake request')
@@ -130,7 +130,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         iterable = wsgi_app(environ, self.start_response)
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
-        self.assertEqual('got bytes: fake request', response)
+        self.assertEqual(b'got bytes: fake request', response)
 
     def test_relpath_setter(self):
         # wsgi.RelpathSetter is WSGI "middleware" to set the 'breezy.relpath'
@@ -206,7 +206,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         iterable = wsgi_app(environ, self.start_response)
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
-        self.assertEqual('error\x01incomplete request\n', response)
+        self.assertEqual(b'error\x01incomplete request\n', response)
 
     def test_protocol_version_detection_one(self):
         # SmartWSGIApp detects requests that don't start with
@@ -224,14 +224,14 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         response = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
         # Expect a version 1-encoded response.
-        self.assertEqual('ok\x012\n', response)
+        self.assertEqual(b'ok\x012\n', response)
 
     def test_protocol_version_detection_two(self):
         # SmartWSGIApp detects requests that start with REQUEST_VERSION_TWO
         # as version two.
         transport = memory.MemoryTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
-        fake_input = BytesIO(protocol.REQUEST_VERSION_TWO + 'hello\n')
+        fake_input = BytesIO(protocol.REQUEST_VERSION_TWO + b'hello\n')
         environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
@@ -243,7 +243,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         self.assertEqual('200 OK', self.status)
         # Expect a version 2-encoded response.
         self.assertEqual(
-            protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n', response)
+            protocol.RESPONSE_VERSION_TWO + b'success\nok\x012\n', response)
 
 
 class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
@@ -276,7 +276,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
         wsgi_app = wsgi.SmartWSGIApp(self.get_transport())
         # send a request to /repo/branch that will have to access /repo.
         environ = self.make_hpss_wsgi_request(
-            '/repo/branch', 'BzrDir.open_branchV2', '.')
+            '/repo/branch', b'BzrDir.open_branchV2', b'.')
         iterable = wsgi_app(environ, self.start_response)
         response_bytes = self.read_response(iterable)
         self.assertEqual('200 OK', self.status)
@@ -287,7 +287,7 @@ class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
             message_handler, expect_version_marker=True)
         decoder.accept_bytes(response_bytes)
         self.assertTrue(
-            ('structure', ('branch', branch._format.network_name()))
+            ('structure', (b'branch', branch._format.network_name()))
             in message_handler.event_log)
 
 
@@ -296,11 +296,11 @@ class FakeRequest(object):
     def __init__(self, transport, write_func):
         self.transport = transport
         self.write_func = write_func
-        self.accepted_bytes = ''
+        self.accepted_bytes = b''
 
     def accept_bytes(self, bytes):
         self.accepted_bytes = bytes
-        self.write_func('got bytes: ' + bytes)
+        self.write_func(b'got bytes: ' + bytes)
 
     def next_read_size(self):
         return 0

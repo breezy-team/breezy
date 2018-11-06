@@ -119,7 +119,10 @@ class StackedParentsProvider(object):
         if not remaining:
             return found
         for parents_provider in self._parent_providers:
-            new_found = parents_provider.get_parent_map(remaining)
+            try:
+                new_found = parents_provider.get_parent_map(remaining)
+            except errors.UnsupportedOperation:
+                continue
             found.update(new_found)
             remaining.difference_update(new_found)
             if not remaining:
@@ -1146,7 +1149,7 @@ class Graph(object):
                 ancestor_all_unique = ancestor_all_unique.intersection(
                                             searcher.seen)
 
-        trace.mutter('Started %s unique searchers for %s unique revisions',
+        trace.mutter('Started %d unique searchers for %d unique revisions',
                      simple_unique, total_unique)
 
         while True: # If we have no more nodes we have nothing to do

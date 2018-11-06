@@ -24,7 +24,6 @@ lazy_import(globals(), """
 import itertools
 
 from breezy import (
-    check,
     config as _mod_config,
     debug,
     fifo_cache,
@@ -33,13 +32,13 @@ from breezy import (
     lru_cache,
     osutils,
     revision as _mod_revision,
-    serializer as _mod_serializer,
     static_tuple,
     tsort,
     ui,
     )
 from breezy.bzr import (
     fetch as _mod_fetch,
+    check,
     inventory_delta,
     inventorytree,
     versionedfile,
@@ -111,9 +110,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
     """Commit builder implementation for versioned files based repositories.
     """
 
-    # the default CommitBuilder does not manage trees whose root is versioned.
-    _versioned_root = False
-
     def __init__(self, repository, parents, config_stack, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
@@ -169,9 +165,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             fallback_repo = fallback_repos.pop()
             source = fallback_repo._get_source(self.repository._format)
             sink = self.repository._get_sink()
-            stream = source.get_stream_for_missing_keys(missing_keys)
-            missing_keys = sink.insert_stream_without_locking(stream,
-                self.repository._format)
+            missing_keys = sink.insert_missing_keys(source, missing_keys)
         if missing_keys:
             raise errors.BzrError('Unable to fill in parent inventories for a'
                                   ' stacked branch')
@@ -244,6 +238,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
         :param tree: The tree which is being committed.
         """
+        if self.repository.supports_rich_root():
+            return
         if len(self.parents) == 0:
             raise errors.RootMissing()
         entry = entry_factory['directory'](tree.path2id(''), '',
@@ -487,8 +483,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         nostore_sha = None
                     file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
                     try:
-                        entry.text_sha1, entry.text_size = self._add_lines_to_weave(
-                            file_id, file_obj.readlines(), heads, nostore_sha)
+                        entry.text_sha1, entry.text_size = self._add_file_to_weave(
+                            file_id, file_obj, heads, nostore_sha)
                         yield file_id, change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
@@ -505,7 +501,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
                     else:
-                        self._add_lines_to_weave(change[0], [], heads, None)
+                        self._add_file_to_weave(change[0], BytesIO(), heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
@@ -513,7 +509,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
                         if change[1][1] != '' or self.repository.supports_rich_root():
-                            self._add_lines_to_weave(change[0], [], heads, None)
+                            self._add_file_to_weave(change[0], BytesIO(), heads, None)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -528,7 +524,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         parent_entry.reference_revision == reference_revision):
                         carried_over = True
                     else:
-                        self._add_lines_to_weave(change[0], [], heads, None)
+                        self._add_file_to_weave(change[0], BytesIO(), heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
@@ -554,28 +550,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
             self._require_root_change(tree)
         self.basis_delta_revision = basis_revision_id
 
-    def _add_lines_to_weave(self, file_id, lines, parents, nostore_sha):
+    def _add_file_to_weave(self, file_id, fileobj, parents, nostore_sha):
         parent_keys = tuple([(file_id, parent) for parent in parents])
         return self.repository.texts.add_lines(
-            (file_id, self._new_revision_id), parent_keys, lines,
+            (file_id, self._new_revision_id), parent_keys, fileobj.readlines(),
             nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
-
-
-class VersionedFileRootCommitBuilder(VersionedFileCommitBuilder):
-    """This commitbuilder actually records the root id"""
-
-    # the root entry gets versioned properly by this builder.
-    _versioned_root = True
-
-    def _require_root_change(self, tree):
-        """Enforce an appropriate root object change.
-
-        This is called once when record_iter_changes is called, if and only if
-        the root was not in the delta calculated by record_iter_changes.
-
-        :param tree: The tree which is being committed.
-        """
-        # versioned roots do not change unless the tree found a change.
 
 
 class VersionedFileRepository(Repository):
@@ -1296,7 +1275,7 @@ class VersionedFileRepository(Repository):
         # always a tricky proposition.
         inventory_cache = lru_cache.LRUCache(10)
         batch_size = 10 # should be ~150MB on a 55K path tree
-        batch_count = len(revision_order) / batch_size + 1
+        batch_count = len(revision_order) // batch_size + 1
         processed_texts = 0
         pb.update(gettext("Calculating text parents"), processed_texts, text_count)
         for offset in range(batch_count):
@@ -1459,14 +1438,14 @@ class VersionedFileRepository(Repository):
                 if order_as_requested:
                     text_chunks[record.key] = chunks
                 else:
-                    yield ''.join(chunks), record.key[-1]
+                    yield b''.join(chunks), record.key[-1]
             else:
                 yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
                 while next_key in text_chunks:
                     chunks = text_chunks.pop(next_key)
-                    yield ''.join(chunks), next_key[-1]
+                    yield b''.join(chunks), next_key[-1]
                     try:
                         next_key = next(key_iter)
                     except StopIteration:
@@ -1521,7 +1500,7 @@ class VersionedFileRepository(Repository):
         """Return Trees for revisions in this repository.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         """
         inventories = self.iter_inventories(revision_ids)
         for inv in inventories:
@@ -1570,7 +1549,7 @@ class VersionedFileRepository(Repository):
         """Return Tree for a revision on this branch with only some files.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         :param file_ids: if not None, the result is filtered
           so that only those file-ids, their parents and their
           children are included.
@@ -1736,6 +1715,17 @@ class StreamSink(object):
     def __init__(self, target_repo):
         self.target_repo = target_repo
 
+    def insert_missing_keys(self, source, missing_keys):
+        """Insert missing keys from another source.
+
+        :param source: StreamSource to stream from
+        :param missing_keys: Keys to insert
+        :return: keys still missing
+        """
+        stream = source.get_stream_for_missing_keys(missing_keys)
+        return self.insert_stream_without_locking(stream,
+            self.target_repo._format)
+
     def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.
 
@@ -1744,8 +1734,7 @@ class StreamSink(object):
         :return: a list of resume tokens and an  iterable of keys additional
             items required before the insertion can be completed.
         """
-        self.target_repo.lock_write()
-        try:
+        with self.target_repo.lock_write():
             if resume_tokens:
                 self.target_repo.resume_write_group(resume_tokens)
                 is_resume = True
@@ -1773,8 +1762,6 @@ class StreamSink(object):
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
-        finally:
-            self.target_repo.unlock()
 
     def insert_stream_without_locking(self, stream, src_format,
                                       is_resume=False):
@@ -2196,7 +2183,7 @@ class StreamSource(object):
                 delta = inv._make_delta(null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
-            delta_serialized = ''.join(
+            delta_serialized = b''.join(
                 serializer.delta_to_lines(basis_id, key[-1], delta))
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, delta_serialized)

@@ -90,7 +90,7 @@ class cmd_version_info(Command):
                      ]
     takes_args = ['location?']
 
-    encoding_type = 'exact'
+    encoding_type = 'replace'
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,

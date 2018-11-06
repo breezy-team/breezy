@@ -40,6 +40,7 @@ from . import (
     plugin as _mod_plugin,
     help,
     )
+from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -71,12 +72,12 @@ def _normalize(s):
     return s
 
 
-def _parse_source(source_text):
+def _parse_source(source_text, filename='<unknown>'):
     """Get object to lineno mappings from given source_text"""
     import ast
     cls_to_lineno = {}
     str_to_lineno = {}
-    for node in ast.walk(ast.parse(source_text)):
+    for node in ast.walk(ast.parse(source_text, filename)):
         # TODO: worry about duplicates?
         if isinstance(node, ast.ClassDef):
             # TODO: worry about nesting?
@@ -106,7 +107,7 @@ class _ModuleContext(object):
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
         return cls(relpath,
-            _source_info=_parse_source("".join(inspect.findsource(module)[0])))
+            _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
 
     def from_class(self, cls):
         """Get new context with same details but lineno of class in source"""
@@ -150,13 +151,16 @@ class _PotExporter(object):
         else:
             comment = "# %s\n" % comment
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
-        self.outf.write(
+        line = (
             "#: {path}:{lineno}\n"
             "{comment}"
             "msgid {msg}\n"
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
+        if not PY3:
+            line = line.decode('utf-8')
+        self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
         context = context.from_string(string)

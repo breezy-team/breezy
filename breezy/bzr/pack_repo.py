@@ -66,12 +66,13 @@ from ..bzr.repository import (
     )
 from ..sixish import (
     reraise,
+    text_type,
+    viewitems,
     )
 from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
-    VersionedFileRootCommitBuilder,
     )
 from ..trace import (
     mutter,
@@ -93,28 +94,6 @@ class PackCommitBuilder(VersionedFileCommitBuilder):
         VersionedFileCommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
             revprops=revprops, revision_id=revision_id, lossy=lossy)
-        self._file_graph = graph.Graph(
-            repository._pack_collection.text_index.combined_index)
-
-    def _heads(self, file_id, revision_ids):
-        keys = [(file_id, revision_id) for revision_id in revision_ids]
-        return {key[1] for key in self._file_graph.heads(keys)}
-
-
-class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
-    """A subclass of RootCommitBuilder to add texts with pack semantics.
-
-    Specifically this uses one knit object rather than one knit object per
-    added text, reducing memory and object pressure.
-    """
-
-    def __init__(self, repository, parents, config, timestamp=None,
-                 timezone=None, committer=None, revprops=None,
-                 revision_id=None, lossy=False):
-        super(PackRootCommitBuilder, self).__init__(repository, parents,
-            config, timestamp=timestamp, timezone=timezone,
-            committer=committer, revprops=revprops, revision_id=revision_id,
-            lossy=lossy)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
@@ -239,6 +218,15 @@ class Pack(object):
             index._leaf_factory = btree_index._gcchk_factory
         setattr(self, index_type + '_index', index)
 
+    def __lt__(self, other):
+        if not isinstance(other, Pack):
+            raise TypeError(other)
+        return (id(self) < id(other))
+
+    def __hash__(self):
+        return hash((type(self), self.revision_index, self.inventory_index,
+            self.text_index, self.signature_index, self.chk_index))
+
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -268,6 +256,9 @@ class ExistingPack(Pack):
         return "<%s.%s object at 0x%x, %s, %s" % (
             self.__class__.__module__, self.__class__.__name__, id(self),
             self.pack_transport, self.name)
+
+    def __hash__(self):
+        return hash((type(self), self.name))
 
 
 class ResumedPack(ExistingPack):
@@ -929,11 +920,11 @@ class RepositoryPackCollection(object):
         num_revs_affected = sum([po[0] for po in pack_operations])
         mutter('Auto-packing repository %s, which has %d pack files, '
             'containing %d revisions. Packing %d files into %d affecting %d'
-            ' revisions', self, total_packs, total_revisions, num_old_packs,
+            ' revisions', str(self), total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
         result = self._execute_pack_operations(pack_operations, packer_class=self.normal_packer_class,
                                       reload_func=self._restart_autopack)
-        mutter('Auto-packing repository %s completed', self)
+        mutter('Auto-packing repository %s completed', str(self))
         return result
 
     def _execute_pack_operations(self, pack_operations, packer_class,
@@ -999,7 +990,7 @@ class RepositoryPackCollection(object):
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Packing repository %s, which has %d pack files, '
-            'containing %d revisions with hint %r.', self, total_packs,
+            'containing %d revisions with hint %r.', str(self), total_packs,
             total_revisions, hint)
         while True:
             try:
@@ -1092,9 +1083,9 @@ class RepositoryPackCollection(object):
             self._names = {}
             self._packs_at_load = set()
             for index, key, value in self._iter_disk_pack_index():
-                name = key[0]
+                name = key[0].decode('ascii')
                 self._names[name] = self._parse_index_sizes(value)
-                self._packs_at_load.add((key, value))
+                self._packs_at_load.add((name, value))
             result = True
         else:
             result = False
@@ -1104,7 +1095,7 @@ class RepositoryPackCollection(object):
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
-        return tuple([int(digits) for digits in value.split(' ')])
+        return tuple(int(digits) for digits in value.split(b' '))
 
     def get_pack_by_name(self, name):
         """Get a Pack object by name.
@@ -1343,14 +1334,14 @@ class RepositoryPackCollection(object):
         # load the disk nodes across
         disk_nodes = set()
         for index, key, value in self._iter_disk_pack_index():
-            disk_nodes.add((key, value))
+            disk_nodes.add((key[0].decode('ascii'), value))
         orig_disk_nodes = set(disk_nodes)
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in self._names.items():
+        for name, sizes in viewitems(self._names):
             current_nodes.add(
-                ((name, ), ' '.join(str(size) for size in sizes)))
+                (name, b' '.join(b'%d' % size for size in sizes)))
 
         # Packs no longer present in the repository, which were present when we
         # locked the repository
@@ -1380,12 +1371,11 @@ class RepositoryPackCollection(object):
         new_names = dict(disk_nodes)
         # drop no longer present nodes
         for pack in self.all_packs():
-            if (pack.name,) not in new_names:
+            if pack.name not in new_names:
                 removed.append(pack.name)
                 self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
-        for key, value in disk_nodes:
-            name = key[0]
+        for name, value in disk_nodes:
             sizes = self._parse_index_sizes(value)
             if name in self._names:
                 # existing
@@ -1432,8 +1422,8 @@ class RepositoryPackCollection(object):
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
             # changing it.
-            for key, value in disk_nodes:
-                builder.add_node(key, value)
+            for name, value in disk_nodes:
+                builder.add_node((name.encode('ascii'), ), value)
             self.transport.put_file('pack-names', builder.finish(),
                 mode=self.repo.controldir._get_file_mode())
             self._packs_at_load = disk_nodes
@@ -1455,7 +1445,7 @@ class RepositoryPackCollection(object):
             obsolete_packs = [o for o in obsolete_packs
                               if o.name not in already_obsolete]
             self._obsolete_packs(obsolete_packs)
-        return [new_node[0][0] for new_node in new_nodes]
+        return [new_node[0] for new_node in new_nodes]
 
     def reload_pack_names(self):
         """Sync our pack listing with what is present in the repository.

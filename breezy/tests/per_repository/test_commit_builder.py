@@ -27,7 +27,7 @@ from breezy import (
     tests,
     )
 from breezy.bzr import (
-    inventory,
+    inventorytree,
     )
 from breezy.tests import per_repository
 from breezy.tests import (
@@ -135,7 +135,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
                 except errors.NonAsciiRevisionId:
-                    revision_id = 'abc'
+                    revision_id = b'abc'
                     builder = tree.branch.get_commit_builder([],
                         revision_id=revision_id)
             except repository.CannotSetRevisionId:
@@ -351,6 +351,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # modified.
         tree = self.make_branch_and_tree('.')
         subtree = self.make_reference('reference')
+        subtree.commit('')
         try:
             tree.add_reference(subtree)
             self._commit_check_unchanged(tree, 'reference',
@@ -400,6 +401,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # renaming a reference changes the last modified.
         tree = self.make_branch_and_tree('.')
         subtree = self.make_reference('reference')
+        subtree.commit('')
         try:
             tree.add_reference(subtree)
             self._commit_renamed_check_changed(tree, 'reference')
@@ -419,6 +421,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_last_modified_revision_after_reparent_dir_changes(self):
         # reparenting a dir changes the last modified.
         tree = self.make_branch_and_tree('.')
+        if not tree.has_versioned_directories():
+            raise tests.TestNotApplicable(
+                    'Format does not support versioned directories')
         self.build_tree(['dir/'])
         self._add_commit_reparent_check_changed(tree, 'dir')
 
@@ -488,16 +493,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                     changes))
                 file_id = tree.path2id(new_name)
                 self.assertIsNot(None, file_id)
-                if expect_fs_hash:
-                    tree_file_stat = tree.get_file_with_stat(new_name)
-                    tree_file_stat[0].close()
-                    self.assertLength(1, result)
-                    result = result[0]
-                    self.assertEqual(result[:2], (file_id, new_name))
-                    self.assertEqual(result[2][0], tree.get_file_sha1(new_name))
-                    self.assertEqualStat(result[2][1], tree_file_stat[1])
-                else:
-                    self.assertEqual([], result)
+                if isinstance(tree, inventorytree.InventoryTree):
+                    # TODO(jelmer): record_iter_changes shouldn't yield
+                    # data that is WorkingTree-format-specific and uses file ids.
+                    if expect_fs_hash:
+                        tree_file_stat = tree.get_file_with_stat(new_name)
+                        tree_file_stat[0].close()
+                        self.assertLength(1, result)
+                        result = result[0]
+                        self.assertEqual(result[:2], (file_id, new_name))
+                        self.assertEqual(result[2][0], tree.get_file_sha1(new_name))
+                        self.assertEqualStat(result[2][1], tree_file_stat[1])
+                    else:
+                        self.assertEqual([], result)
                 builder.finish_inventory()
                 if tree.branch.repository._format.supports_full_versioned_files:
                     inv_key = (builder._new_revision_id,)
@@ -510,16 +518,17 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 raise
             delta = builder.get_basis_delta()
             delta_dict = dict((change[2], change) for change in delta)
-            version_recorded = (file_id in delta_dict and
-                delta_dict[file_id][3] is not None and
-                delta_dict[file_id][3].revision == rev2)
-            if records_version:
-                self.assertTrue(version_recorded)
-            else:
-                self.assertFalse(version_recorded)
+            if tree.branch.repository._format.records_per_file_revision:
+                version_recorded = (file_id in delta_dict and
+                    delta_dict[file_id][3] is not None and
+                    delta_dict[file_id][3].revision == rev2)
+                if records_version:
+                    self.assertTrue(version_recorded)
+                else:
+                    self.assertFalse(version_recorded)
 
             revtree = builder.revision_tree()
-            new_entry = revtree.iter_entries_by_dir(specific_files=[new_name]).next()[1]
+            new_entry = next(revtree.iter_entries_by_dir(specific_files=[new_name]))[1]
 
             if delta_against_basis:
                 if tree.supports_rename_tracking() or name == new_name:
@@ -529,7 +538,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 self.assertEqual(expected_delta, delta_dict[file_id])
             else:
                 expected_delta = None
-                self.assertFalse(version_recorded)
+                if tree.branch.repository._format.records_per_file_revision:
+                    self.assertFalse(version_recorded)
             tree.set_parent_ids([rev2])
         return rev2
 
@@ -546,7 +556,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         def change_file():
-            tree.put_file_bytes_non_atomic('file', 'new content')
+            tree.put_file_bytes_non_atomic('file', b'new content')
         self._add_commit_change_check_changed(tree, ('file', 'file'), change_file,
             expect_fs_hash=True)
 
@@ -590,14 +600,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev3 = self._rename_in_tree(tree2, name, 'rev3')
         tree1.merge_from_branch(tree2.branch)
         rev4 = self.mini_commit_record_iter_changes(tree1, 'new_' + name, 'new_' + name,
-            expect_fs_hash=expect_fs_hash)
+            expect_fs_hash=expect_fs_hash,
+            delta_against_basis=tree1.supports_rename_tracking())
         tree3, = self._get_revtrees(tree1, [rev4])
-        self.assertEqual(rev4, tree3.get_file_revision('new_' + name))
         expected_graph = {}
-        expected_graph[(file_id, rev1)] = ()
-        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
-        expected_graph[(file_id, rev3)] = ((file_id, rev1),)
-        expected_graph[(file_id, rev4)] = ((file_id, rev2), (file_id, rev3),)
+        if tree1.supports_rename_tracking():
+            self.assertEqual(rev4, tree3.get_file_revision('new_' + name))
+            expected_graph[(file_id, rev1)] = ()
+            expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+            expected_graph[(file_id, rev3)] = ((file_id, rev1),)
+            expected_graph[(file_id, rev4)] = ((file_id, rev2), (file_id, rev3),)
+        else:
+            self.assertEqual(rev2, tree3.get_file_revision('new_' + name))
+            expected_graph[(file_id, rev4)] = ()
         self.assertFileGraph(expected_graph, tree1, (file_id, rev4))
 
     def test_last_modified_revision_after_merge_dir_changes(self):
@@ -726,7 +741,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         os.symlink('target', name)
 
     def make_reference(self, name):
-        tree = self.make_branch_and_tree(name, format='1.9-rich-root')
+        tree = self.make_branch_and_tree(name)
+        if not tree.branch.repository._format.rich_root_data:
+            raise tests.TestNotApplicable(
+                    'format does not support rich roots')
         tree.commit('foo')
         return tree
 
@@ -823,7 +841,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(UnicodeDecodeError,
             branch.repository.get_commit_builder,
             branch, [], branch.get_config_stack(),
-            committer="Erik B\xe5gfors <erik@example.com>")
+            committer=b"Erik B\xe5gfors <erik@example.com>")
 
     def test_stacked_repositories_reject_commit_builder(self):
         # As per bug 375013, committing to stacked repositories is currently

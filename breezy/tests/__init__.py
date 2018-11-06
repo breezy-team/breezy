@@ -30,6 +30,11 @@ import difflib
 import doctest
 import errno
 import functools
+from io import (
+    BytesIO,
+    StringIO,
+    TextIOWrapper,
+    )
 import itertools
 import logging
 import math
@@ -91,7 +96,7 @@ except ImportError:
     # lsprof not available
     pass
 from ..sixish import (
-    BytesIO,
+    int2byte,
     PY3,
     string_types,
     text_type,
@@ -179,11 +184,6 @@ isolated_environ = {
     'NO_PROXY': None,
     'all_proxy': None,
     'ALL_PROXY': None,
-    # Nobody cares about ftp_proxy, FTP_PROXY AFAIK. So far at
-    # least. If you do (care), please update this comment
-    # -- vila 20080401
-    'ftp_proxy': None,
-    'FTP_PROXY': None,
     'BZR_REMOTE_PATH': None,
     # Generally speaking, we don't want apport reporting on crashes in
     # the test envirnoment unless we're specifically testing apport,
@@ -280,10 +280,10 @@ class ExtendedTestResult(testtools.TextTestResult):
                 except IndexError:
                     # XXX: if this is a brand new tree, do the same as if there
                     # is no branch.
-                    revision_id = ''
+                    revision_id = b''
             else:
                 # XXX: If there's no branch, what should we do?
-                revision_id = ''
+                revision_id = b''
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
         self.ui = ui.ui_factory
@@ -458,7 +458,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        self._post_mortem(self._traceback_from_test)
+        self._post_mortem(self._traceback_from_test or err[2])
         super(ExtendedTestResult, self).addError(test, err)
         self.error_count += 1
         self.report_error(test, err)
@@ -471,7 +471,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        self._post_mortem(self._traceback_from_test)
+        self._post_mortem(self._traceback_from_test or err[2])
         super(ExtendedTestResult, self).addFailure(test, err)
         self.failure_count += 1
         self.report_failure(test, err)
@@ -1287,9 +1287,9 @@ class TestCase(testtools.TestCase):
 
         A trailing newline is added if missing to make the strings
         print properly."""
-        if b and b[-1] != '\n':
+        if b and not b.endswith('\n'):
             b += '\n'
-        if a and a[-1] != '\n':
+        if a and not a.endswith('\n'):
             a += '\n'
         difflines = difflib.ndiff(a.splitlines(True),
                                   b.splitlines(True),
@@ -1326,9 +1326,9 @@ class TestCase(testtools.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        if a + '\n' == b:
+        if a + ('\n' if isinstance(a, text_type) else b'\n') == b:
             message = 'first string is missing a final newline.\n'
-        if a == b + '\n':
+        if a == b + ('\n' if isinstance(b, text_type) else b'\n'):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
@@ -1411,7 +1411,7 @@ class TestCase(testtools.TestCase):
     def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack, flags):
-            if '\n' in haystack or len(haystack) > 60:
+            if ('\n' if isinstance(haystack, str) else b'\n') in haystack or len(haystack) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
                         'pattern "%s" not found in\n"""\\\n%s"""\n'
@@ -1529,7 +1529,8 @@ class TestCase(testtools.TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
-        with open(path, 'rb') as f:
+        
+        with open(path, 'r' + ('b' if isinstance(content, bytes) else '')) as f:
             s = f.read()
         self.assertEqualDiff(content, s)
 
@@ -1543,7 +1544,8 @@ class TestCase(testtools.TestCase):
 
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, (str, text_type)):
+        # TODO(jelmer): Clean this up for pad.lv/1696545
+        if not isinstance(path, (bytes, str, text_type)):
             for p in path:
                 self.assertPathExists(p)
         else:
@@ -1915,37 +1917,20 @@ class TestCase(testtools.TestCase):
         if not feature.available():
             raise UnavailableFeature(feature)
 
-    def _run_bzr_autosplit(self, args, retcode, encoding, stdin,
-            working_dir):
-        """Run bazaar command line, splitting up a string command line."""
-        if isinstance(args, string_types):
-            args = shlex.split(args)
-        return self._run_bzr_core(args, retcode=retcode,
-                encoding=encoding, stdin=stdin, working_dir=working_dir,
-                )
-
-    def _run_bzr_core(self, args, retcode, encoding, stdin,
+    def _run_bzr_core(self, args, encoding, stdin, stdout, stderr,
             working_dir):
         # Clear chk_map page cache, because the contents are likely to mask
         # locking errors.
         chk_map.clear_cache()
-        if encoding is None:
-            encoding = osutils.get_user_encoding()
 
         self.log('run brz: %r', args)
 
-        stdout = ui_testing.BytesIOWithEncoding()
-        stderr = ui_testing.BytesIOWithEncoding()
-        stdout.encoding = stderr.encoding = encoding
-
-        # FIXME: don't call into logging here
-        handler = trace.EncodedStreamHandler(
-            stderr, errors="replace", level=logging.INFO)
-        logger = logging.getLogger('')
-        logger.addHandler(handler)
-
-        self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
-        self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
+        if PY3:
+            self._last_cmd_stdout = stdout
+            self._last_cmd_stderr = stderr
+        else:
+            self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
+            self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
 
         old_ui_factory = ui.ui_factory
         ui.ui_factory = ui_testing.TestUIFactory(
@@ -1966,10 +1951,80 @@ class TestCase(testtools.TestCase):
                     _mod_commands.run_bzr_catch_user_errors,
                     args)
         finally:
-            logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
             if cwd is not None:
                 os.chdir(cwd)
+
+        return result
+
+    def run_bzr_raw(self, args, retcode=0, stdin=None, encoding=None,
+                working_dir=None, error_regexes=[]):
+        """Invoke brz, as if it were run from the command line.
+
+        The argument list should not include the brz program name - the
+        first argument is normally the brz command.  Arguments may be
+        passed in three ways:
+
+        1- A list of strings, eg ["commit", "a"].  This is recommended
+        when the command contains whitespace or metacharacters, or
+        is built up at run time.
+
+        2- A single string, eg "add a".  This is the most convenient
+        for hardcoded commands.
+
+        This runs brz through the interface that catches and reports
+        errors, and with logging set to something approximating the
+        default, so that error reporting can be checked.
+
+        This should be the main method for tests that want to exercise the
+        overall behavior of the brz application (rather than a unit test
+        or a functional test of the library.)
+
+        This sends the stdout/stderr results into the test's log,
+        where it may be useful for debugging.  See also run_captured.
+
+        :keyword stdin: A string to be used as stdin for the command.
+        :keyword retcode: The status code the command should return;
+            default 0.
+        :keyword working_dir: The directory to run the command in
+        :keyword error_regexes: A list of expected error messages.  If
+            specified they must be seen in the error output of the command.
+        """
+        if isinstance(args, string_types):
+            args = shlex.split(args)
+
+        if encoding is None:
+            encoding = osutils.get_user_encoding()
+
+        if sys.version_info[0] == 2:
+            wrapped_stdout = stdout = ui_testing.BytesIOWithEncoding()
+            wrapped_stderr = stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
+        else:
+            stdout = BytesIO()
+            stderr = BytesIO()
+            wrapped_stdout = TextIOWrapper(stdout, encoding)
+            wrapped_stderr = TextIOWrapper(stderr, encoding)
+            handler = logging.StreamHandler(wrapped_stderr)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            result = self._run_bzr_core(
+                    args, encoding=encoding, stdin=stdin, stdout=wrapped_stdout,
+                    stderr=wrapped_stderr, working_dir=working_dir,
+                    )
+        finally:
+            logger.removeHandler(handler)
+
+        if PY3:
+            wrapped_stdout.flush()
+            wrapped_stderr.flush()
 
         out = stdout.getvalue()
         err = stderr.getvalue()
@@ -1980,7 +2035,10 @@ class TestCase(testtools.TestCase):
         if retcode is not None:
             self.assertEqual(retcode, result,
                               message='Unexpected return code')
-        return result, out, err
+        self.assertIsInstance(error_regexes, (list, tuple))
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
 
     def run_bzr(self, args, retcode=0, stdin=None, encoding=None,
                 working_dir=None, error_regexes=[]):
@@ -2015,13 +2073,46 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        retcode, out, err = self._run_bzr_autosplit(
-            args=args,
-            retcode=retcode,
-            encoding=encoding,
-            stdin=stdin,
-            working_dir=working_dir,
-            )
+        if isinstance(args, string_types):
+            args = shlex.split(args)
+
+        if encoding is None:
+            encoding = osutils.get_user_encoding()
+
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+            handler = logging.StreamHandler(stream=stderr)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+
+        try:
+            result = self._run_bzr_core(args,
+                    encoding=encoding, stdin=stdin, stdout=stdout,
+                    stderr=stderr, working_dir=working_dir,
+                    )
+        finally:
+            logger.removeHandler(handler)
+
+        out = stdout.getvalue()
+        err = stderr.getvalue()
+        if out:
+            self.log('output:\n%r', out)
+        if err:
+            self.log('errors:\n%r', err)
+        if retcode is not None:
+            self.assertEqual(retcode, result,
+                              message='Unexpected return code')
         self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
@@ -2169,7 +2260,7 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=stderr)
+                                  stderr=stderr, bufsize=0)
         finally:
             restore_environment()
             if cwd is not None:
@@ -2240,8 +2331,8 @@ class TestCase(testtools.TestCase):
         out, err = process.communicate()
 
         if universal_newlines:
-            out = out.replace('\r\n', '\n')
-            err = err.replace('\r\n', '\n')
+            out = out.replace(b'\r\n', b'\n')
+            err = err.replace(b'\r\n', b'\n')
 
         if retcode is not None and retcode != process.returncode:
             if process_args is None:
@@ -2287,12 +2378,18 @@ class TestCase(testtools.TestCase):
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
-                stdout = BytesIO()
+                if sys.version_info[0] == 2:
+                    stdout = BytesIO()
+                else:
+                    stdout = StringIO()
         if stderr is None:
             if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
-                stderr = BytesIO()
+                if sys.version_info[0] == 2:
+                    stderr = BytesIO()
+                else:
+                    stderr = StringIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
@@ -2762,7 +2859,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        with open(filename) as f:
+        with open(filename, 'rb') as f:
             contents = f.read()
         if contents != expect:
             self.log("expected: %r" % expect)
@@ -3274,7 +3371,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                 stream.write("%s\n" % (t.id()))
         return True
     result = runner.run(suite)
-    if strict:
+    if strict and getattr(result, 'wasStrictlySuccessful', False):
         return result.wasStrictlySuccessful()
     else:
         return result.wasSuccessful()
@@ -3487,6 +3584,12 @@ def fork_for_tests(suite):
             try:
                 stream = os.fdopen(c2pwrite, 'wb', 1)
                 workaround_zealous_crypto_random()
+                try:
+                    import coverage
+                except ImportError:
+                    pass
+                else:
+                    coverage.process_startup()
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
@@ -3501,9 +3604,13 @@ def fork_for_tests(suite):
                 # if stream couldn't be created or something else goes wrong.
                 # The traceback is formatted to a string and written in one go
                 # to avoid interleaving lines from multiple failing children.
+                tb = traceback.format_exc()
+                if isinstance(tb, text_type):
+                    tb = tb.encode('utf-8')
                 try:
-                    stream.write(traceback.format_exc())
+                    stream.write(tb)
                 finally:
+                    stream.flush()
                     os._exit(1)
             os._exit(0)
         else:
@@ -3859,7 +3966,28 @@ test_prefix_alias_registry.register('bp', 'breezy.plugins')
 def _test_suite_testmod_names():
     """Return the standard list of test module names to test."""
     return [
-        'breezy.doc',
+        'breezy.git.tests.test_blackbox',
+        'breezy.git.tests.test_builder',
+        'breezy.git.tests.test_branch',
+        'breezy.git.tests.test_cache',
+        'breezy.git.tests.test_dir',
+        'breezy.git.tests.test_fetch',
+        'breezy.git.tests.test_git_remote_helper',
+        'breezy.git.tests.test_mapping',
+        'breezy.git.tests.test_memorytree',
+        'breezy.git.tests.test_object_store',
+        'breezy.git.tests.test_pristine_tar',
+        'breezy.git.tests.test_push',
+        'breezy.git.tests.test_remote',
+        'breezy.git.tests.test_repository',
+        'breezy.git.tests.test_refs',
+        'breezy.git.tests.test_revspec',
+        'breezy.git.tests.test_roundtrip',
+        'breezy.git.tests.test_server',
+        'breezy.git.tests.test_transportgit',
+        'breezy.git.tests.test_unpeel_map',
+        'breezy.git.tests.test_urls',
+        'breezy.git.tests.test_workingtree',
         'breezy.tests.blackbox',
         'breezy.tests.commands',
         'breezy.tests.per_branch',
@@ -3942,7 +4070,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_fifo_cache',
         'breezy.tests.test_filters',
         'breezy.tests.test_filter_tree',
-        'breezy.tests.test_ftp_transport',
         'breezy.tests.test_foreign',
         'breezy.tests.test_generate_docs',
         'breezy.tests.test_generate_ids',
@@ -4144,21 +4271,28 @@ def test_suite(keep_only=None, starting_with=None):
     # modules building their suite with loadTestsFromModuleNames
     suite.addTest(loader.loadTestsFromModuleNames(_test_suite_testmod_names()))
 
-    for mod in _test_suite_modules_to_doctest():
-        if not interesting_module(mod):
-            # No tests to keep here, move along
-            continue
-        try:
-            # note that this really does mean "report only" -- doctest
-            # still runs the rest of the examples
-            doc_suite = IsolatedDocTestSuite(
-                mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
-        except ValueError as e:
-            print('**failed to get doctest for: %s\n%s' % (mod, e))
-            raise
-        if len(doc_suite._tests) == 0:
-            raise errors.BzrError("no doctests found in %s" % (mod,))
-        suite.addTest(doc_suite)
+    if not PY3:
+        suite.addTest(loader.loadTestsFromModuleNames(['breezy.doc']))
+
+        # It's pretty much impossible to write readable doctests that work on
+        # both Python 2 and Python 3 because of their overreliance on
+        # consistent repr() return values.
+        # For now, just run doctests on Python 2 so we now they haven't broken.
+        for mod in _test_suite_modules_to_doctest():
+            if not interesting_module(mod):
+                # No tests to keep here, move along
+                continue
+            try:
+                # note that this really does mean "report only" -- doctest
+                # still runs the rest of the examples
+                doc_suite = IsolatedDocTestSuite(
+                    mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
+            except ValueError as e:
+                print('**failed to get doctest for: %s\n%s' % (mod, e))
+                raise
+            if len(doc_suite._tests) == 0:
+                raise errors.BzrError("no doctests found in %s" % (mod,))
+            suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in _mod_plugin.plugins().items():
@@ -4415,7 +4549,7 @@ def probe_bad_non_ascii(encoding):
     for given encoding.
     """
     for i in range(128, 256):
-        char = chr(i)
+        char = int2byte(i)
         try:
             char.decode(encoding)
         except UnicodeDecodeError:

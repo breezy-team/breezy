@@ -143,18 +143,18 @@ class TestRedirections(tests.TestCase):
         self._check('foo', None, None, ['bar', 'baz'], ['bar', '<foo', 'baz'])
 
     def test_output_redirection(self):
-        self._check(None, 'foo', 'wb+', [], ['>foo'])
-        self._check(None, 'foo', 'wb+', ['bar'], ['bar', '>foo'])
-        self._check(None, 'foo', 'wb+', ['bar'], ['bar', '>', 'foo'])
-        self._check(None, 'foo', 'ab+', [], ['>>foo'])
-        self._check(None, 'foo', 'ab+', ['bar'], ['bar', '>>foo'])
-        self._check(None, 'foo', 'ab+', ['bar'], ['bar', '>>', 'foo'])
+        self._check(None, 'foo', 'w+', [], ['>foo'])
+        self._check(None, 'foo', 'w+', ['bar'], ['bar', '>foo'])
+        self._check(None, 'foo', 'w+', ['bar'], ['bar', '>', 'foo'])
+        self._check(None, 'foo', 'a+', [], ['>>foo'])
+        self._check(None, 'foo', 'a+', ['bar'], ['bar', '>>foo'])
+        self._check(None, 'foo', 'a+', ['bar'], ['bar', '>>', 'foo'])
 
     def test_redirection_syntax_errors(self):
         self._check('', None, None, [], ['<'])
-        self._check(None, '', 'wb+', [], ['>'])
-        self._check(None, '', 'ab+', [], ['>>'])
-        self._check('>', '', 'ab+', [], ['<', '>', '>>'])
+        self._check(None, '', 'w+', [], ['>'])
+        self._check(None, '', 'a+', [], ['>>'])
+        self._check('>', '', 'a+', [], ['<', '>', '>>'])
 
 
 
@@ -323,12 +323,12 @@ class TestCat(script.TestCaseWithTransportAndScript):
     def test_cat_input_to_file(self):
         retcode, out, err = self.run_command(['cat', '>file'],
                                              'content\n', None, None)
-        self.assertFileEqual('content\n', 'file')
+        self.assertFileEqual(b'content\n', 'file')
         self.assertEqual(None, out)
         self.assertEqual(None, err)
         retcode, out, err = self.run_command(['cat', '>>file'],
                                              'more\n', None, None)
-        self.assertFileEqual('content\nmore\n', 'file')
+        self.assertFileEqual(b'content\nmore\n', 'file')
         self.assertEqual(None, out)
         self.assertEqual(None, err)
 
@@ -336,14 +336,14 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.build_tree_contents([('file', b'content\n')])
         retcode, out, err = self.run_command(['cat', 'file', '>file2'],
                                              None, None, None)
-        self.assertFileEqual('content\n', 'file2')
+        self.assertFileEqual(b'content\n', 'file2')
 
     def test_cat_files_to_file(self):
         self.build_tree_contents([('cat', b'cat\n')])
         self.build_tree_contents([('dog', b'dog\n')])
         retcode, out, err = self.run_command(['cat', 'cat', 'dog', '>file'],
                                              None, None, None)
-        self.assertFileEqual('cat\ndog\n', 'file')
+        self.assertFileEqual(b'cat\ndog\n', 'file')
 
     def test_cat_bogus_input_file(self):
         self.run_script("""
@@ -456,12 +456,12 @@ $ echo foo
                                              None, None, None)
         self.assertEqual(None, out)
         self.assertEqual(None, err)
-        self.assertFileEqual('hello\n', 'file')
+        self.assertFileEqual(b'hello\n', 'file')
         retcode, out, err = self.run_command(['echo', 'happy', '>>file'],
                                              None, None, None)
         self.assertEqual(None, out)
         self.assertEqual(None, err)
-        self.assertFileEqual('hello\nhappy\n', 'file')
+        self.assertFileEqual(b'hello\nhappy\n', 'file')
 
     def test_empty_line_in_output_is_respected(self):
         self.run_script("""

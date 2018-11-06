@@ -27,7 +27,7 @@ from .. import (
     tests,
     )
 from ..export import get_root_name
-from ..export.tar_exporter import export_tarball_generator
+from ..archive.tar import tarball_generator
 from ..sixish import (
     BytesIO,
     )
@@ -57,6 +57,17 @@ class TestDirExport(tests.TestCaseWithTransport):
         wt.add(['link'])
         export.export(wt, 'target', format="dir")
         self.assertPathExists('target/link')
+
+    def test_nested_tree(self):
+        wt = self.make_branch_and_tree('.', format='development-subtree')
+        subtree = self.make_branch_and_tree('subtree')
+        self.build_tree(['subtree/file'])
+        subtree.add(['file'])
+        wt.add(['subtree'])
+        export.export(wt, 'target', format="dir")
+        self.assertPathExists('target/subtree')
+        # TODO(jelmer): Once iter_entries_by_dir supports nested tree iteration:
+        # self.assertPathExists('target/subtree/file')
 
     def test_to_existing_empty_dir_success(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
@@ -104,10 +115,10 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('a', 'a-id', 'file', 'content\n'))])
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('a', b'a-id', 'file', b'content\n'))])
         builder.build_snapshot(None, [
-            ('add', ('b', 'b-id', 'file', 'content\n'))])
+            ('add', ('b', b'b-id', 'file', b'content\n'))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()
@@ -135,11 +146,11 @@ class TestDirExport(tests.TestCaseWithTransport):
         a_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
         b_time = time.mktime((1980, 0o1, 0o1, 0, 0, 0, 0, 0, 0))
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('a', b'a-id', 'file', b'content\n'))],
             timestamp=a_time)
         builder.build_snapshot(None, [
-            ('add', ('b', 'b-id', 'file', 'content\n'))],
+            ('add', ('b', b'b-id', 'file', b'content\n'))],
             timestamp=b_time)
         builder.finish_series()
         b = builder.get_branch()
@@ -156,9 +167,9 @@ class TestDirExport(tests.TestCaseWithTransport):
         builder.start_series()
         foo_time = time.mktime((1999, 12, 12, 0, 0, 0, 0, 0, 0))
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('subdir', 'subdir-id', 'directory', '')),
-            ('add', ('subdir/foo.txt', 'foo-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('subdir', b'subdir-id', 'directory', '')),
+            ('add', ('subdir/foo.txt', b'foo-id', 'file', b'content\n'))],
             timestamp=foo_time)
         builder.finish_series()
         b = builder.get_branch()
@@ -217,18 +228,18 @@ class TarExporterTests(tests.TestCaseWithTransport):
             per_file_timestamps=True)
         export.export(wt, 'testdir2/target.tar.gz', format="tgz",
             per_file_timestamps=True)
-        file1 = open('testdir1/target.tar.gz', 'r')
+        file1 = open('testdir1/target.tar.gz', 'rb')
         self.addCleanup(file1.close)
-        file2 = open('testdir1/target.tar.gz', 'r')
+        file2 = open('testdir1/target.tar.gz', 'rb')
         self.addCleanup(file2.close)
         content1 = file1.read()
         content2 = file2.read()
         self.assertEqualDiff(content1, content2)
         # the gzip module doesn't have a way to read back to the original
         # filename, but it's stored as-is in the tarfile.
-        self.assertFalse("testdir1" in content1)
-        self.assertFalse("target.tar.gz" in content1)
-        self.assertTrue("target.tar" in content1)
+        self.assertFalse(b"testdir1" in content1)
+        self.assertFalse(b"target.tar.gz" in content1)
+        self.assertTrue(b"target.tar" in content1)
 
     def test_tbz2(self):
         wt = self.make_branch_and_tree('.')
@@ -239,24 +250,14 @@ class TarExporterTests(tests.TestCaseWithTransport):
         tf = tarfile.open('target.tar.bz2')
         self.assertEqual(["target/a"], tf.getnames())
 
-    def test_xz_stdout(self):
-        wt = self.make_branch_and_tree('.')
-        self.assertRaises(errors.BzrError, export.export, wt, '-',
-            format="txz")
-
     def test_export_tarball_generator(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         wt.add(["a"])
         wt.commit("1", timestamp=42)
         target = BytesIO()
-        ball = tarfile.open(None, "w|", target)
-        wt.lock_read()
-        try:
-            for _ in export_tarball_generator(wt, ball, "bar"):
-                pass
-        finally:
-            wt.unlock()
+        with wt.lock_read():
+            target.writelines(tarball_generator(wt, "bar"))
         # Ball should now be closed.
         target.seek(0)
         ball2 = tarfile.open(None, "r", target)

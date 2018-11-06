@@ -40,7 +40,7 @@ class BundleSerializerV09(BundleSerializerV08):
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
-        f.write(_get_bundle_header('0.9') + '#\n')
+        f.write(_get_bundle_header('0.9') + b'#\n')
 
     def _testament_sha1(self, revision_id):
         return StrictTestament3.from_revision(self.source,

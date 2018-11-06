@@ -23,6 +23,10 @@ from .. import osutils, urlutils, win32utils
 from ..errors import (
     PathNotChild,
     )
+from ..sixish import (
+    text_type,
+    PY3,
+    )
 from . import features, TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -122,11 +126,12 @@ class TestUrlToPath(TestCase):
         eq('http://host/~bob%2525-._',
                 normalize_url(u'http://host/%7Ebob%2525%2D%2E%5F'))
 
-        # Normalize verifies URLs when they are not unicode
-        # (indicating they did not come from the user)
-        self.assertRaises(urlutils.InvalidURL, normalize_url,
-                'http://host/\xb5')
-        self.assertRaises(urlutils.InvalidURL, normalize_url, 'http://host/ ')
+        if not PY3:
+            # On Python 2, normalize verifies URLs when they are not unicode
+            # (indicating they did not come from the user)
+            self.assertRaises(urlutils.InvalidURL, normalize_url,
+                    b'http://host/\xb5')
+            self.assertRaises(urlutils.InvalidURL, normalize_url, b'http://host/ ')
 
     def test_url_scheme_re(self):
         # Test paths that may be URLs
@@ -368,7 +373,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, unicode))
+        self.assertTrue(isinstance(result, str))
 
     def test_posix_local_path_from_url(self):
         from_url = urlutils._posix_local_path_from_url
@@ -411,7 +416,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, unicode))
+        self.assertIsInstance(result, str)
 
     def test_win32_unc_path_to_url(self):
         self.requireFeature(features.win32_feature)
@@ -427,7 +432,7 @@ class TestUrlToPath(TestCase):
             raise TestSkipped("local encoding cannot handle unicode")
 
         self.assertEqual('file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
-        self.assertFalse(isinstance(result, unicode))
+        self.assertFalse(isinstance(result, text_type))
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
@@ -610,7 +615,7 @@ class TestUrlToPath(TestCase):
         # Test that URLs are converted to nice unicode strings for display
         def test(expected, url, encoding='utf-8'):
             disp_url = urlutils.unescape_for_display(url, encoding=encoding)
-            self.assertIsInstance(disp_url, unicode)
+            self.assertIsInstance(disp_url, text_type)
             self.assertEqual(expected, disp_url)
 
         test('http://foo', 'http://foo')
@@ -650,7 +655,7 @@ class TestUrlToPath(TestCase):
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
-        self.assertFalse(isinstance(urlutils.escape(u'\xe5'), unicode))
+        self.assertIsInstance(urlutils.escape(u'\xe5'), str)
 
     def test_escape_tildes(self):
         self.assertEqual('~foo', urlutils.escape('~foo'))
@@ -659,9 +664,13 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
 
-        self.assertRaises(urlutils.InvalidURL, urlutils.unescape, u'\xe5')
-        self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '\xe5')
-        self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '%E5')
+        if not PY3:
+            self.assertRaises(urlutils.InvalidURL, urlutils.unescape, u'\xe5')
+        self.assertRaises((TypeError, urlutils.InvalidURL), urlutils.unescape, b'\xe5')
+        if not PY3:
+            self.assertRaises(urlutils.InvalidURL, urlutils.unescape, '%E5')
+        else:
+            self.assertEqual('\xe5', urlutils.unescape('%C3%A5'))
 
     def test_escape_unescape(self):
         self.assertEqual(u'\xe5', urlutils.unescape(urlutils.escape(u'\xe5')))
@@ -924,6 +933,15 @@ class TestURL(TestCase):
         self.assertIsNot(url, url3)
         self.assertEqual(url, url3)
 
+    def test_parse_empty_port(self):
+        parsed = urlutils.URL.from_string('http://example.com:/one')
+        self.assertEqual('http', parsed.scheme)
+        self.assertIs(None, parsed.user)
+        self.assertIs(None, parsed.password)
+        self.assertEqual('example.com', parsed.host)
+        self.assertIs(None, parsed.port)
+        self.assertEqual('/one', parsed.path)
+
 
 class TestFileRelpath(TestCase):
 
@@ -1042,5 +1060,12 @@ class QuoteTests(TestCase):
 
     def test_unquote(self):
         self.assertEqual('%', urlutils.unquote('%25'))
-        self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
+        if PY3:
+            self.assertEqual('\xe5', urlutils.unquote('%C3%A5'))
+        else:
+            self.assertEqual('\xc3\xa5', urlutils.unquote('%C3%A5'))
         self.assertEqual(u"\xe5", urlutils.unquote(u'\xe5'))
+
+    def test_unquote_to_bytes(self):
+        self.assertEqual(b'%', urlutils.unquote_to_bytes('%25'))
+        self.assertEqual(b'\xc3\xa5', urlutils.unquote_to_bytes('%C3%A5'))

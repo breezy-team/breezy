@@ -271,7 +271,7 @@ def get_home_location():
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
-    return unicode('C:/')
+    return u'C:/'
 
 
 def get_user_name():

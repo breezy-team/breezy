@@ -123,6 +123,7 @@ def load_tests(loader, standard_tests, pattern):
         'basis_inventory',
         'basis_tree',
         'break_lock',
+        'canonical_path',
         'changes_from',
         'check',
         'check_state',

@@ -69,89 +69,6 @@ class InventoryTree(Tree):
     private to external API users.
     """
 
-    def get_canonical_inventory_paths(self, paths):
-        """Like get_canonical_inventory_path() but works on multiple items.
-
-        :param paths: A sequence of paths relative to the root of the tree.
-        :return: A list of paths, with each item the corresponding input path
-        adjusted to account for existing elements that match case
-        insensitively.
-        """
-        with self.lock_read():
-            return list(self._yield_canonical_inventory_paths(paths))
-
-    def get_canonical_inventory_path(self, path):
-        """Returns the first inventory item that case-insensitively matches path.
-
-        If a path matches exactly, it is returned. If no path matches exactly
-        but more than one path matches case-insensitively, it is implementation
-        defined which is returned.
-
-        If no path matches case-insensitively, the input path is returned, but
-        with as many path entries that do exist changed to their canonical
-        form.
-
-        If you need to resolve many names from the same tree, you should
-        use get_canonical_inventory_paths() to avoid O(N) behaviour.
-
-        :param path: A paths relative to the root of the tree.
-        :return: The input path adjusted to account for existing elements
-        that match case insensitively.
-        """
-        with self.lock_read():
-            return next(self._yield_canonical_inventory_paths([path]))
-
-    def _yield_canonical_inventory_paths(self, paths):
-        for path in paths:
-            # First, if the path as specified exists exactly, just use it.
-            if self.path2id(path) is not None:
-                yield path
-                continue
-            # go walkin...
-            cur_id = self.get_root_id()
-            cur_path = ''
-            bit_iter = iter(path.split("/"))
-            for elt in bit_iter:
-                lelt = elt.lower()
-                new_path = None
-                try:
-                    for child in self.iter_child_entries(self.id2path(cur_id), cur_id):
-                        try:
-                            # XXX: it seem like if the child is known to be in the
-                            # tree, we shouldn't need to go from its id back to
-                            # its path -- mbp 2010-02-11
-                            #
-                            # XXX: it seems like we could be more efficient
-                            # by just directly looking up the original name and
-                            # only then searching all children; also by not
-                            # chopping paths so much. -- mbp 2010-02-11
-                            child_base = os.path.basename(self.id2path(child.file_id))
-                            if (child_base == elt):
-                                # if we found an exact match, we can stop now; if
-                                # we found an approximate match we need to keep
-                                # searching because there might be an exact match
-                                # later.  
-                                cur_id = child.file_id
-                                new_path = osutils.pathjoin(cur_path, child_base)
-                                break
-                            elif child_base.lower() == lelt:
-                                cur_id = child.file_id
-                                new_path = osutils.pathjoin(cur_path, child_base)
-                        except errors.NoSuchId:
-                            # before a change is committed we can see this error...
-                            continue
-                except errors.NotADirectory:
-                    pass
-                if new_path:
-                    cur_path = new_path
-                else:
-                    # got to the end of this directory and no entries matched.
-                    # Return what matched so far, plus the rest as specified.
-                    cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
-                    break
-            yield cur_path
-        # all done.
-
     def _get_root_inventory(self):
         return self._inventory
 
@@ -222,19 +139,26 @@ class InventoryTree(Tree):
         with self.lock_read():
             return self._path2inv_file_id(path)[1]
 
-    def _path2inv_file_id(self, path, file_id=None):
+    def _path2ie(self, path):
+        """Lookup an inventory entry by path.
+
+        :param path: Path to look up
+        :return: InventoryEntry
+        """
+        ie = self.root_inventory.get_entry_by_path(path)
+        if ie is None:
+            raise errors.NoSuchFile(path)
+        return ie
+
+    def _path2inv_file_id(self, path):
         """Lookup a inventory and inventory file id by path.
 
         :param path: Path to look up
-        :param file_id: Optional file_id matching path, if known.
         :return: tuple with inventory and inventory file id
         """
-        if file_id is not None:
-            inv, inv_file_id = self._unpack_file_id(file_id)
-        else:
-            # FIXME: Support nested trees
-            inv = self.root_inventory
-            inv_file_id = self.root_inventory.path2id(path)
+        # FIXME: Support nested trees
+        inv = self.root_inventory
+        inv_file_id = self.root_inventory.path2id(path)
         return inv, inv_file_id
 
     def id2path(self, file_id):
@@ -259,27 +183,13 @@ class InventoryTree(Tree):
     def all_versioned_paths(self):
         return {path for path, entry in self.iter_entries_by_dir()}
 
-    def filter_unversioned_files(self, paths):
-        """Filter out paths that are versioned.
-
-        :return: set of paths.
-        """
-        # NB: we specifically *don't* call self.has_filename, because for
-        # WorkingTrees that can indicate files that exist on disk but that
-        # are not versioned.
-        return set((p for p in paths if self.path2id(p) is None))
-
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
         The order that they are yielded is:
 
         See Tree.iter_entries_by_dir for details.
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_files that have been requested. This has no
-            impact if specific_files is None.
         """
         with self.lock_read():
             if specific_files is not None:
@@ -294,32 +204,27 @@ class InventoryTree(Tree):
                 inventory_file_ids = None
             # FIXME: Handle nested trees
             return self.root_inventory.iter_entries_by_dir(
-                specific_file_ids=inventory_file_ids, yield_parents=yield_parents)
+                specific_file_ids=inventory_file_ids)
 
     def iter_child_entries(self, path, file_id=None):
         with self.lock_read():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
-            try:
-                ie = inv.get_entry(inv_file_id)
-            except errors.NoSuchId:
-                raise errors.NoSuchFile(path)
-            else:
-                if ie.kind != 'directory':
-                    raise errors.NotADirectory(path)
-                return iter(viewvalues(ie.children))
+            ie = self._path2ie(path)
+            if ie.kind != 'directory':
+                raise errors.NotADirectory(path)
+            return iter(viewvalues(ie.children))
 
     def _get_plan_merge_data(self, file_id, other, base):
         from . import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(
-                self.id2path(file_id), file_id, vf, 'this:')
+                self.id2path(file_id), file_id, vf, b'this:')
         last_revision_b = other._get_file_revision(
-                other.id2path(file_id), file_id, vf, 'other:')
+                other.id2path(file_id), file_id, vf, b'other:')
         if base is None:
             last_revision_base = None
         else:
             last_revision_base = base._get_file_revision(
-                    base.id2path(file_id), file_id, vf, 'base:')
+                    base.id2path(file_id), file_id, vf, b'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
     def plan_file_merge(self, file_id, other, base=None):
@@ -463,7 +368,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
     def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
         if not self.case_sensitive:
-            path = self.get_canonical_inventory_path(path)
+            path = self.get_canonical_path(path)
         return path
 
     def smart_add(self, file_list, recurse=True, action=None, save=True):
@@ -805,11 +710,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         self._inventory = inv
 
     def get_file_mtime(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        try:
-            ie = inv.get_entry(inv_file_id)
-        except errors.NoSuchId:
-            raise errors.NoSuchFile(path)
+        ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:
@@ -817,27 +718,19 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return revision.timestamp
 
     def get_file_size(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv.get_entry(inv_file_id).text_size
+        return self._path2ie(path).text_size
 
     def get_file_sha1(self, path, file_id=None, stat_value=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv.get_entry(inv_file_id)
+        ie = self._path2ie(path)
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
     def get_file_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        try:
-            ie = inv.get_entry(inv_file_id)
-        except errors.NoSuchId:
-            raise errors.NoSuchFile(path)
-        return ie.revision
+        return self._path2ie(path).revision
 
     def is_executable(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv.get_entry(inv_file_id)
+        ie = self._path2ie(path)
         if ie.kind != "file":
             return False
         return ie.executable
@@ -863,32 +756,25 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        ie = inv.get_entry(inv_file_id)
         # Inventories store symlink targets in unicode
-        return ie.symlink_target
+        return self._path2ie(path).symlink_target
 
     def get_reference_revision(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        return inv.get_entry(inv_file_id).reference_revision
+        return self._path2ie(path).reference_revision
 
     def get_root_id(self):
         if self.root_inventory.root:
             return self.root_inventory.root.file_id
 
     def kind(self, path, file_id=None):
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        try:
-            return inv.get_entry(inv_file_id).kind
-        except errors.NoSuchId:
-            raise errors.NoSuchFile(path)
+        return self._path2ie(path).kind
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
-        inv, file_id = self._path2inv_file_id(path)
-        if file_id is None:
+        try:
+            entry = self._path2ie(path)
+        except errors.NoSuchFile:
             return ('missing', None, None, None)
-        entry = inv.get_entry(file_id)
         kind = entry.kind
         if kind == 'file':
             return (kind, entry.text_size, entry.executable, entry.text_sha1)

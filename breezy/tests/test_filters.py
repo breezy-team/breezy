@@ -35,7 +35,7 @@ from . import TestCase, TestCaseInTempDir
 def _swapcase(chunks, context=None):
     return [s.swapcase() for s in chunks]
 def _addjunk(chunks):
-    return ['junk\n'] + [s for s in chunks]
+    return [b'junk\n'] + [s for s in chunks]
 def _deljunk(chunks, context):
     return [s for s in chunks[1:]]
 _stack_1 = [
@@ -47,9 +47,9 @@ _stack_2 = [
     ]
 
 # sample data
-_sample_external = ['Hello\n', 'World\n']
-_internal_1 = ['hELLO\n', 'wORLD\n']
-_internal_2 = ['junk\n', 'hELLO\n', 'wORLD\n']
+_sample_external = [b'Hello\n', b'World\n']
+_internal_1 = [b'hELLO\n', b'wORLD\n']
+_internal_2 = [b'junk\n', b'hELLO\n', b'wORLD\n']
 
 
 class TestContentFilterContext(TestCase):
@@ -67,16 +67,16 @@ class TestFilteredInput(TestCase):
 
     def test_filtered_input_file(self):
         # test an empty stack returns the same result
-        external = ''.join(_sample_external)
+        external = b''.join(_sample_external)
         f = BytesIO(external)
         self.assertEqual(external, filtered_input_file(f, None).read())
         # test a single item filter stack
         f = BytesIO(external)
-        expected = ''.join(_internal_1)
+        expected = b''.join(_internal_1)
         self.assertEqual(expected, filtered_input_file(f, _stack_1).read())
         # test a multi item filter stack
         f = BytesIO(external)
-        expected = ''.join(_internal_2)
+        expected = b''.join(_internal_2)
         self.assertEqual(expected, filtered_input_file(f, _stack_2).read())
 
 
@@ -98,11 +98,10 @@ class TestFilteredSha(TestCaseInTempDir):
 
     def test_filtered_size_sha(self):
         # check that the size and sha matches what's expected
-        text = 'Foo Bar Baz\n'
-        a = open('a', 'wb')
-        a.write(text)
-        a.close()
-        post_filtered_content = ''.join(_swapcase([text], None))
+        text = b'Foo Bar Baz\n'
+        with open('a', 'wb') as a:
+            a.write(text)
+        post_filtered_content = b''.join(_swapcase([text], None))
         expected_len = len(post_filtered_content)
         expected_sha = sha_string(post_filtered_content)
         self.assertEqual((expected_len, expected_sha),

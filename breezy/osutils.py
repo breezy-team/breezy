@@ -155,7 +155,10 @@ def minimum_path_selection(paths):
         return set(paths)
 
     def sort_key(path):
-        return path.split('/')
+        if isinstance(path, bytes):
+            return path.split(b'/')
+        else:
+            return path.split('/')
     sorted_paths = sorted(list(paths), key=sort_key)
 
     search_paths = [sorted_paths[0]]
@@ -384,12 +387,12 @@ def _win32_fixdrive(path):
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -397,7 +400,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -636,11 +639,15 @@ def is_inside(dir, fname):
     if dir == fname:
         return True
 
-    if dir == '':
+    if dir in ('', b''):
         return True
 
-    if dir[-1] != '/':
-        dir += '/'
+    if isinstance(dir, bytes):
+        if not dir.endswith(b'/'):
+            dir += b'/'
+    else:
+        if not dir.endswith('/'):
+            dir += '/'
 
     return fname.startswith(dir)
 
@@ -819,7 +826,7 @@ def compare_files(a, b):
         bi = b.read(BUFSIZE)
         if ai != bi:
             return False
-        if ai == '':
+        if not ai:
             return True
 
 
@@ -1021,13 +1028,16 @@ def splitpath(p):
     """Turn string into list of parts."""
     # split on either delimiter because people might use either on
     # Windows
-    ps = re.split(r'[\\/]', p)
+    if isinstance(p, bytes):
+        ps = re.split(b'[\\\\/]', p)
+    else:
+        ps = re.split(r'[\\/]', p)
 
     rps = []
     for f in ps:
-        if f == '..':
+        if f in ('..', b'..'):
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif (f == '.') or (f == ''):
+        elif f in ('.', '', b'.', b''):
             pass
         else:
             rps.append(f)
@@ -1110,7 +1120,7 @@ def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     # Trivially convert a fulltext into a 'chunked' representation, and let
     # chunks_to_lines do the heavy lifting.
-    if isinstance(s, str):
+    if isinstance(s, bytes):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:
@@ -1454,13 +1464,17 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', text_type(path)), True
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    return unicodedata.normalize('NFC', path), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', text_type(path))
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    normalized = unicodedata.normalize('NFC', path)
     return normalized, normalized == path
 
 
@@ -1884,6 +1898,8 @@ class UnicodeDirReader(DirReader):
         See DirReader.read_dir for details.
         """
         _utf8_encode = self._utf8_encode
+        _fs_decode = lambda s: s.decode(_fs_enc)
+        _fs_encode = lambda s: s.encode(_fs_enc)
         _lstat = os.lstat
         _listdir = os.listdir
         _kind_from_mode = file_kind_from_stat_mode
@@ -1896,17 +1912,18 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        for name_native in _listdir(top.encode('utf-8')):
             try:
-                name_utf8 = _utf8_encode(name)[0]
+                name = _fs_decode(name_native)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    _utf8_encode(relprefix)[0] + name, _fs_enc)
+                    relprefix + name_native, _fs_enc)
+            name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        return dirblock
+        return sorted(dirblock)
 
 
 def copy_tree(from_path, to_path, handlers={}):
@@ -1988,7 +2005,7 @@ def compare_paths_prefix_order(path_a, path_b):
     """Compare path_a and path_b to generate the same order walkdirs uses."""
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
-    return cmp(key_a, key_b)
+    return (key_a > key_b) - (key_a < key_b)
 
 
 _cached_user_encoding = None
@@ -2084,21 +2101,21 @@ def read_bytes_from_socket(sock, report_activity=None,
     """
     while True:
         try:
-            bytes = sock.recv(max_read_size)
+            data = sock.recv(max_read_size)
         except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
-                return ""
+                return b""
             elif eno == errno.EINTR:
                 # Retry the interrupted recv.
                 continue
             raise
         else:
             if report_activity is not None:
-                report_activity(len(bytes), 'read')
-            return bytes
+                report_activity(len(data), 'read')
+            return data
 
 
 def recv_all(socket, count):
@@ -2111,10 +2128,10 @@ def recv_all(socket, count):
 
     This isn't optimized and is intended mostly for use in testing.
     """
-    b = ''
+    b = b''
     while len(b) < count:
         new = read_bytes_from_socket(socket, None, count - len(b))
-        if new == '':
+        if new == b'':
             break # eof
         b += new
     return b
@@ -2170,7 +2187,8 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error as err:
+        except socket.error as e:
+            err = e
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()
@@ -2221,11 +2239,8 @@ def resource_string(package, resource_name):
     base = dirname(breezy.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    f = file(pathjoin(base, resource_relpath), "rU")
-    try:
+    with open(pathjoin(base, resource_relpath), "rt") as f:
         return f.read()
-    finally:
-        f.close()
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
@@ -2369,6 +2384,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
 
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):

@@ -468,7 +468,7 @@ class RevisionSpec_revid(RevisionIDSpec):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
-        if isinstance(self.spec, unicode):
+        if isinstance(self.spec, text_type):
             return cache_utf8.encode(self.spec)
         return self.spec
 

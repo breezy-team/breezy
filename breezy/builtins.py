@@ -23,6 +23,7 @@ import os
 import sys
 
 import breezy.bzr
+import breezy.git
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -40,6 +41,7 @@ from breezy import (
     config as _mod_config,
     errors,
     globbing,
+    gpg,
     hooks,
     lazy_regex,
     log,
@@ -49,7 +51,6 @@ from breezy import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
-    static_tuple,
     symbol_versioning,
     timestamp,
     transport,
@@ -57,10 +58,6 @@ from breezy import (
     ui,
     urlutils,
     views,
-    gpg,
-    )
-from breezy.bzr import (
-    btree_index,
     )
 from breezy.branch import Branch
 from breezy.conflicts import ConflictList
@@ -88,6 +85,7 @@ from .revisionspec import (
     )
 from .sixish import (
     BytesIO,
+    PY3,
     text_type,
     viewitems,
     viewvalues,
@@ -471,7 +469,7 @@ class cmd_cat_revision(Command):
                     self.print_revision(revisions, revision_id)
                 except errors.NoSuchRevision:
                     msg = gettext("The repository {0} contains no revision {1}.").format(
-                        b.repository.base, revision_id)
+                        b.repository.base, revision_id.decode('utf-8'))
                     raise errors.BzrCommandError(msg)
             elif revision is not None:
                 for rev in revision:
@@ -480,90 +478,6 @@ class cmd_cat_revision(Command):
                             gettext('You cannot specify a NULL revision.'))
                     rev_id = rev.as_revision_id(b)
                     self.print_revision(revisions, rev_id)
-
-
-class cmd_dump_btree(Command):
-    __doc__ = """Dump the contents of a btree index file to stdout.
-
-    PATH is a btree index file, it can be any URL. This includes things like
-    .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
-
-    By default, the tuples stored in the index file will be displayed. With
-    --raw, we will uncompress the pages, but otherwise display the raw bytes
-    stored in the index.
-    """
-
-    # TODO: Do we want to dump the internal nodes as well?
-    # TODO: It would be nice to be able to dump the un-parsed information,
-    #       rather than only going through iter_all_entries. However, this is
-    #       good enough for a start
-    hidden = True
-    encoding_type = 'exact'
-    takes_args = ['path']
-    takes_options = [Option('raw', help='Write the uncompressed bytes out,'
-                                        ' rather than the parsed tuples.'),
-                    ]
-
-    def run(self, path, raw=False):
-        dirname, basename = osutils.split(path)
-        t = transport.get_transport(dirname)
-        if raw:
-            self._dump_raw_bytes(t, basename)
-        else:
-            self._dump_entries(t, basename)
-
-    def _get_index_and_bytes(self, trans, basename):
-        """Create a BTreeGraphIndex and raw bytes."""
-        bt = btree_index.BTreeGraphIndex(trans, basename, None)
-        bytes = trans.get_bytes(basename)
-        bt._file = BytesIO(bytes)
-        bt._size = len(bytes)
-        return bt, bytes
-
-    def _dump_raw_bytes(self, trans, basename):
-        import zlib
-
-        # We need to parse at least the root node.
-        # This is because the first page of every row starts with an
-        # uncompressed header.
-        bt, bytes = self._get_index_and_bytes(trans, basename)
-        for page_idx, page_start in enumerate(range(0, len(bytes),
-                                                    btree_index._PAGE_SIZE)):
-            page_end = min(page_start + btree_index._PAGE_SIZE, len(bytes))
-            page_bytes = bytes[page_start:page_end]
-            if page_idx == 0:
-                self.outf.write('Root node:\n')
-                header_end, data = bt._parse_header_from_bytes(page_bytes)
-                self.outf.write(page_bytes[:header_end])
-                page_bytes = data
-            self.outf.write('\nPage %d\n' % (page_idx,))
-            if len(page_bytes) == 0:
-                self.outf.write('(empty)\n');
-            else:
-                decomp_bytes = zlib.decompress(page_bytes)
-                self.outf.write(decomp_bytes)
-                self.outf.write('\n')
-
-    def _dump_entries(self, trans, basename):
-        try:
-            st = trans.stat(basename)
-        except errors.TransportNotPossible:
-            # We can't stat, so we'll fake it because we have to do the 'get()'
-            # anyway.
-            bt, _ = self._get_index_and_bytes(trans, basename)
-        else:
-            bt = btree_index.BTreeGraphIndex(trans, basename, st.st_size)
-        for node in bt.iter_all_entries():
-            # Node is made up of:
-            # (index, key, value, [references])
-            try:
-                refs = node[3]
-            except IndexError:
-                refs_as_tuples = None
-            else:
-                refs_as_tuples = static_tuple.as_tuples(refs)
-            as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
-            self.outf.write('%s\n' % (as_tuple,))
 
 
 class cmd_remove_tree(Command):
@@ -758,11 +672,11 @@ class cmd_revision_info(Command):
             except errors.NoSuchRevision:
                 revno = '???'
             maxlen = max(maxlen, len(revno))
-            revinfos.append([revno, revision_id])
+            revinfos.append((revno, revision_id))
 
         self.cleanup_now()
-        for ri in revinfos:
-            self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
+        for revno, revid in revinfos:
+            self.outf.write('%*s %s\n' % (maxlen, revno, revid.decode('utf-8')))
 
 
 class cmd_add(Command):
@@ -975,7 +889,7 @@ class cmd_inventory(Command):
             if path == "":
                 continue
             if show_ids:
-                self.outf.write('%-50s %s\n' % (path, entry.file_id))
+                self.outf.write('%-50s %s\n' % (path, entry.file_id.decode('utf-8')))
             else:
                 self.outf.write(path)
                 self.outf.write('\n')
@@ -1035,7 +949,7 @@ class cmd_cp(Command):
                         % (src, dst, src))
             if src_kind is None:
                 raise errors.BzrCommandError(
-                    gettext('Could not copy %s => %s . %s is not versioned\.'
+                    gettext('Could not copy %s => %s . %s is not versioned\\.'
                         % (src, dst, src)))
             if src_kind == 'directory':
                 raise errors.BzrCommandError(
@@ -1129,7 +1043,7 @@ class cmd_mv(Command):
                 into_existing = False
             else:
                 # 'fix' the case of a potential 'from'
-                from_path = tree.get_canonical_inventory_path(rel_names[0])
+                from_path = tree.get_canonical_path(rel_names[0])
                 if (not osutils.lexists(names_list[0]) and
                     tree.is_versioned(from_path) and
                     tree.stored_kind(from_path) == "directory"):
@@ -1139,7 +1053,7 @@ class cmd_mv(Command):
             # move into existing directory
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
-            rel_names = tree.get_canonical_inventory_paths(rel_names)
+            rel_names = list(tree.get_canonical_paths(rel_names))
             for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 if not is_quiet():
                     self.outf.write("%s => %s\n" % (src, dest))
@@ -1151,13 +1065,13 @@ class cmd_mv(Command):
 
             # for cicp file-systems: the src references an existing inventory
             # item:
-            src = tree.get_canonical_inventory_path(rel_names[0])
+            src = tree.get_canonical_path(rel_names[0])
             # Find the canonical version of the destination:  In all cases, the
             # parent of the target must be in the inventory, so we fetch the
             # canonical version from there (we do not always *use* the
             # canonicalized tail portion - we may be attempting to rename the
             # case of the tail)
-            canon_dest = tree.get_canonical_inventory_path(rel_names[1])
+            canon_dest = tree.get_canonical_path(rel_names[1])
             dest_parent = osutils.dirname(canon_dest)
             spec_tail = osutils.basename(rel_names[1])
             # For a CICP file-system, we need to avoid creating 2 inventory
@@ -1401,6 +1315,8 @@ class cmd_push(Command):
                " that support it."),
         Option('overwrite-tags',
               help="Overwrite tags only."),
+        Option('lossy', help="Allow lossy push, i.e. dropping metadata "
+                             "that can't be represented in the target.")
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1409,7 +1325,7 @@ class cmd_push(Command):
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
         stacked=False, strict=None, no_tree=False,
-        overwrite_tags=False):
+        overwrite_tags=False, lossy=False):
         from .push import _show_push_branch
 
         if overwrite:
@@ -1476,7 +1392,8 @@ class cmd_push(Command):
         _show_push_branch(br_from, revision_id, location, self.outf,
             verbose=verbose, overwrite=overwrite, remember=remember,
             stacked_on=stacked_on, create_prefix=create_prefix,
-            use_existing_dir=use_existing_dir, no_tree=no_tree)
+            use_existing_dir=use_existing_dir, no_tree=no_tree,
+            lossy=lossy)
 
 
 class cmd_branch(Command):
@@ -1543,9 +1460,7 @@ class cmd_branch(Command):
             # RBC 20060209
             revision_id = br_from.last_revision()
         if to_location is None:
-            to_location = getattr(br_from, "name", None)
-            if not to_location:
-                to_location = urlutils.derive_to_location(from_location)
+            to_location = urlutils.derive_to_location(from_location)
         to_transport = transport.get_transport(to_location)
         try:
             to_transport.mkdir('.')
@@ -1666,7 +1581,7 @@ class cmd_branches(Command):
                 else:
                     prefix = " "
                 self.outf.write("%s %s\n" % (
-                    prefix, name.encode(self.outf.encoding)))
+                    prefix, (name if PY3 else name.encode(self.outf.encoding))))
 
 
 class cmd_checkout(Command):
@@ -1998,11 +1913,11 @@ class cmd_file_id(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        i = tree.path2id(relpath)
-        if i is None:
+        file_id = tree.path2id(relpath)
+        if file_id is None:
             raise errors.NotVersionedError(filename)
         else:
-            self.outf.write(i + '\n')
+            self.outf.write(file_id.decode('utf-8') + '\n')
 
 
 class cmd_file_path(Command):
@@ -2107,7 +2022,7 @@ class cmd_ancestry(Command):
         for revision_id in reversed(revisions):
             if _mod_revision.is_null(revision_id):
                 continue
-            self.outf.write(revision_id + '\n')
+            self.outf.write(revision_id.decode('utf-8') + '\n')
 
 
 class cmd_init(Command):
@@ -2141,10 +2056,10 @@ class cmd_init(Command):
                     'if it does not already exist.'),
          RegistryOption('format',
                 help='Specify a format for this branch. '
-                'See "help formats".',
+                'See "help formats" for a full list.',
                 lazy_registry=('breezy.controldir', 'format_registry'),
                 converter=lambda name: controldir.format_registry.make_controldir(name),
-                value_switches=False,
+                value_switches=True,
                 title="Branch format",
                 ),
          Option('append-revisions-only',
@@ -2263,7 +2178,7 @@ class cmd_init_repository(Command):
                                  ' "brz help formats" for details.',
                             lazy_registry=('breezy.controldir', 'format_registry'),
                             converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=False, title='Repository format'),
+                            value_switches=True, title='Repository format'),
                      Option('no-trees',
                              help='Branches in the repository will default to'
                                   ' not having a working tree.'),
@@ -2279,12 +2194,17 @@ class cmd_init_repository(Command):
 
         to_transport = transport.get_transport(location)
 
+        if format.fixed_components:
+            repo_format_name = None
+        else:
+            repo_format_name = format.repository_format.get_format_string()
+
         (repo, newdir, require_stacking, repository_policy) = (
             format.initialize_on_transport_ex(to_transport,
             create_prefix=True, make_working_trees=not no_trees,
             shared_repo=True, force_new_repo=True,
             use_existing_dir=True,
-            repo_format_name=format.repository_format.get_format_string()))
+            repo_format_name=repo_format_name))
         if not is_quiet():
             from .info import show_bzrdir_info
             show_bzrdir_info(newdir, verbose=0, outfile=self.outf)
@@ -3052,7 +2972,8 @@ class cmd_ls(Command):
             Option('ignored', short_name='i',
                 help='Print ignored files.'),
             Option('kind', short_name='k',
-                   help='List entries of a particular kind: file, directory, symlink.',
+                   help=('List entries of a particular kind: file, '
+                         'directory, symlink, tree-reference.'),
                    type=text_type),
             'null',
             'show-ids',
@@ -3064,7 +2985,7 @@ class cmd_ls(Command):
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None, directory=None):
 
-        if kind and kind not in ('file', 'directory', 'symlink'):
+        if kind and kind not in ('file', 'directory', 'symlink', 'tree-reference'):
             raise errors.BzrCommandError(gettext('invalid kind specified'))
 
         if verbose and null:
@@ -3129,19 +3050,19 @@ class cmd_ls(Command):
             if verbose:
                 outstring = '%-8s %s' % (fc, outstring)
                 if show_ids and fid is not None:
-                    outstring = "%-50s %s" % (outstring, fid)
+                    outstring = "%-50s %s" % (outstring, fid.decode('utf-8'))
                 self.outf.write(outstring + '\n')
             elif null:
                 self.outf.write(fp + '\0')
                 if show_ids:
                     if fid is not None:
-                        self.outf.write(fid)
+                        self.outf.write(fid.decode('utf-8'))
                     self.outf.write('\0')
                 self.outf.flush()
             else:
                 if show_ids:
                     if fid is not None:
-                        my_id = fid
+                        my_id = fid.decode('utf-8')
                     else:
                         my_id = ''
                     self.outf.write('%-50s %s\n' % (outstring, my_id))
@@ -3337,7 +3258,7 @@ class cmd_lookup_revision(Command):
             raise errors.BzrCommandError(gettext("not a valid revision-number: %r")
                                          % revno)
         revid = WorkingTree.open_containing(directory)[0].branch.get_rev_id(revno)
-        self.outf.write("%s\n" % revid)
+        self.outf.write("%s\n" % revid.decode('utf-8'))
 
 
 class cmd_export(Command):
@@ -3369,6 +3290,7 @@ class cmd_export(Command):
       =================       =========================
     """
     encoding = 'exact'
+    encoding_type = 'exact'
     takes_args = ['dest', 'branch_or_subdir?']
     takes_options = ['directory',
         Option('format',
@@ -3390,7 +3312,7 @@ class cmd_export(Command):
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
         root=None, filters=False, per_file_timestamps=False, uncommitted=False,
         directory=u'.'):
-        from .export import export
+        from .export import export, guess_format, get_root_name
 
         if branch_or_subdir is None:
             branch_or_subdir = directory
@@ -3406,9 +3328,28 @@ class cmd_export(Command):
                     gettext("--uncommitted requires a working tree"))
             export_tree = tree
         else:
-            export_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
+            export_tree = _get_one_revision_tree(
+                    'export', revision, branch=b,
+                    tree=tree)
+
+        if format is None:
+            format = guess_format(dest)
+
+        if root is None:
+            root = get_root_name(dest)
+
+        if not per_file_timestamps:
+            force_mtime = time.time()
+        else:
+            force_mtime = None
+
+        if filters:
+            from breezy.filter_tree import ContentFilterTree
+            export_tree = ContentFilterTree(
+                    export_tree, export_tree._content_filter_stack)
+
         try:
-            export(export_tree, dest, format, root, subdir, filtered=filters,
+            export(export_tree, dest, format, root, subdir,
                    per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat as e:
             raise errors.BzrCommandError(
@@ -3448,6 +3389,7 @@ class cmd_cat(Command):
 
     def _run(self, tree, b, relpath, filename, revision, name_from_revision,
         filtered):
+        import shutil
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
@@ -3482,11 +3424,11 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            content = filter_tree.get_file_text(relpath, actual_file_id)
+            fileobj = filter_tree.get_file(relpath, actual_file_id)
         else:
-            content = rev_tree.get_file_text(relpath, actual_file_id)
+            fileobj = rev_tree.get_file(relpath, actual_file_id)
+        shutil.copyfileobj(fileobj, self.outf)
         self.cleanup_now()
-        self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -3673,7 +3615,7 @@ class cmd_commit(Command):
         bug_property = bugtracker.encode_fixes_bug_urls(
             self._iter_bug_fix_urls(fixes, tree.branch))
         if bug_property:
-            properties['bugs'] = bug_property
+            properties[u'bugs'] = bug_property
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -3702,7 +3644,7 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             if file:
-                with open(file) as f:
+                with open(file, 'rb') as f:
                     my_message = f.read().decode(osutils.get_user_encoding())
             elif message is not None:
                 my_message = message
@@ -3720,6 +3662,9 @@ class cmd_commit(Command):
                 my_message = set_commit_message(commit_obj)
                 if my_message is None:
                     start_message = generate_commit_message_template(commit_obj)
+                    if start_message is not None:
+                        start_message = start_message.encode(
+                                osutils.get_user_encoding())
                     my_message = edit_commit_message_encoded(text,
                         start_message=start_message)
                 if my_message is None:
@@ -4200,7 +4145,11 @@ class cmd_selftest(Command):
             # disallowing it currently leads to failures in many places.
             lazy_import.disallow_proxying()
 
-        from . import tests
+        try:
+            from . import tests
+        except ImportError:
+            raise errors.BzrCommandError("tests not available. Install the "
+                "breezy tests to run the breezy testsuite.")
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -4331,7 +4280,8 @@ class cmd_find_merge_base(Command):
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
 
-        self.outf.write(gettext('merge base is revision %s\n') % base_rev_id)
+        self.outf.write(gettext('merge base is revision %s\n') %
+                base_rev_id.decode('utf-8'))
 
 
 class cmd_merge(Command):
@@ -4464,11 +4414,6 @@ class cmd_merge(Command):
         if tree.branch.revno() == 0:
             raise errors.BzrCommandError(gettext('Merging into empty branches not currently supported, '
                                          'https://bugs.launchpad.net/bzr/+bug/308562'))
-
-        try:
-            basis_tree = tree.revision_tree(tree.last_revision())
-        except errors.NoSuchRevision:
-            basis_tree = tree.basis_tree()
 
         # die as quickly as possible if there are uncommitted changes
         if not force:
@@ -5300,7 +5245,6 @@ class cmd_re_sign(Command):
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
-        from . import gpg
         gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
             b.repository.start_write_group()
@@ -5517,7 +5461,7 @@ class cmd_uncommit(Command):
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
         self.outf.write(gettext('You can restore the old tip by running:\n'
-             '  brz pull . -r revid:%s\n') % last_rev_id)
+             '  brz pull . -r revid:%s\n') % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):
@@ -6124,6 +6068,8 @@ class cmd_tags(Command):
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'
                 tags[index] = (tag, revno)
+        else:
+            tags = [(tag, revid.decode('utf-8')) for (tag, revid) in tags]
         self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
@@ -6343,8 +6289,14 @@ class cmd_switch(Command):
                     possible_transports=possible_transports)
         if revision is not None:
             revision = revision.as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision_id=revision,
-                      store_uncommitted=store)
+        try:
+            switch.switch(control_dir, to_branch, force, revision_id=revision,
+                          store_uncommitted=store)
+        except controldir.BranchReferenceLoop:
+            raise errors.BzrCommandError(
+                    gettext('switching would create a branch reference loop. '
+                            'Use the "bzr up" command to switch to a '
+                            'different revision.'))
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
@@ -6645,7 +6597,7 @@ class cmd_shelve(Command):
             note(gettext('No shelved changes.'))
             return 0
         for shelf_id in reversed(shelves):
-            message = manager.get_metadata(shelf_id).get('message')
+            message = manager.get_metadata(shelf_id).get(b'message')
             if message is None:
                 message = '<no message>'
             self.outf.write('%3d: %s\n' % (shelf_id, message))
@@ -6731,8 +6683,12 @@ class cmd_reference(Command):
     hidden = True
 
     takes_args = ['path?', 'location?']
+    takes_options = [
+        Option('force-unversioned',
+               help='Set reference even if path is not versioned.'),
+        ]
 
-    def run(self, path=None, location=None):
+    def run(self, path=None, location=None, force_unversioned=False):
         branchdir = '.'
         if path is not None:
             branchdir = path
@@ -6746,22 +6702,18 @@ class cmd_reference(Command):
             info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
-            file_id = tree.path2id(path)
-            if file_id is None:
+            if not tree.is_versioned(path) and not force_unversioned:
                 raise errors.NotVersionedError(path)
             if location is None:
-                info = [(file_id, branch.get_reference_info(file_id))]
+                info = [(path, branch.get_reference_info(path))]
                 self._display_reference_info(tree, branch, info)
             else:
-                branch.set_reference_info(file_id, path, location)
+                branch.set_reference_info(
+                    path, location, file_id=tree.path2id(path))
 
     def _display_reference_info(self, tree, branch, info):
         ref_list = []
-        for file_id, (path, location) in info:
-            try:
-                path = tree.id2path(file_id)
-            except errors.NoSuchId:
-                pass
+        for path, (location, file_id) in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))
@@ -6818,15 +6770,8 @@ class cmd_link_tree(Command):
         from .transform import link_tree
         target_tree = WorkingTree.open_containing(".")[0]
         source_tree = WorkingTree.open(location)
-        target_tree.lock_write()
-        try:
-            source_tree.lock_read()
-            try:
-                link_tree(target_tree, source_tree)
-            finally:
-                source_tree.unlock()
-        finally:
-            target_tree.unlock()
+        with target_tree.lock_write(), source_tree.lock_read():
+            link_tree(target_tree, source_tree)
 
 
 class cmd_fetch_ghosts(Command):
@@ -6846,11 +6791,11 @@ class cmd_fetch_ghosts(Command):
         if len(installed) > 0:
             self.outf.write("Installed:\n")
             for rev in installed:
-                self.outf.write(rev + "\n")
+                self.outf.write(rev.decode('utf-8') + "\n")
         if len(failed) > 0:
             self.outf.write("Still missing:\n")
             for rev in failed:
-                self.outf.write(rev + "\n")
+                self.outf.write(rev.decode('utf-8') + "\n")
         if not no_fix and len(installed) > 0:
             cmd_reconcile().run(".")
 
@@ -6862,7 +6807,7 @@ def _register_lazy_builtins():
         ('cmd_bisect', [], 'breezy.bisect'),
         ('cmd_bundle_info', [], 'breezy.bundle.commands'),
         ('cmd_config', [], 'breezy.config'),
-        ('cmd_dpush', [], 'breezy.foreign'),
+        ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
         ('cmd_version_info', [], 'breezy.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
         ('cmd_conflicts', [], 'breezy.conflicts'),

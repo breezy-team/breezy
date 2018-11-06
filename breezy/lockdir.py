@@ -374,9 +374,6 @@ class LockDir(lock.Lock):
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
                 # within it.
-                #
-                # Maybe this should be broader to allow for ftp servers with
-                # non-specific error messages?
                 self._trace("doing recursive deletion of non-empty directory "
                         "%s", tmpname)
                 self.transport.delete_tree(tmpname)
@@ -778,7 +775,7 @@ class LockHeldInfo(object):
         info = dict(
             hostname=get_host_name(),
             pid=str(os.getpid()),
-            nonce=rand_chars(20),
+            nonce=rand_chars(20).encode('ascii'),
             start_time=str(int(time.time())),
             user=get_username_for_lock_info(),
             )
@@ -806,7 +803,9 @@ class LockHeldInfo(object):
             # there may not be much we can say
             return cls({})
         else:
-            return cls(stanza.as_dict())
+            ret = stanza.as_dict()
+            ret['nonce'] = ret['nonce'].encode('ascii')
+            return cls(ret)
 
     def __hash__(self):
         return id(self)

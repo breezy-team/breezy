@@ -188,6 +188,10 @@ class _CoalescedOffset(object):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
 
+    def __eq__(self, other):
+        return ((self.start, self.length, self.ranges) ==
+                (other.start, other.length, other.ranges))
+
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__,
             self.start, self.length, self.ranges)
@@ -241,6 +245,13 @@ class FileStream(object):
 
     def _close(self):
         """A hook point for subclasses that need to take action on close."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self.close()
+        return False
 
     def close(self, want_fdatasync=False):
         if want_fdatasync:
@@ -310,13 +321,6 @@ class TransportHooks(hooks.Hooks):
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
-
-    Most functions have a _multi variant, which allows you to queue up
-    multiple requests. They generally have a dumb base implementation
-    which just iterates over the arguments, but smart Transport
-    implementations can do pipelining.
-    In general implementations should support having a generator or a list
-    as an argument (ie always iterate, never index)
 
     :ivar base: Base URL for the transport; should always end in a slash.
     """
@@ -578,15 +582,6 @@ class Transport(object):
         """
         raise NotImplementedError(self.has)
 
-    def has_multi(self, relpaths, pb=None):
-        """Return True/False for each entry in relpaths"""
-        total = self._get_total(relpaths)
-        count = 0
-        for relpath in relpaths:
-            self._update_pb(pb, 'has', count, total)
-            yield self.has(relpath)
-            count += 1
-
     def has_any(self, relpaths):
         """Return True if any of the paths exist."""
         for relpath in relpaths:
@@ -773,7 +768,7 @@ class Transport(object):
             if expansion < 0:
                 # we're asking for more than the minimum read anyway.
                 expansion = 0
-            reduction = expansion / 2
+            reduction = expansion // 2
             new_offset = offset - reduction
             new_length = length + expansion
             if new_offset < 0:
@@ -866,23 +861,6 @@ class Transport(object):
             coalesced_offsets.append(cur)
         return coalesced_offsets
 
-    def get_multi(self, relpaths, pb=None):
-        """Get a list of file-like objects, one for each entry in relpaths.
-
-        :param relpaths: A list of relative paths.
-        :param pb:  An optional ProgressTask for indicating percent done.
-        :return: A list or generator of file-like objects
-        """
-        # TODO: Consider having this actually buffer the requests,
-        # in the default mode, it probably won't give worse performance,
-        # and all children wouldn't have to implement buffering
-        total = self._get_total(relpaths)
-        count = 0
-        for relpath in relpaths:
-            self._update_pb(pb, 'get', count, total)
-            yield self.get(relpath)
-            count += 1
-
     def put_bytes(self, relpath, raw_bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
 
@@ -967,12 +945,6 @@ class Transport(object):
         """Create a directory at the given path."""
         raise NotImplementedError(self.mkdir)
 
-    def mkdir_multi(self, relpaths, mode=None, pb=None):
-        """Create a group of directories"""
-        def mkdir(path):
-            self.mkdir(path, mode=mode)
-        return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
-
     def open_write_stream(self, relpath, mode=None):
         """Open a writable file stream at relpath.
 
@@ -1021,15 +993,6 @@ class Transport(object):
                 'bytes must be a plain string, not %s' % type(data))
         return self.append_file(relpath, BytesIO(data), mode=mode)
 
-    def append_multi(self, files, pb=None):
-        """Append the text in each file-like or string object to
-        the supplied location.
-
-        :param files: A set of (path, f) entries
-        :param pb:  An optional ProgressTask for indicating percent done.
-        """
-        return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
-
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to.
 
@@ -1037,15 +1000,6 @@ class Transport(object):
         faster than this default implementation.
         """
         self.put_file(rel_to, self.get(rel_from))
-
-    def copy_multi(self, relpaths, pb=None):
-        """Copy a bunch of entries.
-
-        :param relpaths: A list of tuples of the form [(from, to), (from, to),...]
-        """
-        # This is the non-pipelined implementation, so that
-        # implementors don't have to implement everything.
-        return self._iterate_over(relpaths, self.copy, pb, 'copy', expand=True)
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -1133,33 +1087,9 @@ class Transport(object):
             self.copy(rel_from, rel_to)
             self.delete(rel_from)
 
-    def move_multi(self, relpaths, pb=None):
-        """Move a bunch of entries.
-
-        :param relpaths: A list of tuples of the form [(from1, to1), (from2, to2),...]
-        """
-        return self._iterate_over(relpaths, self.move, pb, 'move', expand=True)
-
-    def move_multi_to(self, relpaths, rel_to):
-        """Move a bunch of entries to a single location.
-        This differs from move_multi in that you give a list of from, and
-        a single destination, rather than multiple destinations.
-
-        :param relpaths: A list of relative paths [from1, from2, from3, ...]
-        :param rel_to: A directory where each entry should be placed.
-        """
-        # This is not implemented, because you need to do special tricks to
-        # extract the basename, and add it to rel_to
-        raise NotImplementedError(self.move_multi_to)
-
     def delete(self, relpath):
         """Delete the item at relpath"""
         raise NotImplementedError(self.delete)
-
-    def delete_multi(self, relpaths, pb=None):
-        """Queue up a bunch of deletes to be done.
-        """
-        return self._iterate_over(relpaths, self.delete, pb, 'delete', expand=False)
 
     def delete_tree(self, relpath):
         """Delete an entire tree. This may require a listable transport."""
@@ -1178,7 +1108,8 @@ class Transport(object):
                     directories.append(path)
                 else:
                     files.append(path)
-        subtree.delete_multi(files)
+        for file in files:
+            subtree.delete(file)
         pending_rmdirs.reverse()
         for dir in pending_rmdirs:
             subtree.rmdir(dir)
@@ -1202,18 +1133,6 @@ class Transport(object):
     def rmdir(self, relpath):
         """Remove a directory at the given path."""
         raise NotImplementedError
-
-    def stat_multi(self, relpaths, pb=None):
-        """Stat multiple files and return the information.
-        """
-        #TODO:  Is it worth making this a generator instead of a
-        #       returning a list?
-        stats = []
-        def gather(path):
-            stats.append(self.stat(path))
-
-        count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
-        return stats
 
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
@@ -1606,8 +1525,9 @@ def location_to_url(location):
             raise urlutils.InvalidURL(path=location,
                 extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
-    if PY3:
-        location = location.decode('ascii')
+    else:
+        if PY3:
+            location = location.decode('ascii')
 
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])
@@ -1760,50 +1680,27 @@ register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
-register_lazy_transport('http+urllib://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
+register_lazy_transport('http+urllib://', 'breezy.transport.http',
+                        'HttpTransport')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
-register_lazy_transport('https+urllib://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
+register_lazy_transport('https+urllib://', 'breezy.transport.http',
+                        'HttpTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
-register_lazy_transport('http://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
-register_lazy_transport('https://', 'breezy.transport.http._urllib',
-                        'HttpTransport_urllib')
+register_lazy_transport('http://', 'breezy.transport.http',
+                        'HttpTransport')
+register_lazy_transport('https://', 'breezy.transport.http',
+                        'HttpTransport')
 
-register_transport_proto('ftp://', help="Access using passive FTP.")
-register_lazy_transport('ftp://', 'breezy.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://', help="Access using active FTP.")
-register_lazy_transport('aftp://', 'breezy.transport.ftp', 'FtpTransport')
 register_transport_proto('gio+', help="Access using any GIO supported protocols.")
 register_lazy_transport('gio+', 'breezy.transport.gio_transport', 'GioTransport')
 
-
-# Default to trying GSSAPI authentication (if the kerberos module is
-# available)
-register_transport_proto('ftp+gssapi://', register_netloc=True)
-register_transport_proto('aftp+gssapi://', register_netloc=True)
-register_transport_proto('ftp+nogssapi://', register_netloc=True)
-register_transport_proto('aftp+nogssapi://', register_netloc=True)
-register_lazy_transport('ftp+gssapi://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp+gssapi://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp://', 'breezy.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp+nogssapi://', 'breezy.transport.ftp',
-                        'FtpTransport')
-register_lazy_transport('aftp+nogssapi://', 'breezy.transport.ftp',
-                        'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'breezy.transport.memory',

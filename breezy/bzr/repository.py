@@ -70,7 +70,7 @@ class MetaDirRepository(Repository):
                     pass
             else:
                 self._transport.put_bytes(
-                        'no-working-trees', '',
+                        'no-working-trees', b'',
                         mode=self.controldir._get_file_mode())
 
     def make_working_trees(self):
@@ -137,7 +137,8 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         if shared == True:
             utf8_files += [('shared-storage', b'')]
         try:
-            transport.mkdir_multi(dirs, mode=a_bzrdir._get_dir_mode())
+            for dir in dirs:
+                transport.mkdir(dir, mode=a_bzrdir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
                     mode=a_bzrdir._get_file_mode())

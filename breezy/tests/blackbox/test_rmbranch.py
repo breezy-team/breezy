@@ -52,8 +52,7 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_no_branch(self):
         # No branch in the current directory.
         self.make_repository('a')
-        self.run_bzr_error(['Not a branch'],
-            'rmbranch a')
+        self.run_bzr_error(['Not a branch'], 'rmbranch a')
 
     def test_no_tree(self):
         # removing the active branch is possible if there is no tree

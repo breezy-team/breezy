@@ -277,7 +277,7 @@ class TestPull(tests.TestCaseWithTransport):
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
         with open('branch_a/a', 'wb') as f:
-            f.write('hello')
+            f.write(b'hello')
         tree_a.add('a')
         tree_a.commit('message')
 
@@ -285,7 +285,7 @@ class TestPull(tests.TestCaseWithTransport):
 
         # Make a change to 'a' that 'b' can pull
         with open('branch_a/a', 'wb') as f:
-            f.write('hey there')
+            f.write(b'hey there')
         tree_a.commit('message')
 
         # Create the bundle for 'b' to pull
@@ -517,9 +517,9 @@ class TestPull(tests.TestCaseWithTransport):
         """pulling tags with conflicts will change the exit code"""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
         self.assertEqual(out,
             ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
@@ -528,7 +528,7 @@ class TestPull(tests.TestCaseWithTransport):
         """pulling tags with conflicts will change the exit code"""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
         out = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertEqual(out,
@@ -537,9 +537,9 @@ class TestPull(tests.TestCaseWithTransport):
     def test_overwrite_tags(self):
         """--overwrite-tags only overwrites tags, not revisions."""
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
         self.assertEqual(out,
@@ -548,16 +548,16 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertEqual(out, ('1 tag(s) updated.\n', ''))
 
         self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
-                          'somerevid')
+                          b'somerevid')
         self.assertEqual(to_tree.branch.last_revision(), revid1)
 
     def test_pull_tag_overwrite(self):
         """pulling tags with --overwrite only reports changed tags."""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree.branch.tags.set_tag("mytag", b"somerevid")
         out = self.run_bzr(['pull', '--overwrite', '-d', 'to', 'from'])
         self.assertEqual(out,
             ('No revisions or tags to pull.\n', ''))

@@ -16,6 +16,8 @@
 
 from __future__ import absolute_import
 
+import sys
+
 from . import errors
 
 from .lazy_import import lazy_import
@@ -412,6 +414,8 @@ class Branch(controldir.ControlComponent):
         :return: A dictionary mapping revision_id => dotted revno.
             This dictionary should not be modified by the caller.
         """
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "get_revision_id_to_revno_map scales with ancestry.")
         with self.lock_read():
             if self._revision_id_to_revno_cache is not None:
                 mapping = self._revision_id_to_revno_cache
@@ -587,7 +591,10 @@ class Branch(controldir.ControlComponent):
         # ancestry. Given the order guaranteed by the merge sort, we will see
         # uninteresting descendants of the first parent of our tip before the
         # tip itself.
-        first = next(rev_iter)
+        try:
+            first = next(rev_iter)
+        except StopIteration:
+            return
         (rev_id, merge_depth, revno, end_of_merge) = first
         yield first
         if not merge_depth:
@@ -662,11 +669,11 @@ class Branch(controldir.ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
 
-    def set_reference_info(self, file_id, tree_path, branch_location):
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
         """Set the branch location to use for a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
 
-    def get_reference_info(self, file_id):
+    def get_reference_info(self, path):
         """Get the tree_path and branch_location for a tree reference."""
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
@@ -774,7 +781,7 @@ class Branch(controldir.ControlComponent):
         if url is not None:
             if isinstance(url, text_type):
                 try:
-                    url = url.encode('ascii')
+                    url.encode('ascii')
                 except UnicodeEncodeError:
                     raise urlutils.InvalidURL(url,
                         "Urls must be 7-bit ascii, "
@@ -1066,7 +1073,7 @@ class Branch(controldir.ControlComponent):
         # This is an old-format absolute path to a local branch
         # turn it into a url
         if parent.startswith('/'):
-            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            parent = urlutils.local_path_to_url(parent)
         try:
             return urlutils.join(self.base[:-1], parent)
         except urlutils.InvalidURLJoin as e:
@@ -1201,7 +1208,7 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-            repository=None):
+            repository=None, lossy=False):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1213,6 +1220,8 @@ class Branch(controldir.ControlComponent):
             repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
         result = to_controldir.create_branch(repository=repository)
+        if lossy:
+            raise errors.LossyPushToSameVCS(self, result)
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
@@ -1267,11 +1276,11 @@ class Branch(controldir.ControlComponent):
         old_base = self.base
         new_base = target.base
         target_reference_dict = target._get_all_reference_info()
-        for file_id, (tree_path, branch_location) in viewitems(reference_dict):
+        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
             branch_location = urlutils.rebase_url(branch_location,
                                                   old_base, new_base)
             target_reference_dict.setdefault(
-                file_id, (tree_path, branch_location))
+                tree_path, (branch_location, file_id))
         target._set_all_reference_info(target_reference_dict)
 
     def check(self, refs):
@@ -1390,7 +1399,7 @@ class Branch(controldir.ControlComponent):
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
             for path, file_id in basis_tree.iter_references():
-                reference_parent = self.reference_parent(file_id, path)
+                reference_parent = self.reference_parent(path, file_id)
                 reference_parent.create_checkout(tree.abspath(path),
                     basis_tree.get_reference_revision(path, file_id),
                     lightweight)
@@ -1404,11 +1413,11 @@ class Branch(controldir.ControlComponent):
             reconciler.reconcile()
             return reconciler
 
-    def reference_parent(self, file_id, path, possible_transports=None):
+    def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
 
-        :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
+        :param file_id: Optional file_id of the tree reference
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
@@ -2119,7 +2128,7 @@ class GenericInterBranch(InterBranch):
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
-                mutter('parent was not accessible to copy: %s', e)
+                mutter('parent was not accessible to copy: %s', str(e))
             else:
                 if parent:
                     self.target.set_parent(parent)
@@ -2238,12 +2247,42 @@ class GenericInterBranch(InterBranch):
             raise errors.LossyPushToSameVCS(self.source, self.target)
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
+        def _run_hooks():
+            if _override_hook_source_branch:
+                result.source_branch = _override_hook_source_branch
+            for hook in Branch.hooks['post_push']:
+                hook(result)
 
-        op = cleanup.OperationWithCleanups(self._push_with_bound_branches)
-        op.add_cleanup(self.source.lock_read().unlock)
-        op.add_cleanup(self.target.lock_write().unlock)
-        return op.run(overwrite, stop_revision,
-            _override_hook_source_branch=_override_hook_source_branch)
+        with self.source.lock_read(), self.target.lock_write():
+            bound_location = self.target.get_bound_location()
+            if bound_location and self.target.base != bound_location:
+                # there is a master branch.
+                #
+                # XXX: Why the second check?  Is it even supported for a branch to
+                # be bound to itself? -- mbp 20070507
+                master_branch = self.target.get_master_branch()
+                with master_branch.lock_write():
+                    # push into the master from the source branch.
+                    master_inter = InterBranch.get(self.source, master_branch)
+                    master_inter._basic_push(overwrite, stop_revision)
+                    # and push into the target branch from the source. Note that
+                    # we push from the source branch again, because it's considered
+                    # the highest bandwidth repository.
+                    result = self._basic_push(overwrite, stop_revision)
+                    result.master_branch = master_branch
+                    result.local_branch = self.target
+                    _run_hooks()
+            else:
+                master_branch = None
+                # no master branch
+                result = self._basic_push(overwrite, stop_revision)
+                # TODO: Why set master_branch and local_branch if there's no
+                # binding?  Maybe cleaner to just leave them unset? -- mbp
+                # 20070504
+                result.master_branch = self.target
+                result.local_branch = None
+                _run_hooks()
+            return result
 
     def _basic_push(self, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
@@ -2268,46 +2307,6 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(
                 self.target.tags, "tags" in overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
-        return result
-
-    def _push_with_bound_branches(self, operation, overwrite, stop_revision,
-            _override_hook_source_branch=None):
-        """Push from source into target, and into target's master if any.
-        """
-        def _run_hooks():
-            if _override_hook_source_branch:
-                result.source_branch = _override_hook_source_branch
-            for hook in Branch.hooks['post_push']:
-                hook(result)
-
-        bound_location = self.target.get_bound_location()
-        if bound_location and self.target.base != bound_location:
-            # there is a master branch.
-            #
-            # XXX: Why the second check?  Is it even supported for a branch to
-            # be bound to itself? -- mbp 20070507
-            master_branch = self.target.get_master_branch()
-            master_branch.lock_write()
-            operation.add_cleanup(master_branch.unlock)
-            # push into the master from the source branch.
-            master_inter = InterBranch.get(self.source, master_branch)
-            master_inter._basic_push(overwrite, stop_revision)
-            # and push into the target branch from the source. Note that
-            # we push from the source branch again, because it's considered
-            # the highest bandwidth repository.
-            result = self._basic_push(overwrite, stop_revision)
-            result.master_branch = master_branch
-            result.local_branch = self.target
-        else:
-            master_branch = None
-            # no master branch
-            result = self._basic_push(overwrite, stop_revision)
-            # TODO: Why set master_branch and local_branch if there's no
-            # binding?  Maybe cleaner to just leave them unset? -- mbp
-            # 20070504
-            result.master_branch = self.target
-            result.local_branch = None
-        _run_hooks()
         return result
 
     def _pull(self, overwrite=False, stop_revision=None,

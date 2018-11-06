@@ -396,7 +396,7 @@ class TestSwitch(TestCaseWithTransport):
 
         self.run_bzr('checkout --lightweight a checkout')
         self.run_bzr('switch --directory checkout b')
-        self.assertFileEqual('initial\nmore\n', 'checkout/a')
+        self.assertFileEqual(b'initial\nmore\n', 'checkout/a')
 
 
 class TestSwitchParentLocationBase(TestCaseWithTransport):
@@ -529,3 +529,50 @@ class TestSwitchUncommitted(TestCaseWithTransport):
         self.assertPathDoesNotExist('checkout/a')
         self.run_bzr(['switch', '-d', 'checkout', 'orig'])
         self.assertPathDoesNotExist('checkout/a')
+
+
+class TestSwitchStandAloneCorruption(TestCaseWithTransport):
+
+    def test_empty_tree_switch(self):
+        """switch . on an empty tree gets infinite recursion
+
+        Inspired by: https://bugs.launchpad.net/bzr/+bug/1018628
+        """
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+            $ brz init
+            Created a standalone tree (format: 2a)
+            $ brz switch .
+            2>brz: ERROR: switching would create a branch reference loop. Use the "bzr up" command to switch to a different revision.
+            ''')
+
+    def test_switch_on_previous_rev(self):
+        """switch to previous rev in a standalone directory
+
+        Inspired by: https://bugs.launchpad.net/brz/+bug/1018628
+        """
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+           $ brz init
+           Created a standalone tree (format: 2a)
+           $ brz commit -m 1 --unchanged
+           $ brz commit -m 2 --unchanged
+           $ brz switch -r 1
+           2>brz: ERROR: switching would create a branch reference loop. Use the "bzr up" command to switch to a different revision.''',
+           null_output_matches_anything=True)
+
+    def test_switch_create_colo_locks_repo_path(self):
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+            $ mkdir mywork
+            $ cd mywork
+            $ brz init
+            Created a standalone tree (format: 2a)
+            $ echo A > a && brz add a && brz commit -m A
+            $ brz switch -b br1
+            $ cd ..
+            $ mv mywork mywork1
+            $ cd mywork1
+            $ brz branches
+            * br1
+            ''', null_output_matches_anything=True)

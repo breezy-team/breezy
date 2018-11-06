@@ -18,6 +18,7 @@
 
 from .. import TestCaseWithMemoryTransport
 from ...commands import Command, register_command, plugin_cmds
+from ...sixish import PY3
 
 
 class cmd_echo_exact(Command):
@@ -50,11 +51,11 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
     def test_exact(self):
         def bzr(*args, **kwargs):
             kwargs['encoding'] = 'ascii'
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_raw(*args, **kwargs)[0]
 
         register_command(cmd_echo_exact)
         try:
-            self.assertEqual('foo', bzr('echo-exact foo'))
+            self.assertEqual(b'foo', bzr('echo-exact foo'))
             # Exact should fail to decode the string
             self.assertRaises(UnicodeEncodeError,
                 bzr,
@@ -67,12 +68,14 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
     def test_strict_utf8(self):
         def bzr(*args, **kwargs):
             kwargs['encoding'] = 'utf-8'
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_raw(*args, **kwargs)[0]
 
         register_command(cmd_echo_strict)
         try:
-            self.assertEqual('foo', bzr('echo-strict foo'))
-            self.assertEqual(u'foo\xb5'.encode('utf-8'),
+            self.assertEqual(b'foo', bzr('echo-strict foo'))
+            expected = u'foo\xb5'
+            expected = expected.encode('utf-8')
+            self.assertEqual(expected,
                              bzr(['echo-strict', u'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-strict')
@@ -80,11 +83,11 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
     def test_strict_ascii(self):
         def bzr(*args, **kwargs):
             kwargs['encoding'] = 'ascii'
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_raw(*args, **kwargs)[0]
 
         register_command(cmd_echo_strict)
         try:
-            self.assertEqual('foo', bzr('echo-strict foo'))
+            self.assertEqual(b'foo', bzr('echo-strict foo'))
             # ascii can't encode \xb5
             self.assertRaises(UnicodeEncodeError,
                 bzr,
@@ -95,11 +98,11 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
     def test_replace_utf8(self):
         def bzr(*args, **kwargs):
             kwargs['encoding'] = 'utf-8'
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_raw(*args, **kwargs)[0]
 
         register_command(cmd_echo_replace)
         try:
-            self.assertEqual('foo', bzr('echo-replace foo'))
+            self.assertEqual(b'foo', bzr('echo-replace foo'))
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
                              bzr(['echo-replace', u'foo\xb5']))
         finally:
@@ -108,13 +111,13 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
     def test_replace_ascii(self):
         def bzr(*args, **kwargs):
             kwargs['encoding'] = 'ascii'
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_raw(*args, **kwargs)[0]
 
         register_command(cmd_echo_replace)
         try:
-            self.assertEqual('foo', bzr('echo-replace foo'))
+            self.assertEqual(b'foo', bzr('echo-replace foo'))
             # ascii can't encode \xb5
-            self.assertEqual('foo?', bzr(['echo-replace', u'foo\xb5']))
+            self.assertEqual(b'foo?', bzr(['echo-replace', u'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-replace')
 

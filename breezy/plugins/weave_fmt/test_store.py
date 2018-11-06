@@ -42,18 +42,18 @@ class TestStores(object):
         self.assertEqual(f.read(), value)
 
     def fill_store(self, store):
-        store.add(BytesIO(b'hello'), 'a')
-        store.add(BytesIO(b'other'), 'b')
-        store.add(BytesIO(b'something'), 'c')
-        store.add(BytesIO(b'goodbye'), '123123')
+        store.add(BytesIO(b'hello'), b'a')
+        store.add(BytesIO(b'other'), b'b')
+        store.add(BytesIO(b'something'), b'c')
+        store.add(BytesIO(b'goodbye'), b'123123')
 
     def test_get(self):
         store = self.get_store()
         self.fill_store(store)
 
-        self.check_content(store, 'a', b'hello')
-        self.check_content(store, 'b', b'other')
-        self.check_content(store, 'c', b'something')
+        self.check_content(store, b'a', b'hello')
+        self.check_content(store, b'b', b'other')
+        self.check_content(store, b'c', b'something')
 
         # Make sure that requesting a non-existing file fails
         self.assertRaises(KeyError, self.check_content, store, b'd', None)
@@ -62,7 +62,7 @@ class TestStores(object):
         """Multiple add with same ID should raise a BzrError"""
         store = self.get_store()
         self.fill_store(store)
-        self.assertRaises(BzrError, store.add, BytesIO(b'goodbye'), '123123')
+        self.assertRaises(BzrError, store.add, BytesIO(b'goodbye'), b'123123')
 
 
 class TestCompressedTextStore(TestCaseInTempDir, TestStores):
@@ -74,8 +74,8 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
     def test_total_size(self):
         store = self.get_store(u'.')
         store.register_suffix('dsc')
-        store.add(BytesIO(b'goodbye'), '123123')
-        store.add(BytesIO(b'goodbye2'), '123123', 'dsc')
+        store.add(BytesIO(b'goodbye'), b'123123')
+        store.add(BytesIO(b'goodbye2'), b'123123', 'dsc')
         # these get gzipped - content should be stable
         self.assertEqual(store.total_size(), (2, 55))
 
@@ -83,7 +83,7 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
         my_store = TextStore(MockTransport(),
                              prefixed=True, compressed=True)
         my_store.register_suffix('dsc')
-        self.assertEqual('45/foo.dsc', my_store._relpath('foo', ['dsc']))
+        self.assertEqual('45/foo.dsc', my_store._relpath(b'foo', ['dsc']))
 
 
 class TestMemoryStore(TestCase):
@@ -93,27 +93,27 @@ class TestMemoryStore(TestCase):
 
     def test_add_and_retrieve(self):
         store = self.get_store()
-        store.add(BytesIO(b'hello'), 'aa')
-        self.assertNotEqual(store.get('aa'), None)
-        self.assertEqual(store.get('aa').read(), b'hello')
-        store.add(BytesIO(b'hello world'), 'bb')
-        self.assertNotEqual(store.get('bb'), None)
-        self.assertEqual(store.get('bb').read(), b'hello world')
+        store.add(BytesIO(b'hello'), b'aa')
+        self.assertNotEqual(store.get(b'aa'), None)
+        self.assertEqual(store.get(b'aa').read(), b'hello')
+        store.add(BytesIO(b'hello world'), b'bb')
+        self.assertNotEqual(store.get(b'bb'), None)
+        self.assertEqual(store.get(b'bb').read(), b'hello world')
 
     def test_missing_is_absent(self):
         store = self.get_store()
-        self.assertFalse('aa' in store)
+        self.assertNotIn(b'aa', store)
 
     def test_adding_fails_when_present(self):
         my_store = self.get_store()
-        my_store.add(BytesIO(b'hello'), 'aa')
+        my_store.add(BytesIO(b'hello'), b'aa')
         self.assertRaises(BzrError,
-                          my_store.add, BytesIO(b'hello'), 'aa')
+                          my_store.add, BytesIO(b'hello'), b'aa')
 
     def test_total_size(self):
         store = self.get_store()
-        store.add(BytesIO(b'goodbye'), '123123')
-        store.add(BytesIO(b'goodbye2'), '123123.dsc')
+        store.add(BytesIO(b'goodbye'), b'123123')
+        store.add(BytesIO(b'goodbye2'), b'123123.dsc')
         self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
@@ -130,8 +130,8 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 
     def test_total_size(self):
         store = self.get_store()
-        store.add(BytesIO(b'goodbye'), '123123')
-        store.add(BytesIO(b'goodbye2'), '123123.dsc')
+        store.add(BytesIO(b'goodbye'), b'123123')
+        store.add(BytesIO(b'goodbye2'), b'123123.dsc')
         self.assertEqual(store.total_size(), (2, 15))
         # TODO: Switch the exception form UnlistableStore to
         #       or make Stores throw UnlistableStore if their
@@ -149,31 +149,34 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
     def test_get_mixed(self):
         cs = self.get_store(u'.', compressed=True)
         s = self.get_store(u'.', compressed=False)
-        cs.add(BytesIO(b'hello there'), 'a')
+        cs.add(BytesIO(b'hello there'), b'a')
 
         self.assertPathExists('a.gz')
         self.assertFalse(os.path.lexists('a'))
 
-        self.assertEqual(gzip.GzipFile('a.gz').read(), 'hello there')
+        with gzip.GzipFile('a.gz') as f:
+            self.assertEqual(f.read(), b'hello there')
 
-        self.assertEqual(cs.has_id('a'), True)
-        self.assertEqual(s.has_id('a'), True)
-        self.assertEqual(cs.get('a').read(), 'hello there')
-        self.assertEqual(s.get('a').read(), 'hello there')
+        self.assertEqual(cs.has_id(b'a'), True)
+        self.assertEqual(s.has_id(b'a'), True)
+        self.assertEqual(cs.get(b'a').read(), b'hello there')
+        self.assertEqual(s.get(b'a').read(), b'hello there')
 
-        self.assertRaises(BzrError, s.add, BytesIO(b'goodbye'), 'a')
+        self.assertRaises(BzrError, s.add, BytesIO(b'goodbye'), b'a')
 
-        s.add(BytesIO(b'goodbye'), 'b')
+        s.add(BytesIO(b'goodbye'), b'b')
         self.assertPathExists('b')
         self.assertFalse(os.path.lexists('b.gz'))
-        self.assertEqual(open('b').read(), 'goodbye')
+        with open('b', 'rb') as f:
+            self.assertEqual(f.read(), b'goodbye')
 
-        self.assertEqual(cs.has_id('b'), True)
-        self.assertEqual(s.has_id('b'), True)
-        self.assertEqual(cs.get('b').read(), 'goodbye')
-        self.assertEqual(s.get('b').read(), 'goodbye')
+        self.assertEqual(cs.has_id(b'b'), True)
+        self.assertEqual(s.has_id(b'b'), True)
+        self.assertEqual(cs.get(b'b').read(), b'goodbye')
+        self.assertEqual(s.get(b'b').read(), b'goodbye')
 
-        self.assertRaises(BzrError, cs.add, BytesIO(b'again'), 'b')
+        self.assertRaises(BzrError, cs.add, BytesIO(b'again'), b'b')
+
 
 class MockTransport(transport.Transport):
     """A fake transport for testing with."""
@@ -229,8 +232,8 @@ class TestTransportStore(TestCase):
 
     def test__relpath_invalid(self):
         my_store = TransportStore(MockTransport())
-        self.assertRaises(ValueError, my_store._relpath, '/foo')
-        self.assertRaises(ValueError, my_store._relpath, 'foo/')
+        self.assertRaises(ValueError, my_store._relpath, b'/foo')
+        self.assertRaises(ValueError, my_store._relpath, b'foo/')
 
     def test_register_invalid_suffixes(self):
         my_store = TransportStore(MockTransport())
@@ -239,56 +242,56 @@ class TestTransportStore(TestCase):
 
     def test__relpath_unregister_suffixes(self):
         my_store = TransportStore(MockTransport())
-        self.assertRaises(ValueError, my_store._relpath, 'foo', ['gz'])
-        self.assertRaises(ValueError, my_store._relpath, 'foo', ['dsc', 'gz'])
+        self.assertRaises(ValueError, my_store._relpath, b'foo', [b'gz'])
+        self.assertRaises(ValueError, my_store._relpath, b'foo', [b'dsc', b'gz'])
 
     def test__relpath_simple(self):
         my_store = TransportStore(MockTransport())
-        self.assertEqual("foo", my_store._relpath('foo'))
+        self.assertEqual("foo", my_store._relpath(b'foo'))
 
     def test__relpath_prefixed(self):
         my_store = TransportStore(MockTransport(), True)
-        self.assertEqual('45/foo', my_store._relpath('foo'))
+        self.assertEqual('45/foo', my_store._relpath(b'foo'))
 
     def test__relpath_simple_suffixed(self):
         my_store = TransportStore(MockTransport())
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
-        self.assertEqual('foo.baz', my_store._relpath('foo', ['baz']))
-        self.assertEqual('foo.bar.baz', my_store._relpath('foo', ['bar', 'baz']))
+        self.assertEqual('foo.baz', my_store._relpath(b'foo', ['baz']))
+        self.assertEqual('foo.bar.baz', my_store._relpath(b'foo', ['bar', 'baz']))
 
     def test__relpath_prefixed_suffixed(self):
         my_store = TransportStore(MockTransport(), True)
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
-        self.assertEqual('45/foo.baz', my_store._relpath('foo', ['baz']))
+        self.assertEqual('45/foo.baz', my_store._relpath(b'foo', ['baz']))
         self.assertEqual('45/foo.bar.baz',
-                         my_store._relpath('foo', ['bar', 'baz']))
+                         my_store._relpath(b'foo', ['bar', 'baz']))
 
     def test_add_simple(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
-        my_store.add(stream, "foo")
+        my_store.add(stream, b"foo")
         self.assertEqual([("_add", "foo", stream)], my_store._calls)
 
     def test_add_prefixed(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
-        my_store.add(stream, "foo")
+        my_store.add(stream, b"foo")
         self.assertEqual([("_add", "45/foo", stream)], my_store._calls)
 
     def test_add_simple_suffixed(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport())
         my_store.register_suffix('dsc')
-        my_store.add(stream, "foo", 'dsc')
+        my_store.add(stream, b"foo", b'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
 
     def test_add_simple_suffixed(self):
         stream = BytesIO(b"content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
         my_store.register_suffix('dsc')
-        my_store.add(stream, "foo", 'dsc')
+        my_store.add(stream, b"foo", 'dsc')
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
     def get_populated_store(self, prefixed=False,
@@ -297,70 +300,70 @@ class TestTransportStore(TestCase):
                                compressed=compressed)
         my_store.register_suffix('sig')
         stream = BytesIO(b"signature")
-        my_store.add(stream, "foo", 'sig')
+        my_store.add(stream, b"foo", 'sig')
         stream = BytesIO(b"content")
-        my_store.add(stream, "foo")
+        my_store.add(stream, b"foo")
         stream = BytesIO(b"signature for missing base")
-        my_store.add(stream, "missing", 'sig')
+        my_store.add(stream, b"missing", 'sig')
         return my_store
 
     def test_has_simple(self):
         my_store = self.get_populated_store()
-        self.assertEqual(True, my_store.has_id('foo'))
+        self.assertEqual(True, my_store.has_id(b'foo'))
         my_store = self.get_populated_store(True)
-        self.assertEqual(True, my_store.has_id('foo'))
+        self.assertEqual(True, my_store.has_id(b'foo'))
 
     def test_has_suffixed(self):
         my_store = self.get_populated_store()
-        self.assertEqual(True, my_store.has_id('foo', 'sig'))
+        self.assertEqual(True, my_store.has_id(b'foo', 'sig'))
         my_store = self.get_populated_store(True)
-        self.assertEqual(True, my_store.has_id('foo', 'sig'))
+        self.assertEqual(True, my_store.has_id(b'foo', 'sig'))
 
     def test_has_suffixed_no_base(self):
         my_store = self.get_populated_store()
-        self.assertEqual(False, my_store.has_id('missing'))
+        self.assertEqual(False, my_store.has_id(b'missing'))
         my_store = self.get_populated_store(True)
-        self.assertEqual(False, my_store.has_id('missing'))
+        self.assertEqual(False, my_store.has_id(b'missing'))
 
     def test_get_simple(self):
         my_store = self.get_populated_store()
-        self.assertEqual(b'content', my_store.get('foo').read())
+        self.assertEqual(b'content', my_store.get(b'foo').read())
         my_store = self.get_populated_store(True)
-        self.assertEqual(b'content', my_store.get('foo').read())
+        self.assertEqual(b'content', my_store.get(b'foo').read())
 
     def test_get_suffixed(self):
         my_store = self.get_populated_store()
-        self.assertEqual(b'signature', my_store.get('foo', 'sig').read())
+        self.assertEqual(b'signature', my_store.get(b'foo', 'sig').read())
         my_store = self.get_populated_store(True)
-        self.assertEqual(b'signature', my_store.get('foo', 'sig').read())
+        self.assertEqual(b'signature', my_store.get(b'foo', 'sig').read())
 
     def test_get_suffixed_no_base(self):
         my_store = self.get_populated_store()
         self.assertEqual(b'signature for missing base',
-                         my_store.get('missing', 'sig').read())
+                         my_store.get(b'missing', 'sig').read())
         my_store = self.get_populated_store(True)
         self.assertEqual(b'signature for missing base',
-                         my_store.get('missing', 'sig').read())
+                         my_store.get(b'missing', 'sig').read())
 
     def test___iter__no_suffix(self):
         my_store = TextStore(MemoryTransport(),
                              prefixed=False, compressed=False)
         stream = BytesIO(b"content")
-        my_store.add(stream, "foo")
-        self.assertEqual({'foo'},
+        my_store.add(stream, b"foo")
+        self.assertEqual({b'foo'},
                          set(my_store.__iter__()))
 
     def test___iter__(self):
-        self.assertEqual({'foo'},
+        self.assertEqual({b'foo'},
                          set(self.get_populated_store().__iter__()))
-        self.assertEqual({'foo'},
+        self.assertEqual({b'foo'},
                          set(self.get_populated_store(True).__iter__()))
 
     def test___iter__compressed(self):
-        self.assertEqual({'foo'},
+        self.assertEqual({b'foo'},
                          set(self.get_populated_store(
                              compressed=True).__iter__()))
-        self.assertEqual({'foo'},
+        self.assertEqual({b'foo'},
                          set(self.get_populated_store(
                              True, compressed=True).__iter__()))
 
@@ -369,14 +372,14 @@ class TestTransportStore(TestCase):
 
     def test_relpath_escaped(self):
         my_store = TransportStore(MemoryTransport())
-        self.assertEqual('%25', my_store._relpath('%'))
+        self.assertEqual('%25', my_store._relpath(b'%'))
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
         my_store = TransportStore(MemoryTransport(), prefixed=True,
             escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEqual(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
+        self.assertEqual(my_store._relpath(b'C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):
@@ -393,31 +396,31 @@ class TestVersionFileStore(TestCaseWithTransport):
 
     def test_get_weave_registers_dirty_in_write(self):
         self._transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        vf = self.vfstore.get_weave_or_empty(b'id', self._transaction)
         self._transaction.finish()
         self._transaction = None
-        self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
+        self.assertRaises(errors.OutSideTransaction, vf.add_lines, b'b', [], [])
         self._transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave('id', self._transaction)
+        vf = self.vfstore.get_weave(b'id', self._transaction)
         self._transaction.finish()
         self._transaction = None
-        self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
+        self.assertRaises(errors.OutSideTransaction, vf.add_lines, b'b', [], [])
 
     def test_get_weave_readonly_cant_write(self):
         self._transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        vf = self.vfstore.get_weave_or_empty(b'id', self._transaction)
         self._transaction.finish()
         self._transaction = transactions.ReadOnlyTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
-        self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
+        vf = self.vfstore.get_weave_or_empty(b'id', self._transaction)
+        self.assertRaises(errors.ReadOnlyError, vf.add_lines, b'b', [], [])
 
     def test___iter__escaped(self):
         self.vfstore = VersionedFileStore(MemoryTransport(),
             prefixed=True, escaped=True, versionedfile_class=WeaveFile)
         self.vfstore.get_scope = self.get_scope
         self._transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty(' ', self._transaction)
-        vf.add_lines('a', [], [])
+        vf = self.vfstore.get_weave_or_empty(b' ', self._transaction)
+        vf.add_lines(b'a', [], [])
         del vf
         self._transaction.finish()
-        self.assertEqual([' '], list(self.vfstore))
+        self.assertEqual([b' '], list(self.vfstore))

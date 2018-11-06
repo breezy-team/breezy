@@ -64,6 +64,7 @@ from breezy.transport import (
 from breezy.i18n import gettext
 """)
 
+from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
@@ -348,7 +349,8 @@ class BzrDir(controldir.ControlDir):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True,
+               lossy=False):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -385,7 +387,7 @@ class BzrDir(controldir.ControlDir):
     def _sprout(self, op, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True, lossy=False):
         add_cleanup = op.add_cleanup
         fetch_spec_factory = fetch.FetchSpecFactory()
         if revision_id is not None:
@@ -449,15 +451,12 @@ class BzrDir(controldir.ControlDir):
             (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
-            wt.lock_write()
-            try:
+            with wt.lock_write():
                 if not wt.is_versioned(''):
                     try:
                         wt.set_root_id(self.open_workingtree.get_root_id())
                     except errors.NoWorkingTree:
                         pass
-            finally:
-                wt.unlock()
         else:
             wt = None
         if recurse == 'down':
@@ -475,7 +474,7 @@ class BzrDir(controldir.ControlDir):
                 subtrees = []
             for path, file_id in subtrees:
                 target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation = source_branch.reference_parent(path, file_id)
                 sublocation.controldir.sprout(target,
                     basis.get_reference_revision(path, file_id),
                     force_new_repo=force_new_repo, recurse=recurse,
@@ -832,12 +831,12 @@ class BzrDirMeta1(BzrDir):
         """
         if name == "":
             return 'branch'
-        return urlutils.join('branches', name.encode("utf-8"))
+        return urlutils.join('branches', urlutils.escape(name))
 
     def _read_branch_list(self):
         """Read the branch list.
 
-        :return: List of utf-8 encoded branch names.
+        :return: List of branch names.
         """
         try:
             f = self.control_transport.get('branch-list')
@@ -847,7 +846,7 @@ class BzrDirMeta1(BzrDir):
         ret = []
         try:
             for name in f:
-                ret.append(name.rstrip(b"\n"))
+                ret.append(name.rstrip(b"\n").decode('utf-8'))
         finally:
             f.close()
         return ret
@@ -858,7 +857,7 @@ class BzrDirMeta1(BzrDir):
         :param branches: List of utf-8 branch names to write
         """
         self.transport.put_bytes('branch-list',
-            "".join([name+"\n" for name in branches]))
+            b"".join([name.encode('utf-8')+b"\n" for name in branches]))
 
     def __init__(self, _transport, _format):
         super(BzrDirMeta1, self).__init__(_transport, _format)
@@ -884,12 +883,12 @@ class BzrDirMeta1(BzrDir):
         if name is None:
             name = self._get_selected_branch()
         path = self._get_branch_path(name)
-        if name != "":
+        if name != u"":
             self.control_files.lock_write()
             try:
                 branches = self._read_branch_list()
                 try:
-                    branches.remove(name.encode("utf-8"))
+                    branches.remove(name)
                 except ValueError:
                     raise errors.NotBranchError(name)
                 self._write_branch_list(branches)
@@ -955,6 +954,9 @@ class BzrDirMeta1(BzrDir):
 
     def set_branch_reference(self, target_branch, name=None):
         format = _mod_bzrbranch.BranchReferenceFormat()
+        if (self.control_url == target_branch.controldir.control_url and
+            name == target_branch.name):
+            raise controldir.BranchReferenceLoop(target_branch)
         return format.initialize(self, target_branch=target_branch, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
@@ -972,19 +974,18 @@ class BzrDirMeta1(BzrDir):
             raise errors.IncompatibleFormat(branch_format, self._format)
         if name != "":
             branches = self._read_branch_list()
-            utf8_name = name.encode("utf-8")
-            if not utf8_name in branches:
+            if not name in branches:
                 self.control_files.lock_write()
                 try:
                     branches = self._read_branch_list()
-                    dirname = urlutils.dirname(utf8_name)
-                    if dirname != "" and dirname in branches:
+                    dirname = urlutils.dirname(name)
+                    if dirname != u"" and dirname in branches:
                         raise errors.ParentBranchExists(name)
                     child_branches = [
-                        b.startswith(utf8_name+"/") for b in branches]
+                        b.startswith(name+u"/") for b in branches]
                     if any(child_branches):
                         raise errors.AlreadyBranchError(name)
-                    branches.append(utf8_name)
+                    branches.append(name)
                     self._write_branch_list(branches)
                 finally:
                     self.control_files.unlock()
@@ -1034,7 +1035,7 @@ class BzrDirMeta1(BzrDir):
             pass
 
         for name in self._read_branch_list():
-            ret[name] = self.open_branch(name=name.decode('utf-8'))
+            ret[name] = self.open_branch(name=name)
 
         return ret
 
@@ -1157,7 +1158,7 @@ class BzrFormat(object):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
             basedir=None):
-        for name, necessity in self.features.items():
+        for name, necessity in viewitems(self.features):
             if name in self._present_features:
                 continue
             if necessity == b"optional":
@@ -1196,7 +1197,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
-                      for item in self.features.items()])
+                      for item in sorted(viewitems(self.features))])
         return b"".join(lines)
 
     @classmethod

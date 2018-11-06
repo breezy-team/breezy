@@ -78,6 +78,7 @@ from ..sixish import (
     )
 from ..trace import mutter, note
 from ..tree import (
+    get_canonical_path,
     FileTimestampUnavailable,
     TreeDirectory,
     TreeFile,
@@ -507,9 +508,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
             xml = self.branch.repository._get_inventory_xml(new_revision)
-            firstline = xml.split('\n', 1)[0]
-            if (not 'revision_id="' in firstline or
-                'format="7"' not in firstline):
+            firstline = xml.split(b'\n', 1)[0]
+            if (not b'revision_id="' in firstline or
+                b'format="7"' not in firstline):
                 inv = self.branch.repository._serializer.read_inventory_from_string(
                     xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
@@ -730,12 +731,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             raise
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
-        inv, file_id = self._path2inv_file_id(path)
-        if file_id is None:
+        try:
+            return self._path2ie(path).executable
+        except errors.NoSuchFile:
             # For unversioned files on win32, we just assume they are not
             # executable
             return False
-        return inv.get_entry(file_id).executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
@@ -743,8 +744,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def is_executable(self, path, file_id=None):
         if not self._supports_executable():
-            inv, inv_file_id = self._path2inv_file_id(path, file_id)
-            return inv.get_entry(inv_file_id).executable
+            ie = self._path2ie(path)
+            return ie.executable
         else:
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
@@ -805,6 +806,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         with self.lock_read():
             if file_id is None:
                 file_id = self.path2id(path)
+            if file_id is None:
+                raise errors.NoSuchFile(path)
             maybe_file_parent_keys = []
             for parent_id in self.get_parent_ids():
                 try:
@@ -886,7 +889,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     file_id = cache_utf8.encode(s.get("file_id"))
                     if not self.has_id(file_id):
                         continue
-                    text_hash = s.get("hash")
+                    text_hash = s.get("hash").encode('ascii')
                     path = self.id2path(file_id)
                     if text_hash == self.get_file_sha1(path, file_id):
                         merge_hashes[file_id] = text_hash
@@ -1340,7 +1343,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise errors.BzrMoveFailedError(from_id, to_rel,
+                    raise errors.BzrMoveFailedError(from_rel, to_rel,
                         errors.NoSuchFile(path=to_rel,
                         extra="New file has not been created yet"))
                 only_change_inv = True
@@ -1389,7 +1392,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
             except errors.BzrMoveFailedError as e:
-                raise errors.BzrMoveFailedError( '', '', "Rollback failed."
+                raise errors.BzrMoveFailedError('', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
                         " Error message is: %s" % e)
@@ -1452,10 +1455,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def stored_kind(self, path, file_id=None):
         """See Tree.stored_kind"""
-        inv, inv_file_id = self._path2inv_file_id(path, file_id)
-        if inv_file_id is None:
-            raise errors.NoSuchFile(self, path)
-        return inv.get_entry(inv_file_id).kind
+        return self._path2ie(path).kind
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -1478,7 +1478,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
 
             fl = []
-            for subf in os.listdir(dirabs):
+            for subf in os.listdir(dirabs.encode(osutils._fs_enc)):
+                try:
+                    subf = subf.decode(osutils._fs_enc)
+                except UnicodeDecodeError:
+                    path_os_enc = path.encode(osutils._fs_enc)
+                    relpath = path_os_enc + b'/' + subf
+                    raise errors.BadFilenameEncoding(relpath,
+                                                     osutils._fs_enc)
+
                 if self.controldir.is_control_filename(subf):
                     continue
                 if subf not in dir_entry.children:
@@ -1564,7 +1572,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # everything is missing
                 direction = -1
             else:
-                direction = cmp(current_inv[0][0], cur_disk_dir_relpath)
+                direction = ((current_inv[0][0] > cur_disk_dir_relpath) -
+                             (current_inv[0][0] < cur_disk_dir_relpath))
+
             if direction > 0:
                 # disk is before inventory - unknown
                 dirblock = [(relpath, basename, kind, stat, None, None) for
@@ -1687,17 +1697,38 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 blocked_parent_ids.add(ie.file_id)
             yield path, ie
 
-    def iter_entries_by_dir(self, specific_files=None,
-                            yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-                specific_files=specific_files, yield_parents=yield_parents)
+                specific_files=specific_files)
         if not self.supports_tree_reference():
             return iterator
         else:
             return self._check_for_tree_references(iterator)
+
+    def get_canonical_paths(self, paths):
+        """Look up canonical paths for multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A iterator over paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
+        """
+        with self.lock_read():
+            if not self.case_sensitive:
+                normalize = lambda x: x.lower()
+            elif sys.platform == 'darwin':
+                import unicodedata
+                normalize = lambda x: unicodedata.normalize('NFC', x)
+            else:
+                normalize = None
+            for path in paths:
+                if normalize is None or self.is_versioned(path):
+                    yield path
+                else:
+                    yield get_canonical_path(self, path, normalize)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

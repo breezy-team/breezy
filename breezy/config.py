@@ -119,8 +119,8 @@ from .sixish import (
     binary_type,
     BytesIO,
     PY3,
-    text_type,
     string_types,
+    text_type,
     )
 
 
@@ -734,7 +734,9 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        self._content = BytesIO(str_or_unicode.encode('utf-8'))
+        if isinstance(str_or_unicode, text_type):
+            str_or_unicode = str_or_unicode.encode('utf-8')
+        self._content = BytesIO(str_or_unicode)
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
         if save:
@@ -936,10 +938,8 @@ class IniBasedConfig(Config):
             raise AssertionError('We cannot save, self.file_name is None')
         conf_dir = os.path.dirname(self.file_name)
         ensure_config_dir_exists(conf_dir)
-        atomic_file = atomicfile.AtomicFile(self.file_name)
-        self._get_parser().write(atomic_file)
-        atomic_file.commit()
-        atomic_file.close()
+        with atomicfile.AtomicFile(self.file_name) as atomic_file:
+            self._get_parser().write(atomic_file)
         osutils.copy_ownership_from_path(self.file_name)
         for hook in OldConfigHooks['save']:
             hook(self)
@@ -2169,7 +2169,7 @@ class Base64CredentialStore(CredentialStore):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
         #                should probably propogate as something more useful.
-        return base64.decodestring(credentials['password'])
+        return base64.standard_b64decode(credentials['password'])
 
 credential_store_registry.register('base64', Base64CredentialStore,
                                    help=Base64CredentialStore.__doc__)
@@ -2421,7 +2421,9 @@ class Option(object):
         for var in self.override_from_env:
             try:
                 # If the env variable is defined, its value takes precedence
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2558,7 +2560,7 @@ class RegistryOption(Option):
         can take quoting into account.
         """
         super(RegistryOption, self).__init__(
-            name, default=lambda: unicode(registry.default_key),
+            name, default=lambda: registry.default_key,
             default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)

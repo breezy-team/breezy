@@ -96,7 +96,7 @@ class TestUserIgnores(TestCaseInTempDir):
     def test_use_empty(self):
         ignores._set_user_ignores([])
         ignore_path = config.user_ignore_config_filename()
-        self.check_file_contents(ignore_path, '')
+        self.check_file_contents(ignore_path, b'')
 
         self.assertEqual(set([]), ignores.get_user_ignores())
 
@@ -219,6 +219,6 @@ class TestTreeIgnores(TestCaseWithTransport):
         self.build_tree_contents([('.bzrignore', b"myentry1\r\n")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
-        with open('.bzrignore') as f:
-            self.assertEqual(f.read(), 'myentry1\r\nmyentry2\r\nfoo\r\n')
+        with open('.bzrignore', 'rb') as f:
+            self.assertEqual(f.read(), b'myentry1\r\nmyentry2\r\nfoo\r\n')
         self.assertPatternsEquals(["myentry1", "myentry2", "foo"])

@@ -22,6 +22,7 @@ from .. import (
     tests,
     )
 from ..sixish import (
+    PY3,
     StringIO,
     )
 
@@ -39,7 +40,7 @@ class InstrumentedReporter(object):
 class TestReportChanges(tests.TestCase):
     """Test the new change reporting infrastructure"""
 
-    def assertReport(self, expected, file_id='fid', path='path',
+    def assertReport(self, expected, file_id=b'fid', path='path',
                      versioned_change='unchanged', renamed=False,
                      modified='unchanged', exe_change=False,
                      kind=('file', 'file'), old_path=None,
@@ -54,7 +55,7 @@ class TestReportChanges(tests.TestCase):
                      kind, old_path,
                      unversioned_filter, view_info)
 
-    def assertReportLines(self, expected_lines, file_id='fid', path='path',
+    def assertReportLines(self, expected_lines, file_id=b'fid', path='path',
                      versioned_change='unchanged', renamed=False,
                      modified='unchanged', exe_change=False,
                      kind=('file', 'file'), old_path=None,
@@ -144,7 +145,7 @@ class TestReportChanges(tests.TestCase):
             path="foo", view_info=('my', ['path']))
 
     def assertChangesEqual(self,
-                           file_id='fid',
+                           file_id=b'fid',
                            paths=('path', 'path'),
                            content_change=False,
                            versioned=(True, True),
@@ -259,9 +260,15 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         other_delta.kind_changed = [('filename', b'file-id', 'file',
                                      'directory')]
         self.assertEqual(other_delta, delta)
-        self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
-            " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
-            " modified=[], unchanged=[], unversioned=[])", repr(delta))
+        if PY3:
+            self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
+                " kind_changed=[('filename', b'file-id', 'file', 'directory')],"
+                " modified=[], unchanged=[], unversioned=[])", repr(delta))
+        else:
+            self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
+                " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
+                " modified=[], unchanged=[], unversioned=[])", repr(delta))
+
         self.assertEqual('K  filename (file => directory) file-id\n',
                          self.show_string(delta, show_ids=True,
                          short_status=True))
@@ -359,7 +366,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
         def only_f2_id(path, file_id):
-            return file_id == 'f2-id'
+            return file_id == b'f2-id'
         _mod_delta.report_delta(out, d, predicate=only_f2_id)
         self.assertEqual("added:\n  f2\n", out.getvalue())
 

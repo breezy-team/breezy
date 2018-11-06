@@ -15,14 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
-try:
-    from email.header import decode_header
-except ImportError:  # python < 3
-    from email.Header import decode_header
+from email.header import decode_header
 
 from .. import __version__ as _breezy_version
 from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
+from ..sixish import PY3, text_type
 from ..smtp_connection import SMTPConnection
 from .. import tests
 
@@ -110,10 +108,10 @@ class TestEmailMessage(tests.TestCase):
 
     def test_simple_message(self):
         pairs = {
-            'body': SIMPLE_MESSAGE_ASCII,
+            b'body': SIMPLE_MESSAGE_ASCII,
             u'b\xf3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xf4dy': SIMPLE_MESSAGE_8BIT,
+            b'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
+            b'b\xf4dy': SIMPLE_MESSAGE_8BIT,
         }
         for body, expected in pairs.items():
             msg = EmailMessage('from@from.com', 'to@to.com', 'subject', body)
@@ -139,12 +137,12 @@ class TestEmailMessage(tests.TestCase):
 
             for header in ['From', 'To', 'Subject']:
                 value = msg[header]
-                str(value).decode('ascii') # no UnicodeDecodeError
+                value.encode('ascii') # no UnicodeDecodeError
 
     def test_headers_reject_8bit(self):
         for i in range(3): # from_address, to_address, subject
-            x = [ '"J. Random Developer" <jrandom@example.com>' ] * 3
-            x[i] = 'Pepe P\xe9rez <pperez@ejemplo.com>'
+            x = [ b'"J. Random Developer" <jrandom@example.com>' ] * 3
+            x[i] = b'Pepe P\xe9rez <pperez@ejemplo.com>'
             self.assertRaises(BzrBadParameterNotUnicode, EmailMessage, *x)
 
     def test_multiple_destinations(self):
@@ -173,8 +171,14 @@ class TestEmailMessage(tests.TestCase):
     def test_address_to_encoded_header(self):
         def decode(s):
             """Convert a RFC2047-encoded string to a unicode string."""
-            return ' '.join([chunk.decode(encoding or 'ascii')
-                             for chunk, encoding in decode_header(s)])
+            if PY3:
+                return ''.join([chunk.decode(encoding or 'ascii')
+                                for chunk, encoding in decode_header(s)])
+            else:
+                # Cope with python2 stripping whitespace.
+                # https://bugs.python.org/issue1467619
+                return ' '.join([chunk.decode(encoding or 'ascii')
+                                 for chunk, encoding in decode_header(s)])
 
         address = 'jrandom@example.com'
         encoded = EmailMessage.address_to_encoded_header(address)
@@ -193,22 +197,16 @@ class TestEmailMessage(tests.TestCase):
         self.assertTrue('pperez@ejemplo.com' in encoded) # addr must be unencoded
         self.assertEqual(address, decode(encoded))
 
-        address = 'Pepe P\xc3\xa9red <pperez@ejemplo.com>' # UTF-8 ok
-        encoded = EmailMessage.address_to_encoded_header(address)
-        self.assertTrue('pperez@ejemplo.com' in encoded)
-        self.assertEqual(address, decode(encoded).encode('utf-8'))
-
-        address = 'Pepe P\xe9rez <pperez@ejemplo.com>' # ISO-8859-1 not ok
+        address = b'Pepe P\xe9rez <pperez@ejemplo.com>' # ISO-8859-1 not ok
         self.assertRaises(BzrBadParameterNotUnicode,
                 EmailMessage.address_to_encoded_header, address)
 
     def test_string_with_encoding(self):
         pairs = {
-                u'Pepe':        ('Pepe', 'ascii'),
-                u'P\xe9rez':    ('P\xc3\xa9rez', 'utf-8'),
-                'Perez':         ('Perez', 'ascii'), # u'Pepe' == 'Pepe'
-                'P\xc3\xa9rez': ('P\xc3\xa9rez', 'utf-8'),
-                'P\xe8rez':     ('P\xe8rez', '8-bit'),
+                u'Pepe':        (b'Pepe', 'ascii'),
+                u'P\xe9rez':    (b'P\xc3\xa9rez', 'utf-8'),
+                b'P\xc3\xa9rez': (b'P\xc3\xa9rez', 'utf-8'),
+                b'P\xe8rez':     (b'P\xe8rez', '8-bit'),
         }
         for string_, pair in pairs.items():
             self.assertEqual(pair, EmailMessage.string_with_encoding(string_))

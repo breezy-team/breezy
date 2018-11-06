@@ -13,16 +13,16 @@ brz 3.0.0
 #########
 
 :Codename: Pelican
-:3.0.1: NOT RELEASED YET
+:3.0.0: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
 
- * The bzr command has been renamed to brz, to prevent
-   clashes with upstream Bazaar.
+ * The bzr command has been renamed to brz, to prevent clashes with upstream
+   Bazaar.
    (Martin Packman, Jelmer Vernooĳ)
 
- * The --prefix/-p argument for ``bzr diff`` now defaults to -p1 rather
+ * The --prefix/-p argument for ``brz diff`` now defaults to -p1 rather
    than -p0. (Jelmer Vernooĳ, #1695126)
 
  * The ``brz register-branch`` command from the Launchpad plugin has been
@@ -70,21 +70,21 @@ External Compatibility Breaks
 New Features
 ************
 
- * The 'bisect' plugin is now shipped with bzr. (Jelmer Vernooĳ)
+ * The 'bisect' plugin is now shipped with brz. (Jelmer Vernooĳ)
 
- * The 'fastimport' plugin is now bundled with Bazaar.
+ * The 'fastimport' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
- * The 'stats' plugin is now bundled with Bazaar.
+ * The 'stats' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
- * The 'upload' plugin is now bundled with Bazaar.
+ * The 'upload' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
- * The 'cvs' and 'mtn' plugins are now bundled with Bazaar.
+ * The 'cvs' and 'mtn' plugins are now bundled with Breezy.
    (Jelmer Vernooĳ)
 
- * The 'email' plugin is now bundled with Bazaar.
+ * The 'email' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
  * The 'import' command is now bundled with brz.
@@ -123,8 +123,12 @@ Improvements
  * The ``repodebug`` plugin is now bundled.
    (Jelmer Vernooĳ)
 
- * New ``bzr cp`` command which copies files (but does not currently track
+ * New ``brz cp`` command which copies files (but does not currently track
    history). (Jelmer Vernooĳ, start towards #269095)
+
+ * HPSS calls for ``RevisionTree.archive`` and
+   ``RevisionTree.annotate_iter`` have been added. (Jelmer Vernooĳ,
+   #897781)
 
 Bug Fixes
 *********
@@ -145,7 +149,7 @@ Bug Fixes
   (Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)
 
 * Print a proper error when encountering ghost revisions in
-  mainline in ``bzr log``. (Jelmer Vernooĳ, #726466)
+  mainline in ``brz log``. (Jelmer Vernooĳ, #726466)
 
 * Security fix: hostnames starting with a dash in bzr+ssh URLs
   are now filtered out when using a subprocess SSH client.
@@ -269,6 +273,8 @@ Internals
 
 Testing
 *******
+
+ * Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)
 
  * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
    which caused ``output_encoding = iso-8859-1`` to be added to the

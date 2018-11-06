@@ -483,7 +483,7 @@ class TestStacking(TestCaseWithBranch):
         rtree = target.repository.revision_tree(rev2)
         rtree.lock_read()
         self.addCleanup(rtree.unlock)
-        self.assertEqual('new content', rtree.get_file_text('a'))
+        self.assertEqual(b'new content', rtree.get_file_text('a'))
         self.check_lines_added_or_present(target, rev2)
 
     def test_transform_fallback_location_hook(self):

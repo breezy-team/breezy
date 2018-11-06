@@ -109,8 +109,9 @@ class TestWalkdirs(TestCaseWithWorkingTree):
 
         expected_dirblocks = [
             (('', tree.path2id('')),
-             ([dirblocks[1].as_tuple(), dirblocks[3].as_tuple()]
-                 if (tree.has_versioned_directories() or file_status != self.missing) else []) +
+             [dirblocks[1].as_tuple()] +
+             ([dirblocks[3].as_tuple()]
+                 if (tree.has_versioned_directories() or file_status == self.unknown) else []) +
              [dirblocks[0].as_tuple()]
             ),
             (dirblocks[1].as_dir_tuple(),
@@ -178,9 +179,9 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         tt = transform.TreeTransform(tree)
         root_transaction_id = tt.trans_id_tree_path('')
         tt.new_symlink('link1',
-            root_transaction_id, 'link-target', 'link1')
+            root_transaction_id, 'link-target', b'link1')
         tt.new_symlink('link2',
-            root_transaction_id, 'link-target', 'link2')
+            root_transaction_id, 'link-target', b'link2')
         tt.apply()
         tree.controldir.root_transport.delete_tree('dir1')
         tree.controldir.root_transport.delete_tree('dir2')

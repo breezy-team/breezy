@@ -92,17 +92,17 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout_branch = checkout.controldir.open_branch()
         self.assertEqual(checkout_branch.controldir.root_transport.base,
                          checkout.controldir.root_transport.base)
-        self.assertEqual('rev1', checkout_branch.last_revision())
+        self.assertEqual(b'rev1', checkout_branch.last_revision())
         repo = checkout.controldir.open_repository()
-        repo.get_revision('rev1')
+        repo.get_revision(b'rev1')
 
     def test_lightweight_checkout_to_branch_tags(self):
         reconfiguration, checkout = \
             self.prepare_lightweight_checkout_to_branch()
-        checkout.branch.tags.set_tag('foo', 'bar')
+        checkout.branch.tags.set_tag('foo', b'bar')
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
+        self.assertEqual(b'bar', checkout_branch.tags.lookup_tag('foo'))
 
     def prepare_lightweight_checkout_to_checkout(self):
         branch = self.make_branch('branch')
@@ -120,10 +120,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_lightweight_checkout_to_checkout_tags(self):
         reconfiguration, checkout = \
             self.prepare_lightweight_checkout_to_checkout()
-        checkout.branch.tags.set_tag('foo', 'bar')
+        checkout.branch.tags.set_tag('foo', b'bar')
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertEqual('bar', checkout_branch.tags.lookup_tag('foo'))
+        self.assertEqual(b'bar', checkout_branch.tags.lookup_tag('foo'))
 
     def test_lightweight_conversion_uses_shared_repo(self):
         parent = self.make_branch('parent')
@@ -245,7 +245,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         wt = checkout.controldir.open_workingtree()
         self.assertTrue(parent.repository.has_same_location(
             wt.branch.repository))
-        parent.repository.get_revision('new-commit')
+        parent.repository.get_revision(b'new-commit')
         self.assertRaises(errors.NoRepositoryPresent,
                           checkout.controldir.open_repository)
 
@@ -267,7 +267,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         wt = child.controldir.open_workingtree()
         self.assertTrue(parent.repository.has_same_location(
             wt.branch.repository))
-        parent.repository.get_revision('new-commit')
+        parent.repository.get_revision(b'new-commit')
         self.assertRaises(errors.NoRepositoryPresent,
                           child.controldir.open_repository)
 
@@ -286,10 +286,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_branch_to_lightweight_checkout_fetch_tags(self):
         parent, child, reconfiguration = \
             self.prepare_branch_to_lightweight_checkout()
-        child.branch.tags.set_tag('foo', 'bar')
+        child.branch.tags.set_tag('foo', b'bar')
         reconfiguration.apply()
         child = _mod_branch.Branch.open('child')
-        self.assertEqual('bar', parent.tags.lookup_tag('foo'))
+        self.assertEqual(b'bar', parent.tags.lookup_tag('foo'))
 
     def test_lightweight_checkout_to_lightweight_checkout(self):
         parent = self.make_branch('parent')
@@ -335,7 +335,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
         self.assertTrue(repo.has_same_location(tree.branch.repository))
-        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+        self.assertEqual('Hello', repo.get_revision(b'hello-id').message)
 
     def add_dead_head(self, tree):
         revno, revision_id = tree.branch.last_revision_info()
@@ -352,7 +352,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.controldir)
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
-        message = repo.get_revision('dead-head-id').message
+        message = repo.get_revision(b'dead-head-id').message
         self.assertEqual('Dead head', message)
 
     def make_repository_tree(self):
@@ -375,7 +375,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         repo = tree.branch.repository
         self.assertEqual(repo.controldir.root_transport.base,
                          tree.controldir.root_transport.base)
-        self.assertEqual('Hello', repo.get_revision('hello-id').message)
+        self.assertEqual('Hello', repo.get_revision(b'hello-id').message)
 
     def test_use_shared_to_standalone_preserves_dead_heads(self):
         tree = self.make_repository_tree()
@@ -385,7 +385,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = workingtree.WorkingTree.open('root/tree')
         repo = tree.branch.repository
         self.assertRaises(errors.NoSuchRevision, repo.get_revision,
-                          'dead-head-id')
+                          b'dead-head-id')
 
     def test_standalone_to_standalone(self):
         tree = self.make_branch_and_tree('tree')
@@ -451,10 +451,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
         format = controldir.format_registry.make_controldir('1.9')
         format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
         tree = self.make_branch_and_tree('tree', format=format)
-        tree.branch.set_reference_info('file_id', 'path', '../location')
+        tree.branch.set_reference_info('path', '../location', 'file_id')
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         reconfiguration = reconfigure.Reconfigure.to_tree(checkout.controldir)
         reconfiguration.apply()
         checkout_branch = checkout.controldir.open_branch()
-        self.assertEqual(('path', '../location'),
-                         checkout_branch.get_reference_info('file_id'))
+        self.assertEqual(('../location', b'file_id'),
+                         checkout_branch.get_reference_info('path'))

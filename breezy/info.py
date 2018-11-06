@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 __all__ = ['show_bzrdir_info']
 
+from io import StringIO
 import time
 import sys
 
@@ -35,18 +36,15 @@ from .bzr import (
 from .errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from .missing import find_unmerged
-from .sixish import (
-    BytesIO,
-    )
 
 
-def plural(n, base='', pl=None):
+def plural(n, base=u'', pl=None):
     if n == 1:
         return base
     elif pl is not None:
         return pl
     else:
-        return 's'
+        return u's'
 
 
 class LocationList(object):
@@ -333,7 +331,7 @@ def _show_repository_info(repository, outfile):
 
 def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
-    f = BytesIO()
+    f = StringIO()
     if 'revisions' in stats:
         revisions = stats['revisions']
         f.write('  %8d revision%s\n' % (revisions, plural(revisions)))

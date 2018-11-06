@@ -47,11 +47,11 @@ class BranchBuilder(object):
     >>> builder.start_series()
     >>> builder.build_snapshot(None, [
     ...     ('add', ('', b'root-id', 'directory', '')),
-    ...     ('add', ('filename', b'f-id', 'file', 'content\n'))],
+    ...     ('add', ('filename', b'f-id', 'file', b'content\n'))],
     ...     revision_id=b'rev-id')
     'rev-id'
-    >>> builder.build_snapshot(['rev-id'],
-    ...     [('modify', (b'f-id', 'new-content\n'))],
+    >>> builder.build_snapshot([b'rev-id'],
+    ...     [('modify', (b'f-id', b'new-content\n'))],
     ...     revision_id=b'rev2-id')
     'rev2-id'
     >>> builder.finish_series()
@@ -113,15 +113,12 @@ class BranchBuilder(object):
                 self._move_branch_pointer(base_id,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
         tree = self._branch.create_memorytree()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             if parent_ids is not None:
                 tree.set_parent_ids(parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             tree.add('')
             return self._do_commit(tree, **commit_kwargs)
-        finally:
-            tree.unlock()
 
     def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
@@ -134,8 +131,7 @@ class BranchBuilder(object):
     def _move_branch_pointer(self, new_revision_id,
         allow_leftmost_as_ghost=False):
         """Point self._branch to a different revision id."""
-        self._branch.lock_write()
-        try:
+        with self._branch.lock_write():
             # We don't seem to have a simple set_last_revision(), so we
             # implement it here.
             cur_revno, cur_revision_id = self._branch.last_revision_info()
@@ -148,8 +144,6 @@ class BranchBuilder(object):
                 if not allow_leftmost_as_ghost:
                     raise
                 new_revno = 1
-        finally:
-            self._branch.unlock()
         if self._tree is not None:
             # We are currently processing a series, but when switching branch
             # pointers, it is easiest to just create a new memory tree.
@@ -193,8 +187,8 @@ class BranchBuilder(object):
         :param parent_ids: A list of parent_ids to use for the commit.
             It can be None, which indicates to use the last commit.
         :param actions: A list of actions to perform. Supported actions are:
-            ('add', ('path', 'file-id', 'kind', 'content' or None))
-            ('modify', ('path', 'new-content'))
+            ('add', ('path', b'file-id', 'kind', b'content' or None))
+            ('modify', ('path', b'new-content'))
             ('unversion', 'path')
             ('rename', ('orig-path', 'new-path'))
             ('flush', None)

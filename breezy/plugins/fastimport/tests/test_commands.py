@@ -45,20 +45,18 @@ class TestSourceStream(tests.TestCase):
     def test_get_source_gz(self):
         # files ending in .gz are automatically decompressed.
         fd, filename = tempfile.mkstemp(suffix=".gz")
-        f = gzip.GzipFile(fileobj=os.fdopen(fd, "w"), mode='w')
-        f.write("bla")
-        f.close()
+        with gzip.GzipFile(fileobj=os.fdopen(fd, "wb"), mode='wb') as f:
+            f.write(b"bla")
         stream = _get_source_stream(filename)
         self.assertIsNot("bla", stream.read())
 
     def test_get_source_file(self):
         # other files are opened as regular files.
         fd, filename = tempfile.mkstemp()
-        f = os.fdopen(fd, 'w')
-        f.write("bla")
-        f.close()
+        with os.fdopen(fd, 'wb') as f:
+            f.write(b"bla")
         stream = _get_source_stream(filename)
-        self.assertIsNot("bla", stream.read())
+        self.assertIsNot(b"bla", stream.read())
 
 
 fast_export_baseline_data = """commit refs/heads/master
@@ -126,12 +124,12 @@ class TestFastExport(ExternalBase):
         rev_id = tree.branch.dotted_revno_to_revision_id((1,))
         tree.branch.tags.set_tag("goodTag", rev_id)
         tree.branch.tags.set_tag("bad Tag", rev_id)
-        
+
         # first check --no-rewrite-tag-names
         data = self.run_bzr("fast-export --plain --no-rewrite-tag-names br")[0]
         self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
         self.assertEqual(data.find("reset refs/tags/"), data.rfind("reset refs/tags/"))
-        
+
         # and now with --rewrite-tag-names
         data = self.run_bzr("fast-export --plain --rewrite-tag-names br")[0]
         self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
@@ -152,28 +150,34 @@ class TestFastExport(ExternalBase):
         tree = self.make_branch_and_tree("bl")
 
         # Revision 1
-        file('bl/a', 'w').write('test 1')
+        with open('bl/a', 'w') as f:
+            f.write('test 1')
         tree.add('a')
         tree.commit(message='add a')
 
         # Revision 2
-        file('bl/b', 'w').write('test 2')
-        file('bl/a', 'a').write('\ntest 3')
+        with open('bl/b', 'w') as f:
+            f.write('test 2')
+        with open('bl/a', 'a') as f:
+            f.write('\ntest 3')
         tree.add('b')
         tree.commit(message='add b, modify a')
 
         # Revision 3
-        file('bl/c', 'w').write('test 4')
+        with open('bl/c', 'w') as f:
+            f.write('test 4')
         tree.add('c')
         tree.remove('b')
         tree.commit(message='add c, remove b')
 
         # Revision 4
-        file('bl/a', 'a').write('\ntest 5')
+        with open('bl/a', 'a') as f:
+            f.write('\ntest 5')
         tree.commit(message='modify a again')
 
         # Revision 5
-        file('bl/d', 'w').write('test 6')
+        with open('bl/d', 'w') as f:
+            f.write('test 6')
         tree.add('d')
         tree.commit(message='add d')
 
@@ -195,40 +199,6 @@ data 7
 initial
 
 """
-
-class TestFastImportInfo(ExternalBase):
-
-    _test_needs_features = [FastimportFeature]
-
-    def test_simple(self):
-        self.build_tree_contents([('simple.fi', simple_fast_import_stream)])
-        output = self.run_bzr("fast-import-info simple.fi")[0]
-        self.assertEquals(output, """Command counts:
-\t0\tblob
-\t0\tcheckpoint
-\t1\tcommit
-\t0\tfeature
-\t0\tprogress
-\t0\treset
-\t0\ttag
-File command counts:
-\t0\tfilemodify
-\t0\tfiledelete
-\t0\tfilecopy
-\t0\tfilerename
-\t0\tfiledeleteall
-Parent counts:
-\t1\tparents-0
-\t0\ttotal revisions merged
-Commit analysis:
-\tno\texecutables
-\tno\tseparate authors found
-\tno\tsymlinks
-\tno\tblobs referenced by SHA
-Head analysis:
-\t[':1']\trefs/heads/master
-Merges:
-""")
 
 
 class TestFastImport(ExternalBase):
@@ -254,19 +224,5 @@ committer
 data 15
 """)])
         self.make_branch_and_tree("br")
-        self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command commit is missing section committer\n'], "fast-import empty.fi br")
+        self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command .*commit.* is missing section .*committer.*\n'], "fast-import empty.fi br")
 
-
-class TestFastImportFilter(ExternalBase):
-
-    _test_needs_features = [FastimportFeature]
-
-    def test_empty(self):
-        self.build_tree_contents([('empty.fi', b"")])
-        self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-import-filter -")[0])
-
-    def test_default_stdin(self):
-        self.build_tree_contents([('empty.fi', b"")])
-        self.make_branch_and_tree("br")
-        self.assertEquals("", self.run_bzr("fast-import-filter")[0])

@@ -32,13 +32,13 @@ from __future__ import absolute_import
 import errno
 import os
 import re
-import shutil
 import sys
 
 import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import shutil
 import stat
 
 from breezy import (
@@ -411,7 +411,7 @@ class WorkingTree(mutabletree.MutableTree,
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
-                revision_id = l.rstrip('\n')
+                revision_id = l.rstrip(b'\n')
                 parents.append(revision_id)
         return parents
 
@@ -906,7 +906,7 @@ class WorkingTree(mutabletree.MutableTree,
 
     def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """See MutableTree.put_file_bytes_non_atomic."""
-        with self.lock_write(), file(self.abspath(path), 'wb') as stream:
+        with self.lock_write(), open(self.abspath(path), 'wb') as stream:
                 stream.write(bytes)
 
     def extras(self):
@@ -1285,7 +1285,7 @@ class WorkingTree(mutabletree.MutableTree,
         with self.lock_tree_write():
             un_resolved = _mod_conflicts.ConflictList()
             resolved = _mod_conflicts.ConflictList()
-            conflict_re = re.compile('^(<{7}|={7}|>{7})')
+            conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
                 path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
@@ -1336,6 +1336,42 @@ class WorkingTree(mutabletree.MutableTree,
     def get_shelf_manager(self):
         """Return the ShelfManager for this WorkingTree."""
         raise NotImplementedError(self.get_shelf_manager)
+
+    def get_canonical_paths(self, paths):
+        """Like get_canonical_path() but works on multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A list of paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
+        """
+        with self.lock_read():
+            for path in paths:
+                yield path
+
+    def get_canonical_path(self, path):
+        """Returns the first item in the tree that matches a path.
+
+        This is meant to allow case-insensitive path lookups on e.g.
+        FAT filesystems.
+
+        If a path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches according to the underlying file system,
+        it is implementation defined which is returned.
+
+        If no path matches according to the file system, the input path is
+        returned, but with as many path entries that do exist changed to their
+        canonical form.
+
+        If you need to resolve many names from the same tree, you should
+        use get_canonical_paths() to avoid O(N) behaviour.
+
+        :param path: A paths relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements
+        that match case insensitively.
+        """
+        with self.lock_read():
+            return next(self.get_canonical_paths([path]))
 
 
 class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):

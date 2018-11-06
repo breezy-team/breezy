@@ -148,7 +148,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.build_tree_contents([('repo/tree/file', b'bar\n')]);
         self.check_file_contents('repo/tree/file', b'bar\n')
         self.run_bzr('revert', working_dir='repo/tree')
-        self.check_file_contents('repo/tree/file', 'foo\n')
+        self.check_file_contents('repo/tree/file', b'foo\n')
         self.assertEqual(tree.controldir.root_transport.base,
             tree.branch.repository.controldir.root_transport.base)
 
@@ -173,7 +173,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.build_tree_contents([('checkout/file', b'bar\n')]);
         self.check_file_contents('checkout/file', b'bar\n')
         self.run_bzr('revert', working_dir='checkout')
-        self.check_file_contents('checkout/file', 'foo\n')
+        self.check_file_contents('checkout/file', b'foo\n')
 
     def test_lightweight_knit_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('knit')

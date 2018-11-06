@@ -126,7 +126,7 @@ class TestSprout(TestCaseWithBranch):
         builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise tests.TestNotApplicable(
                 'Branch format does not support tags or tags to ghosts.')
@@ -134,7 +134,7 @@ class TestSprout(TestCaseWithBranch):
         target_bzrdir = self.make_repository('target').controldir
         new_branch = source.sprout(target_bzrdir)
         # The tag is present in the target
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_from_any_repo_revision(self):
         """We should be able to sprout from any revision."""
@@ -185,7 +185,7 @@ class TestSprout(TestCaseWithBranch):
         if not tree.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable(
                 "repository format does not support ghosts in mainline")
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
         rev1 = tree.commit('msg1')
         tree.commit('msg2')

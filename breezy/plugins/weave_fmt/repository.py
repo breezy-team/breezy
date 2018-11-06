@@ -308,8 +308,9 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
         control_files.lock_write()
         transport = a_controldir.transport
         try:
-            transport.mkdir_multi(['revision-store', 'weaves'],
-                mode=a_controldir._get_dir_mode())
+            transport.mkdir('revision-store',
+                            mode=a_controldir._get_dir_mode())
+            transport.mkdir('weaves', mode=a_controldir._get_dir_mode())
             transport.put_bytes_non_atomic('inventory.weave', empty_weave,
                 mode=a_controldir._get_file_mode())
         finally:
@@ -606,7 +607,7 @@ class TextVersionedFiles(VersionedFiles):
             raise errors.ObjectNotLocked(self)
         if not self._can_write():
             raise errors.ReadOnlyError(self)
-        if '/' in key[-1]:
+        if b'/' in key[-1]:
             raise ValueError('bad idea to put / in %r' % (key,))
         chunks = lines
         if self._compressed:

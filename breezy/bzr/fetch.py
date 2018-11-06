@@ -101,7 +101,7 @@ class RepoFetcher(object):
             pb.show_pct = pb.show_count = False
             pb.update(gettext("Finding revisions"), 0, 2)
             search_result = self._revids_to_fetch()
-            mutter('fetching: %s', search_result)
+            mutter('fetching: %s', str(search_result))
             if search_result.is_empty():
                 return
             pb.update(gettext("Fetching revisions"), 1, 2)
@@ -268,7 +268,7 @@ def _new_root_data_stream(
         parent_keys = _parent_keys_for_root_version(
             root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
         yield versionedfile.FulltextContentFactory(
-            root_key, parent_keys, None, '')
+            root_key, parent_keys, None, b'')
 
 
 def _parent_keys_for_root_version(

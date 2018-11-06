@@ -22,14 +22,18 @@ See developers/testing.html for more explanations.
 import doctest
 import errno
 import glob
+import logging
 import os
 import shlex
+import sys
 import textwrap
 
 from .. import (
     osutils,
     tests,
+    trace,
     )
+from ..tests import ui_testing
 
 
 def split(s):
@@ -163,10 +167,10 @@ def _scan_redirection_options(args):
             in_name = redirected_file_name('<', arg[1:], args)
         elif arg.startswith('>>'):
             out_name = redirected_file_name('>>', arg[2:], args)
-            out_mode = 'ab+'
+            out_mode = 'a+'
         elif arg.startswith('>',):
             out_name = redirected_file_name('>', arg[1:], args)
-            out_mode = 'wb+'
+            out_mode = 'w+'
         else:
             remaining.append(arg)
     return in_name, out_name, out_mode, remaining
@@ -296,7 +300,7 @@ class ScriptRunner(object):
 
     def _read_input(self, input, in_name):
         if in_name is not None:
-            infile = open(in_name, 'rb')
+            infile = open(in_name, 'r')
             try:
                 # Command redirection takes precedence over provided input
                 input = infile.read()
@@ -315,9 +319,32 @@ class ScriptRunner(object):
         return output
 
     def do_brz(self, test_case, input, args):
-        retcode, out, err = test_case._run_bzr_core(
-            args, retcode=None, encoding=None, stdin=input, working_dir=None)
-        return retcode, out, err
+        encoding = osutils.get_user_encoding()
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+            handler = logging.StreamHandler(stderr)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            retcode = test_case._run_bzr_core(
+                args, encoding=encoding, stdin=input, stdout=stdout,
+                stderr=stderr, working_dir=None)
+        finally:
+            logger.removeHandler(handler)
+
+        return retcode, stdout.getvalue(), stderr.getvalue()
 
     def do_cat(self, test_case, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)

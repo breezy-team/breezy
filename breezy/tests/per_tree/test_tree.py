@@ -33,15 +33,15 @@ class TestAnnotate(TestCaseWithTree):
     def test_annotate(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        tree_revision = getattr(tree, 'get_revision_id', lambda: 'current:')()
+        tree_revision = getattr(tree, 'get_revision_id', lambda: b'current:')()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         for revision, line in tree.annotate_iter('a'):
-            self.assertEqual('contents of a\n', line)
+            self.assertEqual(b'contents of a\n', line)
             self.assertEqual(tree_revision, revision)
-        tree_revision = getattr(tree, 'get_revision_id', lambda: 'random:')()
-        for revision, line in tree.annotate_iter('a', default_revision='random:'):
-            self.assertEqual('contents of a\n', line)
+        tree_revision = getattr(tree, 'get_revision_id', lambda: b'random:')()
+        for revision, line in tree.annotate_iter('a', default_revision=b'random:'):
+            self.assertEqual(b'contents of a\n', line)
             self.assertEqual(tree_revision, revision)
 
 
@@ -65,12 +65,12 @@ class TestPlanFileMerge(TestCaseWithTree):
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
         self.assertEqual([
-            ('killed-a', 'a\n'),
-            ('killed-b', 'b\n'),
-            ('unchanged', 'c\n'),
-            ('unchanged', 'd\n'),
-            ('new-a', 'e\n'),
-            ('new-b', 'f\n'),
+            ('killed-a', b'a\n'),
+            ('killed-b', b'b\n'),
+            ('unchanged', b'c\n'),
+            ('unchanged', b'd\n'),
+            ('new-a', b'e\n'),
+            ('new-b', b'f\n'),
         ], list(tree_a.plan_file_merge(file_id, tree_b)))
 
 
@@ -86,29 +86,28 @@ class TestReference(TestCaseWithTree):
         try:
             self.skip_if_no_reference(work_tree)
             subtree = self.make_branch_and_tree('wt/subtree')
-            subtree.set_root_id(b'sub-root')
-            subtree.commit('foo', rev_id=b'sub-1')
+            subtree.commit('foo')
             work_tree.add_reference(subtree)
         finally:
             work_tree.unlock()
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
-        return tree
+        return tree, subtree
 
     def test_get_reference_revision(self):
-        tree = self.create_nested()
+        tree, subtree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        path = tree.id2path(b'sub-root')
-        self.assertEqual(b'sub-1',
-            tree.get_reference_revision(path, 'sub-root'))
+        self.assertEqual(
+            subtree.last_revision(),
+            tree.get_reference_revision('subtree'))
 
     def test_iter_references(self):
-        tree = self.create_nested()
+        tree, subtree = self.create_nested()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        entry = tree.root_inventory.get_entry('sub-root')
-        self.assertEqual([(u'subtree', 'sub-root')],
+        self.assertEqual(
+            [(u'subtree', subtree.get_root_id())],
             list(tree.iter_references()))
 
     def test_get_root_id(self):
@@ -116,7 +115,7 @@ class TestReference(TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         root_id = tree.get_root_id()
         if root_id is not None:
-            self.assertIsInstance(root_id, str)
+            self.assertIsInstance(root_id, bytes)
 
     def test_is_versioned(self):
         tree = self.make_branch_and_tree('tree')
@@ -140,7 +139,7 @@ class TestFileIds(TestCaseWithTree):
         with tree.lock_read():
             self.assertEqual(u'a', tree.id2path(a_id))
             # other ids give an error- don't return None for this case
-            self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
+            self.assertRaises(errors.NoSuchId, tree.id2path, b'a')
 
     def test_all_file_ids(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -176,16 +175,25 @@ class TestFileContent(TestCaseWithTree):
         file_without_path = tree.get_file('a')
         try:
             lines = file_without_path.readlines()
-            self.assertEqual(['foobar\n'], lines)
+            self.assertEqual([b'foobar\n'], lines)
         finally:
             file_without_path.close()
         # Test lookup with path works
         file_with_path = tree.get_file('a', a_id)
         try:
             lines = file_with_path.readlines()
-            self.assertEqual(['foobar\n'], lines)
+            self.assertEqual([b'foobar\n'], lines)
         finally:
             file_with_path.close()
+
+    def test_get_file_context_manager(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        a_id = tree.path2id('a')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        with tree.get_file('a') as f:
+            self.assertEqual(b'foobar\n', f.read())
 
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -194,9 +202,9 @@ class TestFileContent(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by file-id
-        self.assertEqual('foobar\n', tree.get_file_text('a', a_id))
+        self.assertEqual(b'foobar\n', tree.get_file_text('a', a_id))
         # test read by path
-        self.assertEqual('foobar\n', tree.get_file_text('a'))
+        self.assertEqual(b'foobar\n', tree.get_file_text('a'))
 
     def test_get_file_lines(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -205,9 +213,9 @@ class TestFileContent(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # test read by file-id
-        self.assertEqual(['foobar\n'], tree.get_file_lines('a', a_id))
+        self.assertEqual([b'foobar\n'], tree.get_file_lines('a', a_id))
         # test read by path
-        self.assertEqual(['foobar\n'], tree.get_file_lines('a'))
+        self.assertEqual([b'foobar\n'], tree.get_file_lines('a'))
 
     def test_get_file_lines_multi_line_breaks(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -216,7 +224,7 @@ class TestFileContent(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(['a\rb\n', 'c\r\n', 'd'],
+        self.assertEqual([b'a\rb\n', b'c\r\n', b'd'],
                          tree.get_file_lines('foobar'))
 
 
@@ -231,13 +239,13 @@ class TestExtractFilesBytes(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        extracted = dict((i, ''.join(b)) for i, b in
+        extracted = dict((i, b''.join(b)) for i, b in
                          tree.iter_files_bytes([('foo', 'id1'),
                                                 ('bar', 'id2'),
                                                 ('baz', 'id3')]))
-        self.assertEqual('foo', extracted['id1'])
-        self.assertEqual('bar', extracted['id2'])
-        self.assertEqual('baz', extracted['id3'])
+        self.assertEqual(b'foo', extracted['id1'])
+        self.assertEqual(b'bar', extracted['id2'])
+        self.assertEqual(b'baz', extracted['id3'])
         self.assertRaises(errors.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
                           [('qux', 'file1-notpresent')])))
@@ -298,7 +306,7 @@ class TestHasId(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertTrue(tree.has_id(file_id))
-        self.assertFalse(tree.has_id('dir-id'))
+        self.assertFalse(tree.has_id(b'dir-id'))
 
 
 class TestExtras(TestCaseWithTree):
@@ -330,7 +338,7 @@ class TestGetFileSha1(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        expected = osutils.sha_strings('file content')
+        expected = osutils.sha_string(b'file content')
         self.assertEqual(expected, tree.get_file_sha1('file'))
 
 
@@ -350,7 +358,7 @@ class TestGetFileVerifier(TestCaseWithTree):
             tree.get_file_verifier('file1'),
             tree.get_file_verifier('file2'))
         if kind == "SHA1":
-            expected = osutils.sha_strings('file content')
+            expected = osutils.sha_string(b'file content')
             self.assertEqual(expected, data)
 
 
@@ -368,3 +376,16 @@ class TestSupportsRenameTracking(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('tree')
         tree = self._convert_tree(work_tree)
         self.assertSubset([tree.supports_rename_tracking()], (True, False))
+
+
+class TestSupportsVersionableKind(TestCaseWithTree):
+
+    def test_file(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertTrue(tree.versionable_kind('file'))
+
+    def test_unknown(self):
+        work_tree = self.make_branch_and_tree('tree')
+        tree = self._convert_tree(work_tree)
+        self.assertFalse(tree.versionable_kind('unknown'))

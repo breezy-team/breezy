@@ -49,6 +49,9 @@ from . import (
     errors,
     registry,
     )
+from .sixish import (
+    viewitems,
+    )
 
 
 class MustHaveWorkingTree(errors.BzrError):
@@ -57,6 +60,14 @@ class MustHaveWorkingTree(errors.BzrError):
 
     def __init__(self, format, url):
         errors.BzrError.__init__(self, format=format, url=url)
+
+
+class BranchReferenceLoop(errors.BzrError):
+
+    _fmt = "Can not create branch reference that points at branch itself."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch)
 
 
 class ControlComponent(object):
@@ -364,7 +375,8 @@ class ControlDir(ControlComponent):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True,
+               lossy=False):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -390,8 +402,8 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.sprout)
 
-    def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False, create_prefix=False):
+    def push_branch(self, source, revision_id=None, overwrite=False,
+        remember=False, create_prefix=False, lossy=False):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -415,7 +427,7 @@ class ControlDir(ControlComponent):
                 # revision
                 revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
-            br_to = source.sprout(self, revision_id=revision_id)
+            br_to = source.sprout(self, revision_id=revision_id, lossy=lossy)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
@@ -435,20 +447,18 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(br_to, 
-                    overwrite, stop_revision=revision_id)
+                    overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(br_to,
-                    overwrite, stop_revision=revision_id)
+                    overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = None # Not applicable
             else:
-                tree_to.lock_write()
-                try:
+                with tree_to.lock_write():
                     push_result.branch_push_result = source.push(
-                        tree_to.branch, overwrite, stop_revision=revision_id)
+                        tree_to.branch, overwrite, stop_revision=revision_id,
+                        lossy=lossy)
                     tree_to.update()
-                finally:
-                    tree_to.unlock()
                 push_result.workingtree_updated = True
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid
@@ -949,25 +959,24 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
             registry._LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):
-        """Return all "extra" formats, not usable in meta directories."""
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
+        """Return getters for extra formats, not usable in meta directories."""
+        return [getter.get_obj for getter in self._extra_formats]
+
+    def _get_all_lazy(self):
+        """Return getters for all formats, even those not usable in metadirs."""
+        result = [self._dict[name].get_obj for name in self.keys()]
+        result.extend(self._get_extra())
         return result
 
     def _get_all(self):
-        """Return all formats, even those not usable in metadirs.
-        """
+        """Return all formats, even those not usable in metadirs."""
         result = []
-        for name in self.keys():
-            fmt = self.get(name)
+        for getter in self._get_all_lazy():
+            fmt = getter()
             if callable(fmt):
                 fmt = fmt()
             result.append(fmt)
-        return result + self._get_extra()
+        return result
 
     def _get_all_modules(self):
         """Return a set of the modules providing objects."""
@@ -1138,9 +1147,9 @@ class ControlDirFormat(object):
     def known_formats(klass):
         """Return all the known formats.
         """
-        result = set()
+        result = []
         for prober_kls in klass.all_probers():
-            result.update(prober_kls.known_formats())
+            result.extend(prober_kls.known_formats())
         return result
 
     @classmethod
@@ -1295,16 +1304,11 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._aliases = set()
         self._registration_order = list()
         super(ControlDirFormatRegistry, self).__init__()
 
-    def aliases(self):
-        """Return a set of the format names which are aliases."""
-        return frozenset(self._aliases)
-
     def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False, experimental=False, alias=False):
+                 hidden=False, experimental=False):
         """Register a ControlDirFormat factory.
 
         The factory must be a callable that takes one parameter: the key.
@@ -1315,16 +1319,25 @@ class ControlDirFormatRegistry(registry.Registry):
         """
         registry.Registry.register(self, key, factory, help,
             ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
+    def register_alias(self, key, target, hidden=False):
+        """Register a format alias.
+
+        :param key: Alias name
+        :param target: Target format
+        :param hidden: Whether the alias is hidden
+        """
+        info = self.get_info(target)
+        registry.Registry.register_alias(self, key, target,
+                ControlDirFormatInfo(
+                    native=info.native, deprecated=info.deprecated,
+                    hidden=hidden, experimental=info.experimental))
+
     def register_lazy(self, key, module_name, member_name, help, native=True,
-        deprecated=False, hidden=False, experimental=False, alias=False):
+        deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
             help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
     def set_default(self, key):
@@ -1332,9 +1345,7 @@ class ControlDirFormatRegistry(registry.Registry):
 
         This method must be called once and only once.
         """
-        registry.Registry.register(self, 'default', self.get(key),
-            self.get_help(key), info=self.get_info(key))
-        self._aliases.add('default')
+        self.register_alias('default', key)
 
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.

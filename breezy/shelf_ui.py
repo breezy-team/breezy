@@ -20,6 +20,8 @@ import shutil
 import sys
 import tempfile
 
+from io import BytesIO
+
 from . import (
     builtins,
     delta,
@@ -35,9 +37,6 @@ from . import (
     workingtree,
 )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    )
 
 
 class UseEditor(Exception):
@@ -248,8 +247,9 @@ class Shelver(object):
             new_tree = self.work_tree
         old_path = old_tree.id2path(file_id)
         new_path = new_tree.id2path(file_id)
+        path_encoding = osutils.get_terminal_encoding()
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
-            path_encoding=osutils.get_terminal_encoding())
+            path_encoding=path_encoding)
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -334,7 +334,7 @@ class Shelver(object):
             offset = 0
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
-                self.diff_writer.write(str(hunk))
+                self.diff_writer.write(hunk.as_bytes())
                 selected = self.prompt_bool(self.reporter.vocab['hunk'],
                                             allow_editor=(self.change_editor
                                                           is not None))

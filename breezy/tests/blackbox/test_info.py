@@ -54,7 +54,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.make_controldir('ctrl')
         out, err = self.run_bzr('info ctrl')
         self.assertEqual(out,
-            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Empty control directory (format: 2a)\n'
             'Location:\n'
             '  control directory: ctrl\n')
         self.assertEqual(err, '')
@@ -63,7 +63,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self.make_controldir('ctrl')
         out, err = self.run_bzr('info -v ctrl')
         self.assertEqualDiff(out,
-            'Empty control directory (format: 2a or pack-0.92)\n'
+            'Empty control directory (format: 2a)\n'
             'Location:\n'
             '  control directory: ctrl\n\n'
             'Format:\n'
@@ -78,7 +78,7 @@ class TestInfo(tests.TestCaseWithTransport):
         shutil.rmtree('target')
         out, err = self.run_bzr('info from')
         self.assertEqual(out,
-            'Dangling branch reference (format: 2a or pack-0.92)\n'
+            'Dangling branch reference (format: 2a)\n'
             'Location:\n'
             '   control directory: from\n'
             '  checkout of branch: target\n')
@@ -1170,7 +1170,7 @@ Repository:
     def test_info_repository_hook(self):
         format = controldir.format_registry.make_controldir('knit')
         def repo_info(repo, stats, outf):
-            outf.write("more info\n")
+            outf.write(u"more info\n")
         info.hooks.install_named_hook('repository', repo_info, None)
         # Create shared repository with working trees
         repo = self.make_repository('repo', shared=True, format=format)

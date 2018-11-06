@@ -299,7 +299,8 @@ class TestUpgrade(TestCaseWithTransport):
         self.build_tree_contents(_upgrade1_template)
         upgrade.upgrade('.', BzrDirFormat6())
         t = self.get_transport('.')
-        t.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
+        t.delete('.bzr/pending-merges')
+        t.delete('.bzr/inventory')
         self.assertFalse(t.has('.bzr/stat-cache'))
         t.delete_tree('backup.bzr.~1~')
         # At this point, we have a format6 branch without checkout files.
@@ -314,8 +315,8 @@ class TestUpgrade(TestCaseWithTransport):
         b = control.open_branch()
         self.addCleanup(b.lock_read().unlock)
         self.assertEqual(b._revision_history(),
-           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
-            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+           [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""
@@ -331,21 +332,15 @@ class TestUpgrade(TestCaseWithTransport):
         self.addCleanup(b.lock_read().unlock)
         rh = b._revision_history()
         eq(rh,
-           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
-            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+           [b'mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            b'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
         rt = b.repository.revision_tree(rh[0])
-        foo_id = 'foo-20051004035605-91e788d1875603ae'
-        rt.lock_read()
-        try:
-            eq(rt.get_file_text('foo', foo_id), 'initial contents\n')
-        finally:
-            rt.unlock()
+        foo_id = b'foo-20051004035605-91e788d1875603ae'
+        with rt.lock_read():
+            eq(rt.get_file_text('foo', foo_id), b'initial contents\n')
         rt = b.repository.revision_tree(rh[1])
-        rt.lock_read()
-        try:
-            eq(rt.get_file_text('foo', foo_id), 'new contents\n')
-        finally:
-            rt.unlock()
+        with rt.lock_read():
+            eq(rt.get_file_text('foo', foo_id), b'new contents\n')
         # check a backup was made:
         backup_dir = 'backup.bzr.~1~'
         t = self.get_transport('.')
@@ -388,7 +383,7 @@ class TestUpgrade(TestCaseWithTransport):
         revision_id = b._revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
-        eq(rev.parent_ids[1], 'wibble@wobble-2')
+        eq(rev.parent_ids[1], b'wibble@wobble-2')
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)
@@ -407,7 +402,7 @@ class TestUpgrade(TestCaseWithTransport):
         self.addCleanup(repo.unlock)
         text_keys = repo.texts.keys()
         dir_keys = [key for key in text_keys if key[0] ==
-                'dir-20051005095101-da1441ea3fa6917a']
+                b'dir-20051005095101-da1441ea3fa6917a']
         self.assertNotEqual([], dir_keys)
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):

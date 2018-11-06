@@ -29,6 +29,7 @@ from . import (
     )
 from .sixish import (
     text_type,
+    viewitems,
     )
 
 
@@ -392,8 +393,15 @@ class RegistryOption(Option):
         if self.enum_switch:
             Option.add_option(self, parser, short_name)
         if self.value_switches:
+            alias_map = self.registry.alias_map()
             for key in self.registry.keys():
-                option_strings = ['--%s' % key]
+                if key in self.registry.aliases():
+                    continue
+                option_strings = [
+                    ('--%s' % name)
+                    for name in [key] +
+                    [alias for alias in alias_map.get(key, [])
+                        if not self.is_hidden(alias)]]
                 if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
@@ -425,6 +433,12 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in sorted(self.registry.keys()):
                 yield key, None, None, self.registry.get_help(key)
+
+    def is_alias(self, name):
+        """Check whether a particular format is an alias."""
+        if name == self.name:
+            return False
+        return name in self.registry.aliases()
 
     def is_hidden(self, name):
         if name == self.name:
@@ -463,7 +477,7 @@ def get_optparser(options):
 
     parser = OptionParser()
     parser.remove_option('--help')
-    for option in options.values():
+    for option in options:
         option.add_option(parser, option.short_name())
     return parser
 

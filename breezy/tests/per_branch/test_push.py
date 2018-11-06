@@ -123,12 +123,12 @@ class TestPush(per_branch.TestCaseWithBranch):
                 'Format does not support bound branches')
         other = bound.controldir.sprout('other').open_branch()
         try:
-            other.tags.set_tag('new-tag', 'some-rev')
+            other.tags.set_tag('new-tag', b'some-rev')
         except errors.TagsNotSupported:
             raise tests.TestNotApplicable('Format does not support tags')
         other.push(bound)
-        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
-        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
+        self.assertEqual({'new-tag': b'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': b'some-rev'}, master.tags.get_tag_dict())
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
@@ -241,7 +241,7 @@ class TestPush(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('cannot initialize this format')
         source.start_series()
         revid_a = source.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))])
+            ('add', ('', b'root-id', 'directory', None))])
         revid_b = source.build_snapshot([revid_a], [])
         revid_c = source.build_snapshot([revid_a], [])
         source.finish_series()
@@ -281,11 +281,11 @@ class TestPush(per_branch.TestCaseWithBranch):
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+            ('add', ('', b'root-id', 'directory', b'')),
+            ('add', ('filename', b'f-id', 'file', b'content\n'))])
         revid2 = builder.build_snapshot([revid1], [])
         revid3 = builder.build_snapshot([revid2],
-            [('modify', ('filename', 'new-content\n'))])
+            [('modify', ('filename', b'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
@@ -432,13 +432,13 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(
-            ['BzrDir.open_2.1',
-             'BzrDir.open_branchV3',
-             'BzrDir.find_repositoryV3',
-             'Branch.get_stacked_on_url',
-             'Branch.lock_write',
-             'Branch.last_revision_info',
-             'Branch.unlock'],
+            [b'BzrDir.open_2.1',
+             b'BzrDir.open_branchV3',
+             b'BzrDir.find_repositoryV3',
+             b'Branch.get_stacked_on_url',
+             b'Branch.lock_write',
+             b'Branch.last_revision_info',
+             b'Branch.unlock'],
             self.hpss_calls)
 
     def test_empty_branch_command(self):

@@ -560,16 +560,6 @@ class BranchExistsWithoutWorkingTree(PathError):
 (use brz checkout if you wish to build a working tree): "%(path)s"'
 
 
-class AtomicFileAlreadyClosed(PathError):
-
-    _fmt = ('"%(function)s" called on an AtomicFile after it was closed:'
-            ' "%(path)s"')
-
-    def __init__(self, path, function):
-        PathError.__init__(self, path=path, extra=None)
-        self.function = function
-
-
 class InaccessibleParent(PathError):
 
     _fmt = ('Parent not accessible given base "%(base)s" and'
@@ -600,6 +590,15 @@ class UnknownFormatError(BzrError):
     def __init__(self, format, kind='branch'):
         self.kind = kind
         self.format = format
+
+
+class LineEndingError(BzrError):
+
+    _fmt = ("Line ending corrupted for file: %(file)s; "
+            "Maybe your files got corrupted in transport?")
+
+    def __init__(self, file):
+        self.file = file
 
 
 class IncompatibleFormat(BzrError):
@@ -1405,12 +1404,6 @@ class WorkingTreeNotRevision(BzrError):
 
     def __init__(self, tree):
         BzrError.__init__(self, basedir=tree.basedir)
-
-
-class CantReprocessAndShowBase(BzrError):
-
-    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
-           "the relationship of conflicting lines to the base")
 
 
 class GraphCycleError(BzrError):

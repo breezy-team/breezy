@@ -39,11 +39,17 @@ from ...transport import (
     ConnectedTransport,
     )
 
+# TODO: handle_response should be integrated into the http/__init__.py
+from .response import handle_response
+from ._urllib2_wrappers import (
+    Opener,
+    Request,
+    )
 
-class HttpTransportBase(ConnectedTransport):
-    """Base class for http implementations.
 
-    Does URL parsing, etc, but not any network IO.
+
+class HttpTransport(ConnectedTransport):
+    """HTTP Client implementations.
 
     The protocol can be given as e.g. http+urllib://host/ to use a particular
     implementation.
@@ -52,15 +58,20 @@ class HttpTransportBase(ConnectedTransport):
     # _unqualified_scheme: "http" or "https"
     # _scheme: may have "+pycurl", etc
 
-    def __init__(self, base, _impl_name, _from_transport=None):
+    # In order to debug we have to issue our traces in sync with
+    # httplib, which use print :(
+    _debuglevel = 0
+
+    _opener_class = Opener
+
+    def __init__(self, base, _from_transport=None, ca_certs=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
         self._unqualified_scheme = proto_match.group(1)
-        self._impl_name = _impl_name
-        super(HttpTransportBase, self).__init__(base,
-                                                _from_transport=_from_transport)
+        super(HttpTransport, self).__init__(
+                base, _from_transport=_from_transport)
         self._medium = None
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
@@ -71,11 +82,76 @@ class HttpTransportBase(ConnectedTransport):
         # propagated to clones.
         if _from_transport is not None:
             self._range_hint = _from_transport._range_hint
+            self._opener = _from_transport._opener
         else:
             self._range_hint = 'multi'
+            self._opener = self._opener_class(
+                report_activity=self._report_activity, ca_certs=ca_certs)
+
+    def _perform(self, request):
+        """Send the request to the server and handles common errors.
+
+        :returns: urllib2 Response object
+        """
+        connection = self._get_connection()
+        if connection is not None:
+            # Give back shared info
+            request.connection = connection
+            (auth, proxy_auth) = self._get_credentials()
+            # Clean the httplib.HTTPConnection pipeline in case the previous
+            # request couldn't do it
+            connection.cleanup_pipe()
+        else:
+            # First request, initialize credentials.
+            # scheme and realm will be set by the _urllib2_wrappers.AuthHandler
+            auth = self._create_auth()
+            # Proxy initialization will be done by the first proxied request
+            proxy_auth = dict()
+        # Ensure authentication info is provided
+        request.auth = auth
+        request.proxy_auth = proxy_auth
+
+        if self._debuglevel > 0:
+            print('perform: %s base: %s, url: %s' % (request.method, self.base,
+                                                     request.get_full_url()))
+        response = self._opener.open(request)
+        if self._get_connection() is not request.connection:
+            # First connection or reconnection
+            self._set_connection(request.connection,
+                                 (request.auth, request.proxy_auth))
+        else:
+            # http may change the credentials while keeping the
+            # connection opened
+            self._update_credentials((request.auth, request.proxy_auth))
+
+        code = response.code
+        if (request.follow_redirections is False
+            and code in (301, 302, 303, 307)):
+            raise errors.RedirectRequested(request.get_full_url(),
+                                           request.redirected_to,
+                                           is_permanent=(code == 301))
+
+        if request.redirected_to is not None:
+            trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
+                                                         request.redirected_to))
+
+        return response
+
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
 
     def has(self, relpath):
-        raise NotImplementedError("has() is abstract on %r" % self)
+        """Does the target location exist?
+        """
+        response = self._head(relpath)
+
+        code = response.code
+        if code == 200: # "ok",
+            return True
+        else:
+            return False
 
     def get(self, relpath):
         """Get the file at the given relative path.
@@ -85,17 +161,43 @@ class HttpTransportBase(ConnectedTransport):
         code, response_file = self._get(relpath, None)
         return response_file
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, offsets, tail_amount=0):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
-        :param ranges: None to get the whole file;
+        :param offsets: None to get the whole file;
             or  a list of _CoalescedOffset to fetch parts of a file.
         :param tail_amount: The amount to get from the end of the file.
 
         :returns: (http_code, result_file)
         """
-        raise NotImplementedError(self._get)
+        abspath = self._remote_path(relpath)
+        headers = {}
+        accepted_errors = [200, 404]
+        if offsets or tail_amount:
+            range_header = self._attempted_range_header(offsets, tail_amount)
+            if range_header is not None:
+                accepted_errors.append(206)
+                accepted_errors.append(400)
+                accepted_errors.append(416)
+                bytes = 'bytes=' + range_header
+                headers = {'Range': bytes}
+
+        request = Request('GET', abspath, None, headers,
+                          accepted_errors=accepted_errors)
+        response = self._perform(request)
+
+        code = response.code
+        if code == 404: # not found
+            raise errors.NoSuchFile(abspath)
+        elif code in (400, 416):
+            # We don't know which, but one of the ranges we specified was
+            # wrong.
+            raise errors.InvalidHttpRange(abspath, range_header,
+                                          'Server return code %d' % code)
+
+        data = handle_response(abspath, code, response.info(), response)
+        return code, data
 
     def _remote_path(self, relpath):
         """See ConnectedTransport._remote_path.
@@ -193,7 +295,10 @@ class HttpTransportBase(ConnectedTransport):
             # serve the corresponding offsets respecting the initial order. We
             # need an offset iterator for that.
             iter_offsets = iter(offsets)
-            cur_offset_and_size = next(iter_offsets)
+            try:
+                cur_offset_and_size = next(iter_offsets)
+            except StopIteration:
+                return
 
             try:
                 for cur_coal, rfile in self._coalesce_readv(relpath, coalesced):
@@ -210,7 +315,10 @@ class HttpTransportBase(ConnectedTransport):
                             # The offset requested are sorted as the coalesced
                             # ones, no need to cache. Win !
                             yield cur_offset_and_size[0], data
-                            cur_offset_and_size = next(iter_offsets)
+                            try:
+                                cur_offset_and_size = next(iter_offsets)
+                            except StopIteration:
+                                return
                         else:
                             # Different sorting. We need to cache.
                             data_map[(start, size)] = data
@@ -222,7 +330,10 @@ class HttpTransportBase(ConnectedTransport):
                         # vila20071129
                         this_data = data_map.pop(cur_offset_and_size)
                         yield cur_offset_and_size[0], this_data
-                        cur_offset_and_size = next(iter_offsets)
+                        try:
+                            cur_offset_and_size = next(iter_offsets)
+                        except StopIteration:
+                            return
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange, errors.HttpBoundaryMissing) as e:
@@ -308,6 +419,30 @@ class HttpTransportBase(ConnectedTransport):
         # the POST may require large client buffers.  It would be nice to have
         # an interface that allows streaming via POST when possible (and
         # degrades to a local buffer when not).
+        abspath = self._remote_path('.bzr/smart')
+        # We include 403 in accepted_errors so that send_http_smart_request can
+        # handle a 403.  Otherwise a 403 causes an unhandled TransportError.
+        response = self._perform(
+            Request('POST', abspath, body_bytes,
+                    {'Content-Type': 'application/octet-stream'},
+                    accepted_errors=[200, 403]))
+        code = response.code
+        data = handle_response(abspath, code, response.info(), response)
+        return code, data
+
+    def _head(self, relpath):
+        """Request the HEAD of a file.
+
+        Performs the request and leaves callers handle the results.
+        """
+        abspath = self._remote_path(relpath)
+        request = Request('HEAD', abspath,
+                          accepted_errors=[200, 404])
+        response = self._perform(request)
+
+        return response
+
+
         raise NotImplementedError(self._post)
 
     def put_file(self, relpath, f, mode=None):
@@ -347,11 +482,11 @@ class HttpTransportBase(ConnectedTransport):
         # At this point HttpTransport might be able to check and see if
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
-        if isinstance(other, HttpTransportBase):
+        if isinstance(other, HttpTransport):
             raise errors.TransportNotPossible(
                 'http cannot be the target of copy_to()')
         else:
-            return super(HttpTransportBase, self).\
+            return super(HttpTransport, self).\
                     copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
@@ -476,7 +611,7 @@ class HttpTransportBase(ConnectedTransport):
         # determine the excess tail - the relative path that was in
         # the original request but not part of this transports' URL.
         excess_tail = parsed_source.path[pl:].strip("/")
-        if not target.endswith(excess_tail):
+        if not parsed_target.path.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
             return None
@@ -619,3 +754,28 @@ def unhtml_roughly(maybe_html, length_limit=1000):
     ' bad  things happened '
     """
     return re.subn(r"(<[^>]*>|\n|&nbsp;)", " ", maybe_html)[0][:length_limit]
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    from breezy.tests import (
+        features,
+        http_server,
+        )
+    permutations = [(HttpTransport, http_server.HttpServer),]
+    if features.HTTPSServerFeature.available():
+        from breezy.tests import (
+            https_server,
+            ssl_certs,
+            )
+
+        class HTTPS_transport(HttpTransport):
+
+            def __init__(self, base, _from_transport=None):
+                super(HTTPS_transport, self).__init__(
+                    base, _from_transport=_from_transport,
+                    ca_certs=ssl_certs.build_path('ca.crt'))
+
+        permutations.append((HTTPS_transport,
+                             https_server.HTTPSServer))
+    return permutations

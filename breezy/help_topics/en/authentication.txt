@@ -24,16 +24,16 @@ of your urls with others).
 
 Instead of using::
 
-  brz branch ftp://joe:secret@host.com/path/to/my/branch
+  brz branch sftp://joe:secret@host.com/path/to/my/branch
 
 you simply use::
 
-  brz branch ftp://host.com/path/to/my/branch
+  brz branch sftp://host.com/path/to/my/branch
 
 provided you have created the following ``authentication.conf`` file::
 
   [myprojects]
-  scheme=ftp
+  scheme=sftp
   host=host.com
   user=joe
   password=secret

@@ -266,7 +266,7 @@ class ShelfCreator(object):
             to_transform.adjust_path(name, s_parent_id, s_trans_id)
             if existing_path is None:
                 if kind is None:
-                    to_transform.create_file('', s_trans_id)
+                    to_transform.create_file([b''], s_trans_id)
                 else:
                     transform.create_from_tree(
                             to_transform, s_trans_id, tree,
@@ -297,7 +297,7 @@ class ShelfCreator(object):
         if message is not None:
             metadata[b'message'] = message.encode('utf-8')
         return serializer.bytes_record(
-            bencode.bencode(metadata), (('metadata',),))
+            bencode.bencode(metadata), ((b'metadata',),))
 
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.
@@ -346,12 +346,12 @@ class Unshelver(object):
     @staticmethod
     def parse_metadata(records):
         names, metadata_bytes = next(records)
-        if names[0] != ('metadata',):
+        if names[0] != (b'metadata',):
             raise ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)
-        message = metadata.get('message')
+        message = metadata.get(b'message')
         if message is not None:
-            metadata['message'] = message.decode('utf-8')
+            metadata[b'message'] = message.decode('utf-8')
         return metadata
 
     @classmethod
@@ -364,14 +364,14 @@ class Unshelver(object):
         """
         records = klass.iter_records(shelf_file)
         metadata = klass.parse_metadata(records)
-        base_revision_id = metadata['revision_id']
+        base_revision_id = metadata[b'revision_id']
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         tt = transform.TransformPreview(base_tree)
         tt.deserialize(records)
-        return klass(tree, base_tree, tt, metadata.get('message'))
+        return klass(tree, base_tree, tt, metadata.get(b'message'))
 
     def make_merger(self):
         """Return a merger that can unshelve the changes."""

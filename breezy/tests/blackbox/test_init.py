@@ -54,6 +54,14 @@ class TestInit(TestCaseWithTransport):
             out)
         self.assertEqual('', err)
 
+    def test_init_format_bzr(self):
+        """Smoke test for constructing a format with the 'bzr' alias."""
+        out, err = self.run_bzr('init --format=bzr')
+        self.assertEqual(
+            "Created a standalone tree (format: %s)\n" % self._default_label,
+            out)
+        self.assertEqual('', err)
+
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
         out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
@@ -169,13 +177,13 @@ Using shared repository: %s
     def test_init_default_format_option(self):
         """brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 default_format = 1.9
 ''')
         g_store.save()
         out, err = self.run_bzr_subprocess('init')
-        self.assertContainsRe(out, '1.9')
+        self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""

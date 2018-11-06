@@ -68,7 +68,7 @@ from ..transport import (
     memory,
     pathfilter,
     )
-from ..transport.http._urllib import HttpTransport_urllib
+from ..transport.http import HttpTransport
 from ..transport.nosmart import NoSmartTransportDecorator
 from ..transport.readonly import ReadonlyTransportDecorator
 from ..bzr import knitrepo, knitpack_repo
@@ -192,10 +192,9 @@ class TestFormatRegistry(TestCase):
         a_registry.register('deprecated', DeprecatedBzrDirFormat,
             'Old format.  Slower and does not support stuff',
             deprecated=True)
-        a_registry.register('deprecatedalias', DeprecatedBzrDirFormat,
-            'Old format.  Slower and does not support stuff',
-            deprecated=True, alias=True)
-        self.assertEqual(frozenset(['deprecatedalias']), a_registry.aliases())
+        a_registry.register_alias('deprecatedalias', 'deprecated')
+        self.assertEqual({'deprecatedalias': 'deprecated'},
+                         a_registry.aliases())
 
 
 class SampleBranch(breezy.branch.Branch):
@@ -308,8 +307,16 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format_unknown_format(self):
         t = self.get_transport()
         t.mkdir('.bzr')
-        t.put_bytes('.bzr/branch-format', '')
+        t.put_bytes('.bzr/branch-format', b'')
         self.assertRaises(UnknownFormatError,
+                          bzrdir.BzrDirFormat.find_format,
+                          _mod_transport.get_transport_from_path('.'))
+
+    def test_find_format_line_endings(self):
+        t = self.get_transport()
+        t.mkdir('.bzr')
+        t.put_bytes('.bzr/branch-format', b'Corrupt line endings\r\n')
+        self.assertRaises(errors.LineEndingError,
                           bzrdir.BzrDirFormat.find_format,
                           _mod_transport.get_transport_from_path('.'))
 
@@ -1118,7 +1125,7 @@ class NonLocalTests(TestCaseWithTransport):
                               workingtree_4.WorkingTreeFormat4)
 
 
-class TestHTTPRedirections(object):
+class TestHTTPRedirectionsBase(object):
     """Test redirection between two http servers.
 
     This MUST be used by daughter classes that also inherit from
@@ -1138,7 +1145,7 @@ class TestHTTPRedirections(object):
         return http_utils.HTTPServerRedirecting()
 
     def setUp(self):
-        super(TestHTTPRedirections, self).setUp()
+        super(TestHTTPRedirectionsBase, self).setUp()
         # The redirections will point to the new server
         self.new_server = self.get_readonly_server()
         # The requests to the old server will be redirected
@@ -1172,20 +1179,20 @@ class TestHTTPRedirections(object):
         self.assertIsInstance(bdir.root_transport, type(start))
 
 
-class TestHTTPRedirections_urllib(TestHTTPRedirections,
-                                  http_utils.TestCaseWithTwoWebservers):
+class TestHTTPRedirections(TestHTTPRedirectionsBase,
+                           http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for urllib implementation"""
 
-    _transport = HttpTransport_urllib
+    _transport = HttpTransport
 
     def _qualified_url(self, host, port):
-        result = 'http+urllib://%s:%s' % (host, port)
+        result = 'http://%s:%s' % (host, port)
         self.permit_url(result)
         return result
 
 
 
-class TestHTTPRedirections_nosmart(TestHTTPRedirections,
+class TestHTTPRedirections_nosmart(TestHTTPRedirectionsBase,
                                   http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for the nosmart decorator"""
 
@@ -1197,7 +1204,7 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirections,
         return result
 
 
-class TestHTTPRedirections_readonly(TestHTTPRedirections,
+class TestHTTPRedirections_readonly(TestHTTPRedirectionsBase,
                                     http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for readonly decoratror"""
 
@@ -1228,14 +1235,14 @@ class TestDotBzrHidden(TestCaseWithTransport):
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create('.')
         self.build_tree(['a'])
-        self.assertEqual(['a'], self.get_ls())
+        self.assertEqual([b'a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
         if sys.platform == 'win32' and not win32utils.has_win32file:
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
-        self.assertEqual(['a'], self.get_ls())
+        self.assertEqual([b'a'], self.get_ls())
 
 
 class _TestBzrDirFormat(bzrdir.BzrDirMetaFormat1):
@@ -1405,7 +1412,7 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
     def test_exiting(self):
-        self._transport.put_bytes("a.~1~", "some content")
+        self._transport.put_bytes("a.~1~", b"some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
 
@@ -1475,11 +1482,11 @@ class TestBzrFormat(TestCase):
         self.assertEqual(format.as_string(),
             b"First line\n"
             b"required foo\n")
-        format.features["another"] = "optional"
+        format.features[b"another"] = b"optional"
         self.assertEqual(format.as_string(),
             b"First line\n"
-            b"required foo\n"
-            b"optional another\n")
+            b"optional another\n"
+            b"required foo\n")
 
     def test_network_name(self):
         # The network string should include the feature info

@@ -22,9 +22,8 @@ For more information about WSGI, see PEP 333:
 
 from __future__ import absolute_import
 
-from ...sixish import (
-    BytesIO,
-    )
+from io import BytesIO
+
 from ...bzr.smart import medium
 from ...transport import chroot, get_transport
 from ...urlutils import local_path_to_url
@@ -140,7 +139,7 @@ class SmartWSGIApp(object):
             # Remove the root_client_path from the relpath, and set
             # adjusted_tcp to None to tell the request handler that no further
             # path translation is required.
-            adjusted_rcp = None
+            adjusted_rcp = '.'
             adjusted_relpath = relpath[len(self.root_client_path):]
         elif self.root_client_path.startswith(relpath):
             # The relpath traverses some of the mandatory root client path.
@@ -162,13 +161,14 @@ class SmartWSGIApp(object):
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
         smart_protocol_request = self.make_request(
-            transport, out_buffer.write, request_data_bytes, adjusted_rcp)
+            transport, out_buffer.write, request_data_bytes,
+            adjusted_rcp)
         if smart_protocol_request.next_read_size() != 0:
             # The request appears to be incomplete, or perhaps it's just a
             # newer version we don't understand.  Regardless, all we can do
             # is return an error response in the format of our version of the
             # protocol.
-            response_data = 'error\x01incomplete request\n'
+            response_data = b'error\x01incomplete request\n'
         else:
             response_data = out_buffer.getvalue()
         headers = [('Content-type', 'application/octet-stream')]

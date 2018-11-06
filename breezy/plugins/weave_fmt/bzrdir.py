@@ -330,7 +330,7 @@ class ConvertBzrDir4To5(Converter):
                 weaves._put_weave(file_id, file_weave, transaction)
                 i += 1
             self.pb.update(gettext('inventory'), 0, 1)
-            controlweaves._put_weave('inventory', self.inv_weave, transaction)
+            controlweaves._put_weave(b'inventory', self.inv_weave, transaction)
             self.pb.update(gettext('inventory'), 1, 1)
         finally:
             self.pb.clear()
@@ -441,8 +441,8 @@ class ConvertBzrDir4To5(Converter):
         heads = graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
-        previous_entries = dict((head, parent_candiate_entries[head]) for head
-            in heads)
+        previous_entries = {head: parent_candiate_entries[head]
+                            for head in heads}
         self.snapshot_ie(previous_entries, ie, w, rev_id)
 
     def get_parent_map(self, revision_ids):
@@ -526,7 +526,7 @@ class ConvertBzrDir5To6(Converter):
                 else:
                     file_id = filename
                     suffix = ''
-                new_name = store._mapper.map((file_id,)) + suffix
+                new_name = store._mapper.map((file_id.encode('utf-8'),)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, new_name)
@@ -557,7 +557,7 @@ class ConvertBzrDir6ToMeta(Converter):
         ui.ui_factory.note(gettext('starting upgrade from format 6 to metadir'))
         self.controldir.transport.put_bytes(
                 'branch-format',
-                "Converting to format 6",
+                b"Converting to format 6",
                 mode=self.file_mode)
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
@@ -620,10 +620,9 @@ class ConvertBzrDir6ToMeta(Converter):
             self.step(gettext('Upgrading working tree'))
             self.controldir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
-            self.put_format(
-                'checkout', WorkingTreeFormat3())
-            self.controldir.transport.delete_multi(
-                self.garbage_inventories, self.pb)
+            self.put_format('checkout', WorkingTreeFormat3())
+            for path in self.garbage_inventories:
+                self.controldir.transport.delete(path)
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:

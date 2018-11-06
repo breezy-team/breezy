@@ -156,10 +156,11 @@ class SearchResult(AbstractSearchResult):
         return self._recipe
 
     def get_network_struct(self):
-        start_keys = ' '.join(self._recipe[1])
-        stop_keys = ' '.join(self._recipe[2])
-        count = str(self._recipe[3])
-        return (self._recipe[0], '\n'.join((start_keys, stop_keys, count)))
+        start_keys = b' '.join(self._recipe[1])
+        stop_keys = b' '.join(self._recipe[2])
+        count = str(self._recipe[3]).encode('ascii')
+        return (self._recipe[0].encode('ascii'),
+                b'\n'.join((start_keys, stop_keys, count)))
 
     def get_keys(self):
         """Return the keys found in this search.
@@ -238,7 +239,7 @@ class PendingAncestryResult(AbstractSearchResult):
         return ('proxy-search', self.heads, set(), -1)
 
     def get_network_struct(self):
-        parts = ['ancestry-of']
+        parts = [b'ancestry-of']
         parts.extend(self.heads)
         return parts
 
@@ -294,7 +295,7 @@ class EverythingResult(AbstractSearchResult):
         raise NotImplementedError(self.get_recipe)
 
     def get_network_struct(self):
-        return ('everything',)
+        return (b'everything',)
 
     def get_keys(self):
         if 'evil' in debug.debug_flags:

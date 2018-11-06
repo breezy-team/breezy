@@ -27,6 +27,7 @@ from . import (
     revision as _mod_revision,
     )
 from . import errors as errors
+from .sixish import text_type
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
 
@@ -128,8 +129,7 @@ def show_tree_status(wt,
     if to_file is None:
         to_file = sys.stdout
 
-    wt.lock_read()
-    try:
+    with wt.lock_read():
         new_is_working_tree = True
         if revision is None:
             if wt.last_revision() != wt.branch.last_revision():
@@ -149,9 +149,7 @@ def show_tree_status(wt,
                     raise errors.BzrCommandError(str(e))
             else:
                 new = wt
-        old.lock_read()
-        new.lock_read()
-        try:
+        with old.lock_read(), new.lock_read():
             for hook in hooks['pre_status']:
                 hook(StatusHookParams(old, new, to_file, versioned,
                     show_ids, short, verbose, specific_files=specific_files))
@@ -195,7 +193,7 @@ def show_tree_status(wt,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, unicode(conflict)))
+                to_file.write("%s %s\n" % (prefix, conflict.describe()))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status
@@ -219,11 +217,6 @@ def show_tree_status(wt,
             for hook in hooks['post_status']:
                 hook(StatusHookParams(old, new, to_file, versioned,
                     show_ids, short, verbose, specific_files=specific_files))
-        finally:
-            old.unlock()
-            new.unlock()
-    finally:
-        wt.unlock()
 
 
 def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
@@ -294,7 +287,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
             rev = branch.repository.get_revision(merge)
         except errors.NoSuchRevision:
             # If we are missing a revision, just print out the revision id
-            to_file.write(first_prefix + '(ghost) ' + merge + '\n')
+            to_file.write(first_prefix + '(ghost) ' + merge.decode('utf-8') + '\n')
             other_revisions.append(merge)
             continue
 
@@ -323,7 +316,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         for num, sub_merge, depth, eom in rev_id_iterator:
             rev = revisions[sub_merge]
             if rev is None:
-                to_file.write(sub_prefix + '(ghost) ' + sub_merge + '\n')
+                to_file.write(sub_prefix + '(ghost) ' + sub_merge.decode('utf-8') + '\n')
                 continue
             show_log_message(revisions[sub_merge], sub_prefix)
 

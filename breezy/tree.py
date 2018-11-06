@@ -34,9 +34,6 @@ from breezy import (
     rules,
     trace,
     )
-from breezy.bzr import (
-    inventory,
-    )
 from breezy.i18n import gettext
 """)
 
@@ -47,6 +44,7 @@ from . import (
     )
 from .inter import InterObject
 from .sixish import (
+    text_type,
     viewvalues,
     )
 
@@ -93,6 +91,13 @@ class TreeLink(TreeEntry):
 
     def kind_character(self):
         return ''
+
+
+class TreeReference(TreeEntry):
+    """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    def kind_character(self):
+        return '/'
 
 
 class Tree(object):
@@ -213,7 +218,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -237,10 +242,6 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
-
-        :param yield_parents: If True, yield the parents from the root leading
-            down to specific_files that have been requested. This has no
-            impact if specific_files is None.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
@@ -350,11 +351,8 @@ class Tree(object):
 
         :returns: A single byte string for the whole file.
         """
-        my_file = self.get_file(path, file_id)
-        try:
+        with self.get_file(path, file_id) as my_file:
             return my_file.read()
-        finally:
-            my_file.close()
 
     def get_file_lines(self, path, file_id=None):
         """Return the content of a file, as lines.
@@ -554,7 +552,10 @@ class Tree(object):
 
         :return: set of paths.
         """
-        raise NotImplementedError(self.filter_unversioned_files)
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that
+        # are not versioned.
+        return set(p for p in paths if not self.is_versioned(p))
 
     def walkdirs(self, prefix=""):
         """Walk the contents of this tree from path down.
@@ -652,6 +653,26 @@ class Tree(object):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
         return searcher
+
+    def archive(self, format, name, root='', subdir=None,
+                force_mtime=None):
+        """Create an archive of this tree.
+
+        :param format: Format name (e.g. 'tar')
+        :param name: target file name
+        :param root: Root directory name (or None)
+        :param subdir: Subdirectory to export (or None)
+        :return: Iterator over archive chunks
+        """
+        from .archive import create_archive
+        with self.lock_read():
+            return create_archive(format, self, name, root,
+                    subdir, force_mtime=force_mtime)
+
+    @classmethod
+    def versionable_kind(cls, kind):
+        """Check if this tree support versioning a specific file kind."""
+        return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
 
 
 class InterTree(InterObject):
@@ -859,7 +880,7 @@ class InterTree(InterObject):
         # the unversioned path lookup only occurs on real trees - where there
         # can be extras. So the fake_entry is solely used to look up
         # executable it values when execute is not supported.
-        fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
+        fake_entry = TreeFile()
         for target_path, target_entry in to_entries_by_dir:
             while (all_unversioned and
                 all_unversioned[0][0] < target_path.split('/')):
@@ -948,7 +969,7 @@ class InterTree(InterObject):
         # No inventory available.
         try:
             iterator = tree.iter_entries_by_dir(specific_files=[path])
-            return iterator.next()[1]
+            return next(iterator)[1]
         except StopIteration:
             return None
 
@@ -1124,7 +1145,7 @@ class MultiWalker(object):
             return True, path, ie
 
     @staticmethod
-    def _cmp_path_by_dirblock(path1, path2):
+    def _lt_path_by_dirblock(path1, path2):
         """Compare two paths based on what directory they are in.
 
         This generates a sort order, such that all children of a directory are
@@ -1139,18 +1160,18 @@ class MultiWalker(object):
         """
         # Shortcut this special case
         if path1 == path2:
-            return 0
+            return False
         # This is stolen from _dirstate_helpers_py.py, only switching it to
         # Unicode objects. Consider using encode_utf8() and then using the
         # optimized versions, or maybe writing optimized unicode versions.
-        if not isinstance(path1, unicode):
+        if not isinstance(path1, text_type):
             raise TypeError("'path1' must be a unicode string, not %s: %r"
                             % (type(path1), path1))
-        if not isinstance(path2, unicode):
+        if not isinstance(path2, text_type):
             raise TypeError("'path2' must be a unicode string, not %s: %r"
                             % (type(path2), path2))
-        return cmp(MultiWalker._path_to_key(path1),
-                   MultiWalker._path_to_key(path2))
+        return (MultiWalker._path_to_key(path1) <
+                MultiWalker._path_to_key(path2))
 
     @staticmethod
     def _path_to_key(path):
@@ -1246,7 +1267,7 @@ class MultiWalker(object):
                     other_walker = other_walkers[idx]
                     other_extra = others_extra[idx]
                     while (other_has_more and
-                           self._cmp_path_by_dirblock(other_path, path) < 0):
+                           self._lt_path_by_dirblock(other_path, path)):
                         other_file_id = other_ie.file_id
                         if other_file_id not in out_of_order_processed:
                             other_extra[other_file_id] = (other_path, other_ie)
@@ -1343,3 +1364,47 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
         return to_tree.id2path(file_id)
     except errors.NoSuchId:
         return None
+
+
+def get_canonical_path(tree, path, normalize):
+    """Find the canonical path of an item, ignoring case.
+
+    :param tree: Tree to traverse
+    :param path: Case-insensitive path to look up
+    :param normalize: Function to normalize a filename for comparison
+    :return: The canonical path
+    """
+    # go walkin...
+    cur_id = tree.get_root_id()
+    cur_path = ''
+    bit_iter = iter(path.split("/"))
+    for elt in bit_iter:
+        lelt = normalize(elt)
+        new_path = None
+        try:
+            for child in tree.iter_child_entries(cur_path, cur_id):
+                try:
+                    if child.name == elt:
+                        # if we found an exact match, we can stop now; if
+                        # we found an approximate match we need to keep
+                        # searching because there might be an exact match
+                        # later.
+                        cur_id = child.file_id
+                        new_path = osutils.pathjoin(cur_path, child.name)
+                        break
+                    elif normalize(child.name) == lelt:
+                        cur_id = child.file_id
+                        new_path = osutils.pathjoin(cur_path, child.name)
+                except errors.NoSuchId:
+                    # before a change is committed we can see this error...
+                    continue
+        except errors.NotADirectory:
+            pass
+        if new_path:
+            cur_path = new_path
+        else:
+            # got to the end of this directory and no entries matched.
+            # Return what matched so far, plus the rest as specified.
+            cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
+            break
+    return cur_path

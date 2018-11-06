@@ -92,7 +92,7 @@ class TestListFiles(TestCaseWithTree):
         try:
             actual = [(path, status, kind, file_id)
                       for path, status, kind, file_id, ie in
-                          tree.list_files(from_dir='b')]
+                          tree.list_files(from_dir=u'b')]
         finally:
             tree.unlock()
         self.assertEqual(expected, actual)

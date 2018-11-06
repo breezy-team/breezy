@@ -544,9 +544,9 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         memos.append(writer.add_bytes_record(b'jkl', names=[]))
         writer.end()
         transport = self.get_transport()
-        transport.put_bytes(b'mypack', pack_data.getvalue())
+        transport.put_bytes('mypack', pack_data.getvalue())
         requested_records = [memos[0], memos[2]]
-        reader = pack.make_readv_reader(transport, b'mypack', requested_records)
+        reader = pack.make_readv_reader(transport, 'mypack', requested_records)
         result = []
         for names, reader_func in reader.iter_records():
             result.append((names, reader_func(None)))
@@ -564,8 +564,8 @@ class TestReadvFile(tests.TestCaseWithTransport):
     def test_read_bytes(self):
         """Test reading of both single bytes and all bytes in a hunk."""
         transport = self.get_transport()
-        transport.put_bytes(b'sample', b'0123456789')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
+        transport.put_bytes('sample', b'0123456789')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
         results = []
         results.append(f.read(1))
         results.append(f.read(2))
@@ -580,8 +580,8 @@ class TestReadvFile(tests.TestCaseWithTransport):
         This is always within a readv hunk, never across it.
         """
         transport = self.get_transport()
-        transport.put_bytes(b'sample', b'0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0, 2), (2, 4)]))
+        transport.put_bytes('sample', b'0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 2), (2, 4)]))
         results = []
         results.append(f.readline())
         results.append(f.readline())
@@ -591,8 +591,8 @@ class TestReadvFile(tests.TestCaseWithTransport):
     def test_readline_and_read(self):
         """Test exercising one byte reads, readline, and then read again."""
         transport = self.get_transport()
-        transport.put_bytes(b'sample', b'0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0, 6)]))
+        transport.put_bytes('sample', b'0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 6)]))
         results = []
         results.append(f.read(1))
         results.append(f.readline())

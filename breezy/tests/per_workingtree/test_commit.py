@@ -177,7 +177,7 @@ class TestCommit(TestCaseWithWorkingTree):
         if tree.branch.repository._format.supports_setting_revision_ids:
             committed_id = tree.commit('foo', rev_id=b'foo')
             # the commit should have returned the same id we asked for.
-            self.assertEqual('foo', committed_id)
+            self.assertEqual(b'foo', committed_id)
         else:
             committed_id = tree.commit('foo')
         self.assertEqual([committed_id], tree.get_parent_ids())
@@ -237,7 +237,7 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.controldir.transport.put_bytes('branch-format', 'garbage')
+        master.controldir.transport.put_bytes('branch-format', b'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
@@ -267,11 +267,11 @@ class TestCommit(TestCaseWithWorkingTree):
         if not wt.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable(
                 'format does not support ghosts')
-        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
+        wt.set_parent_ids([b'non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
+        self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
 
@@ -282,15 +282,15 @@ class TestCommit(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'format does not support ghosts')
         wt.set_parent_ids([
-                'foo@azkhazan-123123-abcabc',
-                'wibble@fofof--20050401--1928390812',
+                b'foo@azkhazan-123123-abcabc',
+                b'wibble@fofof--20050401--1928390812',
             ],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit("commit from ghost base with one merge")
         # the revision should have been committed with two parents
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(['foo@azkhazan-123123-abcabc',
-            'wibble@fofof--20050401--1928390812'],
+        self.assertEqual([b'foo@azkhazan-123123-abcabc',
+            b'wibble@fofof--20050401--1928390812'],
             rev.parent_ids)
 
     def test_commit_deleted_subtree_and_files_updates_workingtree(self):
@@ -374,6 +374,8 @@ class TestCommit(TestCaseWithWorkingTree):
             return
         subtree = self.make_branch_and_tree('subtree')
         subsubtree = self.make_branch_and_tree('subtree/subtree')
+        subsub_revid = subsubtree.commit('subsubtree')
+        subtree.commit('subtree')
         subtree.add(['subtree'])
         tree.add(['subtree'])
         # use allow_pointless=False to ensure that the deepest tree, which
@@ -382,7 +384,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # the deepest subtree has not changed, so no commit should take place.
-        self.assertEqual('null:', subsubtree.last_revision())
+        self.assertEqual(subsub_revid, subsubtree.last_revision())
         # the intermediate tree should have committed a pointer to the current
         # subtree revision.
         sub_basis = subtree.basis_tree()
@@ -443,6 +445,7 @@ class TestCommit(TestCaseWithWorkingTree):
             # inapplicable test.
             return
         subtree = self.make_branch_and_tree('subtree')
+        subtree.commit('')
         tree.add(['subtree'])
         # record the reference.
         rev_id = tree.commit('added reference')
@@ -472,9 +475,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         self.build_tree(['a', 'b', 'c'])
         tree.add(['a', 'b', 'c'])
         tree.commit('first post')
-        f = file('b', 'wt')
-        f.write('new content')
-        f.close()
+        with open('b', 'wt') as f:
+            f.write('new content')
         # set a progress bar that captures the calls so we can see what is
         # emitted
         factory = ProgressRecordingUIFactory()
