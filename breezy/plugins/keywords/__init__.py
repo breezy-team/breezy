@@ -107,7 +107,7 @@ a legal strftime (http://docs.python.org/lib/module-time.html) format.
 from __future__ import absolute_import
 
 
-from bzrlib import (
+from ... import (
     builtins,
     commands,
     filters,
@@ -116,9 +116,9 @@ from bzrlib import (
 
 
 def test_suite():
-    """Called by bzrlib to fetch tests for this plugin"""
+    """Called by breezy to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
-    from bzrlib.plugins.keywords.tests import (
+    from .tests import (
          test_conversion,
          test_keywords_in_trees,
          )
@@ -134,7 +134,7 @@ def test_suite():
 
 # Define and register the filter stack map
 def _keywords_filter_stack_lookup(k):
-    from bzrlib.plugins.keywords.keywords import (
+    from .keywords import (
         _kw_compressor,
         _normal_kw_expander,
         _xml_escape_kw_expander,
@@ -180,7 +180,7 @@ class cmd_cat(builtins.cmd_cat):
 
     takes_options = builtins.cmd_cat.takes_options + [
          option.RegistryOption('keywords',
-             lazy_registry=("bzrlib.plugins.keywords.keywords",
+             lazy_registry=(__name__ + ".keywords",
                  "_keyword_style_registry"),
              converter=lambda s: s,
              help='Keyword expansion style.')]
@@ -188,7 +188,7 @@ class cmd_cat(builtins.cmd_cat):
     def run(self, *args, **kwargs):
         """Process special options and delegate to superclass."""
         if 'keywords' in kwargs:
-            from bzrlib.plugins.keywords.keywords import (
+            from .keywords import (
                 _keyword_style_registry,
                 )
             # Implicitly set the filters option
@@ -210,7 +210,7 @@ class cmd_export(builtins.cmd_export):
 
     takes_options = builtins.cmd_export.takes_options + [
          option.RegistryOption('keywords',
-             lazy_registry=("bzrlib.plugins.keywords.keywords",
+             lazy_registry=(__name__ + ".keywords",
                  "_keyword_style_registry"),
                  converter=lambda s: s,
                  help='Keyword expansion style.')]
@@ -218,7 +218,7 @@ class cmd_export(builtins.cmd_export):
     def run(self, *args, **kwargs):
         """Process special options and delegate to superclass."""
         if 'keywords' in kwargs:
-            from bzrlib.plugins.keywords.keywords import (
+            from .keywords import (
                 _keyword_style_registry,
                 )
             # Implicitly set the filters option

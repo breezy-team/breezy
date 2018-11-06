@@ -18,14 +18,14 @@
 
 ## TODO: add tests for xml_escaped
 
-from bzrlib import rules
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
+from .... import rules
+from ....tests import TestCaseWithTransport
+from ....workingtree import WorkingTree
 
 
 # Sample files. We exclude keywords that change from one run to another,
 # TODO: Test Date, Path, Now, User, User-Email
-_sample_text_raw = """
+_sample_text_raw = b"""
 Committer:      $Committer$
 Committer-Name: $Committer-Name$
 Authors:        $Authors$
@@ -37,7 +37,7 @@ File-Id:        $File-Id$
 """
 #User:         $User$
 #User-Email:   $User-Email$
-_sample_text_cooked = """
+_sample_text_cooked = b"""
 Committer:      $Committer: Jane Smith <jane@example.com> $
 Committer-Name: $Committer-Name: Jane Smith $
 Authors:        $Authors: Sue Smith <sue@example.com> $
@@ -49,7 +49,7 @@ File-Id:        $File-Id: file1-id $
 """
 #User:         $User: Dave Smith <dave@example.com>$
 #User-Email:   $User-Email: dave@example.com $
-_sample_binary = _sample_text_raw + """\x00"""
+_sample_binary = _sample_text_raw + b"""\x00"""
 
 
 class TestKeywordsInTrees(TestCaseWithTransport):
@@ -73,7 +73,7 @@ class TestKeywordsInTrees(TestCaseWithTransport):
         self.real_rules_searcher = WorkingTree._get_rules_searcher
         self.addCleanup(restore_real_rules_searcher)
         self.patch_rules_searcher(keywords)
-        t = self.make_branch_and_tree('tree1', format="1.14")
+        t = self.make_branch_and_tree('tree1')
         # Patch is a custom username
         #def custom_global_config():
         #    config_file = StringIO(
@@ -83,8 +83,8 @@ class TestKeywordsInTrees(TestCaseWithTransport):
         #    return my_config
         #t.branch.get_config()._get_global_config = custom_global_config
         self.build_tree_contents([('tree1/file1', content)])
-        t.add('file1', 'file1-id')
-        t.commit("add file1", rev_id="rev1-id",
+        t.add(['file1'], [b'file1-id'])
+        t.commit("add file1", rev_id=b"rev1-id",
             committer="Jane Smith <jane@example.com>",
             authors=["Sue Smith <sue@example.com>"])
         basis = t.basis_tree()
@@ -95,15 +95,15 @@ class TestKeywordsInTrees(TestCaseWithTransport):
     def assertNewContentForSetting(self, wt, keywords, expected):
         """Clone a working tree and check the convenience content."""
         self.patch_rules_searcher(keywords)
-        wt2 = wt.bzrdir.sprout('tree-%s' % keywords).open_workingtree()
+        wt2 = wt.controldir.sprout('tree-%s' % keywords).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
-        content = wt2.get_file('file1-id', filtered=False).read()
-        self.assertEqualDiff(expected, content)
+        content = wt2.get_file_text('file1', filtered=False)
+        self.assertEqual(expected, content)
 
     def assertContent(self, wt, basis, expected_raw, expected_cooked):
         """Check the committed content and content in cloned trees."""
-        basis_content = basis.get_file('file1-id').read()
-        self.assertEqual(expected_raw, basis_content)
+        basis_content = basis.get_file_text('file1')
+        self.assertEqualDiff(expected_raw, basis_content)
         self.assertNewContentForSetting(wt, None, expected_raw)
         self.assertNewContentForSetting(wt, 'on', expected_cooked)
         self.assertNewContentForSetting(wt, 'off', expected_raw)

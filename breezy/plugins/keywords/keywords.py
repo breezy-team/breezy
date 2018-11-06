@@ -15,27 +15,28 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re, time
-from bzrlib import (
+from ... import (
     debug,
     osutils,
     registry,
     trace,
     )
+from ...sixish import text_type
 
 # Expansion styles
 # Note: Round-tripping is only required between the raw and cooked styles
 _keyword_style_registry = registry.Registry()
-_keyword_style_registry.register('raw', '$%(name)s$')
-_keyword_style_registry.register('cooked', '$%(name)s: %(value)s $')
-_keyword_style_registry.register('publish', '%(name)s: %(value)s')
-_keyword_style_registry.register('publish-values', '%(value)s')
-_keyword_style_registry.register('publish-names', '%(name)s')
+_keyword_style_registry.register('raw', b'$%(name)s$')
+_keyword_style_registry.register('cooked', b'$%(name)s: %(value)s $')
+_keyword_style_registry.register('publish', b'%(name)s: %(value)s')
+_keyword_style_registry.register('publish-values', b'%(value)s')
+_keyword_style_registry.register('publish-names', b'%(name)s')
 _keyword_style_registry.default_key = 'cooked'
 
 
 # Regular expressions for matching the raw and cooked patterns
-_KW_RAW_RE = re.compile(r'\$([\w\-]+)(:[^$]*)?\$')
-_KW_COOKED_RE = re.compile(r'\$([\w\-]+):([^$]+)\$')
+_KW_RAW_RE = re.compile(b'\\$([\\w\\-]+)(:[^$]*)?\\$')
+_KW_COOKED_RE = re.compile(b'\\$([\\w\\-]+):([^$]+)\\$')
 
 
 # The registry of keywords. Other plugins may wish to add entries to this.
@@ -148,35 +149,35 @@ def extract_email_item(seq, n):
 
 def compress_keywords(s, keyword_dicts):
     """Replace cooked style keywords with raw style in a string.
-    
+
     Note: If the keyword is not known, the text is not modified.
-    
+
     :param s: the string
     :param keyword_dicts: an iterable of keyword dictionaries.
     :return: the string with keywords compressed
     """
     _raw_style = _keyword_style_registry.get('raw')
-    result = ''
+    result = b''
     rest = s
-    while (True):
+    while True:
         match = _KW_COOKED_RE.search(rest)
         if not match:
             break
         result += rest[:match.start()]
         keyword = match.group(1)
-        expansion = _get_from_dicts(keyword_dicts, keyword)
+        expansion = _get_from_dicts(keyword_dicts, keyword.decode('ascii'))
         if expansion is None:
             # Unknown expansion - leave as is
             result += match.group(0)
         else:
-            result += _raw_style % {'name': keyword}
+            result += _raw_style % {b'name': keyword}
         rest = rest[match.end():]
     return result + rest
 
 
 def expand_keywords(s, keyword_dicts, context=None, encoder=None, style=None):
     """Replace raw style keywords with another style in a string.
-    
+
     Note: If the keyword is already in the expanded style, the value is
     not replaced.
 
@@ -188,34 +189,36 @@ def expand_keywords(s, keyword_dicts, context=None, encoder=None, style=None):
     :return: the string with keywords expanded
     """
     _expanded_style = _keyword_style_registry.get(style)
-    result = ''
+    result = b''
     rest = s
-    while (True):
+    while True:
         match = _KW_RAW_RE.search(rest)
         if not match:
             break
         result += rest[:match.start()]
         keyword = match.group(1)
-        expansion = _get_from_dicts(keyword_dicts, keyword)
+        expansion = _get_from_dicts(keyword_dicts, keyword.decode('ascii'))
         if callable(expansion):
             try:
                 expansion = expansion(context)
-            except AttributeError, err:
+            except AttributeError as err:
                 if 'error' in debug.debug_flags:
                     trace.note("error evaluating %s for keyword %s: %s",
                         expansion, keyword, err)
-                expansion = "(evaluation error)"
+                expansion = b"(evaluation error)"
+        if isinstance(expansion, text_type):
+            expansion = expansion.encode('utf-8')
         if expansion is None:
             # Unknown expansion - leave as is
             result += match.group(0)
             rest = rest[match.end():]
             continue
-        if '$' in expansion:
+        if b'$' in expansion:
             # Expansion is not safe to be collapsed later
-            expansion = "(value unsafe to expand)"
+            expansion = b"(value unsafe to expand)"
         if encoder is not None:
             expansion = encoder(expansion)
-        params = {'name': keyword, 'value': expansion}
+        params = {b'name': keyword, b'value': expansion}
         result += _expanded_style % params
         rest = rest[match.end():]
     return result + rest
@@ -235,7 +238,7 @@ def _get_from_dicts(dicts, key, default=None):
 def _xml_escape(s):
     """Escape a string so it can be included safely in XML/HTML."""
     # Compile the regular expressions if not already done
-    from bzrlib import xml8
+    from ... import xml8
     xml8._ensure_utf8_re()
     # Convert and strip the trailing quote
     return xml8._encode_and_escape(s)[:-1]
@@ -243,13 +246,13 @@ def _xml_escape(s):
 
 def _kw_compressor(chunks, context=None):
     """Filter that replaces keywords with their compressed form."""
-    text = ''.join(chunks)
+    text = b''.join(chunks)
     return [compress_keywords(text, [keyword_registry])]
 
 
 def _kw_expander(chunks, context, encoder=None):
     """Keyword expander."""
-    text = ''.join(chunks)
+    text = b''.join(chunks)
     return [expand_keywords(text, [keyword_registry], context=context,
         encoder=encoder)]
 

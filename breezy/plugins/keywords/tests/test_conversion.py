@@ -17,8 +17,8 @@
 """Tests for keyword expansion/contraction."""
 
 
-from bzrlib import tests
-from bzrlib.plugins.keywords.keywords import (
+from .... import tests
+from ..keywords import (
     compress_keywords,
     expand_keywords,
     )
@@ -28,18 +28,18 @@ from bzrlib.plugins.keywords.keywords import (
 _keywords = {'Foo': 'FOO!', 'Bar': 'bar', 'CallMe': lambda c: "now!"}
 _keywords_dicts = [{'Foo': 'FOO!'}, {'Bar': 'bar', 'CallMe': lambda c: "now!"}]
 _samples = [
-    ('$Foo$',           '$Foo: FOO! $'),
-    ('$Foo',            '$Foo'),
-    ('Foo$',            'Foo$'),
-    ('$Foo$ xyz',       '$Foo: FOO! $ xyz'),
-    ('abc $Foo$',       'abc $Foo: FOO! $'),
-    ('abc $Foo$ xyz',   'abc $Foo: FOO! $ xyz'),
-    ('$Foo$$Bar$',      '$Foo: FOO! $$Bar: bar $'),
-    ('abc $Foo$ xyz $Bar$ qwe', 'abc $Foo: FOO! $ xyz $Bar: bar $ qwe'),
-    ('$Unknown$$Bar$',  '$Unknown$$Bar: bar $'),
-    ('$Unknown: unkn $$Bar$',  '$Unknown: unkn $$Bar: bar $'),
-    ('$Foo$$Unknown$',  '$Foo: FOO! $$Unknown$'),
-    ('$CallMe$',        '$CallMe: now! $'),
+    (b'$Foo$',           b'$Foo: FOO! $'),
+    (b'$Foo',            b'$Foo'),
+    (b'Foo$',            b'Foo$'),
+    (b'$Foo$ xyz',       b'$Foo: FOO! $ xyz'),
+    (b'abc $Foo$',       b'abc $Foo: FOO! $'),
+    (b'abc $Foo$ xyz',   b'abc $Foo: FOO! $ xyz'),
+    (b'$Foo$$Bar$',      b'$Foo: FOO! $$Bar: bar $'),
+    (b'abc $Foo$ xyz $Bar$ qwe', b'abc $Foo: FOO! $ xyz $Bar: bar $ qwe'),
+    (b'$Unknown$$Bar$',  b'$Unknown$$Bar: bar $'),
+    (b'$Unknown: unkn $$Bar$',  b'$Unknown: unkn $$Bar: bar $'),
+    (b'$Foo$$Unknown$',  b'$Foo: FOO! $$Unknown$'),
+    (b'$CallMe$',        b'$CallMe: now! $'),
     ]
 
 
@@ -62,19 +62,19 @@ class TestKeywordsConversion(tests.TestCase):
 
     def test_expansion_feedback_when_unsafe(self):
         kw_dict = {'Xxx': 'y$z'}
-        self.assertEqual('$Xxx: (value unsafe to expand) $',
-            expand_keywords('$Xxx$', [kw_dict]))
+        self.assertEqual(b'$Xxx: (value unsafe to expand) $',
+            expand_keywords(b'$Xxx$', [kw_dict]))
 
     def test_expansion_feedback_when_error(self):
         kw_dict = {'Xxx': lambda ctx: ctx.unknownMethod}
-        self.assertEqual('$Xxx: (evaluation error) $',
-            expand_keywords('$Xxx$', [kw_dict]))
+        self.assertEqual(b'$Xxx: (evaluation error) $',
+            expand_keywords(b'$Xxx$', [kw_dict]))
 
     def test_expansion_replaced_if_already_expanded(self):
-        s = '$Xxx: old value $'
+        s = b'$Xxx: old value $'
         kw_dict = {'Xxx': 'new value'}
-        self.assertEqual('$Xxx: new value $', expand_keywords(s, [kw_dict]))
+        self.assertEqual(b'$Xxx: new value $', expand_keywords(s, [kw_dict]))
 
     def test_expansion_ignored_if_already_expanded_but_unknown(self):
-        s = '$Xxx: old value $'
-        self.assertEqual('$Xxx: old value $', expand_keywords(s, [{}]))
+        s = b'$Xxx: old value $'
+        self.assertEqual(b'$Xxx: old value $', expand_keywords(s, [{}]))
