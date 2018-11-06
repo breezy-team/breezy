@@ -30,10 +30,10 @@ class TestRemoveBranch(TestCaseWithTransport):
 
     def example_tree(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
-        self.build_tree_contents([(path + '/hello', 'foo')])
+        self.build_tree_contents([(path + '/hello', b'foo')])
         tree.add('hello')
         tree.commit(message='setup')
-        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        self.build_tree_contents([(path + '/goodbye', b'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
         return tree
@@ -52,8 +52,7 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_no_branch(self):
         # No branch in the current directory.
         self.make_repository('a')
-        self.run_bzr_error(['Not a branch'],
-            'rmbranch a')
+        self.run_bzr_error(['Not a branch'], 'rmbranch a')
 
     def test_no_tree(self):
         # removing the active branch is possible if there is no tree

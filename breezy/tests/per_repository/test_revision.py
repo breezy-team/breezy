@@ -16,6 +16,7 @@
 
 """Tests for revision properties."""
 
+from breezy.tests import TestNotApplicable
 from breezy.tests.per_repository import (
     TestCaseWithRepository,
     )
@@ -27,28 +28,40 @@ class TestRevProps(TestCaseWithRepository):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         b.nick = 'Nicholas'
-        props = dict(flavor='choc-mint',
-                     condiment='orange\n  mint\n\tcandy',
-                     empty='',
-                     non_ascii=u'\xb5')
-        wt.commit(message='initial null commit',
+        if b.repository._format.supports_custom_revision_properties:
+            props = {u'flavor': 'choc-mint',
+                     u'condiment': 'orange\n  mint\n\tcandy',
+                     u'empty': '',
+                     u'non_ascii': u'\xb5'}
+        else:
+            props = {}
+        rev1 = wt.commit(message='initial null commit',
                  revprops=props,
-                 allow_pointless=True,
-                 rev_id='test@user-1')
-        rev = b.repository.get_revision('test@user-1')
-        self.assertTrue('flavor' in rev.properties)
-        self.assertEqual(rev.properties['flavor'], 'choc-mint')
-        self.assertEqual([('branch-nick', 'Nicholas'),
-                           ('condiment', 'orange\n  mint\n\tcandy'),
-                           ('empty', ''),
-                           ('flavor', 'choc-mint'),
-                           ('non_ascii', u'\xb5'),
-                          ], sorted(rev.properties.items()))
+                 allow_pointless=True)
+        rev = b.repository.get_revision(rev1)
+        if b.repository._format.supports_custom_revision_properties:
+            self.assertTrue(u'flavor' in rev.properties)
+            self.assertEqual(rev.properties[u'flavor'], 'choc-mint')
+            expected_revprops = {
+                u'condiment': 'orange\n  mint\n\tcandy',
+                u'empty': '',
+                u'flavor': 'choc-mint',
+                u'non_ascii': u'\xb5',
+                }
+        else:
+            expected_revprops = {}
+        if b.repository._format.supports_storing_branch_nick:
+            expected_revprops[u'branch-nick'] = 'Nicholas'
+        for name, value in expected_revprops.items():
+            self.assertEqual(rev.properties[name], value)
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
+        if not b.repository._format.supports_custom_revision_properties:
+            raise TestNotApplicable(
+                    'format does not support custom revision properties')
         self.assertRaises(ValueError,
                           wt.commit,
                           message='invalid',
@@ -67,15 +80,17 @@ class TestRevisionAttributes(TestCaseWithRepository):
         same as the ones that go in.
         """
         tree1 = self.make_branch_and_tree("br1")
-
+        if tree1.branch.repository._format.supports_custom_revision_properties:
+            revprops={u'empty':'',
+                      u'value':'one',
+                      u'unicode':u'\xb5',
+                      u'multiline':'foo\nbar\n\n'
+                      }
+        else:
+            revprops = {}
         # create a revision
         rev1 = tree1.commit(message="quux", allow_pointless=True,
-            committer="jaq",
-            revprops={'empty':'',
-                      'value':'one',
-                      'unicode':u'\xb5',
-                      'multiline':'foo\nbar\n\n'
-                      })
+            committer="jaq", revprops=revprops)
         self.assertEqual(tree1.branch.last_revision(), rev1)
         rev_a = tree1.branch.repository.get_revision(
                             tree1.branch.last_revision())
@@ -85,7 +100,9 @@ class TestRevisionAttributes(TestCaseWithRepository):
                      timestamp=rev_a.timestamp,
                      timezone=rev_a.timezone,
                      committer=rev_a.committer,
-                     rev_id=rev_a.revision_id,
+                     rev_id=(rev_a.revision_id
+                         if tree2.branch.repository._format.supports_setting_revision_ids
+                         else None),
                      revprops=rev_a.properties,
                      allow_pointless=True, # there's nothing in this commit
                      strict=True,
@@ -104,6 +121,6 @@ class TestRevisionAttributes(TestCaseWithRepository):
         tree1 = self.make_branch_and_tree("br1")
 
         # create a revision
-        tree1.commit(message="quux", timezone=0, rev_id='r1')
-        rev_a = tree1.branch.repository.get_revision('r1')
+        r1 = tree1.commit(message="quux", timezone=0)
+        rev_a = tree1.branch.repository.get_revision(r1)
         self.assertEqual(0, rev_a.timezone)

@@ -18,7 +18,10 @@ from breezy import (
     conflicts,
     tests,
     )
-from breezy.tests import script
+from breezy.tests import (
+    script,
+    KnownFailure,
+    )
 from breezy.tests.blackbox import test_conflicts
 
 
@@ -72,6 +75,61 @@ $ brz resolve -d branch --all
 $ brz conflicts -d branch
 """)
 
+    def test_bug_842575_manual_rm(self):
+        self.run_script("""\
+$ brz init -q trunk
+$ echo original > trunk/foo
+$ brz add -q trunk/foo
+$ brz commit -q -m first trunk
+$ brz checkout -q trunk tree
+$ brz rm -q trunk/foo
+$ brz commit -q -m second trunk
+$ echo modified > tree/foo
+$ brz update tree
+2>RM  foo => foo.THIS
+2>Contents conflict in foo
+2>1 conflicts encountered.
+2>Updated to revision 2 of branch ...
+$ rm tree/foo.BASE tree/foo.THIS
+$ brz resolve --all -d tree
+2>1 conflict resolved, 0 remaining
+""")
+        try:
+            self.run_script("""\
+$ brz status tree
+""")
+        except AssertionError:
+            raise KnownFailure("bug #842575")
+
+    def test_bug_842575_take_other(self):
+        self.run_script("""\
+$ brz init -q trunk
+$ echo original > trunk/foo
+$ brz add -q trunk/foo
+$ brz commit -q -m first trunk
+$ brz checkout -q --lightweight trunk tree
+$ brz rm -q trunk/foo
+$ brz ignore -d trunk foo
+$ brz commit -q -m second trunk
+$ echo modified > tree/foo
+$ brz update tree
+2>+N  .bzrignore
+2>RM  foo => foo.THIS
+2>Contents conflict in foo
+2>1 conflicts encountered.
+2>Updated to revision 2 of branch ...
+$ brz resolve --take-other --all -d tree
+2>1 conflict resolved, 0 remaining
+""")
+        try:
+            self.run_script("""\
+$ brz status tree
+$ echo mustignore > tree/foo
+$ brz status tree
+""")
+        except AssertionError:
+            raise KnownFailure("bug 842575")
+
 
 class TestBug788000(script.TestCaseWithTransportAndScript):
 
@@ -84,7 +142,7 @@ $ brz add a/dir
 $ cd a
 $ brz commit -m one
 $ cd ..
-$ brz clone a b
+$ brz branch a b
 $ echo bar > b/dir/file
 $ cd a
 $ rm -r dir
@@ -117,15 +175,15 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         """Text conflicts can be resolved automatically"""
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file',
-            '<<<<<<<\na\n=======\n>>>>>>>\n')])
-        tree.add('file', 'file_id')
-        self.assertEqual(tree.kind('file_id'), 'file')
-        file_conflict = conflicts.TextConflict('file', file_id='file_id')
+            b'<<<<<<<\na\n=======\n>>>>>>>\n')])
+        tree.add('file', b'file_id')
+        self.assertEqual(tree.kind('file', b'file_id'), 'file')
+        file_conflict = conflicts.TextConflict('file', file_id=b'file_id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]
         self.assertContainsRe(note, '0 conflicts auto-resolved.')
         self.assertContainsRe(note,
             'Remaining conflicts:\nText conflict in file')
-        self.build_tree_contents([('tree/file', 'a\n')])
+        self.build_tree_contents([('tree/file', b'a\n')])
         note = self.run_bzr('resolve', working_dir='tree')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')

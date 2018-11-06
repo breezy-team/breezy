@@ -38,7 +38,6 @@ from breezy.bzr import (
     xml7,
     )
 """)
-from ..decorators import needs_read_lock, needs_write_lock
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
@@ -51,7 +50,6 @@ from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
-    VersionedFileRootCommitBuilder,
     )
 
 
@@ -129,10 +127,10 @@ class KnitRepository(MetaDirVersionedFileRepository):
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
 
-    @needs_read_lock
     def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
-        return [key[0] for key in self.revisions.keys()]
+        with self.lock_read():
+            return [key[0] for key in self.revisions.keys()]
 
     def _activate_new_inventory(self):
         """Put a replacement inventory.new into use as inventories."""
@@ -183,14 +181,14 @@ class KnitRepository(MetaDirVersionedFileRepository):
         # Reconciling when the output has no revisions would result in no
         # writes - but we want to ensure there is an inventory for
         # compatibility with older clients that don't lazy-load.
-        result.get_parent_map([('A',)])
+        result.get_parent_map([(b'A',)])
         return result
 
-    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision"""
         revision_id = osutils.safe_revision_id(revision_id)
-        return self.get_revision_reconcile(revision_id)
+        with self.lock_read():
+            return self.get_revision_reconcile(revision_id)
 
     def _refresh_data(self):
         if not self.is_locked():
@@ -205,13 +203,13 @@ class KnitRepository(MetaDirVersionedFileRepository):
         else:
             self.control_files._set_read_transaction()
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from breezy.reconcile import KnitReconciler
-        reconciler = KnitReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = KnitReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
@@ -311,9 +309,9 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
         # already exist, we do this to create files on disk for older clients.
-        result.inventories.get_parent_map([('A',)])
-        result.revisions.get_parent_map([('A',)])
-        result.signatures.get_parent_map([('A',)])
+        result.inventories.get_parent_map([(b'A',)])
+        result.revisions.get_parent_map([(b'A',)])
+        result.signatures.get_parent_map([(b'A',)])
         result.unlock()
         self._run_post_repo_init_hooks(result, a_controldir, shared)
         return result
@@ -375,7 +373,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Knit Repository Format 1"
+        return b"Bazaar-NG Knit Repository Format 1"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -399,7 +397,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = VersionedFileRootCommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -413,12 +411,12 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
+        return b"Bazaar Knit Repository Format 3 (bzr 0.15)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -442,7 +440,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = VersionedFileRootCommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property
@@ -455,12 +453,12 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return 'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
+        return b'Bazaar Knit Repository Format 4 (bzr 1.0)\n'
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -489,37 +487,37 @@ class InterKnitRepo(InterSameDataRepository):
             return False
         return are_knits and InterRepository._same_model(source, target)
 
-    @needs_read_lock
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
         """See InterRepository.search_missing_revision_ids()."""
-        source_ids_set = self._present_source_revisions_for(
-            revision_ids, if_present_ids)
-        # source_ids is the worst possible case we may need to pull.
-        # now we want to filter source_ids against what we actually
-        # have in target, but don't try to check for existence where we know
-        # we do not have a revision as that would be pointless.
-        target_ids = set(self.target.all_revision_ids())
-        possibly_present_revisions = target_ids.intersection(source_ids_set)
-        actually_present_revisions = set(
-            self.target._eliminate_revisions_not_present(possibly_present_revisions))
-        required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_ids is not None:
-            # we used get_ancestry to determine source_ids then we are assured all
-            # revisions referenced are present as they are installed in topological order.
-            # and the tip revision was validated by get_ancestry.
-            result_set = required_revisions
-        else:
-            # if we just grabbed the possibly available ids, then
-            # we only have an estimate of whats available and need to validate
-            # that against the revision records.
-            result_set = set(
-                self.source._eliminate_revisions_not_present(required_revisions))
-        if limit is not None:
-            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
-            result_set = set(itertools.islice(topo_ordered, limit))
-        return self.source.revision_ids_to_search_result(result_set)
+        with self.lock_read():
+            source_ids_set = self._present_source_revisions_for(
+                revision_ids, if_present_ids)
+            # source_ids is the worst possible case we may need to pull.
+            # now we want to filter source_ids against what we actually
+            # have in target, but don't try to check for existence where we know
+            # we do not have a revision as that would be pointless.
+            target_ids = set(self.target.all_revision_ids())
+            possibly_present_revisions = target_ids.intersection(source_ids_set)
+            actually_present_revisions = set(
+                self.target._eliminate_revisions_not_present(possibly_present_revisions))
+            required_revisions = source_ids_set.difference(actually_present_revisions)
+            if revision_ids is not None:
+                # we used get_ancestry to determine source_ids then we are assured all
+                # revisions referenced are present as they are installed in topological order.
+                # and the tip revision was validated by get_ancestry.
+                result_set = required_revisions
+            else:
+                # if we just grabbed the possibly available ids, then
+                # we only have an estimate of whats available and need to validate
+                # that against the revision records.
+                result_set = set(
+                    self.source._eliminate_revisions_not_present(required_revisions))
+            if limit is not None:
+                topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+                result_set = set(itertools.islice(topo_ordered, limit))
+            return self.source.revision_ids_to_search_result(result_set)
 
 
 InterRepository.register_optimiser(InterKnitRepo)

@@ -17,6 +17,7 @@
 """External tests of 'brz ping'"""
 
 import breezy
+from breezy.sixish import PY3
 from breezy import tests
 
 
@@ -25,14 +26,19 @@ class TestSmartServerPing(tests.TestCaseWithTransport):
     def test_simple_ping(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
         out, err = self.run_bzr(['ping', self.get_url('branch')])
         self.assertLength(1, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
-        self.assertEqual(out,
-            "Response: ('ok', '2')\n"
-            "Headers: {'Software version': '%s'}\n" % (breezy.version_string,))
+        if PY3:
+            self.assertEqual(out,
+                "Response: (b'ok', b'2')\n"
+                "Headers: {'Software version': '%s'}\n" % (breezy.version_string,))
+        else:
+            self.assertEqual(out,
+                "Response: ('ok', '2')\n"
+                "Headers: {u'Software version': u'%s'}\n" % (breezy.version_string,))
         self.assertEqual(err, "")

@@ -49,10 +49,10 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def example_branch(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
-        self.build_tree_contents([(path + '/hello', 'foo')])
+        self.build_tree_contents([(path + '/hello', b'foo')])
         tree.add('hello')
         tree.commit(message='setup')
-        self.build_tree_contents([(path + '/goodbye', 'baz')])
+        self.build_tree_contents([(path + '/goodbye', b'baz')])
         tree.add('goodbye')
         tree.commit(message='setup')
         return tree
@@ -81,7 +81,7 @@ class TestBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr(
             'init --format=development-colo file:b,branch=orig')
         self.assertEqual(
-            """Created a lightweight checkout (format: development-colo)\n""",
+            """Created a standalone tree (format: development-colo)\n""",
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr(
@@ -91,20 +91,21 @@ class TestBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr('branches b')
         self.assertEqual("  orig\n  thiswasa\n", out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
+        out, err = self.run_bzr('branch a file:b,branch=orig', retcode=3)
         self.assertEqual('', out)
         self.assertEqual(
             'brz: ERROR: Already a branch: "file:b,branch=orig".\n', err)
 
     def test_from_colocated(self):
         """Branch from a colocated branch into a regular branch."""
-        tree = self.example_branch('a', format='development-colo')
+        os.mkdir('b')
+        tree = self.example_branch('b/a', format='development-colo')
         tree.controldir.create_branch(name='somecolo')
         out, err = self.run_bzr('branch %s,branch=somecolo' %
-            local_path_to_url('a'))
+            local_path_to_url('b/a'))
         self.assertEqual('', out)
         self.assertEqual('Branched 0 revisions.\n', err)
-        self.assertPathExists("somecolo")
+        self.assertPathExists('a')
 
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
@@ -119,10 +120,10 @@ class TestBranch(tests.TestCaseWithTransport):
             c = f.read(1)
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
-            if c == '\xFF':
-                corrupt = '\x00'
+            if c == b'\xFF':
+                corrupt = b'\x00'
             else:
-                corrupt = '\xFF'
+                corrupt = b'\xFF'
             f.write(corrupt) # make sure we corrupt something
         self.run_bzr_error(['Corruption while decompressing repository file'],
                             'branch a b', retcode=3)
@@ -216,29 +217,28 @@ class TestBranch(tests.TestCaseWithTransport):
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
-        tree_a.commit('commit a-1', rev_id='a-1')
-        f = open('repo/a/file', 'ab')
-        f.write('more stuff\n')
-        f.close()
-        tree_a.commit('commit a-2', rev_id='a-2')
+        tree_a.commit('commit a-1', rev_id=b'a-1')
+        with open('repo/a/file', 'ab') as f:
+            f.write(b'more stuff\n')
+        tree_a.commit('commit a-2', rev_id=b'a-2')
 
         tree_b = make_shared_tree('b')
         self.build_tree(['repo/b/file'])
         tree_b.add('file')
-        tree_b.commit('commit b-1', rev_id='b-1')
+        tree_b.commit('commit b-1', rev_id=b'b-1')
 
-        self.assertTrue(shared_repo.has_revision('a-1'))
-        self.assertTrue(shared_repo.has_revision('a-2'))
-        self.assertTrue(shared_repo.has_revision('b-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-2'))
+        self.assertTrue(shared_repo.has_revision(b'b-1'))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'branch'
         self.run_bzr('branch repo/b branch-b')
         pushed_tree = WorkingTree.open('branch-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision('a-1'))
-        self.assertFalse(pushed_repo.has_revision('a-2'))
-        self.assertTrue(pushed_repo.has_revision('b-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-2'))
+        self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_branch_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -293,10 +293,10 @@ class TestBranch(tests.TestCaseWithTransport):
         self.example_branch('a')
         # existing dir with similar files but no .brz dir
         self.build_tree_contents([('b/',)])
-        self.build_tree_contents([('b/hello', 'bar')])  # different content
-        self.build_tree_contents([('b/goodbye', 'baz')])# same content
+        self.build_tree_contents([('b/hello', b'bar')])  # different content
+        self.build_tree_contents([('b/goodbye', b'baz')])# same content
         # fails without --use-existing-dir
-        out,err = self.run_bzr('branch a b', retcode=3)
+        out, err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Target directory "b" already exists.\n',
             err)
@@ -306,7 +306,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertPathExists('b/hello.moved')
         self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
-        out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
+        out, err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Already a branch: "b".\n', err)
 
@@ -349,15 +349,15 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_fetches_all_tags(self):
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
-        source.tags.set_tag('tag-a', 'rev-2')
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', rev2)
         source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
         # The tag is present, and so is its revision.
-        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
-        new_branch.repository.get_revision('rev-2')
+        self.assertEqual(rev2, new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision(rev2)
 
 
 class TestBranchStacked(tests.TestCaseWithTransport):
@@ -470,7 +470,8 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             '  Branch format 7\n'
             'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
-            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            'Created new stacked branch referring to %s.\n' %
+            (trunk.base,),
             err)
 
     def test_branch_stacked_from_rich_root_non_stackable(self):
@@ -551,10 +552,10 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
-        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.get_config_stack().set('branch.fetch_tags', True)
-        source.tags.set_tag('tag-a', 'rev-2')
-        source.tags.set_tag('tag-missing', 'missing-rev')
+        source.tags.set_tag('tag-a', rev2)
+        source.tags.set_tag('tag-missing', b'missing-rev')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])
@@ -589,13 +590,32 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         self.expectFailure("branching to stacked requires VFS access",
             self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
+    def test_branch_from_branch_with_ghosts(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        t.set_parent_ids([t.last_revision(), b'ghost'])
+        t.commit(message='add commit with parent')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(11, self.hpss_calls)
+        self.assertLength(1, self.hpss_connections)
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 
     def setUp(self):
         super(TestRemoteBranch, self).setUp()
         tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/file', 'file content\n')])
+        self.build_tree_contents([('branch/file', b'file content\n')])
         tree.add('file')
         tree.commit('file created')
 
@@ -612,22 +632,6 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
         t = self.get_transport()
         # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
-
-
-class TestDeprecatedAliases(tests.TestCaseWithTransport):
-
-    def test_deprecated_aliases(self):
-        """brz branch can be called clone or get, but those names are
-        deprecated.
-
-        See bug 506265.
-        """
-        for command in ['clone', 'get']:
-            run_script(self, """
-            $ brz %(command)s A B
-            2>The command 'brz %(command)s' has been deprecated in brz 2.4. Please use 'brz branch' instead.
-            2>brz: ERROR: Not a branch...
-            """ % locals())
 
 
 class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):

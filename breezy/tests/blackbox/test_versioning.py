@@ -79,7 +79,7 @@ class TestMkdir(TestCaseWithTransport):
 
         self.assertEqual(len(delta.added), 2)
         self.assertEqual(delta.added[0][0], 'dir')
-        self.assertEqual(delta.added[1][0], pathjoin('dir','subdir'))
+        self.assertEqual(delta.added[1][0], pathjoin('dir', 'subdir'))
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
@@ -135,10 +135,10 @@ class SubdirCommit(TestCaseWithTransport):
                 ('b/two', contents),
                 ('top', contents),
                 ])
-        set_contents('old contents')
+        set_contents(b'old contents')
         tree.smart_add(['.'])
         tree.commit('first revision')
-        set_contents('new contents')
+        set_contents(b'new contents')
 
         mutter('start selective subdir commit')
         self.run_bzr(['commit', 'a', '-m', 'commit a only'])
@@ -147,11 +147,11 @@ class SubdirCommit(TestCaseWithTransport):
         new.lock_read()
 
         def get_text_by_path(tree, path):
-            return tree.get_file_text(tree.path2id(path), path)
+            return tree.get_file_text(path)
 
-        self.assertEqual(get_text_by_path(new, 'b/two'), 'old contents')
-        self.assertEqual(get_text_by_path(new, 'top'), 'old contents')
-        self.assertEqual(get_text_by_path(new, 'a/one'), 'new contents')
+        self.assertEqual(get_text_by_path(new, 'b/two'), b'old contents')
+        self.assertEqual(get_text_by_path(new, 'top'), b'old contents')
+        self.assertEqual(get_text_by_path(new, 'a/one'), b'new contents')
         new.unlock()
 
         # commit from here should do nothing
@@ -159,9 +159,9 @@ class SubdirCommit(TestCaseWithTransport):
                      working_dir='a')
         v3 = b.repository.revision_tree(b.get_rev_id(3))
         v3.lock_read()
-        self.assertEqual(get_text_by_path(v3, 'b/two'), 'old contents')
-        self.assertEqual(get_text_by_path(v3, 'top'), 'old contents')
-        self.assertEqual(get_text_by_path(v3, 'a/one'), 'new contents')
+        self.assertEqual(get_text_by_path(v3, 'b/two'), b'old contents')
+        self.assertEqual(get_text_by_path(v3, 'top'), b'old contents')
+        self.assertEqual(get_text_by_path(v3, 'a/one'), b'new contents')
         v3.unlock()
 
         # commit in subdirectory commits whole tree
@@ -169,8 +169,8 @@ class SubdirCommit(TestCaseWithTransport):
                      working_dir='a')
         v4 = b.repository.revision_tree(b.get_rev_id(4))
         v4.lock_read()
-        self.assertEqual(get_text_by_path(v4, 'b/two'), 'new contents')
-        self.assertEqual(get_text_by_path(v4, 'top'), 'new contents')
+        self.assertEqual(get_text_by_path(v4, 'b/two'), b'new contents')
+        self.assertEqual(get_text_by_path(v4, 'top'), b'new contents')
         v4.unlock()
 
         # TODO: factor out some kind of assert_tree_state() method

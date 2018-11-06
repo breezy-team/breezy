@@ -31,6 +31,8 @@ from breezy import (
     transform,
     transport,
     )
+from breezy.git.tree import GitRevisionTree
+from breezy.git.workingtree import GitWorkingTreeFormat
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
@@ -91,10 +93,15 @@ def preview_tree_post(testcase, tree):
 
 class TestTreeImplementationSupport(tests.TestCaseWithTransport):
 
-    def test_revision_tree_from_workingtree(self):
-        tree = self.make_branch_and_tree('.')
+    def test_revision_tree_from_workingtree_bzr(self):
+        tree = self.make_branch_and_tree('.', format='bzr')
         tree = revision_tree_from_workingtree(self, tree)
         self.assertIsInstance(tree, RevisionTree)
+
+    def test_revision_tree_from_workingtree(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        tree = revision_tree_from_workingtree(self, tree)
+        self.assertIsInstance(tree, GitRevisionTree)
 
 
 class TestCaseWithTree(TestCaseWithControlDir):
@@ -135,7 +142,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         :param empty_tree: A working tree with no content and no parents to
             modify.
         """
-        empty_tree.set_root_id('empty-root-id')
+        if empty_tree.supports_setting_file_ids():
+            empty_tree.set_root_id(b'empty-root-id')
         return self._convert_tree(empty_tree, converter)
 
     def _make_abc_tree(self, tree):
@@ -143,8 +151,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, line_endings='binary',
                         transport=tree.controldir.root_transport)
-        tree.set_root_id('root-id')
-        tree.add(files, ['a-id', 'b-id', 'c-id'])
+        tree.add(files)
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents."""
@@ -157,11 +164,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation changes the content of 'a' to foobar\n.
         """
         self._make_abc_tree(tree)
-        f = open(tree.basedir + '/a', 'wb')
-        try:
-            f.write('foobar\n')
-        finally:
-            f.close()
+        with open(tree.basedir + '/a', 'wb') as f:
+            f.write(b'foobar\n')
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_3(self, tree, converter=None):
@@ -192,11 +196,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         """
         self._make_abc_tree(tree)
         tree.rename_one('a', 'd')
-        f = open(tree.basedir + '/d', 'wb')
-        try:
-            f.write('bar\n')
-        finally:
-            f.close()
+        with open(tree.basedir + '/d', 'wb') as f:
+            f.write(b'bar\n')
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_6(self, tree, converter=None):
@@ -216,11 +217,11 @@ class TestCaseWithTree(TestCaseWithControlDir):
     def get_tree_no_parents_abc_content_7(self, tree, converter=None):
         """return a test tree with a, b/, d/e contents.
 
-        This variation adds a dir 'd' ('d-id'), renames b to d/e.
+        This variation adds a dir 'd' (b'd-id'), renames b to d/e.
         """
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
-        tree.add(['d'], ['d-id'])
+        tree.add(['d'])
         tt = transform.TreeTransform(tree)
         trans_id = tt.trans_id_tree_path('b')
         parent_trans_id = tt.trans_id_tree_path('d')
@@ -246,13 +247,13 @@ class TestCaseWithTree(TestCaseWithControlDir):
                             by breezy.osutils.has_symlinks() function.
 
         The returned tree has the following inventory:
-            [('', inventory.ROOT_ID),
-             ('0file', '2file'),
-             ('1top-dir', '1top-dir'),
-             (u'2utf\u1234file', u'0utf\u1234file'),
-             ('symlink', 'symlink'),            # only if symlinks arg is True
-             ('1top-dir/0file-in-1topdir', '1file-in-1topdir'),
-             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir')]
+            ['',
+             '0file',
+             '1top-dir',
+             u'2utf\u1234file',
+             'symlink',            # only if symlinks arg is True
+             '1top-dir/0file-in-1topdir',
+             '1top-dir/1dir-in-1topdir']
         where each component has the type of its name -
         i.e. '1file..' is afile.
 
@@ -267,71 +268,14 @@ class TestCaseWithTree(TestCaseWithControlDir):
             '1top-dir/0file-in-1topdir',
             '1top-dir/1dir-in-1topdir/'
             ]
-        ids = [
-            '2file',
-            '1top-dir',
-            u'0utf\u1234file'.encode('utf8'),
-            '1file-in-1topdir',
-            '0dir-in-1topdir'
-            ]
         self.build_tree(paths)
-        tree.add(paths, ids)
+        tree.add(paths)
         tt = transform.TreeTransform(tree)
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
             tt.new_symlink('symlink',
-                root_transaction_id, 'link-target', 'symlink')
+                root_transaction_id, 'link-target', b'symlink')
         tt.apply()
-        return self.workingtree_to_test_tree(tree)
-
-    def get_tree_with_utf8(self, tree):
-        """Generate a tree with a utf8 revision and unicode paths."""
-        self._create_tree_with_utf8(tree)
-        return self.workingtree_to_test_tree(tree)
-
-    def _create_tree_with_utf8(self, tree):
-        """Generate a tree with a utf8 revision and unicode paths."""
-        self.requireFeature(features.UnicodeFilenameFeature)
-        # We avoid combining characters in file names here, normalization
-        # checks (as performed by some file systems (OSX) are outside the scope
-        # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
-        # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
-        paths = [u'',
-                 u'fo\N{Euro Sign}o',
-                 u'ba\N{Euro Sign}r/',
-                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
-                ]
-        # bzr itself does not create unicode file ids, but we want them for
-        # testing.
-        file_ids = ['TREE_ROOT',
-                    'fo\xe2\x82\xaco-id',
-                    'ba\xe2\x82\xacr-id',
-                    'ba\xe2\x82\xacz-id',
-                   ]
-        self.build_tree(paths[1:])
-        if tree.get_root_id() is None:
-            # Some trees do not have a root yet.
-            tree.add(paths, file_ids)
-        else:
-            # Some trees will already have a root
-            tree.set_root_id(file_ids[0])
-            tree.add(paths[1:], file_ids[1:])
-        try:
-            tree.commit(u'in\xedtial', rev_id=u'r\xe9v-1'.encode('utf8'))
-        except errors.NonAsciiRevisionId:
-            raise tests.TestSkipped('non-ascii revision ids not supported')
-
-    def get_tree_with_merged_utf8(self, tree):
-        """Generate a tree with utf8 ancestors."""
-        self._create_tree_with_utf8(tree)
-        tree2 = tree.controldir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
-        tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
-                  [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
-        tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
-
-        tree.merge_from_branch(tree2.branch)
-        tree.commit(u'm\xe9rge', rev_id=u'r\xe9v-3'.encode('utf8'))
         return self.workingtree_to_test_tree(tree)
 
 
@@ -342,6 +286,8 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     DirStateRevisionTree by committing a working tree to create the revision
     tree.
     """
+    # TODO(jelmer): Test MemoryTree here
+    # TODO(jelmer): Test GitMemoryTree here
     scenarios = wt_make_scenarios(transport_server, transport_readonly_server,
         formats)
     # now adjust the scenarios and add the non-working-tree tree scenarios.
@@ -353,6 +299,9 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     scenarios.append((RevisionTree.__name__,
         create_tree_scenario(transport_server, transport_readonly_server,
         workingtree_format, revision_tree_from_workingtree,)))
+    scenarios.append((GitRevisionTree.__name__,
+        create_tree_scenario(transport_server, transport_readonly_server,
+        GitWorkingTreeFormat(), revision_tree_from_workingtree,)))
 
     # also test WorkingTree4/5's RevisionTree implementation which is
     # specialised.
@@ -390,6 +339,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
 
 def load_tests(loader, standard_tests, pattern):
     per_tree_mod_names = [
+        'archive',
         'annotate_iter',
         'export',
         'get_file_mtime',
@@ -397,19 +347,19 @@ def load_tests(loader, standard_tests, pattern):
         'get_root_id',
         'get_symlink_target',
         'ids',
-        'inv',
         'iter_search_rules',
         'is_executable',
         'list_files',
         'locking',
         'path_content_summary',
         'revision_tree',
+        'symlinks',
         'test_trees',
         'tree',
         'walkdirs',
         ]
     submod_tests = loader.loadTestsFromModuleNames(
-        ['breezy.tests.per_tree.test_' + name
+        [__name__ + '.test_' + name
          for name in per_tree_mod_names])
     scenarios = make_scenarios(
         tests.default_transport,

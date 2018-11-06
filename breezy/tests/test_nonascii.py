@@ -35,8 +35,8 @@ class NonAsciiTest(TestCaseWithTransport):
         except UnicodeEncodeError:
             raise TestSkipped("filesystem can't accomodate nonascii names")
             return
-        with file(pathjoin(br_dir, "a"), "w") as f: f.write("hello")
-        wt.add(["a"], ["a-id"])
+        with open(pathjoin(br_dir, "a"), "w") as f: f.write("hello")
+        wt.add(["a"], [b"a-id"])
 
 
 a_circle_c = u'\xe5'
@@ -151,14 +151,11 @@ class NormalizedFilename(TestCaseWithTransport):
             self.assertEqual(path, fname)
             self.assertTrue(can_access)
 
-            f = open(path, 'rb')
-            try:
+            with open(path, 'rb') as f:
                 # Check the contents
-                shouldbe = 'contents of %s%s' % (path.encode('utf8'),
-                                                 os.linesep)
+                shouldbe = b'contents of %s%s' % (path.encode('utf8'),
+                                                  os.linesep.encode('utf-8'))
                 actual = f.read()
-            finally:
-                f.close()
             self.assertEqual(shouldbe, actual,
                              'contents of %r is incorrect: %r != %r'
                              % (path, shouldbe, actual))

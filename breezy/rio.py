@@ -44,13 +44,14 @@ from .sixish import (
 # through a writer object.
 
 class RioWriter(object):
+
     def __init__(self, to_file):
         self._soft_nl = False
         self._to_file = to_file
 
     def write_stanza(self, stanza):
         if self._soft_nl:
-            self._to_file.write('\n')
+            self._to_file.write(b'\n')
         stanza.write(self._to_file)
         self._soft_nl = True
 
@@ -89,12 +90,22 @@ def rio_file(stanzas, header=None):
 
 
 def read_stanzas(from_file):
+
     while True:
         s = read_stanza(from_file)
         if s is None:
             break
-        else:
-            yield s
+        yield s
+
+
+def read_stanzas_unicode(from_file):
+
+    while True:
+        s = read_stanza_unicode(from_file)
+        if s is None:
+            break
+        yield s
+
 
 class Stanza(object):
     """One stanza for rio.

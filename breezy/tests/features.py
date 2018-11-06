@@ -17,11 +17,15 @@
 """A collection of commonly used 'Features' to optionally run tests.
 """
 
+from __future__ import absolute_import
+
+import importlib
 import os
 import subprocess
 import stat
 import sys
 import tempfile
+import warnings
 
 from .. import (
     osutils,
@@ -161,19 +165,25 @@ class ModuleAvailableFeature(Feature):
     :ivar module: The module if it is available, else None.
     """
 
-    def __init__(self, module_name):
+    def __init__(self, module_name, ignore_warnings=None):
         super(ModuleAvailableFeature, self).__init__()
         self.module_name = module_name
+        if ignore_warnings is None:
+            ignore_warnings = ()
+        self.ignore_warnings = ignore_warnings
 
     def _probe(self):
         sentinel = object()
         module = sys.modules.get(self.module_name, sentinel)
         if module is sentinel:
-            try:
-                self._module = __import__(self.module_name, {}, {}, [''])
+            with warnings.catch_warnings():
+                for warning_category in self.ignore_warnings:
+                    warnings.simplefilter('ignore', warning_category)
+                try:
+                    self._module = importlib.import_module(self.module_name)
+                except ImportError:
+                    return False
                 return True
-            except ImportError:
-                return False
         else:
             self._module = module
             return True
@@ -186,6 +196,33 @@ class ModuleAvailableFeature(Feature):
 
     def feature_name(self):
         return self.module_name
+
+
+class PluginLoadedFeature(Feature):
+    """Check whether a plugin with specific name is loaded.
+
+    This is different from ModuleAvailableFeature, because
+    plugins can be available but explicitly disabled
+    (e.g. through BRZ_DISABLE_PLUGINS=blah).
+
+    :ivar plugin_name: The name of the plugin
+    """
+
+    def __init__(self, plugin_name):
+        super(PluginLoadedFeature, self).__init__()
+        self.plugin_name = plugin_name
+
+    def _probe(self):
+        from breezy.plugin import get_loaded_plugin
+        return (get_loaded_plugin(self.plugin_name) is not None)
+
+    @property
+    def plugin(self):
+        from breezy.plugin import get_loaded_plugin
+        return get_loaded_plugin(self.plugin_name)
+
+    def feature_name(self):
+        return '%s plugin' % self.plugin_name
 
 
 class _HTTPSServerFeature(Feature):
@@ -345,8 +382,11 @@ class _NotRunningAsRoot(Feature):
 
 not_running_as_root = _NotRunningAsRoot()
 
-apport = ModuleAvailableFeature('apport')
-gpgme = ModuleAvailableFeature('gpgme')
+# Apport uses deprecated imp module on python3.
+apport = ModuleAvailableFeature(
+    'apport.report',
+    ignore_warnings=[DeprecationWarning, PendingDeprecationWarning])
+gpg = ModuleAvailableFeature('gpg')
 lzma = ModuleAvailableFeature('lzma')
 meliae = ModuleAvailableFeature('meliae.scanner')
 paramiko = ModuleAvailableFeature('paramiko')
@@ -493,13 +533,24 @@ class Win32Feature(Feature):
 win32_feature = Win32Feature()
 
 
-class _ColorFeature(Feature):
+class _BackslashFilenameFeature(Feature):
+    """Does the filesystem support backslashes in filenames?"""
 
     def _probe(self):
-        from breezy._termcolor import allow_color
-        return allow_color()
 
-    def feature_name(self):
-        return "Terminal supports color."
+        try:
+            fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
+        except (IOError, OSError):
+            return False
+        else:
+            try:
+                os.stat(name)
+            except (IOError, OSError):
+                # mkstemp succeeded but the file wasn't actually created
+                return False
+            os.close(fileno)
+            os.remove(name)
+            return True
 
-ColorFeature = _ColorFeature()
+
+BackslashFilenameFeature = _BackslashFilenameFeature()

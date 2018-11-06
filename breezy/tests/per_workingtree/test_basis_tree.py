@@ -59,7 +59,7 @@ class TestBasisTree(TestCaseWithWorkingTree):
 
         self.build_tree(['new file', 'new dir/'])
         tree.rename_one('file', 'dir/new file')
-        tree.unversion([tree.path2id('dir/subfile')])
+        tree.unversion(['dir/subfile'])
         tree.add(['new file', 'new dir'])
 
         basis_tree = tree.basis_tree()

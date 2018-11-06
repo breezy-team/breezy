@@ -29,27 +29,21 @@ if len(args) >= 1:
     b = branch.Branch.open(args[0])
 else:
     b = branch.Branch.open('.')
-b.lock_read()
-try:
+with b.lock_read():
     g = b.repository.get_graph()
     parent_map = dict(p for p in g.iter_ancestry([b.last_revision()])
                          if p[1] is not None)
-finally:
-    b.unlock()
 end = time.clock()
 
 print('Found %d nodes, loaded in %.3fs' % (len(parent_map), end - begin))
 
 def all_heads_comp(g, combinations):
     h = []
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         for idx, combo in enumerate(combinations):
             if idx & 0x1f == 0:
                 pb.update('proc', idx, len(combinations))
             h.append(g.heads(combo))
-    finally:
-        pb.finished()
     return h
 
 combinations = []

@@ -22,24 +22,24 @@ from __future__ import absolute_import
 from .. import static_tuple
 
 
-def _parse_leaf_lines(bytes, key_length, ref_list_length):
-    lines = bytes.split('\n')
+def _parse_leaf_lines(data, key_length, ref_list_length):
+    lines = data.split(b'\n')
     nodes = []
     as_st = static_tuple.StaticTuple.from_sequence
     stuple = static_tuple.StaticTuple
     for line in lines[1:]:
-        if line == '':
+        if line == b'':
             return nodes
-        elements = line.split('\0', key_length)
+        elements = line.split(b'\0', key_length)
         # keys are tuples
         key = as_st(elements[:key_length]).intern()
         line = elements[-1]
-        references, value = line.rsplit('\0', 1)
+        references, value = line.rsplit(b'\0', 1)
         if ref_list_length:
             ref_lists = []
-            for ref_string in references.split('\t'):
-                ref_list = as_st([as_st(ref.split('\0')).intern()
-                                  for ref in ref_string.split('\r') if ref])
+            for ref_string in references.split(b'\t'):
+                ref_list = as_st([as_st(ref.split(b'\0')).intern()
+                                  for ref in ref_string.split(b'\r') if ref])
                 ref_lists.append(ref_list)
             ref_lists = as_st(ref_lists)
             node_value = stuple(value, ref_lists)
@@ -63,12 +63,12 @@ def _flatten_node(node, reference_lists):
         # TODO: Consider turning this back into the 'unoptimized' nested loop
         #       form. It is probably more obvious for most people, and this is
         #       just a reference implementation.
-        flattened_references = ['\r'.join(['\x00'.join(reference)
-                                           for reference in ref_list])
+        flattened_references = [b'\r'.join([b'\x00'.join(reference)
+                                            for reference in ref_list])
                                 for ref_list in node[3]]
     else:
         flattened_references = []
-    string_key = '\x00'.join(node[1])
-    line = ("%s\x00%s\x00%s\n" % (string_key,
-        '\t'.join(flattened_references), node[2]))
+    string_key = b'\x00'.join(node[1])
+    line = (b"%s\x00%s\x00%s\n" % (string_key,
+        b'\t'.join(flattened_references), node[2]))
     return string_key, line

@@ -32,6 +32,7 @@ from breezy.i18n import gettext
 
 from .commands import Command
 from .option import Option, RegistryOption
+from .sixish import text_type
 
 
 def _parse_version_info_format(format):
@@ -84,12 +85,12 @@ class cmd_version_info(Command):
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
                             help='Include the last revision for each file.'),
-                     Option('template', type=str, help='Template for the output.'),
+                     Option('template', type=text_type, help='Template for the output.'),
                      'revision',
                      ]
     takes_args = ['location?']
 
-    encoding_type = 'exact'
+    encoding_type = 'replace'
 
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,

@@ -89,10 +89,15 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             'selftest --starting-with foo --starting-with bar')
         self.assertEqual(['foo', 'bar'], params[1]['starting_with'])
 
-    def test_subunit(self):
+    def test_subunitv1(self):
         self.requireFeature(features.subunit)
-        params = self.get_params_passed_to_core('selftest --subunit')
-        self.assertEqual(tests.SubUnitBzrRunner, params[1]['runner_class'])
+        params = self.get_params_passed_to_core('selftest --subunit1')
+        self.assertEqual(tests.SubUnitBzrRunnerv1, params[1]['runner_class'])
+
+    def test_subunitv2(self):
+        self.requireFeature(features.subunit)
+        params = self.get_params_passed_to_core('selftest --subunit2')
+        self.assertEqual(tests.SubUnitBzrRunnerv2, params[1]['runner_class'])
 
     def _parse_test_list(self, lines, newlines_in_header=0):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
@@ -120,7 +125,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # If the last body line is blank, drop it off the list
         if len(body) > 0 and body[-1] == '':
             body.pop()
-        return (header,body,footer)
+        return (header, body, footer)
 
     def test_list_only(self):
         # check that brz selftest --list-only outputs no ui noise
@@ -128,8 +133,8 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             """Capture the arguments selftest was run with."""
             return True
         def outputs_nothing(cmdline):
-            out,err = self.run_bzr(cmdline)
-            (header,body,footer) = self._parse_test_list(out.splitlines())
+            out, err = self.run_bzr(cmdline)
+            (header, body, footer) = self._parse_test_list(out.splitlines())
             num_tests = len(body)
             self.assertLength(0, header)
             self.assertLength(0, footer)

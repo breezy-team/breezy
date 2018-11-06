@@ -27,6 +27,7 @@ breezy/transport/smart/__init__.py.
 from __future__ import absolute_import
 
 import errno
+import io
 import os
 import sys
 import time
@@ -41,7 +42,6 @@ import weakref
 
 from breezy import (
     debug,
-    errors,
     trace,
     transport,
     ui,
@@ -51,13 +51,27 @@ from breezy.i18n import gettext
 from breezy.bzr.smart import client, protocol, request, signals, vfs
 from breezy.transport import ssh
 """)
-from ... import osutils
+from ... import (
+    errors,
+    osutils,
+    )
 
 # Throughout this module buffer size parameters are either limited to be at
 # most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
 # For this module's purposes, MAX_SOCKET_CHUNK is a reasonable size for reads
 # from non-sockets as well.
 _MAX_READ_SIZE = osutils.MAX_SOCKET_CHUNK
+
+
+class HpssVfsRequestNotAllowed(errors.BzrError):
+
+    _fmt = ("VFS requests over the smart server are not allowed. Encountered: "
+            "%(method)s, %(arguments)s.")
+
+    def __init__(self, method, arguments):
+        self.method = method
+        self.arguments = arguments
+
 
 def _get_protocol_factory_for_bytes(bytes):
     """Determine the right protocol factory for 'bytes'.
@@ -100,14 +114,14 @@ def _get_line(read_bytes_func):
     :returns: a tuple of two strs: (line, excess)
     """
     newline_pos = -1
-    bytes = ''
+    bytes = b''
     while newline_pos == -1:
         new_bytes = read_bytes_func(1)
         bytes += new_bytes
-        if new_bytes == '':
+        if new_bytes == b'':
             # Ran out of bytes before receiving a complete line.
-            return bytes, ''
-        newline_pos = bytes.find('\n')
+            return bytes, b''
+        newline_pos = bytes.find(b'\n')
     line = bytes[:newline_pos+1]
     excess = bytes[newline_pos+1:]
     return line, excess
@@ -119,22 +133,24 @@ class SmartMedium(object):
     def __init__(self):
         self._push_back_buffer = None
 
-    def _push_back(self, bytes):
+    def _push_back(self, data):
         """Return unused bytes to the medium, because they belong to the next
         request(s).
 
         This sets the _push_back_buffer to the given bytes.
         """
+        if not isinstance(data, bytes):
+            raise TypeError(data)
         if self._push_back_buffer is not None:
             raise AssertionError(
                 "_push_back called when self._push_back_buffer is %r"
                 % (self._push_back_buffer,))
-        if bytes == '':
+        if data == b'':
             return
-        self._push_back_buffer = bytes
+        self._push_back_buffer = data
 
     def _get_push_back_buffer(self):
-        if self._push_back_buffer == '':
+        if self._push_back_buffer == b'':
             raise AssertionError(
                 '%s._push_back_buffer should never be the empty string, '
                 'which can be confused with EOF' % (self,))
@@ -313,6 +329,8 @@ class SmartServerStreamMedium(SmartMedium):
                     # Interrupted, keep looping.
                     continue
                 raise
+            except ValueError:
+                return  # Socket may already be closed
         if rs or xs:
             return
         raise errors.ConnectionTimeout('disconnecting client after %.1f seconds'
@@ -377,7 +395,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
             # than MAX_SOCKET_CHUNK ready, the socket will just return a
             # short read immediately rather than block.
             bytes = self.read_bytes(osutils.MAX_SOCKET_CHUNK)
-            if bytes == '':
+            if bytes == b'':
                 self.finished = True
                 return
             protocol.accept_bytes(bytes)
@@ -463,7 +481,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 self._out.flush()
                 return
             bytes = self.read_bytes(bytes_to_read)
-            if bytes == '':
+            if bytes == b'':
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
@@ -489,7 +507,10 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             or sys.platform == 'win32'):
             # You can't select() file descriptors on Windows.
             return
-        return self._wait_on_descriptor(self._in, timeout_seconds)
+        try:
+            return self._wait_on_descriptor(self._in, timeout_seconds)
+        except io.UnsupportedOperation:
+            return
 
     def _read_bytes(self, desired_count):
         return self._in.read(desired_count)
@@ -624,7 +645,7 @@ class SmartClientMediumRequest(object):
 
     def read_line(self):
         line = self._read_line()
-        if not line.endswith('\n'):
+        if not line.endswith(b'\n'):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
                 "Unexpected end of message. Please check connectivity "
@@ -656,7 +677,7 @@ class _VfsRefuser(object):
             # A method we don't know about doesn't count as a VFS method.
             return
         if issubclass(request_method, vfs.VfsRequest):
-            raise errors.HpssVfsRequestNotAllowed(params.method, params.args)
+            raise HpssVfsRequestNotAllowed(params.method, params.args)
 
 
 class _DebugCounter(object):
@@ -671,7 +692,7 @@ class _DebugCounter(object):
         self.counts = weakref.WeakKeyDictionary()
         client._SmartClient.hooks.install_named_hook(
             'call', self.increment_call_count, 'hpss call counter')
-        breezy.global_state.cleanups.add_cleanup(self.flush_all)
+        breezy.get_global_state().cleanups.add_cleanup(self.flush_all)
 
     def track(self, medium):
         """Start tracking calls made to a medium.
@@ -903,16 +924,16 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
 
-    def _accept_bytes(self, bytes):
+    def _accept_bytes(self, data):
         """See SmartClientStreamMedium.accept_bytes."""
         try:
-            self._writeable_pipe.write(bytes)
+            self._writeable_pipe.write(data)
         except IOError as e:
             if e.errno in (errno.EINVAL, errno.EPIPE):
                 raise errors.ConnectionReset(
                     "Error trying to write to subprocess", e)
             raise
-        self._report_activity(len(bytes), 'write')
+        self._report_activity(len(data), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
@@ -924,9 +945,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
         bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = self._readable_pipe.read(bytes_to_read)
-        self._report_activity(len(bytes), 'read')
-        return bytes
+        data = self._readable_pipe.read(bytes_to_read)
+        self._report_activity(len(data), 'read')
+        return data
 
 
 class SSHParams(object):
@@ -1110,7 +1131,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             raise errors.ConnectionError("failed to lookup %s:%d: %s" %
                     (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
-        err = socket.error("no address found for %s" % self._host)
+        last_err = socket.error("no address found for %s" % self._host)
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
             try:
                 self._socket = socket.socket(family, socktype, proto)
@@ -1121,15 +1142,16 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
                 if self._socket is not None:
                     self._socket.close()
                 self._socket = None
+                last_err = err
                 continue
             break
         if self._socket is None:
             # socket errors either have a (string) or (errno, string) as their
             # args.
-            if isinstance(err.args, str):
-                err_msg = err.args
+            if isinstance(last_err.args, str):
+                err_msg = last_err.args
             else:
-                err_msg = err.args[1]
+                err_msg = last_err.args[1]
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
                     (self._host, port, err_msg))
         self._connected = True

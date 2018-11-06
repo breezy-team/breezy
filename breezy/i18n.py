@@ -28,6 +28,8 @@ import gettext as _gettext
 import os
 import sys
 
+from .sixish import text_type
+
 
 _translations = None
 
@@ -161,7 +163,7 @@ def _get_locale_dir(base):
 
 
 def _check_win32_locale():
-    for i in ('LANGUAGE','LC_ALL','LC_MESSAGES','LANG'):
+    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
         if os.environ.get(i):
             break
     else:
@@ -196,7 +198,7 @@ def _get_current_locale():
             return lang
     if sys.platform == 'win32':
         _check_win32_locale()
-    for i in ('LANGUAGE','LC_ALL','LC_MESSAGES','LANG'):
+    for i in ('LANGUAGE', 'LC_ALL', 'LC_MESSAGES', 'LANG'):
         lang = os.environ.get(i)
         if lang:
             return lang
@@ -208,8 +210,7 @@ def load_plugin_translations(domain):
 
     :param domain: Gettext domain name (usually 'brz-PLUGINNAME')
     """
-    locale_base = os.path.dirname(
-        unicode(__file__, sys.getfilesystemencoding()))
+    locale_base = os.path.dirname(__file__)
     translation = install_translations(domain=domain,
         locale_base=locale_base)
     add_fallback(translation)

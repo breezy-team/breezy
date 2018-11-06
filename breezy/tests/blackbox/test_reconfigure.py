@@ -140,15 +140,15 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.assertNotEqual(branch.controldir.root_transport.base,
             branch.repository.controldir.root_transport.base)
         tree = workingtree.WorkingTree.open('repo/tree')
-        self.build_tree_contents([('repo/tree/file', 'foo\n')]);
+        self.build_tree_contents([('repo/tree/file', b'foo\n')]);
         tree.add(['file'])
         tree.commit('added file')
         self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
-        self.build_tree_contents([('repo/tree/file', 'bar\n')]);
-        self.check_file_contents('repo/tree/file', 'bar\n')
+        self.build_tree_contents([('repo/tree/file', b'bar\n')]);
+        self.check_file_contents('repo/tree/file', b'bar\n')
         self.run_bzr('revert', working_dir='repo/tree')
-        self.check_file_contents('repo/tree/file', 'foo\n')
+        self.check_file_contents('repo/tree/file', b'foo\n')
         self.assertEqual(tree.controldir.root_transport.base,
             tree.branch.repository.controldir.root_transport.base)
 
@@ -165,15 +165,15 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         branch = self.make_branch('branch', format=format)
         checkout = branch.create_checkout('checkout', lightweight=True)
         tree = workingtree.WorkingTree.open('checkout')
-        self.build_tree_contents([('checkout/file', 'foo\n')]);
+        self.build_tree_contents([('checkout/file', b'foo\n')]);
         tree.add(['file'])
         tree.commit('added file')
         self.run_bzr('reconfigure --tree', working_dir='checkout')
         tree = workingtree.WorkingTree.open('checkout')
-        self.build_tree_contents([('checkout/file', 'bar\n')]);
-        self.check_file_contents('checkout/file', 'bar\n')
+        self.build_tree_contents([('checkout/file', b'bar\n')]);
+        self.check_file_contents('checkout/file', b'bar\n')
         self.run_bzr('revert', working_dir='checkout')
-        self.check_file_contents('checkout/file', 'foo\n')
+        self.check_file_contents('checkout/file', b'foo\n')
 
     def test_lightweight_knit_checkout_to_tree(self):
         self.test_lightweight_format_checkout_to_tree('knit')
@@ -255,7 +255,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         # because that's most likely to work across different transports
         self.assertEqual('../b1', branch_2.get_stacked_on_url())
         # commit, and it should be stored into b2's repo
-        self.build_tree_contents([('foo', 'new foo')])
+        self.build_tree_contents([('foo', b'new foo')])
         tree_2.commit('update foo')
         # Now turn it off again
         out, err = self.run_bzr('reconfigure --unstacked b2')

@@ -30,10 +30,36 @@ from . import (
     msgeditor,
     osutils,
     urlutils,
-    registry
+    registry,
+    )
+from .sixish import (
+    PY3,
+    text_type,
     )
 
 mail_client_registry = registry.Registry()
+
+
+class MailClientNotFound(errors.BzrError):
+
+    _fmt = "Unable to find mail client with the following names:"\
+        " %(mail_command_list_string)s"
+
+    def __init__(self, mail_command_list):
+        mail_command_list_string = ', '.join(mail_command_list)
+        errors.BzrError.__init__(
+            self, mail_command_list=mail_command_list,
+            mail_command_list_string=mail_command_list_string)
+
+
+class NoMessageSupplied(errors.BzrError):
+
+    _fmt = "No message supplied."
+
+
+class NoMailAddressSpecified(errors.BzrError):
+
+    _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
 class MailClient(object):
@@ -107,10 +133,10 @@ class Editor(MailClient):
                 extension, basename=None, body=None):
         """See MailClient.compose"""
         if not to:
-            raise errors.NoMailAddressSpecified()
+            raise NoMailAddressSpecified()
         body = msgeditor.edit_commit_message(prompt, start_message=body)
         if body == '':
-            raise errors.NoMessageSupplied()
+            raise NoMessageSupplied()
         email_message.EmailMessage.send(self.config,
                                         self.config.get('email'),
                                         to,
@@ -190,7 +216,7 @@ class BodyExternalMailClient(MailClient):
             else:
                 break
         else:
-            raise errors.MailClientNotFound(self._client_commands)
+            raise MailClientNotFound(self._client_commands)
 
     def _get_compose_commandline(self, to, subject, attach_path, body):
         """Determine the commandline to use for composing a message
@@ -210,7 +236,7 @@ class BodyExternalMailClient(MailClient):
         :param  u:  possible unicode string.
         :return:    encoded string if u is unicode, u itself otherwise.
         """
-        if isinstance(u, unicode):
+        if not PY3 and isinstance(u, text_type):
             return u.encode(osutils.get_user_encoding(), 'replace')
         return u
 
@@ -223,7 +249,7 @@ class BodyExternalMailClient(MailClient):
                         path itself otherwise.
         :raise:         UnableEncodePath.
         """
-        if isinstance(path, unicode):
+        if not PY3 and isinstance(path, text_type):
             try:
                 return path.encode(osutils.get_user_encoding())
             except UnicodeEncodeError:
@@ -276,7 +302,7 @@ class Mutt(BodyExternalMailClient):
             # Store the temp file object in self, so that it does not get
             # garbage collected and delete the file before mutt can read it.
             self._temp_file = tempfile.NamedTemporaryFile(
-                prefix="mutt-body-", suffix=".txt")
+                prefix="mutt-body-", suffix=".txt", mode="w+")
             self._temp_file.write(body)
             self._temp_file.flush()
             message_options.extend(['-i', self._temp_file.name])
@@ -365,7 +391,7 @@ class Claws(ExternalMailClient):
                 'body=' + urlutils.quote(self._encode_safe(body)))
         # to must be supplied for the claws-mail --compose syntax to work.
         if to is None:
-            raise errors.NoMailAddressSpecified()
+            raise NoMailAddressSpecified()
         compose_url = 'mailto:%s?%s' % (
             self._encode_safe(to), '&'.join(compose_url))
         # Collect command-line options.
@@ -396,7 +422,7 @@ class XDGEmail(BodyExternalMailClient):
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         if not to:
-            raise errors.NoMailAddressSpecified()
+            raise NoMailAddressSpecified()
         commandline = [self._encode_safe(to)]
         if subject is not None:
             commandline.extend(['--subject', self._encode_safe(subject)])
@@ -444,7 +470,7 @@ class EmacsMail(ExternalMailClient):
         after being read by Emacs.)
         """
 
-        _defun = r"""(defun bzr-add-mime-att (file)
+        _defun = br"""(defun bzr-add-mime-att (file)
   "Attach FILE to a mail buffer as a MIME attachment."
   (let ((agent mail-user-agent))
     (if (and file (file-exists-p file))
@@ -535,7 +561,7 @@ class MAPIClient(BodyExternalMailClient):
                                 attach_path)
         except simplemapi.MAPIError as e:
             if e.code != simplemapi.MAPI_USER_ABORT:
-                raise errors.MailClientNotFound(['MAPI supported mail client'
+                raise MailClientNotFound(['MAPI supported mail client'
                                                  ' (error %d)' % (e.code,)])
 mail_client_registry.register('mapi', MAPIClient,
                               help=MAPIClient.__doc__)
@@ -620,7 +646,7 @@ class DefaultMail(MailClient):
             return self._mail_client().compose(prompt, to, subject,
                                                attachment, mime_subtype,
                                                extension, basename, body)
-        except errors.MailClientNotFound:
+        except MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
                           attachment, mime_subtype, extension, body)
 
@@ -630,12 +656,12 @@ class DefaultMail(MailClient):
         try:
             return self._mail_client().compose_merge_request(to, subject,
                     directive, basename=basename, body=body)
-        except errors.MailClientNotFound:
+        except MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
                           directive, basename=basename, body=body)
-mail_client_registry.register('default', DefaultMail,
+mail_client_registry.register(u'default', DefaultMail,
                               help=DefaultMail.__doc__)
-mail_client_registry.default_key = 'default'
+mail_client_registry.default_key = u'default'
 
 opt_mail_client = _mod_config.RegistryOption('mail_client',
         mail_client_registry, help='E-mail client to use.', invalid='error')

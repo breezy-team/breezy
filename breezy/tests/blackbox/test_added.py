@@ -55,7 +55,7 @@ class TestAdded(TestCaseWithTransport):
         check_added('')
 
         # with unknown file, still nothing added
-        self.build_tree_contents([(name, 'contents of %s\n' % (name))])
+        self.build_tree_contents([(name, b'contents of %s\n' % (name.encode('utf-8'),))])
         check_added('')
 
         # after add, shows up in list

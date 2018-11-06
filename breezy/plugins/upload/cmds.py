@@ -24,6 +24,7 @@ from ... import (
     config,
     lazy_import,
     option,
+    osutils,
     )
 lazy_import.lazy_import(globals(), """
 import stat
@@ -39,6 +40,10 @@ from breezy import (
     urlutils,
     )
 """)
+
+from ...sixish import (
+    text_type,
+    )
 
 auto_option = config.Option(
     'upload_auto', default=False, from_unicode=config.bool_from_store,
@@ -149,12 +154,11 @@ class BzrUploader(object):
         if self._ignored is None:
             try:
                 ignore_file_path = '.bzrignore-upload'
-                ignore_file_id = self.tree.path2id(ignore_file_path)
-                ignore_file = self.tree.get_file(ignore_file_id,
-                                                 ignore_file_path)
-                ignored_patterns = ignores.parse_ignore_file(ignore_file)
-            except errors.NoSuchId:
+                ignore_file = self.tree.get_file(ignore_file_path)
+            except errors.NoSuchFile:
                 ignored_patterns = []
+            else:
+                ignored_patterns = ignores.parse_ignore_file(ignore_file)
             self._ignored = globbing.Globster(ignored_patterns)
         return self._ignored
 
@@ -171,22 +175,17 @@ class BzrUploader(object):
                     dir = os.path.dirname(dir)
         return ignored
 
-    def upload_file(self, relpath, id, mode=None):
+    def upload_file(self, old_relpath, new_relpath, id, mode=None):
         if mode is None:
-            if self.tree.is_executable(id):
-                mode = 0775
+            if self.tree.is_executable(new_relpath, id):
+                mode = 0o775
             else:
-                mode = 0664
+                mode = 0o664
         if not self.quiet:
-            self.outf.write('Uploading %s\n' % relpath)
-        self._up_put_bytes(relpath, self.tree.get_file_text(id), mode)
+            self.outf.write('Uploading %s\n' % old_relpath)
+        self._up_put_bytes(old_relpath, self.tree.get_file_text(new_relpath, id), mode)
 
-    def upload_file_robustly(self, relpath, id, mode=None):
-        """Upload a file, clearing the way on the remote side.
-
-        When doing a full upload, it may happen that a directory exists where
-        we want to put our file.
-        """
+    def _force_clear(self, relpath):
         try:
             st = self._up_stat(relpath)
             if stat.S_ISDIR(st.st_mode):
@@ -195,13 +194,41 @@ class BzrUploader(object):
                     self.outf.write('Clearing %s/%s\n' % (
                             self.to_transport.external_url(), relpath))
                 self._up_delete_tree(relpath)
+            elif stat.S_ISLNK(st.st_mode):
+                if not self.quiet:
+                    self.outf.write('Clearing %s/%s\n' % (
+                        self.to_transport.external_url(), relpath))
+                self._up_delete(relpath)
         except errors.PathError:
             pass
-        self.upload_file(relpath, id, mode)
+
+    def upload_file_robustly(self, relpath, id, mode=None):
+        """Upload a file, clearing the way on the remote side.
+
+        When doing a full upload, it may happen that a directory exists where
+        we want to put our file.
+        """
+        self._force_clear(relpath)
+        self.upload_file(relpath, relpath, id, mode)
+
+    def upload_symlink(self, relpath, target):
+        self.to_transport.symlink(target, relpath)
+
+    def upload_symlink_robustly(self, relpath, target):
+        """Handle uploading symlinks.
+        """
+        self._force_clear(relpath)
+        # Target might not be there at this time; dummy file should be
+        # overwritten at some point, possibly by another upload.
+        target = osutils.normpath(osutils.pathjoin(
+            osutils.dirname(relpath),
+            target)
+        )
+        self.upload_symlink(relpath, target)
 
     def make_remote_dir(self, relpath, mode=None):
         if mode is None:
-            mode = 0775
+            mode = 0o775
         self._up_mkdir(relpath, mode)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
@@ -271,7 +298,7 @@ class BzrUploader(object):
 
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
-                                     random.randint(0,0x7FFFFFFF))
+                                     random.randint(0, 0x7FFFFFFF))
         if not self.quiet:
             self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
         self._up_rename(old_relpath, stamp)
@@ -287,8 +314,7 @@ class BzrUploader(object):
     def upload_full_tree(self):
         self.to_transport.ensure_base() # XXX: Handle errors (add
                                         # --create-prefix option ?)
-        self.tree.lock_read()
-        try:
+        with self.tree.lock_read():
             for relpath, ie in self.tree.iter_entries_by_dir():
                 if relpath in ('', '.bzrignore', '.bzrignore-upload'):
                     # skip root ('')
@@ -301,18 +327,19 @@ class BzrUploader(object):
                     continue
                 if ie.kind == 'file':
                     self.upload_file_robustly(relpath, ie.file_id)
+                elif ie.kind == 'symlink':
+                    try:
+                        self.upload_symlink_robustly(relpath, ie.symlink_target)
+                    except errors.TransportNotPossible:
+                        if not self.quiet:
+                            target = self.tree.path_content_summary(relpath)[3]
+                            self.outf.write('Not uploading symlink %s -> %s\n'
+                                            % (relpath, target))
                 elif ie.kind == 'directory':
                     self.make_remote_dir_robustly(relpath)
-                elif ie.kind == 'symlink':
-                    if not self.quiet:
-                        target = self.tree.path_content_summary(relpath)[3]
-                        self.outf.write('Not uploading symlink %s -> %s\n'
-                                        % (relpath, target))
                 else:
                     raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
-        finally:
-            self.tree.unlock()
 
     def upload_tree(self):
         # If we can't find the revid file on the remote location, upload the
@@ -336,8 +363,7 @@ class BzrUploader(object):
         self.to_transport.ensure_base() # XXX: Handle errors (add
                                         # --create-prefix option ?)
         changes = self.tree.changes_from(from_tree)
-        self.tree.lock_read()
-        try:
+        with self.tree.lock_read():
             for (path, id, kind) in changes.removed:
                 if self.is_ignored(path):
                     if not self.quiet:
@@ -348,10 +374,7 @@ class BzrUploader(object):
                 elif kind is  'directory':
                     self.delete_remote_dir_maybe(path)
                 elif kind == 'symlink':
-                    if not self.quiet:
-                        target = self.tree.path_content_summary(path)[3]
-                        self.outf.write('Not deleting remote symlink %s -> %s\n'
-                                        % (path, target))
+                    self.delete_remote_file(path)
                 else:
                     raise NotImplementedError
 
@@ -365,13 +388,8 @@ class BzrUploader(object):
                 if content_change:
                     # We update the old_path content because renames and
                     # deletions are differed.
-                    self.upload_file(old_path, id)
-                if kind == 'symlink':
-                    if not self.quiet:
-                        self.outf.write('Not renaming remote symlink %s to %s\n'
-                                        % (old_path, new_path))
-                else:
-                    self.rename_remote(old_path, new_path)
+                    self.upload_file(old_path, new_path, id)
+                self.rename_remote(old_path, new_path)
             self.finish_renames()
             self.finish_deletions()
 
@@ -380,15 +398,18 @@ class BzrUploader(object):
                     if not self.quiet:
                         self.outf.write('Ignoring %s\n' % path)
                     continue
-                if old_kind == 'file':
+                if old_kind in ('file', 'symlink'):
                     self.delete_remote_file(path)
-                elif old_kind ==  'directory':
+                elif old_kind == 'directory':
                     self.delete_remote_dir(path)
                 else:
                     raise NotImplementedError
 
                 if new_kind == 'file':
-                    self.upload_file(path, id)
+                    self.upload_file(path, path, id)
+                elif new_kind == 'symlink':
+                    target = self.tree.get_symlink_target(path)
+                    self.upload_symlink(path, target)
                 elif new_kind is 'directory':
                     self.make_remote_dir(path)
                 else:
@@ -400,14 +421,17 @@ class BzrUploader(object):
                         self.outf.write('Ignoring %s\n' % path)
                     continue
                 if kind == 'file':
-                    self.upload_file(path, id)
+                    self.upload_file(path, path, id)
                 elif kind == 'directory':
                     self.make_remote_dir(path)
                 elif kind == 'symlink':
-                    if not self.quiet:
-                        target = self.tree.path_content_summary(path)[3]
-                        self.outf.write('Not uploading symlink %s -> %s\n'
-                                        % (path, target))
+                    target = self.tree.get_symlink_target(path)
+                    try:
+                        self.upload_symlink(path, target)
+                    except errors.TransportNotPossible:
+                        if not self.quiet:
+                            self.outf.write('Not uploading symlink %s -> %s\n'
+                                            % (path, target))
                 else:
                     raise NotImplementedError
 
@@ -418,14 +442,15 @@ class BzrUploader(object):
                     if not self.quiet:
                         self.outf.write('Ignoring %s\n' % path)
                     continue
-                if kind is 'file':
-                    self.upload_file(path, id)
+                if kind == 'file':
+                    self.upload_file(path, path, id)
+                elif kind == 'symlink':
+                    target = self.tree.get_symlink_target(path)
+                    self.upload_symlink(path, target)
                 else:
                     raise NotImplementedError
 
             self.set_uploaded_revid(self.rev_id)
-        finally:
-            self.tree.unlock()
 
 
 class CannotUploadToWorkingTree(errors.BzrCommandError):
@@ -460,7 +485,7 @@ class cmd_upload(commands.Command):
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
                       short_name='d',
-                      type=unicode,
+                      type=text_type,
                       ),
         option.Option('auto',
                       'Trigger an upload from this branch whenever the tip '
@@ -545,14 +570,11 @@ class cmd_upload(commands.Command):
             locked.unlock()
 
         # We uploaded successfully, remember it
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             upload_location = conf.get('upload_location')
             if upload_location is None or remember:
                 conf.set('upload_location',
                          urlutils.unescape(to_transport.base))
             if auto is not None:
                 conf.set('upload_auto', auto)
-        finally:
-            branch.unlock()
 

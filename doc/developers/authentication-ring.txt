@@ -50,8 +50,8 @@ Embedding user and passwords in the command line is a security
 hazard (see `bug #34685
 <https://launchpad.net/products/bzr/+bug/34685>`_).
 
-Storing passwords in ``~/.bazaar/bazaar.conf`` or ``~/.bazaar/locations.conf``
-is also a security risk.
+Storing passwords in ``~/.config/breezy/breezy.conf`` or
+``~/.config/breezy/locations.conf`` is also a security risk.
 
 Typing user and passwords is error-prone and boring.
 
@@ -179,9 +179,10 @@ encodings [#password_encoding]_.
 File format
 -----------
 
-Even if ``~/.bazaar/bazaar.conf`` and ``~/.bazaar/locations.conf`` seems to
-provide most of the needed infrastructure, we choose to use a dedicated file
-for the authentication info ``~/.bazaar/authentication.conf`` for the following
+Even if ``~/.config/breezy/breezy.conf`` and
+``~/.config/breezy/locations.conf`` seems to provide most of the needed
+infrastructure, we choose to use a dedicated file
+for the authentication info ``~/.config/breezy/authentication.conf`` for the following
 reasons:
 
   * allow the user to protect the content of one file only, relaxing security
@@ -192,8 +193,8 @@ reasons:
     generally servers. The same authentification definition can even be used
     for several schemes for servers providing those schemes.
 
-``~/.bazaar/authentication.conf`` will use the same file format as
-``~/.bazaar/bazaar.conf``.
+``~/.config/breezy//authentication.conf`` will use the same file format as
+``~/.config/breezy/breezy.conf``.
 
 Each section describes an authentication definition.
 
@@ -324,13 +325,13 @@ different ways:
 
 2. ``user`` given in the URL.
 
-  Get a password from ``~/.bazaar/authentication.conf`` or prompt
+  Get a password from ``~/.config/breezy/authentication.conf`` or prompt
   for one if none is found.
 
 3. No ``user`` given in the URL (and no ``password``).
 
-  Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
-  found. Continue as 2. (Not implemented yet)
+  Get a user from ``~/.config/breezy/authentication.conf`` or prompt for one if
+  none is found. Continue as 2. (Not implemented yet)
 
 Note: A user will be queried only if the server requires it for ``HTTP`` or
 ``HTTPS``, other protocols always require a user.

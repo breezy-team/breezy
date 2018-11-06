@@ -32,8 +32,8 @@ from .sixish import (
     text_type,
     )
 
-NULL_REVISION=b"null:"
-CURRENT_REVISION=b"current:"
+NULL_REVISION = b"null:"
+CURRENT_REVISION = b"current:"
 
 
 class Revision(object):
@@ -152,9 +152,9 @@ class Revision(object):
             try:
                 url, status = line.split(None, 2)
             except ValueError:
-                raise errors.InvalidLineInBugsProperty(line)
+                raise bugtracker.InvalidLineInBugsProperty(line)
             if status not in bugtracker.ALLOWED_BUG_STATUSES:
-                raise errors.InvalidBugStatus(status)
+                raise bugtracker.InvalidBugStatus(status)
             yield url, status
 
 

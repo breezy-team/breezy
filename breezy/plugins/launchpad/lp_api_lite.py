@@ -36,8 +36,14 @@ except ImportError:
         json = None
 
 import time
-import urllib
-import urllib2
+try:
+    from urllib.parse import urlencode
+except ImportError:  # python < 3
+    from urllib import urlencode
+try:
+    import urllib.request as urllib2
+except ImportError:  # python < 3
+    import urllib2
 
 from ... import (
     revision,
@@ -112,7 +118,7 @@ class LatestPublication(object):
         """Create the full URL that we need to query, including parameters."""
         params = self._query_params()
         # We sort to give deterministic results for testing
-        encoded = urllib.urlencode(sorted(params.items()))
+        encoded = urlencode(sorted(params.items()))
         return '%s?%s' % (self._archive_URL(), encoded)
 
     def _get_lp_info(self):
@@ -195,16 +201,13 @@ def get_most_recent_tag(tag_dict, the_branch):
     #       it should be valid for the package importer branches that we care
     #       about
     reverse_dict = dict((rev, tag) for tag, rev in tag_dict.items())
-    the_branch.lock_read()
-    try:
+    with the_branch.lock_read():
         last_rev = the_branch.last_revision()
         graph = the_branch.repository.get_graph()
         stop_revisions = (None, revision.NULL_REVISION)
         for rev_id in graph.iter_lefthand_ancestry(last_rev, stop_revisions):
             if rev_id in reverse_dict:
                 return reverse_dict[rev_id]
-    finally:
-        the_branch.unlock()
 
 
 def _get_newest_versions(the_branch, latest_pub):

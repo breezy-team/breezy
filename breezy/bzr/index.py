@@ -28,7 +28,6 @@ __all__ = [
 
 from bisect import bisect_right
 import re
-import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -44,8 +43,10 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    bytesintern,
     viewvalues,
     viewitems,
+    zip,
     )
 from ..static_tuple import StaticTuple
 
@@ -54,6 +55,62 @@ _OPTION_KEY_ELEMENTS = b"key_elements="
 _OPTION_LEN = b"len="
 _OPTION_NODE_REFS = b"node_ref_lists="
 _SIGNATURE = b"Bazaar Graph Index 1\n"
+
+
+class BadIndexFormatSignature(errors.BzrError):
+
+    _fmt = "%(value)s is not an index of type %(_type)s."
+
+    def __init__(self, value, _type):
+        errors.BzrError.__init__(self)
+        self.value = value
+        self._type = _type
+
+
+class BadIndexData(errors.BzrError):
+
+    _fmt = "Error in data for index %(value)s."
+
+    def __init__(self, value):
+        errors.BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexDuplicateKey(errors.BzrError):
+
+    _fmt = "The key '%(key)s' is already in index '%(index)s'."
+
+    def __init__(self, key, index):
+        errors.BzrError.__init__(self)
+        self.key = key
+        self.index = index
+
+
+class BadIndexKey(errors.BzrError):
+
+    _fmt = "The key '%(key)s' is not a valid key."
+
+    def __init__(self, key):
+        errors.BzrError.__init__(self)
+        self.key = key
+
+
+class BadIndexOptions(errors.BzrError):
+
+    _fmt = "Could not parse options for index %(value)s."
+
+    def __init__(self, value):
+        errors.BzrError.__init__(self)
+        self.value = value
+
+
+class BadIndexValue(errors.BzrError):
+
+    _fmt = "The value '%(value)s' is not a valid value."
+
+    def __init__(self, value):
+        errors.BzrError.__init__(self)
+        self.value = value
 
 
 _whitespace_re = re.compile(b'[\t\n\x0b\x0c\r\x00 ]')
@@ -112,12 +169,12 @@ class GraphIndexBuilder(object):
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
         if type(key) not in (tuple, StaticTuple):
-            raise errors.BadIndexKey(key)
+            raise BadIndexKey(key)
         if self._key_length != len(key):
-            raise errors.BadIndexKey(key)
+            raise BadIndexKey(key)
         for element in key:
-            if not element or _whitespace_re.search(element) is not None:
-                raise errors.BadIndexKey(element)
+            if not element or type(element) != bytes or _whitespace_re.search(element) is not None:
+                raise BadIndexKey(key)
 
     def _external_references(self):
         """Return references that are not present in this index.
@@ -201,9 +258,9 @@ class GraphIndexBuilder(object):
         as_st = StaticTuple.from_sequence
         self._check_key(key)
         if _newline_null_re.search(value) is not None:
-            raise errors.BadIndexValue(value)
+            raise BadIndexValue(value)
         if len(references) != self.reference_lists:
-            raise errors.BadIndexValue(references)
+            raise BadIndexValue(references)
         node_refs = []
         absent_references = []
         for reference_list in references:
@@ -231,15 +288,15 @@ class GraphIndexBuilder(object):
         """
         (node_refs,
          absent_references) = self._check_key_ref_value(key, references, value)
-        if key in self._nodes and self._nodes[key][0] != 'a':
-            raise errors.BadIndexDuplicateKey(key, self)
+        if key in self._nodes and self._nodes[key][0] != b'a':
+            raise BadIndexDuplicateKey(key, self)
         for reference in absent_references:
             # There may be duplicates, but I don't think it is worth worrying
             # about
-            self._nodes[reference] = ('a', (), '')
+            self._nodes[reference] = (b'a', (), b'')
         self._absent_keys.update(absent_references)
         self._absent_keys.discard(key)
-        self._nodes[key] = ('', node_refs, value)
+        self._nodes[key] = (b'', node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
@@ -444,6 +501,16 @@ class GraphIndex(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __lt__(self, other):
+        # We don't really care about the order, just that there is an order.
+        if (not isinstance(other, GraphIndex) and
+            not isinstance(other, InMemoryGraphIndex)):
+            raise TypeError(other)
+        return hash(self) < hash(other)
+
+    def __hash__(self):
+        return hash((type(self), self._transport, self._name, self._size))
+
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__,
             self._transport.abspath(self._name))
@@ -465,19 +532,20 @@ class GraphIndex(object):
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
                 stream = BytesIO(stream.read()[self._base_offset:])
-        self._read_prefix(stream)
-        self._expected_elements = 3 + self._key_length
-        line_count = 0
-        # raw data keyed by offset
-        self._keys_by_offset = {}
-        # ready-to-return key:value or key:value, node_ref_lists
-        self._nodes = {}
-        self._nodes_by_key = None
-        trailers = 0
-        pos = stream.tell()
-        lines = stream.read().split('\n')
-        # GZ 2009-09-20: Should really use a try/finally block to ensure close
-        stream.close()
+        try:
+            self._read_prefix(stream)
+            self._expected_elements = 3 + self._key_length
+            line_count = 0
+            # raw data keyed by offset
+            self._keys_by_offset = {}
+            # ready-to-return key:value or key:value, node_ref_lists
+            self._nodes = {}
+            self._nodes_by_key = None
+            trailers = 0
+            pos = stream.tell()
+            lines = stream.read().split(b'\n')
+        finally:
+            stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in viewvalues(self._keys_by_offset):
@@ -492,7 +560,7 @@ class GraphIndex(object):
         # cache the keys for quick set intersections
         if trailers != 1:
             # there must be one line - the empty trailer line.
-            raise errors.BadIndexData(self)
+            raise BadIndexData(self)
 
     def clear_cache(self):
         """Clear out any cached/memoized values.
@@ -558,28 +626,28 @@ class GraphIndex(object):
     def _read_prefix(self, stream):
         signature = stream.read(len(self._signature()))
         if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+            raise BadIndexFormatSignature(self._name, GraphIndex)
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):-1])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):-1])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = stream.readline()
         if not options_line.startswith(_OPTION_LEN):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):-1])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
 
     def _resolve_references(self, references):
         """Return the resolved key references for references.
@@ -596,7 +664,8 @@ class GraphIndex(object):
             node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
         return tuple(node_refs)
 
-    def _find_index(self, range_map, key):
+    @staticmethod
+    def _find_index(range_map, key):
         """Helper for the _parsed_*_index calls.
 
         Given a range map - [(start, end), ...], finds the index of the range
@@ -634,7 +703,7 @@ class GraphIndex(object):
         asking for 'b' will return 1
         asking for 'e' will return 1
         """
-        search_key = (key, None)
+        search_key = (key, b'')
         return self._find_index(self._parsed_key_map, search_key)
 
     def _is_parsed(self, offset):
@@ -906,33 +975,33 @@ class GraphIndex(object):
         """
         signature = bytes[0:len(self._signature())]
         if not signature == self._signature():
-            raise errors.BadIndexFormatSignature(self._name, GraphIndex)
+            raise BadIndexFormatSignature(self._name, GraphIndex)
         lines = bytes[len(self._signature()):].splitlines()
         options_line = lines[0]
         if not options_line.startswith(_OPTION_NODE_REFS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self.node_ref_lists = int(options_line[len(_OPTION_NODE_REFS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = lines[1]
         if not options_line.startswith(_OPTION_KEY_ELEMENTS):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_length = int(options_line[len(_OPTION_KEY_ELEMENTS):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         options_line = lines[2]
         if not options_line.startswith(_OPTION_LEN):
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         try:
             self._key_count = int(options_line[len(_OPTION_LEN):])
         except ValueError:
-            raise errors.BadIndexOptions(self)
+            raise BadIndexOptions(self)
         # calculate the bytes we have processed
         header_end = (len(signature) + len(lines[0]) + len(lines[1]) +
             len(lines[2]) + 3)
-        self._parsed_bytes(0, None, header_end, None)
+        self._parsed_bytes(0, (), header_end, ())
         # setup parsing state
         self._expected_elements = 3 + self._key_length
         # raw data keyed by offset
@@ -1038,18 +1107,18 @@ class GraphIndex(object):
         if not start_adjacent:
             # work around python bug in rfind
             if trim_start is None:
-                trim_start = data.find('\n') + 1
+                trim_start = data.find(b'\n') + 1
             else:
-                trim_start = data.find('\n', trim_start) + 1
+                trim_start = data.find(b'\n', trim_start) + 1
             if not (trim_start != 0):
                 raise AssertionError('no \n was present')
             # print 'removing start', offset, trim_start, repr(data[:trim_start])
         if not end_adjacent:
             # work around python bug in rfind
             if trim_end is None:
-                trim_end = data.rfind('\n') + 1
+                trim_end = data.rfind(b'\n') + 1
             else:
-                trim_end = data.rfind('\n', None, trim_end) + 1
+                trim_end = data.rfind(b'\n', None, trim_end) + 1
             if not (trim_end != 0):
                 raise AssertionError('no \n was present')
             # print 'removing end', offset, trim_end, repr(data[trim_end:])
@@ -1062,7 +1131,7 @@ class GraphIndex(object):
             offset += trim_start
         # print "parsing", repr(trimmed_data)
         # splitlines mangles the \r delimiters.. don't use it.
-        lines = trimmed_data.split('\n')
+        lines = trimmed_data.split(b'\n')
         del lines[-1]
         pos = offset
         first_key, last_key, nodes, _ = self._parse_lines(lines, pos)
@@ -1078,26 +1147,26 @@ class GraphIndex(object):
         trailers = 0
         nodes = []
         for line in lines:
-            if line == '':
+            if line == b'':
                 # must be at the end
                 if self._size:
                     if not (self._size == pos + 1):
                         raise AssertionError("%s %s" % (self._size, pos))
                 trailers += 1
                 continue
-            elements = line.split('\0')
+            elements = line.split(b'\0')
             if len(elements) != self._expected_elements:
-                raise errors.BadIndexData(self)
+                raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple([intern(element) for element in elements[:self._key_length]])
+            key = tuple([bytesintern(element) for element in elements[:self._key_length]])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
             ref_lists = []
-            for ref_string in references.split('\t'):
+            for ref_string in references.split(b'\t'):
                 ref_lists.append(tuple([
-                    int(ref) for ref in ref_string.split('\r') if ref
+                    int(ref) for ref in ref_string.split(b'\r') if ref
                     ]))
             ref_lists = tuple(ref_lists)
             self._keys_by_offset[pos] = (key, absent, ref_lists, value)
@@ -1544,7 +1613,7 @@ class CombinedGraphIndex(object):
         """
         if self._reload_func is None:
             return False
-        trace.mutter('Trying to reload after getting exception: %s', error)
+        trace.mutter('Trying to reload after getting exception: %s', str(error))
         if not self._reload_func():
             # We tried to reload, but nothing changed, so we fail anyway
             trace.mutter('_reload_func indicated nothing has changed.'
@@ -1676,6 +1745,13 @@ class InMemoryGraphIndex(GraphIndexBuilder):
     def validate(self):
         """In memory index's have no known corruption at the moment."""
 
+    def __lt__(self, other):
+        # We don't really care about the order, just that there is an order.
+        if (not isinstance(other, GraphIndex) and
+            not isinstance(other, InMemoryGraphIndex)):
+            raise TypeError(other)
+        return hash(self) < hash(other)
+
 
 class GraphIndexPrefixAdapter(object):
     """An adapter between GraphIndex with different key lengths.
@@ -1739,11 +1815,11 @@ class GraphIndexPrefixAdapter(object):
         for node in an_iter:
             # cross checks
             if node[1][:self.prefix_len] != self.prefix:
-                raise errors.BadIndexData(self)
+                raise BadIndexData(self)
             for ref_list in node[3]:
                 for ref_node in ref_list:
                     if ref_node[:self.prefix_len] != self.prefix:
-                        raise errors.BadIndexData(self)
+                        raise BadIndexData(self)
             yield node[0], node[1][self.prefix_len:], node[2], (
                 tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
                 for ref_list in node[3]))
@@ -1807,9 +1883,9 @@ class GraphIndexPrefixAdapter(object):
 def _sanity_check_key(index_or_builder, key):
     """Raise BadIndexKey if key cannot be used for prefix matching."""
     if key[0] is None:
-        raise errors.BadIndexKey(key)
+        raise BadIndexKey(key)
     if len(key) != index_or_builder._key_length:
-        raise errors.BadIndexKey(key)
+        raise BadIndexKey(key)
 
 
 def _iter_entries_prefix(index_or_builder, nodes_by_key, keys):

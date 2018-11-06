@@ -34,8 +34,8 @@ def generate_unicode_names():
     By default they are not representable in ascii.
     
     >>> gen = generate_unicode_names()
-    >>> n1 = gen.next()
-    >>> n2 = gen.next()
+    >>> n1 = next(gen)
+    >>> n2 = next(gen)
     >>> type(n1)
     <type 'unicode'>
     >>> n1 == n2
@@ -65,15 +65,15 @@ def generate_unicode_encodings(universal_encoding=None):
         generated encodings either can or cannot encode all unicode 
         strings.
 
-    >>> n1 = generate_unicode_names().next()
-    >>> enc = generate_unicode_encodings(universal_encoding=True).next()
-    >>> enc2 = generate_unicode_encodings(universal_encoding=False).next()
+    >>> n1 = next(generate_unicode_names())
+    >>> enc = next(generate_unicode_encodings(universal_encoding=True))
+    >>> enc2 = next(generate_unicode_encodings(universal_encoding=False))
     >>> n1.encode(enc).decode(enc) == n1
     True
     >>> try:
     ...   n1.encode(enc2).decode(enc2)
     ... except UnicodeError:
-    ...   print 'fail'
+    ...   print('fail')
     fail
     """
     # TODO: check they're supported on this platform?
@@ -118,12 +118,12 @@ def build_branch_with_non_ancestral_rev(branch_builder):
     :returns: the new branch
     """
     # Make a sequence of two commits
-    branch_builder.build_commit(message="Rev 1", rev_id='rev-1')
-    branch_builder.build_commit(message="Rev 2", rev_id='rev-2')
+    rev1 = branch_builder.build_commit(message="Rev 1")
+    rev2 = branch_builder.build_commit(message="Rev 2")
     # Move the branch tip back to the first commit
     source = branch_builder.get_branch()
-    source.set_last_revision_info(1, 'rev-1')
-    return source
+    source.set_last_revision_info(1, rev1)
+    return source, rev1, rev2
 
 
 def make_branch_and_populated_tree(testcase):
@@ -135,8 +135,8 @@ def make_branch_and_populated_tree(testcase):
     # doesn't need to be bound to the particular files created? -- mbp
     # 20110705
     tree = testcase.make_branch_and_tree('t')
-    testcase.build_tree_contents([('t/hello', 'hello world')])
-    tree.add(['hello'], ['hello-id'])
+    testcase.build_tree_contents([('t/hello', b'hello world')])
+    tree.add(['hello'], [b'hello-id'])
     return tree
 
 

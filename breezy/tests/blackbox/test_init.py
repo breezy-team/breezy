@@ -54,10 +54,18 @@ class TestInit(TestCaseWithTransport):
             out)
         self.assertEqual('', err)
 
+    def test_init_format_bzr(self):
+        """Smoke test for constructing a format with the 'bzr' alias."""
+        out, err = self.run_bzr('init --format=bzr')
+        self.assertEqual(
+            "Created a standalone tree (format: %s)\n" % self._default_label,
+            out)
+        self.assertEqual('', err)
+
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
         out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
-        self.assertEqual("""Created a lightweight checkout (format: development-colo)\n""",
+        self.assertEqual("""Created a standalone tree (format: development-colo)\n""",
             out)
         self.assertEqual('', err)
         out, err = self.run_bzr('branches')
@@ -153,8 +161,8 @@ Using shared repository: %s
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='r1')
+        tree.add(['a'], [b'a-id'])
+        tree.commit('one', rev_id=b'r1')
         return tree
 
     def test_init_create_prefix(self):
@@ -169,13 +177,13 @@ Using shared repository: %s
     def test_init_default_format_option(self):
         """brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 default_format = 1.9
 ''')
         g_store.save()
         out, err = self.run_bzr_subprocess('init')
-        self.assertContainsRe(out, '1.9')
+        self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""
@@ -187,7 +195,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
     def test_init(self):
         # init on a remote url should succeed.
-        out, err = self.run_bzr(['init', '--pack-0.92', self.get_url()])
+        out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
             """Created a standalone branch (format: pack-0.92)\n""")
         self.assertEqual('', err)
@@ -213,14 +221,14 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr_error(['Already a branch'], ['init', self.get_url()])
 
     def test_init_append_revisions_only(self):
-        self.run_bzr('init --dirstate-tags normal_branch6')
+        self.run_bzr('init --format=dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
         self.assertEqual(None, branch.get_append_revisions_only())
-        self.run_bzr('init --append-revisions-only --dirstate-tags branch6')
+        self.run_bzr('init --append-revisions-only --format=dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch.get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'],
-                           'init --append-revisions-only --knit knit')
+                           'init --append-revisions-only --format=knit knit')
 
     def test_init_without_username(self):
         """Ensure init works if username is not set.

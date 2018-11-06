@@ -31,10 +31,18 @@ from .scenarios import load_tests_apply_scenarios
 load_tests = load_tests_apply_scenarios
 
 
+class TestErrors(tests.TestCase):
+
+    def test_must_have_working_tree(self):
+        err = controldir.MustHaveWorkingTree('foo', 'bar')
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
+
+
 class SampleComponentFormat(controldir.ControlComponentFormat):
 
     def get_format_string(self):
-        return "Example component format."
+        return b"Example component format."
 
 
 class SampleExtraComponentFormat(controldir.ControlComponentFormat):
@@ -51,10 +59,10 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         format = SampleComponentFormat()
         self.registry.register(format)
         self.assertEqual(format,
-            self.registry.get("Example component format."))
+            self.registry.get(b"Example component format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
-            "Example component format.")
+            b"Example component format.")
 
     def test_get_all(self):
         format = SampleComponentFormat()
@@ -85,14 +93,6 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
 
 
-class TestControlDirFormatDeprecated(tests.TestCaseWithTransport):
-    """Tests for removed registration method in the ControlDirFormat facility."""
-
-    def test_register_format(self):
-        self.assertRaises(errors.BzrError,
-            controldir.ControlDirFormat.register_format, object())
-
-
 class TestProber(tests.TestCaseWithTransport):
     """Per-prober tests."""
 
@@ -111,7 +111,7 @@ class TestProber(tests.TestCaseWithTransport):
 
     def test_known_formats(self):
         known_formats = self.prober_cls.known_formats()
-        self.assertIsInstance(known_formats, set)
+        self.assertIsInstance(known_formats, list)
         for format in known_formats:
             self.assertIsInstance(format, controldir.ControlDirFormat,
                 repr(format))
@@ -148,7 +148,7 @@ class NotBzrDirProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return {NotBzrDirFormat()}
+        return [NotBzrDirFormat()]
 
 
 class TestNotBzrDir(tests.TestCaseWithTransport):
@@ -175,7 +175,7 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         self.addCleanup(controldir.ControlDirFormat.unregister_prober, NotBzrDirProber)
         formats = controldir.ControlDirFormat.known_formats()
-        self.assertIsInstance(formats, set)
+        self.assertIsInstance(formats, list)
         for format in formats:
             if isinstance(format, NotBzrDirFormat):
                 break

@@ -25,7 +25,8 @@ from .. import (
     workingtree,
     )
 from ..sixish import (
-    BytesIO,
+    PY3,
+    StringIO,
     )
 from .scenarios import load_tests_apply_scenarios
 
@@ -52,13 +53,14 @@ class TestBzrlibVersioning(tests.TestCase):
 
     def test_python_binary_path(self):
         self.permit_source_tree_branch_repo()
-        sio = BytesIO()
+        sio = StringIO()
         version.show_version(show_config=False, show_copyright=False,
             to_file=sio)
         out = sio.getvalue()
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
         self.assertIsNot(m, None)
         self.assertPathExists(m.group(1))
+
 
 class TestPlatformUse(tests.TestCase):
 
@@ -74,5 +76,7 @@ class TestPlatformUse(tests.TestCase):
         self.overrideAttr(platform, 'platform', lambda **kwargs: self._platform)
         version.show_version(show_config=False, show_copyright=False,
                              to_file=out)
-        self.assertContainsRe(out.getvalue(),
-                              r'(?m)^  Platform: %s' % self._platform)
+        expected = r'(?m)^  Platform: %s' % self._platform
+        if PY3:
+            expected = expected.encode('utf-8')
+        self.assertContainsRe(out.getvalue(), expected)

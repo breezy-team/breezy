@@ -76,8 +76,8 @@ class RepoFetcher(object):
         self.find_ghosts = find_ghosts
         self.from_repository.lock_read()
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.from_repository, self.from_repository._format,
-               self.to_repository, self.to_repository._format)
+               str(self.from_repository), str(self.from_repository._format),
+               str(self.to_repository), str(self.to_repository._format))
         try:
             self.__fetch()
         finally:
@@ -97,18 +97,15 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pb = ui.ui_factory.nested_progress_bar()
-        pb.show_pct = pb.show_count = False
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
+            pb.show_pct = pb.show_count = False
             pb.update(gettext("Finding revisions"), 0, 2)
             search_result = self._revids_to_fetch()
-            mutter('fetching: %s', search_result)
+            mutter('fetching: %s', str(search_result))
             if search_result.is_empty():
                 return
             pb.update(gettext("Fetching revisions"), 1, 2)
             self._fetch_everything_for_search(search_result)
-        finally:
-            pb.finished()
 
     def _fetch_everything_for_search(self, search):
         """Fetch all data for the given set of revisions."""
@@ -125,8 +122,7 @@ class RepoFetcher(object):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             pb.update("Get stream source")
             source = self.from_repository._get_source(
                 self.to_repository._format)
@@ -151,8 +147,6 @@ class RepoFetcher(object):
                         resume_tokens,))
             pb.update("Finishing stream")
             self.sink.finished()
-        finally:
-            pb.finished()
 
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to
@@ -217,7 +211,7 @@ class Inter1and2Helper(object):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.get_root_id()
-            revision_id = tree.get_file_revision(root_id, u"")
+            revision_id = tree.get_file_revision(u'', root_id)
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set(viewvalues(parent_map))
@@ -274,7 +268,7 @@ def _new_root_data_stream(
         parent_keys = _parent_keys_for_root_version(
             root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
         yield versionedfile.FulltextContentFactory(
-            root_key, parent_keys, None, '')
+            root_key, parent_keys, None, b'')
 
 
 def _parent_keys_for_root_version(
@@ -323,7 +317,7 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.get_file_revision(root_id))
+                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id), root_id))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

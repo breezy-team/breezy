@@ -1,11 +1,11 @@
 =============================
-Bazaar Architectural Overview
+Breezy Architectural Overview
 =============================
 
-This document describes the key classes and concepts within Bazaar.  It is
-intended to be useful to people working on the Bazaar codebase, or to
+This document describes the key classes and concepts within Breezy.  It is
+intended to be useful to people working on the Breezy codebase, or to
 people writing plugins.  People writing plugins may also like to read the 
-guide to `Integrating with Bazaar <integration.html>`_ for some specific recipes.
+guide to `Integrating with Breezy <integration.html>`_ for some specific recipes.
 
 There's some overlap between this and the `Core Concepts`_ section of the
 user guide, but this document is targetted to people interested in the
@@ -15,7 +15,7 @@ like inventories, but this guide does.
 
 If you have any questions, or if something seems to be incorrect, unclear
 or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, write to
-the Bazaar mailing list, or simply file a bug report.
+the Breezy mailing list, or simply file a bug report.
 
 
 IDs and keys
@@ -24,7 +24,7 @@ IDs and keys
 IDs
 ===
 
-All IDs are globally unique identifiers.  Inside bzrlib they are almost
+All IDs are globally unique identifiers.  Inside breezy they are almost
 always represented as UTF-8 encoded bytestrings (i.e. ``str`` objects).
 
 The main two IDs are:
@@ -33,12 +33,12 @@ The main two IDs are:
   ``pqm@pqm.ubuntu.com-20110201161347-ao76mv267gc1b5v2``
 :File IDs: The unique identifier of a single file.
 
-By convention, in the bzrlib API, parameters of methods that are expected
+By convention, in the breezy API, parameters of methods that are expected
 to be IDs (as opposed to keys, revision numbers, or some other handle)
 will end in ``id``, e.g.  ``revid`` or ``file_id``.
 
 Ids may be stored directly or they can be inferred from other
-data. Native Bazaar formats store ids directly; foreign VCS
+data. Native Breezy formats store ids directly; foreign VCS
 support usually generates them somehow. For example, the
 Git commit with SHA ``fb235a3be6372e40ff7f7ebbcd7905a08cb04444``
 is referred to with the revision ID
@@ -82,7 +82,7 @@ reference of an inner tree. The last item in the tuple refers to the
 actual file. This means that lookups of file ids doesn't scale with
 the number of nested trees.
 
-Inventory file ids are only relevant for native Bazaar formats; foreign
+Inventory file ids are only relevant for native Breezy formats; foreign
 formats don't use inventories.
 
 Transform ids
@@ -160,8 +160,8 @@ More information
 
 See also:
 
-* `Developer guide to bzrlib transports <transports.html>`_ 
-* API docs for ``bzrlib.transport.Transport``
+* `Developer guide to breezy transports <transports.html>`_ 
+* API docs for ``breezy.transport.Transport``
 
 Control directory
 =================
@@ -188,7 +188,7 @@ as WorkingTree may have unversioned files not described in that mapping).
 Trees have an inventory and parents (an ordered list of zero or more
 revision IDs).
 
-The implementation of ``Tree`` for Bazaar's own formats is based around
+The implementation of ``Tree`` for Breezy's own formats is based around
 ``Inventory`` objects which describe the shape of the tree. Each tree has
 at least one inventory associated with it, which is available as the
 ``root_inventory`` attribute on tree. The tree can have more inventories

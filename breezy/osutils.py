@@ -27,7 +27,6 @@ import codecs
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-from datetime import timedelta
 import getpass
 import locale
 import ntpath
@@ -47,7 +46,6 @@ import unicodedata
 
 from breezy import (
     config,
-    errors,
     trace,
     win32utils,
     )
@@ -66,7 +64,10 @@ from hashlib import (
 
 
 import breezy
-from . import _fs_enc
+from . import (
+    _fs_enc,
+    errors,
+    )
 
 
 # Cross platform wall-clock time functionality with decent resolution.
@@ -87,6 +88,15 @@ if sys.platform == 'win32':
 O_BINARY = getattr(os, 'O_BINARY', 0)
 O_TEXT = getattr(os, 'O_TEXT', 0)
 O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
+
+
+class UnsupportedTimezoneFormat(errors.BzrError):
+
+    _fmt = ('Unsupported timezone format "%(timezone)s", '
+            'options are "utc", "original", "local".')
+
+    def __init__(self, timezone):
+        self.timezone = timezone
 
 
 def get_unicode_argv():
@@ -145,7 +155,10 @@ def minimum_path_selection(paths):
         return set(paths)
 
     def sort_key(path):
-        return path.split('/')
+        if isinstance(path, bytes):
+            return path.split(b'/')
+        else:
+            return path.split('/')
     sorted_paths = sorted(list(paths), key=sort_key)
 
     search_paths = [sorted_paths[0]]
@@ -374,12 +387,12 @@ def _win32_fixdrive(path):
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -387,7 +400,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -582,7 +595,7 @@ def normalizepath(f):
         F = realpath
     else:
         F = abspath
-    [p,e] = os.path.split(f)
+    [p, e] = os.path.split(f)
     if e == "" or e == "." or e == "..":
         return F(f)
     else:
@@ -626,11 +639,15 @@ def is_inside(dir, fname):
     if dir == fname:
         return True
 
-    if dir == '':
+    if dir in ('', b''):
         return True
 
-    if dir[-1] != '/':
-        dir += '/'
+    if isinstance(dir, bytes):
+        if not dir.endswith(b'/'):
+            dir += b'/'
+    else:
+        if not dir.endswith('/'):
+            dir += '/'
 
     return fname.startswith(dir)
 
@@ -725,6 +742,16 @@ def file_iterator(input_file, readsize=32768):
         yield b
 
 
+# GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
+# used as bytes through most interfaces so encode with this wrapper.
+if PY3:
+    def _hexdigest(hashobj):
+        return hashobj.hexdigest().encode()
+else:
+    def _hexdigest(hashobj):
+        return hashobj.hexdigest()
+
+
 def sha_file(f):
     """Calculate the hexdigest of an open file.
 
@@ -737,7 +764,7 @@ def sha_file(f):
         if not b:
             break
         s.update(b)
-    return s.hexdigest()
+    return _hexdigest(s)
 
 
 def size_sha_file(f):
@@ -755,7 +782,7 @@ def size_sha_file(f):
             break
         size += len(b)
         s.update(b)
-    return size, s.hexdigest()
+    return size, _hexdigest(s)
 
 
 def sha_file_by_name(fname):
@@ -766,7 +793,7 @@ def sha_file_by_name(fname):
         while True:
             b = os.read(f, 1<<16)
             if not b:
-                return s.hexdigest()
+                return _hexdigest(s)
             s.update(b)
     finally:
         os.close(f)
@@ -777,17 +804,18 @@ def sha_strings(strings, _factory=sha):
     s = _factory()
     for string in strings:
         s.update(string)
-    return s.hexdigest()
+    return _hexdigest(s)
 
 
 def sha_string(f, _factory=sha):
-    return _factory(f).hexdigest()
+    # GZ 2017-09-16: Dodgy if factory is ever not sha, probably shouldn't be.
+    return _hexdigest(_factory(f))
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha(b).hexdigest()}
+            'sha1': _hexdigest(sha(b))}
 
 
 def compare_files(a, b):
@@ -798,18 +826,8 @@ def compare_files(a, b):
         bi = b.read(BUFSIZE)
         if ai != bi:
             return False
-        if ai == '':
+        if not ai:
             return True
-
-
-def gmtime(seconds=None):
-    """Convert seconds since the Epoch to a time tuple expressing UTC (a.k.a.
-    GMT). When 'seconds' is not passed in, convert the current time instead.
-    Handy replacement for time.gmtime() buggy on Windows and 32-bit platforms.
-    """
-    if seconds is None:
-        seconds = time.time()
-    return (datetime(1970, 1, 1) + timedelta(seconds=seconds)).timetuple()
 
 
 def local_time_offset(t=None):
@@ -857,7 +875,7 @@ def format_date_with_offset_in_original_timezone(t, offset=0,
     """
     if offset is None:
         offset = 0
-    tt = gmtime(t + offset)
+    tt = time.gmtime(t + offset)
     date_fmt = _default_format_by_weekday_num[tt[6]]
     date_str = time.strftime(date_fmt, tt)
     offset_str = _cache.get(offset, None)
@@ -889,17 +907,17 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
-        tt = gmtime(t)
+        tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
         if offset is None:
             offset = 0
-        tt = gmtime(t + offset)
+        tt = time.gmtime(t + offset)
     elif timezone == 'local':
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise errors.UnsupportedTimezoneFormat(timezone)
+        raise UnsupportedTimezoneFormat(timezone)
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:
@@ -910,7 +928,7 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
 
 
 def compact_date(when):
-    return time.strftime('%Y%m%d%H%M%S', gmtime(when))
+    return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
 
 
 def format_delta(delta):
@@ -1010,13 +1028,16 @@ def splitpath(p):
     """Turn string into list of parts."""
     # split on either delimiter because people might use either on
     # Windows
-    ps = re.split(r'[\\/]', p)
+    if isinstance(p, bytes):
+        ps = re.split(b'[\\\\/]', p)
+    else:
+        ps = re.split(r'[\\/]', p)
 
     rps = []
     for f in ps:
-        if f == '..':
+        if f in ('..', b'..'):
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif (f == '.') or (f == ''):
+        elif f in ('.', '', b'.', b''):
             pass
         else:
             rps.append(f)
@@ -1076,13 +1097,13 @@ def failed_to_load_extension(exception):
 def report_extension_load_failures():
     if not _extension_load_failures:
         return
-    if config.GlobalStack().get('ignore_missing_extensions'):
+    if config.GlobalConfig().suppress_warning('missing_extensions'):
         return
     # the warnings framework should by default show this only once
     from .trace import warning
     warning(
         "brz: warning: some compiled extensions could not be loaded; "
-        "see <https://answers.launchpad.net/bzr/+faq/703>")
+        "see ``brz help missing-extensions``")
     # we no longer show the specific missing extensions here, because it makes
     # the message too long and scary - see
     # https://bugs.launchpad.net/bzr/+bug/430529
@@ -1099,7 +1120,7 @@ def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     # Trivially convert a fulltext into a 'chunked' representation, and let
     # chunks_to_lines do the heavy lifting.
-    if isinstance(s, str):
+    if isinstance(s, bytes):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:
@@ -1391,7 +1412,7 @@ def safe_revision_id(unicode_or_utf8_string):
     :return: None or a utf8 revision id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == str):
+        or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode revision ids are no longer supported. '
                     'Revision id generators should be creating utf8 revision '
@@ -1409,7 +1430,7 @@ def safe_file_id(unicode_or_utf8_string):
     :return: None or a utf8 file id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == str):
+        or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode file ids are no longer supported. '
                     'File id generators should be creating utf8 file ids.')
@@ -1443,13 +1464,17 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', text_type(path)), True
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    return unicodedata.normalize('NFC', path), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', text_type(path))
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    normalized = unicodedata.normalize('NFC', path)
     return normalized, normalized == path
 
 
@@ -1873,6 +1898,8 @@ class UnicodeDirReader(DirReader):
         See DirReader.read_dir for details.
         """
         _utf8_encode = self._utf8_encode
+        _fs_decode = lambda s: s.decode(_fs_enc)
+        _fs_encode = lambda s: s.encode(_fs_enc)
         _lstat = os.lstat
         _listdir = os.listdir
         _kind_from_mode = file_kind_from_stat_mode
@@ -1885,17 +1912,18 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        for name_native in _listdir(top.encode('utf-8')):
             try:
-                name_utf8 = _utf8_encode(name)[0]
+                name = _fs_decode(name_native)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    _utf8_encode(relprefix)[0] + name, _fs_enc)
+                    relprefix + name_native, _fs_enc)
+            name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        return dirblock
+        return sorted(dirblock)
 
 
 def copy_tree(from_path, to_path, handlers={}):
@@ -1926,9 +1954,9 @@ def copy_tree(from_path, to_path, handlers={}):
         link_to = os.readlink(source)
         os.symlink(link_to, dest)
 
-    real_handlers = {'file':shutil.copy2,
-                     'symlink':copy_link,
-                     'directory':copy_dir,
+    real_handlers = {'file': shutil.copy2,
+                     'symlink': copy_link,
+                     'directory': copy_dir,
                     }
     real_handlers.update(handlers)
 
@@ -1970,14 +1998,14 @@ def path_prefix_key(path):
 
     This can be used to sort paths in the same way that walkdirs does.
     """
-    return (dirname(path) , path)
+    return (dirname(path), path)
 
 
 def compare_paths_prefix_order(path_a, path_b):
     """Compare path_a and path_b to generate the same order walkdirs uses."""
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
-    return cmp(key_a, key_b)
+    return (key_a > key_b) - (key_a < key_b)
 
 
 _cached_user_encoding = None
@@ -2073,21 +2101,21 @@ def read_bytes_from_socket(sock, report_activity=None,
     """
     while True:
         try:
-            bytes = sock.recv(max_read_size)
+            data = sock.recv(max_read_size)
         except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
-                return ""
+                return b""
             elif eno == errno.EINTR:
                 # Retry the interrupted recv.
                 continue
             raise
         else:
             if report_activity is not None:
-                report_activity(len(bytes), 'read')
-            return bytes
+                report_activity(len(data), 'read')
+            return data
 
 
 def recv_all(socket, count):
@@ -2100,10 +2128,10 @@ def recv_all(socket, count):
 
     This isn't optimized and is intended mostly for use in testing.
     """
-    b = ''
+    b = b''
     while len(b) < count:
         new = read_bytes_from_socket(socket, None, count - len(b))
-        if new == '':
+        if new == b'':
             break # eof
         b += new
     return b
@@ -2159,7 +2187,8 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error as err:
+        except socket.error as e:
+            err = e
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()
@@ -2210,11 +2239,8 @@ def resource_string(package, resource_name):
     base = dirname(breezy.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    f = file(pathjoin(base, resource_relpath), "rU")
-    try:
+    with open(pathjoin(base, resource_relpath), "rt") as f:
         return f.read()
-    finally:
-        f.close()
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
@@ -2327,13 +2353,11 @@ def local_concurrency(use_cache=True):
 
     concurrency = os.environ.get('BRZ_CONCURRENCY', None)
     if concurrency is None:
+        import multiprocessing
         try:
-            import multiprocessing
             concurrency = multiprocessing.cpu_count()
-        except (ImportError, NotImplementedError):
-            # multiprocessing is only available on Python >= 2.6
-            # and multiprocessing.cpu_count() isn't implemented on all
-            # platforms
+        except NotImplementedError:
+            # multiprocessing.cpu_count() isn't implemented on all platforms
             try:
                 concurrency = _local_concurrency()
             except (OSError, IOError):
@@ -2360,6 +2384,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
 
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):

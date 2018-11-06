@@ -23,6 +23,10 @@ from ...commands import Command, display_command
 from ...option import Option, ListOption
 from ...config import GlobalConfig
 
+from ...sixish import (
+    text_type,
+    )
+
 # FIXME: _parse_levels should be shared with breezy.builtins. this is a copy
 # to avoid the error
 #   "IllegalUseOfScopeReplacer: ScopeReplacer object '_parse_levels' was used
@@ -105,13 +109,13 @@ class cmd_grep(Command):
     takes_options = [
         'verbose',
         'revision',
-        Option('color', type=str, argname='when',
+        Option('color', type=text_type, argname='when',
                help='Show match in color. WHEN is never, always or auto.'),
         Option('diff', short_name='p',
                help='Grep for pattern in changeset for each revision.'),
-        ListOption('exclude', type=str, argname='glob', short_name='X',
+        ListOption('exclude', type=text_type, argname='glob', short_name='X',
             help="Skip files whose base name matches GLOB."),
-        ListOption('include', type=str, argname='glob', short_name='I',
+        ListOption('include', type=text_type, argname='glob', short_name='I',
             help="Search only files whose base name matches GLOB."),
         Option('files-with-matches', short_name='l',
                help='Print only the name of each input file in '
@@ -148,9 +152,7 @@ class cmd_grep(Command):
             exclude=None, fixed_string=False, files_with_matches=False,
             files_without_match=False, color=None, diff=False):
         from breezy import _termcolor
-        from breezy.plugins.grep import (
-            grep,
-            )
+        from . import grep
         import re
         if path_list is None:
             path_list = ['.']
@@ -201,7 +203,7 @@ class cmd_grep(Command):
             re_flags |= re.IGNORECASE
 
         if not fixed_string:
-            patternc = grep.compile_pattern(pattern, re_flags)
+            patternc = grep.compile_pattern(pattern.encode(grep._user_encoding), re_flags)
 
         if color == 'always':
             show_color = True

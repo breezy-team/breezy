@@ -19,9 +19,12 @@
 from __future__ import absolute_import
 
 import errno
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 import re
-from StringIO import StringIO
 import stat
 import tarfile
 import zipfile
@@ -31,6 +34,9 @@ from .controldir import ControlDir, is_control_filename
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
+from .sixish import (
+    text_type,
+    )
 from .trace import warning
 from .transform import TreeTransform, resolve_conflicts, cook_conflicts
 from .transport import get_transport
@@ -65,7 +71,7 @@ class ZipFileWrapper(object):
             yield ZipInfoWrapper(self.zipfile, info)
 
     def extractfile(self, infowrapper):
-        return StringIO(self.zipfile.read(infowrapper.name))
+        return BytesIO(self.zipfile.read(infowrapper.name))
 
     def add(self, filename):
         if isdir(filename):
@@ -84,7 +90,7 @@ class ZipInfoWrapper(object):
         self.type = None
         self.name = info.filename
         self.zipfile = zipfile
-        self.mode = 0666
+        self.mode = 0o666
 
     def isdir(self):
         # Really? Eeeew!
@@ -101,7 +107,7 @@ class DirWrapper(object):
         if mode != 'r':
             raise AssertionError(
                 'only readonly supported')
-        self.root = os.path.realpath(fileobj.read())
+        self.root = os.path.realpath(fileobj.read().decode('utf-8'))
 
     def __repr__(self):
         return 'DirWrapper(%r)' % self.root
@@ -121,7 +127,7 @@ class DirWrapper(object):
                     yield v
 
     def extractfile(self, member):
-        return open(member.fullpath)
+        return open(member.fullpath, 'rb')
 
 
 class FileInfo(object):
@@ -132,7 +138,7 @@ class FileInfo(object):
         if filepath != '':
             self.name = pathjoin(basename(root), filepath)
         else:
-            print 'root %r' % root
+            print('root %r' % root)
             self.name = basename(root)
         self.type = None
         stat = os.lstat(self.fullpath)
@@ -182,7 +188,7 @@ def common_directory(names):
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
-    if isdir(path) and tree.path2id(relative_path) is not None:
+    if isdir(path) and tree.is_versioned(relative_path):
         tt.cancel_deletion(trans_id)
     else:
         tt.create_directory(trans_id)
@@ -218,6 +224,7 @@ def import_zip(tree, zip_input):
     zip_file = ZipFileWrapper(zip_input, 'r')
     import_archive(tree, zip_file)
 
+
 def import_dir(tree, dir_input):
     dir_file = DirWrapper(dir_input)
     import_archive(tree, dir_file)
@@ -252,7 +259,9 @@ def import_archive_to_transform(tree, archive_file, tt):
         # Inverse functionality in bzr uses utf-8.  We could also
         # interpret relative to fs encoding, which would match native
         # behaviour better.
-        relative_path = member.name.decode('utf-8')
+        relative_path = member.name
+        if not isinstance(relative_path, text_type):
+            relative_path = relative_path.decode('utf-8')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
             relative_path = relative_path.rstrip('/')
@@ -272,7 +281,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         if member.isreg():
             tt.create_file(file_iterator(archive_file.extractfile(member)),
                            trans_id)
-            executable = (member.mode & 0111) != 0
+            executable = (member.mode & 0o111) != 0
             tt.set_executability(executable, trans_id)
         elif member.isdir():
             do_directory(tt, trans_id, tree, relative_path, path)
@@ -314,8 +323,7 @@ def do_import(source, tree_directory=None):
             tree = branch.controldir.open_workingtree()
     else:
         tree = WorkingTree.open_containing('.')[0]
-    tree.lock_write()
-    try:
+    with tree.lock_write():
         if tree.changes_from(tree.basis_tree()).has_changed():
             raise BzrCommandError("Working tree has uncommitted changes.")
 
@@ -323,7 +331,7 @@ def do_import(source, tree_directory=None):
             archive, external_compressor = get_archive_type(source)
         except NotArchiveType:
             if file_kind(source) == 'directory':
-                s = StringIO(source)
+                s = BytesIO(source.encode('utf-8'))
                 s.seek(0)
                 import_dir(tree, s)
             else:
@@ -336,19 +344,17 @@ def do_import(source, tree_directory=None):
                     tar_input = open_from_url(source)
                     if external_compressor == 'bz2':
                         import bz2
-                        tar_input = StringIO(bz2.decompress(tar_input.read()))
+                        tar_input = BytesIO(bz2.decompress(tar_input.read()))
                     elif external_compressor == 'lzma':
                         import lzma
-                        tar_input = StringIO(lzma.decompress(tar_input.read()))
-                except IOError, e:
+                        tar_input = BytesIO(lzma.decompress(tar_input.read()))
+                except IOError as e:
                     if e.errno == errno.ENOENT:
                         raise NoSuchFile(source)
                 try:
                     import_tar(tree, tar_input)
                 finally:
                     tar_input.close()
-    finally:
-        tree.unlock()
 
 
 def get_archive_type(path):

@@ -120,7 +120,7 @@ Breezy it's normal and expected to have it crash from time to time, at
 least because a test failed if for no other reason.
 
 Therefore you should probably add ``debug_flags = no_apport`` to your
-``bazaar.conf`` file (in ``~/.bazaar/`` on Unix), so that failures just
+``breezy.conf`` file (in ``~/.config/breezy/`` on Unix), so that failures just
 print a traceback rather than writing a crash file.
 
 .. _apport: https://launchpad.net/apport/

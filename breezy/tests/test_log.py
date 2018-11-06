@@ -29,6 +29,8 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    StringIO,
+    unichr,
     )
 
 
@@ -91,15 +93,15 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
         """Helper method for LogFormatter tests"""
         b = wt.branch
         b.nick = 'test'
-        self.build_tree_contents([('a', 'hello moto\n')])
-        self.wt_commit(wt, 'simple log message', rev_id='a1')
-        self.build_tree_contents([('b', 'goodbye\n')])
+        self.build_tree_contents([('a', b'hello moto\n')])
+        self.wt_commit(wt, 'simple log message', rev_id=b'a1')
+        self.build_tree_contents([('b', b'goodbye\n')])
         wt.add('b')
-        self.wt_commit(wt, 'multiline\nlog\nmessage\n', rev_id='a2')
+        self.wt_commit(wt, 'multiline\nlog\nmessage\n', rev_id=b'a2')
 
-        self.build_tree_contents([('c', 'just another manic monday\n')])
+        self.build_tree_contents([('c', b'just another manic monday\n')])
         wt.add('c')
-        self.wt_commit(wt, 'single line with trailing newline\n', rev_id='a3')
+        self.wt_commit(wt, 'single line with trailing newline\n', rev_id=b'a3')
         return b
 
     def _prepare_tree_with_merges(self, with_tags=False):
@@ -107,17 +109,17 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        self.wt_commit(wt, 'rev-1', rev_id=b'rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id=b'rev-2a')
+        wt.set_parent_ids([b'rev-1', b'rev-2a'])
+        wt.branch.set_last_revision_info(1, b'rev-1')
+        self.wt_commit(wt, 'rev-2', rev_id=b'rev-2b')
         if with_tags:
             branch = wt.branch
-            branch.tags.set_tag('v0.2', 'rev-2b')
-            self.wt_commit(wt, 'rev-3', rev_id='rev-3')
-            branch.tags.set_tag('v1.0rc1', 'rev-3')
-            branch.tags.set_tag('v1.0', 'rev-3')
+            branch.tags.set_tag('v0.2', b'rev-2b')
+            self.wt_commit(wt, 'rev-3', rev_id=b'rev-3')
+            branch.tags.set_tag('v1.0rc1', b'rev-3')
+            branch.tags.set_tag('v1.0', b'rev-3')
         return wt
 
 
@@ -177,9 +179,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertInvalidRevisonNumber(b, 2, 1)
         self.assertInvalidRevisonNumber(b, 1, 2)
         self.assertInvalidRevisonNumber(b, 0, 2)
-        self.assertInvalidRevisonNumber(b, 1, 0)
         self.assertInvalidRevisonNumber(b, -1, 1)
         self.assertInvalidRevisonNumber(b, 1, -1)
+        self.assertInvalidRevisonNumber(b, 1, 0)
 
     def test_empty_branch(self):
         wt = self.make_branch_and_tree('.')
@@ -254,7 +256,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(message='add file1 and file2')
         self.run_bzr('branch parent child')
         os.unlink('child/file1')
-        with file('child/file2', 'wb') as f: f.write('hello\n')
+        with open('child/file2', 'wb') as f: f.write(b'hello\n')
         self.run_bzr(['commit', '-m', 'remove file1 and modify file2',
             'child'])
         os.chdir('parent')
@@ -284,34 +286,56 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual('add file1 and file2', logentry.rev.message)
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
 
+    def test_bug_842695_log_restricted_to_dir(self):
+        # Comments here indicate revision numbers in trunk  # VVVVV
+        trunk = self.make_branch_and_tree('this')
+        trunk.commit('initial trunk')                       # 1
+        adder = trunk.controldir.sprout('adder').open_workingtree()
+        merger = trunk.controldir.sprout('merger').open_workingtree()
+        self.build_tree_contents([
+            ('adder/dir/',),
+            ('adder/dir/file', b'foo'),
+            ])
+        adder.add(['dir', 'dir/file'])
+        adder.commit('added dir')                           # 1.1.1
+        trunk.merge_from_branch(adder.branch)
+        trunk.commit('merged adder into trunk')             # 2
+        merger.merge_from_branch(trunk.branch)
+        merger.commit('merged trunk into merger')           # 1.2.1
+        # Commits are processed in increments of 200 revisions, so
+        # make sure the two merges into trunk are in different chunks.
+        for i in range(200):
+            trunk.commit('intermediate commit %d' % i)      # 3-202
+        trunk.merge_from_branch(merger.branch)
+        trunk.commit('merged merger into trunk')            # 203
+        file_id = trunk.path2id('dir')
+        lf = LogCatcher()
+        lf.supports_merge_revisions = True
+        log.show_log(trunk.branch, lf, file_id)
+        try:
+            self.assertEqual(['2', '1.1.1'], [r.revno for r in lf.revisions])
+        except AssertionError:
+            raise tests.KnownFailure("bug #842695")
+
 
 class TestFormatSignatureValidity(tests.TestCaseWithTransport):
-    class UTFLoopbackGPGStrategy(gpg.LoopbackGPGStrategy):
-        def verify(self, content, testament):
-            return (gpg.SIGNATURE_VALID,
-                u'UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>')
 
-    def has_signature_for_revision_id(self, revision_id):
-        return True
-
-    def get_signature_text(self, revision_id):
-        return ''
+    def verify_revision_signature(self, revid, gpg_strategy):
+        return (gpg.SIGNATURE_VALID,
+            u'UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>')
 
     def test_format_signature_validity_utf(self):
         """Check that GPG signatures containing UTF-8 names are formatted
         correctly."""
-        # Monkey patch to use our UTF-8 generating GPGStrategy
-        self.overrideAttr(gpg, 'GPGStrategy', self.UTFLoopbackGPGStrategy)
         wt = self.make_branch_and_tree('.')
         revid = wt.commit('empty commit')
         repo = wt.branch.repository
         # Monkey patch out checking if this rev is actually signed, since we
         # can't sign it without a heavier TestCase and LoopbackGPGStrategy
         # doesn't care anyways.
-        self.overrideAttr(repo, 'has_signature_for_revision_id',
-                self.has_signature_for_revision_id)
-        self.overrideAttr(repo, 'get_signature_text', self.get_signature_text)
-        out = log.format_signature_validity(revid, repo)
+        self.overrideAttr(repo, 'verify_revision_signature',
+                self.verify_revision_signature)
+        out = log.format_signature_validity(revid, wt.branch)
         self.assertEqual(
 u'valid signature from UTF8 Test \xa1\xb1\xc1\xd1\xe1\xf1 <jrandom@example.com>',
                 out)
@@ -322,7 +346,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     3 Joe Foo\t2005-11-22
       single line with trailing newline
 
@@ -339,7 +363,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_short_log_with_merges(self):
         wt = self._prepare_tree_with_merges()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -351,7 +375,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_short_log_with_merges_and_advice(self):
         wt = self._prepare_tree_with_merges()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -365,11 +389,11 @@ Use --include-merged or -n0 to see merged revisions.
 
     def test_short_log_with_merges_and_range(self):
         wt = self._prepare_tree_with_merges()
-        self.wt_commit(wt, 'rev-3a', rev_id='rev-3a')
-        wt.branch.set_last_revision_info(2, 'rev-2b')
-        wt.set_parent_ids(['rev-2b', 'rev-3a'])
-        self.wt_commit(wt, 'rev-3b', rev_id='rev-3b')
-        self.assertFormatterResult("""\
+        self.wt_commit(wt, 'rev-3a', rev_id=b'rev-3a')
+        wt.branch.set_last_revision_info(2, b'rev-2b')
+        wt.set_parent_ids([b'rev-2b', b'rev-3a'])
+        self.wt_commit(wt, 'rev-3b', rev_id=b'rev-3b')
+        self.assertFormatterResult(b"""\
     3 Joe Foo\t2005-11-22 [merge]
       rev-3b
 
@@ -382,7 +406,7 @@ Use --include-merged or -n0 to see merged revisions.
 
     def test_short_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     3 Joe Foo\t2005-11-22 {v1.0, v1.0rc1}
       rev-3
 
@@ -399,7 +423,7 @@ Use --include-merged or -n0 to see merged revisions.
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
       1.1.1 Joe Foo\t2005-11-22
             rev-merged
 
@@ -410,13 +434,13 @@ Use --include-merged or -n0 to see merged revisions.
     def test_show_ids(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
-        self.wt_commit(wt, 'first post', rev_id='a')
+        wt.add(['f1', 'f2'])
+        self.wt_commit(wt, 'first post', rev_id=b'a')
         child_wt = wt.controldir.sprout('child').open_workingtree()
-        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id=b'b')
         wt.merge_from_branch(child_wt.branch)
-        self.wt_commit(wt, 'merge branch 1', rev_id='c')
-        self.assertFormatterResult("""\
+        self.wt_commit(wt, 'merge branch 1', rev_id=b'c')
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       revision-id:c
       merge branch 1
@@ -431,7 +455,7 @@ Use --include-merged or -n0 to see merged revisions.
 
 """,
             wt.branch, log.ShortLogFormatter,
-            formatter_kwargs=dict(levels=0,show_ids=True))
+            formatter_kwargs=dict(levels=0, show_ids=True))
 
 
 class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
@@ -441,7 +465,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         # Note that the 1.1.1 indenting is in fact correct given that
         # the revision numbers are right justified within 5 characters
         # for mainline revnos and 9 characters for dotted revnos.
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -459,7 +483,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
       1.1.1 Joe Foo\t2005-11-22
             rev-merged
 
@@ -477,7 +501,7 @@ class TestLongLogFormatter(TestCaseForLogFormatter):
         bug #4676
         """
         wt = self.make_standard_commit('test_verbose_log', authors=[])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -502,7 +526,7 @@ added:
         self.wt_commit(child_wt, 'merge branch 2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 committer: Joe Foo <joe@foo.com>
@@ -546,15 +570,15 @@ message:
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
+        wt.add(['f1', 'f2'])
         self.wt_commit(wt, 'first post')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         os.unlink('child/f1')
-        self.build_tree_contents([('child/f2', 'hello\n')])
+        self.build_tree_contents([('child/f2', b'hello\n')])
         self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 committer: Joe Foo <joe@foo.com>
@@ -595,7 +619,7 @@ added:
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 3
 committer: Joe Foo <joe@foo.com>
@@ -629,7 +653,7 @@ message:
         wt = self.make_standard_commit('test_author_log',
             authors=['John Doe <jdoe@example.com>',
                      'Jane Rey <jrey@example.com>'])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -653,7 +677,7 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 test_prop: test_value
@@ -677,7 +701,7 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     1 John Doe\t2005-11-22
       test_prop: test_value
       add a
@@ -690,7 +714,7 @@ message:
         handlers.
         """
         wt = self.make_standard_commit('error_in_properties_handler',
-            revprops={'first_prop':'first_value'})
+            revprops={u'first_prop':'first_value'})
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def trivial_custom_prop_handler(revision):
@@ -703,7 +727,7 @@ message:
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
-              revprops={'a_prop':'test_value'})
+              revprops={u'a_prop':'test_value'})
         sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def bad_argument_prop_handler(revision):
@@ -718,19 +742,19 @@ message:
 
         revision = wt.branch.repository.get_revision(wt.branch.last_revision())
         formatter.show_properties(revision, '')
-        self.assertEqualDiff('''custom_prop_name: test_value\n''',
+        self.assertEqualDiff(b'''custom_prop_name: test_value\n''',
                              sio.getvalue())
 
     def test_show_ids(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
-        self.wt_commit(wt, 'first post', rev_id='a')
+        wt.add(['f1', 'f2'])
+        self.wt_commit(wt, 'first post', rev_id=b'a')
         child_wt = wt.controldir.sprout('child').open_workingtree()
-        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id=b'b')
         wt.merge_from_branch(child_wt.branch)
-        self.wt_commit(wt, 'merge branch 1', rev_id='c')
-        self.assertFormatterResult("""\
+        self.wt_commit(wt, 'merge branch 1', rev_id=b'c')
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 revision-id: c
@@ -760,7 +784,7 @@ message:
   first post
 """,
             wt.branch, log.LongLogFormatter,
-            formatter_kwargs=dict(levels=0,show_ids=True))
+            formatter_kwargs=dict(levels=0, show_ids=True))
 
 
 class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
@@ -771,7 +795,7 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
         bug #4676
         """
         wt = self.make_standard_commit('test_long_verbose_log', authors=[])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -789,15 +813,15 @@ added:
     def test_long_verbose_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
-        wt.add(['f1','f2'])
+        wt.add(['f1', 'f2'])
         self.wt_commit(wt, 'first post')
         child_wt = wt.controldir.sprout('child').open_workingtree()
         os.unlink('child/f1')
-        self.build_tree_contents([('child/f2', 'hello\n')])
+        self.build_tree_contents([('child/f2', b'hello\n')])
         self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
         self.wt_commit(wt, 'merge branch 1')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2 [merge]
 committer: Joe Foo <joe@foo.com>
@@ -827,7 +851,7 @@ added:
     def test_long_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 3
 committer: Joe Foo <joe@foo.com>
@@ -860,7 +884,7 @@ message:
         the revision properties
         """
         wt = self.make_standard_commit('test_author_log')
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>
@@ -884,7 +908,7 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 1
 test_prop: test_value
@@ -909,7 +933,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
         wt = self.make_standard_commit('test-line-log',
                 committer='Line-Log-Formatter Tester <test@line.log>',
                 authors=[])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1: Line-Log-Formatte... 2005-11-22 add a
 """,
             wt.branch, log.LineLogFormatter)
@@ -917,7 +941,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 3: Joe Foo 2005-11-22 single line with trailing newline
 2: Joe Foo 2005-11-22 multiline
 1: Joe Foo 2005-11-22 simple log message
@@ -928,7 +952,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
             wt.branch, log.LineLogFormatter,
@@ -936,7 +960,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
 
     def test_line_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 3: Joe Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
 2: Joe Foo 2005-11-22 [merge] {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
@@ -954,7 +978,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt = self.make_standard_commit('test-line-log',
                 committer='Line-Log-Formatter Tester <test@line.log>',
                 authors=[])
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1: Line-Log-Formatte... 2005-11-22 add a
 """,
             wt.branch, log.LineLogFormatter)
@@ -963,7 +987,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
             wt.branch, log.LineLogFormatter,
@@ -972,7 +996,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
     def test_line_merge_revs_log_with_merges(self):
         wt = self._prepare_tree_with_merges()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
 1: Joe Foo 2005-11-22 rev-1
@@ -985,7 +1009,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
     def test_gnu_changelog(self):
         wt = self.make_standard_commit('nicky', authors=[])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  Lorem Ipsum  <test@example.com>
 
 \tadd a
@@ -997,7 +1021,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
         wt = self.make_standard_commit('nicky',
             authors=['Fooa Fooz <foo@example.com>',
                      'Bari Baro <bar@example.com>'])
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  Fooa Fooz  <foo@example.com>
 
 \tadd a
@@ -1007,7 +1031,7 @@ class TestGnuChangelogFormatter(TestCaseForLogFormatter):
 
     def test_verbose(self):
         wt = self.make_standard_commit('nicky')
-        self.assertFormatterResult('''\
+        self.assertFormatterResult(b'''\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \t* a:
@@ -1025,18 +1049,18 @@ class TestShowChangedRevisions(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree_a')
         self.build_tree(['tree_a/foo'])
         tree.add('foo')
-        tree.commit('bar', rev_id='bar-id')
+        tree.commit('bar', rev_id=b'bar-id')
         s = self.make_utf8_encoded_stringio()
-        log.show_changed_revisions(tree.branch, [], ['bar-id'], s)
-        self.assertContainsRe(s.getvalue(), 'bar')
-        self.assertNotContainsRe(s.getvalue(), 'foo')
+        log.show_changed_revisions(tree.branch, [], [b'bar-id'], s)
+        self.assertContainsRe(s.getvalue(), b'bar')
+        self.assertNotContainsRe(s.getvalue(), b'foo')
 
 
 class TestLogFormatter(tests.TestCase):
 
     def setUp(self):
         super(TestLogFormatter, self).setUp()
-        self.rev = revision.Revision('a-id')
+        self.rev = revision.Revision(b'a-id')
         self.lf = log.LogFormatter(None)
 
     def test_short_committer(self):
@@ -1132,93 +1156,93 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('1a', rev_id='1a')
-        tree.commit('2a', rev_id='2a')
-        tree.commit('3a', rev_id='3a')
+        tree.commit('1a', rev_id=b'1a')
+        tree.commit('2a', rev_id=b'2a')
+        tree.commit('3a', rev_id=b'3a')
         return tree
 
     def setup_ab_tree(self):
         tree = self.setup_a_tree()
-        tree.set_last_revision('1a')
-        tree.branch.set_last_revision_info(1, '1a')
-        tree.commit('2b', rev_id='2b')
-        tree.commit('3b', rev_id='3b')
+        tree.set_last_revision(b'1a')
+        tree.branch.set_last_revision_info(1, b'1a')
+        tree.commit('2b', rev_id=b'2b')
+        tree.commit('3b', rev_id=b'3b')
         return tree
 
     def setup_ac_tree(self):
         tree = self.setup_a_tree()
         tree.set_last_revision(revision.NULL_REVISION)
         tree.branch.set_last_revision_info(0, revision.NULL_REVISION)
-        tree.commit('1c', rev_id='1c')
-        tree.commit('2c', rev_id='2c')
-        tree.commit('3c', rev_id='3c')
+        tree.commit('1c', rev_id=b'1c')
+        tree.commit('2c', rev_id=b'2c')
+        tree.commit('3c', rev_id=b'3c')
         return tree
 
     def test_all_new(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('1a', '3a', tree.branch.repository)
+        old, new = log.get_history_change(b'1a', b'3a', tree.branch.repository)
         self.assertEqual([], old)
-        self.assertEqual(['2a', '3a'], new)
+        self.assertEqual([b'2a', b'3a'], new)
 
     def test_all_old(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', '1a', tree.branch.repository)
+        old, new = log.get_history_change(b'3a', b'1a', tree.branch.repository)
         self.assertEqual([], new)
-        self.assertEqual(['2a', '3a'], old)
+        self.assertEqual([b'2a', b'3a'], old)
 
     def test_null_old(self):
         tree = self.setup_ab_tree()
         old, new = log.get_history_change(revision.NULL_REVISION,
-                                          '3a', tree.branch.repository)
+                                          b'3a', tree.branch.repository)
         self.assertEqual([], old)
-        self.assertEqual(['1a', '2a', '3a'], new)
+        self.assertEqual([b'1a', b'2a', b'3a'], new)
 
     def test_null_new(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', revision.NULL_REVISION,
+        old, new = log.get_history_change(b'3a', revision.NULL_REVISION,
                                           tree.branch.repository)
         self.assertEqual([], new)
-        self.assertEqual(['1a', '2a', '3a'], old)
+        self.assertEqual([b'1a', b'2a', b'3a'], old)
 
     def test_diverged(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', '3b', tree.branch.repository)
-        self.assertEqual(old, ['2a', '3a'])
-        self.assertEqual(new, ['2b', '3b'])
+        old, new = log.get_history_change(b'3a', b'3b', tree.branch.repository)
+        self.assertEqual(old, [b'2a', b'3a'])
+        self.assertEqual(new, [b'2b', b'3b'])
 
     def test_unrelated(self):
         tree = self.setup_ac_tree()
-        old, new = log.get_history_change('3a', '3c', tree.branch.repository)
-        self.assertEqual(old, ['1a', '2a', '3a'])
-        self.assertEqual(new, ['1c', '2c', '3c'])
+        old, new = log.get_history_change(b'3a', b'3c', tree.branch.repository)
+        self.assertEqual(old, [b'1a', b'2a', b'3a'])
+        self.assertEqual(new, [b'1c', b'2c', b'3c'])
 
     def test_show_branch_change(self):
         tree = self.setup_ab_tree()
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 3, '3a')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 3, b'3a')
         self.assertContainsRe(s.getvalue(),
             '[*]{60}\nRemoved Revisions:\n(.|\n)*2a(.|\n)*3a(.|\n)*'
             '[*]{60}\n\nAdded Revisions:\n(.|\n)*2b(.|\n)*3b')
 
     def test_show_branch_change_no_change(self):
         tree = self.setup_ab_tree()
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 3, '3b')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 3, b'3b')
         self.assertEqual(s.getvalue(),
             'Nothing seems to have changed\n')
 
     def test_show_branch_change_no_old(self):
         tree = self.setup_ab_tree()
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 2, '2b')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 2, b'2b')
         self.assertContainsRe(s.getvalue(), 'Added Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Removed Revisions:')
 
     def test_show_branch_change_no_new(self):
         tree = self.setup_ab_tree()
-        tree.branch.set_last_revision_info(2, '2b')
-        s = BytesIO()
-        log.show_branch_change(tree.branch, s, 3, '3b')
+        tree.branch.set_last_revision_info(2, b'2b')
+        s = StringIO()
+        log.show_branch_change(tree.branch, s, 3, b'3b')
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
 
@@ -1234,53 +1258,53 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
             'timezone': 0, # UTC
         }
-        tree.commit('commit 1a', rev_id='1a', **kwargs)
-        tree.commit('commit 2a', rev_id='2a', **kwargs)
-        tree.commit('commit 3a', rev_id='3a', **kwargs)
+        tree.commit('commit 1a', rev_id=b'1a', **kwargs)
+        tree.commit('commit 2a', rev_id=b'2a', **kwargs)
+        tree.commit('commit 3a', rev_id=b'3a', **kwargs)
         return tree
 
     def setup_ab_tree(self):
         tree = self.setup_a_tree()
-        tree.set_last_revision('1a')
-        tree.branch.set_last_revision_info(1, '1a')
+        tree.set_last_revision(b'1a')
+        tree.branch.set_last_revision_info(1, b'1a')
         kwargs = {
             'committer': 'Joe Foo <joe@foo.com>',
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
             'timezone': 0, # UTC
         }
-        tree.commit('commit 2b', rev_id='2b', **kwargs)
-        tree.commit('commit 3b', rev_id='3b', **kwargs)
+        tree.commit('commit 2b', rev_id=b'2b', **kwargs)
+        tree.commit('commit 3b', rev_id=b'3b', **kwargs)
         return tree
 
     def test_one_revision(self):
         tree = self.setup_ab_tree()
         lf = LogCatcher()
-        rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         log.show_log(tree.branch, lf, verbose=True, start_revision=rev,
                      end_revision=rev)
         self.assertEqual(1, len(lf.revisions))
         self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
-        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+        self.assertEqual(b'3a', lf.revisions[0].rev.revision_id)
 
     def test_many_revisions(self):
         tree = self.setup_ab_tree()
         lf = LogCatcher()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
         log.show_log(tree.branch, lf, verbose=True, start_revision=start_rev,
                      end_revision=end_rev)
         self.assertEqual(3, len(lf.revisions))
         self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
-        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+        self.assertEqual(b'3a', lf.revisions[0].rev.revision_id)
         self.assertEqual(None, lf.revisions[1].revno)   # Out-of-branch
-        self.assertEqual('2a', lf.revisions[1].rev.revision_id)
+        self.assertEqual(b'2a', lf.revisions[1].rev.revision_id)
         self.assertEqual('1', lf.revisions[2].revno)    # In-branch
 
     def test_long_format(self):
         tree = self.setup_ab_tree()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
-        self.assertFormatterResult("""\
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revision-id: 3a
 committer: Joe Foo <joe@foo.com>
@@ -1309,9 +1333,9 @@ message:
 
     def test_short_format(self):
         tree = self.setup_ab_tree()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
-        self.assertFormatterResult("""\
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
+        self.assertFormatterResult(b"""\
       Joe Foo\t2005-11-22
       revision-id:3a
       commit 3a
@@ -1330,9 +1354,9 @@ message:
 
     def test_line_format(self):
         tree = self.setup_ab_tree()
-        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
-        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
-        self.assertFormatterResult("""\
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, b'1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, b'3a')
+        self.assertFormatterResult(b"""\
 Joe Foo 2005-11-22 commit 3a
 Joe Foo 2005-11-22 commit 2a
 1: Joe Foo 2005-11-22 commit 1a
@@ -1355,19 +1379,19 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['a', 'b'])
         tree.add('a')
-        self.wt_commit(tree, 'simple log message', rev_id='a1',
-                       revprops={'bugs': 'test://bug/id fixed'})
+        self.wt_commit(tree, 'simple log message', rev_id=b'a1',
+                       revprops={u'bugs': 'test://bug/id fixed'})
         tree.add('b')
-        self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id='a2',
+        self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id=b'a2',
                        authors=['Joe Bar <joe@bar.com>'],
-                       revprops={'bugs': 'test://bug/id fixed\n'
+                       revprops={u'bugs': 'test://bug/id fixed\n'
                                  'test://bug/2 fixed'})
         return tree
 
 
     def test_long_bugs(self):
         tree = self.make_commits_with_bugs()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
 ------------------------------------------------------------
 revno: 2
 fixes bugs: test://bug/id test://bug/2
@@ -1392,7 +1416,7 @@ message:
 
     def test_short_bugs(self):
         tree = self.make_commits_with_bugs()
-        self.assertFormatterResult("""\
+        self.assertFormatterResult(b"""\
     2 Joe Bar\t2005-11-22
       fixes bugs: test://bug/id test://bug/2
       multiline
@@ -1409,9 +1433,9 @@ message:
     def test_wrong_bugs_property(self):
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['foo'])
-        self.wt_commit(tree, 'simple log message', rev_id='a1',
-                       revprops={'bugs': 'test://bug/id invalid_value'})
-        self.assertFormatterResult("""\
+        self.wt_commit(tree, 'simple log message', rev_id=b'a1',
+                       revprops={u'bugs': 'test://bug/id invalid_value'})
+        self.assertFormatterResult(b"""\
     1 Joe Foo\t2005-11-22
       simple log message
 
@@ -1439,56 +1463,56 @@ class TestLogForAuthors(TestCaseForLogFormatter):
             self.wt.branch, formatter, formatter_kwargs=formatter_kwargs)
 
     def test_line_default(self):
-        self.assertFormatterResult(log.LineLogFormatter, None, """\
+        self.assertFormatterResult(log.LineLogFormatter, None, b"""\
 1: John Doe 2005-11-22 add a
 """)
 
     def test_line_committer(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'committer', b"""\
 1: Lorem Ipsum 2005-11-22 add a
 """)
 
     def test_line_first(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'first', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'first', b"""\
 1: John Doe 2005-11-22 add a
 """)
 
     def test_line_all(self):
-        self.assertFormatterResult(log.LineLogFormatter, 'all', """\
+        self.assertFormatterResult(log.LineLogFormatter, 'all', b"""\
 1: John Doe, Jane Rey 2005-11-22 add a
 """)
 
 
     def test_short_default(self):
-        self.assertFormatterResult(log.ShortLogFormatter, None, """\
+        self.assertFormatterResult(log.ShortLogFormatter, None, b"""\
     1 John Doe\t2005-11-22
       add a
 
 """)
 
     def test_short_committer(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'committer', b"""\
     1 Lorem Ipsum\t2005-11-22
       add a
 
 """)
 
     def test_short_first(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'first', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'first', b"""\
     1 John Doe\t2005-11-22
       add a
 
 """)
 
     def test_short_all(self):
-        self.assertFormatterResult(log.ShortLogFormatter, 'all', """\
+        self.assertFormatterResult(log.ShortLogFormatter, 'all', b"""\
     1 John Doe, Jane Rey\t2005-11-22
       add a
 
 """)
 
     def test_long_default(self):
-        self.assertFormatterResult(log.LongLogFormatter, None, """\
+        self.assertFormatterResult(log.LongLogFormatter, None, b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -1500,7 +1524,7 @@ message:
 """)
 
     def test_long_committer(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'committer', b"""\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -1511,7 +1535,7 @@ message:
 """)
 
     def test_long_first(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'first', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'first', b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>
@@ -1523,7 +1547,7 @@ message:
 """)
 
     def test_long_all(self):
-        self.assertFormatterResult(log.LongLogFormatter, 'all', """\
+        self.assertFormatterResult(log.LongLogFormatter, 'all', b"""\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
@@ -1535,7 +1559,7 @@ message:
 """)
 
     def test_gnu_changelog_default(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, b"""\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \tadd a
@@ -1543,7 +1567,7 @@ message:
 """)
 
     def test_gnu_changelog_committer(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', b"""\
 2005-11-22  Lorem Ipsum  <test@example.com>
 
 \tadd a
@@ -1551,7 +1575,7 @@ message:
 """)
 
     def test_gnu_changelog_first(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', b"""\
 2005-11-22  John Doe  <jdoe@example.com>
 
 \tadd a
@@ -1559,7 +1583,7 @@ message:
 """)
 
     def test_gnu_changelog_all(self):
-        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', """\
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', b"""\
 2005-11-22  John Doe  <jdoe@example.com>, Jane Rey  <jrey@example.com>
 
 \tadd a
@@ -1589,13 +1613,14 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         # | /
         # 3
         builder.start_series()
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'TREE_ROOT', 'directory', '')),])
-        builder.build_snapshot('1.1.1', ['1'], [])
-        builder.build_snapshot('2', ['1'], [])
-        builder.build_snapshot('1.2.1', ['1.1.1'], [])
-        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
-        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', b'TREE_ROOT', 'directory', '')),],
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
+        builder.build_snapshot([b'1'], [], revision_id=b'2')
+        builder.build_snapshot([b'1.1.1'], [], revision_id=b'1.2.1')
+        builder.build_snapshot([b'1.1.1', b'1.2.1'], [], revision_id=b'1.1.2')
+        builder.build_snapshot([b'2', b'1.1.2'], [], revision_id=b'3')
         builder.finish_series()
         br = builder.get_branch()
         br.lock_read()
@@ -1616,21 +1641,21 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
     def test_merge_sorted_exclude_ancestry(self):
         b = self.make_branch_with_alternate_ancestries()
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
-                             b, '1', '3', exclude_common_ancestry=False)
+        self.assertLogRevnos([b'3', b'1.1.2', b'1.2.1', b'1.1.1', b'2', b'1'],
+                             b, b'1', b'3', exclude_common_ancestry=False)
         # '2' is part of the '3' ancestry but not part of '1.1.1' ancestry so
         # it should be mentioned even if merge_sort order will make it appear
         # after 1.1.1
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
-                             b, '1.1.1', '3', exclude_common_ancestry=True)
+        self.assertLogRevnos([b'3', b'1.1.2', b'1.2.1', b'2'],
+                             b, b'1.1.1', b'3', exclude_common_ancestry=True)
 
     def test_merge_sorted_simple_revnos_exclude_ancestry(self):
         b = self.make_branch_with_alternate_ancestries()
-        self.assertLogRevnos(['3', '2'],
-                             b, '1', '3', exclude_common_ancestry=True,
+        self.assertLogRevnos([b'3', b'2'],
+                             b, b'1', b'3', exclude_common_ancestry=True,
                              generate_merge_revisions=False)
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
-                             b, '1', '3', exclude_common_ancestry=True,
+        self.assertLogRevnos([b'3', b'1.1.2', b'1.2.1', b'1.1.1', b'2'],
+                             b, b'1', b'3', exclude_common_ancestry=True,
                              generate_merge_revisions=True)
 
 

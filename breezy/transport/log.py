@@ -119,7 +119,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
                 self._shorten(val), result_len)
         elif methodname == 'readv':
             num_hunks = len(result)
-            total_bytes = sum((len(d) for o,d in result))
+            total_bytes = sum((len(d) for o, d in result))
             shown_result = "readv response, %d hunks, %d total bytes" % (
                 num_hunks, total_bytes)
             result_len = total_bytes

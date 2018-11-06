@@ -130,40 +130,43 @@ class TestFormat7(TestCaseWithTransport):
         # empty revision-store directory
         # empty weaves directory
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Repository format 7',
+                                 f.read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
+        with t.get('inventory.weave') as f:
+            self.assertEqualDiff(b'# bzr weave file v5\n'
+                                 b'w\n'
+                                 b'W\n',
+                                 f.read())
         # Creating a file with id Foo:Bar results in a non-escaped file name on
         # disk.
         control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], ['Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
+        tree.add(['foo'], [b'Foo:Bar'], ['file'])
+        tree.put_file_bytes_non_atomic('foo', b'content\n', b'Foo:Bar')
         try:
-            tree.commit('first post', rev_id='first')
+            tree.commit('first post', rev_id=b'first')
         except IllegalPath:
             if sys.platform != 'win32':
                 raise
             self.knownFailure('Foo:Bar cannot be used as a file-id on windows'
                               ' in repo format 7')
             return
-        self.assertEqualDiff(
-            '# bzr weave file v5\n'
-            'i\n'
-            '1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
-            'n first\n'
-            '\n'
-            'w\n'
-            '{ 0\n'
-            '. content\n'
-            '}\n'
-            'W\n',
-            t.get('weaves/74/Foo%3ABar.weave').read())
+        with t.get('weaves/74/Foo%3ABar.weave') as f:
+            self.assertEqualDiff(
+                b'# bzr weave file v5\n'
+                b'i\n'
+                b'1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
+                b'n first\n'
+                b'\n'
+                b'w\n'
+                b'{ 0\n'
+                b'. content\n'
+                b'}\n'
+                b'W\n',
+                f.read())
 
     def test_shared_disk_layout(self):
         control = BzrDirMetaFormat1().initialize(self.get_url())
@@ -176,15 +179,18 @@ class TestFormat7(TestCaseWithTransport):
         # a 'shared-storage' marker file.
         # lock is not present when unlocked
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Repository format 7',
+                                 f.read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
+        with t.get('inventory.weave') as f:
+            self.assertEqualDiff(b'# bzr weave file v5\n'
+                                 b'w\n'
+                                 b'W\n',
+                                 f.read())
         self.assertFalse(t.has('branch-lock'))
 
     def test_creates_lockdir(self):
@@ -230,19 +236,23 @@ class TestFormat7(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Repository format 7',
+                                 f.read())
         ## self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
+        with t.get('no-working-trees') as f:
+            self.assertEqualDiff(b'', f.read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
+        with t.get('inventory.weave') as f:
+            self.assertEqualDiff(b'# bzr weave file v5\n'
+                                 b'w\n'
+                                 b'W\n',
+                                 f.read())
 
     def test_supports_external_lookups(self):
         control = BzrDirMetaFormat1().initialize(self.get_url())
@@ -251,6 +261,15 @@ class TestFormat7(TestCaseWithTransport):
 
 
 class TestInterWeaveRepo(TestCaseWithTransport):
+
+    def test_make_repository(self):
+        out, err = self.run_bzr("init-repository --format=weave a")
+        self.assertEqual(out,
+"""Standalone tree (format: weave)
+Location:
+  branch root: a
+""")
+        self.assertEqual(err, "")
 
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
@@ -280,14 +299,14 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                          InterRepository.get(repo_a, repo_b).__class__)
 
 
-_working_inventory_v4 = """<inventory file_id="TREE_ROOT">
+_working_inventory_v4 = b"""<inventory file_id="TREE_ROOT">
 <entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
 <entry file_id="foo-20050801201819-4139aa4a272f4250" kind="directory" name="foo" parent_id="TREE_ROOT" />
 <entry file_id="bar-20050824000535-6bc48cfad47ed134" kind="file" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" />
 </inventory>"""
 
 
-_revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
+_revision_v4 = b"""<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
@@ -315,7 +334,7 @@ class TestSerializer(TestCase):
         inp = BytesIO(_working_inventory_v4)
         inv = xml4.serializer_v4.read_inventory(inp)
         self.assertEqual(len(inv), 4)
-        self.assertTrue(inv.has_id('bar-20050901064931-73b4b1138abc9cd2'))
+        self.assertTrue(inv.has_id(b'bar-20050901064931-73b4b1138abc9cd2'))
 
     def test_unpack_revision(self):
         """Test unpacking a canned revision v4"""

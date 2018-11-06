@@ -35,6 +35,9 @@ class DummyWeave(object):
             return False
         return self._message == other._message
 
+    def __hash__(self):
+        return hash((type(self), self._message))
+
     def transaction_finished(self):
         self.finished = True
 
@@ -57,7 +60,7 @@ class TestReadOnlyTransaction(TestCase):
 
     def test_register_dirty_raises(self):
         self.assertRaises(errors.ReadOnlyError,
-                          self.transaction.register_dirty,"anobject")
+                          self.transaction.register_dirty, "anobject")
 
     def test_map(self):
         self.assertNotEqual(None, getattr(self.transaction, "map", None))

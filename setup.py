@@ -23,23 +23,19 @@ import breezy
 
 def get_long_description():
     dirname = os.path.dirname(__file__)
-    readme = os.path.join(dirname, 'README')
-    f = open(readme, 'rb')
-    try:
+    readme = os.path.join(dirname, 'README.rst')
+    with open(readme, 'r') as f:
         return f.read()
-    finally:
-        f.close()
 
 
 ##
 # META INFORMATION FOR SETUP
 # see http://docs.python.org/dist/meta-data.html
 META_INFO = {
-    'name':         'brz',
+    'name':         'breezy',
     'version':      breezy.__version__,
-    'author':       'Canonical Ltd',
-    'author_email': 'bazaar@lists.canonical.com',
     'maintainer':   'Breezy Developers',
+    'maintainer_email':   'team@breezy-vcs.org',
     'url':          'https://www.breezy-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
@@ -58,11 +54,26 @@ META_INFO = {
         'Programming Language :: C',
         'Topic :: Software Development :: Version Control',
         ],
-    }
+    'install_requires': [
+        'configobj',
+        'six>=1.9.0',
+        # Technically, Breezy works without these two dependencies too. But there's
+        # no way to enable them by default and let users opt out.
+        'fastimport>=0.9.8',
+        'dulwich>=0.19.1',
+        ],
+    'extras_require': {
+        'fastimport': [],
+        'git': [],
+        },
+    'tests_require': [
+        'testtools',
+    ],
+}
 
 # The list of packages is automatically generated later. Add other things
-# that are part of BZRLIB here.
-BZRLIB = {}
+# that are part of BREEZY here.
+BREEZY = {}
 
 PKG_DATA = {# install files from selftest suite
             'package_data': {'breezy': ['doc/api/*.txt',
@@ -101,7 +112,7 @@ def get_breezy_packages():
     return sorted(packages)
 
 
-BZRLIB['packages'] = get_breezy_packages()
+BREEZY['packages'] = get_breezy_packages()
 
 
 from distutils import log
@@ -131,9 +142,8 @@ class my_install_scripts(install_scripts):
                 args = self._win_batch_args()
                 batch_str = "@%s %s %s" % (python_exe, script_path, args)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
-                f = file(batch_path, "w")
-                f.write(batch_str)
-                f.close()
+                with open(batch_path, "w") as f:
+                    f.write(batch_str)
                 print(("Created: %s" % batch_path))
             except Exception:
                 e = sys.exc_info()[1]
@@ -285,6 +295,9 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
         include_dirs=include_dirs))
 
 
+add_cython_extension('breezy._simple_set_pyx')
+ext_modules.append(Extension('breezy._static_tuple_c',
+                             ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy._annotator_pyx')
 add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
@@ -303,9 +316,6 @@ else:
 add_cython_extension('breezy.bzr._chk_map_pyx')
 ext_modules.append(Extension('breezy._patiencediff_c',
                              ['breezy/_patiencediff_c.c']))
-add_cython_extension('breezy._simple_set_pyx')
-ext_modules.append(Extension('breezy._static_tuple_c',
-                             ['breezy/_static_tuple_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 
@@ -487,7 +497,7 @@ if 'bdist_wininst' in sys.argv:
         return docs
 
     # python's distutils-based win32 installer
-    ARGS = {'scripts': ['brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
+    ARGS = {'scripts': [ 'brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
             # help pages
             'data_files': find_docs(),
@@ -496,7 +506,7 @@ if 'bdist_wininst' in sys.argv:
            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     PKG_DATA['package_data']['breezy'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
@@ -562,7 +572,7 @@ elif 'py2exe' in sys.argv:
     gui_target = copy.copy(target)
     gui_target.dest_base = "bzrw"
 
-    packages = BZRLIB['packages']
+    packages = BREEZY['packages']
     packages.remove('breezy')
     packages = [i for i in packages if not i.startswith('breezy.plugins')]
     includes = []
@@ -573,10 +583,7 @@ elif 'py2exe' in sys.argv:
         includes.append(module)
 
     additional_packages = set()
-    if sys.version.startswith('2.4'):
-        # adding elementtree package
-        additional_packages.add('elementtree')
-    elif sys.version.startswith('2.6') or sys.version.startswith('2.5'):
+    if sys.version.startswith('2.7'):
         additional_packages.add('xml.etree')
     else:
         import warnings
@@ -736,18 +743,23 @@ else:
     if not 'bdist_egg' in sys.argv:
         # generate and install brz.1 only with plain install, not the
         # easy_install one
-        DATA_FILES = [('man/man1', ['brz.1'])]
+        DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
     DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
-    ARGS = {'scripts': ['brz'],
+    ARGS = {'scripts': ['brz',
+                        # TODO(jelmer): Only install the git scripts if
+                        # Dulwich was found.
+                        'breezy/git/git-remote-bzr',
+                        'breezy/git/bzr-receive-pack',
+                        'breezy/git/bzr-upload-pack'],
             'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':

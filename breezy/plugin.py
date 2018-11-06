@@ -75,7 +75,7 @@ def disable_plugins(state=None):
     :param state: The library state object that records loaded plugins.
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     state.plugins = {}
 
 
@@ -92,7 +92,7 @@ def load_plugins(path=None, state=None):
     :param state: The library state object that records loaded plugins.
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     if getattr(state, 'plugins', None) is not None:
         # People can make sure plugins are loaded, they just won't be twice
         return
@@ -332,11 +332,13 @@ def describe_plugins(show_paths=False, state=None):
     :returns: Iterator of text lines (including newlines.)
     """
     if state is None:
-        state = breezy.global_state
-    all_names = sorted(set(state.plugins).union(state.plugin_warnings))
+        state = breezy.get_global_state()
+    loaded_plugins = getattr(state, 'plugins', {})
+    plugin_warnings = set(getattr(state, 'plugin_warnings', []))
+    all_names = sorted(set(loaded_plugins.keys()).union(plugin_warnings))
     for name in all_names:
-        if name in state.plugins:
-            plugin = state.plugins[name]
+        if name in loaded_plugins:
+            plugin = loaded_plugins[name]
             version = plugin.__version__
             if version == 'unknown':
                 version = ''
@@ -415,7 +417,7 @@ def _load_plugin_module(name, dir):
             trace.print_exception(sys.exc_info(), sys.stderr)
         # GZ 2017-06-02: Move this name checking up a level, no point trying
         # to import things with bad names.
-        if re.search('\.|-| ', name):
+        if re.search('\\.|-| ', name):
             sanitised_name = re.sub('[-. ]', '_', name)
             if sanitised_name.startswith('brz_'):
                 sanitised_name = sanitised_name[len('brz_'):]
@@ -441,13 +443,27 @@ def plugins():
     return result
 
 
+def get_loaded_plugin(name):
+    """Retrieve an already loaded plugin.
+
+    Returns None if there is no such plugin loaded
+    """
+    try:
+        module = sys.modules[_MODULE_PREFIX + name]
+    except KeyError:
+        return None
+    if module is None:
+        return None
+    return PlugIn(name, module)
+
+
 def format_concise_plugin_list(state=None):
     """Return a string holding a concise list of plugins and their version.
     """
     if state is None:
-        state = breezy.global_state
+        state = breezy.get_global_state()
     items = []
-    for name, a_plugin in sorted(state.plugins.items()):
+    for name, a_plugin in sorted(getattr(state, 'plugins', {}).items()):
         items.append("%s[%s]" %
             (name, a_plugin.__version__))
     return ', '.join(items)

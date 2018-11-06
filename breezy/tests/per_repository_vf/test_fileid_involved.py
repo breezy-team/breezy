@@ -43,26 +43,27 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
 
     def create_branch_with_ghost_text(self):
         builder = self.make_branch_builder('ghost')
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('a', 'a-file-id', 'file', 'some content\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('a', b'a-file-id', 'file', b'some content\n'))],
+            revision_id=b'A-id')
         b = builder.get_branch()
-        old_rt = b.repository.revision_tree('A-id')
+        old_rt = b.repository.revision_tree(b'A-id')
         new_inv = inventory.mutable_inventory_from_tree(old_rt)
-        new_inv.revision_id = 'B-id'
-        new_inv['a-file-id'].revision = 'ghost-id'
-        new_rev = _mod_revision.Revision('B-id',
+        new_inv.revision_id = b'B-id'
+        new_inv.get_entry(b'a-file-id').revision = b'ghost-id'
+        new_rev = _mod_revision.Revision(b'B-id',
             timestamp=time.time(),
             timezone=0,
             message='Committing against a ghost',
             committer='Joe Foo <joe@foo.com>',
             properties={},
-            parent_ids=('A-id', 'ghost-id'),
+            parent_ids=(b'A-id', b'ghost-id'),
             )
         b.lock_write()
         self.addCleanup(b.unlock)
         b.repository.start_write_group()
-        b.repository.add_revision('B-id', new_rev, new_inv)
+        b.repository.add_revision(b'B-id', new_rev, new_inv)
         self.disable_commit_write_group_paranoia(b.repository)
         b.repository.commit_write_group()
         return b
@@ -84,8 +85,8 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         b = self.create_branch_with_ghost_text()
         repo = b.repository
         self.assertEqual(
-            {'a-file-id':{'ghost-id'}},
-            repo.fileids_altered_by_revision_ids(['B-id']))
+            {b'a-file-id': {b'ghost-id'}},
+            repo.fileids_altered_by_revision_ids([b'B-id']))
 
     def test_file_ids_uses_fallbacks(self):
         builder = self.make_branch_builder('source',
@@ -94,37 +95,40 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format does not support stacking')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'contents\n'))])
-        builder.build_snapshot('B-id', ['A-id'], [
-            ('modify', ('file-id', 'new-content\n'))])
-        builder.build_snapshot('C-id', ['B-id'], [
-            ('modify', ('file-id', 'yet more content\n'))])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'contents\n'))],
+            revision_id=b'A-id')
+        builder.build_snapshot([b'A-id'], [
+            ('modify', ('file', b'new-content\n'))],
+            revision_id=b'B-id')
+        builder.build_snapshot([b'B-id'], [
+            ('modify', ('file', b'yet more content\n'))],
+            revision_id=b'C-id')
         builder.finish_series()
         source_b = builder.get_branch()
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
         base = self.make_branch('base')
-        base.pull(source_b, stop_revision='B-id')
+        base.pull(source_b, stop_revision=b'B-id')
         stacked = self.make_branch('stacked')
         stacked.set_stacked_on_url('../base')
-        stacked.pull(source_b, stop_revision='C-id')
+        stacked.pull(source_b, stop_revision=b'C-id')
 
         stacked.lock_read()
         self.addCleanup(stacked.unlock)
         repo = stacked.repository
-        keys = {'file-id': {'A-id'}}
+        keys = {b'file-id': {b'A-id'}}
         if stacked.repository.supports_rich_root():
-            keys['root-id'] = {'A-id'}
-        self.assertEqual(keys, repo.fileids_altered_by_revision_ids(['A-id']))
+            keys[b'root-id'] = {b'A-id'}
+        self.assertEqual(keys, repo.fileids_altered_by_revision_ids([b'A-id']))
 
 
 class FileIdInvolvedBase(TestCaseWithRepository):
 
     def touch(self, tree, filename):
         # use the trees transport to not depend on the tree's location or type.
-        tree.controldir.root_transport.append_bytes(filename, "appended line\n")
+        tree.controldir.root_transport.append_bytes(filename, b"appended line\n")
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
@@ -165,13 +169,13 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["main/a", "main/b", "main/c"])
 
-        main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
-                                 'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id>quiji%bo'])
+        main_wt.add(['a', 'b', 'c'], [b'a-file-id-2006-01-01-abcd',
+                                 b'b-file-id-2006-01-01-defg',
+                                 b'c-funky<file-id>quiji%bo'])
         try:
-            main_wt.commit("Commit one", rev_id="rev-A")
+            main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
@@ -188,13 +192,13 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         bt1.pull(main_branch)
         b1 = bt1.branch
         self.build_tree(["branch1/d"])
-        bt1.add(['d'], ['file-d'])
-        bt1.commit("branch1, Commit one", rev_id="rev-E")
+        bt1.add(['d'], [b'file-d'])
+        bt1.commit("branch1, Commit one", rev_id=b"rev-E")
 
         #-------- end E -----------
 
         self.touch(main_wt, "a")
-        main_wt.commit("Commit two", rev_id="rev-B")
+        main_wt.commit("Commit two", rev_id=b"rev-B")
 
         #-------- end B -----------
 
@@ -202,34 +206,34 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         bt2.pull(main_branch)
         branch2_branch = bt2.branch
         set_executability(bt2, 'b', True)
-        bt2.commit("branch2, Commit one", rev_id="rev-J")
+        bt2.commit("branch2, Commit one", rev_id=b"rev-J")
 
         #-------- end J -----------
 
         main_wt.merge_from_branch(b1)
-        main_wt.commit("merge branch1, rev-11", rev_id="rev-C")
+        main_wt.commit("merge branch1, rev-11", rev_id=b"rev-C")
 
         #-------- end C -----------
 
-        bt1.rename_one("d","e")
-        bt1.commit("branch1, commit two", rev_id="rev-F")
+        bt1.rename_one("d", "e")
+        bt1.commit("branch1, commit two", rev_id=b"rev-F")
 
         #-------- end F -----------
 
         self.touch(bt2, "c")
-        bt2.commit("branch2, commit two", rev_id="rev-K")
+        bt2.commit("branch2, commit two", rev_id=b"rev-K")
 
         #-------- end K -----------
 
         main_wt.merge_from_branch(b1)
         self.touch(main_wt, "b")
         # D gets some funky characters to make sure the unescaping works
-        main_wt.commit("merge branch1, rev-12", rev_id="rev-<D>")
+        main_wt.commit("merge branch1, rev-12", rev_id=b"rev-<D>")
 
         # end D
 
         main_wt.merge_from_branch(branch2_branch)
-        main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
+        main_wt.commit("merge branch1, rev-22",  rev_id=b"rev-G")
 
         # end G
         self.branch = main_branch
@@ -237,36 +241,36 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def test_fileids_altered_between_two_revs(self):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
-        self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
+        self.branch.repository.fileids_altered_by_revision_ids([b"rev-J", b"rev-K"])
         self.assertEqual(
-            {'b-file-id-2006-01-01-defg':{'rev-J'},
-             'c-funky<file-id>quiji%bo':{'rev-K'}
+            {b'b-file-id-2006-01-01-defg':{b'rev-J'},
+             b'c-funky<file-id>quiji%bo':{b'rev-K'}
              },
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
+            self.branch.repository.fileids_altered_by_revision_ids([b"rev-J", b"rev-K"]))
 
         self.assertEqual(
-            {'b-file-id-2006-01-01-defg': {'rev-<D>'},
-             'file-d': {'rev-F'},
+            {b'b-file-id-2006-01-01-defg': {b'rev-<D>'},
+             b'file-d': {b'rev-F'},
              },
-            self.branch.repository.fileids_altered_by_revision_ids(['rev-<D>', 'rev-F']))
+            self.branch.repository.fileids_altered_by_revision_ids([b'rev-<D>', b'rev-F']))
 
         self.assertEqual(
             {
-             'b-file-id-2006-01-01-defg': {'rev-<D>', 'rev-G', 'rev-J'},
-             'c-funky<file-id>quiji%bo': {'rev-K'},
-             'file-d': {'rev-F'},
+             b'b-file-id-2006-01-01-defg': {b'rev-<D>', b'rev-G', b'rev-J'},
+             b'c-funky<file-id>quiji%bo': {b'rev-K'},
+             b'file-d': {b'rev-F'},
              },
             self.branch.repository.fileids_altered_by_revision_ids(
-                ['rev-<D>', 'rev-G', 'rev-F', 'rev-K', 'rev-J']))
+                [b'rev-<D>', b'rev-G', b'rev-F', b'rev-K', b'rev-J']))
 
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd': {'rev-B'},
-             'b-file-id-2006-01-01-defg': {'rev-<D>', 'rev-G', 'rev-J'},
-             'c-funky<file-id>quiji%bo': {'rev-K'},
-             'file-d': {'rev-F'},
+            {b'a-file-id-2006-01-01-abcd': {b'rev-B'},
+             b'b-file-id-2006-01-01-defg': {b'rev-<D>', b'rev-G', b'rev-J'},
+             b'c-funky<file-id>quiji%bo': {b'rev-K'},
+             b'file-d': {b'rev-F'},
              },
             self.branch.repository.fileids_altered_by_revision_ids(
-                ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
+                [b'rev-G', b'rev-F', b'rev-C', b'rev-B', b'rev-<D>', b'rev-K', b'rev-J']))
 
     def fileids_altered_by_revision_ids(self, revision_ids):
         """This is a wrapper to strip TREE_ROOT if it occurs"""
@@ -281,19 +285,19 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd':{'rev-A'},
-             'b-file-id-2006-01-01-defg': {'rev-A'},
-             'c-funky<file-id>quiji%bo': {'rev-A'},
+            {b'a-file-id-2006-01-01-abcd': {b'rev-A'},
+             b'b-file-id-2006-01-01-defg': {b'rev-A'},
+             b'c-funky<file-id>quiji%bo': {b'rev-A'},
              },
-            self.fileids_altered_by_revision_ids(["rev-A"]))
+            self.fileids_altered_by_revision_ids([b"rev-A"]))
         self.assertEqual(
-            {'a-file-id-2006-01-01-abcd':{'rev-B'}
+            {b'a-file-id-2006-01-01-abcd':{b'rev-B'}
              },
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-B"]))
+            self.branch.repository.fileids_altered_by_revision_ids([b"rev-B"]))
         self.assertEqual(
-            {'b-file-id-2006-01-01-defg':{'rev-<D>'}
+            {b'b-file-id-2006-01-01-defg':{b'rev-<D>'}
              },
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
+            self.branch.repository.fileids_altered_by_revision_ids([b"rev-<D>"]))
 
     def test_fileids_involved_full_compare(self):
         # this tests that the result of each fileid_involved calculation
@@ -312,9 +316,9 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         if len(history) < 2:
             return
 
-        for start in range(0,len(history)-1):
+        for start in range(0, len(history)-1):
             start_id = history[start]
-            for end in range(start+1,len(history)):
+            for end in range(start+1, len(history)):
                 end_id = history[end]
                 unique_revs = graph.find_unique_ancestors(end_id, [start_id])
                 l1 = self.branch.repository.fileids_altered_by_revision_ids(
@@ -365,13 +369,13 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
-        self.build_tree(["main/a","main/b","main/c"])
+        self.build_tree(["main/a", "main/b", "main/c"])
 
-        main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
-                                 'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id>quiji\'"%bo'])
+        main_wt.add(['a', 'b', 'c'], [b'a-file-id-2006-01-01-abcd',
+                                 b'b-file-id-2006-01-01-defg',
+                                 b'c-funky<file-id>quiji\'"%bo'])
         try:
-            main_wt.commit("Commit one", rev_id="rev-A")
+            main_wt.commit("Commit one", rev_id=b"rev-A")
         except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
@@ -387,11 +391,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         branch2_bzrdir = branch2_wt.controldir
         branch2_branch = branch2_bzrdir.open_branch()
         set_executability(branch2_wt, 'b', True)
-        branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
+        branch2_wt.commit("branch2, Commit one", rev_id=b"rev-J")
 
         main_wt.merge_from_branch(branch2_branch)
         set_executability(main_wt, 'b', False)
-        main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
+        main_wt.commit("merge branch1, rev-22",  rev_id=b"rev-G")
 
         # end G
         self.branch = main_branch
@@ -425,10 +429,9 @@ def set_executability(wt, path, executable=True):
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.
     """
-    file_id = wt.path2id(path)
     tt = transform.TreeTransform(wt)
     try:
-        tt.set_executability(executable, tt.trans_id_tree_file_id(file_id))
+        tt.set_executability(executable, tt.trans_id_tree_path(path))
         tt.apply()
     finally:
         tt.finalize()

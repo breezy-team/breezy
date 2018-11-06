@@ -20,7 +20,11 @@
 from breezy import errors, tests
 from breezy.memorytree import MemoryTree
 from breezy.tests import TestCaseWithTransport
-from breezy.treebuilder import TreeBuilder
+from breezy.treebuilder import (
+    AlreadyBuilding,
+    NotBuilding,
+    TreeBuilder,
+    )
 
 
 class FakeTree(object):
@@ -63,11 +67,11 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
         builder = TreeBuilder()
         tree = FakeTree()
         builder.start_tree(tree)
-        self.assertRaises(errors.AlreadyBuilding, builder.start_tree, tree)
+        self.assertRaises(AlreadyBuilding, builder.start_tree, tree)
 
     def test_finish_tree_not_started_errors(self):
         builder = TreeBuilder()
-        self.assertRaises(errors.NotBuilding, builder.finish_tree)
+        self.assertRaises(NotBuilding, builder.finish_tree)
 
     def test_finish_tree_unlocks(self):
         builder = TreeBuilder()
@@ -78,7 +82,7 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
 
     def test_build_tree_not_started_errors(self):
         builder = TreeBuilder()
-        self.assertRaises(errors.NotBuilding, builder.build, "foo")
+        self.assertRaises(NotBuilding, builder.build, "foo")
 
     def test_build_tree(self):
         """Test building works using a MemoryTree."""
@@ -87,9 +91,11 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
         builder = TreeBuilder()
         builder.start_tree(tree)
         builder.build(['foo', "bar/", "bar/file"])
-        self.assertEqual('contents of foo\n',
-            tree.get_file(tree.path2id('foo')).read())
-        self.assertEqual('contents of bar/file\n',
-            tree.get_file(tree.path2id('bar/file')).read())
+        self.assertEqual(
+            b'contents of foo\n',
+            tree.get_file('foo').read())
+        self.assertEqual(
+            b'contents of bar/file\n',
+            tree.get_file('bar/file').read())
         builder.finish_tree()
 

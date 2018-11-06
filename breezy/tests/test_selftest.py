@@ -18,6 +18,8 @@
 
 import gc
 import doctest
+from functools import reduce
+from io import BytesIO, TextIOWrapper
 import os
 import signal
 import sys
@@ -62,8 +64,13 @@ from ..bzr import (
 from ..bzr import (
     groupcompress_repo,
     )
+from ..git import (
+    workingtree as git_workingtree,
+    )
 from ..sixish import (
+    PY3,
     StringIO,
+    text_type,
     )
 from ..symbol_versioning import (
     deprecated_function,
@@ -105,7 +112,7 @@ class TestTreeShape(tests.TestCaseInTempDir):
         self.requireFeature(features.UnicodeFilenameFeature)
 
         filename = u'hell\u00d8'
-        self.build_tree_contents([(filename, 'contents of hello')])
+        self.build_tree_contents([(filename, b'contents of hello')])
         self.assertPathExists(filename)
 
 
@@ -138,7 +145,7 @@ class TestTransportScenarios(tests.TestCase):
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
-        sample_permutation = [(1,2), (3,4)]
+        sample_permutation = [(1, 2), (3, 4)]
         from .per_transport import get_transport_test_permutations
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
@@ -234,7 +241,7 @@ class TestRepositoryScenarios(tests.TestCase):
         from .per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
-                    'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
+                    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
@@ -346,22 +353,22 @@ class TestWorkingTreeScenarios(tests.TestCase):
             remote_backing_server='e')
         self.assertEqual([
             ('WorkingTreeFormat4',
-             {'bzrdir_format': formats[0]._matchingbzrdir,
+             {'bzrdir_format': formats[0]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[0]}),
             ('WorkingTreeFormat3',
-             {'bzrdir_format': formats[1]._matchingbzrdir,
+             {'bzrdir_format': formats[1]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[1]}),
             ('WorkingTreeFormat6',
-             {'bzrdir_format': formats[2]._matchingbzrdir,
+             {'bzrdir_format': formats[2]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[2]}),
             ('WorkingTreeFormat6,remote',
-             {'bzrdir_format': formats[2]._matchingbzrdir,
+             {'bzrdir_format': formats[2]._matchingcontroldir,
               'repo_is_remote': True,
               'transport_readonly_server': 'd',
               'transport_server': 'c',
@@ -398,28 +405,29 @@ class TestTreeScenarios(tests.TestCase):
         formats = [workingtree_4.WorkingTreeFormat4(),
                    workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
-        self.assertEqual(8, len(scenarios))
+        self.assertEqual(9, len(scenarios))
         default_wt_format = workingtree.format_registry.get_default()
         wt4_format = workingtree_4.WorkingTreeFormat4()
         wt5_format = workingtree_4.WorkingTreeFormat5()
         wt6_format = workingtree_4.WorkingTreeFormat6()
+        git_wt_format = git_workingtree.GitWorkingTreeFormat()
         expected_scenarios = [
             ('WorkingTreeFormat4',
-             {'bzrdir_format': formats[0]._matchingbzrdir,
+             {'bzrdir_format': formats[0]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[0],
               '_workingtree_to_test_tree': return_parameter,
               }),
             ('WorkingTreeFormat3',
-             {'bzrdir_format': formats[1]._matchingbzrdir,
+             {'bzrdir_format': formats[1]._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[1],
               '_workingtree_to_test_tree': return_parameter,
              }),
             ('WorkingTreeFormat6,remote',
-             {'bzrdir_format': wt6_format._matchingbzrdir,
+             {'bzrdir_format': wt6_format._matchingcontroldir,
               'repo_is_remote': True,
               'transport_readonly_server': smart_readonly_server,
               'transport_server': smart_server,
@@ -429,34 +437,42 @@ class TestTreeScenarios(tests.TestCase):
              }),
             ('RevisionTree',
              {'_workingtree_to_test_tree': revision_tree_from_workingtree,
-              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'bzrdir_format': default_wt_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format,
              }),
+             ('GitRevisionTree',
+              {'_workingtree_to_test_tree': revision_tree_from_workingtree,
+               'bzrdir_format': git_wt_format._matchingcontroldir,
+               'transport_readonly_server': 'b',
+               'transport_server': 'a',
+               'workingtree_format': git_wt_format,
+             }
+            ),
             ('DirStateRevisionTree,WT4',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
-              'bzrdir_format': wt4_format._matchingbzrdir,
+              'bzrdir_format': wt4_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': wt4_format,
              }),
             ('DirStateRevisionTree,WT5',
              {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
-              'bzrdir_format': wt5_format._matchingbzrdir,
+              'bzrdir_format': wt5_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': wt5_format,
              }),
             ('PreviewTree',
              {'_workingtree_to_test_tree': preview_tree_pre,
-              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'bzrdir_format': default_wt_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format}),
             ('PreviewTreePost',
              {'_workingtree_to_test_tree': preview_tree_post,
-              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'bzrdir_format': default_wt_format._matchingcontroldir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': default_wt_format}),
@@ -497,7 +513,7 @@ class TestInterTreeScenarios(tests.TestCase):
         self.assertEqual(2, len(scenarios))
         expected_scenarios = [
             ("1", {
-                "bzrdir_format": format1._matchingbzrdir,
+                "bzrdir_format": format1._matchingcontroldir,
                 "intertree_class": formats[0][1],
                 "workingtree_format": formats[0][2],
                 "workingtree_format_to": formats[0][3],
@@ -507,7 +523,7 @@ class TestInterTreeScenarios(tests.TestCase):
                 "transport_readonly_server": server2,
                 }),
             ("2", {
-                "bzrdir_format": format2._matchingbzrdir,
+                "bzrdir_format": format2._matchingcontroldir,
                 "intertree_class": formats[1][1],
                 "workingtree_format": formats[1][2],
                 "workingtree_format_to": formats[1][3],
@@ -634,7 +650,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         dir_format = controldir.format_registry.make_controldir('knit')
         self.assertEqual(dir_format.repository_format.__class__,
                          the_branch.repository._format.__class__)
-        self.assertEqual('Bazaar-NG Knit Repository Format 1',
+        self.assertEqual(b'Bazaar-NG Knit Repository Format 1',
                          self.get_transport().get_bytes(
                             'dir/.bzr/repository/format'))
 
@@ -675,7 +691,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from .http_server import HttpServer
-        from ..transport.http import HttpTransportBase
+        from ..transport.http import HttpTransport
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
@@ -684,8 +700,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # the transport returned may be any HttpTransportBase subclass
         t = transport.get_transport_from_url(url)
         t2 = transport.get_transport_from_url(url2)
-        self.assertIsInstance(t, HttpTransportBase)
-        self.assertIsInstance(t2, HttpTransportBase)
+        self.assertIsInstance(t, HttpTransport)
+        self.assertIsInstance(t2, HttpTransport)
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_is_directory(self):
@@ -788,8 +804,8 @@ class TestTestResult(tests.TestCase):
 
         This is used to exercise the test framework.
         """
-        self.time(unicode, 'hello', errors='replace')
-        self.time(unicode, 'world', errors='replace')
+        self.time(text_type, b'hello', errors='replace')
+        self.time(text_type, b'world', errors='replace')
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
@@ -819,14 +835,20 @@ class TestTestResult(tests.TestCase):
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
         output = result_stream.getvalue()
-        self.assertContainsRe(output,
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        if PY3:
+            self.assertContainsRe(output,
+                r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
+            self.assertContainsRe(output,
+                r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
+        else:
+            self.assertContainsRe(output,
+                r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+            self.assertContainsRe(output,
+                r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
         self.assertContainsRe(output,
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
         self.assertContainsRe(output,
             r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
-        self.assertContainsRe(output,
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
     def test_uses_time_from_testtools(self):
         """Test case timings in verbose results should use testtools times"""
@@ -1080,7 +1102,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
             "=+\n"
-            "FAIL: \\S+\.test_truth\n"
+            "FAIL: \\S+\\.test_truth\n"
             "-+\n"
             "(?:.*\n)*"
             "\\s*(?:Text attachment: )?reason"
@@ -1251,16 +1273,21 @@ class TestRunner(tests.TestCase):
             def test_log_unicode(self):
                 self.log(u"\u2606")
                 self.fail("Now print that log!")
-        out = StringIO()
+        if PY3:
+            bio = BytesIO()
+            out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
+        else:
+            bio = out = StringIO()
         self.overrideAttr(osutils, "get_terminal_encoding",
             lambda trace=False: "ascii")
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
-        self.assertContainsRe(out.getvalue(),
-            "(?:Text attachment: )?log"
-            "(?:\n-+\n|: {{{)"
-            "\d+\.\d+  \\\\u2606"
-            "(?:\n-+\n|}}}\n)")
+        out.flush()
+        self.assertContainsRe(bio.getvalue(),
+            b"(?:Text attachment: )?log"
+            b"(?:\n-+\n|: {{{)"
+            b"\\d+\\.\\d+  \\\\u2606"
+            b"(?:\n-+\n|}}}\n)")
 
 
 class SampleTestCase(tests.TestCase):
@@ -1769,11 +1796,6 @@ def _get_test(name):
     return ExampleTests(name)
 
 
-def _get_skip_reasons(result):
-    # GZ 2017-06-06: Newer testtools doesn't have this, uses detail instead
-    return result.skip_reasons
-
-
 class TestTestCaseLogDetails(tests.TestCase):
 
     def _run_test(self, test_name):
@@ -1800,7 +1822,7 @@ class TestTestCaseLogDetails(tests.TestCase):
 
     def test_skip_has_no_log(self):
         result = self._run_test('test_skip')
-        reasons = _get_skip_reasons(result)
+        reasons = result.skip_reasons
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
@@ -1811,9 +1833,9 @@ class TestTestCaseLogDetails(tests.TestCase):
         # testtools doesn't know about addNotSupported, so it just gets
         # considered as a skip
         result = self._run_test('test_missing_feature')
-        reasons = _get_skip_reasons(result)
-        self.assertEqual({missing_feature}, set(reasons))
-        skips = reasons[missing_feature]
+        reasons = result.skip_reasons
+        self.assertEqual({str(missing_feature)}, set(reasons))
+        skips = reasons[str(missing_feature)]
         self.assertEqual(1, len(skips))
         test = skips[0]
         self.assertFalse('log' in test.getDetails())
@@ -1902,16 +1924,22 @@ class TestExtraAssertions(tests.TestCase):
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
-        self.assertIsInstance(u'', basestring)
+        self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
+        self.assertIn(str(e),
+            ["None is an instance of <type 'NoneType'> rather than <type 'int'>",
+             "None is an instance of <class 'NoneType'> rather than <class 'int'>"])
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
             self.assertIsInstance, None, int, "it's just not")
-        self.assertEqual(str(e),
-            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
-            ": it's just not")
+        if PY3:
+            self.assertEqual(str(e),
+                "None is an instance of <class 'NoneType'> rather than <class 'int'>: it's "
+                "just not")
+        else:
+            self.assertEqual(str(e),
+                "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+                ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2030,7 +2058,11 @@ class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
-        output = StringIO()
+        if PY3:
+            bio = BytesIO()
+            output = TextIOWrapper(bio, 'utf-8')
+        else:
+            bio = output = StringIO()
         old_transport = breezy.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2039,8 +2071,11 @@ class SelfTestHelper(object):
         finally:
             breezy.tests.default_transport = old_transport
             tests.TestCaseWithMemoryTransport.TEST_ROOT = old_root
-        output.seek(0)
-        return output
+        if PY3:
+            output.flush()
+            output.detach()
+        bio.seek(0)
+        return bio
 
 
 class TestSelftest(tests.TestCase, SelfTestHelper):
@@ -2060,11 +2095,13 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def factory(self):
         """A test suite factory."""
         class Test(tests.TestCase):
+            def id(self):
+                return __name__ + ".Test." + self._testMethodName
             def a(self):
                 pass
             def b(self):
                 pass
-            def c(self):
+            def c(telf):
                 pass
         return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
 
@@ -2076,13 +2113,13 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def test_list_only_filtered(self):
         output = self.run_selftest(test_suite_factory=self.factory,
             list_only=True, pattern="Test.b")
-        self.assertEndsWith(output.getvalue(), "Test.b\n")
+        self.assertEndsWith(output.getvalue(), b"Test.b\n")
         self.assertLength(1, output.readlines())
 
     def test_list_only_excludes(self):
         output = self.run_selftest(test_suite_factory=self.factory,
             list_only=True, exclude_pattern="Test.b")
-        self.assertNotContainsRe("Test.b", output.getvalue())
+        self.assertNotContainsRe(b"Test.b", output.getvalue())
         self.assertLength(2, output.readlines())
 
     def test_lsprof_tests(self):
@@ -2121,7 +2158,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def test_runner_class(self):
         self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=self.factory)
         test = ProtocolTestCase(stream)
         result = unittest.TestResult()
@@ -2132,7 +2170,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         output = self.run_selftest(test_suite_factory=self.factory,
             starting_with=['breezy.tests.test_selftest.Test.a'],
             list_only=True)
-        self.assertEqual('breezy.tests.test_selftest.Test.a\n',
+        self.assertEqual(b'breezy.tests.test_selftest.Test.a\n',
             output.getvalue())
 
     def test_starting_with_multiple_argument(self):
@@ -2140,8 +2178,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             starting_with=['breezy.tests.test_selftest.Test.a',
                 'breezy.tests.test_selftest.Test.b'],
             list_only=True)
-        self.assertEqual('breezy.tests.test_selftest.Test.a\n'
-            'breezy.tests.test_selftest.Test.b\n',
+        self.assertEqual(b'breezy.tests.test_selftest.Test.a\n'
+            b'breezy.tests.test_selftest.Test.b\n',
             output.getvalue())
 
     def check_transport_set(self, transport_server):
@@ -2170,7 +2208,7 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
 
     def test_load_list(self):
         # Provide a list with one test - this test.
-        test_id_line = '%s\n' % self.id()
+        test_id_line = b'%s\n' % self.id().encode('ascii')
         self.build_tree_contents([('test.list', test_id_line)])
         # And generate a list of the tests in  the suite.
         stream = self.run_selftest(load_list='test.list', list_only=True)
@@ -2191,7 +2229,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         from subunit import ProtocolTestCase
         def factory():
             return TestUtil.TestSuite([_get_test(test_name)])
-        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+        stream = self.run_selftest(
+            runner_class=tests.SubUnitBzrRunnerv1,
             test_suite_factory=factory)
         test = ProtocolTestCase(stream)
         result = testtools.TestResult()
@@ -2202,19 +2241,19 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
     def test_fail_has_log(self):
         content, result = self.run_subunit_stream('test_fail')
         self.assertEqual(1, len(result.failures))
-        self.assertContainsRe(content, '(?m)^log$')
-        self.assertContainsRe(content, 'this test will fail')
+        self.assertContainsRe(content, b'(?m)^log$')
+        self.assertContainsRe(content, b'this test will fail')
 
     def test_error_has_log(self):
         content, result = self.run_subunit_stream('test_error')
-        self.assertContainsRe(content, '(?m)^log$')
-        self.assertContainsRe(content, 'this test errored')
+        self.assertContainsRe(content, b'(?m)^log$')
+        self.assertContainsRe(content, b'this test errored')
 
     def test_skip_has_no_log(self):
         content, result = self.run_subunit_stream('test_skip')
-        self.assertNotContainsRe(content, '(?m)^log$')
-        self.assertNotContainsRe(content, 'this test will be skipped')
-        reasons = _get_skip_reasons(result)
+        self.assertNotContainsRe(content, b'(?m)^log$')
+        self.assertNotContainsRe(content, b'this test will be skipped')
+        reasons = result.skip_reasons
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
@@ -2224,9 +2263,9 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
 
     def test_missing_feature_has_no_log(self):
         content, result = self.run_subunit_stream('test_missing_feature')
-        self.assertNotContainsRe(content, '(?m)^log$')
-        self.assertNotContainsRe(content, 'missing the feature')
-        reasons = _get_skip_reasons(result)
+        self.assertNotContainsRe(content, b'(?m)^log$')
+        self.assertNotContainsRe(content, b'missing the feature')
+        reasons = result.skip_reasons
         self.assertEqual({'_MissingFeature\n'}, set(reasons))
         skips = reasons['_MissingFeature\n']
         self.assertEqual(1, len(skips))
@@ -2236,8 +2275,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
 
     def test_xfail_has_no_log(self):
         content, result = self.run_subunit_stream('test_xfail')
-        self.assertNotContainsRe(content, '(?m)^log$')
-        self.assertNotContainsRe(content, 'test with expected failure')
+        self.assertNotContainsRe(content, b'(?m)^log$')
+        self.assertNotContainsRe(content, b'test with expected failure')
         self.assertEqual(1, len(result.expectedFailures))
         result_content = result.expectedFailures[0][1]
         self.assertNotContainsRe(result_content,
@@ -2246,15 +2285,8 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
 
     def test_unexpected_success_has_log(self):
         content, result = self.run_subunit_stream('test_unexpected_success')
-        self.assertContainsRe(content, '(?m)^log$')
-        self.assertContainsRe(content, 'test with unexpected success')
-        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
-        #                success, if a min version check is added remove this
-        from subunit import TestProtocolClient as _Client
-        if _Client.addUnexpectedSuccess.__func__ is _Client.addSuccess.__func__:
-            self.expectFailure('subunit treats "unexpectedSuccess"'
-                               ' as a plain success',
-                self.assertEqual, 1, len(result.unexpectedSuccesses))
+        self.assertContainsRe(content, b'(?m)^log$')
+        self.assertContainsRe(content, b'test with unexpected success')
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
@@ -2263,17 +2295,18 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
     def test_success_has_no_log(self):
         content, result = self.run_subunit_stream('test_success')
         self.assertEqual(1, result.testsRun)
-        self.assertNotContainsRe(content, '(?m)^log$')
-        self.assertNotContainsRe(content, 'this test succeeds')
+        self.assertNotContainsRe(content, b'(?m)^log$')
+        self.assertNotContainsRe(content, b'this test succeeds')
 
 
 class TestRunBzr(tests.TestCase):
 
+    result = 0
     out = ''
     err = ''
 
-    def _run_bzr_core(self, argv, retcode=0, encoding=None, stdin=None,
-                         working_dir=None):
+    def _run_bzr_core(self, argv, encoding=None, stdin=None,
+                      stdout=None, stderr=None, working_dir=None):
         """Override _run_bzr_core to test how it is invoked by run_bzr.
 
         Attempts to run bzr from inside this class don't actually run it.
@@ -2282,17 +2315,18 @@ class TestRunBzr(tests.TestCase):
         only need to test that it passes the right parameters to run_bzr.
         """
         self.argv = list(argv)
-        self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
-        return self.retcode, self.out, self.err
+        stdout.write(self.out)
+        stderr.write(self.err)
+        return self.result
 
     def test_run_bzr_error(self):
         self.out = "It sure does!\n"
+        self.result = 34
         out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=34)
         self.assertEqual(['rocks'], self.argv)
-        self.assertEqual(34, self.retcode)
         self.assertEqual('It sure does!\n', out)
         self.assertEqual(out, self.out)
         self.assertEqual('', err)
@@ -2301,6 +2335,7 @@ class TestRunBzr(tests.TestCase):
     def test_run_bzr_error_regexes(self):
         self.out = ''
         self.err = "bzr: ERROR: foobarbaz is not versioned"
+        self.result = 3
         out, err = self.run_bzr_error(
             ["bzr: ERROR: foobarbaz is not versioned"],
             ['file-id', 'foobarbaz'])
@@ -2308,30 +2343,11 @@ class TestRunBzr(tests.TestCase):
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""
         self.run_bzr('foo bar')
-        self.assertEqual(None, self.encoding)
+        self.assertEqual(osutils.get_user_encoding(), self.encoding)
         self.assertEqual(['foo', 'bar'], self.argv)
 
         self.run_bzr('foo bar', encoding='baz')
         self.assertEqual('baz', self.encoding)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-    def test_retcode(self):
-        """Test that run_bzr passes retcode to _run_bzr_core"""
-        # Default is retcode == 0
-        self.run_bzr('foo bar')
-        self.assertEqual(0, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr('foo bar', retcode=1)
-        self.assertEqual(1, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr('foo bar', retcode=None)
-        self.assertEqual(None, self.retcode)
-        self.assertEqual(['foo', 'bar'], self.argv)
-
-        self.run_bzr(['foo', 'bar'], retcode=3)
-        self.assertEqual(3, self.retcode)
         self.assertEqual(['foo', 'bar'], self.argv)
 
     def test_stdin(self):
@@ -2652,11 +2668,11 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         self.disable_missing_extensions_warning()
         process = self.start_bzr_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
-        self.assertEqual('running\n', process.stdout.readline())
+        self.assertEqual(b'running\n', process.stdout.readline())
         result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
-        self.assertEqual('', result[0])
-        self.assertEqual('brz: interrupted\n', result[1])
+        self.assertEqual(b'', result[0])
+        self.assertEqual(b'brz: interrupted\n', result[1])
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -3041,14 +3057,17 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        if __doc__ is not None:
+        if __doc__ is not None and not PY3:
             expected_test_list.extend([
                 # modules_to_doctest
                 'breezy.timestamp.format_highres_date',
                 ])
         suite = tests.test_suite()
-        self.assertEqual({"testmod_names", "modules_to_doctest"},
-            set(calls))
+        if PY3:
+            self.assertEqual({"testmod_names"}, set(calls))
+        else:
+            self.assertEqual({"testmod_names", "modules_to_doctest"},
+                set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
@@ -3371,10 +3390,15 @@ class _Selftest(object):
         """To be overridden by subclasses that run tests out of process"""
 
     def _run_selftest(self, **kwargs):
-        sio = StringIO()
-        self._inject_stream_into_subunit(sio)
+        if PY3:
+            bio = BytesIO()
+            sio = TextIOWrapper(bio, 'utf-8')
+        else:
+            sio = bio = StringIO()
+        self._inject_stream_into_subunit(bio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
-        return sio.getvalue()
+        sio.flush()
+        return bio.getvalue()
 
 
 class _ForkedSelftest(_Selftest):
@@ -3420,13 +3444,13 @@ class TestParallelFork(_ForkedSelftest, tests.TestCase):
         # together due to the way subunit parses and forwards the streams,
         # so permit extra lines between each part of the error output.
         self.assertContainsRe(out,
-            "Traceback.*:\n"
-            "(?:.*\n)*"
-            ".+ in fork_for_tests\n"
-            "(?:.*\n)*"
-            "\s*workaround_zealous_crypto_random\(\)\n"
-            "(?:.*\n)*"
-            "TypeError:")
+            b"Traceback.*:\n"
+            b"(?:.*\n)*"
+            b".+ in fork_for_tests\n"
+            b"(?:.*\n)*"
+            b"\\s*workaround_zealous_crypto_random\\(\\)\n"
+            b"(?:.*\n)*"
+            b"TypeError:")
 
 
 class TestUncollectedWarnings(_Selftest, tests.TestCase):
@@ -3460,8 +3484,8 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
             if gc_on:
                 gc.enable()
             tests.selftest_debug_flags = old_flags
-        self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
-        self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
+        self.assertNotContainsRe(output, b"Uncollected test case.*test_pass")
+        self.assertContainsRe(output, b"Uncollected test case.*test_self_ref")
         return output
 
     def test_testsuite(self):
@@ -3469,11 +3493,11 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
 
     def test_pattern(self):
         out = self._run_selftest_with_suite(pattern="test_(?:pass|self_ref)$")
-        self.assertNotContainsRe(out, "test_skip")
+        self.assertNotContainsRe(out, b"test_skip")
 
     def test_exclude_pattern(self):
         out = self._run_selftest_with_suite(exclude_pattern="test_skip$")
-        self.assertNotContainsRe(out, "test_skip")
+        self.assertNotContainsRe(out, b"test_skip")
 
     def test_random_seed(self):
         self._run_selftest_with_suite(random_seed="now")
@@ -3485,7 +3509,7 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
     def test_starting_with_and_exclude(self):
         out = self._run_selftest_with_suite(starting_with=["bt."],
             exclude_pattern="test_skip$")
-        self.assertNotContainsRe(out, "test_skip")
+        self.assertNotContainsRe(out, b"test_skip")
 
     def test_additonal_decorator(self):
         out = self._run_selftest_with_suite(
@@ -3498,8 +3522,8 @@ class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
     _test_needs_features = [features.subunit]
 
     def _run_selftest_with_suite(self, **kwargs):
-        return TestUncollectedWarnings._run_selftest_with_suite(self,
-            runner_class=tests.SubUnitBzrRunner, **kwargs)
+        return TestUncollectedWarnings._run_selftest_with_suite(
+            self, runner_class=tests.SubUnitBzrRunnerv1, **kwargs)
 
 
 class TestUncollectedWarningsForked(_ForkedSelftest, TestUncollectedWarnings):
@@ -3695,7 +3719,7 @@ class TestCounterHooks(tests.TestCase, SelfTestHelper):
             def setUp(self):
                 super(Test, self).setUp()
                 self.hooks = hooks.Hooks()
-                self.hooks.add_hook('myhook', 'Foo bar blah', (2,4))
+                self.hooks.add_hook('myhook', 'Foo bar blah', (2, 4))
                 self.install_counter_hook(self.hooks, 'myhook')
 
             def no_hook(self):

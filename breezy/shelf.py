@@ -19,11 +19,11 @@ from __future__ import absolute_import
 import errno
 import re
 
+from . import errors
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     bencode,
-    errors,
     merge,
     merge3,
     transform,
@@ -32,6 +32,27 @@ from breezy.bzr import (
     pack,
     )
 """)
+
+
+class ShelfCorrupt(errors.BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(errors.BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        errors.BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class InvalidShelfId(errors.BzrError):
+
+    _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
+
+    def __init__(self, invalid_id):
+        errors.BzrError.__init__(self, invalid_id=invalid_id)
 
 
 class ShelfCreator(object):
@@ -104,8 +125,10 @@ class ShelfCreator(object):
                 if kind[0] != kind [1]:
                     yield ('change kind', file_id, kind[0], kind[1], paths[0])
                 elif kind[0] == 'symlink':
-                    t_target = self.target_tree.get_symlink_target(file_id)
-                    w_target = self.work_tree.get_symlink_target(file_id)
+                    t_target = self.target_tree.get_symlink_target(
+                            paths[0], file_id)
+                    w_target = self.work_tree.get_symlink_target(
+                            paths[1], file_id)
                     yield ('modify target', file_id, paths[0], t_target,
                             w_target)
                 elif changed:
@@ -157,12 +180,14 @@ class ShelfCreator(object):
         :param new_target: The target that the symlink should have due
             to shelving.
         """
-        new_target = self.target_tree.get_symlink_target(file_id)
+        new_path = self.target_tree.id2path(file_id)
+        new_target = self.target_tree.get_symlink_target(new_path, file_id)
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
         self.work_transform.create_symlink(new_target, w_trans_id)
 
-        old_target = self.work_tree.get_symlink_target(file_id)
+        old_path = self.work_tree.id2path(file_id)
+        old_target = self.work_tree.get_symlink_target(old_path, file_id)
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         self.shelf_transform.delete_contents(s_trans_id)
         self.shelf_transform.create_symlink(old_target, s_trans_id)
@@ -186,7 +211,8 @@ class ShelfCreator(object):
     def _content_from_tree(tt, tree, file_id):
         trans_id = tt.trans_id_file_id(file_id)
         tt.delete_contents(trans_id)
-        transform.create_from_tree(tt, trans_id, tree, file_id)
+        transform.create_from_tree(tt, trans_id, tree, tree.id2path(file_id),
+                                   file_id)
 
     def shelve_content_change(self, file_id):
         """Shelve a kind change or binary file content change.
@@ -240,17 +266,20 @@ class ShelfCreator(object):
             to_transform.adjust_path(name, s_parent_id, s_trans_id)
             if existing_path is None:
                 if kind is None:
-                    to_transform.create_file('', s_trans_id)
+                    to_transform.create_file([b''], s_trans_id)
                 else:
-                    transform.create_from_tree(to_transform, s_trans_id,
-                                               tree, file_id)
+                    transform.create_from_tree(
+                            to_transform, s_trans_id, tree,
+                            tree.id2path(file_id), file_id)
         if version:
             to_transform.version_file(file_id, s_trans_id)
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
-        target_lines = self.target_tree.get_file_lines(file_id)
-        work_lines = self.work_tree.get_file_lines(file_id)
+        target_path = self.target_tree.id2path(file_id)
+        target_lines = self.target_tree.get_file_lines(target_path, file_id)
+        work_path = self.work_tree.id2path(file_id)
+        work_lines = self.work_tree.get_file_lines(work_path, file_id)
         return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):
@@ -264,11 +293,11 @@ class ShelfCreator(object):
 
     @staticmethod
     def metadata_record(serializer, revision_id, message=None):
-        metadata = {'revision_id': revision_id}
+        metadata = {b'revision_id': revision_id}
         if message is not None:
-            metadata['message'] = message.encode('utf-8')
+            metadata[b'message'] = message.encode('utf-8')
         return serializer.bytes_record(
-            bencode.bencode(metadata), (('metadata',),))
+            bencode.bencode(metadata), ((b'metadata',),))
 
     def write_shelf(self, shelf_file, message=None):
         """Serialize the shelved changes to a file.
@@ -317,12 +346,12 @@ class Unshelver(object):
     @staticmethod
     def parse_metadata(records):
         names, metadata_bytes = next(records)
-        if names[0] != ('metadata',):
-            raise errors.ShelfCorrupt
+        if names[0] != (b'metadata',):
+            raise ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)
-        message = metadata.get('message')
+        message = metadata.get(b'message')
         if message is not None:
-            metadata['message'] = message.decode('utf-8')
+            metadata[b'message'] = message.decode('utf-8')
         return metadata
 
     @classmethod
@@ -335,20 +364,20 @@ class Unshelver(object):
         """
         records = klass.iter_records(shelf_file)
         metadata = klass.parse_metadata(records)
-        base_revision_id = metadata['revision_id']
+        base_revision_id = metadata[b'revision_id']
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         tt = transform.TransformPreview(base_tree)
         tt.deserialize(records)
-        return klass(tree, base_tree, tt, metadata.get('message'))
+        return klass(tree, base_tree, tt, metadata.get(b'message'))
 
-    def make_merger(self, task=None):
+    def make_merger(self):
         """Return a merger that can unshelve the changes."""
         target_tree = self.transform.get_preview_tree()
         merger = merge.Merger.from_uncommitted(self.tree, target_tree,
-            task, self.base_tree)
+            self.base_tree)
         merger.merge_type = merge.Merge3Merger
         return merger
 
@@ -409,8 +438,7 @@ class ShelfManager(object):
         except IOError as e:
             if e.errno != errno.ENOENT:
                 raise
-            from . import errors
-            raise errors.NoSuchShelfId(shelf_id)
+            raise NoSuchShelfId(shelf_id)
 
     def get_unshelver(self, shelf_id):
         """Return an unshelver for a given shelf_id.

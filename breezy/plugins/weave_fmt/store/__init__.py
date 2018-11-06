@@ -62,10 +62,6 @@ class Store(object):
         """
         raise NotImplementedError
 
-    def __getitem__(self, fileid):
-        """DEPRECATED. Please use .get(fileid) instead."""
-        raise NotImplementedError
-
     def __iter__(self):
         raise NotImplementedError
 
@@ -111,10 +107,10 @@ class TransportStore(Store):
         raise NotImplementedError('children need to implement this function.')
 
     def _check_fileid(self, fileid):
-        if not isinstance(fileid, str):
+        if not isinstance(fileid, bytes):
             raise TypeError('Fileids should be bytestrings: %s %r' % (
                 type(fileid), fileid))
-        if '\\' in fileid or '/' in fileid:
+        if b'\\' in fileid or b'/' in fileid:
             raise ValueError("invalid store id %r" % fileid)
 
     def _id_to_names(self, fileid, suffix):
@@ -219,7 +215,7 @@ class TransportStore(Store):
             for suffix in suffixes:
                 if not suffix in self._suffixes:
                     raise ValueError("Unregistered suffix %r" % suffix)
-                self._check_fileid(suffix)
+                self._check_fileid(suffix.encode('utf-8'))
         else:
             suffixes = []
         path = self._mapper.map((fileid,))
@@ -240,7 +236,7 @@ class TransportStore(Store):
 
     def register_suffix(self, suffix):
         """Register a suffix as being expected in this store."""
-        self._check_fileid(suffix)
+        self._check_fileid(suffix.encode('utf-8'))
         if suffix == 'gz':
             raise ValueError('You cannot register the "gz" suffix.')
         self._suffixes.add(suffix)

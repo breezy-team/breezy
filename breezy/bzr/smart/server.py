@@ -372,7 +372,7 @@ def _local_path_for_transport(transport):
             base_url = base_url[len('readonly+'):]
         try:
             return urlutils.local_path_from_url(base_url)
-        except errors.InvalidURL:
+        except urlutils.InvalidURL:
             return None
 
 
@@ -431,7 +431,10 @@ class BzrServerFactory(object):
         self.transport = transport
 
     def _get_stdin_stdout(self):
-        return sys.stdin, sys.stdout
+        if sys.version_info[0] < 3:
+            return sys.stdin, sys.stdout
+        else:
+            return sys.stdin.buffer, sys.stdout.buffer
 
     def _make_smart_server(self, host, port, inet, timeout):
         if timeout is None:
@@ -449,7 +452,7 @@ class BzrServerFactory(object):
             smart_server = SmartTCPServer(self.transport,
                                           client_timeout=timeout)
             smart_server.start_server(host, port)
-            trace.note(gettext('listening on port: %s') % smart_server.port)
+            trace.note(gettext('listening on port: %s'), str(smart_server.port))
         self.smart_server = smart_server
 
     def _change_globals(self):

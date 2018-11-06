@@ -21,6 +21,7 @@ import io
 from .. import (
     ui,
 )
+from ..ui import text as ui_text
 from ..sixish import (
     text_type,
 )
@@ -48,7 +49,7 @@ class StringIOAsTTY(StringIOWithEncoding):
         return True
 
 
-class TextUIFactory(ui.text.TextUIFactory):
+class TextUIFactory(ui_text.TextUIFactory):
 
     def __init__(self, stdin=None, stdout=None, stderr=None):
         if isinstance(stdin, bytes):
@@ -60,6 +61,11 @@ class TextUIFactory(ui.text.TextUIFactory):
         if stderr is None:
             stderr = StringIOWithEncoding()
         super(TextUIFactory, self).__init__(stdin, stdout, stderr)
+
+    def _setup_streams(self):
+        self.raw_stdin = self.stdin
+        self.raw_stdout = self.stdout
+        self.raw_stderr = self.stderr
 
 
 class TestUIFactory(TextUIFactory):

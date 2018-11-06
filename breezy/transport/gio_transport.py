@@ -26,11 +26,21 @@ supported by gio.
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import os
 import random
 import stat
 import time
-import urlparse
+try:
+    from urllib.parse import (
+        urlparse,
+        urlunparse,
+        )
+except ImportError:
+    from urlparse import (
+        urlparse,
+        urlunparse,
+        )
 
 from .. import (
     config,
@@ -41,7 +51,7 @@ from .. import (
     ui,
     )
 from ..sixish import (
-    BytesIO,
+    text_type,
     )
 from ..trace import mutter
 from . import (
@@ -122,21 +132,21 @@ class GioTransport(ConnectedTransport):
             raise ValueError(base)
 
         (scheme, netloc, path, params, query, fragment) = \
-                urlparse.urlparse(base[len('gio+'):], allow_fragments=False)
+                urlparse(base[len('gio+'):], allow_fragments=False)
         if '@' in netloc:
             user, netloc = netloc.rsplit('@', 1)
         #Seems it is not possible to list supported backends for GIO
         #so a hardcoded list it is then.
         gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
         if scheme not in gio_backends:
-            raise errors.InvalidURL(base,
+            raise urlutils.InvalidURL(base,
                     extra="GIO support is only available for " + \
                     ', '.join(gio_backends))
 
         #Remove the username and password from the url we send to GIO
         #by rebuilding the url again.
         u = (scheme, netloc, path, '', '', '')
-        self.url = urlparse.urlunparse(u)
+        self.url = urlunparse(u)
 
         # And finally initialize super
         super(GioTransport, self).__init__(base,
@@ -144,8 +154,8 @@ class GioTransport(ConnectedTransport):
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
-        if isinstance(full_url, unicode):
-            raise errors.InvalidURL(full_url)
+        if isinstance(full_url, text_type):
+            raise urlutils.InvalidURL(full_url)
         return full_url
 
     def _get_GIO(self, relpath):
@@ -284,8 +294,7 @@ class GioTransport(ConnectedTransport):
             fin = f.read()
             buf = fin.read()
             fin.close()
-            ret = BytesIO(buf)
-            return ret
+            return BytesIO(buf)
         except gio.Error as e:
             #If we get a not mounted here it might mean
             #that a bad path has been entered (or that mount failed)

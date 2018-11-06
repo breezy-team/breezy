@@ -31,11 +31,18 @@ from . import (
     transport,
     ui,
     )
-from .errors import BzrError, BadCommitMessageEncoding
+from .errors import BzrError
 from .hooks import Hooks
 from .sixish import (
+    BytesIO,
     StringIO,
     )
+
+
+class BadCommitMessageEncoding(BzrError):
+
+    _fmt = 'The specified commit message contains characters unsupported by '\
+        'the current encoding.'
 
 
 def _get_editor():
@@ -165,12 +172,9 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         started = False
         msg = []
         lastline, nlines = 0, 0
-        # codecs.open() ALWAYS opens file in binary mode but we need text mode
-        # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
-        f = file(msgfilename, 'rU')
-        try:
+        with codecs.open(msgfilename, mode='rb', encoding=osutils.get_user_encoding()) as f:
             try:
-                for line in codecs.getreader(osutils.get_user_encoding())(f):
+                for line in f:
                     stripped_line = line.strip()
                     # strip empty line before the log message starts
                     if not started:
@@ -189,8 +193,6 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                     msg.append(line)
             except UnicodeDecodeError:
                 raise BadCommitMessageEncoding()
-        finally:
-            f.close()
 
         if len(msg) == 0:
             return ""
@@ -232,18 +234,17 @@ def _create_temp_file_with_commit_template(infotext,
     import tempfile
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
                                                dir=tmpdir, text=True)
-    msgfile = os.fdopen(tmp_fileno, 'w')
-    try:
+    with os.fdopen(tmp_fileno, 'wb') as msgfile:
         if start_message is not None:
-            msgfile.write("%s\n" % start_message)
+            msgfile.write(b"%s\n" % start_message)
 
         if infotext is not None and infotext != "":
             hasinfo = True
-            msgfile.write("\n\n%s\n\n%s" %(ignoreline, infotext))
+            trailer = b"\n\n%s\n\n%s" % (
+                ignoreline.encode(osutils.get_user_encoding()), infotext)
+            msgfile.write(trailer)
         else:
             hasinfo = False
-    finally:
-        msgfile.close()
 
     return (msgfilename, hasinfo)
 
@@ -282,11 +283,11 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     template = template.encode(output_encoding, "replace")
 
     if diff:
-        stream = StringIO()
+        stream = BytesIO()
         show_diff_trees(working_tree.basis_tree(),
                         working_tree, stream, specific_files,
                         path_encoding=output_encoding)
-        template = template + '\n' + stream.getvalue()
+        template = template + b'\n' + stream.getvalue()
 
     return template
 

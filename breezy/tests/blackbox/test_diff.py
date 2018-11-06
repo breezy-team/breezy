@@ -45,8 +45,8 @@ class DiffBase(tests.TestCaseWithTransport):
     def make_example_branch(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            ('hello', 'foo\n'),
-            ('goodbye', 'baz\n')])
+            ('hello', b'foo\n'),
+            ('goodbye', b'baz\n')])
         tree.add(['hello'])
         tree.commit('setup')
         tree.add(['goodbye'])
@@ -58,7 +58,7 @@ class TestDiff(DiffBase):
 
     def test_diff(self):
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!')])
+        self.build_tree_contents([('hello', b'hello world!')])
         tree.commit(message='fixing hello')
         output = self.run_bzr('diff -r 2..3', retcode=1)[0]
         self.assertTrue('\n+hello world!' in output)
@@ -76,7 +76,7 @@ class TestDiff(DiffBase):
     def test_diff_prefix(self):
         """diff --prefix appends to filenames in output"""
         self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         out, err = self.run_bzr('diff --prefix old/:new/', retcode=1)
         self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -98,7 +98,7 @@ class TestDiff(DiffBase):
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
         self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         out, err = self.run_bzr('diff -p1', retcode=1)
         self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -114,7 +114,7 @@ class TestDiff(DiffBase):
     def test_diff_p0(self):
         """diff -p0 produces diffs with no prefix"""
         self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         out, err = self.run_bzr('diff -p0', retcode=1)
         self.assertEqual(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -175,7 +175,7 @@ class TestDiff(DiffBase):
         branch1_tree.add('file2')
         branch1_tree.commit(message='add file and file2')
         branch2_tree = branch1_tree.controldir.sprout('branch2').open_workingtree()
-        self.build_tree_contents([('branch2/file', 'new content\n')])
+        self.build_tree_contents([('branch2/file', b'new content\n')])
         branch2_tree.commit(message='update file')
         return branch1_tree, branch2_tree
 
@@ -184,24 +184,24 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqual("=== modified file 'file'\n"
-                          "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "@@ -1,1 +1,1 @@\n"
-                          "-new content\n"
-                          "+contents of branch1/file\n"
-                          "\n", subst_dates(out))
+                         "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "@@ -1,1 +1,1 @@\n"
+                         "-new content\n"
+                         "+contents of branch1/file\n"
+                         "\n", subst_dates(out))
 
     def check_b1_vs_b2(self, cmd):
         # Compare branch1 vs branch2 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-contents of branch1/file\n"
-                              "+new content\n"
-                              "\n", subst_dates(out))
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-contents of branch1/file\n"
+                             "+new content\n"
+                             "\n", subst_dates(out))
 
     def check_no_diffs(self, cmd):
         # Check that running cmd returns an empty diff
@@ -250,7 +250,7 @@ class TestDiff(DiffBase):
     def test_diff_revno_branches(self):
         self.example_branches()
         branch2_tree = workingtree.WorkingTree.open_containing('branch2')[0]
-        self.build_tree_contents([('branch2/file', 'even newer content')])
+        self.build_tree_contents([('branch2/file', b'even newer content')])
         branch2_tree.commit(message='update file once more')
 
         out, err = self.run_bzr('diff -r revno:1:branch2..revno:1:branch1',
@@ -261,31 +261,31 @@ class TestDiff(DiffBase):
                                 retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", subst_dates(out))
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-new content\n"
+                             "+contents of branch1/file\n"
+                             "\n", subst_dates(out))
 
     def example_branch2(self):
         branch1_tree = self.make_branch_and_tree('branch1')
-        self.build_tree_contents([('branch1/file1', 'original line\n')])
+        self.build_tree_contents([('branch1/file1', b'original line\n')])
         branch1_tree.add('file1')
         branch1_tree.commit(message='first commit')
-        self.build_tree_contents([('branch1/file1', 'repo line\n')])
+        self.build_tree_contents([('branch1/file1', b'repo line\n')])
         branch1_tree.commit(message='second commit')
         return branch1_tree
 
     def test_diff_to_working_tree(self):
         self.example_branch2()
-        self.build_tree_contents([('branch1/file1', 'new line')])
+        self.build_tree_contents([('branch1/file1', b'new line')])
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
         self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
 
     def test_diff_to_working_tree_in_subdir(self):
         self.example_branch2()
-        self.build_tree_contents([('branch1/file1', 'new line')])
+        self.build_tree_contents([('branch1/file1', b'new line')])
         os.mkdir('branch1/dir1')
         output = self.run_bzr('diff -r 1..', retcode=1,
                               working_dir='branch1/dir1')
@@ -318,7 +318,7 @@ class TestDiff(DiffBase):
         diff_format_registry.register("boo", BooDiffTree, "Scary diff format")
         self.addCleanup(diff_format_registry.remove, "boo")
         self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         output = self.run_bzr('diff --format=boo', retcode=1)
         self.assertTrue("BOO!" in output[0])
         output = self.run_bzr('diff -Fboo', retcode=1)
@@ -360,14 +360,14 @@ class TestDiffLabels(DiffBase):
 
     def test_diff_label_added(self):
         tree = super(TestDiffLabels, self).make_example_branch()
-        self.build_tree_contents([('barbar', 'barbar')])
+        self.build_tree_contents([('barbar', b'barbar')])
         tree.add('barbar')
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== added file 'barbar'" in diff[0])
 
     def test_diff_label_modified(self):
         super(TestDiffLabels, self).make_example_branch()
-        self.build_tree_contents([('hello', 'barbar')])
+        self.build_tree_contents([('hello', b'barbar')])
         diff = self.run_bzr('diff', retcode=1)
         self.assertTrue("=== modified file 'hello'" in diff[0])
 
@@ -392,24 +392,24 @@ class TestExternalDiff(DiffBase):
             'diff -Oprogress_bar=none -r 1 --diff-options -ub',
             universal_newlines=True,
             retcode=None)
-        if 'Diff is not installed on this machine' in err:
+        if b'Diff is not installed on this machine' in err:
             raise tests.TestSkipped("No external 'diff' is available")
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
         self.assertStartsWith(
             out,
-            "=== added file 'goodbye'\n"
-            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
-            "+++ new/goodbye\t")
-        self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
-                                 "+baz\n\n")
+            b"=== added file 'goodbye'\n"
+            b"--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            b"+++ new/goodbye\t")
+        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n"
+                                 b"+baz\n\n")
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process"""
         self.requireFeature(features.diff_feature)
         self.make_example_branch()
-        self.build_tree_contents([('hello', 'Foo\n')])
+        self.build_tree_contents([('hello', b'Foo\n')])
         out, err = self.run_bzr('diff --diff-options -i --using diff',
                                     retcode=1)
         self.assertEqual("=== modified file 'hello'\n", out)
@@ -421,6 +421,6 @@ class TestDiffOutput(DiffBase):
     def test_diff_output(self):
         # check that output doesn't mangle line-endings
         self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
-        self.assertTrue('\n+hello world!\n' in output)
+        self.assertTrue(b'\n+hello world!\n' in output)

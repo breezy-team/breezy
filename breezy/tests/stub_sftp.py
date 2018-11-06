@@ -216,6 +216,22 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
+    def symlink(self, target_path, path):
+        path = self._realpath(path)
+        try:
+            os.symlink(target_path, path)
+        except OSError as e:
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
+
+    def readlink(self, path):
+        path = self._realpath(path)
+        try:
+            target_path = os.readlink(path)
+        except OSError as e:
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return target_path
+
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
@@ -240,7 +256,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
-    # removed: chattr, symlink, readlink
+    # removed: chattr
     # (nothing in bzr's sftp transport uses those)
 
 
@@ -489,8 +505,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
             # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
         else:
-            # But unix SFTP servers should just deal in bytestreams
-            self._homedir = self._homedir.encode('utf-8')
+            self._homedir = self._homedir
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'

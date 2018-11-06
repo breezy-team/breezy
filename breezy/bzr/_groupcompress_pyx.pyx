@@ -26,10 +26,10 @@ cdef extern from "python-compat.h":
 cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
-    int PyString_CheckExact(object)
-    char * PyString_AS_STRING(object)
-    Py_ssize_t PyString_GET_SIZE(object)
-    object PyString_FromStringAndSize(char *, Py_ssize_t)
+    int PyBytes_CheckExact(object)
+    char * PyBytes_AS_STRING(object)
+    Py_ssize_t PyBytes_GET_SIZE(object)
+    object PyBytes_FromStringAndSize(char *, Py_ssize_t)
 
 
 cdef extern from *:
@@ -120,12 +120,12 @@ cdef object _translate_delta_failure(delta_result result):
 
 
 def _rabin_hash(content):
-    if not PyString_CheckExact(content):
+    if not PyBytes_CheckExact(content):
         raise ValueError('content must be a string')
     if len(content) < 16:
         raise ValueError('content must be at least 16 bytes long')
     # Try to cast it to an int, if it can fit
-    return int(rabin_hash(<unsigned char*>(PyString_AS_STRING(content))))
+    return int(rabin_hash(<unsigned char*>(PyBytes_AS_STRING(content))))
 
 
 cdef class DeltaIndex:
@@ -236,15 +236,15 @@ cdef class DeltaIndex:
         cdef source_info *src
         cdef unsigned int num_indexes
 
-        if not PyString_CheckExact(delta):
-            raise TypeError('delta is not a str')
+        if not PyBytes_CheckExact(delta):
+            raise TypeError('delta is not a bytestring')
 
         source_location = len(self._sources)
         if source_location >= self._max_num_sources:
             self._expand_sources()
         self._sources.append(delta)
-        c_delta = PyString_AS_STRING(delta)
-        c_delta_size = PyString_GET_SIZE(delta)
+        c_delta = PyBytes_AS_STRING(delta)
+        c_delta_size = PyBytes_GET_SIZE(delta)
         src = self._source_infos + source_location
         src.buf = c_delta
         src.size = c_delta_size
@@ -278,8 +278,8 @@ cdef class DeltaIndex:
         cdef unsigned int num_indexes
         cdef int max_num_entries
 
-        if not PyString_CheckExact(source):
-            raise TypeError('source is not a str')
+        if not PyBytes_CheckExact(source):
+            raise TypeError('source is not a bytestring')
 
         source_location = len(self._sources)
         if source_location >= self._max_num_sources:
@@ -288,8 +288,8 @@ cdef class DeltaIndex:
             # We were lazy about populating the index, create it now
             self._populate_first_index()
         self._sources.append(source)
-        c_source = PyString_AS_STRING(source)
-        c_source_size = PyString_GET_SIZE(source)
+        c_source = PyBytes_AS_STRING(source)
+        c_source_size = PyBytes_GET_SIZE(source)
         src = self._source_infos + source_location
         src.buf = c_source
         src.size = c_source_size
@@ -346,14 +346,14 @@ cdef class DeltaIndex:
             # We were just lazy about generating the index
             self._populate_first_index()
 
-        if not PyString_CheckExact(target_bytes):
-            raise TypeError('target is not a str')
+        if not PyBytes_CheckExact(target_bytes):
+            raise TypeError('target is not a bytestring')
 
-        target = PyString_AS_STRING(target_bytes)
-        target_size = PyString_GET_SIZE(target_bytes)
+        target = PyBytes_AS_STRING(target_bytes)
+        target_size = PyBytes_GET_SIZE(target_bytes)
 
         # TODO: inline some of create_delta so we at least don't have to double
-        #       malloc, and can instead use PyString_FromStringAndSize, to
+        #       malloc, and can instead use PyBytes_FromStringAndSize, to
         #       allocate the bytes into the final string
         c_max_delta_size = max_delta_size
         with nogil:
@@ -361,7 +361,7 @@ cdef class DeltaIndex:
                                &delta_size, c_max_delta_size, &delta)
         result = None
         if res == DELTA_OK:
-            result = PyString_FromStringAndSize(<char *>delta, delta_size)
+            result = PyBytes_FromStringAndSize(<char *>delta, delta_size)
             free(delta)
         elif res != DELTA_SIZE_TOO_BIG:
             raise _translate_delta_failure(res)
@@ -381,14 +381,14 @@ def apply_delta(source_bytes, delta_bytes):
     cdef char *delta
     cdef Py_ssize_t delta_size
 
-    if not PyString_CheckExact(source_bytes):
-        raise TypeError('source is not a str')
-    if not PyString_CheckExact(delta_bytes):
-        raise TypeError('delta is not a str')
-    source = PyString_AS_STRING(source_bytes)
-    source_size = PyString_GET_SIZE(source_bytes)
-    delta = PyString_AS_STRING(delta_bytes)
-    delta_size = PyString_GET_SIZE(delta_bytes)
+    if not PyBytes_CheckExact(source_bytes):
+        raise TypeError('source is not a bytestring')
+    if not PyBytes_CheckExact(delta_bytes):
+        raise TypeError('delta is not a bytestring')
+    source = PyBytes_AS_STRING(source_bytes)
+    source_size = PyBytes_GET_SIZE(source_bytes)
+    delta = PyBytes_AS_STRING(delta_bytes)
+    delta_size = PyBytes_GET_SIZE(delta_bytes)
     # Code taken from patch-delta.c, only brought here to give better error
     # handling, and to avoid double allocating memory
     if (delta_size < DELTA_SIZE_MIN):
@@ -458,8 +458,8 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
 
     # now the result size
     size = get_delta_hdr_size(&data, top)
-    result = PyString_FromStringAndSize(NULL, size)
-    dst_buf = <unsigned char*>PyString_AS_STRING(result)
+    result = PyBytes_FromStringAndSize(NULL, size)
+    dst_buf = <unsigned char*>PyBytes_AS_STRING(result)
 
     failed = 0
     with nogil:
@@ -513,7 +513,7 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
         return None
 
     # *dst_size = out - dst_buf;
-    if (out - dst_buf) != PyString_GET_SIZE(result):
+    if (out - dst_buf) != PyBytes_GET_SIZE(result):
         raise RuntimeError('Number of bytes extracted did not match the'
             ' size encoded in the delta header.')
     return result
@@ -527,9 +527,9 @@ def apply_delta_to_source(source, delta_start, delta_end):
     cdef Py_ssize_t c_delta_size
     cdef Py_ssize_t c_delta_start, c_delta_end
 
-    if not PyString_CheckExact(source):
+    if not PyBytes_CheckExact(source):
         raise TypeError('source is not a str')
-    c_source_size = PyString_GET_SIZE(source)
+    c_source_size = PyBytes_GET_SIZE(source)
     c_delta_start = delta_start
     c_delta_end = delta_end
     if c_delta_start >= c_source_size:
@@ -540,7 +540,7 @@ def apply_delta_to_source(source, delta_start, delta_end):
         raise ValueError('delta starts after it ends')
 
     c_delta_size = c_delta_end - c_delta_start
-    c_source = PyString_AS_STRING(source)
+    c_source = PyBytes_AS_STRING(source)
     c_delta = c_source + c_delta_start
     # We don't use source_size, because we know the delta should not refer to
     # any bytes after it starts
@@ -564,7 +564,7 @@ def encode_base128_int(val):
         raise ValueError('encode_base128_int overflowed the buffer')
     c_bytes[count] = <unsigned char>(c_val & 0xFF)
     count = count + 1
-    return PyString_FromStringAndSize(<char *>c_bytes, count)
+    return PyBytes_FromStringAndSize(<char *>c_bytes, count)
 
 
 def decode_base128_int(bytes):
@@ -579,11 +579,11 @@ def decode_base128_int(bytes):
     offset = 0
     val = 0
     shift = 0
-    if not PyString_CheckExact(bytes):
+    if not PyBytes_CheckExact(bytes):
         raise TypeError('bytes is not a string')
-    c_bytes = <unsigned char*>PyString_AS_STRING(bytes)
+    c_bytes = <unsigned char*>PyBytes_AS_STRING(bytes)
     # We take off 1, because we have to be able to decode the non-expanded byte
-    num_low_bytes = PyString_GET_SIZE(bytes) - 1
+    num_low_bytes = PyBytes_GET_SIZE(bytes) - 1
     while (c_bytes[offset] & 0x80) and offset < num_low_bytes:
         val = val | ((c_bytes[offset] & 0x7F) << shift)
         shift = shift + 7

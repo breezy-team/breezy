@@ -32,27 +32,21 @@ def install_bundle(repository, bundle_reader):
     custom_install = getattr(bundle_reader, 'install', None)
     if custom_install is not None:
         return custom_install(repository)
-    pb = ui.ui_factory.nested_progress_bar()
-    repository.lock_write()
-    try:
+    with repository.lock_write(), ui.ui_factory.nested_progress_bar() as pb:
         real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
-            pb.update(gettext("Install revisions"),i, len(real_revisions))
+            pb.update(gettext("Install revisions"), i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
                 continue
             cset_tree = bundle_reader.revision_tree(repository,
                                                        revision.revision_id)
             install_revision(repository, revision, cset_tree)
-    finally:
-        repository.unlock()
-        pb.finished()
 
 
 def merge_bundle(reader, tree, check_clean, merge_type,
                     reprocess, show_base, change_reporter=None):
     """Merge a revision bundle into the current tree."""
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         pp = ProgressPhase("Merge phase", 6, pb)
         pp.next_phase()
         install_bundle(tree.branch.repository, reader)
@@ -75,6 +69,4 @@ def merge_bundle(reader, tree, check_clean, merge_type,
         merger.reprocess = reprocess
         conflicts = merger.do_merge()
         merger.set_pending()
-    finally:
-        pb.clear()
     return conflicts

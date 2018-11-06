@@ -21,8 +21,6 @@ See MutableTree for more details.
 
 from __future__ import absolute_import
 
-import operator
-import os
 from . import (
     errors,
     hooks,
@@ -31,23 +29,21 @@ from . import (
     tree,
     )
 
-from .decorators import needs_read_lock, needs_write_lock
 from .sixish import (
+    text_type,
     viewvalues,
     )
 
 
-def needs_tree_write_lock(unbound):
-    """Decorate unbound to take out and release a tree_write lock."""
-    def tree_write_locked(self, *args, **kwargs):
-        self.lock_tree_write()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
-    tree_write_locked.__doc__ = unbound.__doc__
-    tree_write_locked.__name__ = unbound.__name__
-    return tree_write_locked
+class BadReferenceTarget(errors.InternalBzrError):
+
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." \
+           "%(reason)s"
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
 
 
 class MutableTree(tree.Tree):
@@ -87,7 +83,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.is_control_filename)
 
-    @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
         """Add paths to the set of versioned paths.
 
@@ -106,12 +101,12 @@ class MutableTree(tree.Tree):
 
         TODO: Perhaps callback with the ids and paths as they're added.
         """
-        if isinstance(files, basestring):
+        if isinstance(files, (str, text_type)):
             # XXX: Passing a single string is inconsistent and should be
             # deprecated.
-            if not (ids is None or isinstance(ids, basestring)):
+            if not (ids is None or isinstance(ids, bytes)):
                 raise AssertionError()
-            if not (kinds is None or isinstance(kinds, basestring)):
+            if not (kinds is None or isinstance(kinds, (str, text_type))):
                 raise AssertionError()
             files = [files]
             if ids is not None:
@@ -130,36 +125,24 @@ class MutableTree(tree.Tree):
             kinds = [None] * len(files)
         elif not len(kinds) == len(files):
             raise AssertionError()
-        for f in files:
-            # generic constraint checks:
-            if self.is_control_filename(f):
-                raise errors.ForbiddenControlFileError(filename=f)
-            fp = osutils.splitpath(f)
-        # fill out file kinds for all files [not needed when we stop
-        # caring about the instantaneous file kind within a uncommmitted tree
-        #
-        self._gather_kinds(files, kinds)
-        self._add(files, ids, kinds)
+        with self.lock_tree_write():
+            for f in files:
+                # generic constraint checks:
+                if self.is_control_filename(f):
+                    raise errors.ForbiddenControlFileError(filename=f)
+                fp = osutils.splitpath(f)
+            # fill out file kinds for all files [not needed when we stop
+            # caring about the instantaneous file kind within a uncommmitted tree
+            #
+            self._gather_kinds(files, kinds)
+            self._add(files, ids, kinds)
 
     def add_reference(self, sub_tree):
-        """Add a TreeReference to the tree, pointing at sub_tree"""
-        raise errors.UnsupportedOperation(self.add_reference, self)
+        """Add a TreeReference to the tree, pointing at sub_tree.
 
-    def _add_reference(self, sub_tree):
-        """Standard add_reference implementation, for use by subclasses"""
-        try:
-            sub_tree_path = self.relpath(sub_tree.basedir)
-        except errors.PathNotChild:
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                            'Target not inside tree.')
-        sub_tree_id = sub_tree.get_root_id()
-        if sub_tree_id == self.get_root_id():
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                     'Trees have the same root id.')
-        if self.has_id(sub_tree_id):
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                            'Root id already present in tree')
-        self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+        :param sub_tree: subtree to add.
+        """
+        raise errors.UnsupportedOperation(self.add_reference, self)
 
     def _add(self, files, ids, kinds):
         """Helper function for add - updates the inventory.
@@ -171,45 +154,34 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self._add)
 
-    def apply_inventory_delta(self, changes):
-        """Apply changes to the inventory as an atomic operation.
-
-        :param changes: An inventory delta to apply to the working tree's
-            inventory.
-        :return None:
-        :seealso Inventory.apply_delta: For details on the changes parameter.
-        """
-        raise NotImplementedError(self.apply_inventory_delta)
-
-    @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
         from breezy import commit
         possible_master_transports=[]
-        revprops = commit.Commit.update_revprops(
-                revprops,
-                self.branch,
-                kwargs.pop('authors', None),
-                kwargs.get('local', False),
-                possible_master_transports)
-        # args for wt.commit start at message from the Commit.commit method,
-        args = (message, ) + args
-        for hook in MutableTree.hooks['start_commit']:
-            hook(self)
-        committed_id = commit.Commit().commit(working_tree=self,
-            revprops=revprops,
-            possible_master_transports=possible_master_transports,
-            *args, **kwargs)
-        post_hook_params = PostCommitHookParams(self)
-        for hook in MutableTree.hooks['post_commit']:
-            hook(post_hook_params)
-        return committed_id
+        with self.lock_write():
+            revprops = commit.Commit.update_revprops(
+                    revprops,
+                    self.branch,
+                    kwargs.pop('authors', None),
+                    kwargs.get('local', False),
+                    possible_master_transports)
+            # args for wt.commit start at message from the Commit.commit method,
+            args = (message, ) + args
+            for hook in MutableTree.hooks['start_commit']:
+                hook(self)
+            committed_id = commit.Commit().commit(working_tree=self,
+                revprops=revprops,
+                possible_master_transports=possible_master_transports,
+                *args, **kwargs)
+            post_hook_params = PostCommitHookParams(self)
+            for hook in MutableTree.hooks['post_commit']:
+                hook(post_hook_params)
+            return committed_id
 
     def _gather_kinds(self, files, kinds):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
-    @needs_read_lock
     def has_changes(self, _from_tree=None):
         """Quickly check that the tree contains at least one commitable change.
 
@@ -218,23 +190,23 @@ class MutableTree(tree.Tree):
 
         :return: True if a change is found. False otherwise
         """
-        # Check pending merges
-        if len(self.get_parent_ids()) > 1:
-            return True
-        if _from_tree is None:
-            _from_tree = self.basis_tree()
-        changes = self.iter_changes(_from_tree)
-        try:
-            change = next(changes)
-            # Exclude root (talk about black magic... --vila 20090629)
-            if change[4] == (None, None):
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            try:
                 change = next(changes)
-            return True
-        except StopIteration:
-            # No changes
-            return False
+                # Exclude root (talk about black magic... --vila 20090629)
+                if change[4] == (None, None):
+                    change = next(changes)
+                return True
+            except StopIteration:
+                # No changes
+                return False
 
-    @needs_read_lock
     def check_changed_or_out_of_date(self, strict, opt_name,
                                      more_error, more_warning):
         """Check the tree for uncommitted changes and branch synchronization.
@@ -251,28 +223,28 @@ class MutableTree(tree.Tree):
 
         :param more_warning: Details about what is happening.
         """
-        if strict is None:
-            strict = self.branch.get_config_stack().get(opt_name)
-        if strict is not False:
-            err_class = None
-            if (self.has_changes()):
-                err_class = errors.UncommittedChanges
-            elif self.last_revision() != self.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the action with --no-strict
-                err_class = errors.OutOfDateTree
-            if err_class is not None:
-                if strict is None:
-                    err = err_class(self, more=more_warning)
-                    # We don't want to interrupt the user if he expressed no
-                    # preference about strict.
-                    trace.warning('%s', err._format())
-                else:
-                    err = err_class(self, more=more_error)
-                    raise err
+        with self.lock_read():
+            if strict is None:
+                strict = self.branch.get_config_stack().get(opt_name)
+            if strict is not False:
+                err_class = None
+                if (self.has_changes()):
+                    err_class = errors.UncommittedChanges
+                elif self.last_revision() != self.branch.last_revision():
+                    # The tree has lost sync with its branch, there is little
+                    # chance that the user is aware of it but he can still
+                    # force the action with --no-strict
+                    err_class = errors.OutOfDateTree
+                if err_class is not None:
+                    if strict is None:
+                        err = err_class(self, more=more_warning)
+                        # We don't want to interrupt the user if he expressed
+                        # no preference about strict.
+                        trace.warning('%s', err._format())
+                    else:
+                        err = err_class(self, more=more_error)
+                        raise err
 
-    @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.
 
@@ -308,7 +280,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.lock_write)
 
-    @needs_write_lock
     def mkdir(self, path, file_id=None):
         """Create a directory in the tree. if file_id is None, one is assigned.
 
@@ -334,8 +305,7 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
-    @needs_write_lock
-    def put_file_bytes_non_atomic(self, file_id, bytes):
+    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
         """Update the content of a file in the tree.
 
         Note that the file is written in-place rather than being
@@ -384,6 +354,38 @@ class MutableTree(tree.Tree):
             ignored to the rule that caused them to be ignored.
         """
         raise NotImplementedError(self.smart_add)
+
+    def rename_one(self, from_rel, to_rel, after=False):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+
+        rename_one has several 'modes' to work. First, it can rename a physical
+        file and change the file_id. That is the normal mode. Second, it can
+        only change the file_id without touching any physical file.
+
+        rename_one uses the second mode if 'after == True' and 'to_rel' is
+        either not versioned or newly added, and present in the working tree.
+
+        rename_one uses the second mode if 'after == False' and 'from_rel' is
+        versioned but no longer in the working tree, and 'to_rel' is not
+        versioned but present in the working tree.
+
+        rename_one uses the first mode if 'after == False' and 'from_rel' is
+        versioned and present in the working tree, and 'to_rel' is not
+        versioned and not present in the working tree.
+
+        Everything else results in an error.
+        """
+        raise NotImplementedError(self.rename_one)
+
+    def copy_one(self, from_rel, to_rel):
+        """Copy one file or directory.
+
+        This can change the directory or the filename or both.
+
+        """
+        raise NotImplementedError(self.copy_one)
 
 
 class MutableTreeHooks(hooks.Hooks):

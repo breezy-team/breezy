@@ -41,9 +41,9 @@ class TestLogFormats(tests.TestCaseWithTransport):
                 self.fail("%s exists" % conf_path)
 
         config.ensure_config_dir_exists()
-        f = open(conf_path,'wb')
+        f = open(conf_path, 'wb')
         try:
-            f.write("""[DEFAULT]
+            f.write(b"""[DEFAULT]
 email=Joe Foo <joe@foo.com>
 log_format=line
 """)

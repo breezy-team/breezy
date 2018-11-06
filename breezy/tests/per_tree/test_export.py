@@ -32,9 +32,9 @@ class ExportTest(object):
     def prepare_export(self):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents(
-            [('wta/file', 'a\nb\nc\nd\n'), ('wta/dir', '')])
-        work_a.add('file', 'file-id')
-        work_a.add('dir', 'dir-id')
+            [('wta/file', b'a\nb\nc\nd\n'), ('wta/dir', b'')])
+        work_a.add('file')
+        work_a.add('dir')
         work_a.commit('add file')
         tree_a = self.workingtree_to_test_tree(work_a)
         export(tree_a, 'output', self.exporter)
@@ -43,7 +43,7 @@ class ExportTest(object):
         self.requireFeature(features.SymlinkFeature)
         work_a = self.make_branch_and_tree('wta')
         os.symlink('target', 'wta/link')
-        work_a.add('link', 'link-id')
+        work_a.add('link')
         work_a.commit('add link')
         tree_a = self.workingtree_to_test_tree(work_a)
         export(tree_a, 'output', self.exporter)

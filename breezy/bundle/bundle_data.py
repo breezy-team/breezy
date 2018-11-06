@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import base64
+from io import BytesIO
 import os
 import pprint
 
@@ -41,7 +42,6 @@ from ..bzr.inventory import (
 from ..osutils import sha_string, pathjoin
 from ..revision import Revision, NULL_REVISION
 from ..sixish import (
-    BytesIO,
     viewitems,
     )
 from ..testament import StrictTestament
@@ -53,6 +53,7 @@ from ..bzr.xml5 import serializer_v5
 class RevisionInfo(object):
     """Gets filled out for each revision object that is read.
     """
+
     def __init__(self, revision_id):
         self.revision_id = revision_id
         self.sha1 = None
@@ -286,11 +287,8 @@ class BundleInfo(object):
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            f = open(',,bogus-inv', 'wb')
-            try:
+            with open(',,bogus-inv', 'wb') as f:
                 f.write(s)
-            finally:
-                f.close()
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
@@ -352,9 +350,9 @@ class BundleInfo(object):
 
         def do_patch(path, lines, encoding):
             if encoding == 'base64':
-                patch = base64.decodestring(''.join(lines))
+                patch = base64.b64decode(b''.join(lines))
             elif encoding is None:
-                patch =  ''.join(lines)
+                patch =  b''.join(lines)
             else:
                 raise ValueError(encoding)
             bundle_tree.note_patch(path, patch)
@@ -476,7 +474,7 @@ class BundleTree(Tree):
         self._renamed_r = {} # new_path => old_path
         self._new_id = {} # new_path => new_id
         self._new_id_r = {} # new_id => new_path
-        self._kinds = {} # new_id => kind
+        self._kinds = {} # new_path => kind
         self._last_changed = {} # new_id => revision_id
         self._executable = {} # new_id => executable value
         self.patches = {}
@@ -502,7 +500,7 @@ class BundleTree(Tree):
         """Files that don't exist in base need a new id."""
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
-        self._kinds[new_id] = kind
+        self._kinds[new_path] = kind
 
     def note_last_changed(self, file_id, revision_id):
         if (file_id in self._last_changed
@@ -535,7 +533,7 @@ class BundleTree(Tree):
         old_path = self._renamed.get(new_path)
         if old_path is not None:
             return old_path
-        dirname,basename = os.path.split(new_path)
+        dirname, basename = os.path.split(new_path)
         # dirname is not '' doesn't work, because
         # dirname may be a unicode entry, and is
         # requires the objects to be identical
@@ -564,7 +562,7 @@ class BundleTree(Tree):
             return new_path
         if new_path in self._renamed:
             return None
-        dirname,basename = os.path.split(old_path)
+        dirname, basename = os.path.split(old_path)
         if dirname != '':
             new_dir = self.new_path(dirname)
             if new_dir is None:
@@ -618,7 +616,7 @@ class BundleTree(Tree):
         new_path = self.id2path(file_id)
         return self.base_tree.path2id(new_path)
 
-    def get_file(self, file_id):
+    def get_file(self, path, file_id=None):
         """Return a file-like object containing the new contents of the
         file given by file_id.
 
@@ -626,74 +624,79 @@ class BundleTree(Tree):
                 in the text-store, so that the file contents would
                 then be cached.
         """
+        if file_id is None:
+            file_id = self.path2id(path)
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
             base_id != self.base_tree.get_root_id()):
-            patch_original = self.base_tree.get_file(base_id)
+            old_path = self.old_path(path)
+            patch_original = self.base_tree.get_file(
+                    old_path, base_id)
         else:
             patch_original = None
-        file_patch = self.patches.get(self.id2path(file_id))
+        file_patch = self.patches.get(path)
         if file_patch is None:
             if (patch_original is None and
-                self.kind(file_id) == 'directory'):
+                self.kind(path, file_id) == 'directory'):
                 return BytesIO()
             if patch_original is None:
                 raise AssertionError("None: %s" % file_id)
             return patch_original
 
-        if file_patch.startswith('\\'):
+        if file_patch.startswith(b'\\'):
             raise ValueError(
                 'Malformed patch for %s, %r' % (file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
-    def get_symlink_target(self, file_id, path=None):
-        if path is None:
-            path = self.id2path(file_id)
+    def get_symlink_target(self, path, file_id=None):
         try:
             return self._targets[path]
         except KeyError:
-            return self.base_tree.get_symlink_target(file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.get_symlink_target(old_path, file_id)
 
-    def kind(self, file_id):
-        if file_id in self._kinds:
-            return self._kinds[file_id]
-        return self.base_tree.kind(file_id)
+    def kind(self, path, file_id=None):
+        try:
+            return self._kinds[path]
+        except KeyError:
+            old_path = self.old_path(path)
+            return self.base_tree.kind(old_path, file_id)
 
-    def get_file_revision(self, file_id):
-        path = self.id2path(file_id)
+    def get_file_revision(self, path, file_id=None):
         if path in self._last_changed:
             return self._last_changed[path]
         else:
-            return self.base_tree.get_file_revision(file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.get_file_revision(old_path, file_id)
 
-    def is_executable(self, file_id):
-        path = self.id2path(file_id)
+    def is_executable(self, path, file_id=None):
         if path in self._executable:
             return self._executable[path]
         else:
-            return self.base_tree.is_executable(file_id)
+            old_path = self.old_path(path)
+            return self.base_tree.is_executable(old_path, file_id)
 
-    def get_last_changed(self, file_id):
-        path = self.id2path(file_id)
+    def get_last_changed(self, path, file_id=None):
         if path in self._last_changed:
             return self._last_changed[path]
-        return self.base_tree.get_file_revision(file_id)
+        old_path = self.old_path(path)
+        return self.base_tree.get_file_revision(old_path, file_id)
 
-    def get_size_and_sha1(self, file_id):
+    def get_size_and_sha1(self, new_path, file_id=None):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
         from the base_tree. Rather than re-reading the file.
         """
-        new_path = self.id2path(file_id)
         if new_path is None:
             return None, None
         if new_path not in self.patches:
             # If the entry does not have a patch, then the
             # contents must be the same as in the base_tree
-            text_size = self.base_tree.get_file_size(file_id)
-            text_sha1 = self.base_tree.get_file_sha1(file_id)
+            base_path = self.old_path(new_path)
+            text_size = self.base_tree.get_file_size(base_path, file_id)
+            text_sha1 = self.base_tree.get_file_sha1(base_path, file_id)
             return text_size, text_sha1
-        fileobj = self.get_file(file_id)
+        fileobj = self.get_file(new_path, file_id)
         content = fileobj.read()
         return len(content), sha_string(content)
 
@@ -705,32 +708,30 @@ class BundleTree(Tree):
         from os.path import dirname, basename
         inv = Inventory(None, self.revision_id)
 
-        def add_entry(file_id):
-            path = self.id2path(file_id)
-            if path is None:
-                return
+        def add_entry(path, file_id):
             if path == '':
                 parent_id = None
             else:
                 parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
-            kind = self.kind(file_id)
-            revision_id = self.get_last_changed(file_id)
+            kind = self.kind(path, file_id)
+            revision_id = self.get_last_changed(path, file_id)
 
             name = basename(path)
             if kind == 'directory':
                 ie = InventoryDirectory(file_id, name, parent_id)
             elif kind == 'file':
                 ie = InventoryFile(file_id, name, parent_id)
-                ie.executable = self.is_executable(file_id)
+                ie.executable = self.is_executable(path, file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(file_id, path)
+                ie.symlink_target = self.get_symlink_target(path, file_id)
             ie.revision = revision_id
 
             if kind == 'file':
-                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(
+                        path, file_id)
                 if ie.text_size is None:
                     raise BzrError(
                         'Got a text_size of None for file_id %r' % file_id)
@@ -738,7 +739,7 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            add_entry(file_id)
+            add_entry(path, file_id)
 
         return inv
 
@@ -753,6 +754,9 @@ class BundleTree(Tree):
 
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.inventory.iter_entries()}
+
+    def all_versioned_paths(self):
+        return {path for path, entry in self.inventory.iter_entries()}
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version
@@ -788,7 +792,7 @@ def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
     from breezy.patches import iter_patched
     from breezy.iterablefile import IterableFile
-    if file_patch == "":
+    if file_patch == b"":
         return IterableFile(())
     # string.splitlines(True) also splits on '\r', but the iter_patched code
     # only expects to iterate over '\n' style lines

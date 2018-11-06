@@ -26,7 +26,16 @@ from __future__ import absolute_import
 import httplib2
 import os
 import re
-import urlparse
+try:
+    from urllib.parse import (
+        urlparse,
+        urlunparse,
+        )
+except ImportError:  # python < 3
+    from urlparse import (
+        urlparse,
+        urlunparse,
+        )
 
 from ... import (
     branch,
@@ -173,7 +182,7 @@ class LaunchpadBranch(object):
             return False
         if url.startswith('lp:'):
             return True
-        regex = re.compile('([a-z]*\+)*(bzr\+ssh|http)'
+        regex = re.compile('([a-z]*\\+)*(bzr\\+ssh|http)'
                            '://bazaar.*.launchpad.net')
         return bool(regex.match(url))
 
@@ -266,8 +275,7 @@ class LaunchpadBranch(object):
         """Update the Launchpad copy of this branch."""
         if not self._check_update:
             return
-        self.bzr.lock_read()
-        try:
+        with self.bzr.lock_read():
             if self.lp.last_scanned_id is not None:
                 if self.bzr.last_revision() == self.lp.last_scanned_id:
                     trace.note(gettext('%s is already up-to-date.') %
@@ -279,8 +287,6 @@ class LaunchpadBranch(object):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
                 trace.note(gettext('Pushing to %s') % self.lp.bzr_identity)
             self.bzr.push(self.push_bzr)
-        finally:
-            self.bzr.unlock()
 
     def find_lca_tree(self, other):
         """Find the revision tree for the LCA of this branch and other.
@@ -296,9 +302,8 @@ class LaunchpadBranch(object):
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+    scheme, netloc, path, params, query, fragment = urlparse(
         str(object.self_link))
     path = '/'.join(path.split('/')[2:])
     netloc = netloc.replace('api.', 'code.')
-    return urlparse.urlunparse((scheme, netloc, path, params, query,
-                                fragment))
+    return urlunparse((scheme, netloc, path, params, query, fragment))

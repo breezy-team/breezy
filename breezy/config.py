@@ -16,18 +16,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Configuration that affects the behaviour of Bazaar.
+"""Configuration that affects the behaviour of Breezy.
 
-Currently this configuration resides in ~/.bazaar/bazaar.conf
-and ~/.bazaar/locations.conf, which is written to by brz.
+Currently this configuration resides in ~/.config/breezy/breezy.conf
+and ~/.config/breezy/locations.conf, which is written to by brz.
 
-In bazaar.conf the following options may be set:
+If the first location doesn't exist, then brz falls back to reading
+Bazaar configuration files in ~/.bazaar or ~/.config/bazaar.
+
+In breezy.conf the following options may be set:
 [DEFAULT]
 editor=name-of-program
 email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
-gpg_signing_command=name-of-program
 log_format=name-of-format
 validate_signatures_in_log=true|false(default)
 acceptable_keys=pattern1,pattern2
@@ -35,7 +37,7 @@ gpg_signing_key=amy@example.com
 
 in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
-set in both bazaar.conf and locations.conf are overridden by the locations.conf
+set in both breezy.conf and locations.conf are overridden by the locations.conf
 setting.
 [/home/robertc/source]
 recurse=False|True(default)
@@ -63,7 +65,7 @@ validate_signatures_in_log - show GPG signature validity in log output
 acceptable_keys - comma separated list of key patterns acceptable for
                   verify-signatures command
 
-In bazaar.conf you can also define aliases in the ALIASES sections, example
+In breezy.conf you can also define aliases in the ALIASES sections, example
 
 [ALIASES]
 lastlog=log --line -r-10..-1
@@ -79,21 +81,22 @@ import sys
 import configobj
 
 import breezy
-from .decorators import needs_write_lock
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import base64
+import errno
 import fnmatch
 import re
+import stat
 
 from breezy import (
     atomicfile,
     controldir,
     debug,
     directory_service,
-    errors,
     lazy_regex,
     library_state,
+    lock,
     lockdir,
     mergetools,
     osutils,
@@ -107,6 +110,7 @@ from breezy.i18n import gettext
 """)
 from . import (
     commands,
+    errors,
     hooks,
     lazy_regex,
     registry,
@@ -115,8 +119,8 @@ from .sixish import (
     binary_type,
     BytesIO,
     PY3,
-    text_type,
     string_types,
+    text_type,
     )
 
 
@@ -152,6 +156,89 @@ STORE_LOCATION_NORECURSE = POLICY_NORECURSE
 STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
+
+
+class OptionExpansionLoop(errors.BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(errors.BzrError):
+
+    _fmt = 'Option "%(name)s" is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string
+
+
+class IllegalOptionName(errors.BzrError):
+
+    _fmt = 'Option "%(name)s" is not allowed.'
+
+    def __init__(self, name):
+        self.name = name
+
+
+class ConfigContentError(errors.BzrError):
+
+    _fmt = "Config file %(filename)s is not UTF-8 encoded\n"
+
+    def __init__(self, filename):
+        self.filename = filename
+
+
+class ParseConfigError(errors.BzrError):
+
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
+    def __init__(self, errors, filename):
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
+
+
+class ConfigOptionValueError(errors.BzrError):
+
+    _fmt = ('Bad value "%(value)s" for option "%(name)s".\n'
+            'See ``brz help %(name)s``')
+
+    def __init__(self, name, value):
+        errors.BzrError.__init__(self, name=name, value=value)
+
+
+class NoEmailInUsername(errors.BzrError):
+
+    _fmt = "%(username)r does not seem to contain a reasonable email address"
+
+    def __init__(self, username):
+        self.username = username
+
+
+class NoSuchConfig(errors.BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        errors.BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(errors.BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        errors.BzrError.__init__(self, option_name=option_name)
+
+
+class NoWhoami(errors.BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. brz whoami "Your Name <name@example.com>"')
 
 
 def signature_policy_from_unicode(signature_string):
@@ -341,11 +428,11 @@ class Config(object):
                 else:
                     name = chunk[1:-1]
                     if name in _ref_stack:
-                        raise errors.OptionExpansionLoop(string, _ref_stack)
+                        raise OptionExpansionLoop(string, _ref_stack)
                     _ref_stack.append(name)
                     value = self._expand_option(name, env, _ref_stack)
                     if value is None:
-                        raise errors.ExpandingUnknownOption(name, string)
+                        raise ExpandingUnknownOption(name, string)
                     if isinstance(value, list):
                         list_value = True
                         chunks.extend(value)
@@ -474,7 +561,7 @@ class Config(object):
         $BRZ_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If no username can be found, errors.NoWhoami exception is raised.
+        If no username can be found, NoWhoami exception is raised.
         """
         v = os.environ.get('BRZ_EMAIL')
         if v:
@@ -487,7 +574,7 @@ class Config(object):
         return default_email()
 
     def ensure_username(self):
-        """Raise errors.NoWhoami if username is not set.
+        """Raise NoWhoami if username is not set.
 
         This method relies on the username() function raising the error.
         """
@@ -647,7 +734,9 @@ class IniBasedConfig(Config):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        self._content = BytesIO(str_or_unicode.encode('utf-8'))
+        if isinstance(str_or_unicode, text_type):
+            str_or_unicode = str_or_unicode.encode('utf-8')
+        self._content = BytesIO(str_or_unicode)
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
         if save:
@@ -665,9 +754,9 @@ class IniBasedConfig(Config):
         try:
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise errors.ParseConfigError(e.errors, e.config.filename)
+            raise ParseConfigError(e.errors, e.config.filename)
         except UnicodeDecodeError:
-            raise errors.ConfigContentError(self.file_name)
+            raise ConfigContentError(self.file_name)
         # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         for hook in OldConfigHooks['load']:
@@ -796,10 +885,6 @@ class IniBasedConfig(Config):
         else:
             return None
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        return self._get_user_option('gpg_signing_command')
-
     def _log_format(self):
         """See Config.log_format."""
         return self._get_user_option('log_format')
@@ -843,7 +928,7 @@ class IniBasedConfig(Config):
         try:
             del section[option_name]
         except KeyError:
-            raise errors.NoSuchConfigOption(option_name)
+            raise NoSuchConfigOption(option_name)
         self._write_config_file()
         for hook in OldConfigHooks['remove']:
             hook(self, option_name)
@@ -853,10 +938,8 @@ class IniBasedConfig(Config):
             raise AssertionError('We cannot save, self.file_name is None')
         conf_dir = os.path.dirname(self.file_name)
         ensure_config_dir_exists(conf_dir)
-        atomic_file = atomicfile.AtomicFile(self.file_name)
-        self._get_parser().write(atomic_file)
-        atomic_file.commit()
-        atomic_file.close()
+        with atomicfile.AtomicFile(self.file_name) as atomic_file:
+            self._get_parser().write(atomic_file)
         osutils.copy_ownership_from_path(self.file_name)
         for hook in OldConfigHooks['save']:
             hook(self)
@@ -868,8 +951,8 @@ class LockableConfig(IniBasedConfig):
     If several processes try to write the config file, the accesses need to be
     serialized.
 
-    Daughter classes should decorate all methods that update a config with the
-    ``@needs_write_lock`` decorator (they call, directly or indirectly, the
+    Daughter classes should use the self.lock_write() decorator method when they 
+    upate a config (they call, directly or indirectly, the
     ``_write_config_file()`` method. These methods (typically ``set_option()``
     and variants must reload the config file from disk before calling
     ``_write_config_file()``), this can be achieved by calling the
@@ -915,7 +998,8 @@ class LockableConfig(IniBasedConfig):
         If the directory doesn't exist it is created.
         """
         ensure_config_dir_exists(self.dir)
-        return self._lock.lock_write(token)
+        token = self._lock.lock_write(token)
+        return lock.LogicalLockResult(self.unlock, token)
 
     def unlock(self):
         self._lock.unlock()
@@ -923,15 +1007,15 @@ class LockableConfig(IniBasedConfig):
     def break_lock(self):
         self._lock.break_lock()
 
-    @needs_write_lock
     def remove_user_option(self, option_name, section_name=None):
-        super(LockableConfig, self).remove_user_option(option_name,
-                                                       section_name)
+        with self.lock_write():
+            super(LockableConfig, self).remove_user_option(
+                    option_name, section_name)
 
     def _write_config_file(self):
         if self._lock is None or not self._lock.is_held:
             # NB: if the following exception is raised it probably means a
-            # missing @needs_write_lock decorator on one of the callers.
+            # missing call to lock_write() by one of the callers.
             raise errors.ObjectNotLocked(self)
         super(LockableConfig, self)._write_config_file()
 
@@ -943,7 +1027,7 @@ class GlobalConfig(LockableConfig):
         super(GlobalConfig, self).__init__(file_name=config_filename())
 
     def config_id(self):
-        return 'bazaar'
+        return 'breezy'
 
     @classmethod
     def from_string(cls, str_or_unicode, save=False):
@@ -958,10 +1042,10 @@ class GlobalConfig(LockableConfig):
         conf._create_from_string(str_or_unicode, save)
         return conf
 
-    @needs_write_lock
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
-        self._set_option(option, value, 'DEFAULT')
+        with self.lock_write():
+            self._set_option(option, value, 'DEFAULT')
 
     def get_aliases(self):
         """Return the aliases section."""
@@ -970,20 +1054,20 @@ class GlobalConfig(LockableConfig):
         else:
             return {}
 
-    @needs_write_lock
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the configuration."""
-        self._set_option(alias_name, alias_command, 'ALIASES')
+        with self.lock_write():
+            self._set_option(alias_name, alias_command, 'ALIASES')
 
-    @needs_write_lock
     def unset_alias(self, alias_name):
         """Unset an existing alias."""
-        self.reload()
-        aliases = self._get_parser().get('ALIASES')
-        if not aliases or alias_name not in aliases:
-            raise errors.NoSuchAlias(alias_name)
-        del aliases[alias_name]
-        self._write_config_file()
+        with self.lock_write():
+            self.reload()
+            aliases = self._get_parser().get('ALIASES')
+            if not aliases or alias_name not in aliases:
+                raise errors.NoSuchAlias(alias_name)
+            del aliases[alias_name]
+            self._write_config_file()
 
     def _set_option(self, option, value, section):
         self.reload()
@@ -1002,18 +1086,19 @@ class GlobalConfig(LockableConfig):
             # doesn't exist yet. So we force DEFAULT when yielding
             name = 'DEFAULT'
             if 'DEFAULT' not in parser:
-               parser['DEFAULT']= {}
+                parser['DEFAULT'] = {}
         yield (name, parser[name], self.config_id())
 
-    @needs_write_lock
     def remove_user_option(self, option_name, section_name=None):
         if section_name is None:
             # We need to force the default section.
             section_name = 'DEFAULT'
-        # We need to avoid the LockableConfig implementation or we'll lock
-        # twice
-        super(LockableConfig, self).remove_user_option(option_name,
-                                                       section_name)
+        with self.lock_write():
+            # We need to avoid the LockableConfig implementation or we'll lock
+            # twice
+            super(LockableConfig, self).remove_user_option(
+                    option_name, section_name)
+
 
 def _iter_for_location_by_parts(sections, location):
     """Keep only the sessions matching the specified location.
@@ -1149,29 +1234,29 @@ class LocationConfig(LockableConfig):
             if policy_key in self._get_parser()[section]:
                 del self._get_parser()[section][policy_key]
 
-    @needs_write_lock
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
         if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
                          STORE_LOCATION_APPENDPATH]:
             raise ValueError('bad storage policy %r for %r' %
-                (store, option))
-        self.reload()
-        location = self.location
-        if location.endswith('/'):
-            location = location[:-1]
-        parser = self._get_parser()
-        if not location in parser and not location + '/' in parser:
-            parser[location] = {}
-        elif location + '/' in parser:
-            location = location + '/'
-        parser[location][option]=value
-        # the allowed values of store match the config policies
-        self._set_option_policy(location, option, store)
-        self._write_config_file()
-        for hook in OldConfigHooks['set']:
-            hook(self, option, value)
+                             (store, option))
+        with self.lock_write():
+            self.reload()
+            location = self.location
+            if location.endswith('/'):
+                location = location[:-1]
+            parser = self._get_parser()
+            if location not in parser and not location + '/' in parser:
+                parser[location] = {}
+            elif location + '/' in parser:
+                location = location + '/'
+            parser[location][option] = value
+            # the allowed values of store match the config policies
+            self._set_option_policy(location, option, store)
+            self._write_config_file()
+            for hook in OldConfigHooks['set']:
+                hook(self, option, value)
 
 
 class BranchConfig(Config):
@@ -1312,10 +1397,6 @@ class BranchConfig(Config):
     def remove_user_option(self, option_name, section_name=None):
         self._get_branch_data_config().remove_option(option_name, section_name)
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        return self._get_safe_value('_gpg_signing_command')
-
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_safe_value('_post_commit')
@@ -1382,8 +1463,6 @@ def bazaar_config_dir():
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
-        # GZ 2012-02-01: Really the two level subdirs only make sense inside
-        #                APPDATA, but hard to move. See bug 348640 for more.
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
         xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
@@ -1398,42 +1477,53 @@ def bazaar_config_dir():
     return osutils.pathjoin(base, ".bazaar")
 
 
-def config_dir():
+def _config_dir():
     """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
     Mac OS X and Linux. If the breezy config directory doesn't exist but
     the bazaar one (see bazaar_config_dir()) does, use that instead.
-
-    TODO: Global option --config-dir to override this.
     """
+    # TODO: Global option --config-dir to override this.
     base = osutils.path_from_environ('BRZ_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
-        # GZ 2012-02-01: Really the two level subdirs only make sense inside
-        #                APPDATA, but hard to move. See bug 348640 for more.
     if base is None:
         base = osutils.path_from_environ('XDG_CONFIG_HOME')
         if base is None:
             base = osutils.pathjoin(osutils._get_home_dir(), ".config")
     breezy_dir = osutils.pathjoin(base, 'breezy')
     if osutils.isdir(breezy_dir):
-        return breezy_dir
+        return (breezy_dir, 'breezy')
     # If the breezy directory doesn't exist, but the bazaar one does, use that:
     bazaar_dir = bazaar_config_dir()
     if osutils.isdir(bazaar_dir):
         trace.mutter(
             "Using Bazaar configuration directory (%s)", bazaar_dir)
-        return bazaar_dir
-    return breezy_dir
+        return (bazaar_dir, 'bazaar')
+    return (breezy_dir, 'breezy')
+
+
+def config_dir():
+    """Return per-user configuration directory as unicode string
+
+    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
+    Mac OS X and Linux. If the breezy config directory doesn't exist but
+    the bazaar one (see bazaar_config_dir()) does, use that instead.
+    """
+    return _config_dir()[0]
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'bazaar.conf')
+    path, kind = _config_dir()
+    if kind == 'bazaar':
+        return osutils.pathjoin(path, 'bazaar.conf')
+    else:
+        return osutils.pathjoin(path, 'breezy.conf')
 
 
 def locations_config_filename():
@@ -1513,7 +1603,7 @@ def default_email():
         return u'%s <%s>' % (name, email)
     elif email:
         return email
-    raise errors.NoWhoami()
+    raise NoWhoami()
 
 
 def _auto_user_id():
@@ -1552,21 +1642,26 @@ def _auto_user_id():
     # /etc/passwd "should" be in utf-8, and because it's unlikely to give
     # false positives.  (many users will have their user encoding set to
     # latin-1, which cannot raise UnicodeError.)
-    try:
-        gecos = w.pw_gecos.decode('utf-8')
-        encoding = 'utf-8'
-    except UnicodeError:
+    gecos = w.pw_gecos
+    if isinstance(gecos, bytes):
         try:
-            encoding = osutils.get_user_encoding()
-            gecos = w.pw_gecos.decode(encoding)
+            gecos = gecos.decode('utf-8')
+            encoding = 'utf-8'
+        except UnicodeError:
+            try:
+                encoding = osutils.get_user_encoding()
+                gecos = gecos.decode(encoding)
+            except UnicodeError as e:
+                trace.mutter("cannot decode passwd entry %s" % w)
+                return None, None
+
+    username = w.pw_name
+    if isinstance(username, bytes):
+        try:
+            username = username.decode(encoding)
         except UnicodeError as e:
             trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
-    try:
-        username = w.pw_name.decode(encoding)
-    except UnicodeError as e:
-        trace.mutter("cannot decode passwd entry %s" % w)
-        return None, None
 
     comma = gecos.find(',')
     if comma == -1:
@@ -1598,7 +1693,7 @@ def extract_email_address(e):
     """
     name, email = parse_username(e)
     if not email:
-        raise errors.NoEmailInUsername(e)
+        raise NoEmailInUsername(e)
     return email
 
 
@@ -1617,30 +1712,24 @@ class TreeConfig(IniBasedConfig):
         return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
-        self.branch.lock_read()
-        try:
+        with self.branch.lock_read():
             return self._config.get_option(name, section, default)
-        finally:
-            self.branch.unlock()
 
     def set_option(self, value, name, section=None):
         """Set a per-branch configuration option"""
         # FIXME: We shouldn't need to lock explicitly here but rather rely on
         # higher levels providing the right lock -- vila 20101004
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             self._config.set_option(value, name, section)
-        finally:
-            self.branch.unlock()
 
     def remove_option(self, option_name, section_name=None):
         # FIXME: We shouldn't need to lock explicitly here but rather rely on
         # higher levels providing the right lock -- vila 20101004
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             self._config.remove_option(option_name, section_name)
-        finally:
-            self.branch.unlock()
+
+
+_authentication_config_permission_errors = set()
 
 
 class AuthenticationConfig(object):
@@ -1655,6 +1744,7 @@ class AuthenticationConfig(object):
         if _file is None:
             self._filename = authentication_config_filename()
             self._input = self._filename = authentication_config_filename()
+            self._check_permissions()
         else:
             # Tests can provide a string as _file
             self._filename = None
@@ -1672,17 +1762,38 @@ class AuthenticationConfig(object):
             # encoded, but the values in the ConfigObj are always Unicode.
             self._config = ConfigObj(self._input, encoding='utf-8')
         except configobj.ConfigObjError as e:
-            raise errors.ParseConfigError(e.errors, e.config.filename)
+            raise ParseConfigError(e.errors, e.config.filename)
         except UnicodeError:
-            raise errors.ConfigContentError(self._filename)
+            raise ConfigContentError(self._filename)
         return self._config
+
+    def _check_permissions(self):
+        """Check permission of auth file are user read/write able only."""
+        try:
+            st = os.stat(self._filename)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                trace.mutter('Unable to stat %r: %r', self._filename, e)
+            return
+        mode = stat.S_IMODE(st.st_mode)
+        if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
+             stat.S_IWGRP | stat.S_IRGRP ) & mode):
+            # Only warn once
+            if (not self._filename in _authentication_config_permission_errors
+                and not GlobalConfig().suppress_warning(
+                    'insecure_permissions')):
+                trace.warning("The file '%s' has insecure "
+                        "file permissions. Saved passwords may be accessible "
+                        "by other users.", self._filename)
+                _authentication_config_permission_errors.add(self._filename)
 
     def _save(self):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        f = file(self._filename, 'wb')
+        fd = os.open(self._filename, os.O_RDWR|os.O_CREAT, 0o600)
         try:
+            f = os.fdopen(fd, 'wb')
             self._get_config().write(f)
         finally:
             f.close()
@@ -2058,7 +2169,7 @@ class Base64CredentialStore(CredentialStore):
         """See CredentialStore.decode_password."""
         # GZ 2012-07-28: Will raise binascii.Error if password is not base64,
         #                should probably propogate as something more useful.
-        return base64.decodestring(credentials['password'])
+        return base64.standard_b64decode(credentials['password'])
 
 credential_store_registry.register('base64', Base64CredentialStore,
                                    help=Base64CredentialStore.__doc__)
@@ -2184,9 +2295,9 @@ class TransportConfig(object):
             try:
                 conf = ConfigObj(f, encoding='utf-8')
             except configobj.ConfigObjError as e:
-                raise errors.ParseConfigError(e.errors, self._external_url())
+                raise ParseConfigError(e.errors, self._external_url())
             except UnicodeDecodeError:
-                raise errors.ConfigContentError(self._external_url())
+                raise ConfigContentError(self._external_url())
         finally:
             f.close()
         return conf
@@ -2302,7 +2413,7 @@ class Option(object):
                 trace.warning('Value "%s" is not valid for "%s"',
                               unicode_value, self.name)
             elif self.invalid == 'error':
-                raise errors.ConfigOptionValueError(self.name, unicode_value)
+                raise ConfigOptionValueError(self.name, unicode_value)
         return converted
 
     def get_override(self):
@@ -2310,7 +2421,9 @@ class Option(object):
         for var in self.override_from_env:
             try:
                 # If the env variable is defined, its value takes precedence
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2321,7 +2434,9 @@ class Option(object):
         for var in self.default_from_env:
             try:
                 # If the env variable is defined, its value is the default one
-                value = os.environ[var].decode(osutils.get_user_encoding())
+                value = os.environ[var]
+                if not PY3:
+                    value = value.decode(osutils.get_user_encoding())
                 break
             except KeyError:
                 continue
@@ -2371,7 +2486,7 @@ def int_SI_from_store(unicode_str):
     :return Integer, expanded to its base-10 value if a proper SI unit is 
         found, None otherwise.
     """
-    regexp = "^(\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
+    regexp = "^(\\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
     p = re.compile(regexp, re.IGNORECASE)
     m = p.match(unicode_str)
     val = None
@@ -2445,7 +2560,7 @@ class RegistryOption(Option):
         can take quoting into account.
         """
         super(RegistryOption, self).__init__(
-            name, default=lambda: unicode(registry.default_key),
+            name, default=lambda: registry.default_key,
             default_from_env=default_from_env,
             from_unicode=self.from_unicode, help=help,
             invalid=invalid, unquote=False)
@@ -2470,7 +2585,7 @@ class RegistryOption(Option):
         return "".join(ret)
 
 
-_option_ref_re = lazy_regex.lazy_compile('({[^\d\W](?:\.\w|-\w|\w)*})')
+_option_ref_re = lazy_regex.lazy_compile('({[^\\d\\W](?:\\.\\w|-\\w|\\w)*})')
 """Describes an expandable option reference.
 
 We want to match the most embedded reference first.
@@ -2500,7 +2615,7 @@ class OptionRegistry(registry.Registry):
         :param option_name: The name to validate.
         """
         if _option_ref_re.match('{%s}' % option_name) is None:
-            raise errors.IllegalOptionName(option_name)
+            raise IllegalOptionName(option_name)
 
     def register(self, option):
         """Register a new option to its name.
@@ -2593,7 +2708,7 @@ option_registry.register(
 Whether revisions associated with tags should be fetched.
 """))
 option_registry.register_lazy(
-    'bzr.transform.orphan_policy', 'breezy.transform', 'opt_transform_orphan')
+    'transform.orphan_policy', 'breezy.transform', 'opt_transform_orphan')
 option_registry.register(
     Option('bzr.workingtree.worth_saving_limit', default=10,
            from_unicode=int_from_store,  invalid='warning',
@@ -2677,14 +2792,6 @@ option_registry.register(
     Option('email', override_from_env=['BRZ_EMAIL'], default=default_email,
            help='The users identity'))
 option_registry.register(
-    Option('gpg_signing_command',
-           default='gpg',
-           help="""\
-Program to use use for creating signatures.
-
-This should support at least the -u and --clearsign options.
-"""))
-option_registry.register(
     Option('gpg_signing_key',
            default=None,
            help="""\
@@ -2692,14 +2799,6 @@ GPG key to use for signing.
 
 This defaults to the first key associated with the users email.
 """))
-option_registry.register(
-    Option('ignore_missing_extensions', default=False,
-           from_unicode=bool_from_store,
-           help='''\
-Control the missing extensions warning display.
-
-The warning will not be emitted if set to True.
-'''))
 option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
@@ -3149,9 +3248,9 @@ class IniFileStore(Store):
                                          list_values=False)
         except configobj.ConfigObjError as e:
             self._config_obj = None
-            raise errors.ParseConfigError(e.errors, self.external_url())
+            raise ParseConfigError(e.errors, self.external_url())
         except UnicodeDecodeError:
-            raise errors.ConfigContentError(self.external_url())
+            raise ConfigContentError(self.external_url())
 
     def save_changes(self):
         if not self.is_loaded():
@@ -3200,7 +3299,7 @@ class IniFileStore(Store):
             self.load()
         except errors.NoSuchFile:
             # The file doesn't exist, let's pretend it was empty
-            self._load_from_string('')
+            self._load_from_string(b'')
         if section_id in self.dirty_sections:
             # We already created a mutable section for this id
             return self.dirty_sections[section_id]
@@ -3306,7 +3405,8 @@ class LockableIniFileStore(TransportIniFileStore):
         # ensure_config_dir_exists does. It should if the transport is local
         # -- vila 2011-04-06
         self.transport.create_prefix()
-        return self._lock.lock_write(token)
+        token = self._lock.lock_write(token)
+        return lock.LogicalLockResult(self.unlock, token)
 
     def unlock(self):
         self._lock.unlock()
@@ -3314,16 +3414,16 @@ class LockableIniFileStore(TransportIniFileStore):
     def break_lock(self):
         self._lock.break_lock()
 
-    @needs_write_lock
     def save(self):
-        # We need to be able to override the undecorated implementation
-        self.save_without_locking()
+        with self.lock_write():
+            # We need to be able to override the undecorated implementation
+            self.save_without_locking()
 
     def save_without_locking(self):
         super(LockableIniFileStore, self).save()
 
 
-# FIXME: global, bazaar, shouldn't that be 'user' instead or even
+# FIXME: global, breezy, shouldn't that be 'user' instead or even
 # 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
 # (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
 
@@ -3338,10 +3438,12 @@ class GlobalStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
+        (path, kind) = _config_dir()
         t = transport.get_transport_from_path(
-            config_dir(), possible_transports=possible_transports)
-        super(GlobalStore, self).__init__(t, 'bazaar.conf')
-        self.id = 'bazaar'
+            path, possible_transports=possible_transports)
+        filename = {'bazaar': 'bazaar.conf', 'breezy': 'breezy.conf'}[kind]
+        super(GlobalStore, self).__init__(t, filename)
+        self.id = 'breezy'
 
 
 class LocationStore(LockableIniFileStore):
@@ -3713,11 +3815,11 @@ class Stack(object):
                     expanded = True
                     name = chunk[1:-1]
                     if name in _refs:
-                        raise errors.OptionExpansionLoop(string, _refs)
+                        raise OptionExpansionLoop(string, _refs)
                     _refs.append(name)
                     value = self._expand_option(name, env, _refs)
                     if value is None:
-                        raise errors.ExpandingUnknownOption(name, string)
+                        raise ExpandingUnknownOption(name, string)
                     chunks.append(value)
                     _refs.pop()
             result = ''.join(chunks)
@@ -3764,9 +3866,9 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
     def _get_overrides(self):
-        # FIXME: Hack around library_state.initialize never called
-        if breezy.global_state is not None:
-            return breezy.global_state.cmdline_overrides.get_sections()
+        if breezy._global_state is not None:
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            return breezy._global_state.cmdline_overrides.get_sections()
         return []
 
     def get_shared_store(self, store, state=None):
@@ -3783,7 +3885,8 @@ class Stack(object):
             otherwise.
         """
         if state is None:
-            state = breezy.global_state
+            # TODO(jelmer): Urgh, this is circular so we can't call breezy.get_global_state()
+            state = breezy._global_state
         if state is None:
             global _shared_stores_at_exit_installed
             stores = _shared_stores
@@ -3951,17 +4054,17 @@ class BranchStack(Stack):
     def unlock(self):
         return self.branch.unlock()
 
-    @needs_write_lock
     def set(self, name, value):
-        super(BranchStack, self).set(name, value)
-        # Unlocking the branch will trigger a store.save_changes() so the last
-        # unlock saves all the changes.
+        with self.lock_write():
+            super(BranchStack, self).set(name, value)
+            # Unlocking the branch will trigger a store.save_changes() so the
+            # last unlock saves all the changes.
 
-    @needs_write_lock
     def remove(self, name):
-        super(BranchStack, self).remove(name)
-        # Unlocking the branch will trigger a store.save_changes() so the last
-        # unlock saves all the changes.
+        with self.lock_write():
+            super(BranchStack, self).remove(name)
+            # Unlocking the branch will trigger a store.save_changes() so the
+            # last unlock saves all the changes.
 
 
 class RemoteControlStack(Stack):
@@ -3999,17 +4102,17 @@ class BranchOnlyStack(Stack):
     def unlock(self):
         return self.branch.unlock()
 
-    @needs_write_lock
     def set(self, name, value):
-        super(BranchOnlyStack, self).set(name, value)
-        # Force a write to persistent storage
-        self.store.save_changes()
+        with self.lock_write():
+            super(BranchOnlyStack, self).set(name, value)
+            # Force a write to persistent storage
+            self.store.save_changes()
 
-    @needs_write_lock
     def remove(self, name):
-        super(BranchOnlyStack, self).remove(name)
-        # Force a write to persistent storage
-        self.store.save_changes()
+        with self.lock_write():
+            super(BranchOnlyStack, self).remove(name)
+            # Force a write to persistent storage
+            self.store.save_changes()
 
 
 class cmd_config(commands.Command):
@@ -4097,7 +4200,7 @@ class cmd_config(commands.Command):
         # reduced to the plugin-specific store), related to
         # http://pad.lv/788991 -- vila 2011-11-15
         if scope is not None:
-            if scope == 'bazaar':
+            if scope == 'breezy':
                 return GlobalStack()
             elif scope == 'locations':
                 return LocationStack(directory)
@@ -4108,7 +4211,7 @@ class cmd_config(commands.Command):
                 if write_access:
                     self.add_cleanup(br.lock_write().unlock)
                 return br.get_config_stack()
-            raise errors.NoSuchConfig(scope)
+            raise NoSuchConfig(scope)
         else:
             try:
                 (_, br, _) = (
@@ -4133,7 +4236,7 @@ class cmd_config(commands.Command):
             value = self._quote_multiline(value)
             self.outf.write('%s\n' % (value,))
         else:
-            raise errors.NoSuchConfigOption(name)
+            raise NoSuchConfigOption(name)
 
     def _show_matching_options(self, name, directory, scope):
         name = lazy_regex.lazy_compile(name)
@@ -4178,7 +4281,7 @@ class cmd_config(commands.Command):
             # Explicitly save the changes
             conf.store.save_changes()
         except KeyError:
-            raise errors.NoSuchConfigOption(name)
+            raise NoSuchConfigOption(name)
 
 
 # Test registries

@@ -37,8 +37,10 @@ from . import (
     errors,
     help_topics,
     option,
+    plugin as _mod_plugin,
     help,
     )
+from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -70,12 +72,12 @@ def _normalize(s):
     return s
 
 
-def _parse_source(source_text):
+def _parse_source(source_text, filename='<unknown>'):
     """Get object to lineno mappings from given source_text"""
     import ast
     cls_to_lineno = {}
     str_to_lineno = {}
-    for node in ast.walk(ast.parse(source_text)):
+    for node in ast.walk(ast.parse(source_text, filename)):
         # TODO: worry about duplicates?
         if isinstance(node, ast.ClassDef):
             # TODO: worry about nesting?
@@ -105,7 +107,7 @@ class _ModuleContext(object):
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
         return cls(relpath,
-            _source_info=_parse_source("".join(inspect.findsource(module)[0])))
+            _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
 
     def from_class(self, cls):
         """Get new context with same details but lineno of class in source"""
@@ -149,13 +151,16 @@ class _PotExporter(object):
         else:
             comment = "# %s\n" % comment
         mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
-        self.outf.write(
+        line = (
             "#: {path}:{lineno}\n"
             "{comment}"
             "msgid {msg}\n"
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
+        if not PY3:
+            line = line.decode('utf-8')
+        self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):
         context = context.from_string(string)
@@ -250,16 +255,20 @@ def _command_helps(exporter, plugin_name=None):
         note(gettext("Exporting messages from builtin command: %s"), cmd_name)
         _write_command_help(exporter, command)
 
-    plugins = breezy.global_state.plugins
-    core_plugins = set(name for name in plugins
-        if plugins[name].path().startswith(breezy.__path__[0]))
+    plugins = _mod_plugin.plugins()
+    if plugin_name is not None and plugin_name not in plugins:
+        raise errors.BzrError(gettext('Plugin %s is not loaded' % plugin_name))
+    core_plugins = set(
+            name for name in plugins
+            if plugins[name].path().startswith(breezy.__path__[0]))
     # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)
         if command.hidden:
             continue
         if plugin_name is not None and command.plugin_name() != plugin_name:
-            # if we are exporting plugin commands, skip plugins we have not specified.
+            # if we are exporting plugin commands, skip plugins we have not
+            # specified.
             continue
         if plugin_name is None and command.plugin_name() not in core_plugins:
             # skip non-core plugins

@@ -32,27 +32,24 @@ from .branch import (
     BranchFormatMetadir,
     )
 
-from ..decorators import (
-    needs_write_lock,
-    )
 from ..trace import mutter_callsite
 
 
 class FullHistoryBzrBranch(BzrBranch):
     """Bzr branch which contains the full revision history."""
 
-    @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        if not revision_id or not isinstance(revision_id, basestring):
+        if not revision_id or not isinstance(revision_id, bytes):
             raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
-        # this old format stores the full history, but this api doesn't
-        # provide it, so we must generate, and might as well check it's
-        # correct
-        history = self._lefthand_history(revision_id)
-        if len(history) != revno:
-            raise AssertionError('%d != %d' % (len(history), revno))
-        self._set_revision_history(history)
+        with self.lock_write():
+            # this old format stores the full history, but this api doesn't
+            # provide it, so we must generate, and might as well check it's
+            # correct
+            history = self._lefthand_history(revision_id)
+            if len(history) != revno:
+                raise AssertionError('%d != %d' % (len(history), revno))
+            self._set_revision_history(history)
 
     def _read_last_revision_info(self):
         rh = self._revision_history()
@@ -89,12 +86,12 @@ class FullHistoryBzrBranch(BzrBranch):
         This performs the actual writing to disk.
         It is intended to be called by set_revision_history."""
         self._transport.put_bytes(
-            'revision-history', '\n'.join(history),
+            'revision-history', b'\n'.join(history),
             mode=self.controldir._get_file_mode())
 
     def _gen_revision_history(self):
-        history = self._transport.get_bytes('revision-history').split('\n')
-        if history[-1:] == ['']:
+        history = self._transport.get_bytes('revision-history').split(b'\n')
+        if history[-1:] == [b'']:
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
@@ -116,7 +113,6 @@ class FullHistoryBzrBranch(BzrBranch):
                 new_history = rev.get_history(self.repository)[1:]
         destination._set_revision_history(new_history)
 
-    @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
         other_branch=None):
         """Create a new revision history that will finish with revision_id.
@@ -127,8 +123,9 @@ class FullHistoryBzrBranch(BzrBranch):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev, other_branch))
+        with self.lock_write():
+            self._set_revision_history(self._lefthand_history(revision_id,
+                last_rev, other_branch))
 
 
 class BzrBranch5(FullHistoryBzrBranch):
@@ -157,7 +154,7 @@ class BzrBranchFormat5(BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 5\n"
+        return b"Bazaar-NG branch format 5\n"
 
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
@@ -168,8 +165,8 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """Create a branch of this format in a_controldir."""
         if append_revisions_only:
             raise errors.UpgradeRequired(a_controldir.user_url)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
+        utf8_files = [('revision-history', b''),
+                      ('branch-name', b''),
                       ]
         return self._initialize_helper(a_controldir, utf8_files, name, repository)
 

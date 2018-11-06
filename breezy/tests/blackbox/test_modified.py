@@ -48,7 +48,7 @@ class TestModified(TestCaseWithTransport):
         check_modified('')
 
         # with unknown file, still nothing modified
-        self.build_tree_contents([(name, 'contents of %s\n' % (name))])
+        self.build_tree_contents([(name, b'contents of %s\n' % (name.encode('utf-8')))])
         check_modified('')
 
         # after add, not modified
@@ -60,7 +60,7 @@ class TestModified(TestCaseWithTransport):
         check_modified('')
 
         # modify the file
-        self.build_tree_contents([(name, 'changed\n')])
+        self.build_tree_contents([(name, b'changed\n')])
         check_modified(output + '\n')
 
         # check null seps - use the unquoted raw name here
@@ -76,6 +76,6 @@ class TestModified(TestCaseWithTransport):
         self.build_tree(['a/README'])
         tree.add('README')
         tree.commit('r1')
-        self.build_tree_contents([('a/README', 'changed\n')])
+        self.build_tree_contents([('a/README', b'changed\n')])
         out, err = self.run_bzr(['modified', '--directory=a'])
         self.assertEqual('README\n', out)

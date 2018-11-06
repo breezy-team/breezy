@@ -14,8 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import base64
 import re
-import urllib2
+try:
+    from urllib.request import (
+        parse_http_list,
+        parse_keqv_list,
+        )
+except ImportError:  # python < 3
+    from urllib2 import (
+        parse_http_list,
+        parse_keqv_list,
+        )
 
 
 from .. import (
@@ -207,7 +217,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
     def redirect_to(self, host, port):
         """Redirect all requests to a specific host:port"""
         self.redirections = [('(.*)',
-                              r'http://%s:%s\1' % (host, port) ,
+                              r'http://%s:%s\1' % (host, port),
                               301)]
 
     def is_redirected(self, path):
@@ -324,8 +334,9 @@ class BasicAuthRequestHandler(AuthRequestHandler):
         if auth_header:
             scheme, raw_auth = auth_header.split(' ', 1)
             if scheme.lower() == tcs.auth_scheme:
-                user, password = raw_auth.decode('base64').split(':')
-                return tcs.authorized(user, password)
+                user, password = base64.b64decode(raw_auth).split(b':')
+                return tcs.authorized(user.decode('ascii'),
+                                      password.decode('ascii'))
 
         return False
 
@@ -354,7 +365,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
             return False
         scheme, auth = auth_header.split(None, 1)
         if scheme.lower() == tcs.auth_scheme:
-            auth_dict = urllib2.parse_keqv_list(urllib2.parse_http_list(auth))
+            auth_dict = parse_keqv_list(parse_http_list(auth))
 
             return tcs.digest_authorized(auth_dict, self.command)
 
@@ -365,7 +376,7 @@ class DigestAuthRequestHandler(AuthRequestHandler):
         header = 'Digest realm="%s", ' % tcs.auth_realm
         header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
                                                               'MD5')
-        self.send_header(tcs.auth_header_sent,header)
+        self.send_header(tcs.auth_header_sent, header)
 
 
 class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
@@ -383,7 +394,7 @@ class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
         header = 'Digest realm="%s", ' % tcs.auth_realm
         header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
                                                               'MD5')
-        self.send_header(tcs.auth_header_sent,header)
+        self.send_header(tcs.auth_header_sent, header)
 
 
 class AuthServer(http_server.HttpServer):
@@ -401,7 +412,7 @@ class AuthServer(http_server.HttpServer):
     auth_header_sent = None
     auth_header_recv = None
     auth_error_code = None
-    auth_realm = "Thou should not pass"
+    auth_realm = u"Thou should not pass"
 
     def __init__(self, request_handler, auth_scheme,
                  protocol_version=None):
@@ -461,11 +472,11 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = '%s:%s:%s' % (user, realm, password)
-        A2 = '%s:%s' % (command, auth['uri'])
+        A1 = ('%s:%s:%s' % (user, realm, password)).encode('utf-8')
+        A2 = ('%s:%s' % (command, auth['uri'])).encode('utf-8')
 
         H = lambda x: osutils.md5(x).hexdigest()
-        KD = lambda secret, data: H("%s:%s" % (secret, data))
+        KD = lambda secret, data: H(("%s:%s" % (secret, data)).encode('utf-8'))
 
         nonce_count = int(auth['nc'], 16)
 

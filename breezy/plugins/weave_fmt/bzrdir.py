@@ -26,7 +26,11 @@ from ...bzr.bzrdir import (
 from ...controldir import (
     ControlDir,
     Converter,
+    MustHaveWorkingTree,
     format_registry,
+    )
+from ... import (
+    errors,
     )
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
@@ -34,7 +38,7 @@ import os
 import warnings
 
 from breezy import (
-    errors,
+    branch as _mod_branch,,
     graph,
     lockable_files,
     lockdir,
@@ -112,7 +116,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 5\n"
+        return b"Bazaar-NG branch, format 5\n"
 
     def get_branch_format(self):
         from .branch import BzrBranchFormat4
@@ -176,7 +180,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 6\n"
+        return b"Bazaar-NG branch, format 6\n"
 
     def get_format_description(self):
         """See ControlDirFormat.get_format_description()."""
@@ -237,15 +241,12 @@ class ConvertBzrDir4To5(Converter):
         self.controldir = to_convert
         if pb is not None:
             warnings.warn(gettext("pb parameter to convert() is deprecated"))
-        self.pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
                 self.controldir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
             return ControlDir.open(self.controldir.user_url)
-        finally:
-            self.pb.finished()
 
     def _convert_to_weaves(self):
         ui.ui_factory.note(gettext(
@@ -329,7 +330,7 @@ class ConvertBzrDir4To5(Converter):
                 weaves._put_weave(file_id, file_weave, transaction)
                 i += 1
             self.pb.update(gettext('inventory'), 0, 1)
-            controlweaves._put_weave('inventory', self.inv_weave, transaction)
+            controlweaves._put_weave(b'inventory', self.inv_weave, transaction)
             self.pb.update(gettext('inventory'), 1, 1)
         finally:
             self.pb.clear()
@@ -440,8 +441,8 @@ class ConvertBzrDir4To5(Converter):
         heads = graph.Graph(self).heads(parent_candiate_entries)
         # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
-        previous_entries = dict((head, parent_candiate_entries[head]) for head
-            in heads)
+        previous_entries = {head: parent_candiate_entries[head]
+                            for head in heads}
         self.snapshot_ie(previous_entries, ie, w, rev_id)
 
     def get_parent_map(self, revision_ids):
@@ -504,13 +505,10 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             ui.ui_factory.note(gettext('starting upgrade from format 5 to 6'))
             self._convert_to_prefixed()
             return ControlDir.open(self.controldir.user_url)
-        finally:
-            pb.finished()
 
     def _convert_to_prefixed(self):
         from .store import TransportStore
@@ -528,7 +526,7 @@ class ConvertBzrDir5To6(Converter):
                 else:
                     file_id = filename
                     suffix = ''
-                new_name = store._mapper.map((file_id,)) + suffix
+                new_name = store._mapper.map((file_id.encode('utf-8'),)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, new_name)
@@ -559,7 +557,7 @@ class ConvertBzrDir6ToMeta(Converter):
         ui.ui_factory.note(gettext('starting upgrade from format 6 to metadir'))
         self.controldir.transport.put_bytes(
                 'branch-format',
-                "Converting to format 6",
+                b"Converting to format 6",
                 mode=self.file_mode)
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
@@ -622,10 +620,9 @@ class ConvertBzrDir6ToMeta(Converter):
             self.step(gettext('Upgrading working tree'))
             self.controldir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
-            self.put_format(
-                'checkout', WorkingTreeFormat3())
-            self.controldir.transport.delete_multi(
-                self.garbage_inventories, self.pb)
+            self.put_format('checkout', WorkingTreeFormat3())
+            for path in self.garbage_inventories:
+                self.controldir.transport.delete(path)
             for entry in checkout_files:
                 self.move_entry('checkout', entry)
             if last_revision is not None:
@@ -685,7 +682,7 @@ class BzrDirFormat4(BzrDirFormat):
     @classmethod
     def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
-        return "Bazaar-NG branch, format 0.0.4\n"
+        return b"Bazaar-NG branch, format 0.0.4\n"
 
     def get_format_description(self):
         """See ControlDirFormat.get_format_description()."""
@@ -903,10 +900,10 @@ class BzrDirPreSplitOut(BzrDir):
                     "source branch %r is not within %r with branch %r" %
                     (source_branch, self, my_branch))
         if stacked:
-            raise errors.UnstackableBranchFormat(
+            raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.root_transport.base)
         if not create_tree_if_local:
-            raise errors.MustHaveWorkingTree(
+            raise MustHaveWorkingTree(
                 self._format, self.root_transport.base)
         from .workingtree import WorkingTreeFormat2
         self._make_tail(url)

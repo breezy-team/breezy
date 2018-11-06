@@ -25,11 +25,6 @@ from fnmatch import fnmatch
 
 from breezy._termcolor import color_string, FG
 
-from breezy.revisionspec import (
-    RevisionSpec,
-    RevisionSpec_revid,
-    RevisionSpec_revno,
-    )
 from breezy import (
     controldir,
     diff,
@@ -41,6 +36,11 @@ from breezy import (
 from breezy import (
     osutils,
     trace,
+    )
+from breezy.revisionspec import (
+    RevisionSpec,
+    RevisionSpec_revid,
+    RevisionSpec_revno,
     )
 from breezy.sixish import (
     BytesIO,
@@ -132,7 +132,7 @@ def compile_pattern(pattern, flags=0):
 
 
 def is_fixed_string(s):
-    if re.match("^([A-Za-z0-9_]|\s)*$", s):
+    if re.match("^([A-Za-z0-9_]|\\s)*$", s):
         return True
     return False
 
@@ -145,14 +145,13 @@ class _GrepDiffOutputter(object):
         self.opts = opts
         self.outf = opts.outf
         if opts.show_color:
-            pat = opts.pattern.encode(_user_encoding, 'replace')
             if opts.fixed_string:
-                self._old = pat
-                self._new = color_string(pat, FG.BOLD_RED)
+                self._old = opts.pattern
+                self._new = color_string(opts.pattern, FG.BOLD_RED)
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(opts.pattern.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
         else:
@@ -216,8 +215,7 @@ class _GrepDiffOutputter(object):
 def grep_diff(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         if opts.revision:
             start_rev = opts.revision[0]
         else:
@@ -226,7 +224,7 @@ def grep_diff(opts):
                 RevisionSpec.from_string('last:1')]
             start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
-        if start_revid == 'null:':
+        if start_revid == b'null:':
             return
         srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
         if len(opts.revision) == 2:
@@ -261,8 +259,8 @@ def grep_diff(opts):
             start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
         repo = branch.repository
-        diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
-        file_pattern = re.compile("=== (modified|added|removed) file '.*'", re.UNICODE)
+        diff_pattern = re.compile(b"^[+\\-].*(" + opts.pattern.encode(_user_encoding) + b")")
+        file_pattern = re.compile(b"=== (modified|added|removed) file '.*'")
         outputter = _GrepDiffOutputter(opts)
         writeline = outputter.get_writer()
         writerevno = outputter.get_revision_header_writer()
@@ -273,7 +271,7 @@ def grep_diff(opts):
                 # with level=1 show only top level
                 continue
 
-            rev_spec = RevisionSpec_revid.from_string("revid:"+revid)
+            rev_spec = RevisionSpec_revid.from_string("revid:"+revid.decode('utf-8'))
             new_rev = repo.get_revision(revid)
             new_tree = rev_spec.as_tree(branch)
             if len(new_rev.parent_ids) == 0:
@@ -297,19 +295,16 @@ def grep_diff(opts):
                         writerevno("=== revno:%s ===" % (revno,))
                         display_revno = False
                     if display_file:
-                        writefileheader("  %s" % (file_header,))
+                        writefileheader("  %s" % (file_header.decode(file_encoding, 'replace'),))
                         display_file = False
                     line = line.decode(file_encoding, 'replace')
                     writeline("    %s" % (line,))
-    finally:
-        branch.unlock()
 
 
 def versioned_grep(opts):
     wt, branch, relpath = \
         controldir.ControlDir.open_containing_tree_or_branch('.')
-    branch.lock_read()
-    try:
+    with branch.lock_read():
         start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
         if start_revid is None:
@@ -357,22 +352,19 @@ def versioned_grep(opts):
                 # with level=1 show only top level
                 continue
 
-            rev = RevisionSpec_revid.from_string("revid:"+revid)
+            rev = RevisionSpec_revid.from_string("revid:"+revid.decode('utf-8'))
             tree = rev.as_tree(branch)
             for path in opts.path_list:
-                path_for_id = osutils.pathjoin(relpath, path)
-                id = tree.path2id(path_for_id)
-                if not id:
-                    trace.warning("Skipped unknown file '%s'." % path)
+                tree_path = osutils.pathjoin(relpath, path)
+                if not tree.has_filename(tree_path):
+                    trace.warning("Skipped unknown file '%s'.", path)
                     continue
 
                 if osutils.isdir(path):
                     path_prefix = path
                     dir_grep(tree, path, relpath, opts, revno, path_prefix)
                 else:
-                    versioned_file_grep(tree, id, '.', path, opts, revno)
-    finally:
-        branch.unlock()
+                    versioned_file_grep(tree, tree_path, '.', path, opts, revno)
 
 
 def workingtree_grep(opts):
@@ -388,16 +380,14 @@ def workingtree_grep(opts):
     # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
     opts.outputter = _Outputter(opts)
 
-    tree.lock_read()
-    try:
+    with tree.lock_read():
         for path in opts.path_list:
             if osutils.isdir(path):
                 path_prefix = path
                 dir_grep(tree, path, relpath, opts, revno, path_prefix)
             else:
-                _file_grep(open(path).read(), path, opts, revno)
-    finally:
-        tree.unlock()
+                with open(path, 'rb') as f:
+                    _file_grep(f.read(), path, opts, revno)
 
 
 def _skip_file(include, exclude, path):
@@ -412,13 +402,13 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
-        rpath = osutils.pathjoin('..',relpath)
+        rpath = osutils.pathjoin('..', relpath)
 
     from_dir = osutils.pathjoin(relpath, path)
     if opts.from_root:
         # start searching recursively from root
-        from_dir=None
-        recursive=True
+        from_dir = None
+        recursive = True
 
     to_grep = []
     to_grep_append = to_grep.append
@@ -433,18 +423,19 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
             continue
 
         if fc == 'V' and fkind == 'file':
-            if revno != None:
+            tree_path = osutils.pathjoin(from_dir if from_dir else '', fp)
+            if revno is not None:
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_id = tree.get_file_revision(fid)
+                cache_id = tree.get_file_revision(tree_path, fid)
                 if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,
                     #                but it's what the old code seemed to do
                     outputter.write_cached_lines(cache_id, revno)
                 else:
-                    to_grep_append((fid, (fp, fid)))
+                    to_grep_append((tree_path, (fp, tree_path)))
             else:
                 # we are grepping working tree.
                 if from_dir is None:
@@ -454,17 +445,17 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 if opts.files_with_matches or opts.files_without_match:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
-                    file = open(path_for_file, 'r', buffering=4096)
-                    _file_grep_list_only_wtree(file, fp, opts, path_prefix)
+                    with open(path_for_file, 'rb', buffering=4096) as file:
+                        _file_grep_list_only_wtree(file, fp, opts, path_prefix)
                 else:
-                    file_text = open(path_for_file, 'r').read()
-                    _file_grep(file_text, fp, opts, revno, path_prefix)
+                    with open(path_for_file, 'rb') as f:
+                        _file_grep(f.read(), fp, opts, revno, path_prefix)
 
-    if revno != None: # grep versioned files
-        for (path, fid), chunks in tree.iter_files_bytes(to_grep):
+    if revno is not None: # grep versioned files
+        for (path, tree_path), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            _file_grep(chunks[0], path, opts, revno, path_prefix,
-                tree.get_file_revision(fid, path))
+            _file_grep(b''.join(chunks), path, opts, revno, path_prefix,
+                tree.get_file_revision(tree_path))
 
 
 def _make_display_path(relpath, path):
@@ -482,12 +473,12 @@ def _make_display_path(relpath, path):
     return path
 
 
-def versioned_file_grep(tree, id, relpath, path, opts, revno, path_prefix = None):
+def versioned_file_grep(tree, tree_path, relpath, path, opts, revno, path_prefix = None):
     """Create a file object for the specified id and pass it on to _file_grep.
     """
 
     path = _make_display_path(relpath, path)
-    file_text = tree.get_file_text(id)
+    file_text = tree.get_file_text(tree_path)
     _file_grep(file_text, path, opts, revno, path_prefix)
 
 
@@ -500,9 +491,9 @@ def _path_in_glob_list(path, glob_list):
 
 def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
     # test and skip binary files
-    if '\x00' in file.read(1024):
+    if b'\x00' in file.read(1024):
         if opts.verbose:
-            trace.warning("Binary file '%s' skipped." % path)
+            trace.warning("Binary file '%s' skipped.", path)
         return
 
     file.seek(0) # search from beginning
@@ -548,16 +539,15 @@ class _Outputter(object):
         no_line = opts.files_with_matches or opts.files_without_match
 
         if opts.show_color:
-            pat = opts.pattern.encode(_user_encoding, 'replace')
             if no_line:
                 self.get_writer = self._get_writer_plain
             elif opts.fixed_string:
-                self._old = pat
-                self._new = color_string(pat, FG.BOLD_RED)
+                self._old = opts.pattern
+                self._new = color_string(opts.pattern, FG.BOLD_RED)
                 self.get_writer = self._get_writer_fixed_highlighted
             else:
                 flags = opts.patternc.flags
-                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._sub = re.compile(opts.pattern.join(("((?:", ")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
             path_start = FG.MAGENTA
@@ -634,9 +624,9 @@ class _Outputter(object):
 
 def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
     # test and skip binary files
-    if '\x00' in file_text[:1024]:
+    if b'\x00' in file_text[:1024]:
         if opts.verbose:
-            trace.warning("Binary file '%s' skipped." % path)
+            trace.warning("Binary file '%s' skipped.", path)
         return
 
     if path_prefix and path_prefix != '.':
@@ -653,18 +643,10 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
 
     if opts.files_with_matches or opts.files_without_match:
         if opts.fixed_string:
-            if sys.platform > (2, 5):
-                found = pattern in file_text
-            else:
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        found = True
-                        break
-                else:
-                    found = False
+            found = pattern in file_text
         else:
             search = opts.patternc.search
-            if "$" not in pattern:
+            if b"$" not in pattern:
                 found = search(file_text) is not None
             else:
                 for line in file_text.splitlines():
@@ -682,9 +664,9 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         i = file_text.find(pattern)
         if i == -1:
             return
-        b = file_text.rfind("\n", 0, i) + 1
+        b = file_text.rfind(b"\n", 0, i) + 1
         if opts.line_number:
-            start = file_text.count("\n", 0, b) + 1
+            start = file_text.count(b"\n", 0, b) + 1
         file_text = file_text[b:]
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
@@ -701,16 +683,16 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         # standard cases, but perhaps could try and detect backtracking
         # patterns here and avoid whole text search in those cases
         search = opts.patternc.search
-        if "$" not in pattern:
+        if b"$" not in pattern:
             # GZ 2010-06-05: Grr, re.MULTILINE can't save us when searching
             #                through revisions as bazaar returns binary mode
             #                and trailing \r breaks $ as line ending match
             m = search(file_text)
             if m is None:
                 return
-            b = file_text.rfind("\n", 0, m.start()) + 1
+            b = file_text.rfind(b"\n", 0, m.start()) + 1
             if opts.line_number:
-                start = file_text.count("\n", 0, b) + 1
+                start = file_text.count(b"\n", 0, b) + 1
             file_text = file_text[b:]
         else:
             start = 1

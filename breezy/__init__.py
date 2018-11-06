@@ -42,9 +42,6 @@ import codecs
 import sys
 
 
-IGNORE_FILENAME = ".bzrignore"
-
-
 __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
@@ -54,7 +51,7 @@ __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 0, 0, 'dev', 1)
+version_info = (3, 0, 0, 'alpha', 1)
 
 def _format_version_tuple(version_info):
     """Turn a version number 2, 3 or 5-tuple into a short string.
@@ -65,23 +62,23 @@ def _format_version_tuple(version_info):
     This also checks that the version is reasonable: the sub-release must be
     zero for final releases.
 
-    >>> print _format_version_tuple((1, 0, 0, 'final', 0))
+    >>> print(_format_version_tuple((1, 0, 0, 'final', 0)))
     1.0.0
-    >>> print _format_version_tuple((1, 2, 0, 'dev', 0))
+    >>> print(_format_version_tuple((1, 2, 0, 'dev', 0)))
     1.2.0dev
-    >>> print _format_version_tuple((1, 2, 0, 'dev', 1))
+    >>> print(_format_version_tuple((1, 2, 0, 'dev', 1)))
     1.2.0dev1
-    >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
+    >>> print(_format_version_tuple((1, 1, 1, 'candidate', 2)))
     1.1.1rc2
-    >>> print _format_version_tuple((2, 1, 0, 'beta', 1))
+    >>> print(_format_version_tuple((2, 1, 0, 'beta', 1)))
     2.1b1
-    >>> print _format_version_tuple((1, 4, 0))
+    >>> print(_format_version_tuple((1, 4, 0)))
     1.4.0
-    >>> print _format_version_tuple((1, 4))
+    >>> print(_format_version_tuple((1, 4)))
     1.4
-    >>> print _format_version_tuple((2, 1, 0, 'final', 42))
+    >>> print(_format_version_tuple((2, 1, 0, 'final', 42)))
     2.1.0.42
-    >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
+    >>> print(_format_version_tuple((1, 4, 0, 'wibble', 0)))
     1.4.0.wibble.0
     """
     if len(version_info) == 2:
@@ -141,14 +138,27 @@ def _patch_filesystem_default_encoding(new_enc):
     The use of intern() may defer breakage is but is not enough, the string
     object should be secure against module reloading and during teardown.
     """
+    is_py3 = sys.version_info > (3,)
     try:
         import ctypes
         old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
             "Py_FileSystemDefaultEncoding")
+        if is_py3:
+            has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
+                "Py_HasFileSystemDefaultEncoding")
+            as_utf8 = ctypes.PYFUNCTYPE(
+                ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
+                    ("PyUnicode_AsUTF8", ctypes.pythonapi))
     except (ImportError, ValueError):
         return # No ctypes or not CPython implementation, do nothing
-    new_ptr = ctypes.cast(ctypes.c_char_p(intern(new_enc)), ctypes.c_void_p)
-    old_ptr.value = new_ptr.value
+    if is_py3:
+        new_enc = sys.intern(new_enc)
+        enc_ptr = as_utf8(new_enc)
+        has_enc.value = 1
+    else:
+        new_enc = intern(new_enc)
+        enc_ptr = ctypes.c_char_p(new_enc)
+    old_ptr.value = ctypes.cast(enc_ptr, ctypes.c_void_p).value
     if sys.getfilesystemencoding() != new_enc:
         raise RuntimeError("Failed to change the filesystem default encoding")
     return new_enc
@@ -179,7 +189,7 @@ else:
 # it is important to store the reference you get, rather than looking it up
 # repeatedly; that way your code will behave properly in the breezy test suite
 # and from programs that do use multiple library contexts.
-global_state = None
+_global_state = None
 
 
 def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
@@ -220,6 +230,12 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     # Start automatically in case people don't realize this returns a context.
     state._start()
     return state
+
+
+def get_global_state():
+    if _global_state is None:
+        return initialize()
+    return _global_state
 
 
 def test_suite():

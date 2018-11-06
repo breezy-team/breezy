@@ -52,10 +52,10 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
         scenario_name = repository_format.__class__.__name__
         scenario_name += scenario_name_suffix
         scenario = (scenario_name,
-            {"transport_server":transport_server,
-             "transport_readonly_server":transport_readonly_server,
-             "bzrdir_format":repository_format._matchingbzrdir,
-             "repository_format":repository_format,
+            {"transport_server": transport_server,
+             "transport_readonly_server": transport_readonly_server,
+             "bzrdir_format": repository_format._matchingcontroldir,
+             "repository_format": repository_format,
              })
         # Only override the test's vfs_transport_factory if one was
         # specified, otherwise just leave the default in place.
@@ -93,7 +93,7 @@ def all_repository_format_scenarios():
 class TestCaseWithRepository(TestCaseWithControlDir):
 
     def get_default_format(self):
-        format = self.repository_format._matchingbzrdir
+        format = self.repository_format._matchingcontroldir
         self.assertEqual(format.repository_format, self.repository_format)
         return format
 

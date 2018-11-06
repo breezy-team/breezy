@@ -73,7 +73,7 @@ will disable the feature for that branch.
 Since the auto hook is triggered automatically, you can't use the --quiet
 option available for the upload command. Instead, you can set the
 'upload_auto_quiet' configuration variable to True or False in either
-bazaar.conf, locations.conf or branch.conf.
+breezy.conf, locations.conf or branch.conf.
 
 
 Storing the '.bzr-upload.revid' file
@@ -107,7 +107,7 @@ Upload from Remote Location
 It is possible to upload to a remote location from another remote location by
 specifying it with the --directory option:
 
-    brz upload ftp://public.example.com --directory sftp://private.example.com 
+    brz upload sftp://public.example.com --directory sftp://private.example.com 
 
 This, together with --auto, can be used to upload when you push to your
 central branch, rather than when you commit to your local branch.
@@ -121,16 +121,6 @@ Ignoring certain files
 If you want to version a file, but not upload it, you can create a file called
 .bzrignore-upload, which works in the same way as the regular .bzrignore file,
 but only applies to bzr-upload.
-
-
-Collaborating
--------------
-
-While we don't have any platform setup, you can branch from trunk:
-
-    brz branch lp:bzr-upload
-
-And change anything you'd like, and file a merge proposal on Launchpad.
 
 
 Known Issues

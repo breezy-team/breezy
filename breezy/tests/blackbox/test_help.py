@@ -66,11 +66,9 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_urlspec(self):
         """Smoke test for 'brz help urlspec'"""
         out, err = self.run_bzr('help urlspec')
-        self.assertContainsRe(out, 'aftp://')
         self.assertContainsRe(out, 'bzr://')
-        self.assertContainsRe(out, 'bzr\+ssh://')
+        self.assertContainsRe(out, 'bzr\\+ssh://')
         self.assertContainsRe(out, 'file://')
-        self.assertContainsRe(out, 'ftp://')
         self.assertContainsRe(out, 'http://')
         self.assertContainsRe(out, 'https://')
         self.assertContainsRe(out, 'sftp://')
@@ -189,17 +187,17 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_help_command_utf8(self):
-        out, err = self.run_bzr(["help", "push"], encoding="utf-8")
-        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+        out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")
+        self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_switch_utf8(self):
-        out, err = self.run_bzr(["push", "--help"], encoding="utf-8")
-        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+        out, err = self.run_bzr_raw(["push", "--help"], encoding="utf-8")
+        self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_command_ascii(self):
-        out, err = self.run_bzr(["help", "push"], encoding="ascii")
-        self.assertContainsRe(out, "zz\\?{{:See also:")
+        out, err = self.run_bzr_raw(["help", "push"], encoding="ascii")
+        self.assertContainsRe(out, b"zz\\?{{:See also:")
 
     def test_help_switch_ascii(self):
-        out, err = self.run_bzr(["push", "--help"], encoding="ascii")
-        self.assertContainsRe(out, "zz\\?{{:See also:")
+        out, err = self.run_bzr_raw(["push", "--help"], encoding="ascii")
+        self.assertContainsRe(out, b"zz\\?{{:See also:")

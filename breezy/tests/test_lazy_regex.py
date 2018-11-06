@@ -26,6 +26,14 @@ from .. import (
     )
 
 
+class TestErrors(tests.TestCase):
+
+    def test_invalid_pattern(self):
+        error = lazy_regex.InvalidPattern('Bad pattern msg.')
+        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
+            str(error))
+
+
 class InstrumentedLazyRegex(lazy_regex.LazyRegex):
     """Keep track of actions on the lazy regex"""
 
@@ -71,8 +79,11 @@ class TestLazyRegex(tests.TestCase):
         p = lazy_regex.lazy_compile('RE:[')
         # As p.match is lazy, we make it into a lambda so its handled
         # by assertRaises correctly.
-        e = self.assertRaises(errors.InvalidPattern, lambda: p.match('foo'))
-        self.assertEqual(e.msg, '"RE:[" unexpected end of regular expression')
+        e = self.assertRaises(lazy_regex.InvalidPattern, lambda: p.match('foo'))
+        # Expect either old or new form of error message
+        self.assertContainsRe(e.msg, '^"RE:\\[" '
+            '(unexpected end of regular expression'
+            '|unterminated character set at position 3)$')
 
 
 class TestLazyCompile(tests.TestCase):
@@ -113,14 +124,14 @@ class TestLazyCompile(tests.TestCase):
         self.assertEqual('fooo', pattern.search('fooo').group())
 
     def test_split(self):
-        pattern = lazy_regex.lazy_compile('[,;]*')
+        pattern = lazy_regex.lazy_compile('[,;]+')
         self.assertEqual(['x', 'y', 'z'], pattern.split('x,y;z'))
 
     def test_pickle(self):
         # When pickling, just compile the regex.
         # Sphinx, which we use for documentation, pickles
         # some compiled regexes.
-        lazy_pattern = lazy_regex.lazy_compile('[,;]*')
+        lazy_pattern = lazy_regex.lazy_compile('[,;]+')
         pickled = pickle.dumps(lazy_pattern)
         unpickled_lazy_pattern = pickle.loads(pickled)
         self.assertEqual(['x', 'y', 'z'],

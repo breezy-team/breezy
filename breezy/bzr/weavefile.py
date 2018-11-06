@@ -36,11 +36,13 @@ line contains a newline, or ',' if not.
 
 from __future__ import absolute_import
 
+from ..sixish import bytesintern
+
 # TODO: When extracting a single version it'd be enough to just pass
 # an iterator returning the weave lines...  We don't really need to
 # deserialize it into memory.
 
-FORMAT_1 = '# bzr weave file v5\n'
+FORMAT_1 = b'# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
@@ -58,32 +60,32 @@ def write_weave_v5(weave, f):
         if included:
             # mininc = weave.minimal_parents(version)
             mininc = included
-            f.write('i ')
-            f.write(' '.join(str(i) for i in mininc))
-            f.write('\n')
+            f.write(b'i ')
+            f.write(b' '.join(b'%d' % i for i in mininc))
+            f.write(b'\n')
         else:
-            f.write('i\n')
-        f.write('1 ' + weave._sha1s[version] + '\n')
-        f.write('n ' + weave._names[version] + '\n')
-        f.write('\n')
+            f.write(b'i\n')
+        f.write(b'1 ' + weave._sha1s[version] + b'\n')
+        f.write(b'n ' + weave._names[version] + b'\n')
+        f.write(b'\n')
 
-    f.write('w\n')
+    f.write(b'w\n')
 
     for l in weave._weave:
         if isinstance(l, tuple):
-            if l[0] == '}':
-                f.write('}\n')
+            if l[0] == b'}':
+                f.write(b'}\n')
             else:
-                f.write('%s %d\n' % l)
+                f.write(l[0] + b' %d\n' % l[1])
         else: # text line
             if not l:
-                f.write(', \n')
-            elif l[-1] == '\n':
-                f.write('. ' + l)
+                f.write(b', \n')
+            elif l.endswith(b'\n'):
+                f.write(b'. ' + l)
             else:
-                f.write(', ' + l + '\n')
+                f.write(b', ' + l + b'\n')
 
-    f.write('W\n')
+    f.write(b'W\n')
 
 
 
@@ -133,12 +135,12 @@ def _read_weave_v5(f, w):
     # read weave header.
     while True:
         l = next(lines)
-        if l[0] == 'i':
+        if l[0:1] == b'i':
             if len(l) > 2:
-                w._parents.append(list(map(int, l[2:].split(' '))))
+                w._parents.append(list(map(int, l[2:].split(b' '))))
             else:
                 w._parents.append([])
-            l = lines.next()[:-1]
+            l = next(lines)[:-1]
             w._sha1s.append(l[2:])
             l = next(lines)
             name = l[2:-1]
@@ -146,7 +148,7 @@ def _read_weave_v5(f, w):
             w._name_map[name] = ver
             l = next(lines)
             ver += 1
-        elif l == 'w\n':
+        elif l == b'w\n':
             break
         else:
             raise WeaveFormatError('unexpected line %r' % l)
@@ -154,14 +156,14 @@ def _read_weave_v5(f, w):
     # read weave body
     while True:
         l = next(lines)
-        if l == 'W\n':
+        if l == b'W\n':
             break
-        elif '. ' == l[0:2]:
+        elif b'. ' == l[0:2]:
             w._weave.append(l[2:])  # include newline
-        elif ', ' == l[0:2]:
+        elif b', ' == l[0:2]:
             w._weave.append(l[2:-1])        # exclude newline
-        elif l == '}\n':
-            w._weave.append(('}', None))
+        elif l == b'}\n':
+            w._weave.append((b'}', None))
         else:
-            w._weave.append((intern(l[0]), int(l[2:])))
+            w._weave.append((bytesintern(l[0:1]), int(l[2:].decode('ascii'))))
     return w

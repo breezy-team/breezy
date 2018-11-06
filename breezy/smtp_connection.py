@@ -18,7 +18,11 @@
 
 from __future__ import absolute_import
 
-from email import Utils
+try:
+    from email.utils import getaddresses, parseaddr
+except ImportError:  # python < 3
+    from email.Utils import getaddresses, parseaddr
+
 import errno
 import smtplib
 import socket
@@ -28,10 +32,8 @@ from . import (
     osutils,
     )
 from .errors import (
-    NoDestinationAddress,
-    SMTPError,
-    DefaultSMTPConnectionRefused,
-    SMTPConnectionRefused,
+    BzrError,
+    InternalBzrError,
     )
 
 
@@ -47,6 +49,35 @@ smtp_username = config.Option('smtp_username', default=None,
         help='''\
 Username to use for authentication to SMTP server.
 ''')
+
+
+class SMTPError(BzrError):
+
+    _fmt = "SMTP error: %(error)s"
+
+    def __init__(self, error):
+        self.error = error
+
+
+class SMTPConnectionRefused(SMTPError):
+
+    _fmt = "SMTP connection to %(host)s refused"
+
+    def __init__(self, error, host):
+        self.error = error
+        self.host = host
+
+
+class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
+
+    _fmt = "Please specify smtp_server.  No server at default %(host)s."
+
+
+
+class NoDestinationAddress(InternalBzrError):
+
+    _fmt = "Message does not have a destination address."
+
 
 
 class SMTPConnection(object):
@@ -147,19 +178,20 @@ class SMTPConnection(object):
         """Get the origin and destination addresses of a message.
 
         :param message: A message object supporting get() to access its
-            headers, like email.Message or breezy.email_message.EmailMessage.
+            headers, like email.message.Message or
+            breezy.email_message.EmailMessage.
         :return: A pair (from_email, to_emails), where from_email is the email
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = Utils.parseaddr(message.get('From', None))[1]
+        from_email = parseaddr(message.get('From', None))[1]
         to_full_addresses = []
         for header in ['To', 'Cc', 'Bcc']:
             value = message.get(header, None)
             if value:
                 to_full_addresses.append(value)
         to_emails = [ pair[1] for pair in
-                Utils.getaddresses(to_full_addresses) ]
+                getaddresses(to_full_addresses) ]
 
         return from_email, to_emails
 
@@ -169,7 +201,8 @@ class SMTPConnection(object):
         The message will be sent to all addresses in the To, Cc and Bcc
         headers.
 
-        :param message: An email.Message or email.MIMEMultipart object.
+        :param message: An email.message.Message or
+            email.mime.multipart.MIMEMultipart object.
         :return: None
         """
         from_email, to_emails = self.get_message_addresses(message)

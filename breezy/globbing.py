@@ -43,7 +43,7 @@ class Replacer(object):
     must not contain capturing groups.
     """
 
-    _expand = lazy_regex.lazy_compile(ur'\\&')
+    _expand = lazy_regex.lazy_compile(u'\\\\&')
 
     def __init__(self, source=None):
         self._pat = None
@@ -93,12 +93,12 @@ class Replacer(object):
 
 
 _sub_named = Replacer()
-_sub_named.add(ur'\[:digit:\]', ur'\d')
-_sub_named.add(ur'\[:space:\]', ur'\s')
-_sub_named.add(ur'\[:alnum:\]', ur'\w')
-_sub_named.add(ur'\[:ascii:\]', ur'\0-\x7f')
-_sub_named.add(ur'\[:blank:\]', ur' \t')
-_sub_named.add(ur'\[:cntrl:\]', ur'\0-\x1f\x7f-\x9f')
+_sub_named.add(r'\[:digit:\]', r'\d')
+_sub_named.add(r'\[:space:\]', r'\s')
+_sub_named.add(r'\[:alnum:\]', r'\w')
+_sub_named.add(r'\[:ascii:\]', r'\0-\x7f')
+_sub_named.add(r'\[:blank:\]', r' \t')
+_sub_named.add(r'\[:cntrl:\]', r'\0-\x1f\x7f-\x9f')
 
 
 def _sub_group(m):
@@ -130,29 +130,29 @@ def _trailing_backslashes_regex(m):
 
 _sub_re = Replacer()
 _sub_re.add(u'^RE:', u'')
-_sub_re.add(u'\((?!\?)', u'(?:')
-_sub_re.add(u'\(\?P<.*>', _invalid_regex(u'(?:'))
-_sub_re.add(u'\(\?P=[^)]*\)', _invalid_regex(u''))
-_sub_re.add(ur'\\+$', _trailing_backslashes_regex)
+_sub_re.add(u'\\((?!\\?)', u'(?:')
+_sub_re.add(u'\\(\\?P<.*>', _invalid_regex(u'(?:'))
+_sub_re.add(u'\\(\\?P=[^)]*\\)', _invalid_regex(u''))
+_sub_re.add(r'\\+$', _trailing_backslashes_regex)
 
 
 _sub_fullpath = Replacer()
-_sub_fullpath.add(ur'^RE:.*', _sub_re) # RE:<anything> is a regex
-_sub_fullpath.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
-_sub_fullpath.add(ur'(?:(?<=/)|^)(?:\.?/)+', u'') # canonicalize path
-_sub_fullpath.add(ur'\\.', ur'\&') # keep anything backslashed
-_sub_fullpath.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
-_sub_fullpath.add(ur'(?:(?<=/)|^)\*\*+/', ur'(?:.*/)?') # **/ after ^ or /
-_sub_fullpath.add(ur'\*+', ur'[^/]*') # * elsewhere
-_sub_fullpath.add(ur'\?', ur'[^/]') # ? everywhere
+_sub_fullpath.add(r'^RE:.*', _sub_re) # RE:<anything> is a regex
+_sub_fullpath.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
+_sub_fullpath.add(r'(?:(?<=/)|^)(?:\.?/)+', u'') # canonicalize path
+_sub_fullpath.add(r'\\.', r'\&') # keep anything backslashed
+_sub_fullpath.add(r'[(){}|^$+.]', r'\\&') # escape specials
+_sub_fullpath.add(r'(?:(?<=/)|^)\*\*+/', r'(?:.*/)?') # **/ after ^ or /
+_sub_fullpath.add(r'\*+', r'[^/]*') # * elsewhere
+_sub_fullpath.add(r'\?', r'[^/]') # ? everywhere
 
 
 _sub_basename = Replacer()
-_sub_basename.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
-_sub_basename.add(ur'\\.', ur'\&') # keep anything backslashed
-_sub_basename.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
-_sub_basename.add(ur'\*+', ur'.*') # * everywhere
-_sub_basename.add(ur'\?', ur'.') # ? everywhere
+_sub_basename.add(r'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
+_sub_basename.add(r'\\.', r'\&') # keep anything backslashed
+_sub_basename.add(r'[(){}|^$+.]', r'\\&') # escape specials
+_sub_basename.add(r'\*+', r'.*') # * everywhere
+_sub_basename.add(r'\?', r'.') # ? everywhere
 
 
 def _sub_extension(pattern):
@@ -191,15 +191,15 @@ class Globster(object):
     pattern_types = [ "extension", "basename", "fullpath" ]
 
     pattern_info = {
-        "extension" : {
+        "extension": {
             "translator" : _sub_extension,
             "prefix" : r'(?:.*/)?(?!.*/)(?:.*\.)'
         },
-        "basename" : {
+        "basename": {
             "translator" : _sub_basename,
             "prefix" : r'(?:.*/)?(?!.*/)'
         },
-        "fullpath" : {
+        "fullpath": {
             "translator" : _sub_fullpath,
             "prefix" : r''
         },
@@ -208,9 +208,9 @@ class Globster(object):
     def __init__(self, patterns):
         self._regex_patterns = []
         pattern_lists = {
-            "extension" : [],
-            "basename" : [],
-            "fullpath" : [],
+            "extension": [],
+            "basename": [],
+            "fullpath": [],
         }
         for pat in patterns:
             pat = normalize_pattern(pat)
@@ -242,7 +242,7 @@ class Globster(object):
                 match = regex.match(filename)
                 if match:
                     return patterns[match.lastindex -1]
-        except errors.InvalidPattern as e:
+        except lazy_regex.InvalidPattern as e:
             # We can't show the default e.msg to the user as thats for
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
@@ -286,7 +286,7 @@ class Globster(object):
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("") # force compile
-        except errors.InvalidPattern as e:
+        except lazy_regex.InvalidPattern as e:
             result = False
         return result
 
@@ -302,7 +302,7 @@ class ExceptionGlobster(object):
     that apply under paths specified by '!' exception patterns.
     """
     
-    def __init__(self,patterns):
+    def __init__(self, patterns):
         ignores = [[], [], []]
         for p in patterns:
             if p.startswith(u'!!'):

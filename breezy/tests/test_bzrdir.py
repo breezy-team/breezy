@@ -25,6 +25,7 @@ import sys
 
 from .. import (
     branch,
+    bzr,
     config,
     controldir,
     errors,
@@ -67,7 +68,7 @@ from ..transport import (
     memory,
     pathfilter,
     )
-from ..transport.http._urllib import HttpTransport_urllib
+from ..transport.http import HttpTransport
 from ..transport.nosmart import NoSmartTransportDecorator
 from ..transport.readonly import ReadonlyTransportDecorator
 from ..bzr import knitrepo, knitpack_repo
@@ -103,18 +104,18 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register_lazy('lazy', 'breezy.tests.test_bzrdir',
             'DeprecatedBzrDirFormat', 'Format registered lazily',
             deprecated=True)
-        bzrdir.register_metadir(my_format_registry, 'knit',
+        bzr.register_metadir(my_format_registry, 'knit',
             'breezy.bzr.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        bzrdir.register_metadir(my_format_registry,
+        bzr.register_metadir(my_format_registry,
             'branch6',
             'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='breezy.bzr.branch.BzrBranchFormat6',
             experimental=True)
-        bzrdir.register_metadir(my_format_registry,
+        bzr.register_metadir(my_format_registry,
             'hidden format',
             'breezy.bzr.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
@@ -165,11 +166,11 @@ class TestFormatRegistry(TestCase):
         experimental, deprecated = rest.split('Deprecated formats')
         self.assertContainsRe(new, 'formats-help')
         self.assertContainsRe(new,
-                ':knit:\n    \(native\) \(default\) Format using knits\n')
+                ':knit:\n    \\(native\\) \\(default\\) Format using knits\n')
         self.assertContainsRe(experimental,
-                ':branch6:\n    \(native\) Experimental successor to knit')
+                ':branch6:\n    \\(native\\) Experimental successor to knit')
         self.assertContainsRe(deprecated,
-                ':lazy:\n    \(native\) Format registered lazily\n')
+                ':lazy:\n    \\(native\\) Format registered lazily\n')
         self.assertNotContainsRe(new, 'hidden')
 
     def test_set_default_repository(self):
@@ -191,10 +192,9 @@ class TestFormatRegistry(TestCase):
         a_registry.register('deprecated', DeprecatedBzrDirFormat,
             'Old format.  Slower and does not support stuff',
             deprecated=True)
-        a_registry.register('deprecatedalias', DeprecatedBzrDirFormat,
-            'Old format.  Slower and does not support stuff',
-            deprecated=True, alias=True)
-        self.assertEqual(frozenset(['deprecatedalias']), a_registry.aliases())
+        a_registry.register_alias('deprecatedalias', 'deprecated')
+        self.assertEqual({'deprecatedalias': 'deprecated'},
+                         a_registry.aliases())
 
 
 class SampleBranch(breezy.branch.Branch):
@@ -242,7 +242,7 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
-        return "Sample .bzr dir format."
+        return b"Sample .bzr dir format."
 
     def initialize_on_transport(self, t):
         """Create a bzr dir."""
@@ -265,14 +265,14 @@ class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
 
     @staticmethod
     def get_format_string():
-        return "Test format 1"
+        return b"Test format 1"
 
 
 class BzrDirFormatTest2(bzrdir.BzrDirMetaFormat1):
 
     @staticmethod
     def get_format_string():
-        return "Test format 2"
+        return b"Test format 2"
 
 
 class TestBzrDirFormat(TestCaseWithTransport):
@@ -281,13 +281,13 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        bzrdir.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
+        bzr.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
             BzrDirFormatTest1())
-        self.addCleanup(bzrdir.BzrProber.formats.remove,
+        self.addCleanup(bzr.BzrProber.formats.remove,
             BzrDirFormatTest1.get_format_string())
-        bzrdir.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
+        bzr.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
             BzrDirFormatTest2())
-        self.addCleanup(bzrdir.BzrProber.formats.remove,
+        self.addCleanup(bzr.BzrProber.formats.remove,
             BzrDirFormatTest2.get_format_string())
         t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
@@ -307,8 +307,16 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format_unknown_format(self):
         t = self.get_transport()
         t.mkdir('.bzr')
-        t.put_bytes('.bzr/branch-format', '')
+        t.put_bytes('.bzr/branch-format', b'')
         self.assertRaises(UnknownFormatError,
+                          bzrdir.BzrDirFormat.find_format,
+                          _mod_transport.get_transport_from_path('.'))
+
+    def test_find_format_line_endings(self):
+        t = self.get_transport()
+        t.mkdir('.bzr')
+        t.put_bytes('.bzr/branch-format', b'Corrupt line endings\r\n')
+        self.assertRaises(errors.LineEndingError,
                           bzrdir.BzrDirFormat.find_format,
                           _mod_transport.get_transport_from_path('.'))
 
@@ -318,7 +326,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # make a bzrdir
         format.initialize(url)
         # register a format for it.
-        bzrdir.BzrProber.formats.register(format.get_format_string(), format)
+        bzr.BzrProber.formats.register(format.get_format_string(), format)
         # which bzrdir.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open, url)
         # which bzrdir.open_containing will refuse (not supported)
@@ -327,7 +335,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t = _mod_transport.get_transport_from_url(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
-        bzrdir.BzrProber.formats.remove(format.get_format_string())
+        bzr.BzrProber.formats.remove(format.get_format_string())
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
@@ -559,14 +567,14 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         child_branch, new_child_transport = self.prepare_default_stacking(
             child_format='pack-0.92')
         new_child = child_branch.controldir.clone_on_transport(new_child_transport)
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(branch.UnstackableBranchFormat,
                           new_child.open_branch().get_stacked_on_url)
 
     def test_sprout_ignores_policy_for_unsupported_formats(self):
         child_branch, new_child_transport = self.prepare_default_stacking(
             child_format='pack-0.92')
         new_child = child_branch.controldir.sprout(new_child_transport.base)
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(branch.UnstackableBranchFormat,
                           new_child.open_branch().get_stacked_on_url)
 
     def test_sprout_upgrades_format_if_stacked_specified(self):
@@ -830,7 +838,7 @@ class ChrootedTests(TestCaseWithTransport):
                                          format='development-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
             format='development-subtree')
-        sub_tree.set_root_id('subtree-root')
+        sub_tree.set_root_id(b'subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
@@ -839,7 +847,9 @@ class ChrootedTests(TestCaseWithTransport):
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         self.assertPathExists('tree2/subtree/file')
-        self.assertEqual('tree-reference', tree2.kind('subtree-root'))
+        self.assertEqual(
+                'tree-reference',
+                tree2.kind('subtree', 'subtree-root'))
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
@@ -861,7 +871,7 @@ class ChrootedTests(TestCaseWithTransport):
         tree.commit('Initial commit')
         # The following line force the orhaning to reveal bug #634470
         tree.branch.get_config_stack().set(
-            'bzr.transform.orphan_policy', 'move')
+            'transform.orphan_policy', 'move')
         tree.controldir.destroy_workingtree()
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
         # fail :-( ) -- vila 20100909
@@ -1030,13 +1040,15 @@ class TestMeta1DirFormat(TestCaseWithTransport):
 
     def test_with_features(self):
         tree = self.make_branch_and_tree('tree', format='2a')
-        tree.controldir.update_feature_flags({"bar": "required"})
-        self.assertRaises(errors.MissingFeature, bzrdir.BzrDir.open, 'tree')
-        bzrdir.BzrDirMetaFormat1.register_feature('bar')
-        self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, 'bar')
+        tree.controldir.update_feature_flags({b"bar": b"required"})
+        self.assertRaises(bzrdir.MissingFeature, bzrdir.BzrDir.open, 'tree')
+        bzrdir.BzrDirMetaFormat1.register_feature(b'bar')
+        self.addCleanup(bzrdir.BzrDirMetaFormat1.unregister_feature, b'bar')
         dir = bzrdir.BzrDir.open('tree')
-        self.assertEqual("required", dir._format.features.get("bar"))
-        tree.controldir.update_feature_flags({"bar": None, "nonexistant": None})
+        self.assertEqual(b"required", dir._format.features.get(b"bar"))
+        tree.controldir.update_feature_flags({
+            b"bar": None,
+            b"nonexistant": None})
         dir = bzrdir.BzrDir.open('tree')
         self.assertEqual({}, dir._format.features)
 
@@ -1113,7 +1125,7 @@ class NonLocalTests(TestCaseWithTransport):
                               workingtree_4.WorkingTreeFormat4)
 
 
-class TestHTTPRedirections(object):
+class TestHTTPRedirectionsBase(object):
     """Test redirection between two http servers.
 
     This MUST be used by daughter classes that also inherit from
@@ -1133,7 +1145,7 @@ class TestHTTPRedirections(object):
         return http_utils.HTTPServerRedirecting()
 
     def setUp(self):
-        super(TestHTTPRedirections, self).setUp()
+        super(TestHTTPRedirectionsBase, self).setUp()
         # The redirections will point to the new server
         self.new_server = self.get_readonly_server()
         # The requests to the old server will be redirected
@@ -1167,20 +1179,20 @@ class TestHTTPRedirections(object):
         self.assertIsInstance(bdir.root_transport, type(start))
 
 
-class TestHTTPRedirections_urllib(TestHTTPRedirections,
-                                  http_utils.TestCaseWithTwoWebservers):
+class TestHTTPRedirections(TestHTTPRedirectionsBase,
+                           http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for urllib implementation"""
 
-    _transport = HttpTransport_urllib
+    _transport = HttpTransport
 
     def _qualified_url(self, host, port):
-        result = 'http+urllib://%s:%s' % (host, port)
+        result = 'http://%s:%s' % (host, port)
         self.permit_url(result)
         return result
 
 
 
-class TestHTTPRedirections_nosmart(TestHTTPRedirections,
+class TestHTTPRedirections_nosmart(TestHTTPRedirectionsBase,
                                   http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for the nosmart decorator"""
 
@@ -1192,7 +1204,7 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirections,
         return result
 
 
-class TestHTTPRedirections_readonly(TestHTTPRedirections,
+class TestHTTPRedirections_readonly(TestHTTPRedirectionsBase,
                                     http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for readonly decoratror"""
 
@@ -1223,14 +1235,14 @@ class TestDotBzrHidden(TestCaseWithTransport):
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create('.')
         self.build_tree(['a'])
-        self.assertEqual(['a'], self.get_ls())
+        self.assertEqual([b'a'], self.get_ls())
 
     def test_dot_bzr_hidden_with_url(self):
         if sys.platform == 'win32' and not win32utils.has_win32file:
             raise TestSkipped('unable to make file hidden without pywin32 library')
         b = bzrdir.BzrDir.create(urlutils.local_path_to_url('.'))
         self.build_tree(['a'])
-        self.assertEqual(['a'], self.get_ls())
+        self.assertEqual([b'a'], self.get_ls())
 
 
 class _TestBzrDirFormat(bzrdir.BzrDirMetaFormat1):
@@ -1400,7 +1412,7 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
         self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
     def test_exiting(self):
-        self._transport.put_bytes("a.~1~", "some content")
+        self._transport.put_bytes("a.~1~", b"some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
 
 
@@ -1458,7 +1470,7 @@ class SampleBzrFormat(bzrdir.BzrFormat):
 
     @classmethod
     def get_format_string(cls):
-        return "First line\n"
+        return b"First line\n"
 
 
 class TestBzrFormat(TestCase):
@@ -1466,57 +1478,57 @@ class TestBzrFormat(TestCase):
 
     def test_as_string(self):
         format = SampleBzrFormat()
-        format.features = {"foo": "required"}
+        format.features = {b"foo": b"required"}
         self.assertEqual(format.as_string(),
-            "First line\n"
-            "required foo\n")
-        format.features["another"] = "optional"
+            b"First line\n"
+            b"required foo\n")
+        format.features[b"another"] = b"optional"
         self.assertEqual(format.as_string(),
-            "First line\n"
-            "required foo\n"
-            "optional another\n")
+            b"First line\n"
+            b"optional another\n"
+            b"required foo\n")
 
     def test_network_name(self):
         # The network string should include the feature info
         format = SampleBzrFormat()
-        format.features = {"foo": "required"}
+        format.features = {b"foo": b"required"}
         self.assertEqual(
-            "First line\nrequired foo\n",
+            b"First line\nrequired foo\n",
             format.network_name())
 
     def test_from_string_no_features(self):
         # No features
         format = SampleBzrFormat.from_string(
-            "First line\n")
+            b"First line\n")
         self.assertEqual({}, format.features)
 
     def test_from_string_with_feature(self):
         # Proper feature
         format = SampleBzrFormat.from_string(
-            "First line\nrequired foo\n")
-        self.assertEqual("required", format.features.get("foo"))
+            b"First line\nrequired foo\n")
+        self.assertEqual(b"required", format.features.get(b"foo"))
 
     def test_from_string_format_string_mismatch(self):
         # The first line has to match the format string
         self.assertRaises(AssertionError, SampleBzrFormat.from_string,
-            "Second line\nrequired foo\n")
+            b"Second line\nrequired foo\n")
 
     def test_from_string_missing_space(self):
         # At least one space is required in the feature lines
         self.assertRaises(errors.ParseFormatError, SampleBzrFormat.from_string,
-            "First line\nfoo\n")
+            b"First line\nfoo\n")
 
     def test_from_string_with_spaces(self):
         # Feature with spaces (in case we add stuff like this in the future)
         format = SampleBzrFormat.from_string(
-            "First line\nrequired foo with spaces\n")
-        self.assertEqual("required", format.features.get("foo with spaces"))
+            b"First line\nrequired foo with spaces\n")
+        self.assertEqual(b"required", format.features.get(b"foo with spaces"))
 
     def test_eq(self):
         format1 = SampleBzrFormat()
-        format1.features = {"nested-trees": "optional"}
+        format1.features = {b"nested-trees": b"optional"}
         format2 = SampleBzrFormat()
-        format2.features = {"nested-trees": "optional"}
+        format2.features = {b"nested-trees": b"optional"}
         self.assertEqual(format1, format1)
         self.assertEqual(format1, format2)
         format3 = SampleBzrFormat()
@@ -1525,40 +1537,40 @@ class TestBzrFormat(TestCase):
     def test_check_support_status_optional(self):
         # Optional, so silently ignore
         format = SampleBzrFormat()
-        format.features = {"nested-trees": "optional"}
+        format.features = {b"nested-trees": b"optional"}
         format.check_support_status(True)
-        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
-        SampleBzrFormat.register_feature("nested-trees")
+        self.addCleanup(SampleBzrFormat.unregister_feature, b"nested-trees")
+        SampleBzrFormat.register_feature(b"nested-trees")
         format.check_support_status(True)
 
     def test_check_support_status_required(self):
         # Optional, so trigger an exception
         format = SampleBzrFormat()
-        format.features = {"nested-trees": "required"}
-        self.assertRaises(errors.MissingFeature, format.check_support_status,
+        format.features = {b"nested-trees": b"required"}
+        self.assertRaises(bzrdir.MissingFeature, format.check_support_status,
             True)
-        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
-        SampleBzrFormat.register_feature("nested-trees")
+        self.addCleanup(SampleBzrFormat.unregister_feature, b"nested-trees")
+        SampleBzrFormat.register_feature(b"nested-trees")
         format.check_support_status(True)
 
     def test_check_support_status_unknown(self):
         # treat unknown necessity as required
         format = SampleBzrFormat()
-        format.features = {"nested-trees": "unknown"}
-        self.assertRaises(errors.MissingFeature, format.check_support_status,
+        format.features = {b"nested-trees": b"unknown"}
+        self.assertRaises(bzrdir.MissingFeature, format.check_support_status,
             True)
-        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
-        SampleBzrFormat.register_feature("nested-trees")
+        self.addCleanup(SampleBzrFormat.unregister_feature, b"nested-trees")
+        SampleBzrFormat.register_feature(b"nested-trees")
         format.check_support_status(True)
 
     def test_feature_already_registered(self):
         # a feature can only be registered once
-        self.addCleanup(SampleBzrFormat.unregister_feature, "nested-trees")
-        SampleBzrFormat.register_feature("nested-trees")
-        self.assertRaises(errors.FeatureAlreadyRegistered,
-            SampleBzrFormat.register_feature, "nested-trees")
+        self.addCleanup(SampleBzrFormat.unregister_feature, b"nested-trees")
+        SampleBzrFormat.register_feature(b"nested-trees")
+        self.assertRaises(bzrdir.FeatureAlreadyRegistered,
+            SampleBzrFormat.register_feature, b"nested-trees")
 
     def test_feature_with_space(self):
         # spaces are not allowed in feature names
         self.assertRaises(ValueError, SampleBzrFormat.register_feature,
-            "nested trees")
+            b"nested trees")

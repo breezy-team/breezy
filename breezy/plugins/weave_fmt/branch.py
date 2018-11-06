@@ -24,8 +24,6 @@ from ... import (
     )
 
 from ...decorators import (
-    needs_read_lock,
-    needs_write_lock,
     only_raises,
     )
 from ...lock import LogicalLockResult
@@ -150,8 +148,8 @@ class BzrBranchFormat4(BranchFormat):
         if not [isinstance(a_controldir._format, format) for format in
                 self._compatible_bzrdirs]:
             raise errors.IncompatibleFormat(self, a_controldir._format)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
+        utf8_files = [('revision-history', b''),
+                      ('branch-name', b''),
                       ]
         mutter('creating branch %r in %s', self, a_controldir.user_url)
         branch_transport = a_controldir.get_branch_transport(self, name=name)
@@ -182,13 +180,13 @@ class BzrBranchFormat4(BranchFormat):
         from .bzrdir import (
             BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
             )
-        self._matchingbzrdir = BzrDirFormat6()
+        self._matchingcontroldir = BzrDirFormat6()
         self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
             BzrDirFormat6]
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
+        return self._matchingcontroldir.get_format_string()
 
     def get_format_description(self):
         return "Branch format 4"

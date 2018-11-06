@@ -197,6 +197,12 @@ class TestTrace(TestCase):
         log = self.get_log()
         self.assertContainsRe(log, 'the unicode character')
 
+    def test_trace_argument_exception(self):
+        err = Exception('an error')
+        mutter(u'can format stringable classes %s', err)
+        log = self.get_log()
+        self.assertContainsRe(log, 'can format stringable classes an error')
+
     def test_report_broken_pipe(self):
         try:
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
@@ -232,26 +238,26 @@ class TestTrace(TestCase):
         self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
         self.assertContainsRe(log,
-            'test_trace.py", line \d+, in test_mutter_callsite_2\n')
+            'test_trace.py", line \\d+, in test_mutter_callsite_2\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 
     def test_mutter_never_fails(self):
-        # Even if the decode/encode stage fails, mutter should not
-        # raise an exception
-        # This test checks that mutter doesn't fail; the current behaviour
-        # is that it doesn't fail *and writes non-utf8*.
-        mutter(u'Writing a greek mu (\xb5) works in a unicode string')
-        mutter(b'But fails in an ascii string \xb5')
-        mutter(b'and in an ascii argument: %s', b'\xb5')
+        """Even with unencodable input mutter should not raise errors."""
+        mutter(u'can write unicode \xa7')
+        mutter('can interpolate unicode %s', u'\xa7')
+        mutter(b'can write bytes \xa7')
+        mutter('can repr bytes %r', b'\xa7')
+        mutter('can interpolate bytes %s', b'\xa7')
+        # Log will always be written as utf-8
         log = self.get_log()
-        self.assertContainsRe(log, 'Writing a greek mu')
-        self.assertContainsRe(log, "But fails in an ascii string")
-        # However, the log content object does unicode replacement on reading
-        # to let it get unicode back where good data has been written. So we
-        # have to do a replaceent here as well.
-        self.assertContainsRe(log, b"ascii argument: \xb5".decode('utf8',
-            'replace'))
+        self.assertContainsRe(
+            log,
+            u'.* +can write unicode \xa7\n'
+            u'.* +can interpolate unicode \xa7\n'
+            u'.* +can write bytes \ufffd\n'
+            u'.* +can repr bytes b\'\\\\xa7\'\n'
+            u'.* +can interpolate bytes (?:\ufffd|b\'\\\\xa7\')\n')
 
     def test_show_error(self):
         show_error('error1')

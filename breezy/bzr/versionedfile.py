@@ -149,6 +149,8 @@ class FulltextContentFactory(ContentFactory):
         self.storage_kind = 'fulltext'
         self.key = key
         self.parents = parents
+        if not isinstance(text, bytes):
+            raise TypeError(text)
         self._text = text
 
     def get_bytes_as(self, storage_kind):
@@ -464,13 +466,13 @@ class VersionedFile(object):
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:
-            if line.__class__ is not str:
+            if not isinstance(line, bytes):
                 raise errors.BzrBadParameterUnicode("lines")
 
     def _check_lines_are_lines(self, lines):
         """Check that the lines really are full lines without inline EOL."""
         for line in lines:
-            if '\n' in line[:-1]:
+            if b'\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
 
     def get_format_signature(self):
@@ -572,7 +574,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return ''.join(self.get_lines(version_id))
+        return b''.join(self.get_lines(version_id))
     get_string = get_text
 
     def get_texts(self, version_ids):
@@ -581,7 +583,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return [''.join(self.get_lines(v)) for v in version_ids]
+        return [b''.join(self.get_lines(v)) for v in version_ids]
 
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.
@@ -603,8 +605,6 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""
-        if isinstance(version_ids, basestring):
-            version_ids = [version_ids]
         raise NotImplementedError(self.get_ancestry)
 
     def get_ancestry_with_ghosts(self, version_ids):
@@ -671,7 +671,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
 
-    def plan_merge(self, ver_a, ver_b):
+    def plan_merge(self, ver_a, ver_b, base=None):
         """Return pseudo-annotation indicating how the two versions merge.
 
         This is computed between versions a and b and their common
@@ -793,7 +793,7 @@ class KeyMapper(object):
     def map(self, key):
         """Map key to an underlying storage identifier.
 
-        :param key: A key tuple e.g. ('file-id', 'revision-id').
+        :param key: A key tuple e.g. (b'file-id', b'revision-id').
         :return: An underlying storage identifier, specific to the partitioning
             mechanism.
         """
@@ -845,11 +845,11 @@ class PrefixMapper(URLEscapeMapper):
 
     def _map(self, key):
         """See KeyMapper.map()."""
-        return key[0]
+        return key[0].decode('utf-8')
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (partition_id,)
+        return (partition_id.encode('utf-8'),)
 
 
 class HashPrefixMapper(URLEscapeMapper):
@@ -861,7 +861,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "%02x/%s" % (adler32(prefix) & 0xff, prefix)
+        return "%02x/%s" % (adler32(prefix) & 0xff, prefix.decode('utf-8'))
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -869,7 +869,7 @@ class HashPrefixMapper(URLEscapeMapper):
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (self._unescape(osutils.basename(partition_id)),)
+        return (self._unescape(osutils.basename(partition_id)).encode('utf-8'),)
 
     def _unescape(self, basename):
         """No unescaping needed for HashPrefixMapper."""
@@ -882,7 +882,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
     This mapper is for use with a transport based backend.
     """
 
-    _safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
+    _safe = bytearray(b"abcdefghijklmnopqrstuvwxyz0123456789-_@,.")
 
     def _escape(self, prefix):
         """Turn a key element into a filesystem safe string.
@@ -894,9 +894,9 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [((c in self._safe) and c or ('%%%02x' % ord(c)))
-             for c in prefix]
-        return ''.join(r)
+        r = [(c in self._safe) and chr(c) or ('%%%02x' % c)
+                for c in bytearray(prefix)]
+        return ''.join(r).encode('ascii')
 
     def _unescape(self, basename):
         """Escaped names are easily unescaped by urlutils."""
@@ -912,7 +912,7 @@ def make_versioned_files_factory(versioned_file_factory, mapper):
     """
     def factory(transport):
         return ThunkedVersionedFiles(transport, versioned_file_factory, mapper,
-            lambda:True)
+            lambda: True)
     return factory
 
 
@@ -977,36 +977,6 @@ class VersionedFiles(object):
                  back to future add_lines calls in the parent_texts dictionary.
         """
         raise NotImplementedError(self.add_lines)
-
-    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
-        """Add a text to the store.
-
-        This is a private function for use by VersionedFileCommitBuilder.
-
-        :param key: The key tuple of the text to add. If the last element is
-            None, a CHK string will be generated during the addition.
-        :param parents: The parents key tuples of the text to add.
-        :param text: A string containing the text to be committed.
-        :param nostore_sha: Raise ExistingContent and do not add the lines to
-            the versioned file if the digest of the lines matches this.
-        :param random_id: If True a random id has been selected rather than
-            an id determined by some deterministic process such as a converter
-            from a foreign VCS. When True the backend may choose not to check
-            for uniqueness of the resulting key within the versioned file, so
-            this should only be done when the result is expected to be unique
-            anyway.
-        :param check_content: If True, the lines supplied are verified to be
-            bytestrings that are correctly formed lines.
-        :return: The text sha1, the number of bytes in the text, and an opaque
-                 representation of the inserted version which can be provided
-                 back to future _add_text calls in the parent_texts dictionary.
-        """
-        # The default implementation just thunks over to .add_lines(),
-        # inefficient, but it works.
-        return self.add_lines(key, parents, osutils.split_lines(text),
-                              nostore_sha=nostore_sha,
-                              random_id=random_id,
-                              check_content=True)
 
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
@@ -1365,7 +1335,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
         sha1s = {}
-        for prefix,suffixes, vf in self._iter_keys_vf(keys):
+        for prefix, suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
             for suffix, sha1 in viewitems(vf_sha1s):
                 sha1s[prefix + (suffix,)] = sha1
@@ -1819,7 +1789,7 @@ def network_bytes_to_kind_and_offset(network_bytes):
     :return: A tuple (storage_kind, offset_of_remaining_bytes)
     """
     line_end = network_bytes.find(b'\n')
-    storage_kind = network_bytes[:line_end]
+    storage_kind = network_bytes[:line_end].decode('ascii')
     return storage_kind, line_end + 1
 
 

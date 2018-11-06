@@ -29,6 +29,7 @@ from .. import (
     urlutils,
     )
 from ..sixish import (
+    PY3,
     text_type,
     )
 
@@ -43,12 +44,15 @@ class TestErrors(tests.TestCase):
         Python 2.5 uses a slot for StandardError.message.
         See bug #603461
         """
-        fmt_pattern = re.compile("%\(message\)[sir]")
+        fmt_pattern = re.compile("%\\(message\\)[sir]")
         for c in errors.BzrError.__subclasses__():
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)
             if init:
-                args = inspect.getargspec(init)[0]
+                if PY3:
+                    args = inspect.getfullargspec(init)[0]
+                else:
+                    args = inspect.getargspec(init)[0]
                 self.assertFalse('message' in args,
                     ('Argument name "message" not allowed for '
                     '"errors.%s.__init__"' % c.__name__))
@@ -62,25 +66,6 @@ class TestErrors(tests.TestCase):
             str(error),
             "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
             " filesystem encoding UTF-8$")
-
-    def test_corrupt_dirstate(self):
-        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
-        self.assertEqualDiff(
-            "Inconsistency in dirstate file path/to/dirstate.\n"
-            "Error: the reason why",
-            str(error))
-
-    def test_dirstate_corrupt(self):
-        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
-                                       'trailing garbage: "x"')
-        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
-            " appears to be corrupt: trailing garbage: \"x\"",
-            str(error))
-
-    def test_disabled_method(self):
-        error = errors.DisabledMethod("class name")
-        self.assertEqualDiff(
-            "The smart server method 'class name' is disabled.", str(error))
 
     def test_duplicate_file_id(self):
         error = errors.DuplicateFileId('a_file_id', 'foo')
@@ -166,31 +151,6 @@ class TestErrors(tests.TestCase):
             "Use 'brz break-lock' to clear it",
             str(error))
 
-    def test_knit_data_stream_incompatible(self):
-        error = errors.KnitDataStreamIncompatible(
-            'stream format', 'target format')
-        self.assertEqual('Cannot insert knit data stream of format '
-                         '"stream format" into knit of format '
-                         '"target format".', str(error))
-
-    def test_knit_data_stream_unknown(self):
-        error = errors.KnitDataStreamUnknown(
-            'stream format')
-        self.assertEqual('Cannot parse knit data stream of format '
-                         '"stream format".', str(error))
-
-    def test_knit_header_error(self):
-        error = errors.KnitHeaderError('line foo\n', 'path/to/file')
-        self.assertEqual("Knit header error: 'line foo\\n' unexpected"
-                         " for file \"path/to/file\".", str(error))
-
-    def test_knit_index_unknown_method(self):
-        error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
-                                              ['bad', 'no-eol'])
-        self.assertEqual("Knit index http://host/foo.kndx does not have a"
-                         " known method in options: ['bad', 'no-eol']",
-                         str(error))
-
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
@@ -200,12 +160,6 @@ class TestErrors(tests.TestCase):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
             "smart protocol.",
-            str(error))
-
-    def test_no_help_topic(self):
-        error = errors.NoHelpTopic("topic")
-        self.assertEqualDiff("No help could be found for 'topic'. "
-            "Please use 'brz help topics' to obtain a list of topics.",
             str(error))
 
     def test_no_such_id(self):
@@ -250,25 +204,6 @@ class TestErrors(tests.TestCase):
             "('key',) which is encoded as 'fulltext'.",
             str(error))
 
-    def test_unknown_hook(self):
-        error = errors.UnknownHook("branch", "foo")
-        self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
-            " of breezy.",
-            str(error))
-        error = errors.UnknownHook("tree", "bar")
-        self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
-            " of breezy.",
-            str(error))
-
-    def test_unstackable_branch_format(self):
-        format = u'foo'
-        url = "/foo"
-        error = errors.UnstackableBranchFormat(format, url)
-        self.assertEqualDiff(
-            "The branch '/foo'(foo) is not a stackable format. "
-            "You will need to upgrade the branch to permit branch stacking.",
-            str(error))
-
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
@@ -294,36 +229,6 @@ class TestErrors(tests.TestCase):
         path = u'a path'
         error = errors.ReadError(path)
         self.assertContainsRe(str(error), "^Error reading from u?'a path'.$")
-
-    def test_bad_index_format_signature(self):
-        error = errors.BadIndexFormatSignature("foo", "bar")
-        self.assertEqual("foo is not an index of type bar.",
-            str(error))
-
-    def test_bad_index_data(self):
-        error = errors.BadIndexData("foo")
-        self.assertEqual("Error in data for index foo.",
-            str(error))
-
-    def test_bad_index_duplicate_key(self):
-        error = errors.BadIndexDuplicateKey("foo", "bar")
-        self.assertEqual("The key 'foo' is already in index 'bar'.",
-            str(error))
-
-    def test_bad_index_key(self):
-        error = errors.BadIndexKey("foo")
-        self.assertEqual("The key 'foo' is not a valid key.",
-            str(error))
-
-    def test_bad_index_options(self):
-        error = errors.BadIndexOptions("foo")
-        self.assertEqual("Could not parse options for index foo.",
-            str(error))
-
-    def test_bad_index_value(self):
-        error = errors.BadIndexValue("foo")
-        self.assertEqual("The value 'foo' is not a valid value.",
-            str(error))
 
     def test_bzrerror_from_literal_string(self):
         # Some code constructs BzrError from a literal string, in which case
@@ -413,14 +318,6 @@ class TestErrors(tests.TestCase):
             "location specified in the merge directive is not a branch: "
             "foo.", str(error))
 
-    def test_malformed_bug_identifier(self):
-        """Test the formatting of MalformedBugIdentifier."""
-        error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
-        self.assertEqual(
-            'Did not understand bug identifier bogus: reason for bogosity. '
-            'See "brz help bugs" for more information on this feature.',
-            str(error))
-
     def test_unexpected_smart_server_response(self):
         e = errors.UnexpectedSmartServerResponse(('not yes',))
         self.assertEqual(
@@ -505,17 +402,10 @@ class TestErrors(tests.TestCase):
 
     def test_invalid_url_join(self):
         """Test the formatting of InvalidURLJoin."""
-        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        e = urlutils.InvalidURLJoin('Reason', 'base path', ('args',))
         self.assertEqual(
             "Invalid URL join request: Reason: 'base path' + ('args',)",
             str(e))
-
-    def test_incorrect_url(self):
-        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
-        self.assertEqual(
-            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
-             "http://bug.com/"),
-            str(err))
 
     def test_unable_encode_path(self):
         err = errors.UnableEncodePath('foo', 'executable')
@@ -526,10 +416,6 @@ class TestErrors(tests.TestCase):
     def test_unknown_format(self):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEqual("Unknown foo format: 'bar'", str(err))
-
-    def test_unknown_rules(self):
-        err = errors.UnknownRules(['foo', 'bar'])
-        self.assertEqual("Unknown rules detected: foo, bar.", str(err))
 
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
@@ -564,33 +450,6 @@ class TestErrors(tests.TestCase):
         finally:
             del err
 
-    def test_must_have_working_tree(self):
-        err = errors.MustHaveWorkingTree('foo', 'bar')
-        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
-                                   " working tree.")
-
-    def test_no_such_view(self):
-        err = errors.NoSuchView('foo')
-        self.assertEqual("No such view: foo.", str(err))
-
-    def test_views_not_supported(self):
-        err = errors.ViewsNotSupported('atree')
-        err_str = str(err)
-        self.assertStartsWith(err_str, "Views are not supported by ")
-        self.assertEndsWith(err_str, "; use 'brz upgrade' to change your "
-            "tree to a later format.")
-
-    def test_file_outside_view(self):
-        err = errors.FileOutsideView('baz', ['foo', 'bar'])
-        self.assertEqual('Specified file "baz" is outside the current view: '
-                         'foo, bar', str(err))
-
-    def test_invalid_shelf_id(self):
-        invalid_id = "foo"
-        err = errors.InvalidShelfId(invalid_id)
-        self.assertEqual('"foo" is not a valid shelf id, '
-                         'try a number instead.', str(err))
-
     def test_unresumable_write_group(self):
         repo = "dummy repo"
         wg_tokens = ['token']
@@ -618,11 +477,6 @@ class TestErrors(tests.TestCase):
                 raise errors.NotBranchError('path', controldir=FakeBzrDir())
         err = errors.NotBranchError('path', controldir=FakeBzrDir())
         self.assertEqual('Not a branch: "path": NotBranchError.', str(err))
-
-    def test_invalid_pattern(self):
-        error = errors.InvalidPattern('Bad pattern msg.')
-        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
-            str(error))
 
     def test_recursive_bind(self):
         error = errors.RecursiveBind('foo_bar_branch')
@@ -661,12 +515,15 @@ class TestErrorFormatting(tests.TestCase):
     def test_always_str(self):
         e = PassThroughError(u'\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
-        # In Python str(foo) *must* return a real byte string
+        # In Python 2 str(foo) *must* return a real byte string
         # not a Unicode string. The following line would raise a
         # Unicode error, because it tries to call str() on the string
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
-        self.assertEqual('Pass through \xc2\xb5 and bar', s)
+        if PY3:
+            self.assertEqual('Pass through \xb5 and bar', s)
+        else:
+            self.assertEqual('Pass through \xc2\xb5 and bar', s)
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')
@@ -688,11 +545,6 @@ class TestErrorFormatting(tests.TestCase):
         self.assertContainsRe(
             str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
-
-    def test_file_timestamp_unavailable(self):
-        e = errors.FileTimestampUnavailable("/path/foo")
-        self.assertEqual("The filestamp for /path/foo is not available.",
-                         str(e))
 
     def test_transform_rename_failed(self):
         e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
@@ -724,14 +576,6 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
                              "Please run brz reconcile on this repository." %
                              repo.controldir.root_transport.base,
                              str(error))
-
-    def test_unknown_bug_tracker_abbreviation(self):
-        """Test the formatting of UnknownBugTrackerAbbreviation."""
-        branch = self.make_branch('some_branch')
-        error = errors.UnknownBugTrackerAbbreviation('xxx', branch)
-        self.assertEqual(
-            "Cannot find registered bug tracker called xxx on %s" % branch,
-            str(error))
 
     def test_not_branch_bzrdir_with_repo(self):
         controldir = self.make_repository('repo').controldir

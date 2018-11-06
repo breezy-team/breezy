@@ -36,8 +36,11 @@ class TestCommit(per_branch.TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"],
-                         "My happy branch")
+        if branch.repository._format.supports_storing_branch_nick:
+            self.assertEqual(committed.properties["branch-nick"],
+                             "My happy branch")
+        else:
+            self.assertNotIn("branch-nick", committed.properties)
 
 
 class TestCommitHook(per_branch.TestCaseWithBranch):
@@ -147,7 +150,10 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         tree.add('')
         root_delta.added = [('', tree.path2id(''), 'directory')]
-        class PreCommitException(Exception): pass
+        class PreCommitException(Exception):
+            
+            def __init__(self, revid):
+                self.revid = revid
         def hook_func(local, master,
                       old_revno, old_revid, new_revno, new_revid,
                       tree_delta, future_tree):
@@ -160,7 +166,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         # so the commit is rolled back and revno unchanged
         err = self.assertRaises(PreCommitException, tree.commit, 'message')
         # we have to record the revid to use in assertEqual later
-        revids[0] = str(err)
+        revids[0] = err.revid
         # unregister all pre_commit hooks
         branch.Branch.hooks["pre_commit"] = []
         # and re-register the capture hook
@@ -182,41 +188,48 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         # This does not try to validate data correctness in the delta.
         self.build_tree(['rootfile', 'dir/', 'dir/subfile'])
         tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # setting up a playground
-            tree.set_root_id('root_id')
-            tree.add('rootfile', 'rootfile_id')
-            tree.put_file_bytes_non_atomic('rootfile_id', 'abc')
-            tree.add('dir', 'dir_id')
-            tree.add('dir/subfile', 'dir_subfile_id')
-            tree.mkdir('to_be_unversioned', 'to_be_unversioned_id')
-            tree.put_file_bytes_non_atomic('dir_subfile_id', 'def')
+            tree.add('rootfile')
+            rootfile_id = tree.path2id('rootfile')
+            tree.put_file_bytes_non_atomic('rootfile', b'abc')
+            tree.add('dir')
+            dir_id = tree.path2id('dir')
+            tree.add('dir/subfile')
+            dir_subfile_id = tree.path2id('dir/subfile')
+            tree.put_file_bytes_non_atomic('to_be_unversioned', b'blah')
+            tree.add(['to_be_unversioned'])
+            to_be_unversioned_id = tree.path2id('to_be_unversioned')
+            tree.put_file_bytes_non_atomic('dir/subfile', b'def')
             revid1 = tree.commit('first revision')
-        finally:
-            tree.unlock()
 
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # making changes
-            tree.put_file_bytes_non_atomic('rootfile_id', 'jkl')
+            tree.put_file_bytes_non_atomic('rootfile', b'jkl')
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
-            tree.unversion(['to_be_unversioned_id'])
-            tree.mkdir('added_dir', 'added_dir_id')
+            tree.unversion(['to_be_unversioned'])
+            tree.mkdir('added_dir')
+            added_dir_id = tree.path2id('added_dir')
             # start to capture pre_commit delta
             branch.Branch.hooks.install_named_hook(
                 "pre_commit", self.capture_pre_commit_hook, None)
             revid2 = tree.commit('second revision')
-        finally:
-            tree.unlock()
 
         expected_delta = delta.TreeDelta()
-        expected_delta.added = [('added_dir', 'added_dir_id', 'directory')]
-        expected_delta.removed = [('to_be_unversioned',
-                                   'to_be_unversioned_id', 'directory')]
-        expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
-                                   'dir_subfile_id', 'file', False, False)]
-        expected_delta.modified=[('rootfile', 'rootfile_id', 'file', True,
+        if tree.has_versioned_directories():
+            expected_delta.added.append(('added_dir', added_dir_id, 'directory'))
+        if tree.supports_rename_tracking():
+            expected_delta.removed = [('to_be_unversioned',
+                                       to_be_unversioned_id, 'file')]
+            expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
+                                       dir_subfile_id, 'file', False, False)]
+        else:
+            expected_delta.added.append(('dir/subfile_renamed',
+                                        tree.path2id('dir/subfile_renamed'), 'file'))
+            expected_delta.removed = [
+                    ('dir/subfile', dir_subfile_id, 'file'),
+                    ('to_be_unversioned', to_be_unversioned_id, 'file')]
+        expected_delta.modified=[('rootfile', rootfile_id, 'file', True,
                                   False)]
         self.assertEqual([('pre_commit', 1, revid1, 2, revid2,
                            expected_delta)], self.hook_calls)

@@ -24,19 +24,20 @@ import time
 
 from breezy import (
     config,
-    errors,
     osutils,
     )
 """)
 
 from . import (
+    errors,
     lazy_regex,
     )
+from .sixish import text_type
 
 # the regex removes any weird characters; we don't escape them
 # but rather just pull them out
-_file_id_chars_re = lazy_regex.lazy_compile(r'[^\w.]')
-_rev_id_chars_re = lazy_regex.lazy_compile(r'[^-\w.+@]')
+_file_id_chars_re = lazy_regex.lazy_compile(b'[^\\w.]')
+_rev_id_chars_re = lazy_regex.lazy_compile(b'[^-\\w.+@]')
 _gen_file_id_suffix = None
 _gen_file_id_serial = 0
 
@@ -59,7 +60,7 @@ def _next_id_suffix():
     #           suffix forever.
     global _gen_file_id_suffix, _gen_file_id_serial
     if _gen_file_id_suffix is None:
-        _gen_file_id_suffix =  ("-%s-%s-" % (
+        _gen_file_id_suffix = ("-%s-%s-" % (
                 osutils.compact_date(time.time()), osutils.rand_chars(16))
             ).encode("ascii")
     _gen_file_id_serial += 1
@@ -71,6 +72,8 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
+    if isinstance(name, text_type):
+        name = name.encode('ascii', 'replace')
     # The real randomness is in the _next_id_suffix, the
     # rest of the identifier is just to be nice.
     # So we:
@@ -82,7 +85,7 @@ def gen_file_id(name):
     #    filesystems
     # 4) Removing starting '.' characters to prevent the file ids from
     #    being considered hidden.
-    ascii_word_only = _file_id_chars_re.sub('', name.lower()).encode('ascii')
+    ascii_word_only = _file_id_chars_re.sub(b'', name.lower())
     short_no_dots = ascii_word_only.lstrip(b'.')[:20]
     return short_no_dots + _next_id_suffix()
 
@@ -103,20 +106,20 @@ def gen_revision_id(username, timestamp=None):
     """
     try:
         user_or_email = config.extract_email_address(username)
-    except errors.NoEmailInUsername:
+    except config.NoEmailInUsername:
         user_or_email = username
 
     user_or_email = user_or_email.lower()
     user_or_email = user_or_email.replace(' ', '_')
-    user_or_email = _rev_id_chars_re.sub('', user_or_email)
+    user_or_email = _rev_id_chars_re.sub(b'', user_or_email.encode('utf-8'))
 
     # This gives 36^16 ~= 2^82.7 ~= 83 bits of entropy
-    unique_chunk = osutils.rand_chars(16)
+    unique_chunk = osutils.rand_chars(16).encode('utf-8')
 
     if timestamp is None:
         timestamp = time.time()
 
-    rev_id = u'-'.join((user_or_email,
-                        osutils.compact_date(timestamp),
+    rev_id = b'-'.join((user_or_email,
+                        osutils.compact_date(timestamp).encode('utf-8'),
                         unique_chunk))
-    return rev_id.encode('utf8')
+    return rev_id

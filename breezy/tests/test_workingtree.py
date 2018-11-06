@@ -18,6 +18,7 @@
 from .. import (
     conflicts,
     errors,
+    lock,
     transport,
     workingtree,
     )
@@ -29,9 +30,8 @@ from ..bzr import (
     )
 from ..lock import write_locked
 from ..lockdir import LockDir
-from ..mutabletree import needs_tree_write_lock
 from . import TestCase, TestCaseWithTransport, TestSkipped
-from ..workingtree import (
+from ..tree import (
     TreeEntry,
     TreeDirectory,
     TreeFile,
@@ -84,10 +84,10 @@ class TestDefaultFormat(TestCaseWithTransport):
 
     def test_from_string(self):
         self.assertIsInstance(
-            SampleTreeFormat.from_string("Sample tree format."),
+            SampleTreeFormat.from_string(b"Sample tree format."),
             SampleTreeFormat)
         self.assertRaises(AssertionError,
-            SampleTreeFormat.from_string, "Different format string.")
+            SampleTreeFormat.from_string, b"Different format string.")
 
     def test_get_set_default_format_by_key(self):
         old_format = workingtree.format_registry.get_default()
@@ -140,7 +140,7 @@ class SampleTreeFormat(bzrworkingtree.WorkingTreeFormatMetaDir):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Sample tree format."
+        return b"Sample tree format."
 
     def initialize(self, a_controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -186,10 +186,10 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string, branch.controldir)
         transport = branch.controldir.get_workingtree_transport(None)
         transport.mkdir('.')
-        transport.put_bytes("format", "some format name")
+        transport.put_bytes("format", b"some format name")
         # The format does not have to be known by Bazaar,
         # find_format_string just retrieves the name
-        self.assertEqual("some format name",
+        self.assertEqual(b"some format name",
             bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string(branch.controldir))
 
     def test_find_format(self):
@@ -197,7 +197,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         # create a branch with a few known format objects.
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            dir = format._matchingbzrdir.initialize(url)
+            dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             dir.create_branch()
             format.initialize(dir)
@@ -223,16 +223,16 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.update_feature_flags({"name": "necessity"})
+        tree.update_feature_flags({b"name": b"necessity"})
         found_format = bzrworkingtree.WorkingTreeFormatMetaDir.find_format(
             tree.controldir)
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
-        self.assertEqual(found_format.features.get("name"), "necessity")
-        self.assertRaises(errors.MissingFeature, found_format.check_support_status,
+        self.assertEqual(found_format.features.get(b"name"), b"necessity")
+        self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
             True)
         self.addCleanup(bzrworkingtree.WorkingTreeFormatMetaDir.unregister_feature,
-            "name")
-        bzrworkingtree.WorkingTreeFormatMetaDir.register_feature("name")
+            b"name")
+        bzrworkingtree.WorkingTreeFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
 
@@ -241,38 +241,39 @@ class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
     def make_simple_tree(self):
         tree = self.make_branch_and_tree('tree', format='development-subtree')
         self.build_tree(['tree/a/', 'tree/a/b/', 'tree/a/b/c'])
-        tree.set_root_id('root-id')
-        tree.add(['a', 'a/b', 'a/b/c'], ['a-id', 'b-id', 'c-id'])
+        tree.set_root_id(b'root-id')
+        tree.add(['a', 'a/b', 'a/b/c'], [b'a-id', b'b-id', b'c-id'])
         tree.commit('initial')
         return tree
 
     def test_just_directory(self):
         tree = self.make_simple_tree()
-        self.assertEqual([('directory', 'root-id'),
-                          ('directory', 'a-id'),
-                          ('directory', 'b-id'),
-                          ('file', 'c-id')],
+        self.assertEqual([('directory', b'root-id'),
+                          ('directory', b'a-id'),
+                          ('directory', b'b-id'),
+                          ('file', b'c-id')],
                          [(ie.kind, ie.file_id)
                           for path, ie in tree.iter_entries_by_dir()])
         subtree = self.make_branch_and_tree('tree/a/b')
-        self.assertEqual([('tree-reference', 'b-id')],
+        self.assertEqual([('tree-reference', b'b-id')],
                          [(ie.kind, ie.file_id)
-                          for path, ie in tree.iter_entries_by_dir(['b-id'])])
+                          for path, ie in tree.iter_entries_by_dir(
+                              specific_files=['a/b'])])
 
     def test_direct_subtree(self):
         tree = self.make_simple_tree()
         subtree = self.make_branch_and_tree('tree/a/b')
-        self.assertEqual([('directory', 'root-id'),
-                          ('directory', 'a-id'),
-                          ('tree-reference', 'b-id')],
+        self.assertEqual([('directory', b'root-id'),
+                          ('directory', b'a-id'),
+                          ('tree-reference', b'b-id')],
                          [(ie.kind, ie.file_id)
                           for path, ie in tree.iter_entries_by_dir()])
 
     def test_indirect_subtree(self):
         tree = self.make_simple_tree()
         subtree = self.make_branch_and_tree('tree/a')
-        self.assertEqual([('directory', 'root-id'),
-                          ('tree-reference', 'a-id')],
+        self.assertEqual([('directory', b'root-id'),
+                          ('tree-reference', b'a-id')],
                          [(ie.kind, ie.file_id)
                           for path, ie in tree.iter_entries_by_dir()])
 
@@ -286,9 +287,9 @@ class TestWorkingTreeFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleTreeFormat()
         self.registry.register(format)
-        self.assertEqual(format, self.registry.get("Sample tree format."))
+        self.assertEqual(format, self.registry.get(b"Sample tree format."))
         self.registry.remove(format)
-        self.assertRaises(KeyError, self.registry.get, "Sample tree format.")
+        self.assertRaises(KeyError, self.registry.get, b"Sample tree format.")
 
     def test_get_all(self):
         format = SampleTreeFormat()
@@ -326,13 +327,13 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         # stat-cache = ??
         # no inventory.basis yet
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar-NG Working Tree format 3',
+        self.assertEqualDiff(b'Bazaar-NG Working Tree format 3',
                              t.get('format').read())
         self.assertEqualDiff(t.get('inventory').read(),
-                              '<inventory format="5">\n'
-                              '</inventory>\n',
+                              b'<inventory format="5">\n'
+                              b'</inventory>\n',
                              )
-        self.assertEqualDiff('### bzr hashcache v5\n',
+        self.assertEqualDiff(b'### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
@@ -360,9 +361,8 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout/lock', t)
         our_lock = LockDir(t, '.bzr/checkout/lock')
         self.assertEqual(our_lock.peek(), None)
-        tree.lock_write()
-        self.assertTrue(our_lock.peek())
-        tree.unlock()
+        with tree.lock_write():
+            self.assertTrue(our_lock.peek())
         self.assertEqual(our_lock.peek(), None)
 
     def test_missing_pending_merges(self):
@@ -374,64 +374,18 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqual([], tree.get_parent_ids())
 
 
-class InstrumentedTree(object):
-    """A instrumented tree to check the needs_tree_write_lock decorator."""
-
-    def __init__(self):
-        self._locks = []
-
-    def lock_tree_write(self):
-        self._locks.append('t')
-
-    @needs_tree_write_lock
-    def method_with_tree_write_lock(self, *args, **kwargs):
-        """A lock_tree_write decorated method that returns its arguments."""
-        return args, kwargs
-
-    @needs_tree_write_lock
-    def method_that_raises(self):
-        """This method causes an exception when called with parameters.
-
-        This allows the decorator code to be checked - it should still call
-        unlock.
-        """
-
-    def unlock(self):
-        self._locks.append('u')
-
-
-class TestInstrumentedTree(TestCase):
-
-    def test_needs_tree_write_lock(self):
-        """@needs_tree_write_lock should be semantically transparent."""
-        tree = InstrumentedTree()
-        self.assertEqual(
-            'method_with_tree_write_lock',
-            tree.method_with_tree_write_lock.__name__)
-        self.assertDocstring(
-            "A lock_tree_write decorated method that returns its arguments.",
-            tree.method_with_tree_write_lock)
-        args = (1, 2, 3)
-        kwargs = {'a':'b'}
-        result = tree.method_with_tree_write_lock(1,2,3, a='b')
-        self.assertEqual((args, kwargs), result)
-        self.assertEqual(['t', 'u'], tree._locks)
-        self.assertRaises(TypeError, tree.method_that_raises, 'foo')
-        self.assertEqual(['t', 'u', 't', 'u'], tree._locks)
-
-
 class TestRevert(TestCaseWithTransport):
 
     def test_revert_conflicts_recursive(self):
         this_tree = self.make_branch_and_tree('this-tree')
         self.build_tree_contents([('this-tree/foo/',),
-                                  ('this-tree/foo/bar', 'bar')])
+                                  ('this-tree/foo/bar', b'bar')])
         this_tree.add(['foo', 'foo/bar'])
         this_tree.commit('created foo/bar')
         other_tree = this_tree.controldir.sprout('other-tree').open_workingtree()
-        self.build_tree_contents([('other-tree/foo/bar', 'baz')])
+        self.build_tree_contents([('other-tree/foo/bar', b'baz')])
         other_tree.commit('changed bar')
-        self.build_tree_contents([('this-tree/foo/bar', 'qux')])
+        self.build_tree_contents([('this-tree/foo/bar', b'qux')])
         this_tree.commit('changed qux')
         this_tree.merge_from_branch(other_tree.branch)
         self.assertEqual(1, len(this_tree.conflicts()))
@@ -443,47 +397,47 @@ class TestAutoResolve(TestCaseWithTransport):
 
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
-        self.build_tree_contents([('base/hello', 'Hello')])
-        base.add('hello', 'hello_id')
+        self.build_tree_contents([('base/hello', b'Hello')])
+        base.add('hello', b'hello_id')
         base.commit('Hello')
         other = base.controldir.sprout('other').open_workingtree()
-        self.build_tree_contents([('other/hello', 'hELLO')])
+        self.build_tree_contents([('other/hello', b'hELLO')])
         other.commit('Case switch')
         this = base.controldir.sprout('this').open_workingtree()
         self.assertPathExists('this/hello')
-        self.build_tree_contents([('this/hello', 'Hello World')])
+        self.build_tree_contents([('this/hello', b'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', '<<<<<<<')])
+        self.build_tree_contents([('this/hello', b'<<<<<<<')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', '=======')])
+        self.build_tree_contents([('this/hello', b'=======')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', '\n>>>>>>>')])
+        self.build_tree_contents([('this/hello', b'\n>>>>>>>')])
         remaining, resolved = this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
-        self.build_tree_contents([('this/hello', 'hELLO wORLD')])
+        self.build_tree_contents([('this/hello', b'hELLO wORLD')])
         remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
-        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          resolved)
         self.assertPathDoesNotExist('this/hello.BASE')
 
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
-        tree.add('hello', 'hello-id')
-        file_conflict = conflicts.TextConflict('file', 'hello-id')
+        tree.add('hello', b'hello-id')
+        file_conflict = conflicts.TextConflict('file', b'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         tree.auto_resolve()
 
@@ -505,8 +459,8 @@ class TestStoredUncommitted(TestCaseWithTransport):
     def store_uncommitted(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('get root in there')
-        self.build_tree_contents([('tree/file', 'content')])
-        tree.add('file', 'file-id')
+        self.build_tree_contents([('tree/file', b'content')])
+        tree.add('file', b'file-id')
         tree.store_uncommitted()
         return tree
 

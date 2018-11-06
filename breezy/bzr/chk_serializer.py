@@ -43,9 +43,7 @@ from ..sixish import (
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
     # Cast the utf8 properties into Unicode 'in place'
-    for key, value in props.items():
-        props[key] = _decode(value)[0]
-    return props
+    return {_decode(key)[0]: _decode(value)[0] for key, value in props.items()}
 
 
 def _is_format_10(value):
@@ -67,15 +65,15 @@ class BEncodeRevisionSerializer1(object):
     # the type.
     # TODO: add a 'validate_utf8' for things like revision_id and file_id
     #       and a validator for parent-ids
-    _schema = {'format': (None, int, _is_format_10),
-               'committer': ('committer', str, cache_utf8.decode),
-               'timezone': ('timezone', int, None),
-               'timestamp': ('timestamp', str, float),
-               'revision-id': ('revision_id', str, None),
-               'parent-ids': ('parent_ids', list, None),
-               'inventory-sha1': ('inventory_sha1', str, None),
-               'message': ('message', str, cache_utf8.decode),
-               'properties': ('properties', dict, _validate_properties),
+    _schema = {b'format': (None, int, _is_format_10),
+               b'committer': ('committer', bytes, cache_utf8.decode),
+               b'timezone': ('timezone', int, None),
+               b'timestamp': ('timestamp', bytes, float),
+               b'revision-id': ('revision_id', bytes, None),
+               b'parent-ids': ('parent_ids', list, None),
+               b'inventory-sha1': ('inventory_sha1', bytes, None),
+               b'message': ('message', bytes, cache_utf8.decode),
+               b'properties': ('properties', dict, _validate_properties),
     }
 
     def write_revision_to_string(self, rev):
@@ -84,23 +82,23 @@ class BEncodeRevisionSerializer1(object):
         # This lets us control the ordering, so that we are able to create
         # smaller deltas
         ret = [
-            ("format", 10),
-            ("committer", encode_utf8(rev.committer)[0]),
+            (b"format", 10),
+            (b"committer", encode_utf8(rev.committer)[0]),
         ]
         if rev.timezone is not None:
-            ret.append(("timezone", rev.timezone))
+            ret.append((b"timezone", rev.timezone))
         # For bzr revisions, the most common property is just 'branch-nick'
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.items():
-            revprops[key] = encode_utf8(value)[0]
-        ret.append(('properties', revprops))
+            revprops[encode_utf8(key)[0]] = encode_utf8(value)[0]
+        ret.append((b'properties', revprops))
         ret.extend([
-            ("timestamp", "%.3f" % rev.timestamp),
-            ("revision-id", rev.revision_id),
-            ("parent-ids", rev.parent_ids),
-            ("inventory-sha1", rev.inventory_sha1),
-            ("message", encode_utf8(rev.message)[0]),
+            (b"timestamp", b"%.3f" % rev.timestamp),
+            (b"revision-id", rev.revision_id),
+            (b"parent-ids", rev.parent_ids),
+            (b"inventory-sha1", rev.inventory_sha1),
+            (b"message", encode_utf8(rev.message)[0]),
         ])
         return bencode.bencode(ret)
 
@@ -148,7 +146,7 @@ class BEncodeRevisionSerializer1(object):
 class CHKSerializer(serializer.Serializer):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
-    format_num = '9'
+    format_num = b'9'
     revision_format_num = None
     support_altered_by_hack = False
     supported_kinds = {'file', 'directory', 'symlink', 'tree-reference'}
@@ -226,33 +224,33 @@ class CHKSerializer(serializer.Serializer):
         output = []
         append = output.append
         if inv.revision_id is not None:
-            revid1 = ' revision_id="'
+            revid1 = b' revision_id="'
             revid2 = xml_serializer.encode_and_escape(inv.revision_id)
         else:
-            revid1 = ""
-            revid2 = ""
-        append('<inventory format="%s"%s%s>\n' % (
+            revid1 = b""
+            revid2 = b""
+        append(b'<inventory format="%s"%s%s>\n' % (
             self.format_num, revid1, revid2))
-        append('<directory file_id="%s name="%s revision="%s />\n' % (
+        append(b'<directory file_id="%s name="%s revision="%s />\n' % (
             xml_serializer.encode_and_escape(inv.root.file_id),
             xml_serializer.encode_and_escape(inv.root.name),
             xml_serializer.encode_and_escape(inv.root.revision)))
         xml_serializer.serialize_inventory_flat(inv,
             append,
-            root_id=None, supported_kinds=self.supported_kinds, 
+            root_id=None, supported_kinds=self.supported_kinds,
             working=working)
         if f is not None:
             f.writelines(output)
         return output
 
 
-chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
+chk_serializer_255_bigpage = CHKSerializer(65536, b'hash-255-way')
 
 
 class CHKBEncodeSerializer(BEncodeRevisionSerializer1, CHKSerializer):
     """A CHKInventory and BEncode based serializer with 'plain' behaviour."""
 
-    format_num = '10'
+    format_num = b'10'
 
 
-chk_bencode_serializer = CHKBEncodeSerializer(65536, 'hash-255-way')
+chk_bencode_serializer = CHKBEncodeSerializer(65536, b'hash-255-way')

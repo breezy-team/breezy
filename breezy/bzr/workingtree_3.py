@@ -34,9 +34,6 @@ from .. import (
     trace,
     transform,
     )
-from ..decorators import (
-    needs_read_lock,
-    )
 from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from ..mutabletree import MutableTree
@@ -85,11 +82,12 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 trace.mutter('Could not write hashcache for %s\nError: %s',
                               self._hashcache.cache_file_name(), e)
 
-    @needs_read_lock
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        if not path:
-            path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path, stat_value)
+    def get_file_sha1(self, path, file_id=None, stat_value=None):
+        with self.lock_read():
+            # To make sure NoSuchFile gets raised..
+            if self.path2id(path) is None:
+                raise errors.NoSuchFile(path)
+            return self._hashcache.get_sha1(path, stat_value)
 
 
 class WorkingTree3(PreDirStateWorkingTree):
@@ -102,13 +100,13 @@ class WorkingTree3(PreDirStateWorkingTree):
     This is new in bzr 0.8
     """
 
-    @needs_read_lock
     def _last_revision(self):
         """See Mutable.last_revision."""
-        try:
-            return self._transport.get_bytes('last-revision')
-        except errors.NoSuchFile:
-            return _mod_revision.NULL_REVISION
+        with self.lock_read():
+            try:
+                return self._transport.get_bytes('last-revision')
+            except errors.NoSuchFile:
+                return _mod_revision.NULL_REVISION
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
@@ -163,7 +161,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
     @classmethod
     def get_format_string(cls):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar-NG Working Tree format 3"
+        return b"Bazaar-NG Working Tree format 3"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -171,10 +169,10 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
 
     _tree_class = WorkingTree3
 
-    def __get_matchingbzrdir(self):
+    def __get_matchingcontroldir(self):
         return bzrdir.BzrDirMetaFormat1()
 
-    _matchingbzrdir = property(__get_matchingbzrdir)
+    _matchingcontroldir = property(__get_matchingcontroldir)
 
     def _open_control_files(self, a_controldir):
         transport = a_controldir.get_workingtree_transport(None)

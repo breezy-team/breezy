@@ -41,9 +41,9 @@ class TestTagSerialization(TestCase):
         # This release stores them in bencode as a dictionary from name to
         # target.
         store = BasicTags(branch=None)
-        td = dict(stable='stable-revid', boring='boring-revid')
+        td = dict(stable=b'stable-revid', boring=b'boring-revid')
         packed = store._serialize_tag_dict(td)
-        expected = r'd6:boring12:boring-revid6:stable12:stable-revide'
+        expected = br'd6:boring12:boring-revid6:stable12:stable-revide'
         self.assertEqualDiff(packed, expected)
         self.assertEqual(store._deserialize_tag_dict(packed), td)
 
@@ -55,15 +55,15 @@ class TestTagRevisionRenames(TestCaseWithTransport):
 
     def test_simple(self):
         store = self.make_branch_supporting_tags('a').tags
-        store.set_tag("foo", "myoldrevid")
-        store.rename_revisions({"myoldrevid": "mynewrevid"})
-        self.assertEqual({"foo": "mynewrevid"}, store.get_tag_dict())
+        store.set_tag("foo", b"myoldrevid")
+        store.rename_revisions({b"myoldrevid": b"mynewrevid"})
+        self.assertEqual({"foo": b"mynewrevid"}, store.get_tag_dict())
 
     def test_unknown_ignored(self):
         store = self.make_branch_supporting_tags('a').tags
-        store.set_tag("foo", "myoldrevid")
-        store.rename_revisions({"anotherrevid": "mynewrevid"})
-        self.assertEqual({"foo": "myoldrevid"}, store.get_tag_dict())
+        store.set_tag("foo", b"myoldrevid")
+        store.rename_revisions({b"anotherrevid": b"mynewrevid"})
+        self.assertEqual({"foo": b"myoldrevid"}, store.get_tag_dict())
 
 
 class TestTagMerging(TestCaseWithTransport):
@@ -92,7 +92,7 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch.tags.merge_to(old_branch.tags)
         # but if there is a tag in the new one, we get a warning when trying
         # to move it back
-        new_branch.tags.set_tag(u'\u2040tag', 'revid')
+        new_branch.tags.set_tag(u'\u2040tag', b'revid')
         old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
             new_branch.tags.merge_to, old_branch.tags)
@@ -101,23 +101,23 @@ class TestTagMerging(TestCaseWithTransport):
         a = self.make_branch_supporting_tags('a')
         b = self.make_branch_supporting_tags('b')
         # simple merge
-        a.tags.set_tag('tag-1', 'x')
-        b.tags.set_tag('tag-2', 'y')
+        a.tags.set_tag('tag-1', b'x')
+        b.tags.set_tag('tag-2', b'y')
         a.tags.merge_to(b.tags)
-        self.assertEqual('x', b.tags.lookup_tag('tag-1'))
-        self.assertEqual('y', b.tags.lookup_tag('tag-2'))
+        self.assertEqual(b'x', b.tags.lookup_tag('tag-1'))
+        self.assertEqual(b'y', b.tags.lookup_tag('tag-2'))
         self.assertRaises(errors.NoSuchTag, a.tags.lookup_tag, 'tag-2')
         # conflicting merge
-        a.tags.set_tag('tag-2', 'z')
+        a.tags.set_tag('tag-2', b'z')
         updates, conflicts = a.tags.merge_to(b.tags)
         self.assertEqual({}, updates)
-        self.assertEqual(list(conflicts), [('tag-2', 'z', 'y')])
-        self.assertEqual('y', b.tags.lookup_tag('tag-2'))
+        self.assertEqual(list(conflicts), [('tag-2', b'z', b'y')])
+        self.assertEqual(b'y', b.tags.lookup_tag('tag-2'))
         # overwrite conflicts
         updates, conflicts = a.tags.merge_to(b.tags, overwrite=True)
         self.assertEqual(list(conflicts), [])
-        self.assertEqual({u'tag-2': 'z'}, updates)
-        self.assertEqual('z', b.tags.lookup_tag('tag-2'))
+        self.assertEqual({u'tag-2': b'z'}, updates)
+        self.assertEqual(b'z', b.tags.lookup_tag('tag-2'))
 
 
 class TestTagsInCheckouts(TestCaseWithTransport):
@@ -132,8 +132,8 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         master = self.make_branch('master')
         child = self.make_branch('child')
         child.bind(master)
-        child.tags.set_tag('foo', 'rev-1')
-        self.assertEqual('rev-1', master.tags.lookup_tag('foo'))
+        child.tags.set_tag('foo', b'rev-1')
+        self.assertEqual(b'rev-1', master.tags.lookup_tag('foo'))
         # deleting a tag updates the master too
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
@@ -142,28 +142,28 @@ class TestTagsInCheckouts(TestCaseWithTransport):
     def test_tag_copied_by_initial_checkout(self):
         # https://bugs.launchpad.net/bzr/+bug/93860
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-1')
+        master.tags.set_tag('foo', b'rev-1')
         co_tree = master.create_checkout('checkout')
-        self.assertEqual('rev-1',
+        self.assertEqual(b'rev-1',
             co_tree.branch.tags.lookup_tag('foo'))
 
     def test_update_updates_tags(self):
         # https://bugs.launchpad.net/bzr/+bug/93856
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-1')
+        master.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()
         # after an update, the child has all the master's tags
-        self.assertEqual('rev-1', child.tags.lookup_tag('foo'))
+        self.assertEqual(b'rev-1', child.tags.lookup_tag('foo'))
         # add another tag and update again
-        master.tags.set_tag('tag2', 'target2')
+        master.tags.set_tag('tag2', b'target2')
         child.update()
-        self.assertEqual('target2', child.tags.lookup_tag('tag2'))
+        self.assertEqual(b'target2', child.tags.lookup_tag('tag2'))
 
     def test_tag_deletion_from_master_to_bound(self):
         master = self.make_branch('master')
-        master.tags.set_tag('foo', 'rev-1')
+        master.tags.set_tag('foo', b'rev-1')
         child = self.make_branch('child')
         child.bind(master)
         child.update()

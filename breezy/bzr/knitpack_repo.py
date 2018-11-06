@@ -66,7 +66,6 @@ from .pack_repo import (
     Packer,
     PackCommitBuilder,
     PackRepository,
-    PackRootCommitBuilder,
     RepositoryPackCollection,
     )
 from ..sixish import (
@@ -165,12 +164,12 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar pack repository format 1 (needs bzr 0.92)\n"
+        return b"Bazaar pack repository format 1 (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -188,7 +187,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -206,12 +205,12 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
+        return b"Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -228,7 +227,7 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property
@@ -245,13 +244,13 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar pack repository format 1 with rich root"
-                " (needs bzr 1.0)\n")
+        return (b"Bazaar pack repository format 1 with rich root"
+                b" (needs bzr 1.0)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -284,12 +283,12 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n"
+        return b"Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -306,7 +305,7 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
@@ -325,12 +324,12 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
+        return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
 
     def get_format_description(self):
         return "Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)"
@@ -350,7 +349,7 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
 
@@ -372,12 +371,12 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
+        return b"Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
 
     def get_format_description(self):
         return ("Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
@@ -411,12 +410,12 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n"
+        return b"Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -430,7 +429,7 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
@@ -449,12 +448,12 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
+        return b"Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
 
     def get_format_description(self):
         return "Packs 6 rich-root (uses btree indexes, requires bzr 1.9)"
@@ -470,7 +469,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     """
 
     repository_class = KnitPackRepository
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -490,13 +489,13 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 2 with subtree support "
-            "(needs bzr.dev from before 1.8)\n")
+        return (b"Bazaar development format 2 with subtree support "
+                b"(needs bzr.dev from before 1.8)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -620,12 +619,9 @@ class KnitPacker(Packer):
 
         :param output_lines: Output full texts of copied items.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             return self._do_copy_nodes(nodes, index_map, writer,
                 write_index, pb, output_lines=output_lines)
-        finally:
-            pb.finished()
 
     def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb,
         output_lines=None):
@@ -651,7 +647,7 @@ class KnitPacker(Packer):
                 # ---- KnitGraphIndex.get_position
                 bits = value[1:].split(' ')
                 offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append((offset, length, (key, value[0])))
+                pack_readv_requests.append((offset, length, (key, value[0:1])))
             # linear scan up the pack
             pack_readv_requests.sort()
             # copy the data
@@ -685,17 +681,10 @@ class KnitPacker(Packer):
         :param output_lines: Return lines present in the copied data as
             an iterator of line,version_id.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for result in self._do_copy_nodes_graph(index_map, writer,
                 write_index, output_lines, pb, readv_group_iter, total_items):
                 yield result
-        except Exception:
-            # Python 2.4 does not permit try:finally: in a generator.
-            pb.finished()
-            raise
-        else:
-            pb.finished()
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
         output_lines, pb, readv_group_iter, total_items):
@@ -733,7 +722,7 @@ class KnitPacker(Packer):
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
-                write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
+                write_index.add_node(key, eol_flag + b"%d %d" % (pos, size), references)
                 pb.update("Copied record", record_index)
                 record_index += 1
 
@@ -941,10 +930,10 @@ class KnitPacker(Packer):
             pack_readv_requests = []
             for key, value, references in items:
                 # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
+                bits = value[1:].split(b' ')
                 offset, length = int(bits[0]), int(bits[1])
                 pack_readv_requests.append(
-                    ((offset, length), (key, value[0], references)))
+                    ((offset, length), (key, value[0:1], references)))
             # linear scan up the pack to maximum range combining.
             pack_readv_requests.sort()
             # split out the readv and the node data.
@@ -1079,8 +1068,8 @@ class KnitReconcilePacker(KnitPacker):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                         (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = osutils.split_lines(repo.texts.get_record_stream(
-                [key], 'unordered', True).next().get_bytes_as('fulltext'))
+            text_lines = osutils.split_lines(next(repo.texts.get_record_stream(
+                [key], 'unordered', True)).get_bytes_as('fulltext'))
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
@@ -1131,10 +1120,10 @@ class OptimisingKnitPacker(KnitPacker):
         for key in reversed(order):
             index, value, references = by_key[key]
             # ---- KnitGraphIndex.get_position
-            bits = value[1:].split(' ')
+            bits = value[1:].split(b' ')
             offset, length = int(bits[0]), int(bits[1])
             requests.append(
-                (index, [(offset, length)], [(key, value[0], references)]))
+                (index, [(offset, length)], [(key, value[0:1], references)]))
         # TODO: combine requests in the same index that are in ascending order.
         return total, requests
 

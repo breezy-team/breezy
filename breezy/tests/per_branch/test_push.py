@@ -51,16 +51,16 @@ class TestPush(per_branch.TestCaseWithBranch):
         # when revisions are pushed, the left-most accessible parents must
         # become the revision-history.
         mine = self.make_branch_and_tree('mine')
-        mine.commit('1st post', rev_id='P1', allow_pointless=True)
+        mine.commit('1st post', allow_pointless=True)
         other = mine.controldir.sprout('other').open_workingtree()
-        other.commit('my change', rev_id='M1', allow_pointless=True)
+        m1 = other.commit('my change', allow_pointless=True)
         mine.merge_from_branch(other.branch)
-        mine.commit('merge my change', rev_id='P2')
+        p2 = mine.commit('merge my change')
         result = mine.branch.push(other.branch)
-        self.assertEqual('P2', other.branch.last_revision())
+        self.assertEqual(p2, other.branch.last_revision())
         # result object contains some structured data
-        self.assertEqual(result.old_revid, 'M1')
-        self.assertEqual(result.new_revid, 'P2')
+        self.assertEqual(result.old_revid, m1)
+        self.assertEqual(result.new_revid, p2)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -68,16 +68,16 @@ class TestPush(per_branch.TestCaseWithBranch):
         # via a third branch - so its buried in the ancestry and is not
         # directly accessible.
         mine = self.make_branch_and_tree('mine')
-        mine.commit('1st post', rev_id='P1', allow_pointless=True)
+        mine.commit('1st post', allow_pointless=True)
         target = mine.controldir.sprout('target').open_workingtree()
-        target.commit('my change', rev_id='M1', allow_pointless=True)
+        target.commit('my change', allow_pointless=True)
         other = mine.controldir.sprout('other').open_workingtree()
         other.merge_from_branch(target.branch)
-        other.commit('merge my change', rev_id='O2')
+        other.commit('merge my change')
         mine.merge_from_branch(other.branch)
-        mine.commit('merge other', rev_id='P2')
+        p2 = mine.commit('merge other')
         mine.branch.push(target.branch)
-        self.assertEqual('P2', target.branch.last_revision())
+        self.assertEqual(p2, target.branch.last_revision())
 
     def test_push_to_checkout_updates_master(self):
         """Pushing into a checkout updates the checkout and the master branch"""
@@ -123,12 +123,12 @@ class TestPush(per_branch.TestCaseWithBranch):
                 'Format does not support bound branches')
         other = bound.controldir.sprout('other').open_branch()
         try:
-            other.tags.set_tag('new-tag', 'some-rev')
+            other.tags.set_tag('new-tag', b'some-rev')
         except errors.TagsNotSupported:
             raise tests.TestNotApplicable('Format does not support tags')
         other.push(bound)
-        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
-        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
+        self.assertEqual({'new-tag': b'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': b'some-rev'}, master.tags.get_tag_dict())
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
@@ -197,11 +197,11 @@ class TestPush(per_branch.TestCaseWithBranch):
         target = self.make_branch('target')
 
         source.commit('1st commit')
-        source.commit('2nd commit', rev_id='rev-2')
+        rev2 = source.commit('2nd commit')
         source.commit('3rd commit')
         source.branch.push(target)
-        source.branch.push(target, stop_revision='rev-2', overwrite=True)
-        self.assertEqual('rev-2', target.last_revision())
+        source.branch.push(target, stop_revision=rev2, overwrite=True)
+        self.assertEqual(rev2, target.last_revision())
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
@@ -213,23 +213,26 @@ class TestPush(per_branch.TestCaseWithBranch):
 
         source.commit('1st commit')
         source.branch.push(target)
-        source.commit('2nd commit', rev_id='rev-2')
+        rev2 = source.commit('2nd commit')
         source.commit('3rd commit')
 
-        source.branch.push(target, stop_revision='rev-2', overwrite=True)
-        self.assertEqual('rev-2', target.last_revision())
+        source.branch.push(target, stop_revision=rev2, overwrite=True)
+        self.assertEqual(rev2, target.last_revision())
 
     def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
         # See https://bugs.launchpad.net/bzr/+bug/465517
         t = self.get_transport('target')
         t.ensure_base()
-        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
         try:
             bzrdir.open_branch()
         except errors.NotBranchError:
             pass
         else:
-            raise tests.TestNotApplicable('older formats can\'t have a repo'
+            raise tests.TestNotApplicable('some formats can\'t have a repo'
                                           ' without a branch')
         try:
             source = self.make_branch_builder('source',
@@ -237,10 +240,10 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('cannot initialize this format')
         source.start_series()
-        source.build_snapshot('A', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        source.build_snapshot('B', ['A'], [])
-        source.build_snapshot('C', ['A'], [])
+        revid_a = source.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', None))])
+        revid_b = source.build_snapshot([revid_a], [])
+        revid_c = source.build_snapshot([revid_a], [])
         source.finish_series()
         b = source.get_branch()
         # Note: We can't read lock the source branch. Some formats take a write
@@ -250,9 +253,9 @@ class TestPush(per_branch.TestCaseWithBranch):
         # This means 'push the source branch into this dir'
         bzrdir.push_branch(b)
         self.addCleanup(repo.lock_read().unlock)
-        # We should have pushed 'C', but not 'B', since it isn't in the
+        # We should have pushed revid_c, but not revid_b, since it isn't in the
         # ancestry
-        self.assertEqual(['A', 'C'], sorted(repo.all_revision_ids()))
+        self.assertEqual(set([revid_a, revid_c]), set(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -277,22 +280,22 @@ class TestPush(per_branch.TestCaseWithBranch):
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
-        builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))])
+        revid1 = builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', b'')),
+            ('add', ('filename', b'f-id', 'file', b'content\n'))])
+        revid2 = builder.build_snapshot([revid1], [])
+        revid3 = builder.build_snapshot([revid2],
+            [('modify', ('filename', b'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id=revid1)
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
         self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
-        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
+        push._show_push_branch(trunk, revid2, self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = branch.Branch.open(self.get_url('remote'))
@@ -429,13 +432,13 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(
-            ['BzrDir.open_2.1',
-             'BzrDir.open_branchV3',
-             'BzrDir.find_repositoryV3',
-             'Branch.get_stacked_on_url',
-             'Branch.lock_write',
-             'Branch.last_revision_info',
-             'Branch.unlock'],
+            [b'BzrDir.open_2.1',
+             b'BzrDir.open_branchV3',
+             b'BzrDir.find_repositoryV3',
+             b'Branch.get_stacked_on_url',
+             b'Branch.lock_write',
+             b'Branch.last_revision_info',
+             b'Branch.unlock'],
             self.hpss_calls)
 
     def test_empty_branch_command(self):

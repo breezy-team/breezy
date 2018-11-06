@@ -17,16 +17,20 @@
 
 """Tests specific to Branch implementations that use foreign VCS'es."""
 
-
+from breezy.branch import (
+    UnstackableBranchFormat,
+    )
 from breezy.errors import (
     IncompatibleFormat,
-    UnstackableBranchFormat,
     )
 from breezy.revision import (
     NULL_REVISION,
     )
 from breezy.tests import (
     TestCaseWithTransport,
+    )
+from breezy.sixish import (
+    text_type,
     )
 
 
@@ -95,8 +99,8 @@ class ForeignBranchTests(TestCaseWithTransport):
     def test__get_nick(self):
         """Make sure _get_nick is implemented and returns a string."""
         branch = self.make_branch()
-        self.assertIsInstance(branch._get_nick(local=False), str)
-        self.assertIsInstance(branch._get_nick(local=True), str)
+        self.assertIsInstance(branch._get_nick(local=False), text_type)
+        self.assertIsInstance(branch._get_nick(local=True), text_type)
 
     def test_null_revid_revno(self):
         """null: should return revno 0."""
@@ -142,4 +146,4 @@ class ForeignBranchFormatTests(TestCaseWithTransport):
         self.assertIsInstance(self.branch_format.get_format_description(), str)
 
     def test_network_name(self):
-        self.assertIsInstance(self.branch_format.network_name(), str)
+        self.assertIsInstance(self.branch_format.network_name(), bytes)

@@ -44,14 +44,14 @@ class NoRegisteredSSHKeys(errors.BzrError):
 
 class MismatchedUsernames(errors.BzrError):
 
-    _fmt = ('bazaar.conf and authentication.conf disagree about launchpad'
+    _fmt = ('breezy.conf and authentication.conf disagree about launchpad'
             ' account name.  Please re-run launchpad-login.')
 
 
 def get_lp_login(_config=None):
     """Return the user's Launchpad username.
 
-    :raises: MismatchedUsername if authentication.conf and bazaar.conf
+    :raises: MismatchedUsername if authentication.conf and breezy.conf
         disagree about username.
     """
     if _config is None:
@@ -73,13 +73,17 @@ def get_lp_login(_config=None):
 def _set_global_option(username, _config=None):
     if _config is None:
         _config = GlobalStack()
-    _config.set('launchpad_username', username)
+    if username is None:
+        _config.remove('launchpad_username')
+    else:
+        _config.set('launchpad_username', username)
 
 
 def set_lp_login(username, _config=None):
     """Set the user's Launchpad username"""
     _set_global_option(username, _config)
-    _set_auth_user(username)
+    if username is not None:
+        _set_auth_user(username)
 
 
 def _get_auth_user(auth=None):

@@ -71,3 +71,5 @@ breezy/_*.so
 breezy/_*.pyd
 ./.ccache
 .testrepository
+selftest.log
+.coverage

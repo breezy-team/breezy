@@ -24,6 +24,8 @@ from __future__ import absolute_import
 
 from .. import osutils
 from ..sixish import (
+    indexbytes,
+    int2byte,
     range,
     )
 
@@ -53,7 +55,7 @@ class _OutputHandler(object):
         if self.cur_insert_len > 127:
             raise AssertionError('We cannot insert more than 127 bytes'
                                  ' at a time.')
-        self.out_lines.append(chr(self.cur_insert_len))
+        self.out_lines.append(int2byte(self.cur_insert_len))
         self.index_lines.append(False)
         self.out_lines.extend(self.cur_insert_lines)
         if self.cur_insert_len < self.min_len_to_index:
@@ -69,7 +71,7 @@ class _OutputHandler(object):
         line_len = len(line)
         for start_index in range(0, line_len, 127):
             next_len = min(127, line_len - start_index)
-            self.out_lines.append(chr(next_len))
+            self.out_lines.append(int2byte(next_len))
             self.index_lines.append(False)
             self.out_lines.append(line[start_index:start_index+next_len])
             # We don't index long lines, because we won't be able to match
@@ -256,12 +258,12 @@ class LinesDeltaIndex(object):
     def _flush_insert(self, start_linenum, end_linenum,
                       new_lines, out_lines, index_lines):
         """Add an 'insert' request to the data stream."""
-        bytes_to_insert = ''.join(new_lines[start_linenum:end_linenum])
+        bytes_to_insert = b''.join(new_lines[start_linenum:end_linenum])
         insert_length = len(bytes_to_insert)
         # Each insert instruction is at most 127 bytes long
         for start_byte in range(0, insert_length, 127):
             insert_count = min(insert_length - start_byte, 127)
-            out_lines.append(chr(insert_count))
+            out_lines.append(int2byte(insert_count))
             # Don't index the 'insert' instruction
             index_lines.append(False)
             insert = bytes_to_insert[start_byte:start_byte+insert_count]
@@ -330,12 +332,12 @@ def decode_base128_int(data):
     offset = 0
     val = 0
     shift = 0
-    bval = ord(data[offset])
+    bval = indexbytes(data, offset)
     while bval >= 0x80:
         val |= (bval & 0x7F) << shift
         shift += 7
         offset += 1
-        bval = ord(data[offset])
+        bval = indexbytes(data, offset)
     val |= bval << shift
     offset += 1
     return val, offset
@@ -350,7 +352,7 @@ def encode_copy_instruction(offset, length):
         base_byte = offset & 0xff
         if base_byte:
             copy_command |= copy_bit
-            copy_bytes.append(chr(base_byte))
+            copy_bytes.append(int2byte(base_byte))
         offset >>= 8
     if length is None:
         raise ValueError("cannot supply a length of None")
@@ -365,10 +367,10 @@ def encode_copy_instruction(offset, length):
             base_byte = length & 0xff
             if base_byte:
                 copy_command |= copy_bit
-                copy_bytes.append(chr(base_byte))
+                copy_bytes.append(int2byte(base_byte))
             length >>= 8
-    copy_bytes[0] = chr(copy_command)
-    return ''.join(copy_bytes)
+    copy_bytes[0] = int2byte(copy_command)
+    return b''.join(copy_bytes)
 
 
 def decode_copy_instruction(bytes, cmd, pos):
@@ -390,25 +392,25 @@ def decode_copy_instruction(bytes, cmd, pos):
     offset = 0
     length = 0
     if (cmd & 0x01):
-        offset = ord(bytes[pos])
+        offset = indexbytes(bytes, pos)
         pos += 1
     if (cmd & 0x02):
-        offset = offset | (ord(bytes[pos]) << 8)
+        offset = offset | (indexbytes(bytes, pos) << 8)
         pos += 1
     if (cmd & 0x04):
-        offset = offset | (ord(bytes[pos]) << 16)
+        offset = offset | (indexbytes(bytes, pos) << 16)
         pos += 1
     if (cmd & 0x08):
-        offset = offset | (ord(bytes[pos]) << 24)
+        offset = offset | (indexbytes(bytes, pos) << 24)
         pos += 1
     if (cmd & 0x10):
-        length = ord(bytes[pos])
+        length = indexbytes(bytes, pos)
         pos += 1
     if (cmd & 0x20):
-        length = length | (ord(bytes[pos]) << 8)
+        length = length | (indexbytes(bytes, pos) << 8)
         pos += 1
     if (cmd & 0x40):
-        length = length | (ord(bytes[pos]) << 16)
+        length = length | (indexbytes(bytes, pos) << 16)
         pos += 1
     if length == 0:
         length = 65536
@@ -417,27 +419,27 @@ def decode_copy_instruction(bytes, cmd, pos):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
-    if not isinstance(source_bytes, str):
-        raise TypeError('source is not a str')
-    if not isinstance(target_bytes, str):
-        raise TypeError('target is not a str')
+    if not isinstance(source_bytes, bytes):
+        raise TypeError('source is not bytes')
+    if not isinstance(target_bytes, bytes):
+        raise TypeError('target is not bytes')
     line_locations = LinesDeltaIndex(osutils.split_lines(source_bytes))
     delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
                                          bytes_length=len(target_bytes))
-    return ''.join(delta)
+    return b''.join(delta)
 
 
 def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
-    if not isinstance(basis, str):
-        raise TypeError('basis is not a str')
-    if not isinstance(delta, str):
-        raise TypeError('delta is not a str')
+    if not isinstance(basis, bytes):
+        raise TypeError('basis is not bytes')
+    if not isinstance(delta, bytes):
+        raise TypeError('delta is not bytes')
     target_length, pos = decode_base128_int(delta)
     lines = []
     len_delta = len(delta)
     while pos < len_delta:
-        cmd = ord(delta[pos])
+        cmd = indexbytes(delta, pos)
         pos += 1
         if cmd & 0x80:
             offset, length, pos = decode_copy_instruction(delta, cmd, pos)
@@ -451,11 +453,11 @@ def apply_delta(basis, delta):
                 raise ValueError('Command == 0 not supported yet')
             lines.append(delta[pos:pos+cmd])
             pos += cmd
-    bytes = ''.join(lines)
-    if len(bytes) != target_length:
+    data = b''.join(lines)
+    if len(data) != target_length:
         raise ValueError('Delta claimed to be %d long, but ended up'
                          ' %d long' % (target_length, len(bytes)))
-    return bytes
+    return data
 
 
 def apply_delta_to_source(source, delta_start, delta_end):

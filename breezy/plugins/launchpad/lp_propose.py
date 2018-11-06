@@ -103,15 +103,9 @@ class Proposer(object):
         for rdata in self.reviews:
             uniquename = "%s (%s)" % (rdata[0].display_name, rdata[0].name)
             info.append('Reviewer: %s, type "%s"\n' % (uniquename, rdata[1]))
-        self.source_branch.bzr.lock_read()
-        try:
-            self.target_branch.bzr.lock_read()
-            try:
-                body = self.get_initial_body()
-            finally:
-                self.target_branch.bzr.unlock()
-        finally:
-            self.source_branch.bzr.unlock()
+        with self.source_branch.bzr.lock_read(), \
+                self.target_branch.bzr.lock_read():
+            body = self.get_initial_body()
         initial_comment = msgeditor.edit_commit_message(''.join(info),
                                                         start_message=body)
         return initial_comment.strip().encode('utf-8')
@@ -142,11 +136,8 @@ class Proposer(object):
     def get_source_revid(self):
         """Get the revision ID of the source branch."""
         source_branch = self.source_branch.bzr
-        source_branch.lock_read()
-        try:
+        with source_branch.lock_read():
             return source_branch.last_revision()
-        finally:
-            source_branch.unlock()
 
     def check_proposal(self):
         """Check that the submission is sensible."""

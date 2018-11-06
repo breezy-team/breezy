@@ -19,6 +19,7 @@ from breezy import (
     tests,
     workingtree,
     )
+from breezy.sixish import PY3
 from breezy.tests import script, features
 
 
@@ -26,8 +27,8 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
         prefix='my'):
     this_tree = test.make_branch_and_tree(this_path)
     test.build_tree_contents([
-        ('%s/%sfile' % (this_path, prefix), 'this content\n'),
-        ('%s/%s_other_file' % (this_path, prefix), 'this content\n'),
+        ('%s/%sfile' % (this_path, prefix), b'this content\n'),
+        ('%s/%s_other_file' % (this_path, prefix), b'this content\n'),
         ('%s/%sdir/' % (this_path, prefix),),
         ])
     this_tree.add(prefix+'file')
@@ -36,14 +37,14 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other',
     this_tree.commit(message="new")
     other_tree = this_tree.controldir.sprout(other_path).open_workingtree()
     test.build_tree_contents([
-        ('%s/%sfile' % (other_path, prefix), 'contentsb\n'),
-        ('%s/%s_other_file' % (other_path, prefix), 'contentsb\n'),
+        ('%s/%sfile' % (other_path, prefix), b'contentsb\n'),
+        ('%s/%s_other_file' % (other_path, prefix), b'contentsb\n'),
         ])
     other_tree.rename_one(prefix+'dir', prefix+'dir2')
     other_tree.commit(message="change")
     test.build_tree_contents([
-        ('%s/%sfile' % (this_path, prefix), 'contentsa2\n'),
-        ('%s/%s_other_file' % (this_path, prefix), 'contentsa2\n'),
+        ('%s/%sfile' % (this_path, prefix), b'contentsa2\n'),
+        ('%s/%s_other_file' % (this_path, prefix), b'contentsa2\n'),
         ])
     this_tree.rename_one(prefix+'dir', prefix+'dir3')
     this_tree.commit(message='change')
@@ -97,7 +98,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch"],
             encoding=self.encoding)
-        self.assertEqual(out.decode(self.encoding),
+        self.assertEqual(out if PY3 else out.decode(self.encoding),
             u"Text conflict in \xA7_other_file\n"
             u"Path conflict: \xA7dir3 / \xA7dir2\n"
             u"Text conflict in \xA7file\n")
@@ -108,7 +109,7 @@ class TestUnicodePaths(tests.TestCaseWithTransport):
         make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
         out, err = self.run_bzr(["conflicts", "-d", "branch", "--text"],
             encoding=self.encoding)
-        self.assertEqual(out.decode(self.encoding),
+        self.assertEqual(out if PY3 else out.decode(self.encoding),
             u"\xA7_other_file\n"
             u"\xA7file\n")
         self.assertEqual(err, "")

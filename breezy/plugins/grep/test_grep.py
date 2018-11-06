@@ -21,10 +21,10 @@ import re
 import unicodedata as ud
 
 from ... import tests, osutils
+from ...sixish import PY3
 from ..._termcolor import color_string, FG
 
 from ...tests.features import (
-    ColorFeature,
     UnicodeFilenameFeature,
     )
 
@@ -45,14 +45,16 @@ class GrepTestBase(tests.TestCaseWithTransport):
         for i in range(total_lines):
             text += line_prefix + str(i+1) + "\n"
 
-        open(path, 'w').write(text)
+        with open(path, 'w') as f:
+            f.write(text)
         if versioned:
             self.run_bzr(['add', path])
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _update_file(self, path, text, checkin=True):
         """append text to file 'path' and check it in"""
-        open(path, 'a').write(text)
+        with open(path, 'a') as f:
+            f.write(text)
         if checkin:
             self.run_bzr(['ci', path, '-m', '"' + path + '"'])
 
@@ -91,7 +93,7 @@ class TestGrep(GrepTestBase):
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 2) # finds line1 and line10
 
-        out, err = self.run_bzr(['grep', 'line\d+', 'file0.txt'])
+        out, err = self.run_bzr(['grep', 'line\\d+', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 10)
 
@@ -363,17 +365,23 @@ class TestGrep(GrepTestBase):
         nref = ud.normalize(u'NFC', u"file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line[1-3]'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '-Z', 'line[1-3]'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line'])
-        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        if not PY3:
+            out = out.decode('utf-8', 'ignore')
+        nout = ud.normalize(u'NFC', out)
         self.assertEqual(nout, nref)
         self.assertEqual(len(out.splitlines()), 1)
 
@@ -1931,37 +1939,35 @@ class TestNonAscii(GrepTestBase):
         self.build_tree(contents)
         tree.add(contents)
         tree.commit("Initial commit")
-        as_utf8 = u"\u1234".encode("UTF-8")
+        as_utf8 = u"\u1234"
 
         # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
         #                is mangled according to the user encoding.
-        streams = self.run_bzr(["grep", "--files-with-matches",
+        streams = self.run_bzr_raw(["grep", "--files-with-matches",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, (as_utf8 + "\n", ""))
+        as_utf8 = as_utf8.encode("UTF-8")
+        self.assertEqual(streams, (as_utf8 + b"\n", b""))
 
-        streams = self.run_bzr(["grep", "-r", "1", "--files-with-matches",
+        streams = self.run_bzr_raw(["grep", "-r", "1", "--files-with-matches",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, (as_utf8 + "~1\n", ""))
+        self.assertEqual(streams, (as_utf8 + b"~1\n", b""))
 
         fileencoding = osutils.get_user_encoding()
         as_mangled = as_utf8.decode(fileencoding, "replace").encode("UTF-8")
 
-        streams = self.run_bzr(["grep", "-n",
+        streams = self.run_bzr_raw(["grep", "-n",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, ("%s:1:contents of %s\n" %
-            (as_utf8, as_mangled), ""))
+        self.assertEqual(streams, (b"%s:1:contents of %s\n" %
+            (as_utf8, as_mangled), b""))
 
-        streams = self.run_bzr(["grep", "-n", "-r", "1",
+        streams = self.run_bzr_raw(["grep", "-n", "-r", "1",
             u"contents"], encoding="UTF-8")
-        self.assertEqual(streams, ("%s~1:1:contents of %s\n" %
-            (as_utf8, as_mangled), ""))
+        self.assertEqual(streams, (b"%s~1:1:contents of %s\n" %
+            (as_utf8, as_mangled), b""))
 
 
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
-
-    # GZ 2010-06-05: Does this really require the feature? Nothing prints.
-    _test_needs_features = [ColorFeature]
 
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
     _sep = color_string(':', fg=FG.BOLD_CYAN)
@@ -2155,8 +2161,8 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def make_example_branch(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            ('hello', 'foo\n'),
-            ('goodbye', 'baz\n')])
+            ('hello', b'foo\n'),
+            ('goodbye', b'baz\n')])
         tree.add(['hello'])
         tree.commit('setup')
         tree.add(['goodbye'])
@@ -2166,7 +2172,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_basic(self):
         """grep -p basic test."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '-p', 'hello'])
         self.assertEqual(err, '')
@@ -2185,7 +2191,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_revision(self):
         """grep -p specific revision."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '-p', '-r', '3', 'hello'])
         self.assertEqual(err, '')
@@ -2200,12 +2206,13 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_revision_range(self):
         """grep -p revision range."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!1\n')]) # rev 3
+        self.build_tree_contents([('hello', b'hello world!1\n')]) # rev 3
         tree.commit('rev3')
-        self.build_tree_contents([('blah', 'hello world!2\n')]) # rev 4
+        self.build_tree_contents([('blah', b'hello world!2\n')]) # rev 4
         tree.add('blah')
         tree.commit('rev4')
-        open('hello', 'a').write('hello world!3\n')
+        with open('hello', 'a') as f:
+            f.write('hello world!3\n')
         #self.build_tree_contents([('hello', 'hello world!3\n')]) # rev 5
         tree.commit('rev5')
         out, err = self.run_bzr(['grep', '-p', '-r', '2..5', 'hello'])
@@ -2229,7 +2236,7 @@ class TestGrepDiff(tests.TestCaseWithTransport):
     def test_grep_diff_color(self):
         """grep -p color test."""
         tree = self.make_example_branch()
-        self.build_tree_contents([('hello', 'hello world!\n')])
+        self.build_tree_contents([('hello', b'hello world!\n')])
         tree.commit('updated hello')
         out, err = self.run_bzr(['grep', '--diff', '-r', '3',
             '--color', 'always', 'hello'])
@@ -2251,4 +2258,3 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '--diff', 'foo'], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err, "ERROR:.*revision.* does not exist in branch")
-

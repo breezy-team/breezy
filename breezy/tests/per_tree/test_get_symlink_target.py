@@ -37,18 +37,20 @@ class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
         os.symlink('../bar', 'tree/rel_link')
         os.symlink('/baz/bing', 'tree/abs_link')
 
-        tree.add(['link', 'rel_link', 'abs_link'],
-                 ['link-id', 'rel-link-id', 'abs-link-id'])
+        tree.add(['link', 'rel_link', 'abs_link'])
         return self._convert_tree(tree)
 
     def test_get_symlink_target(self):
         tree = self.get_tree_with_symlinks()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('foo', tree.get_symlink_target('link-id'))
-        self.assertEqual('../bar', tree.get_symlink_target('rel-link-id'))
-        self.assertEqual('/baz/bing', tree.get_symlink_target('abs-link-id'))
-        self.assertEqual('foo', tree.get_symlink_target('link-id', 'link'))
+        self.assertEqual('foo', tree.get_symlink_target('link'))
+        self.assertEqual('../bar',
+                         tree.get_symlink_target('rel_link'))
+        self.assertEqual('/baz/bing',
+                         tree.get_symlink_target('abs_link'))
+        self.assertEqual('foo',
+                         tree.get_symlink_target('link'))
 
     def test_get_unicode_symlink_target(self):
         self.requireFeature(features.SymlinkFeature)
@@ -56,9 +58,9 @@ class TestGetSymlinkTarget(per_tree.TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         target = u'targ\N{Euro Sign}t'
         os.symlink(target,  u'tree/\u03b2_link'.encode(osutils._fs_enc))
-        tree.add([u'\u03b2_link'], ['link-id'])
+        tree.add([u'\u03b2_link'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        actual = tree.get_symlink_target('link-id')
+        actual = tree.get_symlink_target(u'\u03b2_link')
         self.assertEqual(target, actual)
 

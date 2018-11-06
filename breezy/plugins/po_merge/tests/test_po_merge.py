@@ -19,6 +19,7 @@ import os
 
 from breezy import (
     merge,
+    osutils,
     tests,
     )
 from breezy.tests import (
@@ -70,7 +71,7 @@ $ brz merge ../adduser -rrevid:other -Opo_merge.po_dirs=
 2>2 conflicts encountered.
 """)
         # Fix the conflicts in the .pot file
-        with open('po/adduser.pot', 'w') as f:
+        with open('po/adduser.pot', 'wb') as f:
             f.write(_Adduser['resolved_pot'])
         # Tell brz the conflict is resolved
         self.run_script("""\
@@ -92,27 +93,27 @@ def make_adduser_branch(test, relpath):
     """
     builder = test.make_branch_builder(relpath)
     builder.start_series()
-    builder.build_snapshot('base', None,
-                           [('add', ('', 'root-id', 'directory', '')),
+    builder.build_snapshot(None,
+                           [('add', ('', b'root-id', 'directory', '')),
                             # Create empty files
-                            ('add', ('po', 'dir-id', 'directory', None),),
-                            ('add', ('po/adduser.pot', 'pot-id', 'file',
+                            ('add', ('po', b'dir-id', 'directory', None),),
+                            ('add', ('po/adduser.pot', b'pot-id', 'file',
                                      _Adduser['base_pot'])),
-                            ('add', ('po/fr.po', 'po-id', 'file',
+                            ('add', ('po/fr.po', b'po-id', 'file',
                                      _Adduser['base_po'])),
-            ])
+            ], revision_id=b'base')
     # The 'other' branch
-    builder.build_snapshot('other', ['base'],
-                           [('modify', ('pot-id',
+    builder.build_snapshot([b'base'],
+                           [('modify', ('po/adduser.pot',
                                         _Adduser['other_pot'])),
-                            ('modify', ('po-id',
+                            ('modify', ('po/fr.po',
                                         _Adduser['other_po'])),
-                            ])
+                            ], revision_id=b'other')
     # The 'this' branch
-    builder.build_snapshot('this', ['base'],
-                           [('modify', ('pot-id', _Adduser['this_pot'])),
-                            ('modify', ('po-id', _Adduser['this_po'])),
-                            ])
+    builder.build_snapshot([b'base'],
+                           [('modify', ('po/adduser.pot', _Adduser['this_pot'])),
+                            ('modify', ('po/fr.po', _Adduser['this_po'])),
+                            ], revision_id=b'this')
     # builder.get_branch() tip is now 'this'
     builder.finish_series()
     return builder
@@ -150,7 +151,7 @@ $ brz branch adduser -rrevid:%(revid)s %(branch_name)s
 # beginning of the file.
 
 _Adduser = dict(
-    base_pot = r"""# SOME DESCRIPTIVE TITLE.
+    base_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -177,8 +178,8 @@ msgstr ""
 msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 
-""",
-    this_pot = r"""# SOME DESCRIPTIVE TITLE.
+"""),
+    this_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -212,8 +213,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""",
-    other_pot = r"""# SOME DESCRIPTIVE TITLE.
+"""),
+    other_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -247,8 +248,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""",
-    resolved_pot = r"""# SOME DESCRIPTIVE TITLE.
+"""),
+    resolved_pot = osutils.safe_utf8(r"""# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -282,8 +283,8 @@ msgstr ""
 msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 
-""",
-    base_po = r"""# adduser's manpages translation to French
+"""),
+    base_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -318,8 +319,8 @@ msgid "Warning: The home dir you specified already exists.\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""",
-    this_po = r"""# adduser's manpages translation to French
+"""),
+    this_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -361,8 +362,8 @@ msgid "Warning: The home dir %s you specified can't be accessed: %s\n"
 msgstr ""
 "Attention ! Le répertoire personnel que vous avez indiqué existe déjà.\n"
 
-""",
-    other_po = r"""# adduser's manpages translation to French
+"""),
+    other_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -404,8 +405,8 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""",
-    resolved_po = r"""# adduser's manpages translation to French
+"""),
+    resolved_po = osutils.safe_utf8(r"""# adduser's manpages translation to French
 # Copyright (C) 2004 Software in the Public Interest
 # This file is distributed under the same license as the adduser package
 #
@@ -447,5 +448,5 @@ msgstr ""
 "Attention ! Impossible d'accéder au répertoire personnel que vous avez "
 "indiqué (%s) : %s.\n"
 
-""",
+"""),
 )

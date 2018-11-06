@@ -27,8 +27,8 @@ several different output formats:
 
 Examples: 
 
-    python2.4 generated-docs.py man
-    python2.4 generated-docs.py bash_completion
+    python generated-docs.py man
+    python generated-docs.py bash_completion
 
 Run "%(prog)s --help" for the option reference.
 """
@@ -41,9 +41,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import breezy
 from breezy import (
     commands,
-    # Don't remove the following import, it triggers a format registration that
-    # avoid http://pad.lv/956860
-    branch,
     doc_generate,
     )
 
@@ -80,6 +77,8 @@ Available OUTPUT_FORMAT:
         sys.exit(1)
 
     with breezy.initialize():
+        # Import breezy.bzr for format registration, see <http://pad.lv/956860>
+        from breezy import bzr as _
         commands.install_bzr_command_hooks()
         infogen_type = args[1]
         infogen_mod = doc_generate.get_module(infogen_type)

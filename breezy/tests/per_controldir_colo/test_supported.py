@@ -17,7 +17,9 @@
 """Tests for bzr directories that support colocated branches."""
 
 from breezy.branch import Branch
+from breezy.controldir import BranchReferenceLoop
 from breezy import (
+    branchbuilder,
     errors,
     tests,
     urlutils,
@@ -32,10 +34,18 @@ from breezy.tests.features import (
 
 class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
 
+    def create_branch(self, bzrdir, name=None):
+        branch = bzrdir.create_branch(name=name)
+        # Create a commit on the branch, just because some formats
+        # have nascent branches that don't hit disk.
+        bb = branchbuilder.BranchBuilder(branch=branch)
+        bb.build_commit()
+        return branch
+
     def test_destroy_colocated_branch(self):
         branch = self.make_branch('branch')
         bzrdir = branch.controldir
-        colo_branch = bzrdir.create_branch('colo')
+        colo_branch = self.create_branch(bzrdir, 'colo')
         try:
             bzrdir.destroy_branch("colo")
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
@@ -76,8 +86,8 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
             raise tests.TestNotApplicable(
                 'Control dir does not support creating new branches.')
         made_control.create_repository()
-        made_branch = made_control.create_branch(name="colo")
-        other_branch = made_control.create_branch(name="othercolo")
+        made_branch = self.create_branch(made_control, name="colo")
+        other_branch = self.create_branch(made_control, name="othercolo")
         self.assertIsInstance(made_branch, Branch)
         self.assertEqual(made_control, made_branch.controldir)
         self.assertNotEqual(made_branch.user_url, other_branch.user_url)
@@ -121,28 +131,29 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
             raise tests.TestNotApplicable(
                 'Control dir does not support creating new branches.')
         made_control.create_repository()
-        made_branch = made_control.create_branch(name=u"col\xe9")
-        self.assertTrue(
-            u"col\xe9" in [b.name for b in made_control.list_branches()])
+        made_branch = self.create_branch(made_control, name=u"col\xe9")
+        self.assertIn(
+            u"col\xe9", [b.name for b in made_control.list_branches()])
         made_branch = Branch.open(made_branch.user_url)
         self.assertEqual(u"col\xe9", made_branch.name)
         made_control.destroy_branch(u"col\xe9")
 
     def test_get_branches(self):
         repo = self.make_repository('branch-1')
-        target_branch = repo.controldir.create_branch(name='foo')
-        self.assertEqual(['foo'], list(repo.controldir.get_branches()))
+        self.assertNotIn('foo', list(repo.controldir.get_branches()))
+        target_branch = self.create_branch(repo.controldir, name='foo')
+        self.assertIn('foo', list(repo.controldir.get_branches()))
         self.assertEqual(target_branch.base,
                          repo.controldir.get_branches()['foo'].base)
 
     def test_branch_name_with_slash(self):
         repo = self.make_repository('branch-1')
         try:
-            target_branch = repo.controldir.create_branch(name='foo/bar')
+            target_branch = self.create_branch(repo.controldir, name='foo/bar')
         except errors.InvalidBranchName:
             raise tests.TestNotApplicable(
                 "format does not support branches with / in their name")
-        self.assertEqual(['foo/bar'], list(repo.controldir.get_branches()))
+        self.assertIn('foo/bar', list(repo.controldir.get_branches()))
         self.assertEqual(
             target_branch.base, repo.controldir.open_branch(name='foo/bar').base)
 
@@ -154,5 +165,17 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable(
                 'Control dir does not support creating branch references.')
-        self.assertEqual(referenced.base,
-            repo.controldir.get_branch_reference('foo'))
+        self.assertEqual(referenced.user_url,
+                         repo.controldir.get_branch_reference('foo'))
+
+    def test_branch_reference_loop(self):
+        repo = self.make_repository('repo')
+        to_branch = self.create_branch(repo.controldir, name='somebranch')
+        try:
+            self.assertRaises(
+                BranchReferenceLoop,
+                repo.controldir.set_branch_reference,
+                to_branch, name='somebranch')
+        except errors.IncompatibleFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating branch references.')

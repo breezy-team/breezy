@@ -24,6 +24,7 @@ from breezy import (
     errors,
     tests,
     )
+from breezy.sixish import PY3
 
 
 class TestWhoami(tests.TestCaseWithTransport):
@@ -33,6 +34,8 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
+        if PY3 and isinstance(expected, bytes):
+            expected = expected.decode(kwargs.get('encoding', 'ascii'))
         self.assertEqual(expected, lines[0].rstrip())
 
     def test_whoami_no_args_no_conf(self):
@@ -72,7 +75,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """verify that an identity can be in utf-8."""
         self.run_bzr(['whoami', u'Branch Identity \u20ac <branch@identi.ty>'],
                      encoding='utf-8')
-        self.assertWhoAmI('Branch Identity \xe2\x82\xac <branch@identi.ty>',
+        self.assertWhoAmI(b'Branch Identity \xe2\x82\xac <branch@identi.ty>',
                           encoding='utf-8')
         self.assertWhoAmI('branch@identi.ty', '--email')
 
@@ -136,13 +139,13 @@ class TestWhoami(tests.TestCaseWithTransport):
         c = branch.Branch.open(url).get_config_stack()
         self.assertEqual('Changed Identity <changed@identi.ty>',
                           c.get('email'))
-        # Ensuring that the value does not come from the bazaar.conf file
+        # Ensuring that the value does not come from the breezy.conf file
         # itself requires some isolation setup
         self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', None)
         self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
         global_conf = config.GlobalStack()
-        self.assertRaises(errors.NoWhoami, global_conf.get, 'email')
+        self.assertRaises(config.NoWhoami, global_conf.get, 'email')
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""

@@ -27,7 +27,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    errors,
     graph as _mod_graph,
     osutils,
     static_tuple,
@@ -35,16 +34,21 @@ from breezy import (
     tsort,
     )
 from breezy.bzr import (
+    knit,
     pack,
+    pack_repo,
     )
 
-from breezy.bzr import pack_repo
 from breezy.i18n import gettext
 """)
 
+from .. import (
+    errors,
+    )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
 from ..sixish import (
+    indexbytes,
     map,
     range,
     viewitems,
@@ -62,7 +66,7 @@ from .versionedfile import (
 # groupcompress blocks.
 BATCH_SIZE = 2**16
 
-# osutils.sha_string('')
+# osutils.sha_string(b'')
 _null_sha1 = b'da39a3ee5e6b4b0d3255bfef95601890afd80709'
 
 def sort_gc_optimal(parent_map):
@@ -90,6 +94,18 @@ def sort_gc_optimal(parent_map):
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
+
+
+class DecompressCorruption(errors.BzrError):
+
+    _fmt = "Corruption while decompressing repository file%(orig_error)s"
+
+    def __init__(self, orig_error=None):
+        if orig_error is not None:
+            self.orig_error = ", %s" % (orig_error,)
+        else:
+            self.orig_error = ""
+        errors.BzrError.__init__(self)
 
 
 # The max zlib window size is 32kB, so if we set 'max_size' output of the
@@ -238,16 +254,16 @@ class GroupCompressBlock(object):
     @classmethod
     def from_bytes(cls, bytes):
         out = cls()
-        if bytes[:6] not in cls.GCB_KNOWN_HEADERS:
+        header = bytes[:6]
+        if header not in cls.GCB_KNOWN_HEADERS:
             raise ValueError('bytes did not start with any of %r'
                              % (cls.GCB_KNOWN_HEADERS,))
-        # XXX: why not testing the whole header ?
-        if bytes[4] == 'z':
+        if header == cls.GCB_HEADER:
             out._compressor_name = 'zlib'
-        elif bytes[4] == 'l':
+        elif header == cls.GCB_LZ_HEADER:
             out._compressor_name = 'lzma'
         else:
-            raise ValueError('unknown compressor: %r' % (bytes,))
+            raise ValueError('unknown compressor: %r' % (header,))
         out._parse_bytes(bytes, 6)
         return out
 
@@ -265,7 +281,7 @@ class GroupCompressBlock(object):
         # base128 integer for the content size, then the actual content
         # We know that the variable-length integer won't be longer than 5
         # bytes (it takes 5 bytes to encode 2^32)
-        c = self._content[start]
+        c = self._content[start:start + 1]
         if c == b'f':
             type = 'fulltext'
         else:
@@ -351,7 +367,7 @@ class GroupCompressBlock(object):
         result = []
         pos = 0
         while pos < self._content_length:
-            kind = self._content[pos]
+            kind = self._content[pos:pos + 1]
             pos += 1
             if kind not in (b'f', b'd'):
                 raise ValueError('invalid kind character: %r' % (kind,))
@@ -375,7 +391,7 @@ class GroupCompressBlock(object):
                 result.append((b'd', content_len, decomp_len, delta_info))
                 measured_len = 0
                 while delta_pos < content_len:
-                    c = ord(delta_content[delta_pos])
+                    c = indexbytes(delta_content, delta_pos)
                     delta_pos += 1
                     if c & 0x80: # Copy
                         (offset, length,
@@ -391,7 +407,7 @@ class GroupCompressBlock(object):
                         if include_text:
                             txt = delta_content[delta_pos:delta_pos+c]
                         else:
-                            txt = ''
+                            txt = b''
                         delta_info.append((b'i', c, txt))
                         measured_len += c
                         delta_pos += c
@@ -457,7 +473,7 @@ class _LazyGroupCompressFactory(object):
                 try:
                     self._manager._prepare_for_extract()
                 except zlib.error as value:
-                    raise errors.DecompressCorruption("zlib: " + str(value))
+                    raise DecompressCorruption("zlib: " + str(value))
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
                 # There are code paths that first extract as fulltext, and then
@@ -695,7 +711,7 @@ class _LazyGroupContentManager(object):
         #   <length of gc block>\n
         #   <header bytes>
         #   <gc-block>
-        lines = ['groupcompress-block\n']
+        lines = [b'groupcompress-block\n']
         # The minimal info we need is the key, the start offset, and the
         # parents. The length and type are encoded in the record itself.
         # However, passing in the other bits makes it easier.  The list of
@@ -706,32 +722,32 @@ class _LazyGroupContentManager(object):
         # 1 line for end byte
         header_lines = []
         for factory in self._factories:
-            key_bytes = '\x00'.join(factory.key)
+            key_bytes = b'\x00'.join(factory.key)
             parents = factory.parents
             if parents is None:
-                parent_bytes = 'None:'
+                parent_bytes = b'None:'
             else:
-                parent_bytes = '\t'.join('\x00'.join(key) for key in parents)
-            record_header = '%s\n%s\n%d\n%d\n' % (
+                parent_bytes = b'\t'.join(b'\x00'.join(key) for key in parents)
+            record_header = b'%s\n%s\n%d\n%d\n' % (
                 key_bytes, parent_bytes, factory._start, factory._end)
             header_lines.append(record_header)
             # TODO: Can we break the refcycle at this point and set
             #       factory._manager = None?
-        header_bytes = ''.join(header_lines)
+        header_bytes = b''.join(header_lines)
         del header_lines
         header_bytes_len = len(header_bytes)
         z_header_bytes = zlib.compress(header_bytes)
         del header_bytes
         z_header_bytes_len = len(z_header_bytes)
         block_bytes_len, block_chunks = self._block.to_chunks()
-        lines.append('%d\n%d\n%d\n' % (z_header_bytes_len, header_bytes_len,
-                                       block_bytes_len))
+        lines.append(b'%d\n%d\n%d\n' % (
+            z_header_bytes_len, header_bytes_len, block_bytes_len))
         lines.append(z_header_bytes)
         lines.extend(block_chunks)
         del z_header_bytes, block_chunks
         # TODO: This is a point where we will double the memory consumption. To
         #       avoid this, we probably have to switch to a 'chunked' api
-        return ''.join(lines)
+        return b''.join(lines)
 
     @classmethod
     def from_bytes(cls, bytes):
@@ -739,9 +755,9 @@ class _LazyGroupContentManager(object):
         #       different way. At a minimum this creates 2 copies of the
         #       compressed content
         (storage_kind, z_header_len, header_len,
-         block_len, rest) = bytes.split('\n', 4)
+         block_len, rest) = bytes.split(b'\n', 4)
         del bytes
-        if storage_kind != 'groupcompress-block':
+        if storage_kind != b'groupcompress-block':
             raise ValueError('Unknown storage kind: %s' % (storage_kind,))
         z_header_len = int(z_header_len)
         if len(rest) < z_header_len:
@@ -759,10 +775,10 @@ class _LazyGroupContentManager(object):
         del rest
         # So now we have a valid GCB, we just need to parse the factories that
         # were sent to us
-        header_lines = header.split('\n')
+        header_lines = header.split(b'\n')
         del header
         last = header_lines.pop()
-        if last != '':
+        if last != b'':
             raise ValueError('header lines did not end with a trailing'
                              ' newline')
         if len(header_lines) % 4 != 0:
@@ -772,13 +788,13 @@ class _LazyGroupContentManager(object):
         result = cls(block)
         for start in range(0, len(header_lines), 4):
             # intern()?
-            key = tuple(header_lines[start].split('\x00'))
+            key = tuple(header_lines[start].split(b'\x00'))
             parents_line = header_lines[start+1]
-            if parents_line == 'None:':
+            if parents_line == b'None:':
                 parents = None
             else:
-                parents = tuple([tuple(segment.split('\x00'))
-                                 for segment in parents_line.split('\t')
+                parents = tuple([tuple(segment.split(b'\x00'))
+                                 for segment in parents_line.split(b'\t')
                                   if segment])
             start_offset = int(header_lines[start+2])
             end_offset = int(header_lines[start+3])
@@ -814,7 +830,7 @@ class _CommonGroupCompressor(object):
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
-            element is 'None' it is replaced with the sha1 of the text -
+            element is b'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
         :param bytes: The bytes to be compressed
         :param expected_sha: If non-None, the sha the lines are believed to
@@ -843,8 +859,6 @@ class _CommonGroupCompressor(object):
             if sha1 == nostore_sha:
                 raise errors.ExistingContent()
         if key[-1] is None:
-            # GZ 2017-06-10: Seems perverse to have to encode here.
-            sha1 = sha1.encode('ascii')
             key = key[:-1] + (b'sha1:' + sha1,)
 
         start, end, type = self._compress(key, bytes, len(bytes) / 2, soft)
@@ -877,30 +891,30 @@ class _CommonGroupCompressor(object):
         """
         (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
         delta_chunks = self.chunks[start_chunk:end_chunk]
-        stored_bytes = ''.join(delta_chunks)
-        if stored_bytes[0] == b'f':
+        stored_bytes = b''.join(delta_chunks)
+        kind = stored_bytes[:1]
+        if kind == b'f':
             fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
             data_len = fulltext_len + 1 + offset
             if  data_len != len(stored_bytes):
                 raise ValueError('Index claimed fulltext len, but stored bytes'
                                  ' claim %s != %s'
                                  % (len(stored_bytes), data_len))
-            bytes = stored_bytes[offset + 1:]
+            data = stored_bytes[offset + 1:]
         else:
+            if kind != b'd':
+                raise ValueError('Unknown content kind, bytes claim %s' % kind)
             # XXX: This is inefficient at best
-            source = ''.join(self.chunks[:start_chunk])
-            if stored_bytes[0] != 'd':
-                raise ValueError('Unknown content kind, bytes claim %s'
-                                 % (stored_bytes[0],))
+            source = b''.join(self.chunks[:start_chunk])
             delta_len, offset = decode_base128_int(stored_bytes[1:10])
             data_len = delta_len + 1 + offset
             if data_len != len(stored_bytes):
                 raise ValueError('Index claimed delta len, but stored bytes'
                                  ' claim %s != %s'
                                  % (len(stored_bytes), data_len))
-            bytes = apply_delta(source, stored_bytes[offset + 1:])
-        bytes_sha1 = osutils.sha_string(bytes)
-        return bytes, bytes_sha1
+            data = apply_delta(source, stored_bytes[offset + 1:])
+        data_sha1 = osutils.sha_string(data)
+        return data, data_sha1
 
     def flush(self):
         """Finish this group, creating a formatted stream.
@@ -1287,24 +1301,6 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         # double handling for now. Make it work until then.
         length = sum(map(len, lines))
         record = ChunkedContentFactory(key, parents, None, lines)
-        sha1 = list(self._insert_record_stream([record], random_id=random_id,
-                                               nostore_sha=nostore_sha))[0]
-        return sha1, length, None
-
-    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
-        """See VersionedFiles._add_text()."""
-        self._index._check_write_ok()
-        self._check_add(key, None, random_id, check_content=False)
-        if text.__class__ is not str:
-            raise errors.BzrBadParameterUnicode("text")
-        if parents is None:
-            # The caller might pass None if there is no graph data, but kndx
-            # indexes can't directly store that, so we give them
-            # an empty tuple instead.
-            parents = ()
-        # double handling for now. Make it work until then.
-        length = len(text)
-        record = FulltextContentFactory(key, parents, None, text)
         sha1 = list(self._insert_record_stream([record], random_id=random_id,
                                                nostore_sha=nostore_sha))[0]
         return sha1, length, None
@@ -2010,7 +2006,7 @@ class _GCGraphIndex(object):
                 if refs:
                     for ref in refs:
                         if ref:
-                            raise errors.KnitCorrupt(self,
+                            raise knit.KnitCorrupt(self,
                                 "attempt to add node with parents "
                                 "in parentless index.")
                     refs = ()
@@ -2026,7 +2022,7 @@ class _GCGraphIndex(object):
                 if node_refs != passed[1]:
                     details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
-                        raise errors.KnitCorrupt(self, "inconsistent details"
+                        raise knit.KnitCorrupt(self, "inconsistent details"
                                                  " in add_records: %s" %
                                                  details)
                     else:
@@ -2158,7 +2154,7 @@ class _GCGraphIndex(object):
 
     def _node_to_position(self, node):
         """Convert an index value to position details."""
-        bits = node[2].split(' ')
+        bits = node[2].split(b' ')
         # It would be nice not to read the entire gzip.
         # start and stop are put into _int_cache because they are very common.
         # They define the 'group' that an entry is in, and many groups can have

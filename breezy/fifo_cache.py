@@ -41,16 +41,7 @@ class FIFOCache(dict):
 
     def __delitem__(self, key):
         # Remove the key from an arbitrary location in the queue
-        remove = getattr(self._queue, 'remove', None)
-        # Python2.5's has deque.remove, but Python2.4 does not
-        if remove is not None:
-            remove(key)
-        else:
-            # TODO: It would probably be faster to pop()/popleft() until we get to the
-            #       key, and then insert those back into the queue. We know
-            #       the key should only be present in one position, and we
-            #       wouldn't need to rebuild the whole queue.
-            self._queue = deque([k for k in self._queue if k != key])
+        self._queue.remove(key)
         self._remove(key)
 
     def add(self, key, value, cleanup=None):

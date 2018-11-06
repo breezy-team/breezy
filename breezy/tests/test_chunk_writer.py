@@ -26,15 +26,15 @@ from . import TestCaseWithTransport
 class TestWriter(TestCaseWithTransport):
 
     def check_chunk(self, bytes_list, size):
-        bytes = ''.join(bytes_list)
-        self.assertEqual(size, len(bytes))
-        return zlib.decompress(bytes)
+        data = b''.join(bytes_list)
+        self.assertEqual(size, len(data))
+        return zlib.decompress(data)
 
     def test_chunk_writer_empty(self):
         writer = chunk_writer.ChunkWriter(4096)
         bytes_list, unused, padding = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
-        self.assertEqual("", node_bytes)
+        self.assertEqual(b"", node_bytes)
         self.assertEqual(None, unused)
         # Only a zlib header.
         self.assertEqual(4088, padding)
@@ -59,22 +59,27 @@ class TestWriter(TestCaseWithTransport):
 
     def test_some_data(self):
         writer = chunk_writer.ChunkWriter(4096)
-        writer.write("foo bar baz quux\n")
+        writer.write(b"foo bar baz quux\n")
         bytes_list, unused, padding = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
-        self.assertEqual("foo bar baz quux\n", node_bytes)
+        self.assertEqual(b"foo bar baz quux\n", node_bytes)
         self.assertEqual(None, unused)
         # More than just the header..
         self.assertEqual(4073, padding)
 
-    def test_too_much_data_does_not_exceed_size(self):
-        # Generate enough data to exceed 4K
+    @staticmethod
+    def _make_lines():
         lines = []
         for group in range(48):
             offset = group * 50
             numbers = list(range(offset, offset + 50))
             # Create a line with this group
-            lines.append(''.join(map(str, numbers)) + '\n')
+            lines.append(b''.join(b'%d' % n for n in numbers) + b'\n')
+        return lines
+
+    def test_too_much_data_does_not_exceed_size(self):
+        # Generate enough data to exceed 4K
+        lines = self._make_lines()
         writer = chunk_writer.ChunkWriter(4096)
         for idx, line in enumerate(lines):
             if writer.write(line):
@@ -83,19 +88,14 @@ class TestWriter(TestCaseWithTransport):
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
         # the first 46 lines should have been added
-        expected_bytes = ''.join(lines[:46])
+        expected_bytes = b''.join(lines[:46])
         self.assertEqualDiff(expected_bytes, node_bytes)
         # And the line that failed should have been saved for us
         self.assertEqual(lines[46], unused)
 
     def test_too_much_data_preserves_reserve_space(self):
         # Generate enough data to exceed 4K
-        lines = []
-        for group in range(48):
-            offset = group * 50
-            numbers = list(range(offset, offset + 50))
-            # Create a line with this group
-            lines.append(''.join(map(str, numbers)) + '\n')
+        lines = self._make_lines()
         writer = chunk_writer.ChunkWriter(4096, 256)
         for idx, line in enumerate(lines):
             if writer.write(line):
@@ -103,11 +103,11 @@ class TestWriter(TestCaseWithTransport):
                 break
         else:
             self.fail('We were able to write all lines')
-        self.assertFalse(writer.write("A"*256, reserved=True))
+        self.assertFalse(writer.write(b"A"*256, reserved=True))
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
         # the first 44 lines should have been added
-        expected_bytes = ''.join(lines[:44]) + "A"*256
+        expected_bytes = b''.join(lines[:44]) + b"A"*256
         self.assertEqualDiff(expected_bytes, node_bytes)
         # And the line that failed should have been saved for us
         self.assertEqual(lines[44], unused)

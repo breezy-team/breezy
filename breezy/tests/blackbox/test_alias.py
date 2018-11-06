@@ -81,7 +81,7 @@ class TestAlias(tests.TestCaseWithTransport):
     def test_remove_unknown_alias(self):
         out, err = self.run_bzr('alias --remove fooix', retcode=3)
         self.assertEqual('brz: ERROR: The alias "fooix" does not exist.\n',
-                          err)
+                         err)
 
     def test_remove_known_alias(self):
         self.run_bzr('alias commit="commit --strict"')

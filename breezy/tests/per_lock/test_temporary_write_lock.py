@@ -36,13 +36,13 @@ class TestTemporaryWriteLock(TestCaseWithLock):
             success, t_write_lock = a_lock.temporary_write_lock()
             self.assertTrue(success, "We failed to grab a write lock.")
             try:
-                self.assertEqual('contents of a-file\n',
+                self.assertEqual(b'contents of a-file\n',
                                  t_write_lock.f.read())
                 # We should be able to write to the file.
                 t_write_lock.f.seek(0)
-                t_write_lock.f.write('new contents for a-file\n')
+                t_write_lock.f.write(b'new contents for a-file\n')
                 t_write_lock.f.seek(0)
-                self.assertEqual('new contents for a-file\n',
+                self.assertEqual(b'new contents for a-file\n',
                                  t_write_lock.f.read())
             finally:
                 a_lock = t_write_lock.restore_read_lock()

@@ -37,9 +37,9 @@ from . import (
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
-    TestSkipped,
     multiply_tests,
     probe_bad_non_ascii,
+    probe_unicode_in_user_encoding,
     split_suite_by_re,
     )
 from .EncodingAdapter import encoding_scenarios
@@ -61,9 +61,9 @@ class MsgEditorTest(TestCaseWithTransport):
         b = working_tree.branch
         filename = u'hell\u00d8'
         try:
-            self.build_tree_contents([(filename, 'contents of hello')])
+            self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
+            self.skipTest("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
@@ -130,7 +130,7 @@ added:
                                                         diff=True,
                                                         output_encoding='utf8')
 
-        self.assertTrue("""\
+        self.assertTrue(b"""\
 @@ -0,0 +1,1 @@
 +contents of hello
 """ in template)
@@ -142,15 +142,13 @@ added:
     def make_do_nothing_editor(self, basename='fed'):
         if sys.platform == "win32":
             name = basename + '.bat'
-            f = file(name, 'w')
-            f.write('@rem dummy fed')
-            f.close()
+            with open(name, 'w') as f:
+                f.write('@rem dummy fed')
             return name
         else:
             name = basename + '.sh'
-            f = file(name, 'wb')
-            f.write('#!/bin/sh\n')
-            f.close()
+            with open(name, 'wb') as f:
+                f.write(b'#!/bin/sh\n')
             os.chmod(name, 0o755)
             return './' + name
 
@@ -168,43 +166,41 @@ added:
             '"%s"' % self.make_do_nothing_editor('name with spaces'))
         self.assertEqual(True, msgeditor._run_editor('a_filename'))    
 
-    def make_fake_editor(self, message='test message from fed\\n'):
+    def make_fake_editor(self, message='test message from fed\n'):
         """Set up environment so that an editor will be a known script.
 
         Sets up BRZ_EDITOR so that if an editor is spawned it will run a
         script that just adds a known message to the start of the file.
         """
-        f = file('fed.py', 'wb')
-        f.write('#!%s\n' % sys.executable)
-        f.write("""\
+        if not isinstance(message, bytes):
+            message = message.encode('utf-8')
+        with open('fed.py', 'w') as f:
+            f.write('#!%s\n' % sys.executable)
+            f.write("""\
 # coding=utf-8
 import sys
 if len(sys.argv) == 2:
     fn = sys.argv[1]
-    f = file(fn, 'rb')
-    s = f.read()
-    f.close()
-    f = file(fn, 'wb')
-    f.write('%s')
-    f.write(s)
-    f.close()
+    with open(fn, 'rb') as f:
+        s = f.read()
+    with open(fn, 'wb') as f:
+        f.write(%r)
+        f.write(s)
 """ % (message, ))
-        f.close()
         if sys.platform == "win32":
             # [win32] make batch file and set BRZ_EDITOR
-            f = file('fed.bat', 'w')
-            f.write("""\
+            with open('fed.bat', 'w') as f:
+                f.write("""\
 @echo off
 "%s" fed.py %%1
 """ % sys.executable)
-            f.close()
             self.overrideEnv('BRZ_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BRZ_EDITOR
             os.chmod('fed.py', 0o755)
             self.overrideEnv('BRZ_EDITOR', './fed.py')
 
-    def test_edit_commit_message(self):
+    def test_edit_commit_message_without_infotext(self):
         working_tree = self.make_uncommitted_tree()
         self.make_fake_editor()
 
@@ -212,13 +208,27 @@ if len(sys.argv) == 2:
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message(''))
 
+    def test_edit_commit_message_with_ascii_infotext(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message with ascii string infotext')
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message('spam'))
 
+    def test_edit_commit_message_with_unicode_infotext(self):
+        working_tree = self.make_uncommitted_tree()
+        self.make_fake_editor()
+
         mutter('edit_commit_message with unicode infotext')
+        uni_val, ue_val = probe_unicode_in_user_encoding()
+        if ue_val is None:
+            self.skipTest(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+
         self.assertEqual('test message from fed\n',
-                         msgeditor.edit_commit_message(u'\u1234'))
+                         msgeditor.edit_commit_message(uni_val))
 
         tmpl = edit_commit_message_encoded(u'\u1234'.encode("utf8"))
         self.assertEqual('test message from fed\n', tmpl)
@@ -242,7 +252,8 @@ if len(sys.argv) == 2:
             editor = 'rm'
         self.overrideEnv('BRZ_EDITOR', editor)
 
-        self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
+        self.assertRaises((EnvironmentError, errors.NoSuchFile),
+                msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
         self.overrideEnv('BRZ_EDITOR', 'bzr_editor')
@@ -250,7 +261,7 @@ if len(sys.argv) == 2:
         self.overrideEnv('EDITOR', 'editor')
 
         conf = config.GlobalStack()
-        conf.store._load_from_string('[DEFAULT]\neditor = config_editor\n')
+        conf.store._load_from_string(b'[DEFAULT]\neditor = config_editor\n')
         conf.store.save()
         editors = list(msgeditor._get_editor())
         editors = [editor for (editor, cfg_src) in editors]
@@ -268,9 +279,8 @@ if len(sys.argv) == 2:
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
         self.overrideEnv('BRZ_EDITOR', 'eacces.py')
-        f = file('eacces.py', 'wb')
-        f.write('# Not a real editor')
-        f.close()
+        with open('eacces.py', 'wb') as f:
+            f.write(b'# Not a real editor')
         # Make the fake editor unreadable (and unexecutable)
         os.chmod('eacces.py', 0)
         # Set $EDITOR so that _run_editor will terminate before trying real
@@ -295,7 +305,7 @@ if len(sys.argv) == 2:
         # check that commit template written properly
         # and has platform native line-endings (CRLF on win32)
         create_file = msgeditor._create_temp_file_with_commit_template
-        msgfilename, hasinfo = create_file('infotext','----','start message')
+        msgfilename, hasinfo = create_file(b'infotext', '----', b'start message')
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
         expected = os.linesep.join(['start message',
@@ -313,7 +323,7 @@ if len(sys.argv) == 2:
             os.mkdir(tmpdir)
             # Force the creation of temp file in a directory whose name
             # requires some encoding support
-            msgeditor._create_temp_file_with_commit_template('infotext',
+            msgeditor._create_temp_file_with_commit_template(b'infotext',
                                                              tmpdir=tmpdir)
         else:
             raise TestNotApplicable('Test run elsewhere with non-ascii data.')
@@ -333,13 +343,13 @@ if len(sys.argv) == 2:
         # in default user encoding
         char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
-            raise TestSkipped('Cannot find suitable non-ascii character '
+            self.skipTest('Cannot find suitable non-ascii character '
                 'for user_encoding (%s)' % osutils.get_user_encoding())
 
         self.make_fake_editor(message=char)
 
         working_tree = self.make_uncommitted_tree()
-        self.assertRaises(errors.BadCommitMessageEncoding,
+        self.assertRaises(msgeditor.BadCommitMessageEncoding,
                           msgeditor.edit_commit_message, '')
 
     def test_set_commit_message_no_hooks(self):
@@ -376,7 +386,7 @@ class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
             raise TestNotApplicable("Workarounds for windows only")
         import subprocess, errno
         ERROR_BAD_EXE_FORMAT = 193
-        file("textfile.txt", "w").close()
+        open("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
         self.assertEqual(e.errno, errno.ENOEXEC)
         self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)

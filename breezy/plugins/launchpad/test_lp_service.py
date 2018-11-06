@@ -17,11 +17,18 @@
 """Tests for selection of the right Launchpad service by environment"""
 
 import os
-import xmlrpclib
+try:
+    from xmlrpc.client import Fault
+except ImportError:  # python < 3
+    from xmlrpclib import Fault
 
 from ... import errors
 from .lp_registration import (
-    InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
+    InvalidURL,
+    InvalidLaunchpadInstance,
+    LaunchpadService,
+    NotLaunchpadBranch,
+    )
 from .test_lp_directory import FakeResolveFactory
 from ...tests import TestCase
 
@@ -153,10 +160,10 @@ class TestURLInference(TestCase):
         service = LaunchpadService()
         factory = FakeResolveFactory(self, 'foo', None)
         def submit(service):
-            raise xmlrpclib.Fault(42, 'something went wrong')
+            raise Fault(42, 'something went wrong')
         factory.submit = submit
         self.assertRaises(
-            errors.InvalidURL, service.get_web_url_from_branch_url, 'lp:foo',
+            InvalidURL, service.get_web_url_from_branch_url, 'lp:foo',
             factory)
 
     def test_staging_url(self):

@@ -18,13 +18,12 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
 from . import (
     errors,
+    lock,
     revision,
     tree,
-    )
-from .sixish import (
-    BytesIO,
     )
 
 
@@ -63,24 +62,24 @@ class RevisionTree(tree.Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    def get_file_revision(self, file_id, path=None):
+    def get_file_revision(self, path, file_id=None):
         """Return the revision id in which a file was last changed."""
         raise NotImplementedError(self.get_file_revision)
 
-    def get_file_text(self, file_id, path=None):
-        for (identifier, content) in self.iter_files_bytes([(file_id, None)]):
-            ret = "".join(content)
+    def get_file_text(self, path, file_id=None):
+        for (identifier, content) in self.iter_files_bytes([(path, None)]):
+            ret = b"".join(content)
         return ret
 
-    def get_file(self, file_id, path=None):
-        return BytesIO(self.get_file_text(file_id))
+    def get_file(self, path, file_id=None):
+        return BytesIO(self.get_file_text(path, file_id))
 
     def is_locked(self):
         return self._repository.is_locked()
 
     def lock_read(self):
         self._repository.lock_read()
-        return self
+        return lock.LogicalLockResult(self.unlock)
 
     def __repr__(self):
         return '<%s instance at %x, rev_id=%r>' % (

@@ -26,6 +26,8 @@ from breezy import (
     tests,
     )
 
+from ..sixish import viewitems
+
 
 class TestRegistry(tests.TestCase):
 
@@ -201,6 +203,29 @@ class TestRegistry(tests.TestCase):
         self.assertEqual('//baz/qux', suffix)
         self.assertIs(sftp_object, found_object)
 
+    def test_registry_alias(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 1, info='string info')
+        a_registry.register_alias('two', 'one')
+        a_registry.register_alias('three', 'one', info='own info')
+        self.assertEqual(a_registry.get('one'), a_registry.get('two'))
+        self.assertEqual(a_registry.get_help('one'), a_registry.get_help('two'))
+        self.assertEqual(a_registry.get_info('one'), a_registry.get_info('two'))
+        self.assertEqual('own info', a_registry.get_info('three'))
+        self.assertEqual({'two': 'one', 'three': 'one'}, a_registry.aliases())
+        self.assertEqual({'one': ['three', 'two']},
+                         {k: sorted(v) for (k, v) in viewitems(a_registry.alias_map())})
+
+    def test_registry_alias_exists(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 1, info='string info')
+        a_registry.register('two', 2)
+        self.assertRaises(KeyError, a_registry.register_alias, 'one', 'one')
+
+    def test_registry_alias_targetmissing(self):
+        a_registry = registry.Registry()
+        self.assertRaises(KeyError, a_registry.register_alias, 'one', 'two')
+
 
 class TestRegistryIter(tests.TestCase):
     """Test registry iteration behaviors.
@@ -277,15 +302,15 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
 
     def create_simple_plugin(self):
         return self.create_plugin_file(
-            'object1 = "foo"\n'
-            '\n\n'
-            'def function(a,b,c):\n'
-            '    return a,b,c\n'
-            '\n\n'
-            'class MyClass(object):\n'
-            '    def __init__(self, a):\n'
-            '      self.a = a\n'
-            '\n\n'
+            b'object1 = "foo"\n'
+            b'\n\n'
+            b'def function(a,b,c):\n'
+            b'    return a,b,c\n'
+            b'\n\n'
+            b'class MyClass(object):\n'
+            b'    def __init__(self, a):\n'
+            b'      self.a = a\n'
+            b'\n\n'
         )
 
     def test_lazy_import_registry_foo(self):

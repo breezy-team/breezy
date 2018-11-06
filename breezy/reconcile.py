@@ -76,14 +76,14 @@ class Reconciler(object):
           branch history was correct, True if the branch history needed to be
           re-normalized.
         """
-        self.pb = ui.ui_factory.nested_progress_bar()
-        try:
-            self._reconcile()
-        finally:
-            self.pb.finished()
+        operation = cleanup.OperationWithCleanups(self._reconcile)
+        self.add_cleanup = operation.add_cleanup
+        operation.run_simple()
 
     def _reconcile(self):
         """Helper function for performing reconciliation."""
+        self.pb = ui.ui_factory.nested_progress_bar()
+        self.add_cleanup(self.pb.finished)
         self._reconcile_branch()
         self._reconcile_repository()
 
@@ -463,7 +463,7 @@ class KnitReconciler(RepoReconciler):
         mutter('fixing text parent: %r (%d versions)', file_id,
                 len(versions_with_bad_parents))
         mutter('(%d are unused)', len(unused_versions))
-        new_file_id = 'temp:%s' % file_id
+        new_file_id = b'temp:%s' % file_id
         new_parents = {}
         needed_keys = set()
         for version in all_versions:

@@ -141,22 +141,22 @@ class TestFetch(TestCaseWithTransport):
         # root revision to change for each commit, even though the content,
         # parent, name, and other attributes are unchanged.
         tree = self.make_branch_and_tree('tree', knit1_format)
-        tree.set_root_id('tree-root')
-        tree.commit('rev1', rev_id='rev1')
-        tree.commit('rev2', rev_id='rev2')
+        tree.set_root_id(b'tree-root')
+        tree.commit('rev1', rev_id=b'rev1')
+        tree.commit('rev2', rev_id=b'rev2')
 
         # Now we convert it to a knit2 repository so that it has a root knit
         Convert(tree.basedir, knit2_format)
         tree = WorkingTree.open(tree.basedir)
         branch = self.make_branch('branch', format=knit2_format)
-        branch.pull(tree.branch, stop_revision='rev1')
+        branch.pull(tree.branch, stop_revision=b'rev1')
         repo = branch.repository
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({('tree-root', 'rev1'):()},
+            self.assertEqual({(b'tree-root', b'rev1'):()},
                 repo.texts.get_parent_map(
-                    [('tree-root', 'rev1'), ('tree-root', 'rev2')]))
+                    [(b'tree-root', b'rev1'), (b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
         branch.pull(tree.branch)
@@ -165,8 +165,8 @@ class TestFetch(TestCaseWithTransport):
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({('tree-root', 'rev2'):(('tree-root', 'rev1'),)},
-                repo.texts.get_parent_map([('tree-root', 'rev2')]))
+            self.assertEqual({(b'tree-root', b'rev2'):((b'tree-root', b'rev1'),)},
+                repo.texts.get_parent_map([(b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
 
@@ -188,29 +188,29 @@ class TestMergeFetch(TestCaseWithTransport):
         """Merge brings across history from unrelated source"""
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
-        wt1.commit(message='rev 1-1', rev_id='1-1')
-        wt1.commit(message='rev 1-2', rev_id='1-2')
+        wt1.commit(message='rev 1-1', rev_id=b'1-1')
+        wt1.commit(message='rev 1-2', rev_id=b'1-2')
         wt2 = self.make_branch_and_tree('br2')
         br2 = wt2.branch
-        wt2.commit(message='rev 2-1', rev_id='2-1')
-        wt2.merge_from_branch(br1, from_revision='null:')
+        wt2.commit(message='rev 2-1', rev_id=b'2-1')
+        wt2.merge_from_branch(br1, from_revision=b'null:')
         self._check_revs_present(br2)
 
     def test_merge_fetches(self):
         """Merge brings across history from source"""
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
-        wt1.commit(message='rev 1-1', rev_id='1-1')
+        wt1.commit(message='rev 1-1', rev_id=b'1-1')
         dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
-        wt1.commit(message='rev 1-2', rev_id='1-2')
+        wt1.commit(message='rev 1-2', rev_id=b'1-2')
         wt2 = dir_2.open_workingtree()
-        wt2.commit(message='rev 2-1', rev_id='2-1')
+        wt2.commit(message='rev 2-1', rev_id=b'2-1')
         wt2.merge_from_branch(br1)
         self._check_revs_present(br2)
 
     def _check_revs_present(self, br2):
-        for rev_id in '1-1', '1-2', '2-1':
+        for rev_id in [b'1-1', b'1-2', b'2-1']:
             self.assertTrue(br2.repository.has_revision(rev_id))
             rev = br2.repository.get_revision(rev_id)
             self.assertEqual(rev.revision_id, rev_id)
@@ -223,20 +223,20 @@ class TestMergeFileHistory(TestCaseWithTransport):
         super(TestMergeFileHistory, self).setUp()
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
-        self.build_tree_contents([('br1/file', 'original contents\n')])
-        wt1.add('file', 'this-file-id')
-        wt1.commit(message='rev 1-1', rev_id='1-1')
+        self.build_tree_contents([('br1/file', b'original contents\n')])
+        wt1.add('file', b'this-file-id')
+        wt1.commit(message='rev 1-1', rev_id=b'1-1')
         dir_2 = br1.controldir.sprout('br2')
         br2 = dir_2.open_branch()
         wt2 = dir_2.open_workingtree()
-        self.build_tree_contents([('br1/file', 'original from 1\n')])
-        wt1.commit(message='rev 1-2', rev_id='1-2')
-        self.build_tree_contents([('br1/file', 'agreement\n')])
-        wt1.commit(message='rev 1-3', rev_id='1-3')
-        self.build_tree_contents([('br2/file', 'contents in 2\n')])
-        wt2.commit(message='rev 2-1', rev_id='2-1')
-        self.build_tree_contents([('br2/file', 'agreement\n')])
-        wt2.commit(message='rev 2-2', rev_id='2-2')
+        self.build_tree_contents([('br1/file', b'original from 1\n')])
+        wt1.commit(message='rev 1-2', rev_id=b'1-2')
+        self.build_tree_contents([('br1/file', b'agreement\n')])
+        wt1.commit(message='rev 1-3', rev_id=b'1-3')
+        self.build_tree_contents([('br2/file', b'contents in 2\n')])
+        wt2.commit(message='rev 2-1', rev_id=b'2-1')
+        self.build_tree_contents([('br2/file', b'agreement\n')])
+        wt2.commit(message='rev 2-2', rev_id=b'2-2')
 
     def test_merge_fetches_file_history(self):
         """Merge brings across file histories"""
@@ -245,13 +245,13 @@ class TestMergeFileHistory(TestCaseWithTransport):
         wt2 = WorkingTree.open('br2').merge_from_branch(br1)
         br2.lock_read()
         self.addCleanup(br2.unlock)
-        for rev_id, text in [('1-2', 'original from 1\n'),
-                             ('1-3', 'agreement\n'),
-                             ('2-1', 'contents in 2\n'),
-                             ('2-2', 'agreement\n')]:
+        for rev_id, text in [(b'1-2', b'original from 1\n'),
+                             (b'1-3', b'agreement\n'),
+                             (b'2-1', b'contents in 2\n'),
+                             (b'2-2', b'agreement\n')]:
             self.assertEqualDiff(
                 br2.repository.revision_tree(
-                    rev_id).get_file_text('this-file-id'), text)
+                    rev_id).get_file_text('file'), text)
 
 
 class TestKnitToPackFetch(TestCaseWithTransport):
@@ -275,9 +275,9 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='dirstate')
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
-        tree.set_root_id('root-id')
-        tree.add('file', 'file-id')
-        tree.commit('one', rev_id='rev-one')
+        tree.set_root_id(b'root-id')
+        tree.add('file', b'file-id')
+        tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
                         source.texts)
@@ -289,14 +289,14 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                         source.inventories)
         # precondition
         self.assertTrue(target._format._fetch_uses_deltas)
-        target.fetch(source, revision_id='rev-one')
-        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+        target.fetch(source, revision_id=b'rev-one')
+        self.assertEqual(('get_record_stream', [(b'file-id', b'rev-one')],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
           target._format._fetch_order, False),
           self.find_get_record_stream(source.inventories.calls, 2))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
@@ -307,7 +307,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # So we know there will be extra calls, but the *last* one is the one
         # we care about.
         signature_calls = source.signatures.calls[-1:]
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(signature_calls))
 
@@ -315,9 +315,9 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='dirstate')
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
-        tree.set_root_id('root-id')
-        tree.add('file', 'file-id')
-        tree.commit('one', rev_id='rev-one')
+        tree.set_root_id(b'root-id')
+        tree.add('file', b'file-id')
+        tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
                         source.texts)
@@ -329,14 +329,14 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                         source.inventories)
         # XXX: This won't work in general, but for the dirstate format it does.
         self.overrideAttr(target._format, '_fetch_uses_deltas', False)
-        target.fetch(source, revision_id='rev-one')
-        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+        target.fetch(source, revision_id=b'rev-one')
+        self.assertEqual(('get_record_stream', [(b'file-id', b'rev-one')],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
             target._format._fetch_order, True),
             self.find_get_record_stream(source.inventories.calls, 2))
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
@@ -347,7 +347,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # So we know there will be extra calls, but the *last* one is the one
         # we care about.
         signature_calls = source.signatures.calls[-1:]
-        self.assertEqual(('get_record_stream', [('rev-one',)],
+        self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(signature_calls))
 
@@ -360,24 +360,24 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='dirstate')
         target = self.make_repository('target', format='pack-0.92')
         self.build_tree(['source/file'])
-        tree.set_root_id('root-id')
-        tree.add('file', 'file-id')
-        tree.commit('one', rev_id='rev-one')
+        tree.set_root_id(b'root-id')
+        tree.add('file', b'file-id')
+        tree.commit('one', rev_id=b'rev-one')
         # Hack the KVF for revisions so that it "accidentally" allows a delta
         tree.branch.repository.revisions._max_delta_chain = 200
-        tree.commit('two', rev_id='rev-two')
+        tree.commit('two', rev_id=b'rev-two')
         source = tree.branch.repository
         # Ensure that we stored a delta
         source.lock_read()
         self.addCleanup(source.unlock)
-        record = next(source.revisions.get_record_stream([('rev-two',)],
+        record = next(source.revisions.get_record_stream([(b'rev-two',)],
             'unordered', False))
         self.assertEqual('knit-delta-gz', record.storage_kind)
-        target.fetch(tree.branch.repository, revision_id='rev-two')
+        target.fetch(tree.branch.repository, revision_id=b'rev-two')
         # The record should get expanded back to a fulltext
         target.lock_read()
         self.addCleanup(target.unlock)
-        record = next(target.revisions.get_record_stream([('rev-two',)],
+        record = next(target.revisions.get_record_stream([(b'rev-two',)],
             'unordered', False))
         self.assertEqual('knit-ft-gz', record.storage_kind)
 
@@ -402,20 +402,20 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # random ids because otherwise the inventory fulltext compresses too
         # well and the deltas get bigger.
         to_add = [
-            ('add', ('', 'TREE_ROOT', 'directory', None))]
+            ('add', ('', b'TREE_ROOT', 'directory', None))]
         for i in range(10):
             fname = 'file%03d' % (i,)
-            fileid = '%s-%s' % (fname, osutils.rand_chars(64))
-            to_add.append(('add', (fname, fileid, 'file', 'content\n')))
-        builder.build_snapshot('A', None, to_add)
-        builder.build_snapshot('B', ['A'], [])
-        builder.build_snapshot('C', ['A'], [])
-        builder.build_snapshot('D', ['C'], [])
-        builder.build_snapshot('E', ['D'], [])
-        builder.build_snapshot('F', ['E', 'B'], [])
+            fileid = ('%s-%s' % (fname, osutils.rand_chars(64))).encode('ascii')
+            to_add.append(('add', (fname, fileid, 'file', b'content\n')))
+        builder.build_snapshot(None, to_add, revision_id=b'A')
+        builder.build_snapshot([b'A'], [], revision_id=b'B')
+        builder.build_snapshot([b'A'], [], revision_id=b'C')
+        builder.build_snapshot([b'C'], [], revision_id=b'D')
+        builder.build_snapshot([b'D'], [], revision_id=b'E')
+        builder.build_snapshot([b'E', b'B'], [], revision_id=b'F')
         builder.finish_series()
         source_branch = builder.get_branch()
-        source_branch.controldir.sprout('base', revision_id='B')
+        source_branch.controldir.sprout('base', revision_id=b'B')
         target_branch = self.make_branch('target', format='1.6')
         target_branch.set_stacked_on_url('../base')
         source = source_branch.repository
@@ -423,29 +423,29 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         self.addCleanup(source.unlock)
         source.inventories = versionedfile.OrderingVersionedFilesDecorator(
                         source.inventories,
-                        key_priority={('E',): 1, ('D',): 2, ('C',): 4,
-                                      ('F',): 3})
+                        key_priority={(b'E',): 1, (b'D',): 2, (b'C',): 4,
+                                      (b'F',): 3})
         # Ensure that the content is yielded in the proper order, and given as
         # the expected kinds
         records = [(record.key, record.storage_kind)
                    for record in source.inventories.get_record_stream(
-                        [('D',), ('C',), ('E',), ('F',)], 'unordered', False)]
-        self.assertEqual([(('E',), 'knit-delta-gz'), (('D',), 'knit-delta-gz'),
-                          (('F',), 'knit-delta-gz'), (('C',), 'knit-delta-gz')],
+                        [(b'D',), (b'C',), (b'E',), (b'F',)], 'unordered', False)]
+        self.assertEqual([((b'E',), 'knit-delta-gz'), ((b'D',), 'knit-delta-gz'),
+                          ((b'F',), 'knit-delta-gz'), ((b'C',), 'knit-delta-gz')],
                           records)
 
         target_branch.lock_write()
         self.addCleanup(target_branch.unlock)
         target = target_branch.repository
-        target.fetch(source, revision_id='F')
+        target.fetch(source, revision_id=b'F')
         # 'C' should be expanded to a fulltext, but D and E should still be
         # deltas
         stream = target.inventories.get_record_stream(
-            [('C',), ('D',), ('E',), ('F',)],
+            [(b'C',), (b'D',), (b'E',), (b'F',)],
             'unordered', False)
         kinds = dict((record.key, record.storage_kind) for record in stream)
-        self.assertEqual({('C',): 'knit-ft-gz', ('D',): 'knit-delta-gz',
-                          ('E',): 'knit-delta-gz', ('F',): 'knit-delta-gz'},
+        self.assertEqual({(b'C',): 'knit-ft-gz', (b'D',): 'knit-delta-gz',
+                          (b'E',): 'knit-delta-gz', (b'F',): 'knit-delta-gz'},
                          kinds)
 
 
@@ -471,11 +471,11 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def test_fetch_order_AB(self):
         """See do_fetch_order_test"""
-        self.do_fetch_order_test('A', 'B')
+        self.do_fetch_order_test(b'A', b'B')
 
     def test_fetch_order_BA(self):
         """See do_fetch_order_test"""
-        self.do_fetch_order_test('B', 'A')
+        self.do_fetch_order_test(b'B', b'A')
 
     def get_parents(self, file_id, revision_id):
         self.repo.lock_read()
@@ -487,39 +487,39 @@ class Test1To2Fetch(TestCaseWithTransport):
 
     def test_fetch_ghosts(self):
         self.make_tree_and_repo()
-        self.tree.commit('first commit', rev_id='left-parent')
-        self.tree.add_parent_tree_id('ghost-parent')
-        fork = self.tree.controldir.sprout('fork', 'null:').open_workingtree()
-        fork.commit('not a ghost', rev_id='not-ghost-parent')
+        self.tree.commit('first commit', rev_id=b'left-parent')
+        self.tree.add_parent_tree_id(b'ghost-parent')
+        fork = self.tree.controldir.sprout('fork', b'null:').open_workingtree()
+        fork.commit('not a ghost', rev_id=b'not-ghost-parent')
         self.tree.branch.repository.fetch(fork.branch.repository,
-                                     'not-ghost-parent')
-        self.tree.add_parent_tree_id('not-ghost-parent')
-        self.tree.commit('second commit', rev_id='second-id')
-        self.repo.fetch(self.tree.branch.repository, 'second-id')
+                                     b'not-ghost-parent')
+        self.tree.add_parent_tree_id(b'not-ghost-parent')
+        self.tree.commit('second commit', rev_id=b'second-id')
+        self.repo.fetch(self.tree.branch.repository, b'second-id')
         root_id = self.tree.get_root_id()
         self.assertEqual(
-            ((root_id, 'left-parent'), (root_id, 'not-ghost-parent')),
-            self.get_parents(root_id, 'second-id'))
+            ((root_id, b'left-parent'), (root_id, b'not-ghost-parent')),
+            self.get_parents(root_id, b'second-id'))
 
     def make_two_commits(self, change_root, fetch_twice):
         self.make_tree_and_repo()
-        self.tree.commit('first commit', rev_id='first-id')
+        self.tree.commit('first commit', rev_id=b'first-id')
         if change_root:
-            self.tree.set_root_id('unique-id')
-        self.tree.commit('second commit', rev_id='second-id')
+            self.tree.set_root_id(b'unique-id')
+        self.tree.commit('second commit', rev_id=b'second-id')
         if fetch_twice:
-            self.repo.fetch(self.tree.branch.repository, 'first-id')
-        self.repo.fetch(self.tree.branch.repository, 'second-id')
+            self.repo.fetch(self.tree.branch.repository, b'first-id')
+        self.repo.fetch(self.tree.branch.repository, b'second-id')
 
     def test_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=False)
-        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+        self.assertEqual((), self.get_parents(b'unique-id', b'second-id'))
 
     def test_two_fetch_changed_root(self):
         self.make_two_commits(change_root=True, fetch_twice=True)
-        self.assertEqual((), self.get_parents('unique-id', 'second-id'))
+        self.assertEqual((), self.get_parents(b'unique-id', b'second-id'))
 
     def test_two_fetches(self):
         self.make_two_commits(change_root=False, fetch_twice=True)
-        self.assertEqual((('TREE_ROOT', 'first-id'),),
-            self.get_parents('TREE_ROOT', 'second-id'))
+        self.assertEqual(((b'TREE_ROOT', b'first-id'),),
+            self.get_parents(b'TREE_ROOT', b'second-id'))

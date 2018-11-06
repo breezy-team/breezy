@@ -41,7 +41,6 @@ from ..bzr.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
-from ..decorators import needs_write_lock
 from ..bzr.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
@@ -51,7 +50,7 @@ from .pack_repo import (
     Pack,
     NewPack,
     PackRepository,
-    PackRootCommitBuilder,
+    PackCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
     ResumedPack,
@@ -403,15 +402,12 @@ class GCCHKPacker(Packer):
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
         self.pb.update('repacking %s' % (message,), pb_offset)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _ in target_vf._insert_record_stream(stream,
                                                      random_id=True,
                                                      reuse_blocks=False):
                 pass
-        finally:
-            child_pb.finished()
 
     def _copy_revision_texts(self):
         source_vf, target_vf = self._build_vfs('revision', True, False)
@@ -459,16 +455,13 @@ class GCCHKPacker(Packer):
                      len(self._chk_id_roots), len(self._chk_p_id_roots),
                      len(total_keys))
         self.pb.update('repacking chk', 3)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             for stream in self._get_chk_streams(source_vf, total_keys,
                                                 pb=child_pb):
                 for _ in target_vf._insert_record_stream(stream,
                                                          random_id=True,
                                                          reuse_blocks=False):
                     pass
-        finally:
-            child_pb.finished()
 
     def _copy_text_texts(self):
         source_vf, target_vf = self._build_vfs('text', True, True)
@@ -620,11 +613,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         This is useful to get the side-effects of generating a stream.
         """
         self.pb.update('scanning %s' % (message,), pb_offset)
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as child_pb:
             list(vf_to_stream(source_vf, keys, message, child_pb))
-        finally:
-            child_pb.finished()
 
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
@@ -952,7 +942,7 @@ class CHKInventoryRepository(PackRepository):
             raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
-        if basis_inv is None:
+        if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
             if basis_revision_id == _mod_revision.NULL_REVISION:
                 new_inv = self._create_inv_from_null(delta, new_revision_id)
                 if new_inv.root_id is None:
@@ -1026,8 +1016,7 @@ class CHKInventoryRepository(PackRepository):
         rich_root = self.supports_rich_root()
         bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         file_id_revisions = {}
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             revision_keys = [(r,) for r in revision_ids]
             parent_keys = self._find_parent_keys_of_revisions(revision_keys)
             # TODO: instead of using _find_present_inventory_keys, change the
@@ -1059,8 +1048,6 @@ class CHKInventoryRepository(PackRepository):
                         file_id_revisions[file_id].add(revision_id)
                     except KeyError:
                         file_id_revisions[file_id] = {revision_id}
-        finally:
-            pb.finished()
         return file_id_revisions
 
     def find_text_key_references(self):
@@ -1078,8 +1065,7 @@ class CHKInventoryRepository(PackRepository):
         revision_keys = self.revisions.keys()
         result = {}
         rich_roots = self.supports_rich_root()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             all_revs = self.all_revision_ids()
             total = len(all_revs)
             for pos, inv in enumerate(self.iter_inventories(all_revs)):
@@ -1092,18 +1078,16 @@ class CHKInventoryRepository(PackRepository):
                     if entry.revision == inv.revision_id:
                         result[key] = True
             return result
-        finally:
-            pb.finished()
 
-    @needs_write_lock
     def reconcile_canonicalize_chks(self):
         """Reconcile this repository to make sure all CHKs are in canonical
         form.
         """
         from breezy.reconcile import PackReconciler
-        reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
+            reconciler.reconcile()
+            return reconciler
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)
@@ -1136,7 +1120,7 @@ class CHKInventoryRepository(PackRepository):
             raise AssertionError()
         vf = self.revisions
         if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
+            revisions_iterator = self.iter_revisions(self.all_revision_ids())
         for revid, revision in revisions_iterator:
             if revision is None:
                 pass
@@ -1362,7 +1346,7 @@ def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_text_key):
     """
     text_keys_update = text_keys.update
     for record, items in interesting_nodes_iterable:
-        text_keys_update([bytes_to_text_key(b) for n,b in items])
+        text_keys_update([bytes_to_text_key(b) for n, b in items])
         yield record
 
 
@@ -1372,7 +1356,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     _serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True
@@ -1396,11 +1380,11 @@ class RepositoryFormat2a(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
-        return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')
+        return b'Bazaar repository format 2a (needs bzr 1.16 or later)\n'
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -1419,11 +1403,11 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
-        return ('Bazaar development format 8\n')
+        return b'Bazaar development format 8\n'
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

@@ -34,6 +34,15 @@ from .test_i18n import ZzzTranslations
 import re
 
 
+class TestErrors(tests.TestCase):
+
+    def test_no_help_topic(self):
+        error = help.NoHelpTopic("topic")
+        self.assertEqualDiff("No help could be found for 'topic'. "
+            "Please use 'brz help topics' to obtain a list of topics.",
+            str(error))
+
+
 class TestCommandHelp(tests.TestCase):
     """Tests for help on commands."""
 
@@ -49,10 +58,10 @@ Purpose: A sample command.
 Usage:   brz WithSeeAlso
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 See also: bar, foo
 ''',
@@ -67,10 +76,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 ''',
                            cmd_Demo())
@@ -80,7 +89,7 @@ Options:
             'Purpose: A sample command.\n'
             'Usage:   brz Demo')
         self.assertEndsWith(helptext,
-            '  -h, --help     Show help message.\n\n')
+            '  -v, --verbose  Display more information.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -90,9 +99,10 @@ Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -q, --quiet    Only display errors and warnings.\n'
-            '  -v, --verbose  Display more information.\n'
             '  -h, --help     Show help message.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
             '\n'
             'See also: bar, foo, gam\n')
 
@@ -103,9 +113,7 @@ Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -q, --quiet    Only display errors and warnings.\n'
             '  -v, --verbose  Display more information.\n'
-            '  -h, --help     Show help message.\n'
             '\n'
             'See also: gam\n')
 
@@ -143,10 +151,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Examples:
     Example 1:
@@ -169,10 +177,10 @@ Examples:
 :Usage:   brz Demo
 
 :Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 :Examples:
     Example 1::
@@ -211,10 +219,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Description:
   Blah blah blah.
@@ -232,10 +240,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 See brz help Demo for more details and examples.
 
@@ -268,10 +276,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Description:
   Blah blah blah.
@@ -313,10 +321,10 @@ Usage:
 
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Description:
   Blah blah blah.
@@ -327,7 +335,7 @@ Description:
 
 class ZzzTranslationsForDoc(ZzzTranslations):
 
-    _section_pat = re.compile(':\w+:\\n\\s+')
+    _section_pat = re.compile(':\\w+:\\n\\s+')
     _indent_pat = re.compile('\\s+')
 
     def zzz(self, s):
@@ -358,10 +366,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz WithSeeAlso
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: bar, foo}}
 ''',
@@ -376,10 +384,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz Demo
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 ''',
                            cmd_Demo())
@@ -391,10 +399,11 @@ zz{{:Options:
         cmd = cmd_WithSeeAlso()
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
-            helptext,'''\
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
+            helptext, '''\
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: bar, foo, gam}}
 ''')
@@ -407,10 +416,10 @@ zz{{:See also: bar, foo, gam}}
         self.assertEndsWith(
             helptext, '''\
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: gam}}
 ''')
@@ -440,10 +449,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz Demo
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 Description:
   zz{{zz{{Blah blah blah.}}
@@ -483,10 +492,10 @@ zz{{:Purpose: zz{{A sample command.}}
 
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 Description:
   zz{{zz{{Blah blah blah.}}
@@ -660,7 +669,7 @@ class TestHelpIndices(tests.TestCase):
         """Searching for an unknown topic should raise NoHelpTopic."""
         indices = help.HelpIndices()
         indices.search_path = []
-        error = self.assertRaises(errors.NoHelpTopic, indices.search, 'foo')
+        error = self.assertRaises(help.NoHelpTopic, indices.search, 'foo')
         self.assertEqual('foo', error.topic)
 
     def test_search_calls_get_topic(self):

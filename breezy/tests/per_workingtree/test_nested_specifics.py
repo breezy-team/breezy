@@ -18,6 +18,7 @@
 
 from breezy.bzr import (
     inventory,
+    inventorytree,
     )
 from breezy.tests import TestNotApplicable
 from breezy.transform import TreeTransform
@@ -32,52 +33,51 @@ class TestNestedSupport(TestCaseWithWorkingTree):
             raise TestNotApplicable('Tree references not supported')
         return tree
 
-    def test_set_get_tree_reference(self):
+    def test_set_get_inventory_tree_reference(self):
         """This tests that setting a tree reference is persistent."""
         tree = self.make_branch_and_tree('.')
+        if not isinstance(tree, inventorytree.InventoryTree):
+            raise TestNotApplicable('not an inventory tree')
         transform = TreeTransform(tree)
         trans_id = transform.new_directory('reference', transform.root,
-            'subtree-id')
-        transform.set_tree_reference('subtree-revision', trans_id)
+            b'subtree-id')
+        transform.set_tree_reference(b'subtree-revision', trans_id)
         transform.apply()
         tree = tree.controldir.open_workingtree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('subtree-revision',
-            tree.root_inventory['subtree-id'].reference_revision)
+        self.assertEqual(b'subtree-revision',
+            tree.root_inventory.get_entry(b'subtree-id').reference_revision)
 
     def test_extract_while_locked(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['subtree/'])
-        tree.add(['subtree'], ['subtree-id'])
-        subtree = tree.extract('subtree-id')
+        tree.add(['subtree'])
+        subtree = tree.extract('subtree')
 
     def prepare_with_subtree(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         subtree = self.make_branch_and_tree('subtree')
-        tree.add(['subtree'], ['subtree-id'])
+        subtree.commit('dummy')
+        tree.add(['subtree'])
         return tree
-
-    def test_kind_does_not_autodetect_subtree(self):
-        tree = self.prepare_with_subtree()
-        self.assertEqual('directory', tree.kind('subtree-id'))
 
     def test_comparison_data_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        ie = inventory.InventoryDirectory('subtree-id', 'subtree',
+        ie = inventory.InventoryDirectory(b'subtree-id', 'subtree',
                                           tree.path2id(''))
         self.assertEqual('directory',
                          tree._comparison_data(ie, 'subtree')[0])
 
-    def test_inventory_does_not_autodetect_subtree(self):
+    def test_may_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        self.assertEqual('directory', tree.kind('subtree-id'))
+        self.assertIn(tree.kind('subtree'), ('directory', 'tree-reference'))
 
     def test_iter_entries_by_dir_autodetects_subtree(self):
         tree = self.prepare_with_subtree()
-        path, ie = next(tree.iter_entries_by_dir(['subtree-id']))
+        path, ie = next(tree.iter_entries_by_dir(specific_files=['subtree']))
         self.assertEqual('tree-reference', ie.kind)

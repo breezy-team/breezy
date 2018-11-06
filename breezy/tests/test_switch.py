@@ -160,28 +160,28 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('branch-1')
         self.build_tree(['branch-1/file-1'])
         tree.add('file-1')
-        tree.commit(rev_id='rev1', message='rev1')
+        tree.commit(rev_id=b'rev1', message='rev1')
         self.build_tree(['branch-1/file-2'])
         tree.add('file-2')
-        tree.commit(rev_id='rev2', message='rev2')
+        tree.commit(rev_id=b'rev2', message='rev2')
         # Check it out and switch to revision 1
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
-        switch.switch(checkout.controldir, tree.branch, revision_id="rev1")
+        switch.switch(checkout.controldir, tree.branch, revision_id=b"rev1")
         self.assertPathExists('checkout/file-1')
         self.assertPathDoesNotExist('checkout/file-2')
 
     def test_switch_changing_root_id(self):
         tree = self._setup_tree()
         tree2 = self.make_branch_and_tree('tree-2')
-        tree2.set_root_id('custom-root-id')
+        tree2.set_root_id(b'custom-root-id')
         self.build_tree(['tree-2/file-2'])
         tree2.add(['file-2'])
         tree2.commit('rev1b')
         checkout = tree.branch.create_checkout('checkout',
             lightweight=self.lightweight)
         switch.switch(checkout.controldir, tree2.branch)
-        self.assertEqual('custom-root-id', tree2.get_root_id())
+        self.assertEqual(b'custom-root-id', tree2.get_root_id())
 
     def test_switch_configurable_file_merger(self):
         class DummyMerger(_mod_merge.ConfigurableFileMerger):
@@ -192,13 +192,13 @@ class TestSwitch(tests.TestCaseWithTransport):
             'test factory')
         foo = self.make_branch('foo')
         checkout = foo.create_checkout('checkout', lightweight=True)
-        self.build_tree_contents([('checkout/file', 'a')])
+        self.build_tree_contents([('checkout/file', b'a')])
         checkout.add('file')
         checkout.commit('a')
         bar = foo.controldir.sprout('bar').open_workingtree()
-        self.build_tree_contents([('bar/file', 'b')])
+        self.build_tree_contents([('bar/file', b'b')])
         bar.commit('b')
-        self.build_tree_contents([('checkout/file', 'c')])
+        self.build_tree_contents([('checkout/file', b'c')])
         switch.switch(checkout.controldir, bar.branch)
 
 

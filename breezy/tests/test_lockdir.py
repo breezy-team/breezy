@@ -40,6 +40,9 @@ from ..lockdir import (
     LockDir,
     LockHeldInfo,
     )
+from ..sixish import (
+    text_type,
+    )
 from . import (
     features,
     TestCase,
@@ -346,7 +349,7 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld.create()
         ld.lock_write()
-        ld.transport.put_bytes_non_atomic('test_lock/held/info', '\0')
+        ld.transport.put_bytes_non_atomic('test_lock/held/info', b'\0')
 
         class LoggingUIFactory(breezy.ui.SilentUIFactory):
             def __init__(self):
@@ -429,8 +432,8 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             ld1.unlock()
         self.assertEqual(info_list['user'], u'jrandom@example.com')
-        self.assertContainsRe(info_list['pid'], '^\d+$')
-        self.assertContainsRe(info_list['time_ago'], r'^\d+ seconds? ago$')
+        self.assertContainsRe(info_list['pid'], '^\\d+$')
+        self.assertContainsRe(info_list['time_ago'], '^\\d+ seconds? ago$')
 
     def test_lock_without_email(self):
         global_config = config.GlobalStack()
@@ -508,7 +511,7 @@ class TestLockDir(TestCaseWithTransport):
         t = self.get_transport()
         t.mkdir('test_lock')
         t.mkdir('test_lock/held')
-        t.put_bytes('test_lock/held/info', '')
+        t.put_bytes('test_lock/held/info', b'')
         lf = LockDir(t, 'test_lock')
         info = lf.peek()
         formatted_info = info.to_readable_dict()
@@ -526,7 +529,7 @@ class TestLockDir(TestCaseWithTransport):
         t = self.get_transport()
         t.mkdir('test_lock')
         t.mkdir('test_lock/held')
-        t.put_bytes('test_lock/held/info', '\0')
+        t.put_bytes('test_lock/held/info', b'\0')
         lf = LockDir(t, 'test_lock')
         self.assertRaises(errors.LockCorrupt, lf.peek)
         # Currently attempt_lock gives LockContention, but LockCorrupt would be
@@ -665,7 +668,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
 
     def test_unicode(self):
         info = LockHeldInfo.for_this_process(None)
-        self.assertContainsRe(unicode(info),
+        self.assertContainsRe(text_type(info),
             r'held by .* on .* \(process #\d+\), acquired .* ago')
 
     def test_is_locked_by_this_process(self):

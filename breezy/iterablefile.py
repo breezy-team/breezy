@@ -100,6 +100,7 @@ class IterableFileBase(object):
 
 class IterableFile(object):
     """This class supplies all File methods that can be implemented cheaply."""
+
     def __init__(self, iterable):
         object.__init__(self)
         self._file_base = IterableFileBase(iterable)
@@ -131,6 +132,18 @@ class IterableFile(object):
         self._closed = True
 
     closed = property(lambda x: x._closed)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # If there was an error raised, prefer the original one
+        try:
+            self.close()
+        except:
+            if exc_type is None:
+                raise
+        return False
 
     def flush(self):
         """No-op for standard compliance.

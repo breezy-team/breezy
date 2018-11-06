@@ -57,7 +57,7 @@ def format_highres_date(t, offset=0):
     # revision XML entry will be reproduced faithfully.
     if offset is None:
         offset = 0
-    tt = osutils.gmtime(t + offset)
+    tt = time.gmtime(t + offset)
 
     return (osutils.weekdays[tt[6]] +
             time.strftime(" %Y-%m-%d %H:%M:%S", tt)
@@ -119,14 +119,18 @@ def format_patch_date(secs, offset=0):
     # give the epoch in utc
     if secs == 0:
         offset = 0
+    if secs + offset < 0:
+        from warnings import warn
+        warn("gmtime of negative time (%s, %s) may not work on Windows" %
+                (secs, offset))
     return osutils.format_date(secs, offset=offset,
             date_fmt='%Y-%m-%d %H:%M:%S')
 
 
 # Format for patch dates: %Y-%m-%d %H:%M:%S [+-]%H%M
 # Groups: 1 = %Y-%m-%d %H:%M:%S; 2 = [+-]%H; 3 = %M
-RE_PATCHDATE = re.compile("(\d+-\d+-\d+\s+\d+:\d+:\d+)\s*([+-]\d\d)(\d\d)$")
-RE_PATCHDATE_NOOFFSET = re.compile("\d+-\d+-\d+\s+\d+:\d+:\d+$")
+RE_PATCHDATE = re.compile("(\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+)\\s*([+-]\\d\\d)(\\d\\d)$")
+RE_PATCHDATE_NOOFFSET = re.compile("\\d+-\\d+-\\d+\\s+\\d+:\\d+:\\d+$")
 
 def parse_patch_date(date_str):
     """Parse a patch-style date into a POSIX timestamp and offset.

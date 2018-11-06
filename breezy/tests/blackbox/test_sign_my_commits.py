@@ -37,13 +37,13 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
     def setup_tree(self, location='.'):
         wt = self.make_branch_and_tree(location)
-        wt.commit("base A", allow_pointless=True, rev_id='A')
-        wt.commit("base B", allow_pointless=True, rev_id='B')
-        wt.commit("base C", allow_pointless=True, rev_id='C')
-        wt.commit("base D", allow_pointless=True, rev_id='D',
+        wt.commit("base A", allow_pointless=True, rev_id=b'A')
+        wt.commit("base B", allow_pointless=True, rev_id=b'B')
+        wt.commit("base C", allow_pointless=True, rev_id=b'C')
+        wt.commit("base D", allow_pointless=True, rev_id=b'D',
                 committer='Alternate <alt@foo.com>')
-        wt.add_parent_tree_id("aghost")
-        wt.commit("base E", allow_pointless=True, rev_id='E')
+        wt.add_parent_tree_id(b"aghost")
+        wt.commit("base E", allow_pointless=True, rev_id=b'E')
         return wt
 
     def assertUnsigned(self, repo, revision_id):
@@ -61,17 +61,17 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
         self.monkey_patch_gpg()
 
-        self.assertUnsigned(repo, 'A')
-        self.assertUnsigned(repo, 'B')
-        self.assertUnsigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
+        self.assertUnsigned(repo, b'A')
+        self.assertUnsigned(repo, b'B')
+        self.assertUnsigned(repo, b'C')
+        self.assertUnsigned(repo, b'D')
 
         self.run_bzr('sign-my-commits')
 
-        self.assertSigned(repo, 'A')
-        self.assertSigned(repo, 'B')
-        self.assertSigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
+        self.assertSigned(repo, b'A')
+        self.assertSigned(repo, b'B')
+        self.assertSigned(repo, b'C')
+        self.assertUnsigned(repo, b'D')
 
     def test_sign_my_commits_location(self):
         wt = self.setup_tree('other')
@@ -81,10 +81,10 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
         self.run_bzr('sign-my-commits other')
 
-        self.assertSigned(repo, 'A')
-        self.assertSigned(repo, 'B')
-        self.assertSigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
+        self.assertSigned(repo, b'A')
+        self.assertSigned(repo, b'B')
+        self.assertSigned(repo, b'C')
+        self.assertUnsigned(repo, b'D')
 
     def test_sign_diff_committer(self):
         wt = self.setup_tree()
@@ -94,10 +94,10 @@ class SignMyCommits(tests.TestCaseWithTransport):
 
         self.run_bzr(['sign-my-commits', '.', 'Alternate <alt@foo.com>'])
 
-        self.assertUnsigned(repo, 'A')
-        self.assertUnsigned(repo, 'B')
-        self.assertUnsigned(repo, 'C')
-        self.assertSigned(repo, 'D')
+        self.assertUnsigned(repo, b'A')
+        self.assertUnsigned(repo, b'B')
+        self.assertUnsigned(repo, b'C')
+        self.assertSigned(repo, b'D')
 
     def test_sign_dry_run(self):
         wt = self.setup_tree()
@@ -110,11 +110,11 @@ class SignMyCommits(tests.TestCaseWithTransport):
         outlines = out.splitlines()
         self.assertEqual(5, len(outlines))
         self.assertEqual('Signed 4 revisions.', outlines[-1])
-        self.assertUnsigned(repo, 'A')
-        self.assertUnsigned(repo, 'B')
-        self.assertUnsigned(repo, 'C')
-        self.assertUnsigned(repo, 'D')
-        self.assertUnsigned(repo, 'E')
+        self.assertUnsigned(repo, b'A')
+        self.assertUnsigned(repo, b'B')
+        self.assertUnsigned(repo, b'C')
+        self.assertUnsigned(repo, b'D')
+        self.assertUnsigned(repo, b'E')
 
 
 class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
@@ -131,7 +131,7 @@ class TestSmartServerSignMyCommits(tests.TestCaseWithTransport):
     def test_sign_single_commit(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

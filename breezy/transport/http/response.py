@@ -24,8 +24,14 @@ responses.
 from __future__ import absolute_import
 
 import os
-import httplib
-import rfc822
+try:
+    import http.client as http_client
+except ImportError:  # python < 3
+    import httplib as http_client
+try:
+    import email.utils as email_utils
+except ImportError:  # python < 3
+    import rfc822 as email_utils
 
 from ... import (
     errors,
@@ -33,6 +39,7 @@ from ... import (
     )
 from ...sixish import (
     BytesIO,
+    PY3,
     )
 
 
@@ -59,13 +66,21 @@ class ResponseFile(object):
         Dummy implementation for consistency with the 'file' API.
         """
 
-    def read(self, size=-1):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False # propogate exceptions.
+
+    def read(self, size=None):
         """Read size bytes from the current position in the file.
 
         :param size:  The number of bytes to read.  Leave unspecified or pass
             -1 to read to EOF.
         """
-        data =  self._file.read(size)
+        if size is None and not PY3:
+            size = -1
+        data = self._file.read(size)
         self._pos += len(data)
         return data
 
@@ -158,6 +173,8 @@ class RangeFile(ResponseFile):
         The file should be at the beginning of the body, the first range
         definition is read and taken into account.
         """
+        if not isinstance(boundary, bytes):
+            raise TypeError(boundary)
         self._boundary = boundary
         # Decode the headers and setup the first range
         self.read_boundary()
@@ -165,34 +182,34 @@ class RangeFile(ResponseFile):
 
     def read_boundary(self):
         """Read the boundary headers defining a new range"""
-        boundary_line = '\r\n'
-        while boundary_line == '\r\n':
+        boundary_line = b'\r\n'
+        while boundary_line == b'\r\n':
             # RFC2616 19.2 Additional CRLFs may precede the first boundary
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
 
-        if boundary_line == '':
+        if boundary_line == b'':
             # A timeout in the proxy server caused the response to end early.
             # See launchpad bug 198646.
             raise errors.HttpBoundaryMissing(
                 self._path,
                 self._boundary)
 
-        if boundary_line != '--' + self._boundary + '\r\n':
-            # rfc822.unquote() incorrectly unquotes strings enclosed in <>
+        if boundary_line != b'--' + self._boundary + b'\r\n':
+            # email_utils.unquote() incorrectly unquotes strings enclosed in <>
             # IIS 6 and 7 incorrectly wrap boundary strings in <>
             # together they make a beautiful bug, which we will be gracious
             # about here
             if (self._unquote_boundary(boundary_line) !=
-                '--' + self._boundary + '\r\n'):
+                b'--' + self._boundary + b'\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
                     "Expected a boundary (%s) line, got '%s'"
                     % (self._boundary, boundary_line))
 
     def _unquote_boundary(self, b):
-        return b[:2] + rfc822.unquote(b[2:-2]) + b[-2:]
+        return b[:2] + email_utils.unquote(b[2:-2].decode('ascii')).encode('ascii') + b[-2:]
 
     def read_range_definition(self):
         """Read a new range definition in a multi parts message.
@@ -200,9 +217,12 @@ class RangeFile(ResponseFile):
         Parse the headers including the empty line following them so that we
         are ready to read the data itself.
         """
-        self._headers = httplib.HTTPMessage(self._file, seekable=0)
+        if PY3:
+            self._headers = http_client.parse_headers(self._file)
+        else:
+            self._headers = http_client.HTTPMessage(self._file, seekable=0)
         # Extract the range definition
-        content_range = self._headers.getheader('content-range', None)
+        content_range = self._headers.get('content-range', None)
         if content_range is None:
             raise errors.InvalidHttpResponse(
                 self._path,
@@ -275,7 +295,7 @@ class RangeFile(ResponseFile):
         if (self._size > 0
             and self._pos == self._start + self._size):
             if size == 0:
-                return ''
+                return b''
             else:
                 self._seek_to_next_range()
         elif self._pos < self._start:
@@ -366,7 +386,7 @@ def handle_response(url, code, msg, data):
         rfile = ResponseFile(url, data)
     elif code == 206:
         rfile = RangeFile(url, data)
-        content_type = msg.getheader('content-type', None)
+        content_type = msg.get('content-type', None)
         if content_type is None:
             # When there is no content-type header we treat the response as
             # being of type 'application/octet-stream' as per RFC2616 section
@@ -375,15 +395,23 @@ def handle_response(url, code, msg, data):
             content_type = 'application/octet-stream'
             is_multipart = False
         else:
-            is_multipart = (msg.getmaintype() == 'multipart'
-                            and msg.getsubtype() == 'byteranges')
+            if PY3:
+                is_multipart = (msg.get_content_maintype() == 'multipart'
+                                and msg.get_content_subtype() == 'byteranges')
+            else:
+                is_multipart = (msg.getmaintype() == 'multipart'
+                                and msg.getsubtype() == 'byteranges')
 
         if is_multipart:
             # Full fledged multipart response
-            rfile.set_boundary(msg.getparam('boundary'))
+            if PY3:
+                boundary = msg.get_param('boundary')
+            else:
+                boundary = msg.getparam('boundary')
+            rfile.set_boundary(boundary.encode('ascii'))
         else:
             # A response to a range request, but not multipart
-            content_range = msg.getheader('content-range', None)
+            content_range = msg.get('content-range', None)
             if content_range is None:
                 raise errors.InvalidHttpResponse(url,
                     'Missing the Content-Range header in a 206 range response')

@@ -39,8 +39,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
         super(TestAnnotate, self).setUp()
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-        self.build_tree_contents([('hello.txt', 'my helicopter\n'),
-                                  ('nomail.txt', 'nomail\n')])
+        self.build_tree_contents([('hello.txt', b'my helicopter\n'),
+                                  ('nomail.txt', b'nomail\n')])
         wt.add(['hello.txt'])
         self.revision_id_1 = wt.commit('add hello',
                               committer='test@user',
@@ -49,15 +49,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.revision_id_2 = wt.commit('add nomail',
                               committer='no mail',
                               timestamp=1165970000.00, timezone=0)
-        self.build_tree_contents([('hello.txt', 'my helicopter\n'
-                                                'your helicopter\n')])
+        self.build_tree_contents([('hello.txt', b'my helicopter\n'
+                                                b'your helicopter\n')])
         self.revision_id_3 = wt.commit('mod hello',
                               committer='user@test',
                               timestamp=1166040000.00, timezone=0)
-        self.build_tree_contents([('hello.txt', 'my helicopter\n'
-                                                'your helicopter\n'
-                                                'all of\n'
-                                                'our helicopters\n'
+        self.build_tree_contents([('hello.txt', b'my helicopter\n'
+                                                b'your helicopter\n'
+                                                b'all of\n'
+                                                b'our helicopters\n'
                                   )])
         self.revision_id_4 = wt.commit('mod hello',
                               committer='user@test',
@@ -108,9 +108,9 @@ class TestAnnotate(tests.TestCaseWithTransport):
 %*s | your helicopter
 %*s | all of
 %*s | our helicopters
-''' % (max_len, self.revision_id_1,
-       max_len, self.revision_id_3,
-       max_len, self.revision_id_4,
+''' % (max_len, self.revision_id_1.decode('utf-8'),
+       max_len, self.revision_id_3.decode('utf-8'),
+       max_len, self.revision_id_4.decode('utf-8'),
        max_len, '',
       )
 , out)
@@ -159,10 +159,10 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         """Create a tree with a locally edited file."""
         tree = self.make_branch_and_tree(relpath)
         file_relpath = joinpath(relpath, 'file')
-        self.build_tree_contents([(file_relpath, 'foo\ngam\n')])
+        self.build_tree_contents([(file_relpath, b'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', committer="test@host", rev_id="rev1")
-        self.build_tree_contents([(file_relpath, 'foo\nbar\ngam\n')])
+        tree.commit('add file', committer="test@host", rev_id=b"rev1")
+        self.build_tree_contents([(file_relpath, b'foo\nbar\ngam\n')])
         return tree
 
     def test_annotate_cmd_revspec_branch(self):
@@ -214,20 +214,20 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def _create_merged_file(self):
         """Create a file with a pending merge and local edit."""
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('file', 'foo\ngam\n')])
+        self.build_tree_contents([('file', b'foo\ngam\n')])
         tree.add('file')
-        tree.commit('add file', rev_id="rev1", committer="test@host")
+        tree.commit('add file', rev_id=b"rev1", committer="test@host")
         # right side
-        self.build_tree_contents([('file', 'foo\nbar\ngam\n')])
-        tree.commit("right", rev_id="rev1.1.1", committer="test@host")
-        tree.pull(tree.branch, True, "rev1")
+        self.build_tree_contents([('file', b'foo\nbar\ngam\n')])
+        tree.commit("right", rev_id=b"rev1.1.1", committer="test@host")
+        tree.pull(tree.branch, True, b"rev1")
         # left side
-        self.build_tree_contents([('file', 'foo\nbaz\ngam\n')])
-        tree.commit("left", rev_id="rev2", committer="test@host")
+        self.build_tree_contents([('file', b'foo\nbaz\ngam\n')])
+        tree.commit("left", rev_id=b"rev2", committer="test@host")
         # merge
-        tree.merge_from_branch(tree.branch, "rev1.1.1")
+        tree.merge_from_branch(tree.branch, b"rev1.1.1")
         # edit the file to be 'resolved' and have a further local edit
-        self.build_tree_contents([('file', 'local\nfoo\nbar\nbaz\ngam\n')])
+        self.build_tree_contents([('file', b'local\nfoo\nbar\nbaz\ngam\n')])
         return tree
 
     def test_annotated_edited_merged_file_revnos(self):
@@ -256,7 +256,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_empty_file(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('empty', '')])
+        self.build_tree_contents([('empty', b'')])
         tree.add('empty')
         tree.commit('add empty file')
         out, err = self.run_bzr(['annotate', 'empty'])
@@ -264,7 +264,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_removed_file(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('empty', '')])
+        self.build_tree_contents([('empty', b'')])
         tree.add('empty')
         tree.commit('add empty file')
         # delete the file.
@@ -275,7 +275,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_empty_file_show_ids(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('empty', '')])
+        self.build_tree_contents([('empty', b'')])
         tree.add('empty')
         tree.commit('add empty file')
         out, err = self.run_bzr(['annotate', '--show-ids', 'empty'])
@@ -292,7 +292,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_without_workingtree(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('empty', '')])
+        self.build_tree_contents([('empty', b'')])
         tree.add('empty')
         tree.commit('add empty file')
         bzrdir = tree.branch.controldir
@@ -304,7 +304,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
     def test_annotate_directory(self):
         """Test --directory option"""
         wt = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/hello.txt', 'my helicopter\n')])
+        self.build_tree_contents([('a/hello.txt', b'my helicopter\n')])
         wt.add(['hello.txt'])
         wt.commit('commit', committer='test@user')
         out, err = self.run_bzr(['annotate', '-d', 'a', 'hello.txt'])
@@ -316,7 +316,7 @@ class TestSmartServerAnnotate(tests.TestCaseWithTransport):
     def test_simple_annotate(self):
         self.setup_smart_server_with_call_log()
         wt = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/hello.txt', 'my helicopter\n')])
+        self.build_tree_contents([('branch/hello.txt', b'my helicopter\n')])
         wt.add(['hello.txt'])
         wt.commit('commit', committer='test@user')
         self.reset_smart_call_log()
@@ -327,7 +327,6 @@ class TestSmartServerAnnotate(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(16, self.hpss_calls)
+        self.assertLength(9, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
-        self.expectFailure("annotate accesses inventories, which require VFS access",
-            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

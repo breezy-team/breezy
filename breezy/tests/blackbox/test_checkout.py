@@ -41,10 +41,10 @@ class TestCheckout(TestCaseWithTransport):
     def setUp(self):
         super(TestCheckout, self).setUp()
         tree = controldir.ControlDir.create_standalone_workingtree('branch')
-        tree.commit('1', rev_id='1', allow_pointless=True)
+        tree.commit('1', rev_id=b'1', allow_pointless=True)
         self.build_tree(['branch/added_in_2'])
         tree.add('added_in_2')
-        tree.commit('2', rev_id='2')
+        tree.commit('2', rev_id=b'2')
 
     def test_checkout_makes_bound_branch(self):
         self.run_bzr('checkout branch checkout')
@@ -67,16 +67,16 @@ class TestCheckout(TestCaseWithTransport):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
+        self.assertEqual([b'1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
-        out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
+        out, err = self.run_bzr(['checkout', '--lightweight', '-r', '-2',
             'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
-        self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
+        self.assertEqual([b'1'], result.open_workingtree().get_parent_ids())
         self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_into_empty_dir(self):
@@ -118,13 +118,13 @@ class TestCheckout(TestCaseWithTransport):
 
     def _test_checkout_existing_dir(self, lightweight):
         source = self.make_branch_and_tree('source')
-        self.build_tree_contents([('source/file1', 'content1'),
-                                  ('source/file2', 'content2'),])
+        self.build_tree_contents([('source/file1', b'content1'),
+                                  ('source/file2', b'content2'),])
         source.add(['file1', 'file2'])
         source.commit('added files')
-        self.build_tree_contents([('target/', ''),
-                                  ('target/file1', 'content1'),
-                                  ('target/file2', 'content3'),])
+        self.build_tree_contents([('target/', b''),
+                                  ('target/file1', b'content1'),
+                                  ('target/file2', b'content3'),])
         cmd = ['checkout', 'source', 'target']
         if lightweight:
             cmd.append('--lightweight')
@@ -145,10 +145,10 @@ class TestCheckout(TestCaseWithTransport):
         branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 1', working_dir='branch')
         tree = workingtree.WorkingTree.open('branch')
-        self.assertEqual('1', tree.last_revision())
+        self.assertEqual(b'1', tree.last_revision())
         branch.controldir.destroy_workingtree()
         self.run_bzr('checkout -r 0', working_dir='branch')
-        self.assertEqual('null:', tree.last_revision())
+        self.assertEqual(b'null:', tree.last_revision())
 
     def test_checkout_files_from(self):
         branch = _mod_branch.Branch.open('branch')
@@ -191,7 +191,7 @@ class TestCheckout(TestCaseWithTransport):
         # We should always be creating a lighweight checkout for colocated
         # branches.
         self.assertEqual(
-            target.open_branch(name='somebranch').base,
+            target.open_branch(name='somebranch').user_url,
             target.get_branch_reference(name=""))
 
 

@@ -20,6 +20,8 @@ import shutil
 import sys
 import tempfile
 
+from io import BytesIO
+
 from . import (
     builtins,
     delta,
@@ -35,9 +37,6 @@ from . import (
     workingtree,
 )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    )
 
 
 class UseEditor(Exception):
@@ -231,7 +230,6 @@ class Shelver(object):
             self.change_editor.finish()
         self.work_tree.unlock()
 
-
     def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
@@ -249,8 +247,9 @@ class Shelver(object):
             new_tree = self.work_tree
         old_path = old_tree.id2path(file_id)
         new_path = new_tree.id2path(file_id)
+        path_encoding = osutils.get_terminal_encoding()
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
-            path_encoding=osutils.get_terminal_encoding())
+            path_encoding=path_encoding)
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -300,7 +299,8 @@ class Shelver(object):
         :param file_id: The id of the file that was modified.
         :return: The number of changes.
         """
-        work_tree_lines = self.work_tree.get_file_lines(file_id)
+        path = self.work_tree.id2path(file_id)
+        work_tree_lines = self.work_tree.get_file_lines(path, file_id)
         try:
             lines, change_count = self._select_hunks(creator, file_id,
                                                      work_tree_lines)
@@ -324,7 +324,8 @@ class Shelver(object):
         if self.reporter.invert_diff:
             target_lines = work_tree_lines
         else:
-            target_lines = self.target_tree.get_file_lines(file_id)
+            path = self.target_tree.id2path(file_id)
+            target_lines = self.target_tree.get_file_lines(path, file_id)
         textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)
@@ -333,7 +334,7 @@ class Shelver(object):
             offset = 0
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
-                self.diff_writer.write(str(hunk))
+                self.diff_writer.write(hunk.as_bytes())
                 selected = self.prompt_bool(self.reporter.vocab['hunk'],
                                             allow_editor=(self.change_editor
                                                           is not None))
@@ -362,7 +363,10 @@ class Shelver(object):
             content of the file, and change_region_count is the number of
             changed regions.
         """
-        lines = osutils.split_lines(self.change_editor.edit_file(file_id))
+        lines = osutils.split_lines(self.change_editor.edit_file(
+            self.change_editor.old_tree.id2path(file_id),
+            self.change_editor.new_tree.id2path(file_id),
+            file_id=file_id))
         return lines, self._count_changed_regions(work_tree_lines, lines)
 
     @staticmethod
@@ -398,7 +402,7 @@ class Unshelver(object):
                 try:
                     shelf_id = int(shelf_id)
                 except ValueError:
-                    raise errors.InvalidShelfId(shelf_id)
+                    raise shelf.InvalidShelfId(shelf_id)
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
@@ -466,7 +470,7 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note(gettext('Message: %s') % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                merger = unshelver.make_merger(None)
+                merger = unshelver.make_merger()
                 merger.change_reporter = change_reporter
                 if self.apply_changes:
                     merger.do_merge()

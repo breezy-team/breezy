@@ -20,34 +20,30 @@ from __future__ import absolute_import
 
 import sys
 
-from .. import errors
+from .knit import KnitCorrupt
 
+from libc.stdlib cimport strtol
+from libc.string cimport memchr
 
-cdef extern from "stdlib.h":
-    ctypedef unsigned size_t
-    long int strtol(char *nptr, char **endptr, int base)
-
+from cpython.bytes cimport (
+    PyBytes_AsString,
+    PyBytes_CheckExact,
+    PyBytes_FromStringAndSize,
+    PyBytes_Size,
+    )
+from cpython.dict cimport (
+    PyDict_CheckExact,
+    PyDict_SetItem,
+    )
+from cpython.list cimport (
+    PyList_Append,
+    PyList_CheckExact,
+    PyList_GET_ITEM,
+    )
 
 cdef extern from "Python.h":
-    int PyDict_CheckExact(object)
     void *PyDict_GetItem_void "PyDict_GetItem" (object p, object key)
-    int PyDict_SetItem(object p, object key, object val) except -1
-
-    int PyList_Append(object lst, object item) except -1
-    object PyList_GET_ITEM(object lst, int index)
-    int PyList_CheckExact(object)
-
     void *PyTuple_GetItem_void_void "PyTuple_GET_ITEM" (void* tpl, int index)
-
-    char *PyString_AsString(object p)
-    object PyString_FromStringAndSize(char *, int)
-    int PyString_Size(object p)
-
-    void Py_INCREF(object)
-
-
-cdef extern from "string.h":
-    void *memchr(void *s, int c, size_t n)
 
 
 cdef int string_to_int_safe(char *s, char *end, int *out) except -1:
@@ -70,7 +66,7 @@ cdef int string_to_int_safe(char *s, char *end, int *out) except -1:
     # there is an exception.
     out[0] = <int>strtol(s, &integer_end, 10)
     if integer_end != end:
-        py_s = PyString_FromStringAndSize(s, end-s)
+        py_s = PyBytes_FromStringAndSize(s, end-s)
         raise ValueError('%r is not a valid integer' % (py_s,))
     return 0
 
@@ -108,40 +104,37 @@ cdef class KnitIndexReader:
 
     cdef object process_options(self, char *option_str, char *end):
         """Process the options string into a list."""
-        cdef char *next
+        cdef char *n
 
         # This is alternative code which creates a python string and splits it.
         # It is "correct" and more obvious, but slower than the following code.
         # It can be uncommented to switch in case the other code is seen as
         # suspect.
-        # options = PyString_FromStringAndSize(option_str,
-        #                                      end - option_str)
+        # options = PyBytes_FromStringAndSize(option_str, end - option_str)
         # return options.split(',')
 
         final_options = []
 
         while option_str < end:
-            next = <char*>memchr(option_str, c',', end - option_str)
-            if next == NULL:
-                next = end
-            next_option = PyString_FromStringAndSize(option_str,
-                                                     next - option_str)
-            PyList_Append(final_options, next_option)
+            n = <char*>memchr(option_str, c',', end - option_str)
+            if n == NULL:
+                n = end
+            n_option = PyBytes_FromStringAndSize(option_str, n - option_str)
+            PyList_Append(final_options, n_option)
 
             # Move past the ','
-            option_str = next+1
+            option_str = n+1
 
         return final_options
 
     cdef object process_parents(self, char *parent_str, char *end):
-        cdef char *next
+        cdef char *n
         cdef int int_parent
         cdef char *parent_end
 
         # Alternative, correct but slower code.
         #
-        # parents = PyString_FromStringAndSize(parent_str,
-        #                                      end - parent_str)
+        # parents = PyBytes_FromStringAndSize(parent_str, end - parent_str)
         # real_parents = []
         # for parent in parents.split():
         #     if parent[0].startswith('.'):
@@ -152,28 +145,26 @@ cdef class KnitIndexReader:
 
         parents = []
         while parent_str <= end:
-            next = <char*>memchr(parent_str, c' ', end - parent_str)
-            if next == NULL or next >= end or next == parent_str:
+            n = <char*>memchr(parent_str, c' ', end - parent_str)
+            if n == NULL or n >= end or n == parent_str:
                 break
 
             if parent_str[0] == c'.':
                 # This is an explicit revision id
                 parent_str = parent_str + 1
-                parent = PyString_FromStringAndSize(parent_str,
-                                                    next - parent_str)
+                parent = PyBytes_FromStringAndSize(parent_str, n - parent_str)
             else:
                 # This in an integer mapping to original
-                string_to_int_safe(parent_str, next, &int_parent)
+                string_to_int_safe(parent_str, n, &int_parent)
 
                 if int_parent >= self.history_len:
                     raise IndexError('Parent index refers to a revision which'
                         ' does not exist yet.'
                         ' %d > %d' % (int_parent, self.history_len))
-                parent = PyList_GET_ITEM(self.history, int_parent)
-                # PyList_GET_ITEM steals a reference
-                Py_INCREF(parent)
+                # PyList_GET_ITEM steals a reference but object cast INCREFs
+                parent = <object>PyList_GET_ITEM(self.history, int_parent)
             PyList_Append(parents, parent)
-            parent_str = next + 1
+            parent_str = n + 1
         return tuple(parents)
 
     cdef int process_one_record(self, char *start, char *end) except -1:
@@ -218,8 +209,7 @@ cdef class KnitIndexReader:
             return 0
         parent_str = parent_str + 1
 
-        version_id = PyString_FromStringAndSize(version_id_str,
-                                                version_id_size)
+        version_id = PyBytes_FromStringAndSize(version_id_str, version_id_size)
         options = self.process_options(option_str, option_end)
 
         try:
@@ -227,9 +217,8 @@ cdef class KnitIndexReader:
             string_to_int_safe(size_str, parent_str - 1, &size)
             parents = self.process_parents(parent_str, end)
         except (ValueError, IndexError), e:
-            py_line = PyString_FromStringAndSize(start, end - start)
-            raise errors.KnitCorrupt(self.kndx._filename,
-                                     "line %r: %s" % (py_line, e))
+            py_line = PyBytes_FromStringAndSize(start, end - start)
+            raise KnitCorrupt(self.kndx._filename, "line %r: %s" % (py_line, e))
 
         cache_entry = PyDict_GetItem_void(self.cache, version_id)
         if cache_entry == NULL:
@@ -291,8 +280,8 @@ cdef class KnitIndexReader:
         #       completely. However self.fp may be a 'file-like' object
         #       it is not guaranteed to be a real file.
         text = self.fp.read()
-        text_size = PyString_Size(text)
-        self.cur_str = PyString_AsString(text)
+        text_size = PyBytes_Size(text)
+        self.cur_str = PyBytes_AsString(text)
         # This points to the last character in the string
         self.end_str = self.cur_str + text_size
 

@@ -99,7 +99,7 @@ class PoMerger(merge.PerFileMerger):
             # Return early if there is no options defined
             return False
         po_dir = None
-        po_path = self.get_filepath(params, self.merger.this_tree)
+        po_path = params.this_path
         for po_dir in self.po_dirs:
             glob = osutils.pathjoin(po_dir, self.po_glob)
             if fnmatch.fnmatch(po_path, glob):
@@ -162,7 +162,7 @@ class PoMerger(merge.PerFileMerger):
                 f.writelines(params.other_lines)
             command = self.conf.expand_options(self.command, env)
             retcode, out, err = self._invoke(command)
-            with osutils.open_file(env['result']) as f:
+            with osutils.open_file(env['result'], 'rb') as f:
                 # FIXME: To avoid the list() construct below which means the
                 # whole 'result' file is kept in memory, there may be a way to
                 # use an iterator that will close the file when it's done, but

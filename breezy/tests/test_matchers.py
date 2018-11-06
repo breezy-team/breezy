@@ -19,6 +19,7 @@
 from testtools.matchers import *
 
 from ..bzr.smart.client import CallHookParams
+from ..sixish import PY3
 
 from . import (
     CapturedCall,
@@ -72,10 +73,10 @@ class TestReturnsUnlockable(TestCase):
 class TestMatchesAncestry(TestCaseWithTransport):
 
     def test__str__(self):
-        matcher = MatchesAncestry("A repository", "arevid")
+        matcher = MatchesAncestry("A repository", b"arevid")
         self.assertEqual(
             "MatchesAncestry(repository='A repository', "
-            "revision_id='arevid')",
+            "revision_id=%r)" % (b'arevid', ),
             str(matcher))
 
     def test_match(self):
@@ -90,8 +91,8 @@ class TestMatchesAncestry(TestCaseWithTransport):
         self.assertThat([revid1, revid2], m)
         m = MatchesAncestry(branch.repository, revid1)
         self.assertThat([revid1], m)
-        m = MatchesAncestry(branch.repository, "unknown")
-        self.assertThat(["unknown"], m)
+        m = MatchesAncestry(branch.repository, b"unknown")
+        self.assertThat([b"unknown"], m)
 
     def test_mismatch(self):
         b = self.make_branch_builder('.')
@@ -104,7 +105,7 @@ class TestMatchesAncestry(TestCaseWithTransport):
         mismatch = m.match([])
         self.assertIsNot(None, mismatch)
         self.assertEqual(
-            "mismatched ancestry for revision '%s' was ['%s'], expected []" % (
+            "mismatched ancestry for revision %r was [%r], expected []" % (
                 revid1, revid1),
             mismatch.describe())
 
@@ -112,43 +113,78 @@ class TestMatchesAncestry(TestCaseWithTransport):
 class TestHasLayout(TestCaseWithTransport):
 
     def test__str__(self):
-        matcher = HasLayout([("a", "a-id")])
-        self.assertEqual("HasLayout([('a', 'a-id')])", str(matcher))
+        matcher = HasLayout([(b"a", b"a-id")])
+        self.assertEqual("HasLayout(%r)" % ([(b'a', b'a-id')], ), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
         self.assertThat(t, HasLayout(
             [('', t.get_root_id()),
-             ('a', 'a-id'),
-             ('b/', 'b-id'),
-             ('b/c', 'c-id')]))
+             ('a', b'a-id'),
+             ('b/', b'b-id'),
+             ('b/c', b'c-id')]))
 
     def test_mismatch(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
-        self.assertEqual(
-            set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
-            set(mismatch.describe().split(" != ")))
+        if PY3:
+            self.assertEqual(
+                set(("['', 'a', 'b/', 'b/c']", "['a']")),
+                set(mismatch.describe().split(" != ")))
+        else:
+            self.assertEqual(
+                set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
+                set(mismatch.describe().split(" != ")))
 
     def test_no_dirs(self):
         # Some tree/repository formats do not support versioned directories
         t = self.make_branch_and_tree('.')
         t.has_versioned_directories = lambda: False
         self.build_tree(['a', 'b/', 'b/c'])
-        t.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
+        t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c']).match(t))
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
-        self.assertEqual(
-            set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
-            set(mismatch.describe().split(" != ")))
+        if PY3:
+            self.assertEqual(
+                set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
+                set(mismatch.describe().split(" != ")))
+        else:
+            self.assertEqual(
+                set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
+                set(mismatch.describe().split(" != ")))
+
+
+class TestHasPathRelations(TestCaseWithTransport):
+
+    def test__str__(self):
+        t = self.make_branch_and_tree('.')
+        matcher = HasPathRelations(t, [("a", "b")])
+        self.assertEqual("HasPathRelations(%r, %r)" % (t, [('a', 'b')]), str(matcher))
+
+    def test_match(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'])
+        self.assertThat(t, HasPathRelations(t,
+            [('', ''),
+             ('a', 'a'),
+             ('b/', 'b/'),
+             ('b/c', 'b/c')]))
+
+    def test_mismatch(self):
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/', 'b/c'])
+        t.add(['a', 'b', 'b/c'])
+        mismatch = HasPathRelations(t, [('a', 'a')]).match(t)
+        self.assertIsNot(None, mismatch)
 
 
 class TestContainsNoVfsCalls(TestCase):
@@ -171,13 +207,14 @@ class TestContainsNoVfsCalls(TestCase):
         self.assertIs(None, ContainsNoVfsCalls().match(calls))
 
     def test_match(self):
-        calls = [self._make_call("append", ["file"]),
-                 self._make_call("Branch.get_config_file", [])]
+        calls = [self._make_call(b"append", [b"file"]),
+                 self._make_call(b"Branch.get_config_file", [])]
         mismatch = ContainsNoVfsCalls().match(calls)
         self.assertIsNot(None, mismatch)
         self.assertEqual([calls[0].call], mismatch.vfs_calls)
-        self.assertEqual("no VFS calls expected, got: append('file')""",
-                mismatch.describe())
+        self.assertIn(mismatch.describe(), [
+                "no VFS calls expected, got: b'append'(b'file')",
+                "no VFS calls expected, got: append('file')"])
 
 
 class TestRevisionHistoryMatches(TestCaseWithTransport):
@@ -189,16 +226,21 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
 
     def test_matches(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('msg1', rev_id='a')
-        tree.commit('msg2', rev_id='b')
-        matcher = RevisionHistoryMatches(['a', 'b'])
+        tree.commit('msg1', rev_id=b'a')
+        tree.commit('msg2', rev_id=b'b')
+        matcher = RevisionHistoryMatches([b'a', b'b'])
         self.assertIs(None, matcher.match(tree.branch))
 
     def test_mismatch(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('msg1', rev_id='a')
-        tree.commit('msg2', rev_id='b')
-        matcher = RevisionHistoryMatches(['a', 'b', 'c'])
-        self.assertEqual(
-            set(("['a', 'b']", "['a', 'b', 'c']")),
-            set(matcher.match(tree.branch).describe().split(" != ")))
+        tree.commit('msg1', rev_id=b'a')
+        tree.commit('msg2', rev_id=b'b')
+        matcher = RevisionHistoryMatches([b'a', b'b', b'c'])
+        if PY3:
+            self.assertEqual(
+                set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
+                set(matcher.match(tree.branch).describe().split(" != ")))
+        else:
+            self.assertEqual(
+                set(("['a', 'b']", "['a', 'b', 'c']")),
+                set(matcher.match(tree.branch).describe().split(" != ")))

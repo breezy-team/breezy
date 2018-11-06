@@ -28,6 +28,7 @@ assertions in Test Case objects, so they are recommended for new testing work.
 
 __all__ = [
     'HasLayout',
+    'HasPathRelations',
     'MatchesAncestry',
     'ContainsNoVfsCalls',
     'ReturnsUnlockable',
@@ -44,6 +45,10 @@ lazy_import.lazy_import(globals(),
 from breezy.bzr.smart.request import request_handlers as smart_request_handlers
 from breezy.bzr.smart import vfs
 """)
+from ..sixish import (
+    text_type,
+    )
+from ..tree import find_previous_path
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -113,14 +118,11 @@ class MatchesAncestry(Matcher):
             self.repository, self.revision_id))
 
     def match(self, expected):
-        self.repository.lock_read()
-        try:
+        with self.repository.lock_read():
             graph = self.repository.get_graph()
             got = [r for r, p in graph.iter_ancestry([self.revision_id])]
             if _mod_revision.NULL_REVISION in got:
                 got.remove(_mod_revision.NULL_REVISION)
-        finally:
-            self.repository.unlock()
         if sorted(got) != sorted(expected):
             return _AncestryMismatch(self.revision_id, sorted(got),
                 sorted(expected))
@@ -136,17 +138,16 @@ class HasLayout(Matcher):
         Matcher.__init__(self)
         self.entries = entries
 
-    def get_tree_layout(self, tree):
+    def get_tree_layout(self, tree, include_file_ids):
         """Get the (path, file_id) pairs for the current tree."""
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                if ie.parent_id is None:
-                    yield (u"", ie.file_id)
+                if path != u'':
+                    path += ie.kind_character()
+                if include_file_ids:
+                    yield (path, ie.file_id)
                 else:
-                    yield (path+ie.kind_character(), ie.file_id)
-        finally:
-            tree.unlock()
+                    yield path
 
     @staticmethod
     def _strip_unreferenced_directories(entries):
@@ -156,7 +157,7 @@ class HasLayout(Matcher):
         """
         directories = []
         for entry in entries:
-            if isinstance(entry, basestring):
+            if isinstance(entry, (str, text_type)):
                 path = entry
             else:
                 path = entry[0]
@@ -175,13 +176,81 @@ class HasLayout(Matcher):
         return 'HasLayout(%r)' % self.entries
 
     def match(self, tree):
-        actual = list(self.get_tree_layout(tree))
-        if self.entries and isinstance(self.entries[0], basestring):
-            actual = [path for (path, fileid) in actual]
+        include_file_ids = self.entries and not isinstance(self.entries[0], (str, text_type))
+        actual = list(self.get_tree_layout(tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
             entries = list(self._strip_unreferenced_directories(self.entries))
         else:
             entries = self.entries
+        return Equals(entries).match(actual)
+
+
+class HasPathRelations(Matcher):
+    """Matcher verifies that paths have a relation to those in another tree.
+
+    :ivar previous_tree: tree to compare to
+    :ivar previous_entries: List of expected entries, as (path, previous_path) pairs.
+    """
+
+    def __init__(self, previous_tree, previous_entries):
+        Matcher.__init__(self)
+        self.previous_tree = previous_tree
+        self.previous_entries = previous_entries
+
+    def get_path_map(self, tree):
+        """Get the (path, previous_path) pairs for the current tree."""
+        with tree.lock_read(), self.previous_tree.lock_read():
+            for path, ie in tree.iter_entries_by_dir():
+                if tree.supports_rename_tracking():
+                    previous_path = find_previous_path(tree, self.previous_tree, path)
+                else:
+                    if self.previous_tree.is_versioned(path):
+                        previous_path = path
+                    else:
+                        previous_path = None
+                if previous_path:
+                    kind = self.previous_tree.kind(previous_path)
+                    if kind == 'directory':
+                        previous_path += '/'
+                if path == u'':
+                    yield (u"", previous_path)
+                else:
+                    yield (path+ie.kind_character(), previous_path)
+
+    @staticmethod
+    def _strip_unreferenced_directories(entries):
+        """Strip all directories that don't (in)directly contain any files.
+
+        :param entries: List of path strings or (path, previous_path) tuples to process
+        """
+        directory_used = set()
+        directories = []
+        for (path, previous_path) in entries:
+            if not path or path[-1] == "/":
+                # directory
+                directories.append((path, previous_path))
+            else:
+                # Yield the referenced parent directories
+                for direntry in directories:
+                    if osutils.is_inside(direntry[0], path):
+                        directory_used.add(direntry[0])
+        for (path, previous_path) in entries:
+            if (not path.endswith("/")) or path in directory_used:
+                yield (path, previous_path)
+
+    def __str__(self):
+        return 'HasPathRelations(%r, %r)' % (self.previous_tree, self.previous_entries)
+
+    def match(self, tree):
+        actual = list(self.get_path_map(tree))
+        if not tree.has_versioned_directories():
+            entries = list(self._strip_unreferenced_directories(self.previous_entries))
+        else:
+            entries = self.previous_entries
+        if not tree.supports_rename_tracking():
+            entries = [
+                (path, path if self.previous_tree.is_versioned(path) else None)
+                for (path, previous_path) in entries]
         return Equals(entries).match(actual)
 
 
@@ -199,14 +268,11 @@ class RevisionHistoryMatches(Matcher):
         return 'RevisionHistoryMatches(%r)' % self.expected
 
     def match(self, branch):
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             graph = branch.repository.get_graph()
             history = list(graph.iter_lefthand_ancestry(
                 branch.last_revision(), [_mod_revision.NULL_REVISION]))
             history.reverse()
-        finally:
-            branch.unlock()
         return Equals(self.expected).match(history)
 
 

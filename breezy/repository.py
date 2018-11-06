@@ -41,7 +41,7 @@ from . import (
     registry,
     ui,
     )
-from .decorators import needs_read_lock, needs_write_lock, only_raises
+from .decorators import only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
@@ -65,6 +65,11 @@ class IsInWriteGroupError(errors.InternalBzrError):
         errors.InternalBzrError.__init__(self, repo=repo)
 
 
+class CannotSetRevisionId(errors.BzrError):
+
+    _fmt = "Repository format does not support setting revision ids."
+
+
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
@@ -74,8 +79,6 @@ class CommitBuilder(object):
 
     # all clients should supply tree roots.
     record_root_entry = True
-    # whether this commit builder supports the record_entry_contents interface
-    supports_record_entry_contents = False
     # whether this commit builder will automatically update the branch that is
     # being committed to
     updates_branch = False
@@ -93,19 +96,18 @@ class CommitBuilder(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         :param lossy: Whether to discard data that can not be natively
-            represented, when pushing to a foreign VCS 
+            represented, when pushing to a foreign VCS
         """
         self._config_stack = config_stack
         self._lossy = lossy
 
         if committer is None:
             self._committer = self._config_stack.get('email')
-        elif not isinstance(committer, unicode):
+        elif not isinstance(committer, text_type):
             self._committer = committer.decode() # throw if non-ascii
         else:
             self._committer = committer
 
-        self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
 
@@ -124,7 +126,7 @@ class CommitBuilder(object):
         else:
             self._timezone = int(timezone)
 
-        self._generate_revision_if_needed()
+        self._generate_revision_if_needed(revision_id)
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -138,7 +140,8 @@ class CommitBuilder(object):
 
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
-        if '\r' in text:
+        # TODO(jelmer): Make this repository-format specific
+        if u'\r' in text:
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
@@ -148,6 +151,7 @@ class CommitBuilder(object):
             if not isinstance(value, (text_type, str)):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
+            # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
@@ -186,7 +190,7 @@ class CommitBuilder(object):
         """Return new revision-id."""
         return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
-    def _generate_revision_if_needed(self):
+    def _generate_revision_if_needed(self, revision_id):
         """Create a revision id if None was supplied.
 
         If the repository can not support user-specified revision ids
@@ -195,20 +199,16 @@ class CommitBuilder(object):
 
         :raises: CannotSetRevisionId
         """
-        if self._new_revision_id is None:
+        if not self.repository._format.supports_setting_revision_ids:
+            if revision_id is not None:
+                raise CannotSetRevisionId()
+            return
+        if revision_id is None:
             self._new_revision_id = self._gen_revision_id()
             self.random_revid = True
         else:
+            self._new_revision_id = revision_id
             self.random_revid = False
-
-    def will_record_deletes(self):
-        """Tell the commit builder that deletes are being notified.
-
-        This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid, deletes against the basis MUST be recorded via
-        builder.record_delete().
-        """
-        raise NotImplementedError(self.will_record_deletes)
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes):
         """Record a new tree via iter_changes.
@@ -494,7 +494,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         self.control_files.dont_leave_in_place()
 
-    @needs_read_lock
     def gather_stats(self, revid=None, committers=None):
         """Gather statistics from a revision id.
 
@@ -511,32 +510,33 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             revisions: The total revision count in the repository.
             size: An estimate disk size of the repository in bytes.
         """
-        result = {}
-        if revid and committers:
-            result['committers'] = 0
-        if revid and revid != _mod_revision.NULL_REVISION:
-            graph = self.get_graph()
-            if committers:
-                all_committers = set()
-            revisions = [r for (r, p) in graph.iter_ancestry([revid])
-                        if r != _mod_revision.NULL_REVISION]
-            last_revision = None
-            if not committers:
-                # ignore the revisions in the middle - just grab first and last
-                revisions = revisions[0], revisions[-1]
-            for revision in self.get_revisions(revisions):
-                if not last_revision:
-                    last_revision = revision
+        with self.lock_read():
+            result = {}
+            if revid and committers:
+                result['committers'] = 0
+            if revid and revid != _mod_revision.NULL_REVISION:
+                graph = self.get_graph()
                 if committers:
-                    all_committers.add(revision.committer)
-            first_revision = revision
-            if committers:
-                result['committers'] = len(all_committers)
-            result['firstrev'] = (first_revision.timestamp,
-                first_revision.timezone)
-            result['latestrev'] = (last_revision.timestamp,
-                last_revision.timezone)
-        return result
+                    all_committers = set()
+                revisions = [r for (r, p) in graph.iter_ancestry([revid])
+                            if r != _mod_revision.NULL_REVISION]
+                last_revision = None
+                if not committers:
+                    # ignore the revisions in the middle - just grab first and last
+                    revisions = revisions[0], revisions[-1]
+                for revision in self.get_revisions(revisions):
+                    if not last_revision:
+                        last_revision = revision
+                    if committers:
+                        all_committers.add(revision.committer)
+                first_revision = revision
+                if committers:
+                    result['committers'] = len(all_committers)
+                result['firstrev'] = (first_revision.timestamp,
+                    first_revision.timezone)
+                result['latestrev'] = (last_revision.timestamp,
+                    last_revision.timezone)
+            return result
 
     def find_branches(self, using=False):
         """Find branches underneath this repository.
@@ -575,7 +575,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 ret.extend(repository.find_branches())
         return ret
 
-    @needs_read_lock
     def search_missing_revision_ids(self, other,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
@@ -585,9 +584,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         revision_ids: only return revision ids included by revision_id.
         """
-        return InterRepository.get(other, self).search_missing_revision_ids(
-            find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids, limit=limit)
+        with self.lock_read():
+            return InterRepository.get(other, self).search_missing_revision_ids(
+                find_ghosts=find_ghosts, revision_ids=revision_ids,
+                if_present_ids=if_present_ids, limit=limit)
 
     @staticmethod
     def open(base):
@@ -723,7 +723,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if (self.control_files._lock_count == 1 and
-            self.control_files._lock_mode == 'w'):
+                self.control_files._lock_mode == 'w'):
             if self._write_group is not None:
                 self.abort_write_group()
                 self.control_files.unlock()
@@ -734,7 +734,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             for repo in self._fallback_repositories:
                 repo.unlock()
 
-    @needs_read_lock
     def clone(self, controldir, revision_id=None):
         """Clone this repository into controldir using the current format.
 
@@ -743,12 +742,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :return: The newly created destination repository.
         """
-        # TODO: deprecate after 0.16; cloning this with all its settings is
-        # probably not very useful -- mbp 20070423
-        dest_repo = self._create_sprouting_repo(
-            controldir, shared=self.is_shared())
-        self.copy_content_into(dest_repo, revision_id)
-        return dest_repo
+        with self.lock_read():
+            # TODO: deprecate after 0.16; cloning this with all its settings is
+            # probably not very useful -- mbp 20070423
+            dest_repo = self._create_sprouting_repo(
+                controldir, shared=self.is_shared())
+            self.copy_content_into(dest_repo, revision_id)
+            return dest_repo
 
     def start_write_group(self):
         """Start a write group in the repository.
@@ -757,8 +757,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         between file ids and backend store to manage the insertion of data from
         both fetch and commit operations.
 
-        A write lock is required around the start_write_group/commit_write_group
-        for the support of lock-requiring repository formats.
+        A write lock is required around the
+        start_write_group/commit_write_group for the support of lock-requiring
+        repository formats.
 
         One can only insert data into a repository inside a write group.
 
@@ -779,35 +780,36 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         entered.
         """
 
-    @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a descendent repository for new development.
 
         Unlike clone, this does not copy the settings of the repository.
         """
-        dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
-        dest_repo.fetch(self, revision_id=revision_id)
-        return dest_repo
+        with self.lock_read():
+            dest_repo = self._create_sprouting_repo(to_bzrdir, shared=False)
+            dest_repo.fetch(self, revision_id=revision_id)
+            return dest_repo
 
     def _create_sprouting_repo(self, a_controldir, shared):
-        if not isinstance(a_controldir._format, self.controldir._format.__class__):
+        if not isinstance(
+                a_controldir._format, self.controldir._format.__class__):
             # use target default format.
             dest_repo = a_controldir.create_repository()
         else:
             # Most control formats need the repository to be specifically
             # created, but on some old all-in-one formats it's not needed
             try:
-                dest_repo = self._format.initialize(a_controldir, shared=shared)
+                dest_repo = self._format.initialize(
+                        a_controldir, shared=shared)
             except errors.UninitializableFormat:
                 dest_repo = a_controldir.open_repository()
         return dest_repo
 
-    @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
-        return revision_id in self.has_revisions((revision_id,))
+        with self.lock_read():
+            return revision_id in self.has_revisions((revision_id,))
 
-    @needs_read_lock
     def has_revisions(self, revision_ids):
         """Probe to find out the presence of multiple revisions.
 
@@ -816,10 +818,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.has_revisions)
 
-    @needs_read_lock
     def get_revision(self, revision_id):
         """Return the Revision object for a named revision."""
-        return self.get_revisions([revision_id])[0]
+        with self.lock_read():
+            return self.get_revisions([revision_id])[0]
 
     def get_revision_reconcile(self, revision_id):
         """'reconcile' helper routine that allows access to a revision always.
@@ -833,11 +835,29 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def get_revisions(self, revision_ids):
         """Get many revisions at once.
-        
-        Repositories that need to check data on every revision read should 
+
+        Repositories that need to check data on every revision read should
         subclass this method.
         """
-        raise NotImplementedError(self.get_revisions)
+        revs = {}
+        for revid, rev in self.iter_revisions(revision_ids):
+            if rev is None:
+                raise errors.NoSuchRevision(self, revid)
+            revs[revid] = rev
+        return [revs[revid] for revid in revision_ids]
+
+    def iter_revisions(self, revision_ids):
+        """Iterate over revision objects.
+
+        :param revision_ids: An iterable of revisions to examine. None may be
+            passed to request all revisions known to the repository. Note that
+            not all repositories can find unreferenced revisions; for those
+            repositories only referenced ones will be returned.
+        :return: An iterator of (revid, revision) tuples. Absent revisions (
+            those asked for but not available) are returned as (revid, None).
+            N.B.: Revisions are not necessarily yielded in order.
+        """
+        raise NotImplementedError(self.iter_revisions)
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
@@ -850,35 +870,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           so that only those file-ids, their parents and their
           children are included.
         """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
+        raise NotImplementedError(self.get_deltas_for_revisions)
 
-        # Get the matching filtered trees. Note that it's more
-        # efficient to pass filtered trees to changes_from() rather
-        # than doing the filtering afterwards. changes_from() could
-        # arguably do the filtering itself but it's path-based, not
-        # file-id based, so filtering before or afterwards is
-        # currently easier.
-        if specific_fileids is None:
-            trees = dict((t.get_revision_id(), t) for
-                t in self.revision_trees(required_trees))
-        else:
-            trees = dict((t.get_revision_id(), t) for
-                t in self._filtered_revision_trees(required_trees,
-                specific_fileids))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
-
-    @needs_read_lock
     def get_revision_delta(self, revision_id, specific_fileids=None):
         """Return the delta for one revision.
 
@@ -889,14 +882,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           so that only those file-ids, their parents and their
           children are included.
         """
-        r = self.get_revision(revision_id)
-        return list(self.get_deltas_for_revisions([r],
-            specific_fileids=specific_fileids))[0]
+        with self.lock_read():
+            r = self.get_revision(revision_id)
+            return list(self.get_deltas_for_revisions(
+                [r], specific_fileids=specific_fileids))[0]
 
-    @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        signature = gpg_strategy.sign(plaintext)
-        self.add_signature_text(revision_id, signature)
+        with self.lock_write():
+            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
+            self.add_signature_text(revision_id, signature)
 
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
@@ -961,13 +955,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
 
-    @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from .reconcile import RepoReconciler
-        reconciler = RepoReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        with self.lock_write():
+            reconciler = RepoReconciler(self, thorough=thorough)
+            reconciler.reconcile()
+            return reconciler
 
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.
@@ -983,7 +977,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         repository.
         """
 
-    @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -995,7 +988,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return Trees for revisions in this repository.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         """
         raise NotImplementedError(self.revision_trees)
 
@@ -1006,7 +999,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         types it should be a no-op that just returns.
 
         This stub method does not require a lock, but subclasses should use
-        @needs_write_lock as this is a long running call it's reasonable to
+        self.write_lock as this is a long running call it's reasonable to
         implicitly lock for the user.
 
         :param hint: If not supplied, the whole repository is packed.
@@ -1039,7 +1032,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             elif revision_id is None:
                 raise ValueError('get_parent_map(None) is not valid')
             else:
-                query_keys.append((revision_id ,))
+                query_keys.append((revision_id,))
         vf = self.revisions.without_fallbacks()
         for (revision_id,), parent_keys in viewitems(
                 vf.get_parent_map(query_keys)):
@@ -1061,7 +1054,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return graph.CallableToParentsProviderAdapter(
             self._get_parent_map_no_fallbacks)
 
-    @needs_read_lock
     def get_known_graph_ancestry(self, revision_ids):
         """Return the known graph for a set of revision ids and their ancestors.
         """
@@ -1080,7 +1072,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    @needs_write_lock
     def set_make_working_trees(self, new_value):
         """Set the policy flag for making working trees when creating branches.
 
@@ -1096,13 +1087,12 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Returns the policy for making working trees on new branches."""
         raise NotImplementedError(self.make_working_trees)
 
-    @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
-        self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        with self.lock_write():
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
-    @needs_read_lock
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
 
@@ -1111,16 +1101,18 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
-        if not self.has_signature_for_revision_id(revision_id):
-            return gpg.SIGNATURE_NOT_SIGNED, None
-        signature = self.get_signature_text(revision_id)
+        with self.lock_read():
+            if not self.has_signature_for_revision_id(revision_id):
+                return gpg.SIGNATURE_NOT_SIGNED, None
+            signature = self.get_signature_text(revision_id)
 
-        testament = _mod_testament.Testament.from_revision(self, revision_id)
-        plaintext = testament.as_short_text()
+            testament = _mod_testament.Testament.from_revision(self, revision_id)
 
-        return gpg_strategy.verify(signature, plaintext)
+            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
+            if testament.as_short_text() != signed_plaintext:
+                return gpg.SIGNATURE_NOT_VALID, None
+            return (status, key)
 
-    @needs_read_lock
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.
 
@@ -1128,9 +1120,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :gpg_strategy: the GPGStrategy object to used
         :return: Iterator over tuples with revision id, result and keys
         """
-        for revid in revision_ids:
-            (result, key) = self.verify_revision_signature(revid, gpg_strategy)
-            yield revid, result, key
+        with self.lock_read():
+            for revid in revision_ids:
+                (result, key) = self.verify_revision_signature(revid, gpg_strategy)
+                yield revid, result, key
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
@@ -1186,7 +1179,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # weave repositories refuse to store revisionids that are non-ascii.
         if revision_id is not None:
             # weaves require ascii revision ids.
-            if isinstance(revision_id, unicode):
+            if isinstance(revision_id, text_type):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
@@ -1252,7 +1245,7 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     created.
 
     Common instance attributes:
-    _matchingbzrdir - the controldir format that the repository format was
+    _matchingcontroldir - the controldir format that the repository format was
     originally written to work with. This can be used if manually
     constructing a bzrdir and repository, or more commonly for test suite
     parameterization.
@@ -1294,6 +1287,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_revision_signatures = True
     # Can the revision graph have incorrect parents?
     revision_graph_can_have_wrong_parents = None
+    # Does this format support setting revision ids?
+    supports_setting_revision_ids = True
     # Does this format support rich root data?
     rich_root_data = None
     # Does this format support explicitly versioned directories?
@@ -1303,6 +1298,15 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     # Is it possible for revisions to be present without being referenced
     # somewhere ?
     supports_unreferenced_revisions = None
+    # Does this format store the current Branch.nick in a revision when
+    # creating commits?
+    supports_storing_branch_nick = True
+    # Does the format support overriding the transport to use
+    supports_overriding_transport = True
+    # Does the format support setting custom revision properties?
+    supports_custom_revision_properties = True
+    # Does the format record per-file revision metadata?
+    records_per_file_revision = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1392,19 +1396,19 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 # the repository is not separately opened are similar.
 
 format_registry.register_lazy(
-    'Bazaar-NG Knit Repository Format 1',
+    b'Bazaar-NG Knit Repository Format 1',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit1',
     )
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
+    b'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit3',
     )
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
+    b'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit4',
     )
@@ -1413,47 +1417,47 @@ format_registry.register_lazy(
 # post-subtrees to allow ease of testing.
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 (needs bzr 0.92)\n',
+    b'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
+    b'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
+    b'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
+    b'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    b'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    b'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
-    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
     'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2a',
     )
@@ -1461,13 +1465,13 @@ format_registry.register_lazy(
 # Development formats.
 # Check their docstrings to see if/when they are obsolete.
 format_registry.register_lazy(
-    ("Bazaar development format 2 with subtree support "
-        "(needs bzr.dev from before 1.8)\n"),
+    (b"Bazaar development format 2 with subtree support "
+        b"(needs bzr.dev from before 1.8)\n"),
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(
-    'Bazaar development format 8\n',
+    b'Bazaar development format 8\n',
     'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2aSubtree',
     )
@@ -1488,7 +1492,6 @@ class InterRepository(InterObject):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    @needs_write_lock
     def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
 
@@ -1498,14 +1501,14 @@ class InterRepository(InterObject):
         :param revision_id: Only copy the content needed to construct
                             revision_id and its parents.
         """
-        try:
-            self.target.set_make_working_trees(
-                self.source.make_working_trees())
-        except NotImplementedError:
-            pass
-        self.target.fetch(self.source, revision_id=revision_id)
+        with self.lock_write():
+            try:
+                self.target.set_make_working_trees(
+                    self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            self.target.fetch(self.source, revision_id=revision_id)
 
-    @needs_write_lock
     def fetch(self, revision_id=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
 
@@ -1517,7 +1520,6 @@ class InterRepository(InterObject):
         """
         raise NotImplementedError(self.fetch)
 
-    @needs_read_lock
     def search_missing_revision_ids(
             self, find_ghosts=True, revision_ids=None, if_present_ids=None,
             limit=None):
@@ -1582,33 +1584,32 @@ class CopyConverter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        self.count = 0
-        self.total = 4
-        # this is only useful with metadir layouts - separated repo content.
-        # trigger an assertion if not such
-        repo._format.get_format_string()
-        self.repo_dir = repo.controldir
-        pb.update(gettext('Moving repository to repository.backup'))
-        self.repo_dir.transport.move('repository', 'repository.backup')
-        backup_transport =  self.repo_dir.transport.clone('repository.backup')
-        repo._format.check_conversion_target(self.target_format)
-        self.source_repo = repo._format.open(self.repo_dir,
-            _found=True,
-            _override_transport=backup_transport)
-        pb.update(gettext('Creating new repository'))
-        converted = self.target_format.initialize(self.repo_dir,
-                                                  self.source_repo.is_shared())
-        converted.lock_write()
-        try:
-            pb.update(gettext('Copying content'))
-            self.source_repo.copy_content_into(converted)
-        finally:
-            converted.unlock()
-        pb.update(gettext('Deleting old repository content'))
-        self.repo_dir.transport.delete_tree('repository.backup')
-        ui.ui_factory.note(gettext('repository converted'))
-        pb.finished()
+        with ui.ui_factory.nested_progress_bar() as pb:
+            self.count = 0
+            self.total = 4
+            # this is only useful with metadir layouts - separated repo content.
+            # trigger an assertion if not such
+            repo._format.get_format_string()
+            self.repo_dir = repo.controldir
+            pb.update(gettext('Moving repository to repository.backup'))
+            self.repo_dir.transport.move('repository', 'repository.backup')
+            backup_transport =  self.repo_dir.transport.clone('repository.backup')
+            repo._format.check_conversion_target(self.target_format)
+            self.source_repo = repo._format.open(self.repo_dir,
+                _found=True,
+                _override_transport=backup_transport)
+            pb.update(gettext('Creating new repository'))
+            converted = self.target_format.initialize(self.repo_dir,
+                                                      self.source_repo.is_shared())
+            converted.lock_write()
+            try:
+                pb.update(gettext('Copying content'))
+                self.source_repo.copy_content_into(converted)
+            finally:
+                converted.unlock()
+            pb.update(gettext('Deleting old repository content'))
+            self.repo_dir.transport.delete_tree('repository.backup')
+            ui.ui_factory.note(gettext('repository converted'))
 
 
 def _strip_NULL_ghosts(revision_graph):

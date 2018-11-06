@@ -46,17 +46,12 @@ else:
     from paramiko.sftp_client import SFTPClient
 
 
+class StrangeHostname(errors.BzrError):
+    _fmt = "Refusing to connect to strange SSH hostname %(hostname)s"
+
+
 SYSTEM_HOSTKEYS = {}
 BRZ_HOSTKEYS = {}
-
-
-_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
-
-# Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
-# to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
-# so we get an AttributeError exception. So we will not try to
-# connect to an agent if we are on win32 and using Paramiko older than 1.6
-_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 
 
 class SSHVendorManager(object):
@@ -110,11 +105,12 @@ class SSHVendorManager(object):
             p = subprocess.Popen(args,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
+                                 bufsize=0,
                                  **os_specific_subprocess_params())
             stdout, stderr = p.communicate()
         except OSError:
-            stdout = stderr = ''
-        return stdout + stderr
+            stdout = stderr = b''
+        return (stdout + stderr).decode(osutils.get_terminal_encoding())
 
     def _get_vendor_by_version_string(self, version, progname):
         """Return the vendor or None based on output from the subprocess.
@@ -360,6 +356,11 @@ class SubprocessVendor(SSHVendor):
     # tests, but beware of using PIPE which may hang due to not being read.
     _stderr_target = None
 
+    @staticmethod
+    def _check_hostname(arg):
+        if arg.startswith('-'):
+            raise StrangeHostname(hostname=arg)
+
     def _connect(self, argv):
         # Attempt to make a socketpair to use as stdin/stdout for the SSH
         # subprocess.  We prefer sockets to pipes because they support
@@ -377,6 +378,7 @@ class SubprocessVendor(SSHVendor):
             stdin = stdout = subproc_sock
         proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
                                 stderr=self._stderr_target,
+                                bufsize=0,
                                 **os_specific_subprocess_params())
         if subproc_sock is not None:
             subproc_sock.close()
@@ -424,9 +426,9 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
         if username is not None:
             args.extend(['-l', username])
         if subsystem is not None:
-            args.extend(['-s', host, subsystem])
+            args.extend(['-s', '--', host, subsystem])
         else:
-            args.extend([host] + command)
+            args.extend(['--', host] + command)
         return args
 
 register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
@@ -439,6 +441,7 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
+        self._check_hostname(host)
         args = [self.executable_path, '-x']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -460,6 +463,7 @@ class LSHSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
+        self._check_hostname(host)
         args = [self.executable_path]
         if port is not None:
             args.extend(['-p', str(port)])
@@ -481,6 +485,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
+        self._check_hostname(host)
         args = [self.executable_path, '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
@@ -502,16 +507,15 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if username is None:
         username = auth.get_user('ssh', host, port=port,
                                  default=getpass.getuser())
-    if _use_ssh_agent:
-        agent = paramiko.Agent()
-        for key in agent.get_keys():
-            trace.mutter('Trying SSH agent key %s'
-                         % self._hexify(key.get_fingerprint()))
-            try:
-                paramiko_transport.auth_publickey(username, key)
-                return
-            except paramiko.SSHException as e:
-                pass
+    agent = paramiko.Agent()
+    for key in agent.get_keys():
+        trace.mutter('Trying SSH agent key %s'
+                     % self._hexify(key.get_fingerprint()))
+        try:
+            paramiko_transport.auth_publickey(username, key)
+            return
+        except paramiko.SSHException as e:
+            pass
 
     # okay, try finding id_rsa or id_dss?  (posix only)
     if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
@@ -627,12 +631,11 @@ def save_host_keys():
     config.ensure_config_dir_exists()
 
     try:
-        f = open(bzr_hostkey_path, 'w')
-        f.write('# SSH host keys collected by bzr\n')
-        for hostname, keys in BRZ_HOSTKEYS.items():
-            for keytype, key in keys.items():
-                f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
-        f.close()
+        with open(bzr_hostkey_path, 'w') as f:
+            f.write('# SSH host keys collected by bzr\n')
+            for hostname, keys in BRZ_HOSTKEYS.items():
+                for keytype, key in keys.items():
+                    f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
     except IOError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 

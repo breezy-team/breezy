@@ -8,7 +8,7 @@ from apport.hookutils import *
 import os
 
 brz_log = os.path.expanduser('~/.brz.log')
-dot_brz = os.path.expanduser('~/.bazaar')
+dot_brz = os.path.expanduser('~/.config/breezy')
 
 def _add_log_tail(report):
     # may have already been added in-process
@@ -45,7 +45,7 @@ def add_info(report):
     # TODO: strip that out and attach the rest
 
     #attach_file_if_exists(report,
-    #	os.path.join(dot_brz, 'bazaar.conf', 'BrzConfig')
+    #	os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
     #attach_file_if_exists(report,
     #	os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
 

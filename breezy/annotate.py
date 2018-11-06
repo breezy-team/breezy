@@ -41,7 +41,11 @@ from . import (
     errors,
     osutils,
     )
-from .config import extract_email_address
+from .config import (
+    NoEmailInUsername,
+    NoWhoami,
+    extract_email_address,
+    )
 from .repository import _strip_NULL_ghosts
 from .revision import (
     CURRENT_REVISION,
@@ -49,19 +53,20 @@ from .revision import (
     )
 
 
-def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
-    show_ids=False, branch=None):
+def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
+    show_ids=False, branch=None, file_id=None):
     """Annotate file_id in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
 
     :param tree: The tree to look for revision numbers and history from.
-    :param file_id: The file_id to annotate.
+    :param path: The path to annotate
     :param to_file: The file to output the annotation to.
     :param verbose: Show all details rather than truncating to ensure
         reasonable text width.
     :param full: XXXX Not sure what this does.
     :param show_ids: Show revision ids in the annotation output.
+    :param file_id: The file_id to annotate (must match file path)
     :param branch: Branch to use for revision revno lookups
     """
     if branch is None:
@@ -69,10 +74,11 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
     if to_file is None:
         to_file = sys.stdout
 
+    encoding = osutils.get_terminal_encoding()
     # Handle the show_ids case
-    annotations = list(tree.annotate_iter(file_id))
+    annotations = list(tree.annotate_iter(path, file_id))
     if show_ids:
-        return _show_id_annotations(annotations, to_file, full)
+        return _show_id_annotations(annotations, to_file, full, encoding)
 
     if not getattr(tree, "get_revision_id", False):
         # Create a virtual revision to represent the current tree state.
@@ -82,7 +88,7 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         current_rev.parent_ids = tree.get_parent_ids()
         try:
             current_rev.committer = branch.get_config_stack().get('email')
-        except errors.NoWhoami:
+        except NoWhoami:
             current_rev.committer = 'local user'
         current_rev.message = "?"
         current_rev.timestamp = round(time.time(), 3)
@@ -91,10 +97,10 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         current_rev = None
     annotation = list(_expand_annotations(annotations, branch,
         current_rev))
-    _print_annotations(annotation, verbose, to_file, full)
+    _print_annotations(annotation, verbose, to_file, full, encoding)
 
 
-def _print_annotations(annotation, verbose, to_file, full):
+def _print_annotations(annotation, verbose, to_file, full, encoding):
     """Print annotations to to_file.
 
     :param to_file: The file to output the annotation to.
@@ -127,11 +133,11 @@ def _print_annotations(annotation, verbose, to_file, full):
         # GZ 2017-05-21: Writing both unicode annotation and bytes from file
         # which the given to_file must cope with.
         to_file.write(anno)
-        to_file.write('| %s\n' % (text,))
+        to_file.write('| %s\n' % (text.decode(encoding),))
         prevanno = anno
 
 
-def _show_id_annotations(annotations, to_file, full):
+def _show_id_annotations(annotations, to_file, full, encoding):
     if not annotations:
         return
     last_rev_id = None
@@ -140,8 +146,9 @@ def _show_id_annotations(annotations, to_file, full):
         if full or last_rev_id != origin:
             this = origin
         else:
-            this = ''
-        to_file.write('%*s | %s' % (max_origin_len, this, text))
+            this = b''
+        to_file.write('%*s | %s' % (max_origin_len, this.decode('utf-8'),
+            text.decode(encoding)))
         last_rev_id = origin
     return
 
@@ -157,6 +164,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
     :param branch: A locked branch to query for revision details.
     """
     repository = branch.repository
+    revision_ids = set(o for o, t in annotations)
     if current_rev is not None:
         # This can probably become a function on MutableTree, get_revno_map
         # there, or something.
@@ -180,39 +188,41 @@ def _expand_annotations(annotations, branch, current_rev=None):
             for seq_num, rev_id, depth, revno, end_of_merge in
                 merge_sorted_revisions)
     else:
+        # TODO(jelmer): Only look up the revision ids that we need (i.e. those
+        # in revision_ids). Possibly add a HPSS call that can look those up
+        # in bulk over HPSS.
         revision_id_to_revno = branch.get_revision_id_to_revno_map()
     last_origin = None
-    revision_ids = set(o for o, t in annotations)
     revisions = {}
     if CURRENT_REVISION in revision_ids:
         revision_id_to_revno[CURRENT_REVISION] = (
             "%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
-    revision_ids = [o for o in revision_ids if
-                    repository.has_revision(o)]
-    revisions.update((r.revision_id, r) for r in
-                     repository.get_revisions(revision_ids))
+    revisions.update(
+            entry for entry in
+            repository.iter_revisions(revision_ids)
+            if entry[1] is not None)
     for origin, text in annotations:
-        text = text.rstrip('\r\n')
+        text = text.rstrip(b'\r\n')
         if origin == last_origin:
-            (revno_str, author, date_str) = ('','','')
+            (revno_str, author, date_str) = ('', '', '')
         else:
             last_origin = origin
             if origin not in revisions:
-                (revno_str, author, date_str) = ('?','?','?')
+                (revno_str, author, date_str) = ('?', '?', '?')
             else:
                 revno_str = '.'.join(str(i) for i in
                                             revision_id_to_revno[origin])
             rev = revisions[origin]
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d',
-                                     osutils.gmtime(rev.timestamp + tz))
+                                     time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
             author = rev.get_apparent_authors()[0]
             try:
                 author = extract_email_address(author)
-            except errors.NoEmailInUsername:
+            except NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
 
@@ -339,7 +349,7 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
     output_extend = output_lines.extend
     output_append = output_lines.append
     # We need to see if any of the unannotated lines match
-    plain_right_subset = [l for a,l in right_lines[start_right:end_right]]
+    plain_right_subset = [l for a, l in right_lines[start_right:end_right]]
     plain_child_subset = plain_child_lines[start_child:end_child]
     match_blocks = _get_matching_blocks(plain_right_subset, plain_child_subset)
 

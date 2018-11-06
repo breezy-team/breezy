@@ -21,10 +21,6 @@ from breezy import (
     bugtracker,
     revision,
     )
-from breezy.errors import (
-    InvalidBugStatus,
-    InvalidLineInBugsProperty,
-    )
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.tests.matchers import MatchesAncestry
@@ -58,24 +54,24 @@ def make_branches(self, format=None):
     tree1 = self.make_branch_and_tree("branch1", format=format)
     br1 = tree1.branch
 
-    tree1.commit("Commit one", rev_id="a@u-0-0")
-    tree1.commit("Commit two", rev_id="a@u-0-1")
-    tree1.commit("Commit three", rev_id="a@u-0-2")
+    tree1.commit("Commit one", rev_id=b"a@u-0-0")
+    tree1.commit("Commit two", rev_id=b"a@u-0-1")
+    tree1.commit("Commit three", rev_id=b"a@u-0-2")
 
     tree2 = tree1.controldir.sprout("branch2").open_workingtree()
     br2 = tree2.branch
-    tree2.commit("Commit four", rev_id="b@u-0-3")
-    tree2.commit("Commit five", rev_id="b@u-0-4")
-    self.assertEqual(br2.last_revision(), 'b@u-0-4')
+    tree2.commit("Commit four", rev_id=b"b@u-0-3")
+    tree2.commit("Commit five", rev_id=b"b@u-0-4")
+    self.assertEqual(br2.last_revision(), b'b@u-0-4')
 
     tree1.merge_from_branch(br2)
-    tree1.commit("Commit six", rev_id="a@u-0-3")
-    tree1.commit("Commit seven", rev_id="a@u-0-4")
-    tree2.commit("Commit eight", rev_id="b@u-0-5")
-    self.assertEqual(br2.last_revision(), 'b@u-0-5')
+    tree1.commit("Commit six", rev_id=b"a@u-0-3")
+    tree1.commit("Commit seven", rev_id=b"a@u-0-4")
+    tree2.commit("Commit eight", rev_id=b"b@u-0-5")
+    self.assertEqual(br2.last_revision(), b'b@u-0-5')
 
     tree1.merge_from_branch(br2)
-    tree1.commit("Commit nine", rev_id="a@u-0-5")
+    tree1.commit("Commit nine", rev_id=b"a@u-0-5")
     # DO NOT MERGE HERE - we WANT a GHOST.
     br1.lock_read()
     try:
@@ -86,7 +82,7 @@ def make_branches(self, format=None):
     finally:
         br1.unlock()
     tree2.add_parent_tree_id(revhistory[4])
-    tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
+    tree2.commit("Commit ten - ghost merge", rev_id=b"b@u-0-6")
 
     return br1, br2
 
@@ -96,27 +92,27 @@ class TestIsAncestor(TestCaseWithTransport):
     def test_recorded_ancestry(self):
         """Test that commit records all ancestors"""
         br1, br2 = make_branches(self)
-        d = [('a@u-0-0', ['a@u-0-0']),
-             ('a@u-0-1', ['a@u-0-0', 'a@u-0-1']),
-             ('a@u-0-2', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2']),
-             ('b@u-0-3', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3']),
-             ('b@u-0-4', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3',
-                          'b@u-0-4']),
-             ('a@u-0-3', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4',
-                          'a@u-0-3']),
-             ('a@u-0-4', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4',
-                          'a@u-0-3', 'a@u-0-4']),
-             ('b@u-0-5', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'b@u-0-3', 'b@u-0-4',
-                          'b@u-0-5']),
-             ('a@u-0-5', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-3', 'a@u-0-4',
-                          'b@u-0-3', 'b@u-0-4',
-                          'b@u-0-5', 'a@u-0-5']),
-             ('b@u-0-6', ['a@u-0-0', 'a@u-0-1', 'a@u-0-2', 'a@u-0-4',
-                          'b@u-0-3', 'b@u-0-4',
-                          'b@u-0-5', 'b@u-0-6']),
+        d = [(b'a@u-0-0', [b'a@u-0-0']),
+             (b'a@u-0-1', [b'a@u-0-0', b'a@u-0-1']),
+             (b'a@u-0-2', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2']),
+             (b'b@u-0-3', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3']),
+             (b'b@u-0-4', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3',
+                           b'b@u-0-4']),
+             (b'a@u-0-3', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
+                           b'a@u-0-3']),
+             (b'a@u-0-4', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
+                           b'a@u-0-3', b'a@u-0-4']),
+             (b'b@u-0-5', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'b@u-0-3', b'b@u-0-4',
+                           b'b@u-0-5']),
+             (b'a@u-0-5', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'a@u-0-3', b'a@u-0-4',
+                           b'b@u-0-3', b'b@u-0-4',
+                           b'b@u-0-5', b'a@u-0-5']),
+             (b'b@u-0-6', [b'a@u-0-0', b'a@u-0-1', b'a@u-0-2', b'a@u-0-4',
+                           b'b@u-0-3', b'b@u-0-4',
+                           b'b@u-0-5', b'b@u-0-6']),
              ]
-        br1_only = ('a@u-0-3', 'a@u-0-4', 'a@u-0-5')
-        br2_only = ('b@u-0-6',)
+        br1_only = (b'a@u-0-3', b'a@u-0-4', b'a@u-0-5')
+        br2_only = (b'b@u-0-6',)
         for branch in br1, br2:
             for rev_id, anc in d:
                 if rev_id in br1_only and not branch is br1:
@@ -134,15 +130,15 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         self.br1, self.br2 = make_branches(self)
         wt1 = self.br1.controldir.open_workingtree()
         wt2 = self.br2.controldir.open_workingtree()
-        wt2.commit("Commit eleven", rev_id="b@u-0-7")
-        wt2.commit("Commit twelve", rev_id="b@u-0-8")
-        wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
+        wt2.commit("Commit eleven", rev_id=b"b@u-0-7")
+        wt2.commit("Commit twelve", rev_id=b"b@u-0-8")
+        wt2.commit("Commit thirtteen", rev_id=b"b@u-0-9")
 
         wt1.merge_from_branch(self.br2)
-        wt1.commit("Commit fourtten", rev_id="a@u-0-6")
+        wt1.commit("Commit fourtten", rev_id=b"a@u-0-6")
 
         wt2.merge_from_branch(self.br1)
-        wt2.commit("Commit fifteen", rev_id="b@u-0-10")
+        wt2.commit("Commit fifteen", rev_id=b"b@u-0-10")
 
 
 class MockRevisionSource(object):
@@ -169,18 +165,18 @@ class TestCommonAncestor(TestCaseWithTransport):
         # indicator. i.e. NULL_REVISION
         # RBC 20060608
         tree = self.make_branch_and_tree('.')
-        tree.commit('1', rev_id = '1', allow_pointless=True)
-        tree.commit('2', rev_id = '2', allow_pointless=True)
-        tree.commit('3', rev_id = '3', allow_pointless=True)
-        rev = tree.branch.repository.get_revision('1')
+        tree.commit('1', rev_id=b'1', allow_pointless=True)
+        tree.commit('2', rev_id=b'2', allow_pointless=True)
+        tree.commit('3', rev_id=b'3', allow_pointless=True)
+        rev = tree.branch.repository.get_revision(b'1')
         history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, '1'], history)
-        rev = tree.branch.repository.get_revision('2')
+        self.assertEqual([None, b'1'], history)
+        rev = tree.branch.repository.get_revision(b'2')
         history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, '1', '2'], history)
-        rev = tree.branch.repository.get_revision('3')
+        self.assertEqual([None, b'1', b'2'], history)
+        rev = tree.branch.repository.get_revision(b'3')
         history = rev.get_history(tree.branch.repository)
-        self.assertEqual([None, '1', '2' ,'3'], history)
+        self.assertEqual([None, b'1', b'2', b'3'], history)
 
 
 class TestReservedId(TestCase):
@@ -189,10 +185,10 @@ class TestReservedId(TestCase):
         self.assertEqual(True, revision.is_reserved_id(NULL_REVISION))
         self.assertEqual(True, revision.is_reserved_id(
             revision.CURRENT_REVISION))
-        self.assertEqual(True, revision.is_reserved_id('arch:'))
-        self.assertEqual(False, revision.is_reserved_id('null'))
+        self.assertEqual(True, revision.is_reserved_id(b'arch:'))
+        self.assertEqual(False, revision.is_reserved_id(b'null'))
         self.assertEqual(False, revision.is_reserved_id(
-            'arch:a@example.com/c--b--v--r'))
+            b'arch:a@example.com/c--b--v--r'))
         self.assertEqual(False, revision.is_reserved_id(None))
 
 
@@ -213,9 +209,9 @@ class TestRevisionMethods(TestCase):
         r = revision.Revision('1')
         r.committer = 'A'
         self.assertEqual(['A'], r.get_apparent_authors())
-        r.properties['author'] = 'B'
+        r.properties[u'author'] = 'B'
         self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties['authors'] = 'C\nD'
+        r.properties[u'authors'] = 'C\nD'
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
 
     def test_get_apparent_authors_no_committer(self):
@@ -233,7 +229,7 @@ class TestRevisionBugs(TestCase):
     def test_some_bugs(self):
         r = revision.Revision(
             '1', properties={
-                'bugs': bugtracker.encode_fixes_bug_urls(
+                u'bugs': bugtracker.encode_fixes_bug_urls(
                     ['http://example.com/bugs/1',
                      'http://launchpad.net/bugs/1234'])})
         self.assertEqual(
@@ -243,15 +239,17 @@ class TestRevisionBugs(TestCase):
 
     def test_no_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1'})
-        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+            '1', properties={u'bugs': 'http://example.com/bugs/1'})
+        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
+                r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
-        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+            '1', properties={u'bugs': 'http://example.com/bugs/1 fixed bar'})
+        self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
+                r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(
-            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
-        self.assertRaises(InvalidBugStatus, list, r.iter_bugs())
+            '1', properties={u'bugs': 'http://example.com/bugs/1 faxed'})
+        self.assertRaises(bugtracker.InvalidBugStatus, list, r.iter_bugs())

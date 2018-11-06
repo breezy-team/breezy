@@ -33,7 +33,7 @@ from ... import (
 from ...bzr import (
     serializer,
     )
-from ...bzr.bzrdir import (
+from ...bzr import (
     BzrProber,
     register_metadir,
     )
@@ -43,12 +43,12 @@ from ...bzr.bzrdir import (
 # disk format string as a key for the network_name because they meet the
 # constraints (simple string, unique, immutable).
 _mod_repository.network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 5\n",
+    b"Bazaar-NG branch, format 5\n",
     'breezy.plugins.weave_fmt.repository',
     'RepositoryFormat5',
 )
 _mod_repository.network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 6\n",
+    b"Bazaar-NG branch, format 6\n",
     'breezy.plugins.weave_fmt.repository',
     'RepositoryFormat6',
 )
@@ -60,7 +60,7 @@ _mod_repository.network_format_registry.register_lazy(
 # the repository is not separately opened are similar.
 
 _mod_repository.format_registry.register_lazy(
-    'Bazaar-NG Repository format 7',
+    b'Bazaar-NG Repository format 7',
     'breezy.plugins.weave_fmt.repository',
     'RepositoryFormat7'
     )
@@ -95,20 +95,20 @@ register_metadir(controldir.format_registry, 'metaweave',
 
 
 BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 0.0.4\n", "breezy.plugins.weave_fmt.bzrdir",
+    b"Bazaar-NG branch, format 0.0.4\n", "breezy.plugins.weave_fmt.bzrdir",
     "BzrDirFormat4")
 BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 5\n", "breezy.plugins.weave_fmt.bzrdir",
+    b"Bazaar-NG branch, format 5\n", "breezy.plugins.weave_fmt.bzrdir",
     "BzrDirFormat5")
 BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 6\n", "breezy.plugins.weave_fmt.bzrdir",
+    b"Bazaar-NG branch, format 6\n", "breezy.plugins.weave_fmt.bzrdir",
     "BzrDirFormat6")
 
 
 _mod_branch.format_registry.register_extra_lazy(
     'breezy.plugins.weave_fmt.branch', 'BzrBranchFormat4')
 _mod_branch.network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 6\n",
+    b"Bazaar-NG branch, format 6\n",
     'breezy.plugins.weave_fmt.branch', "BzrBranchFormat4")
 
 

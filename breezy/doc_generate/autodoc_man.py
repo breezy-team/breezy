@@ -31,7 +31,6 @@ import breezy
 import breezy.help
 import breezy.help_topics
 import breezy.commands
-import breezy.osutils
 from breezy.doc_generate import get_autodoc_datetime
 
 from breezy.plugin import load_plugins
@@ -62,10 +61,10 @@ def infogen(options, outfile):
 
 def man_escape(string):
     """Escapes strings for man page compatibility"""
-    result = string.replace("\\","\\\\")
-    result = result.replace("`","\\'")
-    result = result.replace("'","\\*(Aq")
-    result = result.replace("-","\\-")
+    result = string.replace("\\", "\\\\")
+    result = result.replace("`", "\\'")
+    result = result.replace("'", "\\*(Aq")
+    result = result.replace("-", "\\-")
     return result
 
 
@@ -225,7 +224,7 @@ helps people work together in a team.
 man_foot = """\
 .SH "FILES"
 .TP
-.I "~/.bazaar/bazaar.conf"
+.I "~/.config/breezy/breezy.conf"
 Contains the user's default configuration. The section
 .B [DEFAULT]
 is used to define general configuration that will be applied everywhere.

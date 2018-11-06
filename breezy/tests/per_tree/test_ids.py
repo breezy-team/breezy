@@ -16,29 +16,32 @@
 
 from breezy import (
     errors,
-)
+    tests,
+    )
 from breezy.tests.per_tree import TestCaseWithTree
 
 
-class IdTests(TestCaseWithTree):
+class Path2IdTests(TestCaseWithTree):
 
     def setUp(self):
-        super(IdTests, self).setUp()
+        super(Path2IdTests, self).setUp()
         work_a = self.make_branch_and_tree('wta')
+        if not work_a.supports_setting_file_ids():
+            self.skipTest("working tree does not support setting file ids")
         self.build_tree(['wta/bla', 'wta/dir/', 'wta/dir/file'])
-        work_a.add(['bla', 'dir', 'dir/file'], ['bla-id', 'dir-id', 'file-id'])
+        work_a.add(['bla', 'dir', 'dir/file'], [b'bla-id', b'dir-id', b'file-id'])
         work_a.commit('add files')
         self.tree_a = self.workingtree_to_test_tree(work_a)
 
     def test_path2id(self):
-        self.assertEqual('bla-id', self.tree_a.path2id('bla'))
-        self.assertEqual('dir-id', self.tree_a.path2id('dir'))
+        self.assertEqual(b'bla-id', self.tree_a.path2id('bla'))
+        self.assertEqual(b'dir-id', self.tree_a.path2id('dir'))
         self.assertIs(None, self.tree_a.path2id('idontexist'))
 
     def test_path2id_list(self):
-        self.assertEqual('bla-id', self.tree_a.path2id(['bla']))
-        self.assertEqual('dir-id', self.tree_a.path2id(['dir']))
-        self.assertEqual('file-id', self.tree_a.path2id(['dir', 'file']))
+        self.assertEqual(b'bla-id', self.tree_a.path2id(['bla']))
+        self.assertEqual(b'dir-id', self.tree_a.path2id(['dir']))
+        self.assertEqual(b'file-id', self.tree_a.path2id(['dir', 'file']))
         self.assertEqual(self.tree_a.get_root_id(),
                          self.tree_a.path2id([]))
         self.assertIs(None, self.tree_a.path2id(['idontexist']))
@@ -46,7 +49,37 @@ class IdTests(TestCaseWithTree):
 
     def test_id2path(self):
         self.addCleanup(self.tree_a.lock_read().unlock)
-        self.assertEqual('bla', self.tree_a.id2path('bla-id'))
-        self.assertEqual('dir', self.tree_a.id2path('dir-id'))
-        self.assertEqual('dir/file', self.tree_a.id2path('file-id'))
-        self.assertRaises(errors.NoSuchId, self.tree_a.id2path, 'nonexistant')
+        self.assertEqual('bla', self.tree_a.id2path(b'bla-id'))
+        self.assertEqual('dir', self.tree_a.id2path(b'dir-id'))
+        self.assertEqual('dir/file', self.tree_a.id2path(b'file-id'))
+        self.assertRaises(errors.NoSuchId, self.tree_a.id2path, b'nonexistant')
+
+class Path2IdsTests(TestCaseWithTree):
+
+    def test_paths2ids_recursive(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        if not work_tree.supports_setting_file_ids():
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual({tree.path2id('dir'), tree.path2id('dir/file')},
+                         tree.paths2ids(['dir']))
+
+    def test_paths2ids_forget_old(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file')
+        work_tree.commit('commit old state')
+        work_tree.remove('file')
+        if not work_tree.supports_setting_file_ids():
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set([]), tree.paths2ids(['file'],
+                         require_versioned=False))

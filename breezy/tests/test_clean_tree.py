@@ -57,28 +57,25 @@ class TestCleanTree(TestCaseInTempDir):
         os.mkdir('branch')
         tree = ControlDir.create_standalone_workingtree('branch')
         transport = tree.controldir.root_transport
-        transport.put_bytes('.bzrignore', '*~\n*.pyc\n.bzrignore\n')
-        transport.put_bytes('file.BASE', 'contents')
-        tree.lock_write()
-        try:
+        transport.put_bytes('.bzrignore', b'*~\n*.pyc\n.bzrignore\n')
+        transport.put_bytes('file.BASE', b'contents')
+        with tree.lock_write():
             self.assertEqual(len(list(iter_deletables(tree, unknown=True))), 1)
-            transport.put_bytes('file', 'contents')
-            transport.put_bytes('file~', 'contents')
-            transport.put_bytes('file.pyc', 'contents')
-            dels = sorted([r for a,r in iter_deletables(tree, unknown=True)])
+            transport.put_bytes('file', b'contents')
+            transport.put_bytes('file~', b'contents')
+            transport.put_bytes('file.pyc', b'contents')
+            dels = sorted([r for a, r in iter_deletables(tree, unknown=True)])
             self.assertEqual(['file', 'file.BASE'], dels)
 
-            dels = [r for a,r in iter_deletables(tree, detritus=True)]
+            dels = [r for a, r in iter_deletables(tree, detritus=True)]
             self.assertEqual(sorted(['file~', 'file.BASE']), dels)
 
-            dels = [r for a,r in iter_deletables(tree, ignored=True)]
+            dels = [r for a, r in iter_deletables(tree, ignored=True)]
             self.assertEqual(sorted(['file~', 'file.pyc', '.bzrignore']),
                              dels)
 
-            dels = [r for a,r in iter_deletables(tree, unknown=False)]
+            dels = [r for a, r in iter_deletables(tree, unknown=False)]
             self.assertEqual([], dels)
-        finally:
-            tree.unlock()
 
     def test_delete_items_warnings(self):
         """Ensure delete_items issues warnings on EACCES. (bug #430785)

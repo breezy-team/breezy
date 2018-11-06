@@ -37,13 +37,13 @@ class TestVerifySignatures(tests.TestCaseWithTransport):
 
     def setup_tree(self, location='.'):
         wt = self.make_branch_and_tree(location)
-        wt.commit("base A", allow_pointless=True, rev_id='A')
-        wt.commit("base B", allow_pointless=True, rev_id='B')
-        wt.commit("base C", allow_pointless=True, rev_id='C')
-        wt.commit("base D", allow_pointless=True, rev_id='D',
+        wt.commit("base A", allow_pointless=True, rev_id=b'A')
+        wt.commit("base B", allow_pointless=True, rev_id=b'B')
+        wt.commit("base C", allow_pointless=True, rev_id=b'C')
+        wt.commit("base D", allow_pointless=True, rev_id=b'D',
                 committer='Alternate <alt@foo.com>')
-        wt.add_parent_tree_id("aghost")
-        wt.commit("base E", allow_pointless=True, rev_id='E')
+        wt.add_parent_tree_id(b"aghost")
+        wt.commit("base E", allow_pointless=True, rev_id=b'E')
         return wt
 
     def test_verify_signatures(self):
@@ -107,7 +107,7 @@ class TestSmartServerVerifySignatures(tests.TestCaseWithTransport):
     def test_verify_signatures(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.monkey_patch_gpg()

@@ -19,9 +19,28 @@
 """Black-box tests for 'brz shell-complete'."""
 
 from breezy.tests import TestCaseWithTransport
+from breezy.sixish import PY3
 
 
-class TestShellComplete(TestCaseWithTransport):
+class ShellCompleteTests(TestCaseWithTransport):
 
-    def test_shell_complete(self):
-        self.run_bzr("shell-complete")
+    def test_list(self):
+        out, err = self.run_bzr('shell-complete')
+        self.assertEqual('', err)
+        self.assertIn("version:show version of brz\n", out)
+
+    def test_specific_command_missing(self):
+        out, err = self.run_bzr('shell-complete missing-command', retcode=3)
+        self.assertEqual('brz: ERROR: unknown command "missing-command"\n', err)
+        self.assertEqual('', out)
+
+    def test_specific_command(self):
+        out, err = self.run_bzr('shell-complete shell-complete')
+        self.assertEqual('', err)
+        self.assertEqual("""\
+"(--help -h)"{--help,-h}
+"(--quiet -q)"{--quiet,-q}
+"(--verbose -v)"{--verbose,-v}
+--usage
+context?
+""".splitlines(), sorted(out.splitlines()))

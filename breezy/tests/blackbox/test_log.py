@@ -17,6 +17,9 @@
 
 """Black-box tests for brz log."""
 
+from __future__ import absolute_import
+
+
 import os
 
 from breezy import (
@@ -26,6 +29,7 @@ from breezy import (
     osutils,
     tests,
     )
+from breezy.sixish import PY3
 from breezy.tests import (
     test_log,
     features,
@@ -210,29 +214,31 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # 6
 
         # mainline
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', ''))],
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [], revision_id=b'2')
         # branch
-        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
         # merge branch into mainline
-        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        builder.build_snapshot([b'2', b'1.1.1'], [], revision_id=b'3')
         # new commits in branch
-        builder.build_snapshot('1.1.2', ['1.1.1'], [])
-        builder.build_snapshot('1.1.3', ['1.1.2'], [])
+        builder.build_snapshot([b'1.1.1'], [], revision_id=b'1.1.2')
+        builder.build_snapshot([b'1.1.2'], [], revision_id=b'1.1.3')
         # merge branch into mainline
-        builder.build_snapshot('4', ['3', '1.1.3'], [])
+        builder.build_snapshot([b'3', b'1.1.3'], [], revision_id=b'4')
         # merge mainline into branch
-        builder.build_snapshot('1.1.4', ['1.1.3', '4'], [])
+        builder.build_snapshot([b'1.1.3', b'4'], [], revision_id=b'1.1.4')
         # merge branch into mainline
-        builder.build_snapshot('5', ['4', '1.1.4'], [])
-        builder.build_snapshot('5.1.1', ['5'], [])
-        builder.build_snapshot('6', ['5', '5.1.1'], [])
+        builder.build_snapshot([b'4', b'1.1.4'], [], revision_id=b'5')
+        builder.build_snapshot([b'5'], [], revision_id=b'5.1.1')
+        builder.build_snapshot([b'5', b'5.1.1'], [], revision_id=b'6')
         builder.finish_series()
 
     def test_n0(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4'],
                              ['1.1.4', '4', '1.1.3', '1.1.2', '3', '1.1.1'])
+
     def test_n0_forward(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4', '--forward'],
                              ['3', '1.1.1', '4', '1.1.2', '1.1.3', '1.1.4'])
@@ -281,17 +287,17 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         # 4        /
         # |       /
         # 5 -----/
-        builder.build_snapshot('1', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('2', ['1'], [])
-        builder.build_snapshot('1.1.1', ['1'], [])
-        builder.build_snapshot('2.1.1', ['2'], [])
-        builder.build_snapshot('3', ['2', '1.1.1'], [])
-        builder.build_snapshot('2.1.2', ['2.1.1'], [])
-        builder.build_snapshot('2.2.1', ['2.1.1'], [])
-        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
-        builder.build_snapshot('4', ['3', '2.1.3'], [])
-        builder.build_snapshot('5', ['4', '2.1.2'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', ''))], revision_id=b'1')
+        builder.build_snapshot([b'1'], [], revision_id=b'2')
+        builder.build_snapshot([b'1'], [], revision_id=b'1.1.1')
+        builder.build_snapshot([b'2'], [], revision_id=b'2.1.1')
+        builder.build_snapshot([b'2', b'1.1.1'], [], revision_id=b'3')
+        builder.build_snapshot([b'2.1.1'], [], revision_id=b'2.1.2')
+        builder.build_snapshot([b'2.1.1'], [], revision_id=b'2.2.1')
+        builder.build_snapshot([b'2.1.2', b'2.2.1'], [], revision_id=b'2.1.3')
+        builder.build_snapshot([b'3', b'2.1.3'], [], revision_id=b'4')
+        builder.build_snapshot([b'4', b'2.1.2'], [], revision_id=b'5')
         builder.finish_series()
         return builder
 
@@ -325,14 +331,14 @@ class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
     def test_log_revno_n_path_correct_order(self):
         self.make_linear_branch('branch2')
         self.assertLogRevnos(['-rrevno:1:branch2..revno:3:branch2'],
-                             ['3', '2','1'])
+                             ['3', '2', '1'])
 
     def test_log_revno_n_path(self):
         self.make_linear_branch('branch2')
         self.assertLogRevnos(['-rrevno:1:branch2'],
                              ['1'])
         rev_props = self.log_catcher.revisions[0].rev.properties
-        self.assertEqual('branch2', rev_props['branch-nick'])
+        self.assertEqual('branch2', rev_props[u'branch-nick'])
 
 
 class TestLogErrors(TestLog):
@@ -379,12 +385,12 @@ class TestLogErrors(TestLog):
     def test_log_change_single_revno_only(self):
         self.make_minimal_branch()
         self.run_bzr_error(['brz: ERROR: Option --change does not'
-                           ' accept revision ranges'],
+                            ' accept revision ranges'],
                            ['log', '--change', '2..3'])
 
     def test_log_change_incompatible_with_revision(self):
         self.run_bzr_error(['brz: ERROR: --revision and --change'
-                           ' are mutually exclusive'],
+                            ' are mutually exclusive'],
                            ['log', '--change', '2', '--revision', '3'])
 
     def test_log_nonexistent_file(self):
@@ -474,7 +480,7 @@ class TestLogTags(TestLog):
 class TestLogSignatures(TestLog):
 
     def test_log_with_signatures(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
 
         tree = self.make_linear_branch(format='dirstate-tags')
 
@@ -482,7 +488,7 @@ class TestLogSignatures(TestLog):
         self.assertTrue('signature: no signature' in log)
 
     def test_log_without_signatures(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
 
         tree = self.make_linear_branch(format='dirstate-tags')
 
@@ -499,14 +505,14 @@ class TestLogVerbose(TestLog):
     def assertUseShortDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the short status format
-        self.assertContainsRe(log, '(?m)^\s*A  hello.txt$')
-        self.assertNotContainsRe(log, '(?m)^\s*added:$')
+        self.assertContainsRe(log, '(?m)^\\s*A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^\\s*added:$')
 
     def assertUseLongDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the long status format
-        self.assertNotContainsRe(log, '(?m)^\s*A  hello.txt$')
-        self.assertContainsRe(log, '(?m)^\s*added:$')
+        self.assertNotContainsRe(log, '(?m)^\\s*A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^\\s*added:$')
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
@@ -620,13 +626,13 @@ class TestLogDiff(TestLogWithLogCatcher):
         self.wt_commit(level0, 'in branch level0')
 
         level1 = level0.controldir.sprout('level1').open_workingtree()
-        self.build_tree_contents([('level1/file2', 'hello\n')])
+        self.build_tree_contents([('level1/file2', b'hello\n')])
         self.wt_commit(level1, 'in branch level1')
         level0.merge_from_branch(level1.branch)
         self.wt_commit(level0, 'merge branch level1')
 
     def _diff_file1_revno1(self):
-        return """=== added file 'file1'
+        return b"""=== added file 'file1'
 --- file1\t1970-01-01 00:00:00 +0000
 +++ file1\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
@@ -635,7 +641,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno2(self):
-        return """=== modified file 'file2'
+        return b"""=== modified file 'file2'
 --- file2\t2005-11-22 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
@@ -645,7 +651,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno1_1_1(self):
-        return """=== modified file 'file2'
+        return b"""=== modified file 'file2'
 --- file2\t2005-11-22 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
@@ -655,7 +661,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def _diff_file2_revno1(self):
-        return """=== added file 'file2'
+        return b"""=== added file 'file2'
 --- file2\t1970-01-01 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
@@ -708,20 +714,20 @@ class TestLogUnicodeDiff(TestLog):
     def test_log_show_diff_non_ascii(self):
         # Smoke test for bug #328007 UnicodeDecodeError on 'log -p'
         message = u'Message with \xb5'
-        body = 'Body with \xb5\n'
+        body = b'Body with \xb5\n'
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo', body)])
         wt.add('foo')
         wt.commit(message=message)
         # check that command won't fail with unicode error
         # don't care about exact output because we have other tests for this
-        out,err = self.run_bzr('log -p --long')
+        out, err = self.run_bzr('log -p --long')
         self.assertNotEqual('', out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('log -p --short')
+        out, err = self.run_bzr('log -p --short')
         self.assertNotEqual('', out)
         self.assertEqual('', err)
-        out,err = self.run_bzr('log -p --line')
+        out, err = self.run_bzr('log -p --line')
         self.assertNotEqual('', out)
         self.assertEqual('', err)
 
@@ -754,7 +760,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
     def create_branch(self):
         brz = self.run_bzr
         brz('init')
-        self.build_tree_contents([('a', 'some stuff\n')])
+        self.build_tree_contents([('a', b'some stuff\n')])
         brz('add a')
         brz(['commit', '-m', self._message])
 
@@ -777,8 +783,11 @@ class TestLogEncodings(tests.TestCaseInTempDir):
             out, err = brz('log', encoding=encoding)
             if not fail:
                 # Make sure we wrote mu as we expected it to exist
-                self.assertNotEqual(-1, out.find(encoded_msg))
-                out_unicode = out.decode(encoding)
+                if not PY3:
+                    self.assertNotEqual(-1, out.find(encoded_msg))
+                    out_unicode = out.decode(encoding)
+                else:
+                    out_unicode = out
                 self.assertNotEqual(-1, out_unicode.find(self._message))
             else:
                 self.assertNotEqual(-1, out.find('Message with ?'))
@@ -805,7 +814,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         self.build_tree(['a'])
         brz('add a')
         brz(['commit', '-m', u'\u0422\u0435\u0441\u0442'])
-        stdout, stderr = self.run_bzr('log', encoding='cp866')
+        stdout, stderr = self.run_bzr_raw('log', encoding='cp866')
 
         message = stdout.splitlines()[-1]
 
@@ -815,8 +824,8 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         # in cp1251 encoding this is string '\xd2\xe5\xf1\xf2'
         # This test should check that output of log command
         # encoded to sys.stdout.encoding
-        test_in_cp866 = '\x92\xa5\xe1\xe2'
-        test_in_cp1251 = '\xd2\xe5\xf1\xf2'
+        test_in_cp866 = b'\x92\xa5\xe1\xe2'
+        test_in_cp1251 = b'\xd2\xe5\xf1\xf2'
         # Make sure the log string is encoded in cp866
         self.assertEqual(test_in_cp866, message[2:])
         # Make sure the cp1251 string is not found anywhere
@@ -845,7 +854,7 @@ class TestLogFile(TestLogWithLogCatcher):
         tree.add('file3')
         tree.commit('add file3')
         child_tree = tree.controldir.sprout('child').open_workingtree()
-        self.build_tree_contents([('child/file2', 'hello')])
+        self.build_tree_contents([('child/file2', b'hello')])
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
@@ -938,7 +947,7 @@ class TestLogMultiple(TestLogWithLogCatcher):
         tree.add('dir1/file5')
         tree.commit('add file5')
         child_tree = tree.controldir.sprout('child').open_workingtree()
-        self.build_tree_contents([('child/file2', 'hello')])
+        self.build_tree_contents([('child/file2', b'hello')])
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
@@ -983,10 +992,10 @@ class MainlineGhostTests(TestLogWithLogCatcher):
     def setUp(self):
         super(MainlineGhostTests, self).setUp()
         tree = self.make_branch_and_tree('')
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
-        tree.commit('msg1', rev_id='rev1')
-        tree.commit('msg2', rev_id='rev2')
+        tree.commit('msg1', rev_id=b'rev1')
+        tree.commit('msg2', rev_id=b'rev2')
 
     def test_log_range(self):
         self.assertLogRevnos(["-r1..2"], ["2", "1"])
@@ -995,16 +1004,18 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
-        self.knownFailure("log with ghosts fails. bug #726466")
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
-        self.assertEqual("brz: ERROR: Further revision history missing.", stderr)
+        self.assertEqual("brz: ERROR: Further revision history missing.\n",
+                stderr)
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])
 
+
 class TestLogMatch(TestLogWithLogCatcher):
+
     def prepare_tree(self):
         tree = self.make_branch_and_tree('')
         self.build_tree(
@@ -1013,7 +1024,7 @@ class TestLogMatch(TestLogWithLogCatcher):
         tree.commit(message='message1', committer='committer1', authors=['author1'])
         tree.add('goodbye.txt')
         tree.commit(message='message2', committer='committer2', authors=['author2'])
-    
+
     def test_message(self):
         self.prepare_tree()
         self.assertLogRevnos(["-m", "message1"], ["1"])
@@ -1065,7 +1076,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
     def test_standard_log(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
@@ -1082,7 +1093,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
     def test_verbose_log(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
@@ -1099,7 +1110,7 @@ class TestSmartServerLog(tests.TestCaseWithTransport):
     def test_per_file(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

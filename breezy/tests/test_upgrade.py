@@ -44,7 +44,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_branch5_branch6(self):
         b = self.make_branch('branch', format='knit')
-        b._set_revision_history(['CD'])
+        b._set_revision_history([b'CD'])
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
@@ -53,7 +53,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         converter.convert(b.controldir, None)
         new_branch = branch.Branch.open(self.get_url('branch'))
         self.assertIs(new_branch.__class__, bzrbranch.BzrBranch6)
-        self.assertEqual('CD', new_branch.last_revision())
+        self.assertEqual(b'CD', new_branch.last_revision())
         self.assertEqual('file:///EF', new_branch.get_parent())
         self.assertEqual('file:///GH', new_branch.get_bound_location())
         branch_config = new_branch.get_config_stack()
@@ -83,20 +83,20 @@ class TestUpgrade(tests.TestCaseWithTransport):
         converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
-        self.assertEqual('null:', new_tree.last_revision())
+        self.assertEqual(b'null:', new_tree.last_revision())
 
     def test_convert_knit_dirstate_content(self):
         # smoke test for dirstate conversion: we call dirstate primitives,
         # and its there that the core logic is tested.
         tree = self.make_branch_and_tree('tree', format='knit')
         self.build_tree(['tree/file'])
-        tree.add(['file'], ['file-id'])
+        tree.add(['file'], [b'file-id'])
         target = controldir.format_registry.make_controldir('dirstate')
         converter = tree.controldir._format.get_converter(target)
         converter.convert(tree.controldir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
-        self.assertEqual('null:', new_tree.last_revision())
+        self.assertEqual(b'null:', new_tree.last_revision())
 
     def test_convert_knit_one_parent_dirstate(self):
         # test that asking for an upgrade from knit to dirstate works.

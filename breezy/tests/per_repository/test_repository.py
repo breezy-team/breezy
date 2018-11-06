@@ -20,6 +20,7 @@ import re
 
 from ... import (
     branch as _mod_branch,
+    commit,
     controldir,
     delta as _mod_delta,
     errors,
@@ -43,6 +44,8 @@ from ...bzr import (
     )
 from ...sixish import (
     BytesIO,
+    text_type,
+    unichr,
     )
 from .. import (
     per_repository,
@@ -68,7 +71,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def assertFormatAttribute(self, attribute, allowed_values):
         """Assert that the format has an attribute 'attribute'."""
         repo = self.make_repository('repo')
-        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+        self.assertIn(getattr(repo._format, attribute), allowed_values)
 
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
@@ -113,13 +116,45 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('revision_graph_can_have_wrong_parents',
             (True, False))
 
+    def test_attribute_format_supports_setting_revision_ids(self):
+        self.assertFormatAttribute('supports_setting_revision_ids',
+            (True, False))
+
+    def test_attribute_format_supports_storing_branch_nick(self):
+        self.assertFormatAttribute('supports_storing_branch_nick',
+            (True, False))
+
+    def test_attribute_format_supports_custom_revision_properties(self):
+        self.assertFormatAttribute(
+                'supports_custom_revision_properties',
+                (True, False))
+
+    def test_attribute_format_supports_overriding_transport(self):
+        repo = self.make_repository('repo')
+        self.assertIn(repo._format.supports_overriding_transport, (True, False))
+
+        repo.control_transport.copy_tree('.', '../repository.backup')
+        backup_transport = repo.control_transport.clone('../repository.backup')
+        if repo._format.supports_overriding_transport:
+            backup = repo._format.open(
+                    repo.controldir,
+                    _override_transport=backup_transport)
+            self.assertIs(backup_transport, backup.control_transport)
+        else:
+            self.assertRaises(TypeError, repo._format.open,
+                    repo.controldir, _override_transport=backup_transport)
+
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
-        self.assertSubset([repo._format.is_deprecated()], (True, False))
+        self.assertIn(repo._format.is_deprecated(), (True, False))
 
     def test_format_is_supported(self):
         repo = self.make_repository('repo')
-        self.assertSubset([repo._format.is_supported()], (True, False))
+        self.assertIn(repo._format.is_supported(), (True, False))
+
+    def test_attribute_format_records_per_file_revision(self):
+        self.assertFormatAttribute('records_per_file_revision',
+            (True, False))
 
     def test_clone_to_default_format(self):
         #TODO: Test that cloning a repository preserves all the information
@@ -127,15 +162,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # when changing to the current default format.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
+        tree_a.add('foo')
+        file_id = tree_a.path2id('foo')
+        rev1 = tree_a.commit('rev1')
         bzrdirb = self.make_controldir('b')
         repo_b = tree_a.branch.repository.clone(bzrdirb)
-        tree_b = repo_b.revision_tree('rev1')
+        tree_b = repo_b.revision_tree(rev1)
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
-        tree_b.get_file_text('file1')
-        rev1 = repo_b.get_revision('rev1')
+        tree_b.get_file_text('foo')
+        repo_b.get_revision(rev1)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
@@ -144,7 +180,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(second_revision)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        root_revision = rev_tree.get_file_revision(rev_tree.get_root_id())
+        root_revision = rev_tree.get_file_revision(u'', rev_tree.get_root_id())
         rich_root = (root_revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
@@ -187,9 +223,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(self.repository_format,
              bzrrepository.RepositoryFormatMetaDir.find_format(opened_control))
 
-    def test_format_matchingbzrdir(self):
+    def test_format_matchingcontroldir(self):
         self.assertEqual(self.repository_format,
-            self.repository_format._matchingbzrdir.repository_format)
+            self.repository_format._matchingcontroldir.repository_format)
         self.assertEqual(self.repository_format,
             self.bzrdir_format.repository_format)
 
@@ -197,7 +233,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         format = repo._format
         network_name = format.network_name()
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
         # We want to test that the network_name matches the actual format on
         # disk.  For local repositories, that means that using network_name as
         # a key in the registry gives back the same format.  For remote
@@ -224,7 +260,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
 
     def test_create_repository_shared(self):
@@ -243,22 +279,22 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # may only be shared in some circumstances.
             return
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(made_repo.is_shared())
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
-        wt.set_root_id('fixed-root')
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
-        tree = wt.branch.repository.revision_tree('revision-1')
+        rev1 = wt.commit('lala!', allow_pointless=True)
+        root_id = wt.path2id('')
+        tree = wt.branch.repository.revision_tree(rev1)
         tree.lock_read()
         try:
-            self.assertEqual('revision-1',
-                tree.get_file_revision(tree.get_root_id()))
-            expected = inventory.InventoryDirectory('fixed-root', '', None)
-            expected.revision = 'revision-1'
-            self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+            self.assertEqual(rev1,
+                tree.get_file_revision(u'', tree.get_root_id()))
+            expected = inventory.InventoryDirectory(root_id, '', None)
+            expected.revision = rev1
+            self.assertEqual([('', 'V', 'directory', root_id, expected)],
                              list(tree.list_files(include_root=True)))
         finally:
             tree.unlock()
@@ -273,18 +309,20 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
-        tree_a.add('foo', 'file1')
-        tree_a.commit('rev1', rev_id='rev1')
+        tree_a.add('foo')
+        file1_id = tree_a.path2id('foo')
+        rev1 = tree_a.commit('rev1')
         self.build_tree(['a/vla'])
-        tree_a.add('vla', 'file2')
-        tree_a.commit('rev2', rev_id='rev2')
+        tree_a.add('vla')
+        file2_id = tree_a.path2id('vla')
+        rev2 = tree_a.commit('rev2')
 
-        delta = tree_a.branch.repository.get_revision_delta('rev1')
+        delta = tree_a.branch.repository.get_revision_delta(rev1)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('foo', 'file1', 'file')], delta.added)
-        delta = tree_a.branch.repository.get_revision_delta('rev2')
+        self.assertEqual([('foo', file1_id, 'file')], delta.added)
+        delta = tree_a.branch.repository.get_revision_delta(rev2)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('vla', 'file2', 'file')], delta.added)
+        self.assertEqual([('vla', file2_id, 'file')], delta.added)
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
@@ -314,7 +352,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             return
         result = made_control.clone(self.get_url('target'))
         # Check that we have a repository object.
-        made_repo.has_revision('foo')
+        made_repo.has_revision(b'foo')
 
         self.assertEqual(made_control, made_repo.controldir)
         self.assertTrue(result.open_repository().is_shared())
@@ -325,18 +363,18 @@ class TestRepository(per_repository.TestCaseWithRepository):
             raise tests.TestNotApplicable(
                 "repository does not support signing revisions")
         wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
+        a = wt.commit('A', allow_pointless=True)
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
         try:
-            repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+            repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
             raise tests.TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
-        old_signature = repo.get_signature_text('A')
+        old_signature = repo.get_signature_text(a)
         try:
             old_format = controldir.ControlDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
@@ -350,7 +388,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         except errors.BadConversionTarget as e:
             raise tests.TestSkipped(str(e))
         wt = workingtree.WorkingTree.open(wt.basedir)
-        new_signature = wt.branch.repository.get_signature_text('A')
+        new_signature = wt.branch.repository.get_signature_text(a)
         self.assertEqual(old_signature, new_signature)
 
     def test_format_description(self):
@@ -360,28 +398,27 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_format_supports_external_lookups(self):
         repo = self.make_repository('.')
-        self.assertSubset(
-            [repo._format.supports_external_lookups], (True, False))
+        self.assertIn(repo._format.supports_external_lookups, (True, False))
 
     def assertMessageRoundtrips(self, message):
         """Assert that message roundtrips to a repository and back intact."""
         tree = self.make_branch_and_tree('.')
-        tree.commit(message, rev_id='a', allow_pointless=True)
-        rev = tree.branch.repository.get_revision('a')
+        a = tree.commit(message, allow_pointless=True)
+        rev = tree.branch.repository.get_revision(a)
         serializer = getattr(tree.branch.repository, "_serializer", None)
         if serializer is not None and serializer.squashes_xml_invalid_characters:
             # we have to manually escape this as we dont try to
             # roundtrip xml invalid characters in the xml-based serializers.
             escaped_message, escape_count = re.subn(
                 u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-                lambda match: match.group(0).encode('unicode_escape'),
+                lambda match: match.group(0).encode('unicode_escape').decode('ascii'),
                 message)
             self.assertEqual(rev.message, escaped_message)
         else:
             self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
-        self.assertIsInstance(rev.message, unicode)
+        self.assertIsInstance(rev.message, text_type)
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved
@@ -399,8 +436,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_check_repository(self):
         """Check a fairly simple repository's history"""
         tree = self.make_branch_and_tree('.')
-        tree.commit('initial empty commit', rev_id='a-rev',
-                    allow_pointless=True)
+        a_rev = tree.commit('initial empty commit', allow_pointless=True)
         result = tree.branch.repository.check()
         # writes to log; should accept both verbose or non-verbose
         result.report_results(verbose=True)
@@ -408,14 +444,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_get_revisions(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('initial empty commit', rev_id='a-rev',
-                    allow_pointless=True)
-        tree.commit('second empty commit', rev_id='b-rev',
-                    allow_pointless=True)
-        tree.commit('third empty commit', rev_id='c-rev',
-                    allow_pointless=True)
+        a_rev = tree.commit('initial empty commit', allow_pointless=True)
+        b_rev = tree.commit('second empty commit', allow_pointless=True)
+        c_rev = tree.commit('third empty commit', allow_pointless=True)
         repo = tree.branch.repository
-        revision_ids = ['a-rev', 'b-rev', 'c-rev']
+        revision_ids = [a_rev, b_rev, c_rev]
         revisions = repo.get_revisions(revision_ids)
         self.assertEqual(len(revisions), 3)
         zipped = list(zip(revisions, revision_ids))
@@ -424,18 +457,35 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
 
+    def test_iter_revisions(self):
+        tree = self.make_branch_and_tree('.')
+        a_rev = tree.commit('initial empty commit', allow_pointless=True)
+        b_rev = tree.commit('second empty commit', allow_pointless=True)
+        c_rev = tree.commit('third empty commit', allow_pointless=True)
+        d_rev = b'd-rev'
+        repo = tree.branch.repository
+        revision_ids = [a_rev, c_rev, b_rev, d_rev]
+        revid_with_rev = repo.iter_revisions(revision_ids)
+        self.assertEqual(
+            set((revid, rev.revision_id if rev is not None else None)
+                for (revid, rev) in revid_with_rev),
+            {(a_rev, a_rev),
+             (b_rev, b_rev),
+             (c_rev, c_rev),
+             (d_rev, None)})
+
     def test_root_entry_has_revision(self):
         tree = self.make_branch_and_tree('.')
-        tree.commit('message', rev_id='rev_id')
+        revid = tree.commit('message')
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         root_id = rev_tree.get_root_id()
-        self.assertEqual('rev_id', rev_tree.get_file_revision(root_id))
+        self.assertEqual(revid, rev_tree.get_file_revision(u'', root_id))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.PointlessCommit, tree.commit, 'pointless',
+        self.assertRaises(commit.PointlessCommit, tree.commit, 'pointless',
                           allow_pointless=False)
         tree.commit('pointless', allow_pointless=True)
 
@@ -449,30 +499,32 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/file1', 'foo'),
-                                  ('tree/file2', 'bar')])
-        tree.add(['file1', 'file2'], ['file1-id', 'file2-id'])
-        tree.commit('rev1', rev_id='rev1')
-        self.build_tree_contents([('tree/file1', 'baz')])
-        tree.commit('rev2', rev_id='rev2')
+        self.build_tree_contents([('tree/file1', b'foo'),
+                                  ('tree/file2', b'bar')])
+        tree.add(['file1', 'file2'])
+        file1_id = tree.path2id('file1')
+        file2_id = tree.path2id('file2')
+        rev1 = tree.commit('rev1')
+        self.build_tree_contents([('tree/file1', b'baz')])
+        rev2 = tree.commit('rev2')
         repository = tree.branch.repository
         repository.lock_read()
         self.addCleanup(repository.unlock)
-        extracted = dict((i, ''.join(b)) for i, b in
+        extracted = dict((i, b''.join(b)) for i, b in
                          repository.iter_files_bytes(
-                         [('file1-id', 'rev1', 'file1-old'),
-                          ('file1-id', 'rev2', 'file1-new'),
-                          ('file2-id', 'rev1', 'file2'),
+                         [(file1_id, rev1, 'file1-old'),
+                          (file1_id, rev2, 'file1-new'),
+                          (file2_id, rev1, 'file2'),
                          ]))
-        self.assertEqual('foo', extracted['file1-old'])
-        self.assertEqual('bar', extracted['file2'])
-        self.assertEqual('baz', extracted['file1-new'])
+        self.assertEqual(b'foo', extracted['file1-old'])
+        self.assertEqual(b'bar', extracted['file2'])
+        self.assertEqual(b'baz', extracted['file1-new'])
         self.assertRaises(errors.RevisionNotPresent, list,
                           repository.iter_files_bytes(
-                          [('file1-id', 'rev3', 'file1-notpresent')]))
+                          [(file1_id, b'rev3', 'file1-notpresent')]))
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
-                          [('file3-id', 'rev3', 'file1-notpresent')]))
+                          [(b'file3-id', b'rev3', 'file1-notpresent')]))
 
     def test_get_graph(self):
         """Bare-bones smoketest that all repositories implement get_graph."""
@@ -482,16 +534,18 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo.get_graph()
 
     def test_graph_ghost_handling(self):
+        if not self.repository_format.supports_ghosts:
+            raise tests.TestNotApplicable('format does not support ghosts')
         tree = self.make_branch_and_tree('here')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('initial commit', rev_id='rev1')
-        tree.add_parent_tree_id('ghost')
-        tree.commit('commit-with-ghost', rev_id='rev2')
+        rev1 = tree.commit('initial commit')
+        tree.add_parent_tree_id(b'ghost')
+        rev2 = tree.commit('commit-with-ghost')
         graph = tree.branch.repository.get_graph()
-        parents = graph.get_parent_map(['ghost', 'rev2'])
-        self.assertTrue('ghost' not in parents)
-        self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
+        parents = graph.get_parent_map([b'ghost', rev2])
+        self.assertTrue(b'ghost' not in parents)
+        self.assertEqual(parents[rev2], (rev1, b'ghost'))
 
     def test_get_known_graph_ancestry(self):
         tree = self.make_branch_and_tree('here')
@@ -502,25 +556,25 @@ class TestRepository(per_repository.TestCaseWithRepository):
         # | B
         # |/
         # C
-        tree.commit('initial commit', rev_id='A')
+        a = tree.commit('initial commit')
         tree_other = tree.controldir.sprout('there').open_workingtree()
-        tree_other.commit('another', rev_id='B')
+        b = tree_other.commit('another')
         tree.merge_from_branch(tree_other.branch)
-        tree.commit('another', rev_id='C')
+        c = tree.commit('another')
         kg = tree.branch.repository.get_known_graph_ancestry(
-            ['C'])
-        self.assertEqual(['C'], list(kg.heads(['A', 'B', 'C'])))
-        self.assertEqual(['A', 'B', 'C'], list(kg.topo_sort()))
+            [c])
+        self.assertEqual([c], list(kg.heads([a, b, c])))
+        self.assertEqual([a, b, c], list(kg.topo_sort()))
 
     def test_parent_map_type(self):
         tree = self.make_branch_and_tree('here')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('initial commit', rev_id='rev1')
-        tree.commit('next commit', rev_id='rev2')
+        rev1 = tree.commit('initial commit')
+        rev2 = tree.commit('next commit')
         graph = tree.branch.repository.get_graph()
         parents = graph.get_parent_map(
-            [_mod_revision.NULL_REVISION, 'rev1', 'rev2'])
+            [_mod_revision.NULL_REVISION, rev1, rev2])
         for value in parents.values():
             self.assertIsInstance(value, tuple)
 
@@ -545,24 +599,24 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_add_signature_text(self):
         builder = self.make_branch_builder('.')
         builder.start_series()
-        builder.build_snapshot('A', None, [
-            ('add', ('', 'root-id', 'directory', None))])
+        rev_a = builder.build_snapshot(None, [
+            ('add', ('', None, 'directory', None))])
         builder.finish_series()
         b = builder.get_branch()
         b.lock_write()
         self.addCleanup(b.unlock)
         if b.repository._format.supports_revision_signatures:
             b.repository.start_write_group()
-            b.repository.add_signature_text('A', 'This might be a signature')
+            b.repository.add_signature_text(rev_a, b'This might be a signature')
             b.repository.commit_write_group()
-            self.assertEqual('This might be a signature',
-                             b.repository.get_signature_text('A'))
+            self.assertEqual(b'This might be a signature',
+                             b.repository.get_signature_text(rev_a))
         else:
             b.repository.start_write_group()
             self.addCleanup(b.repository.abort_write_group)
             self.assertRaises(errors.UnsupportedOperation,
-                b.repository.add_signature_text, 'A',
-                'This might be a signature')
+                b.repository.add_signature_text, rev_a,
+                b'This might be a signature')
 
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=None):
@@ -671,7 +725,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                       knitpack_repo.RepositoryFormatKnitPack5RichRootBroken):
             raise tests.TestNotApplicable("unsupported format")
         # Make a source branch in 'repo' in an unstackable branch format
-        bzrdir_format = self.repository_format._matchingbzrdir
+        bzrdir_format = self.repository_format._matchingcontroldir
         transport = self.get_transport('repo/branch')
         transport.mkdir('.')
         target_bzrdir = bzrdir_format.initialize_on_transport(transport)
@@ -894,32 +948,33 @@ class TestEscaping(tests.TestCaseWithTransport):
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return
         self.transport_server = test_server.FakeVFATServer
-        FOO_ID = 'foo<:>ID'
-        REV_ID = 'revid-1'
+        FOO_ID = b'foo<:>ID'
         # this makes a default format repository always, which is wrong:
         # it should be a TestCaseWithRepository in order to get the
         # default format.
         wt = self.make_branch_and_tree('repo')
+        if not wt.supports_setting_file_ids():
+            self.skip("format does not support setting file ids")
         self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
         wt.add(['foo'], [FOO_ID])
-        wt.commit('this is my new commit', rev_id=REV_ID)
+        rev1 = wt.commit('this is my new commit')
         # now access over vfat; should be safe
         branch = controldir.ControlDir.open(self.get_url('repo')).open_branch()
-        revtree = branch.repository.revision_tree(REV_ID)
+        revtree = branch.repository.revision_tree(rev1)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        contents = revtree.get_file_text(FOO_ID)
-        self.assertEqual(contents, 'contents of repo/foo\n')
+        contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
+        self.assertEqual(contents, b'contents of repo/foo\n')
 
     def test_create_bundle(self):
         wt = self.make_branch_and_tree('repo')
         self.build_tree(['repo/file1'])
         wt.add('file1')
-        wt.commit('file1', rev_id='rev1')
+        rev1 = wt.commit('file1')
         fileobj = BytesIO()
         wt.branch.repository.create_bundle(
-            'rev1', _mod_revision.NULL_REVISION, fileobj)
+            rev1, _mod_revision.NULL_REVISION, fileobj)
 
 
 class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
@@ -939,63 +994,65 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def setUp(self):
         super(TestDeltaRevisionFiltered, self).setUp()
-        tree_a = self.make_branch_and_tree('a')
+        self.tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
-        tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
-                   ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
-        tree_a.commit('rev1', rev_id='rev1')
+        self.tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'])
+        self.bar_id = self.tree_a.path2id('bar')
+        self.rev1 = self.tree_a.commit('rev1')
         self.build_tree(['a/bar/b3'])
-        tree_a.add('bar/b3', 'b3-id')
-        tree_a.commit('rev2', rev_id='rev2')
-        self.repository = tree_a.branch.repository
+        self.tree_a.add('bar/b3')
+        self.rev2 = self.tree_a.commit('rev2')
+        self.repository = self.tree_a.branch.repository
 
     def test_multiple_files(self):
         # Test multiple files
-        delta = self.repository.get_revision_delta('rev1',
-            specific_fileids=['foo-id', 'baz-id'])
+        delta = self.repository.get_revision_delta(
+                self.rev1, specific_fileids=[
+                    self.tree_a.path2id('foo'),
+                    self.tree_a.path2id('baz')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('baz', 'baz-id', 'file'),
-            ('foo', 'foo-id', 'file'),
+            ('baz', self.tree_a.path2id('baz'), 'file'),
+            ('foo', self.tree_a.path2id('foo'), 'file'),
             ], delta.added)
 
     def test_directory(self):
         # Test a directory
-        delta = self.repository.get_revision_delta('rev1',
-            specific_fileids=['bar-id'])
+        delta = self.repository.get_revision_delta(
+                self.rev1, specific_fileids=[self.bar_id])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('bar', 'bar-id', 'directory'),
-            ('bar/b1', 'b1-id', 'file'),
-            ('bar/b2', 'b2-id', 'file'),
+            ('bar', self.tree_a.path2id('bar'), 'directory'),
+            ('bar/b1', self.tree_a.path2id('bar/b1'), 'file'),
+            ('bar/b2', self.tree_a.path2id('bar/b2'), 'file'),
             ], delta.added)
 
     def test_unrelated(self):
         # Try another revision
-        delta = self.repository.get_revision_delta('rev2',
-                specific_fileids=['foo-id'])
+        delta = self.repository.get_revision_delta(
+                self.rev2, specific_fileids=[self.tree_a.path2id('foo')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([], delta.added)
 
     def test_file_in_directory(self):
         # Test a file in a directory, both of which were added
-        delta = self.repository.get_revision_delta('rev1',
-            specific_fileids=['b2-id'])
+        delta = self.repository.get_revision_delta(
+                self.rev1, specific_fileids=[self.tree_a.path2id('bar/b2')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('bar', 'bar-id', 'directory'),
-            ('bar/b2', 'b2-id', 'file'),
+            ('bar', self.tree_a.path2id('bar'), 'directory'),
+            ('bar/b2', self.tree_a.path2id('bar/b2'), 'file'),
             ], delta.added)
 
     def test_file_in_unchanged_directory(self):
-        delta = self.repository.get_revision_delta('rev2',
-            specific_fileids=['b3-id'])
+        delta = self.repository.get_revision_delta(self.rev2,
+            specific_fileids=[self.tree_a.path2id('bar/b3')])
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         if delta.added == [
-            ('bar', 'bar-id', 'directory'),
-            ('bar/b3', 'b3-id', 'file')]:
+            ('bar', self.tree_a.path2id('bar'), 'directory'),
+            ('bar/b3', self.tree_a.path2id('bar/b3'), 'file')]:
             self.knownFailure("bzr incorrectly reports 'bar' as added - "
                               "bug 878217")
         self.assertEqual([
-            ('bar/b3', 'b3-id', 'file'),
+            ('bar/b3', self.tree_a.path2id('bar/b3'), 'file'),
             ], delta.added)

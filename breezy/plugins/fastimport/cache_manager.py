@@ -27,7 +27,7 @@ from ... import lru_cache, trace
 from . import (
     branch_mapper,
     )
-from .reftracker import (
+from fastimport.reftracker import (
     RefTracker,
     )
 from .helpers import (
@@ -123,8 +123,11 @@ class CacheManager(object):
         self.reftracker = RefTracker()
 
     def add_mark(self, mark, commit_id):
-        assert mark[0] != ':'
+        if mark.startswith(b':'):
+            raise ValueError(mark)
+        is_new = (mark in self.marks)
         self.marks[mark] = commit_id
+        return is_new
 
     def lookup_committish(self, committish):
         """Resolve a 'committish' to a revision id.
@@ -132,8 +135,9 @@ class CacheManager(object):
         :param committish: A "committish" string
         :return: Bazaar revision id
         """
-        assert committish[0] == ':'
-        return self.marks[committish.lstrip(':')]
+        if not committish.startswith(b':'):
+            raise ValueError(committish)
+        return self.marks[committish.lstrip(b':')]
 
     def dump_stats(self, note=trace.note):
         """Dump some statistics about what we cached."""
@@ -231,7 +235,7 @@ class CacheManager(object):
             self._sticky_memory_bytes += len(data)
             if self._sticky_memory_bytes > self._sticky_cache_size:
                 self._flush_blobs_to_disk()
-        elif data == '':
+        elif data == b'':
             # Empty data is always sticky
             self._sticky_blobs[id] = data
         else:
@@ -264,11 +268,8 @@ class CacheManager(object):
                 f.seek(offset)
                 content = f.read(n_bytes)
             else:
-                fp = open(fn, 'rb')
-                try:
+                with open(fn, 'rb') as fp:
                     content = fp.read()
-                finally:
-                    fp.close()
             self._decref(id, self._disk_blobs, fn)
             return content
         content = self._sticky_blobs[id]

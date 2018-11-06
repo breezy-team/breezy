@@ -40,8 +40,20 @@ from ..bzr.fullhistory import (
     BzrBranchFormat5,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
+
+
+class TestErrors(tests.TestCase):
+
+    def test_unstackable_branch_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = _mod_branch.UnstackableBranchFormat(format, url)
+        self.assertEqualDiff(
+            "The branch '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
 
 
 class TestDefaultFormat(tests.TestCase):
@@ -100,10 +112,10 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
         local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("# comment\n"
-                             "[%s]\n"
-                             "push_location = foo\n"
-                             "push_location:policy = norecurse\n" % local_path,
+        self.assertFileEqual(b"# comment\n"
+                             b"[%s]\n"
+                             b"push_location = foo\n"
+                             b"push_location:policy = norecurse\n" % local_path.encode('utf-8'),
                              config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
@@ -120,7 +132,7 @@ class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     @classmethod
     def get_format_string(cls):
         """See BzrBranchFormat.get_format_string()."""
-        return "Sample branch format."
+        return b"Sample branch format."
 
     def initialize(self, a_controldir, name=None, repository=None,
                    append_revisions_only=None):
@@ -139,7 +151,7 @@ class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
 
 # Demonstrating how lazy loading is often implemented:
 # A constant string is created.
-SampleSupportedBranchFormatString = "Sample supported branch format."
+SampleSupportedBranchFormatString = b"Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
 class SampleSupportedBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
@@ -188,7 +200,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            dir = format._matchingbzrdir.initialize(url)
+            dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(dir)
@@ -197,10 +209,10 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_from_string(self):
         self.assertIsInstance(
-            SampleBranchFormat.from_string("Sample branch format."),
+            SampleBranchFormat.from_string(b"Sample branch format."),
             SampleBranchFormat)
         self.assertRaises(AssertionError,
-            SampleBranchFormat.from_string, "Different branch format.")
+            SampleBranchFormat.from_string, b"Different branch format.")
 
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -217,11 +229,11 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
 
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
-        tree.branch.update_feature_flags({"name": "optional"})
+        tree.branch.update_feature_flags({b"name": b"optional"})
         found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.controldir)
         self.assertIsInstance(found_format, _mod_bzrbranch.BranchFormatMetadir)
-        self.assertEqual(found_format.features.get("name"), "optional")
-        tree.branch.update_feature_flags({"name": None})
+        self.assertEqual(found_format.features.get(b"name"), b"optional")
+        tree.branch.update_feature_flags({b"name": None})
         branch = _mod_branch.Branch.open('.')
         self.assertEqual(branch._format.features, {})
 
@@ -242,10 +254,10 @@ class TestBranchFormatRegistry(tests.TestCase):
         format = SampleBranchFormat()
         self.registry.register(format)
         self.assertEqual(format,
-            self.registry.get("Sample branch format."))
+            self.registry.get(b"Sample branch format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
-            "Sample branch format.")
+            b"Sample branch format.")
 
     def test_get_all(self):
         format = SampleBranchFormat()
@@ -356,12 +368,12 @@ class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
 
     def test_set_stacked_on_url_errors(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.UnstackableBranchFormat,
+        self.assertRaises(_mod_branch.UnstackableBranchFormat,
             branch.set_stacked_on_url, None)
 
     def test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on_url)
+        self.assertRaises(_mod_branch.UnstackableBranchFormat, branch.get_stacked_on_url)
 
 
 class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
@@ -425,7 +437,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
 
     def create_branch_with_reference(self):
         branch = self.make_branch('branch')
-        branch._set_all_reference_info({'file-id': ('path', 'location')})
+        branch._set_all_reference_info({'path': ('location', b'file-id')})
         return branch
 
     @staticmethod
@@ -442,16 +454,16 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_read()
         self.addCleanup(branch.unlock)
         self.instrument_branch(branch, gets)
-        branch.get_reference_info('file-id')
-        branch.get_reference_info('file-id')
+        branch.get_reference_info('path')
+        branch.get_reference_info('path')
         self.assertEqual(1, len(gets))
 
     def test_reference_info_caching_read_unlocked(self):
         gets = []
         branch = self.create_branch_with_reference()
         self.instrument_branch(branch, gets)
-        branch.get_reference_info('file-id')
-        branch.get_reference_info('file-id')
+        branch.get_reference_info('path')
+        branch.get_reference_info('path')
         self.assertEqual(2, len(gets))
 
     def test_reference_info_caching_write_locked(self):
@@ -460,21 +472,20 @@ class BzrBranch8(tests.TestCaseWithTransport):
         branch.lock_write()
         self.instrument_branch(branch, gets)
         self.addCleanup(branch.unlock)
-        branch._set_all_reference_info({'file-id': ('path2', 'location2')})
-        path, location = branch.get_reference_info('file-id')
+        branch._set_all_reference_info({'path2': ('location2', b'file-id')})
+        location, file_id = branch.get_reference_info('path2')
         self.assertEqual(0, len(gets))
-        self.assertEqual('path2', path)
+        self.assertEqual(b'file-id', file_id)
         self.assertEqual('location2', location)
 
     def test_reference_info_caches_cleared(self):
         branch = self.make_branch('branch')
-        branch.lock_write()
-        branch.set_reference_info('file-id', 'path2', 'location2')
-        branch.unlock()
+        with branch.lock_write():
+            branch.set_reference_info('path2', 'location2', b'file-id')
         doppelganger = _mod_branch.Branch.open('branch')
-        doppelganger.set_reference_info('file-id', 'path3', 'location3')
-        self.assertEqual(('path3', 'location3'),
-                         branch.get_reference_info('file-id'))
+        doppelganger.set_reference_info('path3', 'location3', b'file-id')
+        self.assertEqual(('location3', b'file-id'),
+                         branch.get_reference_info('path3'))
 
     def _recordParentMapCalls(self, repo):
         self._parent_map_calls = []
@@ -511,7 +522,8 @@ class TestBranchReference(tests.TestCaseWithTransport):
         reference_url = branch.controldir.root_transport.abspath('') + '/'
         # if the api for create_checkout changes to return different checkout types
         # then this file read will fail.
-        self.assertFileEqual(reference_url, 'checkout/.bzr/branch/location')
+        self.assertFileEqual(reference_url.encode('utf-8'),
+                             'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
             _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.controldir))
 
@@ -672,19 +684,18 @@ class TestPullResult(tests.TestCase):
 
     def test_report_changed(self):
         r = _mod_branch.PullResult()
-        r.old_revid = "old-revid"
+        r.old_revid = b"old-revid"
         r.old_revno = 10
-        r.new_revid = "new-revid"
+        r.new_revid = b"new-revid"
         r.new_revno = 20
-        f = BytesIO()
+        f = StringIO()
         r.report(f)
-        self.assertEqual("Now on revision 20.\n", f.getvalue())
         self.assertEqual("Now on revision 20.\n", f.getvalue())
 
     def test_report_unchanged(self):
         r = _mod_branch.PullResult()
-        r.old_revid = "same-revid"
-        r.new_revid = "same-revid"
-        f = BytesIO()
+        r.old_revid = b"same-revid"
+        r.new_revid = b"same-revid"
+        f = StringIO()
         r.report(f)
         self.assertEqual("No revisions or tags to pull.\n", f.getvalue())

@@ -41,92 +41,19 @@ class FakeConfig(config.MemoryStack):
 
     def __init__(self, content=None):
         if content is None:
-            content = '''
+            content = b'''
 gpg_signing_key=amy@example.com
-gpg_signing_command=false'''
+'''
         super(FakeConfig, self).__init__(content)
-
-
-class TestCommandLine(tests.TestCase):
-
-    def setUp(self):
-        super(TestCommandLine, self).setUp()
-        self.my_gpg = gpg.GPGStrategy(FakeConfig())
-
-    def test_signing_command_line(self):
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         self.my_gpg._command_line())
-
-    def test_signing_command_line_from_default(self):
-        # Using 'default' for gpg_signing_key will use the mail part of 'email'
-        my_gpg = gpg.GPGStrategy(FakeConfig('''
-email=Amy <amy@example.com>
-gpg_signing_key=default
-gpg_signing_command=false'''))
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         my_gpg._command_line())
-
-    def test_signing_command_line_from_email(self):
-        # Not setting gpg_signing_key will use the mail part of 'email'
-        my_gpg = gpg.GPGStrategy(FakeConfig('''
-email=Amy <amy@example.com>
-gpg_signing_command=false'''))
-        self.assertEqual(['false',  '--clearsign', '-u', 'amy@example.com'],
-                         my_gpg._command_line())
-
-    def test_checks_return_code(self):
-        # This test needs a unix like platform - one with 'false' to run.
-        # if you have one, please make this work :)
-        self.assertRaises(errors.SigningFailed, self.my_gpg.sign, 'content')
-
-    def assertProduces(self, content):
-        # This needs a 'cat' command or similar to work.
-        if sys.platform == 'win32':
-            # Windows doesn't come with cat, and we don't require it
-            # so lets try using python instead.
-            # But stupid windows and line-ending conversions.
-            # It is too much work to make sys.stdout be in binary mode.
-            # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
-            self.my_gpg._command_line = lambda:[sys.executable, '-c',
-                    'import sys; sys.stdout.write(sys.stdin.read())']
-            new_content = content.replace('\n', '\r\n')
-
-            self.assertEqual(new_content, self.my_gpg.sign(content))
-        else:
-            self.my_gpg._command_line = lambda:['cat', '-']
-            self.assertEqual(content, self.my_gpg.sign(content))
-
-    def test_returns_output(self):
-        content = "some content\nwith newlines\n"
-        self.assertProduces(content)
-
-    def test_clears_progress(self):
-        content = "some content\nwith newlines\n"
-        old_clear_term = ui.ui_factory.clear_term
-        clear_term_called = []
-        def clear_term():
-            old_clear_term()
-            clear_term_called.append(True)
-        ui.ui_factory.clear_term = clear_term
-        try:
-            self.assertProduces(content)
-        finally:
-            ui.ui_factory.clear_term = old_clear_term
-        self.assertEqual([True], clear_term_called)
-
-    def test_aborts_on_unicode(self):
-        """You can't sign Unicode text; it must be encoded first."""
-        self.assertRaises(errors.BzrBadParameterUnicode,
-                          self.assertProduces, u'foo')
 
 
 class TestVerify(TestCase):
 
     def import_keys(self):
-        import gpgme
-        context = gpgme.Context()
+        import gpg
+        context = gpg.Context()
 
-        key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mQENBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -158,7 +85,7 @@ LhnkL5l4MO0wrUds0UWRwa3d7j/P2ExrqXdlLmEzrifWyEQ=
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
-        secret_key = BytesIO(b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
+        secret_key = gpg.Data(b"""-----BEGIN PGP PRIVATE KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 lQOYBE343IgBCADwzPW7kmKb2bjB+UU+1ER/ABMZspvtoZMPusUw7bk6coXHF/0W
@@ -217,7 +144,7 @@ Gmk1tz5uh9/6Qiyhr9MAwvC0mhKtfWdebQre9l49EuciCbBXN2Q4iRpElQba1JAW
 -----END PGP PRIVATE KEY BLOCK-----
 """)
 
-        revoked_key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        revoked_key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjlW5gEEAOb/6P+TVM59E897wRtatxys2BhsHCXM4T7xjIiANfDwejDdifqh
@@ -242,7 +169,7 @@ YUJsPy/EL++OKPH1aFasOdTxwkTka85+RdYqhP1+z/aYLFMWq6mRFI+o6x2k5mGi
 -----END PGP PUBLIC KEY BLOCK-----
 """)
 
-        expired_key = BytesIO(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
+        expired_key = gpg.Data(b"""-----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: GnuPG v1.4.11 (GNU/Linux)
 
 mI0ETjZ6PAEEALkR4GcFQidCCxV7pgQwQd5MZua0YO2l92fVqHX+PhnZ6egCLKdD
@@ -263,17 +190,17 @@ kRk=
 =p0gt
 -----END PGP PUBLIC KEY BLOCK-----
 """)
-        context.import_(key)
-        context.import_(secret_key)
-        context.import_(revoked_key)
-        context.import_(expired_key)
+        context.op_import(key)
+        context.op_import(secret_key)
+        context.op_import(revoked_key)
+        context.op_import(expired_key)
 
     def test_verify_untrusted_but_accepted(self):
         #untrusted by gpg but listed as acceptable_keys by user
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -291,20 +218,19 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_VALID, None), my_gpg.verify(content,
-                            plain))
+        self.assertEqual((gpg.SIGNATURE_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_unacceptable_key(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -322,20 +248,20 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("foo@example.com")
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'E3080E45'),
-                         my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'E3080E45', plain),
+                         my_gpg.verify(content))
 
     def test_verify_valid_but_untrusted(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -353,51 +279,18 @@ NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
 =iwsn
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
-                            plain))
-
-    def test_verify_bad_testament(self):
-        self.requireFeature(features.gpgme)
-        self.import_keys()
-
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
-
-bazaar-ng testament short form 1
-revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
-sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQEcBAEBAgAGBQJN+ekFAAoJEIdoGx7jCA5FGtEH/i+XxJRvqU6wdBtLVrGBMAGk
-FZ5VP+KyXYtymSbgSstj/vM12NeMIeFs3xGnNnYuX1MIcY6We5TKtCH0epY6ym5+
-6g2Q2QpQ5/sT2d0mWzR0K4uVngmxVQaXTdk5PdZ40O7ULeDLW6CxzxMHyUL1rsIx
-7UBUTBh1O/1n3ZfD99hUkm3hVcnsN90uTKH59zV9NWwArU0cug60+5eDKJhSJDbG
-rIwlqbFAjDZ7L/48e+IaYIJwBZFzMBpJKdCxzALLtauMf+KK8hGiL2hrRbWm7ty6
-NgxfkMYOB4rDPdSstT35N+5uBG3n/UzjxHssi0svMfVETYYX40y57dm2eZQXFp8=
-=iwsn
------END PGP SIGNATURE-----
-"""
-        plain = """bazaar-ng testament short form 1
-revision-id: doctor@example.com-20110527185938-hluafawphszb8dl1
-sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
-"""
-        my_gpg = gpg.GPGStrategy(FakeConfig())
-        my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
-                            plain))
-
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain), my_gpg.verify(content))
 
     def test_verify_revoked_signature(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
 
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 asdf
@@ -411,16 +304,15 @@ JFA6kUIJU2w9LU/b88Y=
 =UuRX
 -----END PGP SIGNATURE-----
 """
-        plain = """asdf\n"""
+        plain = b"""asdf\n"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("test@example.com")
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None), my_gpg.verify(content,
-                            plain))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None), my_gpg.verify(content))
 
     def test_verify_invalid(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 bazaar-ng testament short form 1
@@ -434,18 +326,18 @@ nswAoNGXAVuR9ONasAKIGBNUE0b+lols
 =SOuC
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
+        plain = b"""bazaar-ng testament short form 1
 revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None),
-                            my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain),
+                            my_gpg.verify(content))
 
     def test_verify_expired_but_valid(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
  
 bazaar-ng testament short form 1
@@ -461,18 +353,14 @@ dTp8VatVVrwuvzOPDVc=
 =uHen
 -----END PGP SIGNATURE-----
 """
-        plain = """bazaar-ng testament short form 1
-revision-id: test@example.com-20110801100657-f1dr1nompeex723z
-sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
-"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513'),
-                            my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513', None),
+                            my_gpg.verify(content))
 
     def test_verify_unknown_key(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
-        content = """-----BEGIN PGP SIGNED MESSAGE-----
+        content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
 asdf
@@ -488,13 +376,12 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 =RNR5
 -----END PGP SIGNATURE-----
 """
-        plain = "asdf\n"
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F'),
-                            my_gpg.verify(content, plain))
+        self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F', None),
+                            my_gpg.verify(content))
 
     def test_set_acceptable_keys(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
@@ -502,16 +389,16 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_from_config(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig(
-                'acceptable_keys=bazaar@example.com'))
+                b'acceptable_keys=bazaar@example.com'))
         my_gpg.set_acceptable_keys(None)
         self.assertEqual(my_gpg.acceptable_keys,
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
 
     def test_set_acceptable_keys_unknown(self):
-        self.requireFeature(features.gpgme)
+        self.requireFeature(features.gpg)
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.notes = []
         def note(*args):
@@ -526,10 +413,9 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 class TestDisabled(TestCase):
 
     def test_sign(self):
-        self.assertRaises(errors.SigningFailed,
-                          gpg.DisabledGPGStrategy(None).sign, 'content')
+        self.assertRaises(gpg.SigningFailed,
+                          gpg.DisabledGPGStrategy(None).sign, b'content', gpg.MODE_CLEAR)
 
     def test_verify(self):
-        self.assertRaises(errors.SignatureVerificationFailed,
-                          gpg.DisabledGPGStrategy(None).verify, 'content',
-                          'testament')
+        self.assertRaises(gpg.SignatureVerificationFailed,
+                          gpg.DisabledGPGStrategy(None).verify, b'content')

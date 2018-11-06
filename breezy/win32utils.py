@@ -193,7 +193,7 @@ def _get_sh_special_folder_path(csidl):
             pass
         else:
             buf = ctypes.create_unicode_buffer(MAX_PATH)
-            if SHGetSpecialFolderPath(None,buf,csidl,0):
+            if SHGetSpecialFolderPath(None, buf, csidl, 0):
                 return buf.value
 
     global has_win32com_shell
@@ -271,7 +271,7 @@ def get_home_location():
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
-    return unicode('C:/')
+    return u'C:/'
 
 
 def get_user_name():

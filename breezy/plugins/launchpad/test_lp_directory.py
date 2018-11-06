@@ -17,7 +17,12 @@
 """Tests for directory lookup through Launchpad.net"""
 
 import os
-import xmlrpclib
+
+try:
+    from xmlrpc.client import Fault
+    from http.client import parse_headers
+except ImportError:  # python < 3
+    from xmlrpclib import Fault
 
 import breezy
 from ... import (
@@ -28,6 +33,7 @@ from ... import (
     )
 from ...branch import Branch
 from ...directory_service import directories
+from ...sixish import PY3
 from ...tests import (
     features,
     ssl_certs,
@@ -129,7 +135,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         :seealso: http://pad.lv/843900
         """
         # This ought to be natty-updates.
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
             self.assertResolve,
             '',
             'ubuntu:natty/updates/smartpm')
@@ -287,17 +293,17 @@ class DirectoryUrlTests(TestCaseInTempDir):
             self, 'apt', dict(urls=[
                     'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
 
     def test_directory_fault(self):
         # Test that XMLRPC faults get converted to InvalidURL errors.
         factory = FakeResolveFactory(self, 'apt', None)
         def submit(service):
-            raise xmlrpclib.Fault(42, 'something went wrong')
+            raise Fault(42, 'something went wrong')
         factory.submit = submit
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
 
     def test_skip_bzr_ssh_launchpad_net_when_anonymous(self):
@@ -350,7 +356,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_url(self):
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
             directory._resolve, 'lp://ratotehunoahu')
 
     def test_resolve_tilde_to_user(self):
@@ -373,7 +379,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
         self.assertIs(None, get_lp_login())
         directory = LaunchpadDirectory()
-        self.assertRaises(errors.InvalidURL,
+        self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:~/apt/test', factory)
 
 
@@ -415,8 +421,11 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     def handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
-        self.MessageClass(self.rfile, 0)
-        if requestline.startswith('POST'):
+        if PY3:
+            parse_headers(self.rfile)
+        else:
+            self.MessageClass(self.rfile, 0)
+        if requestline.startswith(b'POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)
             self.rfile.readline()
@@ -461,11 +470,11 @@ class TestXMLRPCTransport(tests.TestCase):
         # FIXME: There should be a better way but the only alternative I can
         # think of involves carrying the ca_certs through the lp_registration
         # infrastructure to _urllib2_wrappers... -- vila 2012-01-20
-        breezy.global_state.cmdline_overrides._from_cmdline(
+        breezy.get_global_state().cmdline_overrides._from_cmdline(
             ['ssl.ca_certs=%s' % ssl_certs.build_path('ca.crt')])
 
     def set_canned_response(self, server, path):
-        response_format = '''HTTP/1.1 200 OK\r
+        response_format = b'''HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -493,8 +502,8 @@ Content-Type: text/plain; charset=UTF-8\r
 </methodResponse>
 '''
         length = 334 + 2 * len(path)
-        server.canned_response = response_format % dict(length=length,
-                                                        path=path)
+        server.canned_response = response_format % {
+                b'length': length, b'path': path}
 
     def do_request(self, server_url):
         os.environ['BRZ_LP_XMLRPC_URL'] = self.server.get_url()
@@ -504,7 +513,7 @@ Content-Type: text/plain; charset=UTF-8\r
         return result
 
     def test_direct_request(self):
-        self.set_canned_response(self.server, '~bzr-pqm/bzr/bzr.dev')
+        self.set_canned_response(self.server, b'~bzr-pqm/bzr/bzr.dev')
         result = self.do_request(self.server.get_url())
         urls = result.get('urls', None)
         self.assertIsNot(None, urls)
@@ -545,16 +554,19 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     # Bogus distro.
 
     def test_bogus_distro(self):
-        self.assertRaises(errors.InvalidURL,
-                          self.directory._resolve, 'gentoo:foo')
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
+        self.assertRaises(lp_registration.InvalidURL,
+                          self.directory._resolve, 'gentoo:foo', factory)
 
     def test_trick_bogus_distro_u(self):
-        self.assertRaises(errors.InvalidURL,
-                          self.directory._resolve, 'utube:foo')
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
+        self.assertRaises(lp_registration.InvalidURL,
+                          self.directory._resolve, 'utube:foo', factory)
 
     def test_trick_bogus_distro_d(self):
-        self.assertRaises(errors.InvalidURL,
-                          self.directory._resolve, 'debuntu:foo')
+        factory = FakeResolveFactory(self, 'foo', dict(urls=[]))
+        self.assertRaises(lp_registration.InvalidURL,
+                          self.directory._resolve, 'debuntu:foo', factory)
 
     def test_missing_ubuntu_distroseries_without_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or

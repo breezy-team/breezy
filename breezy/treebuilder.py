@@ -25,6 +25,16 @@ from __future__ import absolute_import
 from . import errors
 
 
+class AlreadyBuilding(errors.BzrError):
+
+    _fmt = "The tree builder is already building a tree."
+
+
+class NotBuilding(errors.BzrError):
+
+    _fmt = "Not currently building a tree."
+
+
 class TreeBuilder(object):
     """A TreeBuilder allows the creation of specific content in one tree at a
     time.
@@ -44,22 +54,21 @@ class TreeBuilder(object):
         """
         self._ensure_building()
         if not self._root_done:
-            self._tree.add('', 'root-id', 'directory')
+            self._tree.add('', b'root-id', 'directory')
             self._root_done = True
         for name in recipe:
-            if name[-1] == '/':
+            if name.endswith('/'):
                 self._tree.mkdir(name[:-1])
             else:
-                end = '\n'
-                content = "contents of %s%s" % (name.encode('utf-8'), end)
+                end = b'\n'
+                content = b"contents of %s%s" % (name.encode('utf-8'), end)
                 self._tree.add(name, None, 'file')
-                file_id = self._tree.path2id(name)
-                self._tree.put_file_bytes_non_atomic(file_id, content)
+                self._tree.put_file_bytes_non_atomic(name, content)
 
     def _ensure_building(self):
         """Raise NotBuilding if there is no current tree being built."""
         if self._tree is None:
-            raise errors.NotBuilding
+            raise NotBuilding
 
     def finish_tree(self):
         """Finish building the current tree."""
@@ -75,6 +84,6 @@ class TreeBuilder(object):
             MutableTree interface.
         """
         if self._tree is not None:
-            raise errors.AlreadyBuilding
+            raise AlreadyBuilding
         self._tree = tree
         self._tree.lock_tree_write()

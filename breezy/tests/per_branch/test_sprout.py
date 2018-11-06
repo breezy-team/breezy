@@ -43,7 +43,7 @@ class TestSprout(TestCaseWithBranch):
     def test_sprout_branch_parent(self):
         source = self.make_branch('source')
         target = source.controldir.sprout(self.get_url('target')).open_branch()
-        self.assertEqual(source.controldir.root_transport.base, target.get_parent())
+        self.assertEqual(source.user_url, target.get_parent())
 
     def test_sprout_uses_bzrdir_branch_format(self):
         # branch.sprout(bzrdir) is defined as using the branch format selected
@@ -88,34 +88,34 @@ class TestSprout(TestCaseWithBranch):
         wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
         wt_a.add(['one'])
-        wt_a.commit('commit one', rev_id='1')
+        rev1 = wt_a.commit('commit one')
         self.build_tree(['a/two'])
         wt_a.add(['two'])
-        wt_a.commit('commit two', rev_id='2')
+        wt_a.commit('commit two')
         repo_b = self.make_repository('b')
         repo_a = wt_a.branch.repository
         repo_a.copy_content_into(repo_b)
-        br_b = wt_a.branch.sprout(repo_b.controldir, revision_id='1')
-        self.assertEqual('1', br_b.last_revision())
+        br_b = wt_a.branch.sprout(repo_b.controldir, revision_id=rev1)
+        self.assertEqual(rev1, br_b.last_revision())
 
     def test_sprout_partial_not_in_revision_history(self):
         """We should be able to sprout from any revision in ancestry."""
         wt = self.make_branch_and_tree('source')
         self.build_tree(['source/a'])
         wt.add('a')
-        wt.commit('rev1', rev_id='rev1')
-        wt.commit('rev2-alt', rev_id='rev2-alt')
-        wt.set_parent_ids(['rev1'])
-        wt.branch.set_last_revision_info(1, 'rev1')
-        wt.commit('rev2', rev_id='rev2')
-        wt.set_parent_ids(['rev2', 'rev2-alt'])
-        wt.commit('rev3', rev_id='rev3')
+        rev1 = wt.commit('rev1')
+        rev2_alt = wt.commit('rev2-alt')
+        wt.set_parent_ids([rev1])
+        wt.branch.set_last_revision_info(1, rev1)
+        rev2 = wt.commit('rev2')
+        wt.set_parent_ids([rev2, rev2_alt])
+        wt.commit('rev3')
 
         repo = self.make_repository('target')
         repo.fetch(wt.branch.repository)
-        branch2 = wt.branch.sprout(repo.controldir, revision_id='rev2-alt')
-        self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
-        self.assertEqual('rev2-alt', branch2.last_revision())
+        branch2 = wt.branch.sprout(repo.controldir, revision_id=rev2_alt)
+        self.assertEqual((2, rev2_alt), branch2.last_revision_info())
+        self.assertEqual(rev2_alt, branch2.last_revision())
 
     def test_sprout_preserves_tags(self):
         """Sprout preserves tags, even tags of absent revisions."""
@@ -123,10 +123,10 @@ class TestSprout(TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise tests.TestSkipped('Uninitializable branch format')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        builder.build_commit(message="Rev 1")
         source = builder.get_branch()
         try:
-            source.tags.set_tag('tag-a', 'missing-rev')
+            source.tags.set_tag('tag-a', b'missing-rev')
         except (errors.TagsNotSupported, errors.GhostTagsNotSupported):
             raise tests.TestNotApplicable(
                 'Branch format does not support tags or tags to ghosts.')
@@ -134,22 +134,22 @@ class TestSprout(TestCaseWithBranch):
         target_bzrdir = self.make_repository('target').controldir
         new_branch = source.sprout(target_bzrdir)
         # The tag is present in the target
-        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+        self.assertEqual(b'missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_from_any_repo_revision(self):
         """We should be able to sprout from any revision."""
         wt = self.make_branch_and_tree('source')
         self.build_tree(['source/a'])
         wt.add('a')
-        wt.commit('rev1a', rev_id='rev1a')
+        rev1a = wt.commit('rev1a')
         # simulated uncommit
         wt.branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         wt.set_last_revision(_mod_revision.NULL_REVISION)
         wt.revert()
-        wt.commit('rev1b', rev_id='rev1b')
-        wt2 = wt.controldir.sprout('target',
-            revision_id='rev1a').open_workingtree()
-        self.assertEqual('rev1a', wt2.last_revision())
+        wt.commit('rev1b')
+        wt2 = wt.controldir.sprout(
+                'target', revision_id=rev1a).open_workingtree()
+        self.assertEqual(rev1a, wt2.last_revision())
         self.assertPathExists('target/a')
 
     def test_sprout_with_unicode_symlink(self):
@@ -168,28 +168,28 @@ class TestSprout(TestCaseWithBranch):
         target = u'\u03a9'
         link_name = u'\N{Euro Sign}link'
         os.symlink(target, 'tree1/' + link_name)
-        tree.add([link_name],['link-id'])
+        tree.add([link_name])
 
-        revision = tree.commit('added a link to a Unicode target')
+        tree.commit('added a link to a Unicode target')
         tree.controldir.sprout('dest')
         self.assertEqual(target, osutils.readlink('dest/' + link_name))
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Check that the symlink target is safely round-tripped in the trees.
-        self.assertEqual(target, tree.get_symlink_target('link-id'))
+        self.assertEqual(target, tree.get_symlink_target(link_name))
         self.assertEqual(target,
-                         tree.basis_tree().get_symlink_target('link-id'))
+                tree.basis_tree().get_symlink_target(link_name))
 
     def test_sprout_with_ghost_in_mainline(self):
         tree = self.make_branch_and_tree('tree1')
         if not tree.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable(
                 "repository format does not support ghosts in mainline")
-        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         tree.add('')
-        tree.commit('msg1', rev_id='rev1')
-        tree.commit('msg2', rev_id='rev2')
-        tree.controldir.sprout('target', revision_id='rev1')
+        rev1 = tree.commit('msg1')
+        tree.commit('msg2')
+        tree.controldir.sprout('target', revision_id=rev1)
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.
@@ -209,7 +209,7 @@ class TestSprout(TestCaseWithBranch):
             dir = source.controldir.sprout(target_transport.base,
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
-        except errors.UnstackableBranchFormat:
+        except _mod_branch.UnstackableBranchFormat:
             if not self.branch_format.supports_stacking():
                 raise tests.TestNotApplicable(
                     "Format doesn't auto stack successfully.")
@@ -224,4 +224,3 @@ class TestSprout(TestCaseWithBranch):
         else:
             expected_calls = 1
         self.assertEqual(expected_calls, len(self.hook_calls))
-

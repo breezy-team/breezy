@@ -118,6 +118,7 @@ from . import (
     errors,
     lock,
     osutils,
+    rio,
     ui,
     urlutils,
     )
@@ -136,14 +137,14 @@ from .errors import (
         ResourceBusy,
         TransportError,
         )
-from .trace import mutter, note
-from .osutils import format_delta, rand_chars, get_host_name
 from .i18n import gettext
+from .osutils import format_delta, rand_chars, get_host_name
+from .sixish import (
+    PY3,
+    text_type,
+    )
+from .trace import mutter, note
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import rio
-""")
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -301,7 +302,7 @@ class LockDir(lock.Lock):
                     ui.ui_factory.show_user_warning(
                         'locks_steal_dead',
                         lock_url=urlutils.join(self.transport.base, self.path),
-                        other_holder_info=unicode(other_holder))
+                        other_holder_info=text_type(other_holder))
                     self.force_break(other_holder)
                     self._trace("stole lock from dead holder")
                     return
@@ -373,9 +374,6 @@ class LockDir(lock.Lock):
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
                 # within it.
-                #
-                # Maybe this should be broader to allow for ftp servers with
-                # non-specific error messages?
                 self._trace("doing recursive deletion of non-empty directory "
                         "%s", tmpname)
                 self.transport.delete_tree(tmpname)
@@ -408,7 +406,7 @@ class LockDir(lock.Lock):
             if ui.ui_factory.confirm_action(
                 u"Break %(lock_info)s",
                 'breezy.lockdir.break',
-                dict(lock_info=unicode(holder_info))):
+                dict(lock_info=text_type(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
@@ -739,6 +737,9 @@ class LockHeldInfo(object):
             u'held by %(user)s on %(hostname)s (process #%(pid)s), '
             u'acquired %(time_ago)s') % d)
 
+    if PY3:
+        __str__ = __unicode__
+
     def to_readable_dict(self):
         """Turn the holder info into a dict of human-readable attributes.
 
@@ -774,7 +775,7 @@ class LockHeldInfo(object):
         info = dict(
             hostname=get_host_name(),
             pid=str(os.getpid()),
-            nonce=rand_chars(20),
+            nonce=rand_chars(20).encode('ascii'),
             start_time=str(int(time.time())),
             user=get_username_for_lock_info(),
             )
@@ -802,13 +803,21 @@ class LockHeldInfo(object):
             # there may not be much we can say
             return cls({})
         else:
-            return cls(stanza.as_dict())
+            ret = stanza.as_dict()
+            ret['nonce'] = ret['nonce'].encode('ascii')
+            return cls(ret)
 
-    def __cmp__(self, other):
-        """Value comparison of lock holders."""
-        return (
-            cmp(type(self), type(other))
-            or cmp(self.info_dict, other.info_dict))
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        """Equality check for lock holders."""
+        if type(self) != type(other):
+            return False
+        return self.info_dict == other.info_dict
+
+    def __ne__(self, other):
+        return not self == other
 
     def is_locked_by_this_process(self):
         """True if this process seems to be the current lock holder."""
@@ -859,5 +868,5 @@ def get_username_for_lock_info():
     """
     try:
         return config.GlobalStack().get('email')
-    except errors.NoWhoami:
+    except config.NoWhoami:
         return osutils.getuser_unicode()

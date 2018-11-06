@@ -18,10 +18,12 @@ from __future__ import absolute_import
 
 __all__ = ['show_bzrdir_info']
 
+from io import StringIO
 import time
 import sys
 
 from . import (
+    branch as _mod_branch,
     controldir,
     errors,
     hooks as _mod_hooks,
@@ -34,18 +36,15 @@ from .bzr import (
 from .errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from .missing import find_unmerged
-from .sixish import (
-    BytesIO,
-    )
 
 
-def plural(n, base='', pl=None):
+def plural(n, base=u'', pl=None):
     if n == 1:
         return base
     elif pl is not None:
         return pl
     else:
-        return 's'
+        return u's'
 
 
 class LocationList(object):
@@ -60,7 +59,7 @@ class LocationList(object):
             return
         try:
             path = urlutils.local_path_from_url(url)
-        except errors.InvalidURL:
+        except urlutils.InvalidURL:
             self.locs.append((label, url))
         else:
             self.add_path(label, path)
@@ -162,7 +161,7 @@ def _gather_related_branches(branch):
     locs.add_url('submit branch', branch.get_submit_branch())
     try:
         locs.add_url('stacked on', branch.get_stacked_on_url())
-    except (errors.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
+    except (_mod_branch.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
         errors.NotStacked):
         pass
     return locs
@@ -289,9 +288,8 @@ def _show_working_stats(working, outfile):
     outfile.write('  %8d ignored\n' % ignore_cnt)
 
     dir_cnt = 0
-    root_id = working.get_root_id()
     for path, entry in working.iter_entries_by_dir():
-        if entry.kind == 'directory' and entry.file_id != root_id:
+        if entry.kind == 'directory' and path != '':
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
         plural(dir_cnt, 'subdirectory', 'subdirectories')))
@@ -333,7 +331,7 @@ def _show_repository_info(repository, outfile):
 
 def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
-    f = BytesIO()
+    f = StringIO()
     if 'revisions' in stats:
         revisions = stats['revisions']
         f.write('  %8d revision%s\n' % (revisions, plural(revisions)))
@@ -468,8 +466,8 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
-            if (tree is not None and tree.user_url !=
-                branch.user_url):
+            if (tree is not None and tree.controldir.control_url !=
+                branch.controldir.control_url):
                 independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:

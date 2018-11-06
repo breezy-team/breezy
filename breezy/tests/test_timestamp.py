@@ -125,6 +125,14 @@ class UnpackHighresDateTests(tests.TestCase):
         o = -12*3600
         for count in range(500):
             t += random.random()*24*3600*30
+            try:
+                time.gmtime(t)
+            except OverflowError:
+                # We've reached the maximum for time_t on this platform
+                break
+            if time.localtime(t).tm_year > 9998:
+                # strptime doesn't always understand years with more than 4 digits.
+                break
             o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
             date = timestamp.format_highres_date(t, o)
             t2, o2 = timestamp.unpack_highres_date(date)

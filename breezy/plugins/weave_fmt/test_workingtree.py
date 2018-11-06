@@ -45,15 +45,19 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         tree = self.create_format2_tree('.')
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
                           None)
-        file('lala.BASE', 'wb').write('labase')
+        with open('lala.BASE', 'wb') as f:
+            f.write(b'labase')
         expected = conflicts.ContentsConflict('lala')
         self.assertEqual(list(tree.conflicts()), [expected])
-        file('lala', 'wb').write('la')
-        tree.add('lala', 'lala-id')
+        with open('lala', 'wb') as f:
+            f.write(b'la')
+        tree.add('lala', b'lala-id')
         expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
-        file('lala.THIS', 'wb').write('lathis')
-        file('lala.OTHER', 'wb').write('laother')
+        with open('lala.THIS', 'wb') as f:
+            f.write(b'lathis')
+        with open('lala.OTHER', 'wb') as f:
+            f.write(b'laother')
         # When "text conflict"s happen, stem, THIS and OTHER are text
         expected = conflicts.TextConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
@@ -65,12 +69,12 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
     def test_detect_conflicts(self):
         """Conflicts are detected properly"""
         tree = self.create_format2_tree('.')
-        self.build_tree_contents([('hello', 'hello world4'),
-                                  ('hello.THIS', 'hello world2'),
-                                  ('hello.BASE', 'hello world1'),
-                                  ('hello.OTHER', 'hello world3'),
-                                  ('hello.sploo.BASE', 'yellowworld'),
-                                  ('hello.sploo.OTHER', 'yellowworld2'),
+        self.build_tree_contents([('hello', b'hello world4'),
+                                  ('hello.THIS', b'hello world2'),
+                                  ('hello.BASE', b'hello world1'),
+                                  ('hello.OTHER', b'hello world3'),
+                                  ('hello.sploo.BASE', b'yellowworld'),
+                                  ('hello.sploo.OTHER', b'yellowworld2'),
                                   ])
         tree.lock_read()
         self.assertLength(6, list(tree.list_files()))
@@ -82,7 +86,7 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         conflicts.restore('hello')
         conflicts.restore('hello.sploo')
         self.assertLength(0, tree.conflicts())
-        self.assertFileEqual('hello world2', 'hello')
+        self.assertFileEqual(b'hello world2', 'hello')
         self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(errors.NotConflicted, conflicts.restore, 'hello')
         self.assertRaises(errors.NotConflicted,

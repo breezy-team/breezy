@@ -34,43 +34,43 @@ class TestContainerSerialiser(tests.TestCase):
 
     def test_begin(self):
         serialiser = pack.ContainerSerialiser()
-        self.assertEqual('Bazaar pack format 1 (introduced in 0.18)\n',
+        self.assertEqual(b'Bazaar pack format 1 (introduced in 0.18)\n',
                          serialiser.begin())
 
     def test_end(self):
         serialiser = pack.ContainerSerialiser()
-        self.assertEqual('E', serialiser.end())
+        self.assertEqual(b'E', serialiser.end())
 
     def test_bytes_record_no_name(self):
         serialiser = pack.ContainerSerialiser()
-        record = serialiser.bytes_record('bytes', [])
-        self.assertEqual('B5\n\nbytes', record)
+        record = serialiser.bytes_record(b'bytes', [])
+        self.assertEqual(b'B5\n\nbytes', record)
 
     def test_bytes_record_one_name_with_one_part(self):
         serialiser = pack.ContainerSerialiser()
-        record = serialiser.bytes_record('bytes', [('name',)])
-        self.assertEqual('B5\nname\n\nbytes', record)
+        record = serialiser.bytes_record(b'bytes', [(b'name',)])
+        self.assertEqual(b'B5\nname\n\nbytes', record)
 
     def test_bytes_record_one_name_with_two_parts(self):
         serialiser = pack.ContainerSerialiser()
-        record = serialiser.bytes_record('bytes', [('part1', 'part2')])
-        self.assertEqual('B5\npart1\x00part2\n\nbytes', record)
+        record = serialiser.bytes_record(b'bytes', [(b'part1', b'part2')])
+        self.assertEqual(b'B5\npart1\x00part2\n\nbytes', record)
 
     def test_bytes_record_two_names(self):
         serialiser = pack.ContainerSerialiser()
-        record = serialiser.bytes_record('bytes', [('name1',), ('name2',)])
-        self.assertEqual('B5\nname1\nname2\n\nbytes', record)
+        record = serialiser.bytes_record(b'bytes', [(b'name1',), (b'name2',)])
+        self.assertEqual(b'B5\nname1\nname2\n\nbytes', record)
 
     def test_bytes_record_whitespace_in_name_part(self):
         serialiser = pack.ContainerSerialiser()
         self.assertRaises(
             errors.InvalidRecordError,
-            serialiser.bytes_record, 'bytes', [('bad name',)])
+            serialiser.bytes_record, b'bytes', [(b'bad name',)])
 
     def test_bytes_record_header(self):
         serialiser = pack.ContainerSerialiser()
-        record = serialiser.bytes_header(32, [('name1',), ('name2',)])
-        self.assertEqual('B32\nname1\nname2\n\n', record)
+        record = serialiser.bytes_header(32, [(b'name1',), (b'name2',)])
+        self.assertEqual(b'B32\nname1\nname2\n\n', record)
 
 
 class TestContainerWriter(tests.TestCase):
@@ -97,7 +97,7 @@ class TestContainerWriter(tests.TestCase):
     def test_begin(self):
         """The begin() method writes the container format marker line."""
         self.writer.begin()
-        self.assertOutput('Bazaar pack format 1 (introduced in 0.18)\n')
+        self.assertOutput(b'Bazaar pack format 1 (introduced in 0.18)\n')
 
     def test_zero_records_written_after_begin(self):
         """After begin is written, 0 records have been written."""
@@ -108,7 +108,7 @@ class TestContainerWriter(tests.TestCase):
         """The end() method writes an End Marker record."""
         self.writer.begin()
         self.writer.end()
-        self.assertOutput('Bazaar pack format 1 (introduced in 0.18)\nE')
+        self.assertOutput(b'Bazaar pack format 1 (introduced in 0.18)\nE')
 
     def test_empty_end_does_not_add_a_record_to_records_written(self):
         """The end() method does not count towards the records written."""
@@ -119,28 +119,28 @@ class TestContainerWriter(tests.TestCase):
     def test_non_empty_end_does_not_add_a_record_to_records_written(self):
         """The end() method does not count towards the records written."""
         self.writer.begin()
-        self.writer.add_bytes_record('foo', names=[])
+        self.writer.add_bytes_record(b'foo', names=[])
         self.writer.end()
         self.assertEqual(1, self.writer.records_written)
 
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
         self.writer.begin()
-        offset, length = self.writer.add_bytes_record('abc', names=[])
+        offset, length = self.writer.add_bytes_record(b'abc', names=[])
         self.assertEqual((42, 7), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc')
 
     def test_add_bytes_record_one_name(self):
         """Add a bytes record with one name."""
         self.writer.begin()
 
         offset, length = self.writer.add_bytes_record(
-            'abc', names=[('name1', )])
+            b'abc', names=[(b'name1', )])
         self.assertEqual((42, 13), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
-            'B3\nname1\n\nabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\n'
+            b'B3\nname1\n\nabc')
 
     def test_add_bytes_record_split_writes(self):
         """Write a large record which does multiple IOs"""
@@ -148,66 +148,66 @@ class TestContainerWriter(tests.TestCase):
         writes = []
         real_write = self.writer.write_func
 
-        def record_writes(bytes):
-            writes.append(bytes)
-            return real_write(bytes)
+        def record_writes(data):
+            writes.append(data)
+            return real_write(data)
 
         self.writer.write_func = record_writes
         self.writer._JOIN_WRITES_THRESHOLD = 2
 
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            'abcabc', names=[('name1', )])
+            b'abcabc', names=[(b'name1', )])
         self.assertEqual((42, 16), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
-            'B6\nname1\n\nabcabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\n'
+            b'B6\nname1\n\nabcabc')
 
         self.assertEqual([
-            'Bazaar pack format 1 (introduced in 0.18)\n',
-            'B6\nname1\n\n',
-            'abcabc'],
+            b'Bazaar pack format 1 (introduced in 0.18)\n',
+            b'B6\nname1\n\n',
+            b'abcabc'],
             writes)
 
     def test_add_bytes_record_two_names(self):
         """Add a bytes record with two names."""
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            'abc', names=[('name1', ), ('name2', )])
+            b'abc', names=[(b'name1', ), (b'name2', )])
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
-            'B3\nname1\nname2\n\nabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\n'
+            b'B3\nname1\nname2\n\nabc')
 
     def test_add_bytes_record_two_names(self):
         """Add a bytes record with two names."""
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            'abc', names=[('name1', ), ('name2', )])
+            b'abc', names=[(b'name1', ), (b'name2', )])
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
-            'B3\nname1\nname2\n\nabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\n'
+            b'B3\nname1\nname2\n\nabc')
 
     def test_add_bytes_record_two_element_name(self):
         """Add a bytes record with a two-element name."""
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            'abc', names=[('name1', 'name2')])
+            b'abc', names=[(b'name1', b'name2')])
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
-            'B3\nname1\x00name2\n\nabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\n'
+            b'B3\nname1\x00name2\n\nabc')
 
     def test_add_second_bytes_record_gets_higher_offset(self):
         self.writer.begin()
-        self.writer.add_bytes_record('abc', names=[])
-        offset, length = self.writer.add_bytes_record('abc', names=[])
+        self.writer.add_bytes_record(b'abc', names=[])
+        offset, length = self.writer.add_bytes_record(b'abc', names=[])
         self.assertEqual((49, 7), (offset, length))
         self.assertOutput(
-            'Bazaar pack format 1 (introduced in 0.18)\n'
-            'B3\n\nabc'
-            'B3\n\nabc')
+            b'Bazaar pack format 1 (introduced in 0.18)\n'
+            b'B3\n\nabc'
+            b'B3\n\nabc')
 
     def test_add_bytes_record_invalid_name(self):
         """Adding a Bytes record with a name with whitespace in it raises
@@ -216,14 +216,14 @@ class TestContainerWriter(tests.TestCase):
         self.writer.begin()
         self.assertRaises(
             errors.InvalidRecordError,
-            self.writer.add_bytes_record, 'abc', names=[('bad name', )])
+            self.writer.add_bytes_record, b'abc', names=[(b'bad name', )])
 
     def test_add_bytes_records_add_to_records_written(self):
         """Adding a Bytes record increments the records_written counter."""
         self.writer.begin()
-        self.writer.add_bytes_record('foo', names=[])
+        self.writer.add_bytes_record(b'foo', names=[])
         self.assertEqual(1, self.writer.records_written)
-        self.writer.add_bytes_record('foo', names=[])
+        self.writer.add_bytes_record(b'foo', names=[])
         self.assertEqual(2, self.writer.records_written)
 
 
@@ -235,8 +235,8 @@ class TestContainerReader(tests.TestCase):
     added, then separate tests for that format should be added.
     """
 
-    def get_reader_for(self, bytes):
-        stream = BytesIO(bytes)
+    def get_reader_for(self, data):
+        stream = BytesIO(data)
         reader = pack.ContainerReader(stream)
         return reader
 
@@ -251,12 +251,12 @@ class TestContainerReader(tests.TestCase):
     def test_empty_container(self):
         """Read an empty container."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nE")
+            b"Bazaar pack format 1 (introduced in 0.18)\nE")
         self.assertEqual([], list(reader.iter_records()))
 
     def test_unknown_format(self):
         """Unrecognised container formats raise UnknownContainerFormatError."""
-        reader = self.get_reader_for("unknown format\n")
+        reader = self.get_reader_for(b"unknown format\n")
         self.assertRaises(
             errors.UnknownContainerFormatError, reader.iter_records)
 
@@ -265,7 +265,7 @@ class TestContainerReader(tests.TestCase):
         UnexpectedEndOfContainerError to be raised.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\n")
+            b"Bazaar pack format 1 (introduced in 0.18)\n")
         iterator = reader.iter_records()
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, next, iterator)
@@ -273,7 +273,7 @@ class TestContainerReader(tests.TestCase):
     def test_unknown_record_type(self):
         """Unknown record types cause UnknownRecordTypeError to be raised."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nX")
+            b"Bazaar pack format 1 (introduced in 0.18)\nX")
         iterator = reader.iter_records()
         self.assertRaises(
             errors.UnknownRecordTypeError, next, iterator)
@@ -286,8 +286,8 @@ class TestContainerReader(tests.TestCase):
         ContainerReader's integration with BytesRecordReader is working.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nB5\n\naaaaaE")
-        expected_records = [([], 'aaaaa')]
+            b"Bazaar pack format 1 (introduced in 0.18)\nB5\n\naaaaaE")
+        expected_records = [([], b'aaaaa')]
         self.assertEqual(
             expected_records,
             [(names, read_bytes(None))
@@ -296,7 +296,7 @@ class TestContainerReader(tests.TestCase):
     def test_validate_empty_container(self):
         """validate does not raise an error for a container with no records."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nE")
+            b"Bazaar pack format 1 (introduced in 0.18)\nE")
         # No exception raised
         reader.validate()
 
@@ -304,7 +304,7 @@ class TestContainerReader(tests.TestCase):
         """validate does not raise an error for a container with a valid record.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nB3\nname\n\nabcE")
+            b"Bazaar pack format 1 (introduced in 0.18)\nB3\nname\n\nabcE")
         # No exception raised
         reader.validate()
 
@@ -314,7 +314,8 @@ class TestContainerReader(tests.TestCase):
         It may raise either UnexpectedEndOfContainerError or
         UnknownContainerFormatError, depending on exactly what the string is.
         """
-        inputs = ["", "x", "Bazaar pack format 1 (introduced in 0.18)", "bad\n"]
+        inputs = [
+            b"", b"x", b"Bazaar pack format 1 (introduced in 0.18)", b"bad\n"]
         for input in inputs:
             reader = self.get_reader_for(input)
             self.assertRaises(
@@ -327,7 +328,7 @@ class TestContainerReader(tests.TestCase):
         types.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nX")
+            b"Bazaar pack format 1 (introduced in 0.18)\nX")
         self.assertRaises(errors.UnknownRecordTypeError, reader.validate)
 
     def test_validate_data_after_end_marker(self):
@@ -335,7 +336,7 @@ class TestContainerReader(tests.TestCase):
         after the end of the container.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nEcrud")
+            b"Bazaar pack format 1 (introduced in 0.18)\nEcrud")
         self.assertRaises(
             errors.ContainerHasExcessDataError, reader.validate)
 
@@ -344,7 +345,7 @@ class TestContainerReader(tests.TestCase):
         container marker, even if the container up to this point has been valid.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\n")
+            b"Bazaar pack format 1 (introduced in 0.18)\n")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
@@ -353,16 +354,16 @@ class TestContainerReader(tests.TestCase):
         multiple times in the container.
         """
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\n"
-            "B0\nname\n\n"
-            "B0\nname\n\n"
-            "E")
+            b"Bazaar pack format 1 (introduced in 0.18)\n"
+            b"B0\nname\n\n"
+            b"B0\nname\n\n"
+            b"E")
         self.assertRaises(errors.DuplicateRecordNameError, reader.validate)
 
     def test_validate_undecodeable_name(self):
         """Names that aren't valid UTF-8 cause validate to fail."""
         reader = self.get_reader_for(
-            "Bazaar pack format 1 (introduced in 0.18)\nB0\n\xcc\n\nE")
+            b"Bazaar pack format 1 (introduced in 0.18)\nB0\n\xcc\n\nE")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
 
 
@@ -375,8 +376,8 @@ class TestBytesRecordReader(tests.TestCase):
     tests for reading that format should be added.
     """
 
-    def get_reader_for(self, bytes):
-        stream = BytesIO(bytes)
+    def get_reader_for(self, data):
+        stream = BytesIO(data)
         reader = pack.BytesRecordReader(stream)
         return reader
 
@@ -384,40 +385,40 @@ class TestBytesRecordReader(tests.TestCase):
         """Reading a Bytes record with no name returns an empty list of
         names.
         """
-        reader = self.get_reader_for("5\n\naaaaa")
+        reader = self.get_reader_for(b"5\n\naaaaa")
         names, get_bytes = reader.read()
         self.assertEqual([], names)
-        self.assertEqual('aaaaa', get_bytes(None))
+        self.assertEqual(b'aaaaa', get_bytes(None))
 
     def test_record_with_one_name(self):
         """Reading a Bytes record with one name returns a list of just that
         name.
         """
-        reader = self.get_reader_for("5\nname1\n\naaaaa")
+        reader = self.get_reader_for(b"5\nname1\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual([('name1', )], names)
-        self.assertEqual('aaaaa', get_bytes(None))
+        self.assertEqual([(b'name1', )], names)
+        self.assertEqual(b'aaaaa', get_bytes(None))
 
     def test_record_with_two_names(self):
         """Reading a Bytes record with two names returns a list of both names.
         """
-        reader = self.get_reader_for("5\nname1\nname2\n\naaaaa")
+        reader = self.get_reader_for(b"5\nname1\nname2\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual([('name1', ), ('name2', )], names)
-        self.assertEqual('aaaaa', get_bytes(None))
+        self.assertEqual([(b'name1', ), (b'name2', )], names)
+        self.assertEqual(b'aaaaa', get_bytes(None))
 
     def test_record_with_two_part_names(self):
         """Reading a Bytes record with a two_part name reads both."""
-        reader = self.get_reader_for("5\nname1\x00name2\n\naaaaa")
+        reader = self.get_reader_for(b"5\nname1\x00name2\n\naaaaa")
         names, get_bytes = reader.read()
-        self.assertEqual([('name1', 'name2', )], names)
-        self.assertEqual('aaaaa', get_bytes(None))
+        self.assertEqual([(b'name1', b'name2', )], names)
+        self.assertEqual(b'aaaaa', get_bytes(None))
 
     def test_invalid_length(self):
         """If the length-prefix is not a number, parsing raises
         InvalidRecordError.
         """
-        reader = self.get_reader_for("not a number\n")
+        reader = self.get_reader_for(b"not a number\n")
         self.assertRaises(errors.InvalidRecordError, reader.read)
 
     def test_early_eof(self):
@@ -430,7 +431,7 @@ class TestBytesRecordReader(tests.TestCase):
 
         In all cases, UnexpectedEndOfContainerError should be raised.
         """
-        complete_record = "6\nname\n\nabcdef"
+        complete_record = b"6\nname\n\nabcdef"
         for count in range(0, len(complete_record)):
             incomplete_record = complete_record[:count]
             reader = self.get_reader_for(incomplete_record)
@@ -448,86 +449,86 @@ class TestBytesRecordReader(tests.TestCase):
 
     def test_initial_eof(self):
         """EOF before any bytes read at all."""
-        reader = self.get_reader_for("")
+        reader = self.get_reader_for(b"")
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
     def test_eof_after_length(self):
         """EOF after reading the length and before reading name(s)."""
-        reader = self.get_reader_for("123\n")
+        reader = self.get_reader_for(b"123\n")
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
     def test_eof_during_name(self):
         """EOF during reading a name."""
-        reader = self.get_reader_for("123\nname")
+        reader = self.get_reader_for(b"123\nname")
         self.assertRaises(errors.UnexpectedEndOfContainerError, reader.read)
 
     def test_read_invalid_name_whitespace(self):
         """Names must have no whitespace."""
         # A name with a space.
-        reader = self.get_reader_for("0\nbad name\n\n")
+        reader = self.get_reader_for(b"0\nbad name\n\n")
         self.assertRaises(errors.InvalidRecordError, reader.read)
 
         # A name with a tab.
-        reader = self.get_reader_for("0\nbad\tname\n\n")
+        reader = self.get_reader_for(b"0\nbad\tname\n\n")
         self.assertRaises(errors.InvalidRecordError, reader.read)
 
         # A name with a vertical tab.
-        reader = self.get_reader_for("0\nbad\vname\n\n")
+        reader = self.get_reader_for(b"0\nbad\vname\n\n")
         self.assertRaises(errors.InvalidRecordError, reader.read)
 
     def test_validate_whitespace_in_name(self):
         """Names must have no whitespace."""
-        reader = self.get_reader_for("0\nbad name\n\n")
+        reader = self.get_reader_for(b"0\nbad name\n\n")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
 
     def test_validate_interrupted_prelude(self):
         """EOF during reading a record's prelude causes validate to fail."""
-        reader = self.get_reader_for("")
+        reader = self.get_reader_for(b"")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_interrupted_body(self):
         """EOF during reading a record's body causes validate to fail."""
-        reader = self.get_reader_for("1\n\n")
+        reader = self.get_reader_for(b"1\n\n")
         self.assertRaises(
             errors.UnexpectedEndOfContainerError, reader.validate)
 
     def test_validate_unparseable_length(self):
         """An unparseable record length causes validate to fail."""
-        reader = self.get_reader_for("\n\n")
+        reader = self.get_reader_for(b"\n\n")
         self.assertRaises(
             errors.InvalidRecordError, reader.validate)
 
     def test_validate_undecodeable_name(self):
         """Names that aren't valid UTF-8 cause validate to fail."""
-        reader = self.get_reader_for("0\n\xcc\n\n")
+        reader = self.get_reader_for(b"0\n\xcc\n\n")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
 
     def test_read_max_length(self):
         """If the max_length passed to the callable returned by read is not
         None, then no more than that many bytes will be read.
         """
-        reader = self.get_reader_for("6\n\nabcdef")
+        reader = self.get_reader_for(b"6\n\nabcdef")
         names, get_bytes = reader.read()
-        self.assertEqual('abc', get_bytes(3))
+        self.assertEqual(b'abc', get_bytes(3))
 
     def test_read_no_max_length(self):
         """If the max_length passed to the callable returned by read is None,
         then all the bytes in the record will be read.
         """
-        reader = self.get_reader_for("6\n\nabcdef")
+        reader = self.get_reader_for(b"6\n\nabcdef")
         names, get_bytes = reader.read()
-        self.assertEqual('abcdef', get_bytes(None))
+        self.assertEqual(b'abcdef', get_bytes(None))
 
     def test_repeated_read_calls(self):
         """Repeated calls to the callable returned from BytesRecordReader.read
         will not read beyond the end of the record.
         """
-        reader = self.get_reader_for("6\n\nabcdefB3\nnext-record\nXXX")
+        reader = self.get_reader_for(b"6\n\nabcdefB3\nnext-record\nXXX")
         names, get_bytes = reader.read()
-        self.assertEqual('abcdef', get_bytes(None))
-        self.assertEqual('', get_bytes(None))
-        self.assertEqual('', get_bytes(99))
+        self.assertEqual(b'abcdef', get_bytes(None))
+        self.assertEqual(b'', get_bytes(None))
+        self.assertEqual(b'', get_bytes(99))
 
 
 class TestMakeReadvReader(tests.TestCaseWithTransport):
@@ -537,10 +538,10 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         writer = pack.ContainerWriter(pack_data.write)
         writer.begin()
         memos = []
-        memos.append(writer.add_bytes_record('abc', names=[]))
-        memos.append(writer.add_bytes_record('def', names=[('name1', )]))
-        memos.append(writer.add_bytes_record('ghi', names=[('name2', )]))
-        memos.append(writer.add_bytes_record('jkl', names=[]))
+        memos.append(writer.add_bytes_record(b'abc', names=[]))
+        memos.append(writer.add_bytes_record(b'def', names=[(b'name1', )]))
+        memos.append(writer.add_bytes_record(b'ghi', names=[(b'name2', )]))
+        memos.append(writer.add_bytes_record(b'jkl', names=[]))
         writer.end()
         transport = self.get_transport()
         transport.put_bytes('mypack', pack_data.getvalue())
@@ -549,7 +550,7 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         result = []
         for names, reader_func in reader.iter_records():
             result.append((names, reader_func(None)))
-        self.assertEqual([([], 'abc'), ([('name2', )], 'ghi')], result)
+        self.assertEqual([([], b'abc'), ([(b'name2', )], b'ghi')], result)
 
 
 class TestReadvFile(tests.TestCaseWithTransport):
@@ -563,15 +564,15 @@ class TestReadvFile(tests.TestCaseWithTransport):
     def test_read_bytes(self):
         """Test reading of both single bytes and all bytes in a hunk."""
         transport = self.get_transport()
-        transport.put_bytes('sample', '0123456789')
-        f = pack.ReadVFile(transport.readv('sample', [(0,1), (1,2), (4,1), (6,2)]))
+        transport.put_bytes('sample', b'0123456789')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
         results = []
         results.append(f.read(1))
         results.append(f.read(2))
         results.append(f.read(1))
         results.append(f.read(1))
         results.append(f.read(1))
-        self.assertEqual(['0', '12', '4', '6', '7'], results)
+        self.assertEqual([b'0', b'12', b'4', b'6', b'7'], results)
 
     def test_readline(self):
         """Test using readline() as ContainerReader does.
@@ -579,24 +580,24 @@ class TestReadvFile(tests.TestCaseWithTransport):
         This is always within a readv hunk, never across it.
         """
         transport = self.get_transport()
-        transport.put_bytes('sample', '0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv('sample', [(0,2), (2,4)]))
+        transport.put_bytes('sample', b'0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 2), (2, 4)]))
         results = []
         results.append(f.readline())
         results.append(f.readline())
         results.append(f.readline())
-        self.assertEqual(['0\n', '2\n', '4\n'], results)
+        self.assertEqual([b'0\n', b'2\n', b'4\n'], results)
 
     def test_readline_and_read(self):
         """Test exercising one byte reads, readline, and then read again."""
         transport = self.get_transport()
-        transport.put_bytes('sample', '0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv('sample', [(0,6)]))
+        transport.put_bytes('sample', b'0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 6)]))
         results = []
         results.append(f.read(1))
         results.append(f.readline())
         results.append(f.read(4))
-        self.assertEqual(['0', '\n', '2\n4\n'], results)
+        self.assertEqual([b'0', b'\n', b'2\n4\n'], results)
 
 
 class PushParserTestCase(tests.TestCase):
@@ -604,21 +605,21 @@ class PushParserTestCase(tests.TestCase):
 
     def make_parser_expecting_record_type(self):
         parser = pack.ContainerPushParser()
-        parser.accept_bytes("Bazaar pack format 1 (introduced in 0.18)\n")
+        parser.accept_bytes(b"Bazaar pack format 1 (introduced in 0.18)\n")
         return parser
 
     def make_parser_expecting_bytes_record(self):
         parser = pack.ContainerPushParser()
-        parser.accept_bytes("Bazaar pack format 1 (introduced in 0.18)\nB")
+        parser.accept_bytes(b"Bazaar pack format 1 (introduced in 0.18)\nB")
         return parser
 
-    def assertRecordParsing(self, expected_record, bytes):
+    def assertRecordParsing(self, expected_record, data):
         """Assert that 'bytes' is parsed as a given bytes record.
 
         :param expected_record: A tuple of (names, bytes).
         """
         parser = self.make_parser_expecting_bytes_record()
-        parser.accept_bytes(bytes)
+        parser.accept_bytes(data)
         parsed_records = parser.read_pending_records()
         self.assertEqual([expected_record], parsed_records)
 
@@ -642,9 +643,9 @@ class TestContainerPushParser(PushParserTestCase):
         (A naive implementation might stop after parsing the first record.)
         """
         parser = self.make_parser_expecting_record_type()
-        parser.accept_bytes("B5\nname1\n\nbody1B5\nname2\n\nbody2")
+        parser.accept_bytes(b"B5\nname1\n\nbody1B5\nname2\n\nbody2")
         self.assertEqual(
-            [([('name1',)], 'body1'), ([('name2',)], 'body2')],
+            [([(b'name1',)], b'body1'), ([(b'name2',)], b'body2')],
             parser.read_pending_records())
 
     def test_multiple_empty_records_at_once(self):
@@ -655,9 +656,9 @@ class TestContainerPushParser(PushParserTestCase):
         record, because the buffer size had not changed.)
         """
         parser = self.make_parser_expecting_record_type()
-        parser.accept_bytes("B0\nname1\n\nB0\nname2\n\n")
+        parser.accept_bytes(b"B0\nname1\n\nB0\nname2\n\n")
         self.assertEqual(
-            [([('name1',)], ''), ([('name2',)], '')],
+            [([(b'name1',)], b''), ([(b'name2',)], b'')],
             parser.read_pending_records())
 
 
@@ -673,28 +674,28 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
         """Reading a Bytes record with no name returns an empty list of
         names.
         """
-        self.assertRecordParsing(([], 'aaaaa'), "5\n\naaaaa")
+        self.assertRecordParsing(([], b'aaaaa'), b"5\n\naaaaa")
 
     def test_record_with_one_name(self):
         """Reading a Bytes record with one name returns a list of just that
         name.
         """
         self.assertRecordParsing(
-            ([('name1', )], 'aaaaa'),
-            "5\nname1\n\naaaaa")
+            ([(b'name1', )], b'aaaaa'),
+            b"5\nname1\n\naaaaa")
 
     def test_record_with_two_names(self):
         """Reading a Bytes record with two names returns a list of both names.
         """
         self.assertRecordParsing(
-            ([('name1', ), ('name2', )], 'aaaaa'),
-            "5\nname1\nname2\n\naaaaa")
+            ([(b'name1', ), (b'name2', )], b'aaaaa'),
+            b"5\nname1\nname2\n\naaaaa")
 
     def test_record_with_two_part_names(self):
         """Reading a Bytes record with a two_part name reads both."""
         self.assertRecordParsing(
-            ([('name1', 'name2')], 'aaaaa'),
-            "5\nname1\x00name2\n\naaaaa")
+            ([(b'name1', b'name2')], b'aaaaa'),
+            b"5\nname1\x00name2\n\naaaaa")
 
     def test_invalid_length(self):
         """If the length-prefix is not a number, parsing raises
@@ -702,43 +703,41 @@ class TestContainerPushParserBytesParsing(PushParserTestCase):
         """
         parser = self.make_parser_expecting_bytes_record()
         self.assertRaises(
-            errors.InvalidRecordError, parser.accept_bytes, "not a number\n")
+            errors.InvalidRecordError, parser.accept_bytes, b"not a number\n")
 
     def test_incomplete_record(self):
         """If the bytes seen so far don't form a complete record, then there
         will be nothing returned by read_pending_records.
         """
         parser = self.make_parser_expecting_bytes_record()
-        parser.accept_bytes("5\n\nabcd")
+        parser.accept_bytes(b"5\n\nabcd")
         self.assertEqual([], parser.read_pending_records())
 
     def test_accept_nothing(self):
         """The edge case of parsing an empty string causes no error."""
         parser = self.make_parser_expecting_bytes_record()
-        parser.accept_bytes("")
+        parser.accept_bytes(b"")
 
-    def assertInvalidRecord(self, bytes):
-        """Assert that parsing the given bytes will raise an
-        InvalidRecordError.
-        """
+    def assertInvalidRecord(self, data):
+        """Assert that parsing the given bytes raises InvalidRecordError."""
         parser = self.make_parser_expecting_bytes_record()
         self.assertRaises(
-            errors.InvalidRecordError, parser.accept_bytes, bytes)
+            errors.InvalidRecordError, parser.accept_bytes, data)
 
     def test_read_invalid_name_whitespace(self):
         """Names must have no whitespace."""
         # A name with a space.
-        self.assertInvalidRecord("0\nbad name\n\n")
+        self.assertInvalidRecord(b"0\nbad name\n\n")
 
         # A name with a tab.
-        self.assertInvalidRecord("0\nbad\tname\n\n")
+        self.assertInvalidRecord(b"0\nbad\tname\n\n")
 
         # A name with a vertical tab.
-        self.assertInvalidRecord("0\nbad\vname\n\n")
+        self.assertInvalidRecord(b"0\nbad\vname\n\n")
 
     def test_repeated_read_pending_records(self):
         """read_pending_records will not return the same record twice."""
         parser = self.make_parser_expecting_bytes_record()
-        parser.accept_bytes("6\n\nabcdef")
-        self.assertEqual([([], 'abcdef')], parser.read_pending_records())
+        parser.accept_bytes(b"6\n\nabcdef")
+        self.assertEqual([([], b'abcdef')], parser.read_pending_records())
         self.assertEqual([], parser.read_pending_records())

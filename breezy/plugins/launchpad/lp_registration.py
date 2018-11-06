@@ -19,9 +19,27 @@ from __future__ import absolute_import
 
 import os
 import socket
-from urlparse import urlsplit, urlunsplit
+try:
+    from urllib.parse import urlsplit, urlunsplit
+except ImportError:
+    from urlparse import urlsplit, urlunsplit
 import urllib
-import xmlrpclib
+try:
+    from xmlrpc.client import (
+        __version__ as xmlrpc_version,
+        Fault,
+        ProtocolError,
+        ServerProxy,
+        Transport,
+        )
+except ImportError:  # python < 3
+    from xmlrpclib import (
+        __version__ as xmlrpc_version,
+        Fault,
+        ProtocolError,
+        Transport,
+        ServerProxy,
+        )
 
 from ... import (
     config,
@@ -36,6 +54,12 @@ from ...transport.http import _urllib2_wrappers
 '''
 export BRZ_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
 '''
+
+
+class InvalidURL(errors.PathError):
+
+    _fmt = 'Invalid url supplied to transport: "%(path)s"%(extra)s'
+
 
 class InvalidLaunchpadInstance(errors.BzrError):
 
@@ -53,10 +77,10 @@ class NotLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, url=url)
 
 
-class XMLRPCTransport(xmlrpclib.Transport):
+class XMLRPCTransport(Transport):
 
     def __init__(self, scheme):
-        xmlrpclib.Transport.__init__(self)
+        Transport.__init__(self)
         self._scheme = scheme
         self._opener = _urllib2_wrappers.Opener()
         self.verbose = 0
@@ -65,14 +89,13 @@ class XMLRPCTransport(xmlrpclib.Transport):
         self.verbose = verbose
         url = self._scheme + "://" + host + handler
         request = _urllib2_wrappers.Request("POST", url, request_body)
-        # FIXME: _urllib2_wrappers will override user-agent with its own
-        # request.add_header("User-Agent", self.user_agent)
+        request.add_header("User-Agent", self.user_agent)
         request.add_header("Content-Type", "text/xml")
 
         response = self._opener.open(request)
         if response.code != 200:
-            raise xmlrpclib.ProtocolError(host + handler, response.code,
-                                          response.msg, response.info())
+            raise ProtocolError(host + handler, response.code,
+                                response.msg, response.info())
         return self.parse_response(response)
 
 
@@ -111,10 +134,10 @@ class LaunchpadService(object):
         """Construct a new service talking to the launchpad rpc server"""
         self._lp_instance = lp_instance
         if transport is None:
-            uri_type = urllib.splittype(self.service_url)[0]
+            uri_type = urlutils.parse_url(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
-            transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
-                    % (_breezy_version, xmlrpclib.__version__)
+            transport.user_agent = 'Breezy/%s (xmlrpc/%s)' \
+                    % (_breezy_version, xmlrpc_version)
         self.transport = transport
 
     @property
@@ -142,20 +165,20 @@ class LaunchpadService(object):
         if lp_instance == '':
             lp_instance = None
         elif lp_instance not in cls.LAUNCHPAD_INSTANCE:
-            raise errors.InvalidURL(path=url)
+            raise InvalidURL(url)
         return cls(lp_instance=lp_instance, **kwargs)
 
     def get_proxy(self):
         """Return the proxy for XMLRPC requests."""
         url = self.service_url
-        return xmlrpclib.ServerProxy(url, transport=self.transport)
+        return ServerProxy(url, transport=self.transport)
 
     def send_request(self, method_name, method_params):
         proxy = self.get_proxy()
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
-        except xmlrpclib.ProtocolError as e:
+        except ProtocolError as e:
             if e.errcode == 301:
                 # TODO: This can give a ProtocolError representing a 301 error, whose
                 # e.headers['location'] tells where to go and e.errcode==301; should
@@ -190,8 +213,8 @@ class LaunchpadService(object):
             resolve = _request_factory(path)
             try:
                 result = resolve.submit(self)
-            except xmlrpclib.Fault as fault:
-                raise errors.InvalidURL(branch_url, str(fault))
+            except Fault as fault:
+                raise InvalidURL(branch_url, str(fault))
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]
         else:
@@ -205,7 +228,7 @@ class LaunchpadService(object):
     def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
         """Get the Launchpad web URL for the given branch URL.
 
-        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+        :raise InvalidURL: if 'branch_url' cannot be identified as a
             Launchpad branch URL.
         :return: The URL of the branch on Launchpad.
         """
@@ -245,8 +268,7 @@ class ResolveLaunchpadPathRequest(BaseRequest):
 
     def __init__(self, path):
         if not path:
-            raise errors.InvalidURL(path=path,
-                                    extra="You must specify a project.")
+            raise InvalidURL(url=path, extra="You must specify a project.")
         self.path = path
 
     def _request_params(self):

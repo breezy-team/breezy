@@ -207,7 +207,7 @@ def _write_apport_report_to_file(exc_info):
     # TODO: strip that out and attach the rest
     #
     #attach_file_if_exists(report,
-    #   os.path.join(dot_brz, 'bazaar.conf', 'BrzConfig')
+    #   os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
     #attach_file_if_exists(report,
     #   os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
 
@@ -244,7 +244,7 @@ def _open_crash_file():
         # Windows or if it's manually configured it might need to be created,
         # and then it should be private
         os.makedirs(crash_dir, mode=0o600)
-    date_string = time.strftime('%Y-%m-%dT%H:%M', osutils.gmtime())
+    date_string = time.strftime('%Y-%m-%dT%H:%M', time.gmtime())
     # XXX: getuid doesn't work on win32, but the crash directory is per-user
     if sys.platform == 'win32':
         user_part = ''

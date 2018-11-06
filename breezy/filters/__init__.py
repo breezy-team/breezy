@@ -40,6 +40,10 @@ Note that context is currently only supported for write converters.
 
 from __future__ import absolute_import
 
+from io import (
+    BytesIO,
+    )
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -49,9 +53,6 @@ from breezy import (
     registry,
     )
 """)
-from ..sixish import (
-    BytesIO,
-    )
 
 
 class ContentFilter(object):
@@ -66,25 +67,22 @@ class ContentFilter(object):
         self.writer = writer
 
     def __repr__(self):
-        return "reader: %s, writer: %s" % (self.reader,self.writer)
+        return "reader: %s, writer: %s" % (self.reader, self.writer)
 
 
 class ContentFilterContext(object):
     """Object providing information that filters can use."""
 
-    def __init__(self, relpath=None, tree=None, entry=None):
+    def __init__(self, relpath=None, tree=None):
         """Create a context.
 
         :param relpath: the relative path or None if this context doesn't
            support that information.
         :param tree: the Tree providing this file or None if this context
            doesn't support that information.
-        :param entry: the InventoryEntry object if it is already known or
-           None if it should be derived if possible
         """
         self._relpath = relpath
         self._tree = tree
-        self._entry = entry
         # Cached values
         self._revision_id = None
         self._revision = None
@@ -97,24 +95,12 @@ class ContentFilterContext(object):
         """Source Tree object."""
         return self._tree
 
-    def file_id(self):
-        """File-id of file."""
-        if self._entry is not None:
-            return self._entry.file_id
-        elif self._tree is None:
-            return None
-        else:
-            return self._tree.path2id(self._relpath)
-
     def revision_id(self):
         """Id of revision that last changed this file."""
         if self._revision_id is None:
-            if self._entry is not None:
-                self._revision_id = self._entry.revision
-            elif self._tree is not None:
-                file_id = self._tree.path2id(self._relpath)
-                self._entry = self._tree.inventory[file_id]
-                self._revision_id = self._entry.revision
+            if self._tree is not None:
+                self._revision_id = self._tree.get_file_revision(
+                        self._relpath)
         return self._revision_id
 
     def revision(self):
@@ -168,13 +154,10 @@ def internal_size_sha_file_byname(name, filters):
     :param name: path to file
     :param filters: the stack of filters to apply
     """
-    f = open(name, 'rb', 65000)
-    try:
+    with open(name, 'rb', 65000) as f:
         if filters:
             f = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
-    finally:
-        f.close()
 
 
 # The registry of filter stacks indexed by name.

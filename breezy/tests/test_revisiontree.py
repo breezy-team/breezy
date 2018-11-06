@@ -21,6 +21,7 @@ from breezy import (
     errors,
     revision,
     )
+from breezy.tree import FileTimestampUnavailable
 from breezy.tests import TestCaseWithTransport
 
 
@@ -62,19 +63,19 @@ class TestTreeWithCommits(TestCaseWithTransport):
 
     def test_get_file_revision_root(self):
         self.assertEqual(self.rev_id,
-            self.rev_tree.get_file_revision(self.rev_tree.get_root_id()))
+            self.rev_tree.get_file_revision(u'', self.rev_tree.get_root_id()))
 
     def test_get_file_revision(self):
-        self.build_tree_contents([('a', 'initial')])
+        self.build_tree_contents([('a', b'initial')])
         self.t.add(['a'])
         revid1 = self.t.commit('add a')
         revid2 = self.t.commit('another change', allow_pointless=True)
         tree = self.t.branch.repository.revision_tree(revid2)
         self.assertEqual(revid1,
-            tree.get_file_revision(tree.path2id('a')))
+            tree.get_file_revision('a'))
 
     def test_get_file_mtime_ghost(self):
-        file_id = next(iter(self.rev_tree.all_file_ids()))
-        self.rev_tree.root_inventory[file_id].revision = 'ghostrev'
-        self.assertRaises(errors.FileTimestampUnavailable, 
-            self.rev_tree.get_file_mtime, file_id)
+        path = next(iter(self.rev_tree.all_versioned_paths()))
+        self.rev_tree.root_inventory.get_entry(self.rev_tree.path2id(path)).revision = b'ghostrev'
+        self.assertRaises(FileTimestampUnavailable, 
+            self.rev_tree.get_file_mtime, path)

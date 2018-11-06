@@ -26,6 +26,12 @@ from __future__ import absolute_import
 import os
 import sys
 
+from . import (
+    i18n,
+    option,
+    osutils,
+    )
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
@@ -37,10 +43,6 @@ from breezy import (
     cleanup,
     cmdline,
     debug,
-    errors,
-    i18n,
-    option,
-    osutils,
     trace,
     ui,
     )
@@ -51,10 +53,38 @@ from .i18n import gettext
 # Compatibility - Option used to be in commands.
 from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
-from . import registry
+from . import errors, registry
 from .sixish import (
     string_types,
+    text_type,
+    viewvalues,
     )
+
+
+class BzrOptionError(errors.BzrCommandError):
+
+    _fmt = "Error in command line options"
+
+
+class CommandAvailableInPlugin(Exception):
+
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard brz command. \n'
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'],
+                    self.plugin_metadata['url']))
+
+        return _fmt
 
 
 class CommandInfo(object):
@@ -161,7 +191,7 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    return cmd[4:].replace('_','-')
+    return cmd[4:].replace('_', '-')
 
 
 def _register_builtin_commands():
@@ -218,6 +248,52 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
+# Overrides for common mispellings that heuristics get wrong
+_GUESS_OVERRIDES = {
+    'ic': {'ci': 0}, # heuristic finds nick
+    }
+
+
+def guess_command(cmd_name):
+    """Guess what command a user typoed.
+
+    :param cmd_name: Command to search for
+    :return: None if no command was found, name of a command otherwise
+    """
+    names = set()
+    for name in all_command_names():
+        names.add(name)
+        cmd = get_cmd_object(name)
+        names.update(cmd.aliases)
+    # candidate: modified levenshtein distance against cmd_name.
+    costs = {}
+    from . import patiencediff
+    for name in sorted(names):
+        matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
+        distance = 0.0
+        opcodes = matcher.get_opcodes()
+        for opcode, l1, l2, r1, r2 in opcodes:
+            if opcode == 'delete':
+                distance += l2-l1
+            elif opcode == 'replace':
+                distance += max(l2-l1, r2-l1)
+            elif opcode == 'insert':
+                distance += r2-r1
+            elif opcode == 'equal':
+                # Score equal ranges lower, making similar commands of equal
+                # length closer than arbitrary same length commands.
+                distance -= 0.1 * (l2-l1)
+        costs[name] = distance
+    costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
+    costs = sorted((costs[key], key) for key in costs)
+    if not costs:
+        return
+    if costs[0][0] > 4:
+        return
+    candidate = costs[0][1]
+    return candidate
+
+
 def get_cmd_object(cmd_name, plugins_override=True):
     """Return the command object for a command.
 
@@ -227,7 +303,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     try:
         return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
-        raise errors.BzrCommandError(gettext('unknown command "%s"') % cmd_name)
+        # No command found, see if this was a typo
+        candidate = guess_command(cmd_name)
+        if candidate is not None:
+            raise errors.BzrCommandError(
+                    gettext('unknown command "%s". Perhaps you meant "%s"')
+                    % (cmd_name, candidate))
+        raise errors.BzrCommandError(gettext('unknown command "%s"')
+                % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -268,13 +351,16 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     return cmd
 
 
+class NoPluginAvailable(errors.BzrError):
+    pass
+
+
 def _try_plugin_provider(cmd_name):
     """Probe for a plugin provider having cmd_name."""
     try:
         plugin_metadata, provider = probe_for_provider(cmd_name)
-        raise errors.CommandAvailableInPlugin(cmd_name,
-            plugin_metadata, provider)
-    except errors.NoPluginAvailable:
+        raise CommandAvailableInPlugin(cmd_name, plugin_metadata, provider)
+    except NoPluginAvailable:
         pass
 
 
@@ -289,9 +375,9 @@ def probe_for_provider(cmd_name):
     for provider in command_providers_registry:
         try:
             return provider.plugin_for_command(cmd_name), provider
-        except errors.NoPluginAvailable:
+        except NoPluginAvailable:
             pass
-    raise errors.NoPluginAvailable(cmd_name)
+    raise NoPluginAvailable(cmd_name)
 
 
 def _get_bzr_command(cmd_or_None, cmd_name):
@@ -477,7 +563,7 @@ class Command(object):
             doc = gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
-        purpose,sections,order = self._get_help_parts(doc)
+        purpose, sections, order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
         if 'Usage' in sections:
@@ -499,7 +585,7 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        parser = option.get_optparser(self.options())
+        parser = option.get_optparser([v for k, v in sorted(self.options().items())])
         options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
@@ -588,14 +674,14 @@ class Command(object):
         summary = lines.pop(0)
         sections = {}
         order = []
-        label,section = None,''
+        label, section = None, ''
         for line in lines:
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, order, label, section)
-                label,section = line[1:-1],''
+                label, section = line[1:-1], ''
             elif (label is not None) and len(line) > 1 and not line[0].isspace():
                 save_section(sections, order, label, section)
-                label,section = None,line
+                label, section = None, line
             else:
                 if len(section) > 0:
                     section += '\n' + line
@@ -808,13 +894,14 @@ def parse_args(command, argv, alias_argv=None):
     they take, and which commands will accept them.
     """
     # TODO: make it a method of the Command?
-    parser = option.get_optparser(command.options())
+    parser = option.get_optparser(
+            [v for k, v in sorted(command.options().items())])
     if alias_argv is not None:
         args = alias_argv + argv
     else:
         args = argv
 
-    # for python 2.5 and later, optparse raises this exception if a non-ascii
+    # python 2's optparse raises this exception if a non-ascii
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
@@ -874,22 +961,17 @@ def _match_argform(cmd, takes_args, args):
 
     return argdict
 
-def apply_coveraged(dirname, the_callable, *args, **kwargs):
-    # Cannot use "import trace", as that would import breezy.trace instead of
-    # the standard library's trace.
-    trace = __import__('trace')
 
-    tracer = trace.Trace(count=1, trace=0)
-    sys.settrace(tracer.globaltrace)
-    threading.settrace(tracer.globaltrace)
-
+def apply_coveraged(the_callable, *args, **kwargs):
+    import coverage
+    cov = coverage.Coverage()
+    os.environ['COVERAGE_PROCESS_START'] = cov.config_file
+    cov.start()
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
     finally:
-        sys.settrace(None)
-        results = tracer.results()
-        results.write_results(show_missing=1, summary=False,
-                              coverdir=dirname)
+        cov.stop()
+        cov.save()
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -1005,7 +1087,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Run under the Python lsprof profiler.
 
     --coverage
-        Generate line coverage report in the specified directory.
+        Generate code coverage report
 
     --concurrency
         Specify the number of processes that can be run concurrently (selftest).
@@ -1015,8 +1097,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     trace.mutter("brz arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
-            opt_no_l10n = opt_no_aliases = False
-    opt_lsprof_file = opt_coverage_dir = None
+            opt_coverage = opt_no_l10n = opt_no_aliases = False
+    opt_lsprof_file = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -1047,8 +1129,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             os.environ['BRZ_CONCURRENCY'] = argv[i + 1]
             i += 1
         elif a == '--coverage':
-            opt_coverage_dir = argv[i + 1]
-            i += 1
+            opt_coverage = True
         elif a == '--profile-imports':
             pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
@@ -1059,12 +1140,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             argv_copy.append(a)
         i += 1
 
-    if breezy.global_state is None:
-        # FIXME: Workaround for users that imported breezy but didn't call
-        # breezy.initialize -- vila 2012-01-19
-        cmdline_overrides = config.CommandLineStore()
-    else:
-        cmdline_overrides = breezy.global_state.cmdline_overrides
+    cmdline_overrides = breezy.get_global_state().cmdline_overrides
     cmdline_overrides._from_cmdline(override_config)
 
     debug.set_debug_flags_from_config()
@@ -1103,17 +1179,17 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         saved_verbosity_level = option._verbosity_level
         option._verbosity_level = 0
         if opt_lsprof:
-            if opt_coverage_dir:
+            if opt_coverage:
                 trace.warning(
                     '--coverage ignored, because --lsprof is in use.')
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
-            if opt_coverage_dir:
+            if opt_coverage:
                 trace.warning(
                     '--coverage ignored, because --profile is in use.')
             ret = apply_profiled(run, *run_argv)
-        elif opt_coverage_dir:
-            ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
+        elif opt_coverage:
+            ret = apply_coveraged(run, *run_argv)
         else:
             ret = run(*run_argv)
         return ret or 0
@@ -1171,18 +1247,19 @@ def _specified_or_unicode_argv(argv):
     # the process arguments in a unicode-safe way.
     if argv is None:
         return osutils.get_unicode_argv()
-    else:
-        new_argv = []
-        try:
-            # ensure all arguments are unicode strings
-            for a in argv:
-                if isinstance(a, unicode):
-                    new_argv.append(a)
-                else:
-                    new_argv.append(a.decode('ascii'))
-        except UnicodeDecodeError:
-            raise errors.BzrError("argv should be list of unicode strings.")
-        return new_argv
+    new_argv = []
+    try:
+        # ensure all arguments are unicode strings
+        for a in argv:
+            if not isinstance(a, string_types):
+                raise ValueError('not native str or unicode: %r' % (a,))
+            if isinstance(a, bytes):
+                # For Python 2 only allow ascii native strings
+                a = a.decode('ascii')
+            new_argv.append(a)
+    except (ValueError, UnicodeDecodeError):
+        raise errors.BzrError("argv should be list of unicode strings.")
+    return new_argv
 
 
 def main(argv=None):

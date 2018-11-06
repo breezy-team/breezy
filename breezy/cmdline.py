@@ -25,7 +25,7 @@ from __future__ import absolute_import
 import re
 
 
-_whitespace_match = re.compile(u'\s', re.UNICODE).match
+_whitespace_match = re.compile(u'\\s', re.UNICODE).match
 
 
 class _PushbackSequence(object):
@@ -93,7 +93,7 @@ class _Backslash(object):
             return self
         elif next_char in context.allowed_quote_chars:
             # 2N backslashes followed by a quote are N backslashes
-            context.token.append(u'\\' * (self.count/2))
+            context.token.append(u'\\' * (self.count//2))
             # 2N+1 backslashes follwed by a quote are N backslashes followed by
             # the quote which should not be processed as the start or end of
             # the quoted arg

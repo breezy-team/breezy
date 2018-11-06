@@ -29,7 +29,7 @@ lazy_import(globals(), """
 import textwrap
 
 from breezy import (
-    errors,
+    branch as _mod_branch,
     hooks,
     revision as _mod_revision,
     transport as _mod_transport,
@@ -45,7 +45,29 @@ from breezy.push import (
 from breezy.i18n import gettext
 """)
 
-from . import registry
+from . import (
+    errors,
+    registry,
+    )
+from .sixish import (
+    viewitems,
+    )
+
+
+class MustHaveWorkingTree(errors.BzrError):
+
+    _fmt = "Branching '%(url)s'(%(format)s) must create a working tree."
+
+    def __init__(self, format, url):
+        errors.BzrError.__init__(self, format=format, url=url)
+
+
+class BranchReferenceLoop(errors.BzrError):
+
+    _fmt = "Can not create branch reference that points at branch itself."
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch)
 
 
 class ControlComponent(object):
@@ -353,7 +375,8 @@ class ControlDir(ControlComponent):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
+               source_branch=None, create_tree_if_local=True,
+               lossy=False):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -379,8 +402,8 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.sprout)
 
-    def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False, create_prefix=False):
+    def push_branch(self, source, revision_id=None, overwrite=False,
+        remember=False, create_prefix=False, lossy=False):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -404,7 +427,7 @@ class ControlDir(ControlComponent):
                 # revision
                 revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
-            br_to = source.clone(self, revision_id=revision_id)
+            br_to = source.sprout(self, revision_id=revision_id, lossy=lossy)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
@@ -424,20 +447,18 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(br_to, 
-                    overwrite, stop_revision=revision_id)
+                    overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(br_to,
-                    overwrite, stop_revision=revision_id)
+                    overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = None # Not applicable
             else:
-                tree_to.lock_write()
-                try:
+                with tree_to.lock_write():
                     push_result.branch_push_result = source.push(
-                        tree_to.branch, overwrite, stop_revision=revision_id)
+                        tree_to.branch, overwrite, stop_revision=revision_id,
+                        lossy=lossy)
                     tree_to.update()
-                finally:
-                    tree_to.unlock()
                 push_result.workingtree_updated = True
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid
@@ -760,7 +781,7 @@ class ControlDir(ControlComponent):
                 pass
             try:
                 new_t = a_transport.clone('..')
-            except errors.InvalidURLJoin:
+            except urlutils.InvalidURLJoin:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
             if new_t.base == a_transport.base:
@@ -938,25 +959,24 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
             registry._LazyObjectGetter(module_name, member_name))
 
     def _get_extra(self):
-        """Return all "extra" formats, not usable in meta directories."""
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
+        """Return getters for extra formats, not usable in meta directories."""
+        return [getter.get_obj for getter in self._extra_formats]
+
+    def _get_all_lazy(self):
+        """Return getters for all formats, even those not usable in metadirs."""
+        result = [self._dict[name].get_obj for name in self.keys()]
+        result.extend(self._get_extra())
         return result
 
     def _get_all(self):
-        """Return all formats, even those not usable in metadirs.
-        """
+        """Return all formats, even those not usable in metadirs."""
         result = []
-        for name in self.keys():
-            fmt = self.get(name)
+        for getter in self._get_all_lazy():
+            fmt = getter()
             if callable(fmt):
                 fmt = fmt()
             result.append(fmt)
-        return result + self._get_extra()
+        return result
 
     def _get_all_modules(self):
         """Return a set of the modules providing objects."""
@@ -1091,14 +1111,6 @@ class ControlDirFormat(object):
             target_format.rich_root_data)
 
     @classmethod
-    def register_format(klass, format):
-        """Register a format that does not use '.bzr' for its control dir.
-
-        """
-        raise errors.BzrError("ControlDirFormat.register_format() has been "
-            "removed in Bazaar 2.4. Please upgrade your plugins.")
-
-    @classmethod
     def register_prober(klass, prober):
         """Register a prober that can look for a control dir.
 
@@ -1135,9 +1147,9 @@ class ControlDirFormat(object):
     def known_formats(klass):
         """Return all the known formats.
         """
-        result = set()
+        result = []
         for prober_kls in klass.all_probers():
-            result.update(prober_kls.known_formats())
+            result.extend(prober_kls.known_formats())
         return result
 
     @classmethod
@@ -1292,16 +1304,11 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def __init__(self):
         """Create a ControlDirFormatRegistry."""
-        self._aliases = set()
         self._registration_order = list()
         super(ControlDirFormatRegistry, self).__init__()
 
-    def aliases(self):
-        """Return a set of the format names which are aliases."""
-        return frozenset(self._aliases)
-
     def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False, experimental=False, alias=False):
+                 hidden=False, experimental=False):
         """Register a ControlDirFormat factory.
 
         The factory must be a callable that takes one parameter: the key.
@@ -1312,16 +1319,25 @@ class ControlDirFormatRegistry(registry.Registry):
         """
         registry.Registry.register(self, key, factory, help,
             ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
+    def register_alias(self, key, target, hidden=False):
+        """Register a format alias.
+
+        :param key: Alias name
+        :param target: Target format
+        :param hidden: Whether the alias is hidden
+        """
+        info = self.get_info(target)
+        registry.Registry.register_alias(self, key, target,
+                ControlDirFormatInfo(
+                    native=info.native, deprecated=info.deprecated,
+                    hidden=hidden, experimental=info.experimental))
+
     def register_lazy(self, key, module_name, member_name, help, native=True,
-        deprecated=False, hidden=False, experimental=False, alias=False):
+        deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
             help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
         self._registration_order.append(key)
 
     def set_default(self, key):
@@ -1329,9 +1345,7 @@ class ControlDirFormatRegistry(registry.Registry):
 
         This method must be called once and only once.
         """
-        registry.Registry.register(self, 'default', self.get(key),
-            self.get_help(key), info=self.get_info(key))
-        self._aliases.add('default')
+        self.register_alias('default', key)
 
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.
@@ -1450,6 +1464,101 @@ def is_control_filename(filename):
     """Check if filename is used for control directories."""
     # TODO(jelmer): Allow registration by other VCSes
     return filename == '.bzr'
+
+
+class RepositoryAcquisitionPolicy(object):
+    """Abstract base class for repository acquisition policies.
+
+    A repository acquisition policy decides how a ControlDir acquires a repository
+    for a branch that is being created.  The most basic policy decision is
+    whether to create a new repository or use an existing one.
+    """
+    def __init__(self, stack_on, stack_on_pwd, require_stacking):
+        """Constructor.
+
+        :param stack_on: A location to stack on
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        :param require_stacking: If True, it is a failure to not stack.
+        """
+        self._stack_on = stack_on
+        self._stack_on_pwd = stack_on_pwd
+        self._require_stacking = require_stacking
+
+    def configure_branch(self, branch):
+        """Apply any configuration data from this policy to the branch.
+
+        Default implementation sets repository stacking.
+        """
+        if self._stack_on is None:
+            return
+        if self._stack_on_pwd is None:
+            stack_on = self._stack_on
+        else:
+            try:
+                stack_on = urlutils.rebase_url(self._stack_on,
+                    self._stack_on_pwd,
+                    branch.user_url)
+            except urlutils.InvalidRebaseURLs:
+                stack_on = self._get_full_stack_on()
+        try:
+            branch.set_stacked_on_url(stack_on)
+        except (_mod_branch.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+            if self._require_stacking:
+                raise
+
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
+
+    def _get_full_stack_on(self):
+        """Get a fully-qualified URL for the stack_on location."""
+        if self._stack_on is None:
+            return None
+        if self._stack_on_pwd is None:
+            return self._stack_on
+        else:
+            return urlutils.join(self._stack_on_pwd, self._stack_on)
+
+    def _add_fallback(self, repository, possible_transports=None):
+        """Add a fallback to the supplied repository, if stacking is set."""
+        stack_on = self._get_full_stack_on()
+        if stack_on is None:
+            return
+        try:
+            stacked_dir = ControlDir.open(
+                    stack_on, possible_transports=possible_transports)
+        except errors.JailBreak:
+            # We keep the stacking details, but we are in the server code so
+            # actually stacking is not needed.
+            return
+        try:
+            stacked_repo = stacked_dir.open_branch().repository
+        except errors.NotBranchError:
+            stacked_repo = stacked_dir.open_repository()
+        try:
+            repository.add_fallback_repository(stacked_repo)
+        except errors.UnstackableRepositoryFormat:
+            if self._require_stacking:
+                raise
+        else:
+            self._require_stacking = True
+
+    def acquire_repository(self, make_working_trees=None, shared=False,
+            possible_transports=None):
+        """Acquire a repository for this controlrdir.
+
+        Implementations may create a new repository or use a pre-exising
+        repository.
+
+        :param make_working_trees: If creating a repository, set
+            make_working_trees to this value (if non-None)
+        :param shared: If creating a repository, make it shared if True
+        :return: A repository, is_new_flag (True if the repository was
+            created).
+        """
+        raise NotImplementedError(RepositoryAcquisitionPolicy.acquire_repository)
 
 
 # Please register new formats after old formats so that formats

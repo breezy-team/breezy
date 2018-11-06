@@ -17,14 +17,12 @@
 import re
 
 from .. import (
+    bzr,
     commands,
     controldir,
     errors,
     option,
     registry,
-    )
-from ..bzr import (
-    bzrdir,
     )
 from ..builtins import cmd_commit
 from ..commands import parse_args
@@ -33,7 +31,7 @@ from ..bzr import knitrepo
 
 
 def parse(options, args):
-    parser = option.get_optparser(dict((o.name, o) for o in options))
+    parser = option.get_optparser(options)
     return parser.parse_args(args)
 
 
@@ -95,7 +93,7 @@ class OptionTests(TestCase):
         self.assertEqual((['-']), parse_args(cmd_commit(), ['-'])[0])
 
     def parse(self, options, args):
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         return parser.parse_args(args)
 
     def test_conversion(self):
@@ -120,9 +118,9 @@ class OptionTests(TestCase):
 
     def test_registry_conversion(self):
         registry = controldir.ControlDirFormatRegistry()
-        bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
-        bzrdir.register_metadir(registry, 'two', 'RepositoryFormatKnit1', 'two help')
-        bzrdir.register_metadir(registry, 'hidden', 'RepositoryFormatKnit1',
+        bzr.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
+        bzr.register_metadir(registry, 'two', 'RepositoryFormatKnit1', 'two help')
+        bzr.register_metadir(registry, 'hidden', 'RepositoryFormatKnit1',
             'two help', hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', '', registry, str)]
@@ -130,7 +128,7 @@ class OptionTests(TestCase):
         self.assertEqual({'format':'one'}, opts)
         opts, args = self.parse(options, ['--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
-        self.assertRaises(errors.BadOptionValue, self.parse, options,
+        self.assertRaises(option.BadOptionValue, self.parse, options,
                           ['--format', 'three'])
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--two'])
@@ -169,12 +167,12 @@ class OptionTests(TestCase):
 
     def test_lazy_registry(self):
         options = [option.RegistryOption('format', '',
-                   lazy_registry=('breezy.controldir','format_registry'),
+                   lazy_registry=('breezy.controldir', 'format_registry'),
                    converter=str)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertEqual({'format': 'knit'}, opts)
         self.assertRaises(
-            errors.BadOptionValue, self.parse, options, ['--format', 'BAD'])
+            option.BadOptionValue, self.parse, options, ['--format', 'BAD'])
 
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',
@@ -190,17 +188,17 @@ class OptionTests(TestCase):
 
     def test_help(self):
         registry = controldir.ControlDirFormatRegistry()
-        bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
-        bzrdir.register_metadir(registry, 'two',
+        bzr.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
+        bzr.register_metadir(registry, 'two',
             'breezy.bzr.knitrepo.RepositoryFormatKnit1',
             'two help',
             )
-        bzrdir.register_metadir(registry, 'hidden', 'RepositoryFormat7', 'hidden help',
+        bzr.register_metadir(registry, 'hidden', 'RepositoryFormat7', 'hidden help',
             hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
                    str, value_switches=True, title='Formats')]
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         value = parser.format_option_help()
         self.assertContainsRe(value, 'format.*format help')
         self.assertContainsRe(value, 'one.*one help')
@@ -218,8 +216,8 @@ class OptionTests(TestCase):
         self.assertEqual(list(opt.iter_switches()),
                          [('hello', None, 'GAR', 'fg')])
         registry = controldir.ControlDirFormatRegistry()
-        bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
-        bzrdir.register_metadir(registry, 'two',
+        bzr.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
+        bzr.register_metadir(registry, 'two',
                 'breezy.bzr.knitrepo.RepositoryFormatKnit1',
                 'two help',
                 )
@@ -241,14 +239,14 @@ class OptionTests(TestCase):
         "Test booleans get True and False passed correctly to a callback."""
         cb_calls = []
         def cb(option, name, value, parser):
-            cb_calls.append((option,name,value,parser))
+            cb_calls.append((option, name, value, parser))
         options = [option.Option('hello', custom_callback=cb)]
         opts, args = self.parse(options, ['--hello', '--no-hello'])
         self.assertEqual(2, len(cb_calls))
-        opt,name,value,parser = cb_calls[0]
+        opt, name, value, parser = cb_calls[0]
         self.assertEqual('hello', name)
         self.assertTrue(value)
-        opt,name,value,parser = cb_calls[1]
+        opt, name, value, parser = cb_calls[1]
         self.assertEqual('hello', name)
         self.assertFalse(value)
 
@@ -256,15 +254,15 @@ class OptionTests(TestCase):
         """Test callbacks work for string options both long and short."""
         cb_calls = []
         def cb(option, name, value, parser):
-            cb_calls.append((option,name,value,parser))
+            cb_calls.append((option, name, value, parser))
         options = [option.Option('hello', type=str, custom_callback=cb,
             short_name='h')]
         opts, args = self.parse(options, ['--hello', 'world', '-h', 'mars'])
         self.assertEqual(2, len(cb_calls))
-        opt,name,value,parser = cb_calls[0]
+        opt, name, value, parser = cb_calls[0]
         self.assertEqual('hello', name)
         self.assertEqual('world', value)
-        opt,name,value,parser = cb_calls[1]
+        opt, name, value, parser = cb_calls[1]
         self.assertEqual('hello', name)
         self.assertEqual('mars', value)
 
@@ -273,7 +271,7 @@ class TestListOptions(TestCase):
     """Tests for ListOption, used to specify lists on the command-line."""
 
     def parse(self, options, args):
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         return parser.parse_args(args)
 
     def test_list_option(self):
@@ -315,18 +313,18 @@ class TestListOptions(TestCase):
         cb_calls = []
         def cb(option, name, value, parser):
             # Note that the value is a reference so copy to keep it
-            cb_calls.append((option,name,value[:],parser))
+            cb_calls.append((option, name, value[:], parser))
         options = [option.ListOption('hello', type=str, custom_callback=cb)]
         opts, args = self.parse(options, ['--hello=world', '--hello=mars',
             '--hello=-'])
         self.assertEqual(3, len(cb_calls))
-        opt,name,value,parser = cb_calls[0]
+        opt, name, value, parser = cb_calls[0]
         self.assertEqual('hello', name)
         self.assertEqual(['world'], value)
-        opt,name,value,parser = cb_calls[1]
+        opt, name, value, parser = cb_calls[1]
         self.assertEqual('hello', name)
         self.assertEqual(['world', 'mars'], value)
-        opt,name,value,parser = cb_calls[2]
+        opt, name, value, parser = cb_calls[2]
         self.assertEqual('hello', name)
         self.assertEqual([], value)
 
@@ -379,9 +377,9 @@ class TestOptionMisc(TestCase):
 
     def test_is_hidden(self):
         registry = controldir.ControlDirFormatRegistry()
-        bzrdir.register_metadir(registry, 'hidden', 'HiddenFormat',
+        bzr.register_metadir(registry, 'hidden', 'HiddenFormat',
             'hidden help text', hidden=True)
-        bzrdir.register_metadir(registry, 'visible', 'VisibleFormat',
+        bzr.register_metadir(registry, 'visible', 'VisibleFormat',
             'visible help text', hidden=False)
         format = option.RegistryOption('format', '', registry, str)
         self.assertTrue(format.is_hidden('hidden'))
@@ -423,7 +421,8 @@ class TestVerboseQuietLinkage(TestCase):
         self.assertEqual(level, option._verbosity_level)
 
     def test_verbose_quiet_linkage(self):
-        parser = option.get_optparser(option.Option.STD_OPTIONS)
+        parser = option.get_optparser(
+                [v for k, v in sorted(option.Option.STD_OPTIONS.items())])
         self.check(parser, 0, [])
         self.check(parser, 1, ['-v'])
         self.check(parser, 2, ['-v', '-v'])

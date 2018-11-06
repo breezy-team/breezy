@@ -35,7 +35,7 @@ class TestLocale(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         tree.add('a')
-        tree.commit(u'Unicode \xb5 commit', rev_id='r1',
+        tree.commit(u'Unicode \xb5 commit', rev_id=b'r1',
                     committer=u'\u062c\u0648\u062c\u0648'
                               u' Meinel <juju@info.com>',
                     timestamp=1156451297.96, timezone=0)
@@ -56,8 +56,8 @@ class TestLocale(tests.TestCaseWithTransport):
             # systems but only LANG is respected on Windows.
             env_changes={'LANG': 'C', 'LC_ALL': 'C', 'LC_CTYPE':None,
                          'LANGUAGE':None})
-        self.assertEqual('', err)
-        self.assertEqualDiff("""\
+        self.assertEqual(b'', err)
+        self.assertEqualDiff(b"""\
 ------------------------------------------------------------
 revno: 1
 committer: ???? Meinel <juju@info.com>
@@ -72,8 +72,8 @@ message:
             ['tree'],
             env_changes={'LANG':'BOGUS', 'LC_ALL':None, 'LC_CTYPE':None,
                          'LANGUAGE':None})
-        self.assertStartsWith(err, 'brz: warning: unsupported locale setting')
-        self.assertEqualDiff("""\
+        self.assertStartsWith(err, b'brz: warning: unsupported locale setting')
+        self.assertEqualDiff(b"""\
 ------------------------------------------------------------
 revno: 1
 committer: ???? Meinel <juju@info.com>

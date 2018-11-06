@@ -7,7 +7,7 @@ Status
 
 :Date: 2007-07-14
 
-This document describes the indexing facilities within bzrlib.
+This document describes the indexing facilities within breezy.
 
 
 .. contents::
@@ -33,7 +33,7 @@ keys as part of the index.
 Overview
 ========
 
-bzr is moving to a write-once model for repository storage in order to
+Breezy is moving to a write-once model for repository storage in order to
 achieve lock-free repositories eventually. In order to support this, we are
 making our new index classes **immutable**. That is, one creates a new
 index in a single operation, and after that it is read only. To combine
@@ -98,7 +98,7 @@ GraphIndex
 
 ``GraphIndex`` supports graph based lookups. While currently unoptimised
 for reading, the index is quite space efficient at storing the revision
-graph index for bzr. The ``GraphIndexBuilder`` may be used to create one
+graph index for Breezy. The ``GraphIndexBuilder`` may be used to create one
 of these indices by calling ``add_node`` until all nodes are added, then
 ``finish`` to obtain a file stream containing the index data. Multiple
 indices may be queried using the ``CombinedGraphIndex`` class.

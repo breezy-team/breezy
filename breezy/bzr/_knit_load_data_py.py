@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from .. import errors
+from .knit import KnitCorrupt
 
 
 def _load_data_py(kndx, fp):
@@ -36,7 +36,7 @@ def _load_data_py(kndx, fp):
     history_top = len(history) - 1
     for line in fp.readlines():
         rec = line.split()
-        if len(rec) < 5 or rec[-1] != ':':
+        if len(rec) < 5 or rec[-1] != b':':
             # corrupt line.
             # FIXME: in the future we should determine if its a
             # short write - and ignore it
@@ -46,7 +46,7 @@ def _load_data_py(kndx, fp):
         try:
             parents = []
             for value in rec[4:-1]:
-                if value[0] == '.':
+                if value[:1] == b'.':
                     # uncompressed reference
                     parent_id = value[1:]
                 else:
@@ -61,20 +61,20 @@ def _load_data_py(kndx, fp):
             # corrupt we can't asssume that no other rows referring to the
             # index of this record actually mean the subsequent uncorrupt
             # one, so we error.
-            raise errors.KnitCorrupt(kndx._filename, "line %r: %s" % (rec, e))
+            raise KnitCorrupt(kndx._filename, "line %r: %s" % (rec, e))
 
         version_id, options, pos, size = rec[:4]
         version_id = version_id
         try:
             pos = int(pos)
         except ValueError as e:
-            raise errors.KnitCorrupt(kndx._filename,
+            raise KnitCorrupt(kndx._filename,
                                      "invalid position on line %r: %s"
                                      % (rec, e))
         try:
             size = int(size)
         except ValueError as e:
-            raise errors.KnitCorrupt(kndx._filename,
+            raise KnitCorrupt(kndx._filename,
                                      "invalid size on line %r: %s"
                                      % (rec, e))
 
@@ -88,7 +88,7 @@ def _load_data_py(kndx, fp):
         else:
             index = cache[version_id][5]
         cache[version_id] = (version_id,
-                             options.split(','),
+                             options.split(b','),
                              pos,
                              size,
                              tuple(parents),

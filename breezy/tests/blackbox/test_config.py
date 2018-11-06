@@ -57,12 +57,12 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
 
     def test_unexpected_regexp(self):
         self.run_bzr_error(
-            ['The "\*file" configuration option does not exist',],
+            ['The "\\*file" configuration option does not exist',],
             ['config', '*file'])
 
     def test_wrong_regexp(self):
         self.run_bzr_error(
-            ['Invalid pattern\(s\) found. "\*file" nothing to repeat',],
+            ['Invalid pattern\\(s\\) found. "\\*file" nothing to repeat',],
             ['config', '--all', '*file'])
 
 
@@ -74,11 +74,11 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         _t_config.create_configs(self)
 
     def test_multiline_all_values(self):
-        self.bazaar_config.set_user_option('multiline', '1\n2\n')
+        self.breezy_config.set_user_option('multiline', '1\n2\n')
         # Fallout from bug 710410, the triple quotes have been toggled
         script.run_script(self, '''\
             $ brz config -d tree
-            bazaar:
+            breezy:
               [DEFAULT]
               multiline = """1
             2
@@ -86,7 +86,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             ''')
 
     def test_multiline_value_only(self):
-        self.bazaar_config.set_user_option('multiline', '1\n2\n')
+        self.breezy_config.set_user_option('multiline', '1\n2\n')
         # Fallout from bug 710410, the triple quotes have been toggled
         script.run_script(self, '''\
             $ brz config -d tree multiline
@@ -98,10 +98,10 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
     def test_list_value_all(self):
         config.option_registry.register(config.ListOption('list'))
         self.addCleanup(config.option_registry.remove, 'list')
-        self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
+        self.breezy_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ brz config -d tree
-            bazaar:
+            breezy:
               [DEFAULT]
               list = 1, a, "with, a comma"
             ''')
@@ -109,35 +109,35 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
     def test_list_value_one(self):
         config.option_registry.register(config.ListOption('list'))
         self.addCleanup(config.option_registry.remove, 'list')
-        self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
+        self.breezy_config.set_user_option('list', [1, 'a', 'with, a comma'])
         script.run_script(self, '''\
             $ brz config -d tree list
             1, a, "with, a comma"
             ''')
 
     def test_registry_value_all(self):
-        self.bazaar_config.set_user_option('bzr.transform.orphan_policy',
+        self.breezy_config.set_user_option('transform.orphan_policy',
                                            u'move')
         script.run_script(self, '''\
             $ brz config -d tree
-            bazaar:
+            breezy:
               [DEFAULT]
-              bzr.transform.orphan_policy = move
+              transform.orphan_policy = move
             ''')
 
     def test_registry_value_one(self):
-        self.bazaar_config.set_user_option('bzr.transform.orphan_policy',
+        self.breezy_config.set_user_option('transform.orphan_policy',
                                            u'move')
         script.run_script(self, '''\
-            $ brz config -d tree bzr.transform.orphan_policy
+            $ brz config -d tree transform.orphan_policy
             move
             ''')
 
-    def test_bazaar_config(self):
-        self.bazaar_config.set_user_option('hello', 'world')
+    def test_breezy_config(self):
+        self.breezy_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
             $ brz config -d tree
-            bazaar:
+            breezy:
               [DEFAULT]
               hello = world
             ''')
@@ -155,22 +155,22 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             ''')
 
     def test_locations_config_outside_branch(self):
-        self.bazaar_config.set_user_option('hello', 'world')
+        self.breezy_config.set_user_option('hello', 'world')
         self.locations_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
             $ brz config
-            bazaar:
+            breezy:
               [DEFAULT]
               hello = world
             ''')
 
     def test_cmd_line(self):
-        self.bazaar_config.set_user_option('hello', 'world')
+        self.breezy_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
             $ brz config -Ohello=bzr
             cmdline:
               hello = bzr
-            bazaar:
+            breezy:
               [DEFAULT]
               hello = world
             ''')
@@ -216,10 +216,10 @@ class TestConfigActive(tests.TestCaseWithTransport):
             locations
             ''')
 
-    def test_active_in_bazaar(self):
+    def test_active_in_breezy(self):
         script.run_script(self, '''\
-            $ brz config -d tree --scope bazaar file
-            bazaar
+            $ brz config -d tree --scope breezy file
+            breezy
             ''')
 
     def test_active_in_branch(self):
@@ -242,20 +242,20 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
         self.run_bzr_error(['The "moon" configuration does not exist'],
                            ['config', '--scope', 'moon', 'hello=world'])
 
-    def test_bazaar_config_outside_branch(self):
+    def test_breezy_config_outside_branch(self):
         script.run_script(self, '''\
-            $ brz config --scope bazaar hello=world
+            $ brz config --scope breezy hello=world
             $ brz config -d tree --all hello
-            bazaar:
+            breezy:
               [DEFAULT]
               hello = world
             ''')
 
-    def test_bazaar_config_inside_branch(self):
+    def test_breezy_config_inside_branch(self):
         script.run_script(self, '''\
-            $ brz config -d tree --scope bazaar hello=world
+            $ brz config -d tree --scope breezy hello=world
             $ brz config -d tree --all hello
-            bazaar:
+            breezy:
               [DEFAULT]
               hello = world
             ''')
@@ -296,9 +296,9 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
         self.run_bzr_error(['The "moon" configuration does not exist'],
                            ['config', '--scope', 'moon', '--remove', 'file'])
 
-    def test_bazaar_config_outside_branch(self):
+    def test_breezy_config_outside_branch(self):
         script.run_script(self, '''\
-            $ brz config --scope bazaar --remove file
+            $ brz config --scope breezy --remove file
             $ brz config -d tree --all file
             locations:
               [.../work/tree]
@@ -307,9 +307,9 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
               file = branch
             ''')
 
-    def test_bazaar_config_inside_branch(self):
+    def test_breezy_config_inside_branch(self):
         script.run_script(self, '''\
-            $ brz config -d tree --scope bazaar --remove file
+            $ brz config -d tree --scope breezy --remove file
             $ brz config -d tree --all file
             locations:
               [.../work/tree]
@@ -324,9 +324,9 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             $ brz config -d tree --all file
             branch:
               file = branch
-            bazaar:
+            breezy:
               [DEFAULT]
-              file = bazaar
+              file = breezy
             ''')
 
     def test_branch_config_default(self):
@@ -335,16 +335,16 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             $ brz config -d tree --all file
             branch:
               file = branch
-            bazaar:
+            breezy:
               [DEFAULT]
-              file = bazaar
+              file = breezy
             ''')
         script.run_script(self, '''\
             $ brz config -d tree --remove file
             $ brz config -d tree --all file
-            bazaar:
+            breezy:
               [DEFAULT]
-              file = bazaar
+              file = breezy
             ''')
 
     def test_branch_config_forcing_branch(self):
@@ -354,16 +354,16 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             locations:
               [.../work/tree]
               file = locations
-            bazaar:
+            breezy:
               [DEFAULT]
-              file = bazaar
+              file = breezy
             ''')
         script.run_script(self, '''\
             $ brz config -d tree --scope locations --remove file
             $ brz config -d tree --all file
-            bazaar:
+            breezy:
               [DEFAULT]
-              file = bazaar
+              file = breezy
             ''')
 
 

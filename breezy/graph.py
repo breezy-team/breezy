@@ -119,7 +119,10 @@ class StackedParentsProvider(object):
         if not remaining:
             return found
         for parents_provider in self._parent_providers:
-            new_found = parents_provider.get_parent_map(remaining)
+            try:
+                new_found = parents_provider.get_parent_map(remaining)
+            except errors.UnsupportedOperation:
+                continue
             found.update(new_found)
             remaining.difference_update(new_found)
             if not remaining:
@@ -1146,7 +1149,7 @@ class Graph(object):
                 ancestor_all_unique = ancestor_all_unique.intersection(
                                             searcher.seen)
 
-        trace.mutter('Started %s unique searchers for %s unique revisions',
+        trace.mutter('Started %d unique searchers for %d unique revisions',
                      simple_unique, total_unique)
 
         while True: # If we have no more nodes we have nothing to do
@@ -1373,18 +1376,6 @@ class _BreadthFirstSearcher(object):
         excludes = self._stopped_keys.union(next_query)
         included_keys = self.seen.difference(excludes)
         return self._started_keys, excludes, included_keys
-
-    def _get_result(self):
-        """Get a SearchResult for the current state of this searcher.
-
-        :return: A SearchResult for this search so far. The SearchResult is
-            static - the search can be advanced and the search result will not
-            be invalidated or altered.
-        """
-        from breezy.vf_search import SearchResult
-        (started_keys, excludes, included_keys) = self.get_state()
-        return SearchResult(started_keys, excludes, len(included_keys),
-            included_keys)
 
     def step(self):
         try:
@@ -1713,7 +1704,7 @@ class GraphThunkIdsToKeys(object):
         self._graph.add_node((revision,), [(p,) for p in parents])
 
 
-_counters = [0,0,0,0,0,0,0]
+_counters = [0, 0, 0, 0, 0, 0, 0]
 try:
     from ._known_graph_pyx import KnownGraph
 except ImportError as e:
