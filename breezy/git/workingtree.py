@@ -77,9 +77,6 @@ from .. import (
 from ..decorators import (
     only_raises,
     )
-from ..bzr import (
-    inventory,
-    )
 from ..mutabletree import (
     BadReferenceTarget,
     MutableTree,
