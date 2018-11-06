@@ -27,7 +27,6 @@ from breezy import (
     cleanup,
     config as _mod_config,
     debug,
-    fetch,
     memorytree,
     repository,
     revision as _mod_revision,
@@ -37,6 +36,7 @@ from breezy import (
     urlutils,
     )
 from breezy.bzr import (
+    fetch,
     remote,
     vf_search,
     )
