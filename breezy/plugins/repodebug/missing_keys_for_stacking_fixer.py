@@ -21,6 +21,7 @@ from ...commands import Command, Option
 from ... import errors
 from ...sixish import viewvalues
 from ...bzr.vf_search import PendingAncestryResult
+from ...repository import WriteGroup
 from ...revision import NULL_REVISION
 
 
@@ -77,14 +78,8 @@ class cmd_fix_missing_keys_for_stacking(Command):
             assert raw_r._format.network_name() == b.repository._format.network_name()
             stream = b.repository.inventories.get_record_stream(
                     needed, 'topological', True)
-            raw_r.start_write_group()
-            try:
+            with WriteGroup(raw_r):
                 raw_r.inventories.insert_record_stream(stream)
-            except:
-                raw_r.abort_write_group()
-                raise
-            else:
-                raw_r.commit_write_group()
         finally:
             raw_r.unlock()
         b.unlock()

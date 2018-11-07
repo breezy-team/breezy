@@ -17,6 +17,7 @@
 """Tests for add_signature_text on a repository with external references."""
 
 from breezy import errors
+from breezy.repository import WriteGroup
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -34,20 +35,11 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
         self.addCleanup(tree.unlock)
         base = self.make_repository('base')
         repo = self.make_referring('referring', base)
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
-                rev = tree.branch.repository.get_revision(revid)
-                repo.texts.add_lines((inv.root.file_id, revid), [], [])
-                repo.add_revision(revid, rev, inv=inv)
-                repo.add_signature_text(revid, b"text")
-                repo.commit_write_group()
-            except:
-                repo.abort_write_group()
-                raise
-        finally:
-            repo.unlock()
+        with repo.lock_write(), WriteGroup(repo):
+            rev = tree.branch.repository.get_revision(revid)
+            repo.texts.add_lines((inv.root.file_id, revid), [], [])
+            repo.add_revision(revid, rev, inv=inv)
+            repo.add_signature_text(revid, b"text")
         repo.get_signature_text(revid)
         self.assertRaises(errors.NoSuchRevision, base.get_signature_text,
             revid)

@@ -444,26 +444,15 @@ class TestPackRepository(TestCaseWithTransport):
         r1 = repository.Repository.open('.')
         r2 = repository.Repository.open('.')
         # add a pack to drop
-        r1.lock_write()
-        try:
-            r1.start_write_group()
-            try:
+        with r1.lock_write():
+            with repository.WriteGroup(r1):
                 self._add_text(r1, b'fileidr1')
-            except:
-                r1.abort_write_group()
-                raise
-            else:
-                r1.commit_write_group()
             r1._pack_collection.ensure_loaded()
             name_to_drop = r1._pack_collection.all_packs()[0].name
-        finally:
-            r1.unlock()
-        r1.lock_write()
-        try:
+        with r1.lock_write():
             # access enough data to load the names list
             list(r1.all_revision_ids())
-            r2.lock_write()
-            try:
+            with r2.lock_write():
                 # access enough data to load the names list
                 list(r2.all_revision_ids())
                 r1._pack_collection.ensure_loaded()
@@ -503,10 +492,6 @@ class TestPackRepository(TestCaseWithTransport):
                 self.assertEqual(r1._pack_collection.names(), r2._pack_collection.names())
                 self.assertEqual(1, len(r1._pack_collection.names()))
                 self.assertFalse(name_to_drop in r1._pack_collection.names())
-            finally:
-                r2.unlock()
-        finally:
-            r1.unlock()
 
     def test_concurrent_pack_triggers_reload(self):
         # create 2 packs, which we will then collapse

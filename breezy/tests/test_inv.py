@@ -140,8 +140,7 @@ def apply_inventory_WT(self, basis, delta, invalid_delta=True):
 
 
 def _create_repo_revisions(repo, basis, delta, invalid_delta):
-    repo.start_write_group()
-    try:
+    with repository.WriteGroup(repo):
         rev = revision.Revision(b'basis', timestamp=0, timezone=None,
             message="", committer="foo@example.com")
         basis.revision_id = b'basis'
@@ -160,19 +159,13 @@ def _create_repo_revisions(repo, basis, delta, invalid_delta):
         rev = revision.Revision(b'result', timestamp=0, timezone=None,
             message="", committer="foo@example.com")
         repo.add_revision(b'result', rev, result_inv)
-        repo.commit_write_group()
-    except:
-        repo.abort_write_group()
-        raise
     return target_entries
 
 
 def _get_basis_entries(tree):
     basis_tree = tree.basis_tree()
-    basis_tree.lock_read()
-    basis_tree_entries = list(basis_tree.inventory.iter_entries_by_dir())
-    basis_tree.unlock()
-    return basis_tree_entries
+    with basis_tree.lock_read():
+        return list(basis_tree.inventory.iter_entries_by_dir())
 
 
 def _populate_different_tree(tree, basis, delta):
@@ -251,28 +244,15 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
     format = self.format()
     control = self.make_controldir('tree', format=format._matchingcontroldir)
     repo = format.initialize(control)
-    with repo.lock_write():
-        repo.start_write_group()
-        try:
-            rev = revision.Revision(b'basis', timestamp=0, timezone=None,
-                message="", committer="foo@example.com")
-            basis.revision_id = b'basis'
-            create_texts_for_inv(repo, basis)
-            repo.add_revision(b'basis', rev, basis)
-            repo.commit_write_group()
-        except:
-            repo.abort_write_group()
-            raise
-    with repo.lock_write():
-        repo.start_write_group()
-        try:
-            inv_sha1 = repo.add_inventory_by_delta(b'basis', delta,
-                b'result', [b'basis'])
-        except:
-            repo.abort_write_group()
-            raise
-        else:
-            repo.commit_write_group()
+    with repo.lock_write(), repository.WriteGroup(repo):
+        rev = revision.Revision(b'basis', timestamp=0, timezone=None,
+            message="", committer="foo@example.com")
+        basis.revision_id = b'basis'
+        create_texts_for_inv(repo, basis)
+        repo.add_revision(b'basis', rev, basis)
+    with repo.lock_write(), repository.WriteGroup(repo):
+        inv_sha1 = repo.add_inventory_by_delta(b'basis', delta,
+            b'result', [b'basis'])
     # Fresh lock, reads disk again.
     repo = repo.controldir.open_repository()
     repo.lock_read()

@@ -38,24 +38,14 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
 
     def test_add_bytes_to_chk_bytes_store(self):
         repo = self.make_repository('.')
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
-                sha1, len, _ = repo.chk_bytes.add_lines((None,),
-                    None, [b"foo\n", b"bar\n"], random_id=True)
-                self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
-                    sha1)
-                self.assertEqual(
-                    {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
-                    repo.chk_bytes.keys())
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                repo.commit_write_group()
-        finally:
-            repo.unlock()
+        with repo.lock_write(), repository.WriteGroup(repo):
+            sha1, len, _ = repo.chk_bytes.add_lines((None,),
+                None, [b"foo\n", b"bar\n"], random_id=True)
+            self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
+                sha1)
+            self.assertEqual(
+                {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
+                repo.chk_bytes.keys())
         # And after an unlock/lock pair
         with repo.lock_read():
             self.assertEqual(
@@ -76,44 +66,25 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         node_sha1 = osutils.sha_strings(node_lines)
         expected_set = {(b'sha1:' + leaf_sha1,), (b'sha1:' + node_sha1,)}
         repo = self.make_repository('.')
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
+        with repo.lock_write():
+            with repository.WriteGroup(repo):
                 # Internal node pointing at a leaf.
                 repo.chk_bytes.add_lines((None,), None, node_lines, random_id=True)
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                repo.commit_write_group()
-            repo.start_write_group()
-            try:
+            with repository.WriteGroup(repo):
                 # Leaf in a separate pack.
                 repo.chk_bytes.add_lines((None,), None, leaf_lines, random_id=True)
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                repo.commit_write_group()
             repo.pack()
             self.assertEqual(expected_set, repo.chk_bytes.keys())
-        finally:
-            repo.unlock()
         # and reopening
         repo = repo.controldir.open_repository()
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             self.assertEqual(expected_set, repo.chk_bytes.keys())
-        finally:
-            repo.unlock()
 
     def test_chk_bytes_are_fully_buffered(self):
         repo = self.make_repository('.')
         repo.lock_write()
         self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        try:
+        with repository.WriteGroup(repo):
             sha1, len, _ = repo.chk_bytes.add_lines((None,),
                 None, [b"foo\n", b"bar\n"], random_id=True)
             self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
@@ -121,11 +92,6 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             self.assertEqual(
                 {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
-        except:
-            repo.abort_write_group()
-            raise
-        else:
-            repo.commit_write_group()
         # This may not always be correct if we change away from BTreeGraphIndex
         # in the future. But for now, lets check that chk_bytes are fully
         # buffered
@@ -389,7 +355,3 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         self.assertRaises(
             errors.BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()
-
-
-
-

@@ -21,6 +21,7 @@ from breezy import (
     controldir,
     tests,
     )
+from breezy.repository import WriteGroup
 from breezy.bzr import (
     inventory,
     )
@@ -53,10 +54,8 @@ class TrivialTest(tests.TestCaseWithTransport):
         inv = inventory.Inventory(revision_id=b'missing')
         inv.root.revision=b'missing'
         repo.lock_write()
-        repo.start_write_group()
-        repo.add_inventory(b'missing', inv, [])
-        repo.commit_write_group()
-        repo.unlock()
+        with repo.lock_write(), WriteGroup(repo):
+            repo.add_inventory(b'missing', inv, [])
         (out, err) = self.run_bzr('reconcile')
         if repo._reconcile_backsup_inventory:
             does_backup_text = (

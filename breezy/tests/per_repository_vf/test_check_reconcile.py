@@ -25,6 +25,7 @@ from breezy.bzr.inventory import (
     Inventory,
     InventoryFile,
     )
+from breezy.repository import WriteGroup
 from breezy.revision import (
     NULL_REVISION,
     Revision,
@@ -793,15 +794,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
     def make_populated_repository(self, factory):
         """Create a new repository populated by the given factory."""
         repo = self.make_repository('broken-repo')
-        with repo.lock_write():
-            repo.start_write_group()
-            try:
-                factory(repo)
-                repo.commit_write_group()
-                return repo
-            except:
-                repo.abort_write_group()
-                raise
+        with repo.lock_write(), WriteGroup(repo):
+            factory(repo)
+            return repo
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         """Add a revision with a given inventory and parents to a repository.

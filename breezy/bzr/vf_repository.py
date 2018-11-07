@@ -68,6 +68,7 @@ from ..repository import (
     InterRepository,
     Repository,
     RepositoryFormat,
+    WriteGroup,
     )
 from .repository import (
     MetaDirRepository,
@@ -2800,19 +2801,13 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
     Accepts an iterable of revision, tree, signature tuples.  The signature
     may be None.
     """
-    repository.start_write_group()
-    try:
+    with WriteGroup(repository):
         inventory_cache = lru_cache.LRUCache(10)
         for n, (revision, revision_tree, signature) in enumerate(iterable):
             _install_revision(repository, revision, revision_tree, signature,
                 inventory_cache)
             if pb is not None:
                 pb.update(gettext('Transferring revisions'), n + 1, num_revisions)
-    except:
-        repository.abort_write_group()
-        raise
-    else:
-        repository.commit_write_group()
 
 
 def _install_revision(repository, rev, revision_tree, signature,

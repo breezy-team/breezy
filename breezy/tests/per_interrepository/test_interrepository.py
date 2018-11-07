@@ -22,6 +22,7 @@ import breezy
 import breezy.errors as errors
 import breezy.gpg
 from breezy.bzr.inventory import Inventory
+from breezy.repository import WriteGroup
 from breezy.revision import NULL_REVISION
 from breezy.tests import (
     TestNotApplicable,
@@ -65,13 +66,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree('a')
         self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
-        tree_a.branch.repository.lock_write()
-        tree_a.branch.repository.start_write_group()
-        if tree_a.branch.repository._format.supports_ghosts:
-            inv_file = tree_a.branch.repository.inventories
-            inv_file.add_lines((b'orphan',), [], [])
-        tree_a.branch.repository.commit_write_group()
-        tree_a.branch.repository.unlock()
+        with tree_a.branch.repository.lock_write(), WriteGroup(tree_a.branch.repository):
+            if tree_a.branch.repository._format.supports_ghosts:
+                inv_file = tree_a.branch.repository.inventories
+                inv_file.add_lines((b'orphan',), [], [])
         # add a real revision 'rev1'
         self.rev1 = tree_a.commit('rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
@@ -146,12 +144,9 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
                 'to repository does not support signatures')
         # and sign 'rev2'
         tree_a = WorkingTree.open('a')
-        tree_a.branch.repository.lock_write()
-        tree_a.branch.repository.start_write_group()
-        tree_a.branch.repository.sign_revision(self.rev2,
-            breezy.gpg.LoopbackGPGStrategy(None))
-        tree_a.branch.repository.commit_write_group()
-        tree_a.branch.repository.unlock()
+        with tree_a.branch.repository.lock_write(), WriteGroup(tree_a.branch.repository):
+            tree_a.branch.repository.sign_revision(self.rev2,
+                breezy.gpg.LoopbackGPGStrategy(None))
 
         from_repo = self.controldir.open_repository()
         from_signature = from_repo.get_signature_text(self.rev2)

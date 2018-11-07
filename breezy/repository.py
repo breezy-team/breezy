@@ -244,6 +244,28 @@ class RepositoryWriteLockResult(LogicalLockResult):
             self.unlock)
 
 
+class WriteGroup(object):
+    """Context manager that manages a write group.
+
+    Raising an exception will result in the write group being aborted.
+    """
+
+    def __init__(self, repository, suppress_errors=False):
+        self.repository = repository
+        self._suppress_errors = suppress_errors
+        return self
+
+    def __enter__(self):
+        self.repository.start_write_group()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.repository.abort_write_group(self._suppress_errors)
+            return False
+        else:
+            self.repository.commit_write_group()
+
+
 ######################################################################
 # Repositories
 

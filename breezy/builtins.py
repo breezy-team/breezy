@@ -5245,29 +5245,18 @@ class cmd_re_sign(Command):
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
+        from .repository import WriteGroup
         gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
-            b.repository.start_write_group()
-            try:
+            with WriteGroup(b.repository):
                 for revision_id in revision_id_list:
                     revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
-            except:
-                b.repository.abort_write_group()
-                raise
-            else:
-                b.repository.commit_write_group()
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.repository.start_write_group()
-                try:
+                with WriteGroup(b.repository):
                     b.repository.sign_revision(rev_id, gpg_strategy)
-                except:
-                    b.repository.abort_write_group()
-                    raise
-                else:
-                    b.repository.commit_write_group()
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -5278,16 +5267,10 @@ class cmd_re_sign(Command):
                     to_revno = b.revno()
                 if from_revno is None or to_revno is None:
                     raise errors.BzrCommandError(gettext('Cannot sign a range of non-revision-history revisions'))
-                b.repository.start_write_group()
-                try:
+                with WriteGroup(b.repository):
                     for revno in range(from_revno, to_revno + 1):
                         b.repository.sign_revision(b.get_rev_id(revno),
                                                    gpg_strategy)
-                except:
-                    b.repository.abort_write_group()
-                    raise
-                else:
-                    b.repository.commit_write_group()
             else:
                 raise errors.BzrCommandError(gettext('Please supply either one revision, or a range.'))
 

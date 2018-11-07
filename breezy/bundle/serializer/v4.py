@@ -26,6 +26,7 @@ from ... import (
     lru_cache,
     multiparent,
     osutils,
+    repository as _mod_repository,
     revision as _mod_revision,
     trace,
     ui,
@@ -518,14 +519,8 @@ class RevisionInstaller(object):
 
         Must be called with the Repository locked.
         """
-        self._repository.start_write_group()
-        try:
-            result = self._install_in_write_group()
-        except:
-            self._repository.abort_write_group()
-            raise
-        self._repository.commit_write_group()
-        return result
+        with _mod_repository.WriteGroup(self._repository):
+            return self._install_in_write_group()
 
     def _install_in_write_group(self):
         current_file = None

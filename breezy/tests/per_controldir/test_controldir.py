@@ -24,6 +24,7 @@ from breezy import (
     errors,
     gpg,
     osutils,
+    repository as _mod_repository,
     revision as _mod_revision,
     transport,
     ui,
@@ -316,11 +317,8 @@ class TestControlDir(TestCaseWithControlDir):
         tree_repo = tree.branch.repository
         if not tree_repo._format.supports_revision_signatures:
             self.skipTest('repository format does not support signing')
-        tree_repo.lock_write()
-        tree_repo.start_write_group()
-        tree_repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
-        tree_repo.commit_write_group()
-        tree_repo.unlock()
+        with tree_repo.lock_write(), _mod_repository.WriteGroup(tree_repo):
+            tree_repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
         target = self.make_branch('target')
         tree.branch.repository.copy_content_into(target.repository)
         tree.branch.copy_content_into(target)
