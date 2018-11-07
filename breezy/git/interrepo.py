@@ -214,8 +214,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revids.append(revid)
         missing = set()
         graph = self.source.get_graph()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             while stop_revids:
                 new_stop_revids = []
                 for revid in stop_revids:
@@ -229,8 +228,6 @@ class InterToLocalGitRepository(InterToGitRepository):
                 for parent_revids in viewvalues(parent_map):
                     stop_revids.update(parent_revids)
                 pb.update("determining revisions to fetch", len(missing))
-        finally:
-            pb.finished()
         return graph.iter_topo_order(missing)
 
     def _get_target_bzr_refs(self):
@@ -292,8 +289,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         with self.source_store.lock_read():
             todo = list(self.missing_revisions(revs))[:limit]
             revidmap = {}
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 object_generator = MissingObjectsIterator(
                     self.source_store, self.source, pb)
                 for (old_revid, git_sha) in object_generator.import_revisions(
@@ -310,8 +306,6 @@ class InterToLocalGitRepository(InterToGitRepository):
                     revidmap[old_revid] = (git_sha, new_revid)
                 self.target_store.add_objects(object_generator)
                 return revidmap
-            finally:
-                pb.finished()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
@@ -565,8 +559,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 lambda sha: store[sha].parents)
             wants_recorder = DetermineWantsRecorder(determine_wants)
 
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw)
                 trace.mutter("Importing %d new revisions",
@@ -575,8 +568,6 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     mapping, objects_iter, store, wants_recorder.wants, pb,
                     limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
-            finally:
-                pb.finished()
 
     @staticmethod
     def is_compatible(source, target):
@@ -601,10 +592,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         self._warn_slow()
         remote_refs = self.source.controldir.get_refs_container().as_dict()
         wants = determine_wants(remote_refs)
-        create_pb = None
-        pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = get_object_store(self.target, mapping)
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             target_git_object_retriever.lock_write()
             try:
                 (pack_hint, last_rev) = import_git_objects(self.target,
@@ -613,8 +602,6 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
                 return (pack_hint, last_rev, remote_refs)
             finally:
                 target_git_object_retriever.unlock()
-        finally:
-            pb.finished()
 
     @staticmethod
     def is_compatible(source, target):
@@ -711,14 +698,11 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         from .remote import DefaultProgressReporter
-        pb = ui.ui_factory.nested_progress_bar()
-        progress = DefaultProgressReporter(pb).progress
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
+            progress = DefaultProgressReporter(pb).progress
             refs = self.source._git.fetch(
                     self.target._git, determine_wants,
                     progress=progress)
-        finally:
-            pb.finished()
         return (None, None, refs)
 
     @staticmethod
