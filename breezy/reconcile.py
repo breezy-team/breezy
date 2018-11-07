@@ -28,7 +28,6 @@ __all__ = [
 
 
 from . import (
-    cleanup,
     errors,
     revision as _mod_revision,
     ui,
@@ -76,16 +75,9 @@ class Reconciler(object):
           branch history was correct, True if the branch history needed to be
           re-normalized.
         """
-        operation = cleanup.OperationWithCleanups(self._reconcile)
-        self.add_cleanup = operation.add_cleanup
-        operation.run_simple()
-
-    def _reconcile(self):
-        """Helper function for performing reconciliation."""
-        self.pb = ui.ui_factory.nested_progress_bar()
-        self.add_cleanup(self.pb.finished)
-        self._reconcile_branch()
-        self._reconcile_repository()
+        with ui.ui_factory.nested_progress_bar() as self.pb:
+            self._reconcile_branch()
+            self._reconcile_repository()
 
     def _reconcile_branch(self):
         try:
@@ -132,16 +124,8 @@ class BranchReconciler(object):
         self.branch = a_branch
 
     def reconcile(self):
-        operation = cleanup.OperationWithCleanups(self._reconcile)
-        self.add_cleanup = operation.add_cleanup
-        operation.run_simple()
-
-    def _reconcile(self):
-        self.branch.lock_write()
-        self.add_cleanup(self.branch.unlock)
-        self.pb = ui.ui_factory.nested_progress_bar()
-        self.add_cleanup(self.pb.finished)
-        self._reconcile_steps()
+        with self.branch.lock_write(), ui.ui_factory.nested_progress_bar() as self.pb:
+            self._reconcile_steps()
 
     def _reconcile_steps(self):
         self._reconcile_revision_history()
@@ -207,16 +191,8 @@ class RepoReconciler(object):
         * `garbage_inventories`: The number of inventory objects without
           revisions that were garbage collected.
         """
-        operation = cleanup.OperationWithCleanups(self._reconcile)
-        self.add_cleanup = operation.add_cleanup
-        operation.run_simple()
-
-    def _reconcile(self):
-        self.repo.lock_write()
-        self.add_cleanup(self.repo.unlock)
-        self.pb = ui.ui_factory.nested_progress_bar()
-        self.add_cleanup(self.pb.finished)
-        self._reconcile_steps()
+        with self.repo.lock_write(), ui.ui_factory.nested_progress_bar() as self.pb:
+            self._reconcile_steps()
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
@@ -522,25 +498,27 @@ class PackReconciler(RepoReconciler):
         collection = self.repo._pack_collection
         collection.ensure_loaded()
         collection.lock_names()
-        self.add_cleanup(collection._unlock_names)
-        packs = collection.all_packs()
-        all_revisions = self.repo.all_revision_ids()
-        total_inventories = len(list(
-            collection.inventory_index.combined_index.iter_all_entries()))
-        if len(all_revisions):
-            if self.canonicalize_chks:
-                reconcile_meth = self.repo._canonicalize_chks_pack
+        try:
+            packs = collection.all_packs()
+            all_revisions = self.repo.all_revision_ids()
+            total_inventories = len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+            if len(all_revisions):
+                if self.canonicalize_chks:
+                    reconcile_meth = self.repo._canonicalize_chks_pack
+                else:
+                    reconcile_meth = self.repo._reconcile_pack
+                new_pack = reconcile_meth(collection, packs, ".reconcile",
+                    all_revisions, self.pb)
+                if new_pack is not None:
+                    self._discard_and_save(packs)
             else:
-                reconcile_meth = self.repo._reconcile_pack
-            new_pack = reconcile_meth(collection, packs, ".reconcile",
-                all_revisions, self.pb)
-            if new_pack is not None:
+                # only make a new pack when there is data to copy.
                 self._discard_and_save(packs)
-        else:
-            # only make a new pack when there is data to copy.
-            self._discard_and_save(packs)
-        self.garbage_inventories = total_inventories - len(list(
-            collection.inventory_index.combined_index.iter_all_entries()))
+            self.garbage_inventories = total_inventories - len(list(
+                collection.inventory_index.combined_index.iter_all_entries()))
+        finally:
+            collection._unlock_names()
 
     def _discard_and_save(self, packs):
         """Discard some packs from the repository.

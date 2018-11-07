@@ -449,14 +449,11 @@ class BazaarObjectStore(BaseObjectStore):
             return
         self.start_write_group()
         try:
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
                     trace.mutter('processing %r', revid)
                     pb.update("updating git map", i, len(missing_revids))
                     self._update_sha_map_revision(revid)
-            finally:
-                pb.finished()
             if stop_revision is None:
                 self._map_updated = True
         except:
@@ -812,8 +809,7 @@ class BazaarObjectStore(BaseObjectStore):
         graph = self.repository.get_graph()
         todo = _find_missing_bzr_revids(graph, pending, processed)
         ret = PackTupleIterable(self)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for i, revid in enumerate(graph.iter_topo_order(todo)):
                 pb.update("generating git objects", i, len(todo))
                 try:
@@ -825,8 +821,6 @@ class BazaarObjectStore(BaseObjectStore):
                         rev, tree, lossy=lossy):
                     ret.add(obj.id, path)
             return ret
-        finally:
-            pb.finished()
 
     def add_thin_pack(self):
         import tempfile

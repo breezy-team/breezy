@@ -539,8 +539,7 @@ class LocalGitRepository(GitRepository):
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
+                with ui.ui_factory.nested_progress_bar() as pb:
                     for i, (git_sha, revid, roundtrip_revid) in enumerate(self._iter_revision_ids()):
                         if not roundtrip_revid:
                             continue
@@ -549,8 +548,6 @@ class LocalGitRepository(GitRepository):
                         self._git.refs[refname] = git_sha
                         if roundtrip_revid == bzr_revid:
                             return git_sha, mapping
-                finally:
-                    pb.finished()
                 raise errors.NoSuchRevision(self, bzr_revid)
         else:
             return (git_sha, mapping)

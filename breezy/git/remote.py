@@ -602,14 +602,11 @@ class TemporaryPackIterator(Pack):
 
     def _idx_load_or_generate(self, path):
         if not os.path.exists(path):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
                 self.data.create_index(path,
                     progress=report_progress)
-            finally:
-                pb.finished()
         return load_pack_index(path)
 
     def __del__(self):
