@@ -477,20 +477,6 @@ class InterGitNonGitRepository(InterFromGitRepository):
             potential.add(self.source.controldir.get_peeled(k) or v)
         return list(potential - self._target_has_shas(potential))
 
-    def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                for k, unpeeled in viewitems(refs):
-                    if not is_tag(k):
-                        continue
-                    if unpeeled == ZERO_SHA:
-                        continue
-                    potential.add(self.source.controldir.get_peeled(k) or unpeeled)
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
-
     def _warn_slow(self):
         if not config.GlobalConfig().suppress_warning('slow_intervcs_push'):
             trace.warning(
