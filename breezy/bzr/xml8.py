@@ -41,11 +41,11 @@ from ..errors import BzrError
 
 
 _xml_unescape_map = {
-    b'apos':b"'",
-    b'quot':b'"',
-    b'amp':b'&',
-    b'lt':b'<',
-    b'gt':b'>'
+    b'apos': b"'",
+    b'quot': b'"',
+    b'amp': b'&',
+    b'lt': b'<',
+    b'gt': b'>'
 }
 
 
@@ -60,6 +60,7 @@ def _unescaper(match, _map=_xml_unescape_map):
 
 
 _unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
+
 
 def _unescape_xml(data):
     """Unescape predefined XML entities in a string of data."""
@@ -191,10 +192,10 @@ class Serializer_v8(XMLSerializer):
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         root = Element('revision',
-                       committer = rev.committer,
-                       timestamp = '%.3f' % rev.timestamp,
-                       revision_id = decode_utf8(revision_id),
-                       inventory_sha1 = rev.inventory_sha1.decode('ascii'),
+                       committer=rev.committer,
+                       timestamp='%.3f' % rev.timestamp,
+                       revision_id=decode_utf8(revision_id),
+                       inventory_sha1=rev.inventory_sha1.decode('ascii'),
                        format=format_num.decode(),
                        )
         if rev.timezone is not None:
@@ -248,10 +249,10 @@ class Serializer_v8(XMLSerializer):
                 raise BzrError("invalid format version %r on revision"
                                 % format)
         get_cached = get_utf8_or_ascii
-        rev = Revision(committer = elt.get('committer'),
-                       timestamp = float(elt.get('timestamp')),
-                       revision_id = get_cached(elt.get('revision_id')),
-                       inventory_sha1 = elt.get('inventory_sha1').encode('ascii')
+        rev = Revision(committer=elt.get('committer'),
+                       timestamp=float(elt.get('timestamp')),
+                       revision_id=get_cached(elt.get('revision_id')),
+                       inventory_sha1=elt.get('inventory_sha1').encode('ascii')
                        )
         parents = elt.find('parents') or []
         for p in parents:
@@ -262,13 +263,13 @@ class Serializer_v8(XMLSerializer):
             rev.timezone = 0
         else:
             rev.timezone = int(v)
-        rev.message = elt.findtext('message') # text of <message>
+        rev.message = elt.findtext('message')  # text of <message>
         return rev
 
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""
         props_elt = elt.find('properties')
-        if not props_elt:
+        if not len(props_elt):
             return
         for prop_elt in props_elt:
             if prop_elt.tag != 'property':
