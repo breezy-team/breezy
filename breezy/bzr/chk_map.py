@@ -1738,7 +1738,7 @@ except ImportError as e:
         _search_key_255,
         _deserialise_leaf_node,
         _deserialise_internal_node,
-        )
+        )  # noqa: F401
 search_key_registry.register(b'hash-16-way', _search_key_16)
 search_key_registry.register(b'hash-255-way', _search_key_255)
 

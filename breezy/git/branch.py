@@ -61,7 +61,6 @@ from .config import (
     )
 from .errors import (
     NoPushSupport,
-    NoSuchRef,
     )
 from .push import (
     remote_divergence,

@@ -33,8 +33,6 @@ from breezy import (
 )
 """)
 
-from .sixish import text_type
-
 
 known_merge_tools = {
     'bcompare': 'bcompare {this} {other} {base} {result}',

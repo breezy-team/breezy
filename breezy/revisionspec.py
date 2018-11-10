@@ -25,7 +25,6 @@ import datetime
 from breezy import (
     branch as _mod_branch,
     cache_utf8,
-    osutils,
     revision,
     workingtree,
     )

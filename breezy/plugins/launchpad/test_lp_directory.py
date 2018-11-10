@@ -27,7 +27,6 @@ except ImportError:  # python < 3
 import breezy
 from ... import (
     debug,
-    errors,
     tests,
     transport,
     )

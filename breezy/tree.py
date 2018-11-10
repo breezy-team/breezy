@@ -19,8 +19,6 @@
 
 from __future__ import absolute_import
 
-import os
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import collections

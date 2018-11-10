@@ -25,7 +25,6 @@ import time
 
 from ...controldir import ControlDir
 from ...errors import (
-    BzrError,
     DivergedBranches,
     NotBranchError,
     NoSuchTag,

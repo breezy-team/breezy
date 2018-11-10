@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from ...controldir import ControlDir
 from ...commands import Command, Option
-from ... import errors, trace, urlutils
+from ... import errors, urlutils
 
 
 class cmd_fetch_all_records(Command):

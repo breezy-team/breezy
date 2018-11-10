@@ -56,7 +56,7 @@ merge the ``.po`` files again with::
 from ... import (
     config,
     # Since we are a built-in plugin we share the breezy version
-    version_info,
+    version_info,  # noqa: F401
     )
 from ...hooks import install_lazy_named_hook
 

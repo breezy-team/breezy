@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from dulwich.index import (
     commit_tree,
     )
-import os
 import stat
 
 from .. import (
@@ -44,16 +43,13 @@ from ..sixish import (
     )
 
 from dulwich.objects import (
-    S_IFGITLINK,
     Blob,
     Commit,
     )
 from dulwich.index import read_submodule_head
-from dulwich.repo import Repo
 
 
 from .mapping import (
-    entry_mode,
     object_mode,
     fix_person_identifier,
     )

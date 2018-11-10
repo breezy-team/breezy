@@ -49,7 +49,6 @@ from .. import (
     )
 from ..sixish import (
     bytesintern,
-    PY3,
     text_type,
     viewitems,
     viewvalues,

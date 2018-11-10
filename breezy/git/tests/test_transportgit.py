@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
-from dulwich.tests.test_refs import RefsContainerTests
 from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport

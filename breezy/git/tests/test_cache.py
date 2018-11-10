@@ -27,14 +27,6 @@ from dulwich.objects import (
 import os
 import stat
 
-from ... import osutils
-
-from ...bzr.inventory import (
-    InventoryFile,
-    InventoryDirectory,
-    ROOT_ID,
-    )
-
 from ...revision import (
     Revision,
     )

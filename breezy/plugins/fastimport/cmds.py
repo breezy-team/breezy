@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 from ... import controldir
 from ...commands import Command
-from ...option import Option, ListOption, RegistryOption
+from ...option import Option, RegistryOption
 from ...sixish import (
     text_type,
     )

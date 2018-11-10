@@ -29,7 +29,6 @@ from .. import (
     trace,
     transactions,
     ui,
-    version_info as breezy_version,
     )
 from ..decorators import only_raises
 from ..foreign import (

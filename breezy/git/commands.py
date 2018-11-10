@@ -23,7 +23,7 @@
 
 from __future__ import absolute_import
 
-import breezy.bzr.bzrdir
+import breezy.bzr  # noqa: F401
 from ..commands import (
     Command,
     display_command,
@@ -71,7 +71,6 @@ class cmd_git_import(Command):
 
     def run(self, src_location, dest_location=None, colocated=False):
         import os
-        import urllib
         from .. import (
             controldir,
             trace,

@@ -33,7 +33,6 @@ from breezy import (
     ui,
     )
 from breezy.bzr import (
-    knit,
     pack,
     xml5,
     xml6,

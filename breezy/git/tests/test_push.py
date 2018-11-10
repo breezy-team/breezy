@@ -33,7 +33,6 @@ from ..mapping import (
     BzrGitMappingExperimental,
     BzrGitMappingv1,
     )
-from ..errors import NoPushSupport
 from ..interrepo import (
     InterToGitRepository,
     )

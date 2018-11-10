@@ -22,7 +22,7 @@ These were formats present in pre-1.0 version of Bazaar.
 from __future__ import absolute_import
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     branch as _mod_branch,

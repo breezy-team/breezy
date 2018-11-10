@@ -22,7 +22,7 @@ import socket
 try:
     from urllib.parse import urlsplit, urlunsplit
 except ImportError:
-    from urlparse import urlsplit, urlunsplit
+    from urlparse import urlsplit, urlunsplit  # noqa: F401
 import urllib
 try:
     from xmlrpc.client import (
@@ -42,7 +42,6 @@ except ImportError:  # python < 3
         )
 
 from ... import (
-    config,
     errors,
     urlutils,
     __version__ as _breezy_version,

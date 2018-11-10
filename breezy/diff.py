@@ -29,7 +29,6 @@ import subprocess
 import tempfile
 
 from breezy import (
-    cleanup,
     cmdline,
     controldir,
     errors,

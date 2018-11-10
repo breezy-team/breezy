@@ -18,7 +18,6 @@
 
 from __future__ import absolute_import
 
-import breezy
 
 from ... import (
     conflicts as _mod_conflicts,

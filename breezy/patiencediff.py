@@ -209,7 +209,7 @@ except ImportError:
         unique_lcs_py as unique_lcs,
         recurse_matches_py as recurse_matches,
         PatienceSequenceMatcher_py as PatienceSequenceMatcher
-        )
+        )  # noqa: F401
 
 
 def main(args):

@@ -29,7 +29,6 @@ from breezy import (
 """)
 
 from . import (
-    errors,
     lazy_regex,
     )
 from .sixish import text_type

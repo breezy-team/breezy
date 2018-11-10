@@ -18,7 +18,6 @@
 """Tests for the GitMemoryTree class."""
 
 from ... import errors
-from ...treebuilder import TreeBuilder
 from . import TestCaseWithTransport
 
 

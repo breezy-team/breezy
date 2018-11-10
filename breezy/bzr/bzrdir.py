@@ -31,16 +31,13 @@ import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import breezy
 from breezy import (
     branch as _mod_branch,
     cleanup,
     fetch,
-    graph,
     lockable_files,
     lockdir,
     osutils,
-    pyutils,
     repository,
     revision as _mod_revision,
     transport as _mod_transport,
@@ -74,7 +71,6 @@ from .. import (
     config,
     controldir,
     errors,
-    registry,
     )
 
 

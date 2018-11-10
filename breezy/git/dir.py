@@ -24,8 +24,6 @@ from .. import (
     errors as bzr_errors,
     trace,
     osutils,
-    repository as _mod_repository,
-    revision as _mod_revision,
     urlutils,
     )
 from ..sixish import (
@@ -43,9 +41,6 @@ from ..controldir import (
     ControlDirFormat,
     format_registry,
     RepositoryAcquisitionPolicy,
-    )
-from .object_store import (
-    get_object_store,
     )
 
 from .push import (
@@ -449,7 +444,6 @@ class LocalGitDir(GitDir):
                 filename.startswith('.git\\'))
 
     def _get_symref(self, ref):
-        from dulwich.repo import SYMREF
         ref_chain, unused_sha = self._git.refs.follow(ref)
         if len(ref_chain) == 1:
             return None
@@ -586,7 +580,6 @@ class LocalGitDir(GitDir):
 
     def open_workingtree(self, recommend_upgrade=True, unsupported=False):
         if not self._git.bare:
-            from dulwich.errors import NoIndexPresent
             repo = self.find_repository()
             from .workingtree import GitWorkingTree
             branch = self.open_branch(ref=b'HEAD', nascent_ok=True)

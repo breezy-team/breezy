@@ -24,7 +24,6 @@ from __future__ import absolute_import
 
 
 import httplib2
-import os
 import re
 try:
     from urllib.parse import (
