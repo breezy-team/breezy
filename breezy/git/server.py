@@ -93,10 +93,11 @@ class BzrBackendRepo(BackendRepo):
             if wants is None:
                 return
             if isinstance(self.object_store, BazaarObjectStore):
-                return self.object_store.generate_pack_contents(have, wants, progress,
-                                                                get_tagged=get_tagged, lossy=True)
+                return self.object_store.generate_pack_contents(
+                    have, wants, progress, get_tagged=get_tagged, lossy=True)
             else:
-                return self.object_store.generate_pack_contents(have, wants, progress)
+                return self.object_store.generate_pack_contents(
+                    have, wants, progress)
 
 
 class BzrTCPGitServer(TCPGitServer):

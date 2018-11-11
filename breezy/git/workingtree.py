@@ -151,7 +151,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             self._lock_write_tree()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self.branch.unlock()
             raise
 
@@ -160,7 +160,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             self._lock_write_tree()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self.branch.unlock()
             raise
 
@@ -227,8 +227,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         except errors.NoSuchRevision as e:
             raise errors.GhostRevisionUnusableHere(e.revision)
         if merges:
-            self.control_transport.put_bytes('MERGE_HEAD', b'\n'.join(merges),
-                                             mode=self.controldir._get_file_mode())
+            self.control_transport.put_bytes(
+                'MERGE_HEAD', b'\n'.join(merges),
+                mode=self.controldir._get_file_mode())
         else:
             try:
                 self.control_transport.delete('MERGE_HEAD')
@@ -248,8 +249,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             working tree. Any of these may be ghosts.
         """
         with self.lock_tree_write():
-            self._check_parents_for_ghosts(revision_ids,
-                                           allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+            self._check_parents_for_ghosts(
+                revision_ids, allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             for revision_id in revision_ids:
                 _mod_revision.check_not_reserved_id(revision_id)
 
@@ -345,16 +346,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             if len(files) == 0:
                 return  # nothing to do
 
-            # Sort needed to first handle directory content before the directory
+            # Sort needed to first handle directory content before the
+            # directory
             files.sort(reverse=True)
 
             # Bail out if we are going to delete files we shouldn't
             if not keep_files and not force:
                 for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self.iter_changes(self.basis_tree(),
-                                                            include_unchanged=True, require_versioned=False,
-                                                            want_unversioned=True, specific_files=files):
-                    if versioned[0] == False:
+                     kind, executable) in self.iter_changes(
+                         self.basis_tree(), include_unchanged=True,
+                         require_versioned=False, want_unversioned=True,
+                         specific_files=files):
+                    if versioned[0] is False:
                         # The record is unknown or newly added
                         files_to_backup.append(path[1])
                         files_to_backup.extend(
@@ -434,7 +437,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     raise workingtree.SettingFileIdUnsupported()
 
         with self.lock_tree_write():
-            for filepath in osutils.canonical_relpaths(self.basedir, file_list):
+            for filepath in osutils.canonical_relpaths(
+                    self.basedir, file_list):
                 filepath, can_access = osutils.normalized_filename(filepath)
                 if not can_access:
                     raise errors.InvalidNormalization(filepath)
@@ -480,7 +484,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
                 for name in os.listdir(abs_user_dir):
                     subp = os.path.join(user_dir, name)
-                    if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
+                    if (self.is_control_filename(subp) or
+                            self.mapping.is_special_file(subp)):
                         continue
                     ignore_glob = self.is_ignored(subp)
                     if ignore_glob is not None:
@@ -510,12 +515,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _iter_files_recursive(self, from_dir=None, include_dirs=False):
         if from_dir is None:
             from_dir = u""
-        for (dirpath, dirnames, filenames) in os.walk(self.abspath(from_dir).encode(osutils._fs_enc)):
+        encoded_from_dir = self.abspath(from_dir).encode(osutils._fs_enc)
+        for (dirpath, dirnames, filenames) in os.walk(encoded_from_dir):
             dir_relpath = dirpath[len(self.basedir):].strip(b"/")
-            if self.controldir.is_control_filename(dir_relpath.decode(osutils._fs_enc)):
+            if self.controldir.is_control_filename(
+                    dir_relpath.decode(osutils._fs_enc)):
                 continue
             for name in list(dirnames):
-                if self.controldir.is_control_filename(name.decode(osutils._fs_enc)):
+                if self.controldir.is_control_filename(
+                        name.decode(osutils._fs_enc)):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
@@ -558,7 +566,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     except OSError as e:
                         if e.errno == errno.ENOENT:
                             raise errors.NoSuchFile(fullpath)
-                    if kind == 'directory' and f != '' and os.path.exists(os.path.join(fullpath, '.git')):
+                    if (kind == 'directory' and f != '' and
+                            os.path.exists(os.path.join(fullpath, '.git'))):
                         kind = 'tree-reference'
                     kinds[pos] = kind
 
@@ -566,7 +575,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         if self._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
         # TODO(jelmer): This shouldn't be writing in-place, but index.lock is
-        # already in use and GitFile doesn't allow overriding the lock file name :(
+        # already in use and GitFile doesn't allow overriding the lock file
+        # name :(
         f = open(self.control_transport.local_abspath('index'), 'wb')
         # Note that _flush will close the file
         self._flush(f)
@@ -576,7 +586,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             shaf = SHA1Writer(f)
             write_index_dict(shaf, self.index)
             shaf.close()
-        except:
+        except BaseException:
             f.abort()
             raise
         self._index_dirty = False
@@ -725,11 +735,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return os.lstat(self.abspath(path))
 
     def _live_entry(self, path):
-        return index_entry_from_path(self.abspath(path.decode('utf-8')).encode(osutils._fs_enc))
+        encoded_path = self.abspath(path.decode('utf-8')).encode(
+            osutils._fs_enc)
+        return index_entry_from_path(encoded_path)
 
     def is_executable(self, path, file_id=None):
         with self.lock_read():
-            if getattr(self, "_supports_executable", osutils.supports_executable)():
+            if getattr(self, "_supports_executable",
+                       osutils.supports_executable)():
                 mode = self._lstat(path).st_mode
             else:
                 (index, subpath) = self._lookup_index(path.encode('utf-8'))
@@ -740,10 +753,13 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
-        if getattr(self, "_supports_executable", osutils.supports_executable)():
-            return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
+        if getattr(self, "_supports_executable",
+                   osutils.supports_executable)():
+            return self._is_executable_from_path_and_stat_from_stat(
+                path, stat_result)
         else:
-            return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
+            return self._is_executable_from_path_and_stat_from_basis(
+                path, stat_result)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None:
@@ -762,11 +778,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 path_iterator = sorted(
                     self._iter_files_recursive(from_dir, include_dirs=True))
             else:
-                path_iterator = sorted([os.path.join(from_dir, name.decode(osutils._fs_enc)) for name in
-                                        os.listdir(self.abspath(
-                                            from_dir).encode(osutils._fs_enc))
-                                        if not self.controldir.is_control_filename(name.decode(osutils._fs_enc)) and
-                                        not self.mapping.is_special_file(name.decode(osutils._fs_enc))])
+                encoded_from_dir = self.abspath(from_dir).encode(
+                    osutils._fs_enc)
+                path_iterator = sorted(
+                    [os.path.join(from_dir, name.decode(osutils._fs_enc))
+                     for name in os.listdir(encoded_from_dir)
+                     if not self.controldir.is_control_filename(
+                         name.decode(osutils._fs_enc)) and
+                     not self.mapping.is_special_file(
+                         name.decode(osutils._fs_enc))])
             for path in path_iterator:
                 try:
                     encoded_path = path.encode("utf-8")
@@ -780,7 +800,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     value = None
                 kind = self.kind(path)
                 parent, name = posixpath.split(path)
-                for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
+                for dir_path, dir_ie in self._add_missing_parent_ids(
+                        parent, dir_ids):
                     pass
                 if kind in ('directory', 'tree-reference'):
                     if path != from_dir:
@@ -796,14 +817,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                             status = "?"
                             ie = fk_entries[kind]()
                             file_id = None
-                        yield posixpath.relpath(path, from_dir), status, kind, file_id, ie
+                        yield (
+                            posixpath.relpath(path, from_dir), status, kind,
+                            file_id, ie)
                     continue
                 if value is not None:
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                    yield posixpath.relpath(path, from_dir), "V", ie.kind, ie.file_id, ie
+                    yield (posixpath.relpath(path, from_dir), "V", ie.kind,
+                           ie.file_id, ie)
                 else:
                     ie = fk_entries[kind]()
-                    yield posixpath.relpath(path, from_dir), ("I" if self.is_ignored(path) else "?"), kind, None, ie
+                    yield (posixpath.relpath(path, from_dir), ("I" if
+                           self.is_ignored(path) else "?"), kind, None, ie)
 
     def all_file_ids(self):
         with self.lock_read():
@@ -834,11 +859,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return paths
 
     def iter_child_entries(self, path, file_id=None):
-        encoded_path = path.encode('utf-8')
         with self.lock_read():
             parent_id = self.path2id(path)
             found_any = False
-            seen_children = set()
             for item_path, value in self.index.iteritems():
                 decoded_item_path = item_path.decode('utf-8')
                 if self.mapping.is_special_file(item_path):
@@ -891,7 +914,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             for conflict in new_conflicts:
-                if conflict.typestring in ('text conflict', 'contents conflict'):
+                if conflict.typestring in ('text conflict',
+                                           'contents conflict'):
                     try:
                         self._set_conflicted(
                             conflict.path.encode('utf-8'), True)
@@ -1005,14 +1029,16 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                          inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
-                        dirblock.append((path_elements[0][0],
-                                         path_elements[0][1], path_elements[0][2],
-                                         path_elements[0][3], None, None))
+                        dirblock.append(
+                            (path_elements[0][0], path_elements[0][1],
+                                path_elements[0][2], path_elements[0][3],
+                                None, None))
                     elif len(path_elements[0]) == 6:
                         # versioned, absent file.
-                        dirblock.append((path_elements[0][0],
-                                         path_elements[0][1], 'unknown', None,
-                                         path_elements[0][4], path_elements[0][5]))
+                        dirblock.append(
+                            (path_elements[0][0], path_elements[0][1],
+                                'unknown', None, path_elements[0][4],
+                                path_elements[0][5]))
                     else:
                         raise NotImplementedError('unreachable code')
                 yield current_inv[0], dirblock
@@ -1102,16 +1128,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     parent_tree = self.branch.repository.revision_tree(
                         parent_id)
                 with parent_tree.lock_read():
-                    # TODO(jelmer): Use rename/copy tracker to find path name in parent
+                    # TODO(jelmer): Use rename/copy tracker to find path name
+                    # in parent
                     parent_path = path
                     try:
                         kind = parent_tree.kind(parent_path)
                     except errors.NoSuchFile:
                         continue
                     if kind != 'file':
-                        # Note: this is slightly unnecessary, because symlinks and
-                        # directories have a "text" which is the empty text, and we
-                        # know that won't mess up annotations. But it seems cleaner
+                        # Note: this is slightly unnecessary, because symlinks
+                        # and directories have a "text" which is the empty
+                        # text, and we know that won't mess up annotations. But
+                        # it seems cleaner
                         continue
                     parent_text_key = (
                         parent_path,
@@ -1148,7 +1176,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.user_transport.local_abspath('.'),
             self.control_transport.local_abspath("index"),
             self.store,
-            None if self.branch.head is None else self.store[self.branch.head].tree)
+            None
+            if self.branch.head is None
+            else self.store[self.branch.head].tree)
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
@@ -1162,7 +1192,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.index.clear()
             self._index_dirty = True
             if self.branch.head is not None:
-                for entry in self.store.iter_tree_contents(self.store[self.branch.head].tree):
+                for entry in self.store.iter_tree_contents(
+                        self.store[self.branch.head].tree):
                     if not validate_path(entry.path):
                         continue
 

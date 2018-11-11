@@ -58,7 +58,8 @@ from .tree import entry_factory
 
 class SettingCustomFileIdsUnsupported(UnsupportedOperation):
 
-    _fmt = "Unable to store addition of file with custom file ids: %(file_ids)r"
+    _fmt = ("Unable to store addition of file with custom file ids: "
+            "%(file_ids)r")
 
     def __init__(self, file_ids):
         BzrError.__init__(self)
@@ -90,7 +91,8 @@ class GitCommitBuilder(CommitBuilder):
              executable) in iter_changes:
             if kind[1] in ("directory",):
                 self._inv_delta.append(
-                    (path[0], path[1], file_id, entry_factory[kind[1]](file_id, name[1], parent[1])))
+                    (path[0], path[1], file_id, entry_factory[kind[1]](
+                        file_id, name[1], parent[1])))
                 if kind[0] in ("file", "symlink"):
                     self._blobs[path[0].encode("utf-8")] = None
                     self._any_changes = True
@@ -200,7 +202,8 @@ class GitCommitBuilder(CommitBuilder):
             self._blobs) if v is not None}
 
     def _iterblobs(self):
-        return ((path, sha, mode) for (path, (mode, sha)) in viewitems(self._blobs))
+        return ((path, sha, mode) for (path, (mode, sha))
+                in viewitems(self._blobs))
 
     def commit(self, message):
         self._validate_unicode_text(message, 'commit message')
@@ -220,7 +223,8 @@ class GitCommitBuilder(CommitBuilder):
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode(encoding)
-        if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
+        if (self._config_stack.get('create_signatures') ==
+                _mod_config.SIGN_ALWAYS):
             strategy = gpg.GPGStrategy(self._config_stack)
             c.gpgsig = strategy.sign(c.as_raw_string(), gpg.MODE_DETACH)
         self.store.add_object(c)

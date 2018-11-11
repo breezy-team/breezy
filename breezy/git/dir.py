@@ -167,9 +167,6 @@ class GitDir(ControlDir):
             result_repo = result.find_repository()
         except bzr_errors.NoRepositoryPresent:
             result_repo = result.create_repository()
-            target_is_empty = True
-        else:
-            target_is_empty = None  # Unknown
         if stacked:
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.user_url)
@@ -182,18 +179,20 @@ class GitDir(ControlDir):
             determine_wants = interrepo.determine_wants_all
         interrepo.fetch_objects(determine_wants=determine_wants,
                                 mapping=source_branch.mapping)
-        result_branch = source_branch.sprout(result,
-                                             revision_id=revision_id, repository=result_repo)
+        result_branch = source_branch.sprout(
+            result, revision_id=revision_id, repository=result_repo)
         if (create_tree_if_local and
             isinstance(target_transport, LocalTransport) and
                 (result_repo is None or result_repo.make_working_trees())):
-            wt = result.create_workingtree(accelerator_tree=accelerator_tree,
-                                           hardlink=hardlink, from_branch=result_branch)
+            result.create_workingtree(
+                accelerator_tree=accelerator_tree,
+                hardlink=hardlink, from_branch=result_branch)
         return result
 
     def clone_on_transport(self, transport, revision_id=None,
-                           force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           force_new_repo=False, preserve_stacking=False,
+                           stacked_on=None, create_prefix=False,
+                           use_existing_dir=True, no_tree=False):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
         from .mapping import default_mapping
@@ -212,7 +211,6 @@ class GitDir(ControlDir):
         target_repo = target_controldir.find_repository()
         target_git_repo = target_repo._git
         source_repo = self.find_repository()
-        source_git_repo = source_repo._git
         interrepo = InterRepository.get(source_repo, target_repo)
         if revision_id is not None:
             determine_wants = interrepo.get_determine_wants_revids(
@@ -231,7 +229,8 @@ class GitDir(ControlDir):
             # the tree and fail.
             result_dir.root_transport.local_abspath('.')
             if result_dir.open_repository().make_working_trees():
-                self.open_workingtree().clone(result_dir, revision_id=revision_id)
+                self.open_workingtree().clone(
+                    result_dir, revision_id=revision_id)
         except (bzr_errors.NoWorkingTree, bzr_errors.NotLocalUrl):
             pass
 
@@ -294,8 +293,6 @@ class GitDir(ControlDir):
         push_result.master_branch = None
         push_result.source_branch = source
         push_result.stacked_on = None
-        repo = self.find_repository()
-        refname = self._get_selected_ref(name)
         from .branch import GitBranch
         if isinstance(source, GitBranch) and lossy:
             raise bzr_errors.LossyPushToSameVCS(source.controldir, self)
@@ -305,7 +302,7 @@ class GitDir(ControlDir):
             lossy=lossy)
         push_result.new_revid = push_result.branch_push_result.new_revid
         push_result.old_revid = push_result.branch_push_result.old_revid
-        push_result.target_branch = self.open_branch(name)
+        push_result.target_branch = target
         if source.get_push_location() is None or remember:
             source.set_push_location(push_result.target_branch.base)
         return push_result
@@ -357,12 +354,14 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     def initialize_on_transport(self, transport):
         from .transportgit import TransportRepo
-        repo = TransportRepo.init(transport, bare=self.bare)
-        return self.open(transport)
+        git_repo = TransportRepo.init(transport, bare=self.bare)
+        return LocalGitDir(transport, git_repo, self)
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
-                                   create_prefix=False, force_new_repo=False, stacked_on=None,
-                                   stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+                                   create_prefix=False, force_new_repo=False,
+                                   stacked_on=None,
+                                   stack_on_pwd=None, repo_format_name=None,
+                                   make_working_trees=None,
                                    shared_repo=False, vfs_only=False):
         def make_directory(transport):
             transport.mkdir('.')
@@ -457,14 +456,14 @@ class LocalGitDir(GitDir):
 
     def set_branch_reference(self, target_branch, name=None):
         ref = self._get_selected_ref(name)
-        if self.control_transport.base == target_branch.controldir.control_transport.base:
+        target_transport = target_branch.controldir.control_transport
+        if self.control_transport.base == target_transport.base:
             if ref == target_branch.ref:
                 raise BranchReferenceLoop(target_branch)
             self._git.refs.set_symbolic_ref(ref, target_branch.ref)
         else:
             try:
-                target_path = target_branch.controldir.control_transport.local_abspath(
-                    '.')
+                target_path = target_transport.local_abspath('.')
             except bzr_errors.NotLocalUrl:
                 raise bzr_errors.IncompatibleFormat(
                     target_branch._format, self._format)
@@ -472,18 +471,20 @@ class LocalGitDir(GitDir):
             self.control_transport.put_bytes(
                 'commondir', target_path.encode('utf-8'))
             # TODO(jelmer): Urgh, avoid mucking about with internals.
-            self._git._commontransport = target_branch.repository._git._commontransport.clone()
+            self._git._commontransport = (
+                target_branch.repository._git._commontransport.clone())
             self._git.object_store = TransportObjectStore(
                 self._git._commontransport.clone(OBJECTDIR))
             self._git.refs.transport = self._git._commontransport
-            target_ref_chain, unused_sha = target_branch.controldir._git.refs.follow(
-                target_branch.ref)
+            target_ref_chain, unused_sha = (
+                target_branch.controldir._git.refs.follow(target_branch.ref))
             for target_ref in target_ref_chain:
                 if target_ref == b'HEAD':
                     continue
                 break
             else:
-                # Can't create a reference to something that is not a in a repository.
+                # Can't create a reference to something that is not a in a
+                # repository.
                 raise bzr_errors.IncompatibleFormat(
                     self.set_branch_reference, self)
             self._git.refs.set_symbolic_ref(ref, target_ref)
@@ -519,7 +520,6 @@ class LocalGitDir(GitDir):
         from .branch import (
             LocalGitBranchFormat,
             )
-        ref = self._get_selected_ref(name)
         return LocalGitBranchFormat()
 
     def get_branch_transport(self, branch_format, name=None):
@@ -712,4 +712,5 @@ class LocalGitDir(GitDir):
             return self
         else:
             commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)
-            return ControlDir.open_from_transport(get_transport_from_path(commondir))
+            return ControlDir.open_from_transport(
+                get_transport_from_path(commondir))

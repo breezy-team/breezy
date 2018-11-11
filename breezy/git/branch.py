@@ -105,16 +105,18 @@ class GitTags(tag.BasicTags):
         self.branch = branch
         self.repository = branch.repository
 
-    def _merge_to_remote_git(self, target_repo, source_tag_refs, overwrite=False):
+    def _merge_to_remote_git(self, target_repo, source_tag_refs,
+                             overwrite=False):
         updates = {}
         conflicts = []
 
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
-            for ref_name, tag_name, peeled, unpeeled in source_tag_refs.iteritems():
+            for ref_name, tag_name, peeled, unpeeled in (
+                    source_tag_refs.iteritems()):
                 if old_refs.get(ref_name) == unpeeled:
                     pass
-                elif overwrite or not ref_name in old_refs:
+                elif overwrite or ref_name not in old_refs:
                     ret[ref_name] = unpeeled
                     updates[tag_name] = target_repo.lookup_foreign_revision_id(
                         peeled)
@@ -122,19 +124,21 @@ class GitTags(tag.BasicTags):
                     conflicts.append(
                         (tag_name,
                          self.repository.lookup_foreign_revision_id(peeled),
-                         target_repo.lookup_foreign_revision_id(old_refs[ref_name])))
+                         target_repo.lookup_foreign_revision_id(
+                             old_refs[ref_name])))
             return ret
         target_repo.controldir.send_pack(
             get_changed_refs, lambda have, want: [])
         return updates, conflicts
 
-    def _merge_to_local_git(self, target_repo, source_tag_refs, overwrite=False):
+    def _merge_to_local_git(self, target_repo, source_tag_refs,
+                            overwrite=False):
         conflicts = []
         updates = {}
         for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
             if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
-            elif overwrite or not ref_name in target_repo._git.refs:
+            elif overwrite or ref_name not in target_repo._git.refs:
                 target_repo._git.refs[ref_name] = unpeeled or peeled
                 updates[tag_name] = self.repository.lookup_foreign_revision_id(
                     peeled)
@@ -157,9 +161,11 @@ class GitTags(tag.BasicTags):
             return {}, []
         try:
             if getattr(target_repo, "_git", None):
-                return self._merge_to_local_git(target_repo, source_tag_refs, overwrite)
+                return self._merge_to_local_git(
+                    target_repo, source_tag_refs, overwrite)
             else:
-                return self._merge_to_remote_git(target_repo, source_tag_refs, overwrite)
+                return self._merge_to_remote_git(
+                    target_repo, source_tag_refs, overwrite)
         finally:
             to_tags.branch._tag_refs = None
 
@@ -181,7 +187,7 @@ class GitTags(tag.BasicTags):
                 result[tag_name] = bzr_revid
                 updates[tag_name] = bzr_revid
             else:
-                conflicts.append((tag_name, bzr_revid, result[n]))
+                conflicts.append((tag_name, bzr_revid, result[tag_name]))
         to_tags._set_tag_dict(result)
         if len(unpeeled_map) > 0:
             map_file = UnpeelMap.from_repository(to_tags.branch.repository)
@@ -207,8 +213,8 @@ class GitTags(tag.BasicTags):
             if master is not None:
                 master.lock_write()
             try:
-                updates, conflicts = self._merge_to_non_git(to_tags, source_tag_refs,
-                                                            overwrite=overwrite)
+                updates, conflicts = self._merge_to_non_git(
+                    to_tags, source_tag_refs, overwrite=overwrite)
                 if master is not None:
                     extra_updates, extra_conflicts = self.merge_to(
                         master.tags, overwrite=overwrite,
@@ -223,7 +229,8 @@ class GitTags(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        for (ref_name, tag_name, peeled, unpeeled) in self.branch.get_tag_refs():
+        for (ref_name, tag_name, peeled, unpeeled) in (
+                self.branch.get_tag_refs()):
             try:
                 bzr_revid = self.branch.lookup_foreign_revision_id(peeled)
             except NotCommitError:
@@ -261,7 +268,7 @@ class LocalGitTagDict(GitTags):
 
     def delete_tag(self, name):
         ref = tag_name_to_ref(name)
-        if not ref in self.refs:
+        if ref not in self.refs:
             raise errors.NoSuchTag(name)
         del self.refs[ref]
         self.branch._tag_refs = None
@@ -325,8 +332,9 @@ class LocalGitBranchFormat(GitBranchFormat):
         from .dir import LocalGitDir
         if not isinstance(a_controldir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_controldir._format)
-        return a_controldir.create_branch(repository=repository, name=name,
-                                          append_revisions_only=append_revisions_only)
+        return a_controldir.create_branch(
+            repository=repository, name=name,
+            append_revisions_only=append_revisions_only)
 
 
 class GitBranch(ForeignBranch):
@@ -396,9 +404,11 @@ class GitBranch(ForeignBranch):
         """
         cs = self.repository._git.get_config_stack()
         try:
-            return cs.get((b"branch", self.name.encode('utf-8')), b"nick").decode("utf-8")
+            nick = cs.get((b"branch", self.name.encode('utf-8')), b"nick")
         except KeyError:
             pass
+        else:
+            return nick.decode("utf-8")
         return self.name or u"HEAD"
 
     def _set_nick(self, nick):
@@ -415,7 +425,8 @@ class GitBranch(ForeignBranch):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
                                  self.name)
 
-    def generate_revision_history(self, revid, last_rev=None, other_branch=None):
+    def generate_revision_history(self, revid, last_rev=None,
+                                  other_branch=None):
         if last_rev is not None:
             graph = self.repository.get_graph()
             if not graph.is_ancestor(last_rev, revid):
@@ -596,15 +607,12 @@ class LocalGitBranch(GitBranch):
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:
-            policy = checkout.determine_repository_policy()
-            repo = policy.acquire_repository()[0]
-
             checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             checkout_branch.pull(self, stop_revision=revision_id)
             from_branch = None
-        return checkout.create_workingtree(revision_id,
-                                           from_branch=from_branch, hardlink=hardlink)
+        return checkout.create_workingtree(
+            revision_id, from_branch=from_branch, hardlink=hardlink)
 
     def _lock_ref(self):
         self._ref_lock = self.repository._git.refs.lock_ref(self.ref)
@@ -625,8 +633,8 @@ class LocalGitBranch(GitBranch):
         last_revid = self.last_revision()
         graph = self.repository.get_graph()
         try:
-            ret = list(graph.iter_lefthand_ancestry(last_revid,
-                                                    (revision.NULL_REVISION, )))
+            ret = list(graph.iter_lefthand_ancestry(
+                last_revid, (revision.NULL_REVISION, )))
         except errors.RevisionNotPresent as e:
             raise errors.GhostRevisionsHaveNoRevno(last_revid, e.revision_id)
         ret.reverse()
@@ -655,7 +663,8 @@ class LocalGitBranch(GitBranch):
         if revid == NULL_REVISION:
             newhead = None
         else:
-            (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
+            (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(
+                revid)
             if self.mapping is None:
                 raise AssertionError
         self._set_head(newhead)
@@ -709,7 +718,8 @@ class LocalGitBranch(GitBranch):
 
     def create_memorytree(self):
         from .memorytree import GitMemoryTree
-        return GitMemoryTree(self, self.repository._git.object_store, self.head)
+        return GitMemoryTree(self, self.repository._git.object_store,
+                             self.head)
 
     def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
@@ -735,8 +745,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
         except errors.NoSuchRevision:
             graph = local_branch.repository.get_graph()
             try:
-                return graph.find_distance_to_null(revid,
-                                                   [(revision.NULL_REVISION, 0)])
+                return graph.find_distance_to_null(
+                    revid, [(revision.NULL_REVISION, 0)])
             except errors.GhostRevisionsHaveNoRevno:
                 # FIXME: Check using graph.find_distance_to_null() ?
                 with remote_branch.lock_read():
@@ -823,7 +833,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     @classmethod
     def _get_interrepo(self, source, target):
-        return _mod_repository.InterRepository.get(source.repository, target.repository)
+        return _mod_repository.InterRepository.get(
+            source.repository, target.repository)
 
     @classmethod
     def is_compatible(cls, source, target):
@@ -832,7 +843,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
         if isinstance(target, GitBranch):
             # InterLocalGitRemoteGitBranch or InterToGitBranch should be used
             return False
-        if getattr(cls._get_interrepo(source, target), "fetch_objects", None) is None:
+        if (getattr(cls._get_interrepo(source, target), "fetch_objects", None)
+                is None):
             # fetch_objects is necessary for this to work
             return False
         return True
@@ -873,8 +885,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
             prev_last_revid = None
         else:
             prev_last_revid = self.target.last_revision()
-        self.target.generate_revision_history(self._last_revid,
-                                              last_rev=prev_last_revid, other_branch=self.source)
+        self.target.generate_revision_history(
+            self._last_revid, last_rev=prev_last_revid,
+            other_branch=self.source)
         return head, refs
 
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
@@ -955,7 +968,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     master_branch.pull(self.source, overwrite, stop_revision,
                                        run_hooks=False)
                 result = self._basic_pull(stop_revision, overwrite, run_hooks,
-                                          _override_hook_target, _hook_master=master_branch)
+                                          _override_hook_target,
+                                          _hook_master=master_branch)
             finally:
                 self.source.unlock()
         finally:
@@ -974,8 +988,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.old_revno, result.old_revid = self.target.last_revision_info()
         result.new_git_head, remote_refs = self._update_revisions(
             stop_revision, overwrite=("history" in overwrite))
-        tags_ret = self.source.tags.merge_to(self.target.tags,
-                                             "tags" in overwrite, ignore_master=True)
+        tags_ret = self.source.tags.merge_to(
+            self.target.tags, "tags" in overwrite, ignore_master=True)
         (result.tag_updates, result.tag_conflicts) = tags_ret
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
@@ -1017,18 +1031,22 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             else:
                 result.old_revid = self.target.lookup_foreign_revision_id(
                     old_ref)
-            new_ref = self.source.repository.lookup_bzr_revision_id(stop_revision)[
-                0]
+            new_ref = self.source.repository.lookup_bzr_revision_id(
+                stop_revision)[0]
             if not overwrite:
-                if remote_divergence(old_ref, new_ref, self.source.repository._git.object_store):
+                if remote_divergence(
+                        old_ref, new_ref,
+                        self.source.repository._git.object_store):
                     raise errors.DivergedBranches(self.source, self.target)
             refs = {self.target.ref: new_ref}
             result.new_revid = stop_revision
-            for name, sha in viewitems(self.source.repository._git.refs.as_dict(b"refs/tags")):
+            for name, sha in viewitems(
+                    self.source.repository._git.refs.as_dict(b"refs/tags")):
                 refs[tag_name_to_ref(name)] = sha
             return refs
-        self.target.repository.send_pack(get_changed_refs,
-                                         self.source.repository._git.object_store.generate_pack_data)
+        self.target.repository.send_pack(
+            get_changed_refs,
+            self.source.repository._git.object_store.generate_pack_data)
         return result
 
 
@@ -1066,14 +1084,14 @@ class InterGitLocalGitBranch(InterGitBranch):
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
-        self.target.generate_revision_history(stop_revision,
-                                              (result.old_revid if (
-                                                  "history" not in overwrite) else None),
-                                              other_branch=self.source)
-        tags_ret = self.source.tags.merge_to(self.target.tags,
-                                             source_tag_refs=remote_refs_dict_to_tag_refs(
-                                                 refs),
-                                             overwrite=("tags" in overwrite))
+        self.target.generate_revision_history(
+            stop_revision,
+            (result.old_revid if ("history" not in overwrite) else None),
+            other_branch=self.source)
+        tags_ret = self.source.tags.merge_to(
+            self.target.tags,
+            source_tag_refs=remote_refs_dict_to_tag_refs(refs),
+            overwrite=("tags" in overwrite))
         if isinstance(tags_ret, tuple):
             (result.tag_updates, result.tag_conflicts) = tags_ret
         else:
@@ -1116,14 +1134,13 @@ class InterGitLocalGitBranch(InterGitBranch):
         with self.target.lock_write(), self.source.lock_read():
             result.old_revid = self.target.last_revision()
             refs, stop_revision = self.update_refs(stop_revision)
-            self.target.generate_revision_history(stop_revision,
-                                                  (result.old_revid if (
-                                                      "history" not in overwrite) else None),
-                                                  other_branch=self.source)
-            tags_ret = self.source.tags.merge_to(self.target.tags,
-                                                 overwrite=(
-                                                     "tags" in overwrite),
-                                                 source_tag_refs=remote_refs_dict_to_tag_refs(refs))
+            self.target.generate_revision_history(
+                stop_revision,
+                (result.old_revid if ("history" not in overwrite) else None),
+                other_branch=self.source)
+            tags_ret = self.source.tags.merge_to(
+                self.target.tags, overwrite=("tags" in overwrite),
+                source_tag_refs=remote_refs_dict_to_tag_refs(refs))
             if isinstance(tags_ret, tuple):
                 (result.tag_updates, result.tag_conflicts) = tags_ret
             else:
@@ -1138,7 +1155,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 class InterToGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls from a non-bzr into a Git branch."""
+    """InterBranch implementation that pulls into a Git branch."""
 
     def __init__(self, source, target):
         super(InterToGitBranch, self).__init__(source, target)
@@ -1207,9 +1224,9 @@ class InterToGitBranch(branch.GenericInterBranch):
                 revid is not None and
                     value[1] == revid):
                 return True
-            # FIXME: If one side only has the git sha available and the other only
-            # has the bzr revid, then this will cause us to show a tag as updated
-            # that hasn't actually been updated.
+            # FIXME: If one side only has the git sha available and the other
+            # only has the bzr revid, then this will cause us to show a tag as
+            # updated that hasn't actually been updated.
             return False
         # FIXME: Check for diverged branches
         for ref, (git_sha, revid) in viewitems(new_refs):
@@ -1243,7 +1260,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                     ret[ref] = (git_sha, revid)
         return ret
 
-    def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
+    def fetch(self, stop_revision=None, fetch_tags=None, lossy=False,
+              limit=None):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         ret = []
@@ -1268,8 +1286,8 @@ class InterToGitBranch(branch.GenericInterBranch):
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
-                result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                    update_refs, lossy=False)
+                result.revidmap, old_refs, new_refs = (
+                    self.interrepo.fetch_refs(update_refs, lossy=False))
             except NoPushSupport:
                 raise errors.NoRoundtrippingSupport(self.source, self.target)
             (old_sha1, result.old_revid) = old_refs.get(
@@ -1299,8 +1317,9 @@ class InterToGitBranch(branch.GenericInterBranch):
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
             try:
-                result.revidmap, old_refs, new_refs = self.interrepo.fetch_refs(
-                    update_refs, lossy=lossy, overwrite=overwrite)
+                result.revidmap, old_refs, new_refs = (
+                    self.interrepo.fetch_refs(
+                        update_refs, lossy=lossy, overwrite=overwrite))
             except NoPushSupport:
                 raise errors.NoRoundtrippingSupport(self.source, self.target)
             (old_sha1, result.old_revid) = old_refs.get(
@@ -1309,7 +1328,8 @@ class InterToGitBranch(branch.GenericInterBranch):
                 result.old_revid = self.target.lookup_foreign_revision_id(
                     old_sha1)
             result.new_revid = new_refs[main_ref][1]
-            (result.new_original_revno, result.new_original_revid) = stop_revinfo
+            (result.new_original_revno,
+                result.new_original_revid) = stop_revinfo
             for hook in branch.Branch.hooks['post_push']:
                 hook(result)
         return result

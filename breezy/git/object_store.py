@@ -47,7 +47,7 @@ from ..revision import (
     NULL_REVISION,
     )
 from ..sixish import viewitems
-from ..testament import(
+from ..testament import (
     StrictTestament3,
     )
 
@@ -96,8 +96,9 @@ class LRUTreeCache(object):
                 inv = tree.inventory
             return len(inv) * 250
         self.repository = repository
-        self._cache = lru_cache.LRUSizeCache(max_size=MAX_TREE_CACHE_SIZE,
-                                             after_cleanup_size=None, compute_size=approx_tree_size)
+        self._cache = lru_cache.LRUSizeCache(
+            max_size=MAX_TREE_CACHE_SIZE, after_cleanup_size=None,
+            compute_size=approx_tree_size)
 
     def revision_tree(self, revid):
         try:
@@ -167,15 +168,15 @@ def _check_expected_sha(expected_sha, object):
                                                              expected_sha))
     elif len(expected_sha) == 20:
         if expected_sha != object.sha().digest():
-            raise AssertionError("Invalid sha for %r: %s" % (object,
-                                                             sha_to_hex(expected_sha)))
+            raise AssertionError("Invalid sha for %r: %s" % (
+                object, sha_to_hex(expected_sha)))
     else:
         raise AssertionError("Unknown length %d for %r" % (len(expected_sha),
                                                            expected_sha))
 
 
-def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes, empty_file_name,
-                      allow_empty=False):
+def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes,
+                      empty_file_name, allow_empty=False):
     """Create a Git Tree object from a Bazaar directory.
 
     :param path: directory path
@@ -219,7 +220,6 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     """
     dirty_dirs = set()
     new_blobs = []
-    new_contents = {}
     shamap = {}
     try:
         base_tree = parent_trees[0]
@@ -239,11 +239,13 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                 if kind == "file":
                     if (pkind == "file" and
                             ptree.get_file_sha1(ppath, file_id) == other):
-                        return (file_id, ptree.get_file_revision(ppath, file_id))
+                        return (
+                            file_id, ptree.get_file_revision(ppath, file_id))
                 if kind == "symlink":
                     if (pkind == "symlink" and
                             ptree.get_symlink_target(ppath, file_id) == other):
-                        return (file_id, ptree.get_file_revision(ppath, file_id))
+                        return (
+                            file_id, ptree.get_file_revision(ppath, file_id))
         raise KeyError
 
     # Find all the changed blobs
@@ -276,8 +278,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             else:
                 shamap[path[1]] = blob_id
                 if add_cache_entry is not None:
-                    add_cache_entry(("blob", blob_id), (file_id,
-                                                        tree.get_file_revision(path[1])), path[1])
+                    add_cache_entry(
+                        ("blob", blob_id),
+                        (file_id, tree.get_file_revision(path[1])), path[1])
         elif kind[1] == "symlink":
             target = tree.get_symlink_target(path[1], file_id)
             blob = symlink_to_blob(target)
@@ -290,7 +293,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     file_id, kind[1], target, other_parent_trees)
             except KeyError:
                 if changed_content:
-                    yield path[1], blob, (file_id, tree.get_file_revision(path[1], file_id))
+                    yield (path[1], blob,
+                           (file_id, tree.get_file_revision(path[1], file_id)))
         elif kind[1] is None:
             shamap[path[1]] = None
         elif kind[1] != 'directory':
@@ -341,8 +345,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         elif ie.kind == "directory":
             # Not all cache backends store the tree information,
             # calculate again from scratch
-            ret = directory_to_tree(path, ie.children.values(), ie_to_hexsha,
-                                    unusual_modes, dummy_file_name, ie.parent_id is None)
+            ret = directory_to_tree(
+                path, ie.children.values(), ie_to_hexsha, unusual_modes,
+                dummy_file_name, ie.parent_id is None)
             if ret is None:
                 return ret
             return ret.id
@@ -455,7 +460,8 @@ class BazaarObjectStore(BaseObjectStore):
         try:
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+                for i, revid in enumerate(graph.iter_topo_order(
+                        missing_revids)):
                     trace.mutter('processing %r', revid)
                     pb.update("updating git map", i, len(missing_revids))
                     self._update_sha_map_revision(revid)
@@ -463,7 +469,7 @@ class BazaarObjectStore(BaseObjectStore):
                 pb.finished()
             if stop_revision is None:
                 self._map_updated = True
-        except:
+        except BaseException:
             self.abort_write_group()
             raise
         else:
@@ -511,9 +517,9 @@ class BazaarObjectStore(BaseObjectStore):
         parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
         root_tree = None
-        for path, obj, bzr_key_data in _tree_to_objects(tree, parent_trees,
-                                                        self._cache.idmap, unusual_modes,
-                                                        self.mapping.BZR_DUMMY_FILE, add_cache_entry):
+        for path, obj, bzr_key_data in _tree_to_objects(
+                tree, parent_trees, self._cache.idmap, unusual_modes,
+                self.mapping.BZR_DUMMY_FILE, add_cache_entry):
             if path == "":
                 root_tree = obj
                 root_key_data = bzr_key_data
@@ -606,8 +612,8 @@ class BazaarObjectStore(BaseObjectStore):
                     return self._cache.idmap.lookup_tree_id(entry.file_id,
                                                             revid)
                 except (NotImplementedError, KeyError):
-                    obj = self._reconstruct_tree(entry.file_id, revid, bzr_tree,
-                                                 unusual_modes)
+                    obj = self._reconstruct_tree(
+                        entry.file_id, revid, bzr_tree, unusual_modes)
                     if obj is None:
                         return None
                     else:
@@ -749,9 +755,11 @@ class BazaarObjectStore(BaseObjectStore):
                     trace.mutter('entry for %s %s in shamap: %r, but not '
                                  'found in repository', kind, sha, type_data)
                     raise KeyError(sha)
-                # FIXME: the type data should say whether conversion was lossless
-                commit = self._reconstruct_commit(rev, tree_sha,
-                                                  lossy=(not self.mapping.roundtripping), verifiers=verifiers)
+                # FIXME: the type data should say whether conversion was
+                # lossless
+                commit = self._reconstruct_commit(
+                    rev, tree_sha, lossy=(not self.mapping.roundtripping),
+                    verifiers=verifiers)
                 _check_expected_sha(sha, commit)
                 return commit
             elif kind == "blob":
@@ -764,13 +772,14 @@ class BazaarObjectStore(BaseObjectStore):
                     tree = self.tree_cache.revision_tree(revid)
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
-                    trace.mutter('entry for %s %s in shamap: %r, but not found in '
-                                 'repository', kind, sha, type_data)
+                    trace.mutter(
+                        'entry for %s %s in shamap: %r, but not found in '
+                        'repository', kind, sha, type_data)
                     raise KeyError(sha)
                 unusual_modes = extract_unusual_modes(rev)
                 try:
-                    return self._reconstruct_tree(fileid, revid,
-                                                  tree, unusual_modes, expected_sha=sha)
+                    return self._reconstruct_tree(
+                        fileid, revid, tree, unusual_modes, expected_sha=sha)
                 except errors.NoSuchRevision:
                     raise KeyError(sha)
             else:
@@ -855,7 +864,7 @@ class BazaarObjectStore(BaseObjectStore):
                     import_git_objects(self.repository, self.mapping,
                                        p.iterobjects(get_raw=self.get_raw),
                                        self.object_store)
-                except:
+                except BaseException:
                     self.repository.abort_write_group()
                     raise
                 else:

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Push implementation that simply prints message saying push is not supported."""
+"""Basic push implementation."""
 
 from __future__ import absolute_import
 
@@ -80,7 +80,8 @@ class MissingObjectsIterator(object):
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj in self._object_store._revision_to_objects(rev, tree, lossy):
+        for path, obj in self._object_store._revision_to_objects(
+                rev, tree, lossy):
             if obj.type_name == b"commit":
                 commit = obj
             self._pending.append((obj, path))

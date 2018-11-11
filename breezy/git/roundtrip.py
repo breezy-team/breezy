@@ -70,7 +70,8 @@ class CommitSupplement(object):
         self.verifiers = {}
 
     def __nonzero__(self):
-        return bool(self.revision_id or self.properties or self.explicit_parent_ids)
+        return bool(self.revision_id or self.properties or
+                    self.explicit_parent_ids)
 
 
 class TreeSupplement(object):
@@ -95,7 +96,7 @@ def parse_roundtripping_metadata(text):
             ret.verifiers[b"testament3-sha1"] = value.strip()
         elif key.startswith(b"property-"):
             name = key[len(b"property-"):]
-            if not name in ret.properties:
+            if name not in ret.properties:
                 ret.properties[name] = value[1:].rstrip(b"\n")
             else:
                 ret.properties[name] += b"\n" + value[1:].rstrip(b"\n")

@@ -176,9 +176,9 @@ class TransportRefsContainer(RefsContainer):
         """Return the cached peeled value of a ref, if available.
 
         :param name: Name of the ref to peel
-        :return: The peeled value of the ref. If the ref is known not point to a
-            tag, this will be the SHA the ref refers to. If the ref may point to
-            a tag, but no cached information is available, None is returned.
+        :return: The peeled value of the ref. If the ref is known not point to
+            a tag, this will be the SHA the ref refers to. If the ref may point
+            to a tag, but no cached information is available, None is returned.
         """
         self.get_packed_refs()
         if self._peeled_refs is None or name not in self._packed_refs:
@@ -313,8 +313,8 @@ class TransportRefsContainer(RefsContainer):
         perform an atomic compare-and-delete operation.
 
         :param name: The refname to delete.
-        :param old_ref: The old sha the refname must refer to, or None to delete
-            unconditionally.
+        :param old_ref: The old sha the refname must refer to, or None to
+            delete unconditionally.
         :return: True if the delete was successful, False otherwise.
         """
         self._check_refname(name)
@@ -343,7 +343,7 @@ class TransportRefsContainer(RefsContainer):
             transport = self.transport
         lockname = name + b".lock"
         try:
-            self.transport.delete(urlutils.quote_from_bytes(lockname))
+            transport.delete(urlutils.quote_from_bytes(lockname))
         except NoSuchFile:
             pass
 
@@ -355,15 +355,14 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = self.transport.local_abspath(
+            local_path = transport.local_abspath(
                 urlutils.quote_from_bytes(name))
         except NotLocalUrl:
             # This is racy, but what can we do?
-            if self.transport.has(lockname):
+            if transport.has(lockname):
                 raise LockContention(name)
-            lock_result = self.transport.put_bytes(
-                lockname, b'Locked by brz-git')
-            return LogicalLockResult(lambda: self.transport.delete(lockname))
+            transport.put_bytes(lockname, b'Locked by brz-git')
+            return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
                 gf = GitFile(local_path, 'wb')
@@ -372,10 +371,11 @@ class TransportRefsContainer(RefsContainer):
             else:
                 def unlock():
                     try:
-                        self.transport.delete(lockname)
+                        transport.delete(lockname)
                     except NoSuchFile:
                         raise LockBroken(lockname)
-                    # GitFile.abort doesn't care if the lock has already disappeared
+                    # GitFile.abort doesn't care if the lock has already
+                    # disappeared
                     gf.abort()
                 return LogicalLockResult(unlock)
 
@@ -628,7 +628,7 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(name).st_size
                 except TransportNotPossible:
                     f = self.pack_transport.get(name)
-                    pd = PackData(name, f, size=len(contents))
+                    pd = PackData(name, f)
                 else:
                     pd = PackData(name, self.pack_transport.get(name),
                                   size=size)

@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+import gzip
 import re
 
 from .. import (
@@ -191,7 +192,8 @@ def parse_git_error(url, message):
     message = str(message).strip()
     if (message.startswith("Could not find Repository ")
         or message == 'Repository not found.'
-            or (message.startswith('Repository ') and message.endswith(' not found.'))):
+            or (message.startswith('Repository ') and
+                message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
         base_url, _ = urlutils.split_segment_parameters(url)
@@ -262,8 +264,8 @@ class TCPGitSmartTransport(GitSmartTransport):
         if self._host == '':
             # return dulwich.client.LocalGitClient()
             return dulwich.client.SubprocessGitClient()
-        return dulwich.client.TCPGitClient(self._host, self._port,
-                                           report_activity=self._report_activity)
+        return dulwich.client.TCPGitClient(
+            self._host, self._port, report_activity=self._report_activity)
 
 
 class SSHSocketWrapper(object):
@@ -288,8 +290,9 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
         self.bzr_ssh_vendor = ssh._get_ssh_vendor()
 
     def run_command(self, host, command, username=None, port=None):
-        connection = self.bzr_ssh_vendor.connect_ssh(username=username,
-                                                     password=None, port=port, host=host, command=command)
+        connection = self.bzr_ssh_vendor.connect_ssh(
+            username=username, password=None, port=port, host=host,
+            command=command)
         (kind, io_object) = connection.get_sock_or_pipes()
         if kind == 'socket':
             return SSHSocketWrapper(io_object)
@@ -297,7 +300,7 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
             raise AssertionError("Unknown io object kind %r'" % kind)
 
 
-#dulwich.client.get_ssh_vendor = DulwichSSHVendor
+# dulwich.client.get_ssh_vendor = DulwichSSHVendor
 
 
 class SSHGitSmartTransport(GitSmartTransport):
@@ -316,8 +319,9 @@ class SSHGitSmartTransport(GitSmartTransport):
             self._client = None
             return ret
         location_config = config.LocationConfig(self.base)
-        client = dulwich.client.SSHGitClient(self._host, self._port, self._username,
-                                             report_activity=self._report_activity)
+        client = dulwich.client.SSHGitClient(
+            self._host, self._port, self._username,
+            report_activity=self._report_activity)
         # Set up alternate pack program paths
         upload_pack = location_config.get_user_option('git_upload_pack')
         if upload_pack:
@@ -386,7 +390,8 @@ class RemoteGitDir(GitDir):
     def _gitrepository_class(self):
         return RemoteGitRepository
 
-    def archive(self, format, committish, write_data, progress=None, write_error=None,
+    def archive(self, format, committish, write_data, progress=None,
+                write_error=None,
                 subdirs=None, prefix=None):
         if format not in ('tar', 'zip'):
             raise errors.NoSuchExportFormat(format)
@@ -396,24 +401,26 @@ class RemoteGitDir(GitDir):
         else:
             pb = None
         try:
-            self._client.archive(self._client_path, committish,
-                                 write_data, progress, write_error, format=format,
-                                 subdirs=subdirs, prefix=prefix)
+            self._client.archive(
+                self._client_path, committish, write_data, progress,
+                write_error, format=format, subdirs=subdirs, prefix=prefix)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+    def fetch_pack(self, determine_wants, graph_walker, pack_data,
+                   progress=None):
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
         try:
-            result = self._client.fetch_pack(self._client_path, determine_wants,
-                                             graph_walker, pack_data, progress)
+            result = self._client.fetch_pack(
+                self._client_path, determine_wants, graph_walker, pack_data,
+                progress)
             if result.refs is None:
                 result.refs = {}
             self._refs = remote_refs_dict_to_container(
@@ -437,8 +444,9 @@ class RemoteGitDir(GitDir):
             self._refs = remote_refs_dict_to_container(refs)
             return get_changed_refs(refs)
         try:
-            return self._client.send_pack(self._client_path,
-                                          get_changed_refs_wrapper, generate_pack_data, progress)
+            return self._client.send_pack(
+                self._client_path, get_changed_refs_wrapper,
+                generate_pack_data, progress)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -463,7 +471,7 @@ class RemoteGitDir(GitDir):
 
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
-            if not refname in ret:
+            if refname not in ret:
                 raise NotBranchError(self.user_url)
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
@@ -515,7 +523,8 @@ class RemoteGitDir(GitDir):
         if self._refs is not None:
             return self._refs
         result = self.fetch_pack(lambda x: None, None,
-                                 lambda x: None, lambda x: trace.mutter("git: %s" % x))
+                                 lambda x: None,
+                                 lambda x: trace.mutter("git: %s" % x))
         self._refs = remote_refs_dict_to_container(
             result.refs, result.symrefs)
         return self._refs
@@ -551,7 +560,8 @@ class RemoteGitDir(GitDir):
                 else:
                     new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
                 if not overwrite:
-                    if remote_divergence(ret.get(refname), new_sha, source_store):
+                    if remote_divergence(ret.get(refname), new_sha,
+                                         source_store):
                         raise DivergedBranches(
                             source, self.open_branch(name, nascent_ok=True))
                 ret[refname] = new_sha
@@ -573,12 +583,15 @@ class RemoteGitDir(GitDir):
         if old_remote != ZERO_SHA:
             push_result.branch_push_result = GitBranchPushResult()
             push_result.branch_push_result.source_branch = source
-            push_result.branch_push_result.target_branch = push_result.target_branch
+            push_result.branch_push_result.target_branch = (
+                push_result.target_branch)
             push_result.branch_push_result.local_branch = None
-            push_result.branch_push_result.master_branch = push_result.target_branch
+            push_result.branch_push_result.master_branch = (
+                push_result.target_branch)
             push_result.branch_push_result.old_revid = push_result.old_revid
             push_result.branch_push_result.new_revid = push_result.new_revid
-            push_result.branch_push_result.new_original_revid = push_result.new_original_revid
+            push_result.branch_push_result.new_original_revid = (
+                push_result.new_original_revid)
         if source.get_push_location() is None or remember:
             source.set_push_location(push_result.target_branch.base)
         return push_result
@@ -813,7 +826,8 @@ class RemoteGitRepository(GitRepository):
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
-        # This won't work for any round-tripped bzr revisions, but it's a start..
+        # This won't work for any round-tripped bzr revisions, but it's a
+        # start..
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except InvalidRevisionId:

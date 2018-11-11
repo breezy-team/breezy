@@ -81,6 +81,7 @@ class cmd_git_import(Command):
             ControlDir,
             )
         from ..errors import (
+            BzrError,
             BzrCommandError,
             NoRepositoryPresent,
             NotBranchError,
@@ -101,7 +102,7 @@ class cmd_git_import(Command):
 
         dest_format = controldir.ControlDirFormat.get_default_format()
         if dest_format is None:
-            raise errors.BzrError('no default format')
+            raise BzrError('no default format')
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))
@@ -138,7 +139,8 @@ class cmd_git_import(Command):
                     # Not a branch, ignore
                     continue
                 pb.update(gettext("creating branches"), i, len(refs))
-                if getattr(target_controldir._format, "colocated_branches", False) and colocated:
+                if (getattr(target_controldir._format, "colocated_branches",
+                            False) and colocated):
                     if name == "HEAD":
                         branch_name = None
                     head_branch = self._get_colocated_branch(
@@ -147,14 +149,15 @@ class cmd_git_import(Command):
                     head_branch = self._get_nested_branch(
                         dest_transport, dest_format, branch_name)
                 revid = mapping.revision_id_foreign_to_bzr(sha)
-                source_branch = LocalGitBranch(source_repo.controldir, source_repo,
-                                               sha)
+                source_branch = LocalGitBranch(
+                    source_repo.controldir, source_repo, sha)
                 if head_branch.last_revision() != revid:
                     head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
                 if not head_branch.get_parent():
                     url = urlutils.join_segment_parameters(
-                        source_branch.base, {"branch": urlutils.escape(branch_name)})
+                        source_branch.base,
+                        {"branch": urlutils.escape(branch_name)})
                     head_branch.set_parent(url)
         finally:
             pb.finished()
@@ -245,8 +248,7 @@ class cmd_git_refs(Command):
 class cmd_git_apply(Command):
     """Apply a series of git-am style patches.
 
-    This command will in the future probably be integrated into 
-    "bzr pull".
+    This command will in the future probably be integrated into "bzr pull".
     """
 
     takes_options = [
@@ -336,15 +338,18 @@ class cmd_git_push_pristine_tar_deltas(Command):
                 except KeyError:
                     continue
                 gitid = git_store._lookup_revision_sha1(revid)
-                if not (name.startswith('upstream/') or name.startswith('upstream-')):
-                    warning("Unexpected pristine tar revision tagged %s. Ignoring.",
-                            name)
+                if (not (name.startswith('upstream/') or
+                         name.startswith('upstream-'))):
+                    warning(
+                        "Unexpected pristine tar revision tagged %s. "
+                        "Ignoring.", name)
                     continue
                 upstream_version = name[len("upstream/"):]
                 filename = '%s_%s.orig.tar.%s' % (
                     package, upstream_version, kind)
-                if not gitid in target:
-                    warning("base git id %s for %s missing in target repository",
-                            gitid, filename)
+                if gitid not in target:
+                    warning(
+                        "base git id %s for %s missing in target repository",
+                        gitid, filename)
                 store_git_pristine_tar_data(target, filename.encode('utf-8'),
                                             delta, gitid)

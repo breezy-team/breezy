@@ -105,7 +105,8 @@ class GitCheck(check.Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
+        with self.repository.lock_read(), \
+                ui.ui_factory.nested_progress_bar() as self.progress:
             shas = set(self.repository._git.object_store)
             self.object_count = len(shas)
             # TODO(jelmer): Check more things
@@ -288,9 +289,9 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
-        builder = GitCommitBuilder(self, parents, config,
-                                   timestamp, timezone, committer, revprops, revision_id,
-                                   lossy)
+        builder = GitCommitBuilder(
+            self, parents, config, timestamp, timezone, committer, revprops,
+            revision_id, lossy)
         self.start_write_group()
         return builder
 
@@ -371,8 +372,8 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-                                                                    mapping.revision_id_foreign_to_bzr)
+            rev, roundtrip_revid, verifiers = mapping.import_commit(
+                o, mapping.revision_id_foreign_to_bzr)
             yield o.id, rev.revision_id, roundtrip_revid
 
     def all_revision_ids(self):
@@ -477,8 +478,8 @@ class LocalGitRepository(GitRepository):
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
-        rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
-                                                                mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            commit, mapping.revision_id_foreign_to_bzr)
         # FIXME: check testament before doing this?
         if roundtrip_revid:
             return roundtrip_revid
@@ -532,7 +533,8 @@ class LocalGitRepository(GitRepository):
             details
         """
         try:
-            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
+            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(
+                bzr_revid)
         except errors.InvalidRevisionId:
             if mapping is None:
                 mapping = self.get_mapping()
@@ -544,7 +546,8 @@ class LocalGitRepository(GitRepository):
                 # FIXME: Hitting this a lot will be very inefficient...
                 pb = ui.ui_factory.nested_progress_bar()
                 try:
-                    for i, (git_sha, revid, roundtrip_revid) in enumerate(self._iter_revision_ids()):
+                    for i, (git_sha, revid, roundtrip_revid) in enumerate(
+                            self._iter_revision_ids()):
                         if not roundtrip_revid:
                             continue
                         pb.update("resolving revision id", i)
@@ -641,7 +644,8 @@ class LocalGitRepository(GitRepository):
                     fid) for fid in specific_fileids]
             else:
                 specific_files = None
-            yield new_tree.changes_from(old_tree, specific_files=specific_files)
+            yield new_tree.changes_from(
+                old_tree, specific_files=specific_files)
 
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)

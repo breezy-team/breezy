@@ -138,8 +138,8 @@ class BisectLog(object):
         repo = self._branch.repository
         with repo.lock_read():
             graph = repo.get_graph()
-            rev_sequence = graph.iter_lefthand_ancestry(last_revid,
-                                                        (_mod_revision.NULL_REVISION,))
+            rev_sequence = graph.iter_lefthand_ancestry(
+                last_revid, (_mod_revision.NULL_REVISION,))
             high_revid = None
             low_revid = None
             between_revs = []

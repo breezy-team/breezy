@@ -75,7 +75,10 @@ FILE_ID_PREFIX = b'git:'
 
 
 def escape_file_id(file_id):
-    return file_id.replace(b'_', b'__').replace(b' ', b'_s').replace(b'\x0c', b'_c')
+    file_id = file_id.replace(b'_', b'__')
+    file_id = file_id.replace(b' ', b'_s')
+    file_id = file_id.replace(b'\x0c', b'_c')
+    return file_id
 
 
 def unescape_file_id(file_id):
@@ -100,7 +103,7 @@ def unescape_file_id(file_id):
 
 
 def fix_person_identifier(text):
-    if not b"<" in text and not b">" in text:
+    if b"<" not in text and b">" not in text:
         username = text
         email = text
     else:
@@ -223,7 +226,8 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _extract_git_svn_metadata(self, rev, message):
         lines = message.split("\n")
-        if not (lines[-1] == "" and len(lines) >= 2 and lines[-2].startswith("git-svn-id:")):
+        if not (lines[-1] == "" and len(lines) >= 2 and
+                lines[-2].startswith("git-svn-id:")):
             return message
         git_svn_id = lines[-2].split(": ", 1)[1]
         rev.properties[u'git-svn-id'] = git_svn_id
@@ -315,9 +319,11 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_time = long(rev.properties[u'author-timestamp'])
         else:
             commit.author_time = commit.commit_time
-        commit._commit_timezone_neg_utc = u"commit-timezone-neg-utc" in rev.properties
+        commit._commit_timezone_neg_utc = (
+            u"commit-timezone-neg-utc" in rev.properties)
         commit.commit_timezone = rev.timezone
-        commit._author_timezone_neg_utc = u"author-timezone-neg-utc" in rev.properties
+        commit._author_timezone_neg_utc = (
+            u"author-timezone-neg-utc" in rev.properties)
         if u'author-timezone' in rev.properties:
             commit.author_timezone = int(rev.properties[u'author-timezone'])
         else:
@@ -340,7 +346,7 @@ class BzrGitMapping(foreign.VcsMapping):
                  u'git-gpg-signature', u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
             for k, v in viewitems(rev.properties):
-                if not k in mapping_properties:
+                if k not in mapping_properties:
                     metadata.properties[k] = v
         if not lossy and metadata:
             if self.roundtripping:
@@ -358,8 +364,9 @@ class BzrGitMapping(foreign.VcsMapping):
             i += 1
             propname = u'git-mergetag-%d' % i
         if u'git-extra' in rev.properties:
-            commit.extra.extend([l.split(b' ', 1)
-                                 for l in rev.properties[u'git-extra'].splitlines()])
+            commit.extra.extend(
+                [l.split(b' ', 1)
+                 for l in rev.properties[u'git-extra'].splitlines()])
         return commit
 
     def import_fileid_map(self, blob):
@@ -451,7 +458,8 @@ class BzrGitMapping(foreign.VcsMapping):
                 unknown_extra_fields.append(k)
         if unknown_extra_fields:
             raise UnknownCommitExtra(
-                commit, [f.decode('ascii', 'replace') for f in unknown_extra_fields])
+                commit,
+                [f.decode('ascii', 'replace') for f in unknown_extra_fields])
         if extra_lines:
             rev.properties[u'git-extra'] = b''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
@@ -504,7 +512,8 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
 
     def import_commit(self, commit, lookup_parent_revid):
         rev, roundtrip_revid, verifiers = super(
-            BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
+            BzrGitMappingExperimental, self).import_commit(
+                commit, lookup_parent_revid)
         rev.properties[u'converted_revision'] = "git %s\n" % commit.id
         return rev, roundtrip_revid, verifiers
 

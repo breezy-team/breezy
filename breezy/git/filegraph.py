@@ -80,8 +80,9 @@ class GitFileParentProvider(object):
         self.store = self.change_scanner.repository._git.object_store
 
     def _get_parents(self, file_id, text_revision):
-        commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
-            text_revision)
+        commit_id, mapping = (
+            self.change_scanner.repository.lookup_bzr_revision_id(
+                text_revision))
         try:
             path = mapping.parse_file_id(file_id)
         except ValueError:
@@ -89,15 +90,17 @@ class GitFileParentProvider(object):
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = self.change_scanner.find_last_change_revision(
-                    path.encode('utf-8'), commit_parent)
+                (path, text_parent) = (
+                    self.change_scanner.find_last_change_revision(
+                        path.encode('utf-8'), commit_parent))
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
-        return tuple([(file_id,
-                       self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
-                      in text_parents])
+        return tuple([
+            (file_id,
+                self.change_scanner.repository.lookup_foreign_revision_id(p))
+            for p in text_parents])
 
     def get_parent_map(self, keys):
         ret = {}

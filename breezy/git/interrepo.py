@@ -125,8 +125,8 @@ class InterToGitRepository(InterRepository):
         raise NotImplementedError(self.fetch_refs)
 
     def search_missing_revision_ids(self,
-                                    find_ghosts=True, revision_ids=None, if_present_ids=None,
-                                    limit=None):
+                                    find_ghosts=True, revision_ids=None,
+                                    if_present_ids=None, limit=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         git_shas = []
@@ -144,13 +144,16 @@ class InterToGitRepository(InterRepository):
                 except KeyError:
                     raise NoSuchRevision(revid, self.source)
                 git_shas.append(git_sha)
-            walker = Walker(self.source_store,
-                            include=git_shas, exclude=[
-                                sha for sha in self.target.controldir.get_refs_container().as_dict().values()
-                                if sha != ZERO_SHA])
+            walker = Walker(
+                self.source_store,
+                include=git_shas,
+                exclude=[
+                    sha for sha in self.target.controldir.get_refs_container().as_dict().values()
+                    if sha != ZERO_SHA])
             missing_revids = set()
             for entry in walker:
-                for (kind, type_data) in self.source_store.lookup_git_sha(entry.commit.id):
+                for (kind, type_data) in self.source_store.lookup_git_sha(
+                        entry.commit.id):
                     if kind == "commit":
                         missing_revids.add(type_data[0])
             return self.source.revision_ids_to_search_result(missing_revids)
@@ -219,7 +222,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 new_stop_revids = []
                 for revid in stop_revids:
                     sha1 = revid_sha_map.get(revid)
-                    if (not revid in missing and
+                    if (revid not in missing and
                             self._revision_needs_fetching(sha1, revid)):
                         missing.add(revid)
                         new_stop_revids.append(revid)
@@ -239,7 +242,6 @@ class InterToLocalGitRepository(InterToGitRepository):
             with Git SHA, Bazaar revid as values.
         """
         bzr_refs = {}
-        refs = {}
         for k in self.target._git.refs.allkeys():
             try:
                 v = self.target._git.refs.read_ref(k)
@@ -249,8 +251,10 @@ class InterToLocalGitRepository(InterToGitRepository):
             revid = None
             if not v.startswith(SYMREF):
                 try:
-                    for (kind, type_data) in self.source_store.lookup_git_sha(v):
-                        if kind == "commit" and self.source.has_revision(type_data[0]):
+                    for (kind, type_data) in self.source_store.lookup_git_sha(
+                            v):
+                        if kind == "commit" and self.source.has_revision(
+                                type_data[0]):
                             revid = type_data[0]
                             break
                 except KeyError:
@@ -264,7 +268,10 @@ class InterToLocalGitRepository(InterToGitRepository):
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
             revidmap = self.fetch_objects(
-                [(git_sha, bzr_revid) for (git_sha, bzr_revid) in new_refs.values() if git_sha is None or not git_sha.startswith(SYMREF)], lossy=lossy)
+                [(git_sha, bzr_revid)
+                 for (git_sha, bzr_revid) in new_refs.values()
+                 if git_sha is None or not git_sha.startswith(SYMREF)],
+                lossy=lossy)
             for name, (gitid, revid) in viewitems(new_refs):
                 if gitid is None:
                     try:
@@ -286,7 +293,8 @@ class InterToLocalGitRepository(InterToGitRepository):
     def fetch_objects(self, revs, lossy, limit=None):
         if not lossy and not self.mapping.roundtripping:
             for git_sha, bzr_revid in revs:
-                if bzr_revid is not None and needs_roundtripping(self.source, bzr_revid):
+                if (bzr_revid is not None and
+                        needs_roundtripping(self.source, bzr_revid)):
                     raise NoPushSupport(self.source, self.target, self.mapping,
                                         bzr_revid)
         with self.source_store.lock_read():
@@ -363,14 +371,15 @@ class InterToRemoteGitRepository(InterToGitRepository):
                     gitid = unpeel_map.re_unpeel_tag(
                         git_sha, old_refs.get(name))
                 if not overwrite:
-                    if remote_divergence(old_refs.get(name), gitid, self.source_store):
+                    if remote_divergence(
+                            old_refs.get(name), gitid, self.source_store):
                         raise DivergedBranches(self.source, self.target)
                 ret[name] = gitid
             return ret
         self._warn_slow()
         with self.source_store.lock_read():
-            new_refs = self.target.send_pack(git_update_refs,
-                                             self.source_store.generate_lossy_pack_data)
+            new_refs = self.target.send_pack(
+                git_update_refs, self.source_store.generate_lossy_pack_data)
         # FIXME: revidmap?
         return revidmap, self.old_refs, self.new_refs
 
@@ -431,8 +440,8 @@ class InterFromGitRepository(InterRepository):
         self.fetch(revision_id, find_ghosts=False)
 
     def search_missing_revision_ids(self,
-                                    find_ghosts=True, revision_ids=None, if_present_ids=None,
-                                    limit=None):
+                                    find_ghosts=True, revision_ids=None,
+                                    if_present_ids=None, limit=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         if revision_ids is None and if_present_ids is None:
@@ -508,7 +517,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
         :param determine_wants: determine_wants callback
         :param mapping: BzrGitMapping to use
         :param limit: Maximum number of commits to import.
-        :return: Tuple with pack hint, last imported revision id and remote refs
+        :return: Tuple with pack hint, last imported revision id and remote
+            refs
         """
         raise NotImplementedError(self.fetch_objects)
 
@@ -580,9 +590,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     wants_recorder, graph_walker, store.get_raw)
                 trace.mutter("Importing %d new revisions",
                              len(wants_recorder.wants))
-                (pack_hint, last_rev) = import_git_objects(self.target,
-                                                           mapping, objects_iter, store, wants_recorder.wants, pb,
-                                                           limit)
+                (pack_hint, last_rev) = import_git_objects(
+                    self.target, mapping, objects_iter, store,
+                    wants_recorder.wants, pb, limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
             finally:
                 pb.finished()
@@ -610,15 +620,14 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         self._warn_slow()
         remote_refs = self.source.controldir.get_refs_container().as_dict()
         wants = determine_wants(remote_refs)
-        create_pb = None
         pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = get_object_store(self.target, mapping)
         try:
             target_git_object_retriever.lock_write()
             try:
-                (pack_hint, last_rev) = import_git_objects(self.target,
-                                                           mapping, self.source._git.object_store,
-                                                           target_git_object_retriever, wants, pb, limit)
+                (pack_hint, last_rev) = import_git_objects(
+                    self.target, mapping, self.source._git.object_store,
+                    target_git_object_retriever, wants, pb, limit)
                 return (pack_hint, last_rev, remote_refs)
             finally:
                 target_git_object_retriever.unlock()
@@ -660,14 +669,17 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None,
+                      lossy=False):
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
-        return set([sha for sha in shas if sha in self.target._git.object_store])
+        return set(
+            [sha for sha in shas if sha in self.target._git.object_store])
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, branches=None, limit=None, include_tags=False):
+              mapping=None, fetch_spec=None, branches=None, limit=None,
+              include_tags=False):
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -717,7 +729,8 @@ class InterGitGitRepository(InterFromGitRepository):
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None,
+                      lossy=False):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
@@ -742,13 +755,15 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
 class InterRemoteGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None,
+                      lossy=False):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
             raise FetchLimitUnsupported(self)
         graphwalker = self.target._git.get_graph_walker()
-        if CAPABILITY_THIN_PACK in self.source.controldir._client._fetch_capabilities:
+        if (CAPABILITY_THIN_PACK in
+                self.source.controldir._client._fetch_capabilities):
             # TODO(jelmer): Avoid reading entire file into memory and
             # only processing it after the whole file has been fetched.
             f = BytesIO()

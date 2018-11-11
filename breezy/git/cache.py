@@ -64,7 +64,7 @@ def get_cache_dir():
 
 
 def get_remote_cache_transport(repository):
-    """Retrieve the transport to use when accessing (unwritable) remote 
+    """Retrieve the transport to use when accessing (unwritable) remote
     repositories.
     """
     uuid = getattr(repository, "uuid", None)
@@ -92,10 +92,10 @@ try:
     try:
         import sqlite3
         check_pysqlite_version(sqlite3)
-    except (ImportError, bzr_errors.BzrError) as e:
+    except (ImportError, bzr_errors.BzrError):
         from pysqlite2 import dbapi2 as sqlite3
         check_pysqlite_version(sqlite3)
-except:
+except BaseException:
     trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
                   'module')
     raise bzr_errors.BzrError("missing sqlite library")
@@ -221,7 +221,7 @@ class BzrGitCacheFormat(object):
         """Open a cache file for a repository.
 
         This will use the repository's transport to store the cache file, or
-        use the users global cache directory if the repository has no 
+        use the users global cache directory if the repository has no
         transport associated with it.
 
         :param repository: Repository to open the cache for
@@ -276,13 +276,14 @@ class BzrGitCache(object):
         self._cache_updater_klass = cache_updater_klass
 
     def get_updater(self, rev):
-        """Update an object that implements the CacheUpdater interface for 
+        """Update an object that implements the CacheUpdater interface for
         updating this cache.
         """
         return self._cache_updater_klass(self, rev)
 
 
-def DictBzrGitCache(): return BzrGitCache(DictGitShaMap(), DictCacheUpdater)
+def DictBzrGitCache():
+    return BzrGitCache(DictGitShaMap(), DictCacheUpdater)
 
 
 class DictCacheUpdater(CacheUpdater):
@@ -401,13 +402,15 @@ class SqliteCacheUpdater(CacheUpdater):
             "replace into blobs (sha1, fileid, revid) values (?, ?, ?)",
             self._blobs)
         self.db.execute(
-            "replace into commits (sha1, revid, tree_sha, testament3_sha1) values (?, ?, ?, ?)",
-            (self._commit.id, self.revid, self._commit.tree, self._testament3_sha1))
+            "replace into commits (sha1, revid, tree_sha, testament3_sha1) "
+            "values (?, ?, ?, ?)",
+            (self._commit.id, self.revid, self._commit.tree,
+                self._testament3_sha1))
         return self._commit
 
 
-def SqliteBzrGitCache(p): return BzrGitCache(
-    SqliteGitShaMap(p), SqliteCacheUpdater)
+def SqliteBzrGitCache(p):
+    return BzrGitCache(SqliteGitShaMap(p), SqliteCacheUpdater)
 
 
 class SqliteGitCacheFormat(BzrGitCacheFormat):
@@ -449,14 +452,16 @@ class SqliteGitShaMap(GitShaMap):
             revid text not null
         );
         create index if not exists blobs_sha1 on blobs(sha1);
-        create unique index if not exists blobs_fileid_revid on blobs(fileid, revid);
+        create unique index if not exists blobs_fileid_revid on blobs(
+            fileid, revid);
         create table if not exists trees(
             sha1 text unique not null check(length(sha1) == 40),
             fileid text not null,
             revid text not null
         );
         create unique index if not exists trees_sha1 on trees(sha1);
-        create unique index if not exists trees_fileid_revid on trees(fileid, revid);
+        create unique index if not exists trees_fileid_revid on trees(
+            fileid, revid);
 """)
         try:
             self.db.executescript(
@@ -480,14 +485,16 @@ class SqliteGitShaMap(GitShaMap):
 
     def lookup_blob_id(self, fileid, revision):
         row = self.db.execute(
-            "select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
+            "select sha1 from blobs where fileid = ? and revid = ?",
+            (fileid, revision)).fetchone()
         if row is not None:
             return row[0]
         raise KeyError(fileid)
 
     def lookup_tree_id(self, fileid, revision):
         row = self.db.execute(
-            "select sha1 from trees where fileid = ? and revid = ?", (fileid, revision)).fetchone()
+            "select sha1 from trees where fileid = ? and revid = ?",
+            (fileid, revision)).fetchone()
         if row is not None:
             return row[0]
         raise KeyError(fileid)
@@ -503,7 +510,8 @@ class SqliteGitShaMap(GitShaMap):
         """
         found = False
         cursor = self.db.execute(
-            "select revid, tree_sha, testament3_sha1 from commits where sha1 = ?", (sha,))
+            "select revid, tree_sha, testament3_sha1 from commits where "
+            "sha1 = ?", (sha,))
         for row in cursor.fetchall():
             found = True
             if row[2] is not None:
@@ -593,7 +601,8 @@ class TdbCacheUpdater(CacheUpdater):
         return self._commit
 
 
-def TdbBzrGitCache(p): return BzrGitCache(TdbGitShaMap(p), TdbCacheUpdater)
+def TdbBzrGitCache(p):
+    return BzrGitCache(TdbGitShaMap(p), TdbCacheUpdater)
 
 
 class TdbGitCacheFormat(BzrGitCacheFormat):
@@ -643,8 +652,9 @@ class TdbGitShaMap(GitShaMap):
             self.db = mapdbs()[path]
         try:
             if int(self.db[b"version"]) not in (2, 3):
-                trace.warning("SHA Map is incompatible (%s -> %d), rebuilding database.",
-                              self.db[b"version"], self.TDB_MAP_VERSION)
+                trace.warning(
+                    "SHA Map is incompatible (%s -> %d), rebuilding database.",
+                    self.db[b"version"], self.TDB_MAP_VERSION)
                 self.db.clear()
         except KeyError:
             pass
@@ -693,7 +703,8 @@ class TdbGitShaMap(GitShaMap):
                 if len(data) == 3:
                     yield (type_name, (data[1], data[2], {}))
                 else:
-                    yield (type_name, (data[1], data[2], {"testament3-sha1": data[3]}))
+                    yield (type_name, (data[1], data[2],
+                           {"testament3-sha1": data[3]}))
             elif type_name in ("tree", "blob"):
                 yield (type_name, tuple(data[1:]))
             else:
@@ -732,8 +743,8 @@ class VersionedFilesContentCache(ContentCache):
 
     def add(self, obj):
         self._vf.insert_record_stream(
-            [versionedfile.ChunkedContentFactory((obj.id,), [], None,
-                                                 obj.as_legacy_object_chunks())])
+            [versionedfile.ChunkedContentFactory(
+                (obj.id,), [], None, obj.as_legacy_object_chunks())])
 
     def __getitem__(self, sha):
         stream = self._vf.get_record_stream([(sha,)], 'unordered', True)
@@ -782,7 +793,6 @@ class IndexCacheUpdater(CacheUpdater):
 class IndexBzrGitCache(BzrGitCache):
 
     def __init__(self, transport=None):
-        mapper = versionedfile.ConstantMapper("trees")
         shamap = IndexGitShaMap(transport.clone('index'))
         super(IndexBzrGitCache, self).__init__(shamap, IndexCacheUpdater)
 
@@ -827,8 +837,8 @@ class IndexGitShaMap(GitShaMap):
             for name in self._transport.list_dir("."):
                 if not name.endswith(".rix"):
                     continue
-                x = _mod_btree_index.BTreeGraphIndex(self._transport, name,
-                                                     self._transport.stat(name).st_size)
+                x = _mod_btree_index.BTreeGraphIndex(
+                    self._transport, name, self._transport.stat(name).st_size)
                 self._index.insert_index(0, x)
 
     @classmethod
@@ -851,7 +861,7 @@ class IndexGitShaMap(GitShaMap):
 
     def repack(self):
         if self._builder is not None:
-            raise errors.BzrError('builder already open')
+            raise bzr_errors.BzrError('builder already open')
         self.start_write_group()
         self._builder.add_nodes(
             ((key, value) for (_, key, value) in
@@ -867,13 +877,13 @@ class IndexGitShaMap(GitShaMap):
 
     def start_write_group(self):
         if self._builder is not None:
-            raise errors.BzrError('builder already open')
+            raise bzr_errors.BzrError('builder already open')
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
         self._name = osutils.sha()
 
     def commit_write_group(self):
         if self._builder is None:
-            raise errors.BzrError('builder not open')
+            raise bzr_errors.BzrError('builder not open')
         stream = self._builder.finish()
         name = self._name.hexdigest() + ".rix"
         size = self._transport.put_file(name, stream)
@@ -884,7 +894,7 @@ class IndexGitShaMap(GitShaMap):
 
     def abort_write_group(self):
         if self._builder is None:
-            raise errors.BzrError('builder not open')
+            raise bzr_errors.BzrError('builder not open')
         self._builder = None
         self._name = None
 

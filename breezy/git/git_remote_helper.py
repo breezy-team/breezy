@@ -148,12 +148,10 @@ class RemoteHelper(object):
         if dest_branch_name == "master":
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
-        exporter = fastexporter.BzrFastExporter(remote_branch,
-                                                outf=outf, ref=ref,
-                                                checkpoint=None, import_marks_file=None,
-                                                export_marks_file=None, revision=None,
-                                                verbose=None, plain_format=True,
-                                                rewrite_tags=False)
+        exporter = fastexporter.BzrFastExporter(
+            remote_branch, outf=outf, ref=ref, checkpoint=None,
+            import_marks_file=None, export_marks_file=None, revision=None,
+            verbose=None, plain_format=True, rewrite_tags=False)
         exporter.run()
 
     commands = {
@@ -167,10 +165,10 @@ class RemoteHelper(object):
 
     def process(self, inf, outf):
         while True:
-            l = inf.readline()
-            if not l:
+            line = inf.readline()
+            if not line:
                 break
-            self.process_line(l, outf)
+            self.process_line(line, outf)
 
     def process_line(self, l, outf):
         argv = l.strip().split()

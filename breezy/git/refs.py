@@ -34,13 +34,16 @@ from .. import (
     )
 
 
-def is_tag(x): return x.startswith(LOCAL_TAG_PREFIX)
+def is_tag(x):
+    return x.startswith(LOCAL_TAG_PREFIX)
 
 
-def is_head(x): return x.startswith(LOCAL_BRANCH_PREFIX)
+def is_head(x):
+    return x.startswith(LOCAL_BRANCH_PREFIX)
 
 
-def is_peeled(x): return x.endswith(ANNOTATED_TAG_SUFFIX)
+def is_peeled(x):
+    return x.endswith(ANNOTATED_TAG_SUFFIX)
 
 
 def gather_peeled(refs):
