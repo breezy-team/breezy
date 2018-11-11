@@ -42,8 +42,8 @@ of converting bug IDs into URLs.
 """
 
 
-_bugs_help = \
-"""When making a commit, metadata about bugs fixed by that change can be
+_bugs_help = """\
+When making a commit, metadata about bugs fixed by that change can be
 recorded by using the ``--fixes`` option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
 (The only ``status`` value currently supported is ``fixed.``)
@@ -216,8 +216,8 @@ class TrackerRegistry(registry.Registry):
             tracker = tracker_type.get(abbreviated_bugtracker_name, branch)
             if tracker is not None:
                 return tracker
-        raise UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name,
-                branch)
+        raise UnknownBugTrackerAbbreviation(
+            abbreviated_bugtracker_name, branch)
 
     def help_topic(self, topic):
         return _bugs_help
@@ -316,7 +316,7 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         if '{project}' not in self._base_url:
             raise InvalidBugTrackerURL(self._abbreviation, self._base_url)
         return self._base_url.replace(
-                '{project}', project).replace('{id}', str(bug_id))
+            '{project}', project).replace('{id}', str(bug_id))
 
 
 tracker_registry.register(
@@ -327,9 +327,9 @@ tracker_registry.register(
     'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
 
 
-tracker_registry.register('gnome',
-    UniqueIntegerBugTracker('gnome',
-                            'http://bugzilla.gnome.org/show_bug.cgi?id='))
+tracker_registry.register(
+    'gnome', UniqueIntegerBugTracker(
+        'gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
 tracker_registry.register(
@@ -376,6 +376,7 @@ class URLParametrizedIntegerBugTracker(IntegerBugTracker,
     and `abbreviation` is a short name for the particular instance (e.g.
     'squid' or 'apache').
     """
+
 
 tracker_registry.register(
     'trac', URLParametrizedIntegerBugTracker('trac', 'ticket/'))
