@@ -21,6 +21,9 @@ Checker.CALL = CALL
 def LAZY_IMPORT(self, node):
     from breezy.lazy_import import ImportProcessor
     processor = ImportProcessor()
+    if not isinstance(node.args[1], ast.Str):
+        # Not sure how to deal with this..
+        return
     import_text = node.args[1].s
     scope = {}
     processor.lazy_import(scope, import_text)
