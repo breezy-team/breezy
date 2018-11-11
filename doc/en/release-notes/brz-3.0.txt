@@ -171,6 +171,11 @@ Bug Fixes
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
 
+* Raise a clearer exception when encountering filenames not in
+  the current encoding when running 'brz add'.
+  (Jelmer Vernooĳ, #715547)
+
+
 Documentation
 *************
 

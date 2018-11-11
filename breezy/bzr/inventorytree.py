@@ -671,7 +671,16 @@ class _SmartAddHelper(object):
                 if this_ie.kind != 'directory':
                     this_ie = self._convert_to_directory(this_ie, inv_path)
 
+                abspath = abspath.encode(osutils._fs_enc)
+
                 for subf in sorted(os.listdir(abspath)):
+                    try:
+                        subf = subf.decode(osutils._fs_enc)
+                    except UnicodeDecodeError:
+                        relpath = (directory.encode(osutils._fs_enc) +
+                                   b'/' + subf)
+                        raise errors.BadFilenameEncoding(relpath,
+                                                         osutils._fs_enc)
                     inv_f, _ = osutils.normalized_filename(subf)
                     # here we could use TreeDirectory rather than
                     # string concatenation.
