@@ -103,26 +103,26 @@ class TopoSortTests(TestCase):
         correctness, not for exact match on the resulting list.
         """
         self.assertSortAndIterateOrder([(0, []),
-                                   (1, [0]),
-                                   (2, [0]),
-                                   (3, [0]),
-                                   (4, [1, 2, 3]),
-                                   (5, [1, 2]),
-                                   (6, [1, 2]),
-                                   (7, [2, 3]),
-                                   (8, [0, 1, 4, 5, 6])])
+                                        (1, [0]),
+                                        (2, [0]),
+                                        (3, [0]),
+                                        (4, [1, 2, 3]),
+                                        (5, [1, 2]),
+                                        (6, [1, 2]),
+                                        (7, [2, 3]),
+                                        (8, [0, 1, 4, 5, 6])])
 
     def test_tsort_unincluded_parent(self):
         """Sort nodes, but don't include some parents in the output"""
         self.assertSortAndIterate([(0, [1]),
                                    (1, [2])],
-                                   [1, 0])
+                                  [1, 0])
 
 
 class MergeSortTests(TestCase):
 
     def assertSortAndIterate(self, graph, branch_tip, result_list,
-            generate_revno, mainline_revisions=None):
+                             generate_revno, mainline_revisions=None):
         """Check that merge based sorting and iter_topo_order on graph works."""
         value = merge_sort(graph, branch_tip,
                            mainline_revisions=mainline_revisions,
@@ -131,12 +131,12 @@ class MergeSortTests(TestCase):
             self.assertEqualDiff(pprint.pformat(result_list),
                                  pprint.pformat(value))
         self.assertEqual(result_list,
-            list(MergeSorter(
-                graph,
-                branch_tip,
-                mainline_revisions=mainline_revisions,
-                generate_revno=generate_revno,
-                ).iter_topo_order()))
+                         list(MergeSorter(
+                             graph,
+                             branch_tip,
+                             mainline_revisions=mainline_revisions,
+                             generate_revno=generate_revno,
+                             ).iter_topo_order()))
 
     def test_merge_sort_empty(self):
         # sorting of an emptygraph does not error
@@ -231,12 +231,12 @@ class MergeSortTests(TestCase):
                  'F': ['B', 'D'],
                  }
         self.assertSortAndIterate(graph, 'F',
-            [(0, 'F', 0, (3,), False),
-             (1, 'D', 1, (2, 2, 1), False),
-             (2, 'C', 2, (2, 1, 1), True),
-             (3, 'B', 0, (2,), False),
-             (4, 'A', 0, (1,), True),
-             ], True)
+                                  [(0, 'F', 0, (3,), False),
+                                   (1, 'D', 1, (2, 2, 1), False),
+                                      (2, 'C', 2, (2, 1, 1), True),
+                                      (3, 'B', 0, (2,), False),
+                                      (4, 'A', 0, (1,), True),
+                                   ], True)
         # A
         # |
         # B-.
@@ -254,13 +254,13 @@ class MergeSortTests(TestCase):
                  'F': ['B', 'D'],
                  }
         self.assertSortAndIterate(graph, 'F',
-            [(0, 'F', 0, (3,), False),
-             (1, 'D', 1, (2, 1, 2), False),
-             (2, 'C', 2, (2, 2, 1), True),
-             (3, 'X', 1, (2, 1, 1), True),
-             (4, 'B', 0, (2,), False),
-             (5, 'A', 0, (1,), True),
-             ], True)
+                                  [(0, 'F', 0, (3,), False),
+                                   (1, 'D', 1, (2, 1, 2), False),
+                                      (2, 'C', 2, (2, 2, 1), True),
+                                      (3, 'X', 1, (2, 1, 1), True),
+                                      (4, 'B', 0, (2,), False),
+                                      (5, 'A', 0, (1,), True),
+                                   ], True)
 
     def test_merge_depth_with_nested_merges(self):
         # the merge depth marker should reflect the depth of the revision
@@ -307,7 +307,7 @@ class MergeSortTests(TestCase):
              'H': []
              }.items(),
             'A',
-            [(0, 'A', 0, (3,),  False),
+            [(0, 'A', 0, (3,), False),
              (1, 'B', 1, (1, 3, 2), False),
              (2, 'C', 1, (1, 3, 1), True),
              (3, 'D', 0, (2,), False),
@@ -344,7 +344,7 @@ class MergeSortTests(TestCase):
              'J': ['G', 'H'],
              'K': ['I'],
              'L': ['J', 'K'],
-            }.items(),
+             }.items(),
             'L',
             [(0, 'L', 0, (6,), False),
              (1, 'K', 1, (1, 3, 2), False),
@@ -357,7 +357,7 @@ class MergeSortTests(TestCase):
              (8, 'C', 1, (1, 1, 1), True),
              (9, 'D', 0, (3,), False),
              (10, 'B', 0, (2,), False),
-             (11, 'A', 0, (1,),  True),
+             (11, 'A', 0, (1,), True),
              ],
             True
             )
@@ -378,7 +378,7 @@ class MergeSortTests(TestCase):
              'L': ['J', 'K'],
              'M': ['A'],
              'N': ['L', 'M'],
-            }.items(),
+             }.items(),
             'N',
             [(0, 'N', 0, (7,), False),
              (1, 'M', 1, (1, 4, 1), True),
@@ -393,7 +393,7 @@ class MergeSortTests(TestCase):
              (10, 'C', 1, (1, 1, 1), True),
              (11, 'D', 0, (3,), False),
              (12, 'B', 0, (2,), False),
-             (13, 'A', 0, (1,),  True),
+             (13, 'A', 0, (1,), True),
              ],
             True
             )
@@ -567,13 +567,13 @@ class MergeSortTests(TestCase):
         # The graph that is passed to tsort has had ghosts filtered out, but
         # the mainline history has not.
         self.assertSortAndIterate(
-            {'B':[],
-             'C':['B']}.items(),
+            {'B': [],
+             'C': ['B']}.items(),
             'C',
             [(0, 'C', 0, (2,), False),
              (1, 'B', 0, (1,), True),
              ],
-             True, mainline_revisions=['A', 'B', 'C'])
+            True, mainline_revisions=['A', 'B', 'C'])
 
     def test_parallel_root_sequence_numbers_increase_with_merges(self):
         """When there are parallel roots, check their revnos."""
@@ -610,7 +610,7 @@ class MergeSortTests(TestCase):
         # root: A: []
         self.assertSortAndIterate(
             {'J': ['G', 'I'],
-             'I': ['H',],
+             'I': ['H', ],
              'H': ['A'],
              'G': ['D', 'F'],
              'F': ['E'],
@@ -670,18 +670,18 @@ class MergeSortTests(TestCase):
              'P': ['N'],
              'Q': ['O', 'P'],
              'R': ['J', 'Q'],
-            }.items(),
+             }.items(),
             'R',
-            [( 0, 'R', 0, (6,), False),
-             ( 1, 'Q', 1, (0, 4, 5), False),
-             ( 2, 'P', 2, (0, 6, 1), True),
-             ( 3, 'O', 1, (0, 4, 4), False),
-             ( 4, 'N', 1, (0, 4, 3), False),
-             ( 5, 'M', 2, (0, 5, 1), True),
-             ( 6, 'L', 1, (0, 4, 2), False),
-             ( 7, 'K', 1, (0, 4, 1), True),
-             ( 8, 'J', 0, (5,), False),
-             ( 9, 'I', 1, (0, 3, 1), True),
+            [(0, 'R', 0, (6,), False),
+             (1, 'Q', 1, (0, 4, 5), False),
+             (2, 'P', 2, (0, 6, 1), True),
+             (3, 'O', 1, (0, 4, 4), False),
+             (4, 'N', 1, (0, 4, 3), False),
+             (5, 'M', 2, (0, 5, 1), True),
+             (6, 'L', 1, (0, 4, 2), False),
+             (7, 'K', 1, (0, 4, 1), True),
+             (8, 'J', 0, (5,), False),
+             (9, 'I', 1, (0, 3, 1), True),
              (10, 'H', 0, (4,), False),
              (11, 'G', 1, (0, 1, 3), False),
              (12, 'F', 2, (0, 2, 1), True),

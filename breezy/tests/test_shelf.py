@@ -70,7 +70,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('rename', b'foo-id', 'foo', 'bar')],
-                          list(creator.iter_shelvable()))
+                         list(creator.iter_shelvable()))
         return creator
 
     def check_shelve_rename(self, creator):
@@ -139,16 +139,16 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.expectFailure('shelf doesn\'t support shelving root changes yet',
-            self.assertEqual, [
-                ('delete file', b'first-root-id', 'directory', ''),
-                ('add file', b'second-root-id', 'directory', ''),
-                ('rename', b'foo-id', u'foo', u'foo'),
-                ], list(creator.iter_shelvable()))
+                           self.assertEqual, [
+                               ('delete file', b'first-root-id', 'directory', ''),
+                               ('add file', b'second-root-id', 'directory', ''),
+                               ('rename', b'foo-id', u'foo', u'foo'),
+                               ], list(creator.iter_shelvable()))
 
         self.assertEqual([('delete file', b'first-root-id', 'directory', ''),
                           ('add file', b'second-root-id', 'directory', ''),
                           ('rename', b'foo-id', u'foo', u'foo'),
-                         ], list(creator.iter_shelvable()))
+                          ], list(creator.iter_shelvable()))
 
     def assertShelvedFileEqual(self, expected_content, creator, file_id):
         s_trans_id = creator.shelf_transform.trans_id_file_id(file_id)
@@ -201,7 +201,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.addCleanup(creator.finalize)
         self.assertEqual([('add file', b'bar-id', 'directory', 'bar'),
                           ('add file', b'foo-id', 'file', 'foo')],
-                          sorted(list(creator.iter_shelvable())))
+                         sorted(list(creator.iter_shelvable())))
         return creator, tree
 
     def check_shelve_creation(self, creator, tree):
@@ -215,7 +215,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertShelvedFileEqual('a\n', creator, b'foo-id')
         s_bar_trans_id = creator.shelf_transform.trans_id_file_id(b'bar-id')
         self.assertEqual('directory',
-            creator.shelf_transform.final_kind(s_bar_trans_id))
+                         creator.shelf_transform.final_kind(s_bar_trans_id))
 
     def test_shelve_creation(self):
         creator, tree = self.prepare_shelve_creation()
@@ -236,15 +236,16 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.commit('Empty tree')
-        self.build_tree_contents([('foo', b'a\n'), ('bar/',), ('bar/ignored', b'ign\n')])
+        self.build_tree_contents(
+            [('foo', b'a\n'), ('bar/',), ('bar/ignored', b'ign\n')])
         tree.add(['foo', 'bar'], [b'foo-id', b'bar-id'])
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('add file', b'bar-id', 'directory', 'bar'),
                           ('add file', b'foo-id', 'file', 'foo')],
-                          sorted(list(creator.iter_shelvable())))
+                         sorted(list(creator.iter_shelvable())))
         ignores._set_user_ignores([])
-        in_patterns = ['ignored',]
+        in_patterns = ['ignored', ]
         ignores.add_unique_user_ignores(in_patterns)
 
         creator.shelve_change(('add file', b'bar-id', 'directory', 'bar'))
@@ -252,7 +253,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
             creator.transform()
             self.check_shelve_creation(creator, tree)
         except MalformedTransform:
-            raise KnownFailure('shelving directory with ignored file: see bug #611739')
+            raise KnownFailure(
+                'shelving directory with ignored file: see bug #611739')
 
     def _test_shelve_symlink_creation(self, link_name, link_target,
                                       shelve_change=False):
@@ -268,7 +270,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual([('add file', b'foo-id', 'symlink', link_name)],
                          list(creator.iter_shelvable()))
         if shelve_change:
-            creator.shelve_change(('add file', b'foo-id', 'symlink', link_name))
+            creator.shelve_change(
+                ('add file', b'foo-id', 'symlink', link_name))
         else:
             creator.shelve_creation(b'foo-id')
         creator.transform()
@@ -278,8 +281,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual(link_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
         self.assertEqual(
-                link_target,
-                ptree.get_symlink_target(ptree.id2path(b'foo-id'), b'foo-id'))
+            link_target,
+            ptree.get_symlink_target(ptree.id2path(b'foo-id'), b'foo-id'))
 
     def test_shelve_symlink_creation(self):
         self._test_shelve_symlink_creation('foo', 'bar')
@@ -320,7 +323,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual(new_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
-        self.assertEqual(new_target, ptree.get_symlink_target(ptree.id2path(b'foo-id')))
+        self.assertEqual(new_target, ptree.get_symlink_target(
+            ptree.id2path(b'foo-id')))
 
     def test_shelve_symlink_target_change(self):
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
@@ -370,7 +374,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.addCleanup(creator.finalize)
         self.assertEqual([('delete file', b'bar-id', 'file', 'foo/bar'),
                           ('delete file', b'foo-id', 'directory', 'foo')],
-                          sorted(list(creator.iter_shelvable())))
+                         sorted(list(creator.iter_shelvable())))
         return creator, tree
 
     def check_shelve_deletion(self, tree):
@@ -394,7 +398,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_delete_contents(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo',])
+        self.build_tree(['tree/foo', ])
         tree.add('foo', b'foo-id')
         tree.commit('Added file and directory')
         os.unlink('tree/foo')
@@ -453,7 +457,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_unversion(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo',])
+        self.build_tree(['tree/foo', ])
         tree.add('foo', b'foo-id')
         tree.commit('Added file and directory')
         tree.unversion(['foo'])
@@ -499,7 +503,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tt = transform.TransformPreview(tree)
         self.addCleanup(tt.finalize)
         records = iter(parser.read_pending_records())
-        #skip revision-id
+        # skip revision-id
         next(records)
         tt.deserialize(records)
 

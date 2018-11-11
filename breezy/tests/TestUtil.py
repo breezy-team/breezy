@@ -33,7 +33,7 @@ class LogCollector(logging.Handler):
 
     def __init__(self):
         logging.Handler.__init__(self)
-        self.records=[]
+        self.records = []
 
     def emit(self, record):
         self.records.append(record.getMessage())
@@ -42,8 +42,8 @@ class LogCollector(logging.Handler):
 def makeCollectingLogger():
     """I make a logger instance that collects its logs for programmatic analysis
     -> (logger, collector)"""
-    logger=logging.Logger("collector")
-    handler=LogCollector()
+    logger = logging.Logger("collector")
+    handler = LogCollector()
     handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     logger.addHandler(handler)
     return logger, handler
@@ -52,7 +52,7 @@ def makeCollectingLogger():
 def visitTests(suite, visitor):
     """A foreign method for visiting the tests in a test suite."""
     for test in suite._tests:
-        #Abusing types to avoid monkey patching unittest.TestCase.
+        # Abusing types to avoid monkey patching unittest.TestCase.
         # Maybe that would be better?
         try:
             test.visit(visitor)

@@ -139,7 +139,7 @@ class BisectLog(object):
         with repo.lock_read():
             graph = repo.get_graph()
             rev_sequence = graph.iter_lefthand_ancestry(last_revid,
-                (_mod_revision.NULL_REVISION,))
+                                                        (_mod_revision.NULL_REVISION,))
             high_revid = None
             low_revid = None
             between_revs = []
@@ -247,9 +247,9 @@ class BisectLog(object):
         self._find_range_and_middle()
         # If we've found the "final" revision, check for a
         # merge point.
-        while ((self._middle_revid == self._high_revid
-                or self._middle_revid == self._low_revid)
-                and self.is_merge_point(self._middle_revid)):
+        while ((self._middle_revid == self._high_revid or
+                self._middle_revid == self._low_revid) and
+                self.is_merge_point(self._middle_revid)):
             for parent in self.get_parent_revids(self._middle_revid):
                 if parent == self._low_revid:
                     continue

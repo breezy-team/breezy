@@ -58,14 +58,15 @@ class GitWorkingTreeTests(TestCaseWithTransport):
 
     def test_conflict_list(self):
         self.assertIsInstance(
-                self.tree.conflicts(),
-                _mod_conflicts.ConflictList)
+            self.tree.conflicts(),
+            _mod_conflicts.ConflictList)
 
     def test_add_conflict(self):
         self.build_tree(['conflicted'])
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
-            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + (FLAG_STAGEMASK, )
+            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + \
+                (FLAG_STAGEMASK, )
             self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
@@ -94,7 +95,8 @@ class GitWorkingTreeFileTests(TestCaseWithTransport):
     def setUp(self):
         super(GitWorkingTreeFileTests, self).setUp()
         self.tree = self.make_branch_and_tree('actual', format="git")
-        self.build_tree_contents([('linked/',), ('linked/.git', 'gitdir: ../actual/.git')])
+        self.build_tree_contents(
+            [('linked/',), ('linked/.git', 'gitdir: ../actual/.git')])
         self.wt = _mod_workingtree.WorkingTree.open('linked')
 
     def test_add(self):
@@ -111,18 +113,19 @@ class TreeDeltaFromGitChangesTests(TestCase):
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, default_mapping,
-                (GitFileIdMap({}, default_mapping),
-                 GitFileIdMap({}, default_mapping))))
+                                        (GitFileIdMap({}, default_mapping),
+                                         GitFileIdMap({}, default_mapping))))
 
     def test_missing(self):
         delta = TreeDelta()
         delta.removed.append(('a', b'a-id', 'file'))
-        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0), (b'a' * 40, b'a' * 40))]
+        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0),
+                    (b'a' * 40, b'a' * 40))]
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, default_mapping,
-                (GitFileIdMap({u'a': b'a-id'}, default_mapping),
-                 GitFileIdMap({u'a': b'a-id'}, default_mapping))))
+                                        (GitFileIdMap({u'a': b'a-id'}, default_mapping),
+                                         GitFileIdMap({u'a': b'a-id'}, default_mapping))))
 
 
 class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
@@ -197,8 +200,8 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt = Tree()
         newt.add(b"a", 0, ZERO_SHA)
         self.expectDelta(
-                [((b'', b''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
-                 ((b'a', b'a'), (stat.S_IFREG|0o644, 0), (a.id, ZERO_SHA))])
+            [((b'', b''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
+             ((b'a', b'a'), (stat.S_IFREG | 0o644, 0), (a.id, ZERO_SHA))])
 
     def test_versioned_replace_by_dir(self):
         self.build_tree(['a'])
@@ -214,14 +217,14 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt.add(b"a", stat.S_IFDIR, newa.id)
         self.expectDelta([
             ((b'', b''),
-            (stat.S_IFDIR, stat.S_IFDIR),
-            (oldt.id, newt.id)),
+             (stat.S_IFDIR, stat.S_IFDIR),
+             (oldt.id, newt.id)),
             ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
             ], want_unversioned=False)
         self.expectDelta([
             ((b'', b''),
-            (stat.S_IFDIR, stat.S_IFDIR),
-            (oldt.id, newt.id)),
+             (stat.S_IFDIR, stat.S_IFDIR),
+             (oldt.id, newt.id)),
             ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
             ], want_unversioned=True)
 
@@ -232,7 +235,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt.add(b"a", stat.S_IFREG | 0o644, newa.id)
         self.expectDelta([
             ((None, b''),
-            (None, stat.S_IFDIR),
-            (None, newt.id)),
+             (None, stat.S_IFDIR),
+             (None, newt.id)),
             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, newa.id))
             ], [b'a'], want_unversioned=True)

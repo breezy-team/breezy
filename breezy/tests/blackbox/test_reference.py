@@ -44,9 +44,10 @@ class TestReference(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/newpath'])
         tree.add('newpath', b'file-id')
-        tree.branch.set_reference_info('newpath', 'http://example.org', b'file-id')
+        tree.branch.set_reference_info(
+            'newpath', 'http://example.org', b'file-id')
         tree.branch.set_reference_info('lath', 'http://example.org/2',
-                b'file-id2')
+                                       b'file-id2')
         return tree
 
     def test_uses_working_tree_location(self):
@@ -91,8 +92,8 @@ class TestReference(TestCaseWithTransport):
     def test_missing_file_forced(self):
         tree = self.make_branch_and_tree('tree')
         out, err = self.run_bzr(
-                'reference --force-unversioned file http://example.org',
-                working_dir='tree')
+            'reference --force-unversioned file http://example.org',
+            working_dir='tree')
         location, file_id = tree.branch.get_reference_info('file')
         self.assertEqual('http://example.org', location)
         self.assertEqual('', out)

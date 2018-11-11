@@ -35,12 +35,12 @@ def git_url_to_bzr_url(location):
             return location
         else:
             url = URL(
-                    scheme='git+ssh',
-                    quoted_user=(quote(username) if username else None),
-                    quoted_password=None,
-                    quoted_host=quote(host),
-                    port=None,
-                    quoted_path=quote(path, safe="/~"))
+                scheme='git+ssh',
+                quoted_user=(quote(username) if username else None),
+                quoted_password=None,
+                quoted_host=quote(host),
+                port=None,
+                quoted_path=quote(path, safe="/~"))
         return str(url)
     else:
         return location

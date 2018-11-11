@@ -78,7 +78,7 @@ def strace_detailed(function, args, kwargs, follow_children=True):
 
 
 class StraceError(errors.BzrError):
-    
+
     _fmt = "strace failed: %(err_messages)s"
 
 
@@ -92,5 +92,3 @@ class StraceResult(object):
         """
         self.raw_log = raw_log
         self.err_messages = err_messages
-
-

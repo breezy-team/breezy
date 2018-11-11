@@ -32,7 +32,7 @@ class TestingHTTPSServerMixin:
         self.key_file = key_file
         self.cert_file = cert_file
 
-    def _get_ssl_request (self, sock, addr):
+    def _get_ssl_request(self, sock, addr):
         """Wrap the socket with SSL"""
         ssl_sock = ssl.wrap_socket(sock, server_side=True,
                                    keyfile=self.key_file,

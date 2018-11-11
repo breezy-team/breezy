@@ -68,7 +68,8 @@ class TestDefaultFormat(TestCaseWithTransport):
     def test_get_set_default_format(self):
         old_format = workingtree.format_registry.get_default()
         # default is 6
-        self.assertTrue(isinstance(old_format, workingtree_4.WorkingTreeFormat6))
+        self.assertTrue(isinstance(
+            old_format, workingtree_4.WorkingTreeFormat6))
         workingtree.format_registry.set_default(SampleTreeFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -87,7 +88,7 @@ class TestDefaultFormat(TestCaseWithTransport):
             SampleTreeFormat.from_string(b"Sample tree format."),
             SampleTreeFormat)
         self.assertRaises(AssertionError,
-            SampleTreeFormat.from_string, b"Different format string.")
+                          SampleTreeFormat.from_string, b"Different format string.")
 
     def test_get_set_default_format_by_key(self):
         old_format = workingtree.format_registry.get_default()
@@ -95,7 +96,8 @@ class TestDefaultFormat(TestCaseWithTransport):
         format = SampleTreeFormat()
         workingtree.format_registry.register(format)
         self.addCleanup(workingtree.format_registry.remove, format)
-        self.assertTrue(isinstance(old_format, workingtree_4.WorkingTreeFormat6))
+        self.assertTrue(isinstance(
+            old_format, workingtree_4.WorkingTreeFormat6))
         workingtree.format_registry.set_default_key(format.get_format_string())
         try:
             # the default branch format is used by the meta dir format
@@ -125,7 +127,8 @@ class TestDefaultFormat(TestCaseWithTransport):
         open_no_args, relpath = workingtree.WorkingTree.open_containing()
         self.assertEqual(tree.basedir, open_no_args.basedir)
         self.assertEqual('', relpath)
-        open_subdir, relpath = workingtree.WorkingTree.open_containing('subdir')
+        open_subdir, relpath = workingtree.WorkingTree.open_containing(
+            'subdir')
         self.assertEqual(tree.basedir, open_subdir.basedir)
         self.assertEqual('subdir', relpath)
 
@@ -183,26 +186,28 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         # is the right format object found for a working tree?
         branch = self.make_branch('branch')
         self.assertRaises(errors.NoWorkingTree,
-            bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string, branch.controldir)
+                          bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string, branch.controldir)
         transport = branch.controldir.get_workingtree_transport(None)
         transport.mkdir('.')
         transport.put_bytes("format", b"some format name")
         # The format does not have to be known by Bazaar,
         # find_format_string just retrieves the name
         self.assertEqual(b"some format name",
-            bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string(branch.controldir))
+                         bzrworkingtree.WorkingTreeFormatMetaDir.find_format_string(branch.controldir))
 
     def test_find_format(self):
         # is the right format object found for a working tree?
         # create a branch with a few known format objects.
         self.build_tree(["foo/", "bar/"])
+
         def check_format(format, url):
             dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
             dir.create_branch()
             format.initialize(dir)
             t = transport.get_transport(url)
-            found_format = bzrworkingtree.WorkingTreeFormatMetaDir.find_format(dir)
+            found_format = bzrworkingtree.WorkingTreeFormatMetaDir.find_format(
+                dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(workingtree_3.WorkingTreeFormat3(), "bar")
 
@@ -229,9 +234,9 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         self.assertIsInstance(found_format, workingtree.WorkingTreeFormat)
         self.assertEqual(found_format.features.get(b"name"), b"necessity")
         self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
-            True)
+                          True)
         self.addCleanup(bzrworkingtree.WorkingTreeFormatMetaDir.unregister_feature,
-            b"name")
+                        b"name")
         bzrworkingtree.WorkingTreeFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
@@ -306,7 +311,7 @@ class TestWorkingTreeFormatRegistry(TestCase):
     def test_register_extra_lazy(self):
         self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("breezy.tests.test_workingtree",
-            "SampleExtraTreeFormat")
+                                          "SampleExtraTreeFormat")
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraTreeFormat)
@@ -330,8 +335,8 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqualDiff(b'Bazaar-NG Working Tree format 3',
                              t.get('format').read())
         self.assertEqualDiff(t.get('inventory').read(),
-                              b'<inventory format="5">\n'
-                              b'</inventory>\n',
+                             b'<inventory format="5">\n'
+                             b'</inventory>\n',
                              )
         self.assertEqualDiff(b'### bzr hashcache v5\n',
                              t.get('stat-cache').read())
@@ -382,7 +387,8 @@ class TestRevert(TestCaseWithTransport):
                                   ('this-tree/foo/bar', b'bar')])
         this_tree.add(['foo', 'foo/bar'])
         this_tree.commit('created foo/bar')
-        other_tree = this_tree.controldir.sprout('other-tree').open_workingtree()
+        other_tree = this_tree.controldir.sprout(
+            'other-tree').open_workingtree()
         self.build_tree_contents([('other-tree/foo/bar', b'baz')])
         other_tree.commit('changed bar')
         self.build_tree_contents([('this-tree/foo/bar', b'qux')])

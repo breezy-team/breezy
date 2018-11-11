@@ -25,13 +25,14 @@ from .errors import (
     GitSmartRemoteNotSupported,
     )
 
+
 class GitPushResult(PushResult):
 
     def _lookup_revno(self, revid):
         from .branch import _quick_lookup_revno
         try:
             return _quick_lookup_revno(self.source_branch, self.target_branch,
-                revid)
+                                       revid)
         except GitSmartRemoteNotSupported:
             return None
 
@@ -85,7 +86,7 @@ class MissingObjectsIterator(object):
             self._pending.append((obj, path))
         if commit is None:
             raise AssertionError("no commit object generated for revision %s" %
-                revid)
+                                 revid)
         return commit.id
 
     def __len__(self):

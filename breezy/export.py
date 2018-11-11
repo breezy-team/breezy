@@ -75,15 +75,16 @@ def export(tree, dest, format=None, root=None, subdir=None,
         # then we should stream a tar file and unpack that on the fly.
         with tree.lock_read():
             for unused in dir_exporter_generator(tree, dest, root, subdir,
-                    force_mtime):
+                                                 force_mtime):
                 pass
         return
 
     with tree.lock_read():
-        chunks = tree.archive(format, dest, root=root, subdir=subdir, force_mtime=force_mtime)
+        chunks = tree.archive(format, dest, root=root,
+                              subdir=subdir, force_mtime=force_mtime)
         if dest == '-':
             for chunk in chunks:
-                 getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
+                getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
         elif fileobj is not None:
             for chunk in chunks:
                 fileobj.write(chunk)
@@ -204,7 +205,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
                     % (fullpath, symlink_target, e))
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
-               (tp, ie.kind))
+                                  (tp, ie.kind))
 
         yield
     # The data returned here can be in any order, but we've already created all

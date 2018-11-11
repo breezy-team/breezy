@@ -62,7 +62,7 @@ else:
 # pulling in win32com.shell is a bit of overhead, and normally we don't need
 # it as ctypes is preferred and common.  lazy_imports and "optional"
 # modules don't work well, so we do our own lazy thing...
-has_win32com_shell = None # Set to True or False once we know for sure...
+has_win32com_shell = None  # Set to True or False once we know for sure...
 
 # Special Win32 API constants
 # Handles of std streams
@@ -72,7 +72,8 @@ WIN32_STDERR_HANDLE = -12
 
 # CSIDL constants (from MSDN 2003)
 CSIDL_APPDATA = 0x001A      # Application Data folder
-CSIDL_LOCAL_APPDATA = 0x001c# <user name>\Local Settings\Application Data (non roaming)
+# <user name>\Local Settings\Application Data (non roaming)
+CSIDL_LOCAL_APPDATA = 0x001c
 CSIDL_PERSONAL = 0x0005     # My Documents folder
 
 # from winapi C headers
@@ -102,12 +103,13 @@ def debug_memory_win32api(message='', short=True):
                         ('PagefileUsage', ctypes.c_size_t),
                         ('PeakPagefileUsage', ctypes.c_size_t),
                         ('PrivateUsage', ctypes.c_size_t),
-                       ]
+                        ]
         cur_process = ctypes.windll.kernel32.GetCurrentProcess()
         mem_struct = PROCESS_MEMORY_COUNTERS_EX()
         ret = ctypes.windll.psapi.GetProcessMemoryInfo(cur_process,
-            ctypes.byref(mem_struct),
-            ctypes.sizeof(mem_struct))
+                                                       ctypes.byref(
+                                                           mem_struct),
+                                                       ctypes.sizeof(mem_struct))
         if not ret:
             trace.note(gettext('Failed to GetProcessMemoryInfo()'))
             return
@@ -122,7 +124,7 @@ def debug_memory_win32api(message='', short=True):
                 'PagefileUsage': mem_struct.PagefileUsage,
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
                 'PrivateUsage': mem_struct.PrivateUsage,
-               }
+                }
     elif has_win32api:
         import win32process
         # win32process does not return PrivateUsage, because it doesn't use
@@ -131,24 +133,28 @@ def debug_memory_win32api(message='', short=True):
         info = win32process.GetProcessMemoryInfo(proc)
     else:
         trace.note(gettext('Cannot debug memory on win32 without ctypes'
-                   ' or win32process'))
+                           ' or win32process'))
         return
     if short:
         # using base-2 units (see HACKING.txt).
         trace.note(gettext('WorkingSize {0:>7}KiB'
-                   '\tPeakWorking {1:>7}KiB\t{2}').format(
+                           '\tPeakWorking {1:>7}KiB\t{2}').format(
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message))
         return
     if message:
         trace.note('%s', message)
-    trace.note(gettext('WorkingSize       %8d KiB'), info['WorkingSetSize'] / 1024)
-    trace.note(gettext('PeakWorking       %8d KiB'), info['PeakWorkingSetSize'] / 1024)
-    trace.note(gettext('PagefileUsage     %8d KiB'), info.get('PagefileUsage', 0) / 1024)
+    trace.note(gettext('WorkingSize       %8d KiB'),
+               info['WorkingSetSize'] / 1024)
+    trace.note(gettext('PeakWorking       %8d KiB'),
+               info['PeakWorkingSetSize'] / 1024)
+    trace.note(gettext('PagefileUsage     %8d KiB'),
+               info.get('PagefileUsage', 0) / 1024)
     trace.note(gettext('PeakPagefileUsage %8d KiB'),
                info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note(gettext('PrivateUsage      %8d KiB'), info.get('PrivateUsage', 0) / 1024)
+    trace.note(gettext('PrivateUsage      %8d KiB'),
+               info.get('PrivateUsage', 0) / 1024)
     trace.note(gettext('PageFaultCount    %8d'), info.get('PageFaultCount', 0))
 
 
@@ -171,7 +177,7 @@ def get_console_size(defaultx=80, defaulty=25):
 
     if res:
         (bufx, bufy, curx, cury, wattr,
-        left, top, right, bottom, maxx, maxy) = struct.unpack(
+         left, top, right, bottom, maxx, maxy) = struct.unpack(
             "hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
@@ -281,12 +287,12 @@ def get_user_name():
     if has_ctypes:
         try:
             advapi32 = ctypes.windll.advapi32
-            GetUserName = getattr(advapi32, 'GetUserName'+suffix)
+            GetUserName = getattr(advapi32, 'GetUserName' + suffix)
         except AttributeError:
             pass
         else:
-            buf = create_buffer(UNLEN+1)
-            n = ctypes.c_int(UNLEN+1)
+            buf = create_buffer(UNLEN + 1)
+            n = ctypes.c_int(UNLEN + 1)
             if GetUserName(buf, ctypes.byref(n)):
                 return extract_buffer(buf)
     # otherwise try env variables
@@ -296,6 +302,7 @@ def get_user_name():
 # 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
 # computer or the cluster associated with the local computer."
 _WIN32_ComputerNameDnsHostname = 1
+
 
 def get_host_name():
     """Return host machine name.
@@ -313,37 +320,38 @@ def get_host_name():
         try:
             kernel32 = ctypes.windll.kernel32
         except AttributeError:
-            pass # Missing the module we need
+            pass  # Missing the module we need
         else:
-            buf = create_buffer(MAX_COMPUTERNAME_LENGTH+1)
-            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
+            buf = create_buffer(MAX_COMPUTERNAME_LENGTH + 1)
+            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
             # Try GetComputerNameEx which gives a proper Unicode hostname
-            GetComputerNameEx = getattr(kernel32, 'GetComputerNameEx'+suffix,
+            GetComputerNameEx = getattr(kernel32, 'GetComputerNameEx' + suffix,
                                         None)
             if (GetComputerNameEx is not None
                 and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
-                                      buf, ctypes.byref(n))):
+                                  buf, ctypes.byref(n))):
                 return extract_buffer(buf)
 
             # Try GetComputerName in case GetComputerNameEx wasn't found
             # It returns the NETBIOS name, which isn't as good, but still ok.
             # The first GetComputerNameEx might have changed 'n', so reset it
-            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
-            GetComputerName = getattr(kernel32, 'GetComputerName'+suffix,
+            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
+            GetComputerName = getattr(kernel32, 'GetComputerName' + suffix,
                                       None)
             if (GetComputerName is not None
-                and GetComputerName(buf, ctypes.byref(n))):
+                    and GetComputerName(buf, ctypes.byref(n))):
                 return extract_buffer(buf)
     return get_environ_unicode('COMPUTERNAME')
 
 
 def _ensure_with_dir(path):
     if (not os.path.split(path)[0] or path.startswith(u'*')
-        or path.startswith(u'?')):
+            or path.startswith(u'?')):
         return u'./' + path, True
     else:
         return path, False
+
 
 def _undo_ensure_with_dir(path, corrected):
     if corrected:
@@ -409,8 +417,8 @@ def get_app_path(appname):
 
     try:
         hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-            'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' +
-            basename)
+                               'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' +
+                               basename)
     except EnvironmentError:
         return appname
 
@@ -457,20 +465,21 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     :return: A list of unicode strings.
     """
     # First, split the command line
-    s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
-    
-    # Bug #587868 Now make sure that the length of s agrees with sys.argv 
-    # we do this by simply counting the number of arguments in each. The counts should 
-    # agree no matter what encoding sys.argv is in (AFAIK) 
-    # len(arguments) < len(sys.argv) should be an impossibility since python gets 
+    s = cmdline.Splitter(
+        command_line, single_quotes_allowed=single_quotes_allowed)
+
+    # Bug #587868 Now make sure that the length of s agrees with sys.argv
+    # we do this by simply counting the number of arguments in each. The counts should
+    # agree no matter what encoding sys.argv is in (AFAIK)
+    # len(arguments) < len(sys.argv) should be an impossibility since python gets
     # args from the very same PEB as does GetCommandLineW
     arguments = list(s)
-    
+
     # Now shorten the command line we get from GetCommandLineW to match sys.argv
     if len(arguments) < len(argv):
         raise AssertionError("Split command line can't be shorter than argv")
     arguments = arguments[len(arguments) - len(argv):]
-    
+
     # Carry on to process globs (metachars) in the command line
     # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
@@ -496,7 +505,6 @@ if has_ctypes:
         argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
 
-
     def get_environ_unicode(key, default=None):
         """Get `key` from environment as unicode or `default` if unset
 
@@ -516,13 +524,13 @@ if has_ctypes:
             cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
                 ("GetEnvironmentVariableW", ctypes.windll.kernel32))
             get_environ_unicode._c_function = cfunc
-        buffer_size = 256 # heuristic, 256 characters often enough
+        buffer_size = 256  # heuristic, 256 characters often enough
         while True:
             buffer = ctypes.create_unicode_buffer(buffer_size)
             length = cfunc(key, buffer, buffer_size)
             if not length:
                 code = ctypes.GetLastError()
-                if code == 203: # ERROR_ENVVAR_NOT_FOUND
+                if code == 203:  # ERROR_ENVVAR_NOT_FOUND
                     return default
                 raise ctypes.WinError(code)
             if buffer_size > length:
@@ -534,12 +542,12 @@ if has_win32api:
     def _pywin32_is_local_pid_dead(pid):
         """True if pid doesn't correspond to live process on this machine"""
         try:
-            handle = win32api.OpenProcess(1, False, pid) # PROCESS_TERMINATE
+            handle = win32api.OpenProcess(1, False, pid)  # PROCESS_TERMINATE
         except pywintypes.error as e:
-            if e[0] == 5: # ERROR_ACCESS_DENIED
+            if e[0] == 5:  # ERROR_ACCESS_DENIED
                 # Probably something alive we're not allowed to kill
                 return False
-            elif e[0] == 87: # ERROR_INVALID_PARAMETER
+            elif e[0] == 87:  # ERROR_INVALID_PARAMETER
                 return True
             raise
         handle.close()
@@ -552,15 +560,16 @@ elif has_ctypes and sys.platform == 'win32':
         ("CloseHandle", _kernel32))
     _OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
         ("OpenProcess", _kernel32))
+
     def _ctypes_is_local_pid_dead(pid):
         """True if pid doesn't correspond to live process on this machine"""
-        handle = _OpenProcess(1, False, pid) # PROCESS_TERMINATE
+        handle = _OpenProcess(1, False, pid)  # PROCESS_TERMINATE
         if not handle:
             errorcode = ctypes.GetLastError()
-            if errorcode == 5: # ERROR_ACCESS_DENIED
+            if errorcode == 5:  # ERROR_ACCESS_DENIED
                 # Probably something alive we're not allowed to kill
                 return False
-            elif errorcode == 87: # ERROR_INVALID_PARAMETER
+            elif errorcode == 87:  # ERROR_INVALID_PARAMETER
                 return True
             raise ctypes.WinError(errorcode)
         _CloseHandle(handle)

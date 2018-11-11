@@ -32,6 +32,7 @@ from breezy import (
     )
 """)
 
+
 class VcsMapping(object):
     """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
@@ -138,7 +139,7 @@ class ForeignVcs(object):
         :param foreign_revid: Foreign revision id.
         :return: Dictionary mapping string keys to string values.
         """
-        return { }
+        return {}
 
     def serialize_foreign_revid(self, foreign_revid):
         """Serialize a foreign revision id for this VCS.
@@ -229,4 +230,3 @@ class ForeignBranch(Branch):
     def __init__(self, mapping):
         self.mapping = mapping
         super(ForeignBranch, self).__init__()
-

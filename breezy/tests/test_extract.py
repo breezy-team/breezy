@@ -57,7 +57,7 @@ class TestExtract(TestCaseWithTransport):
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d/', 'a/b/c/d/e'])
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], [b'b-id', b'c-id', b'd-id',
-                b'e-id'])
+                                                   b'e-id'])
         wt.commit('added files')
         b_wt = wt.extract('b/c/d', b'd-id')
         b_branch = branch.Branch.open('branch/b/c/d')
@@ -73,8 +73,8 @@ class TestExtract(TestCaseWithTransport):
 
     def test_good_repo_format(self):
         repo = self.make_repository('branch', shared=True,
-            format='dirstate-with-subtree')
+                                    format='dirstate-with-subtree')
         a_branch = repo.controldir.create_branch()
         wt_b = self.extract_in_checkout(a_branch)
         self.assertEqual(wt_b.branch.repository.controldir.transport.base,
-        repo.controldir.transport.base)
+                         repo.controldir.transport.base)

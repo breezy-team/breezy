@@ -68,7 +68,6 @@ class TestMergeDirective(TestCaseWithRepository):
                                                 target_branch.base)
         self.assertIsInstance(directive, merge_directive.MergeDirective2)
 
-
     def test_create_and_install_directive(self):
         source_branch, target_branch = self.make_two_branches()
         directive = self.create_merge_directive(source_branch,

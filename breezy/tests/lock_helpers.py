@@ -87,5 +87,3 @@ class LockWrapper(object):
     def disable_lock_write(self):
         """Make a lock_write call fail"""
         self.__dict__['_allow_write'] = False
-
-

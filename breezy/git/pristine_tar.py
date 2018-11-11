@@ -35,6 +35,7 @@ This branch contains delta files that pristine-tar can use to
 regenerate tarballs for its own releases.
 """
 
+
 def revision_pristine_tar_data(rev):
     """Export the pristine tar data from a revision."""
     if 'deb-pristine-delta' in rev.properties:
@@ -79,7 +80,7 @@ def read_git_pristine_tar_data(repo, filename):
 
 
 def store_git_pristine_tar_data(repo, filename, delta, gitid,
-        message=None, **kwargs):
+                                message=None, **kwargs):
     """Add pristine tar data to a Git repository.
 
     :param repo: Git repository to add data to
@@ -106,4 +107,4 @@ def store_git_pristine_tar_data(repo, filename, delta, gitid,
     if message is None:
         message = b'pristine-tar data for %s' % filename
     return repo.do_commit(ref=b'refs/heads/pristine-tar', tree=tree.id,
-        message=message, **kwargs)
+                          message=message, **kwargs)

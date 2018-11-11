@@ -57,7 +57,8 @@ class TestPlanFileMerge(TestCaseWithTree):
         self.build_tree_contents([('wta/file', b'b\nc\nd\ne\n')])
         tree_a = self.workingtree_to_test_tree(work_a)
         if getattr(tree_a, 'plan_file_merge', None) is None:
-            raise tests.TestNotApplicable('Tree does not support plan_file_merge')
+            raise tests.TestNotApplicable(
+                'Tree does not support plan_file_merge')
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
         self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
@@ -248,7 +249,7 @@ class TestExtractFilesBytes(TestCaseWithTree):
         self.assertEqual(b'baz', extracted['id3'])
         self.assertRaises(errors.NoSuchFile, lambda: list(
                           tree.iter_files_bytes(
-                          [('qux', 'file1-notpresent')])))
+                              [('qux', 'file1-notpresent')])))
 
 
 class TestConflicts(TestCaseWithTree):
@@ -280,10 +281,10 @@ class TestIterChildEntries(TestCaseWithTree):
         work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
         tree = self._convert_tree(work_tree)
         output = [e.name for e in
-            tree.iter_child_entries('', tree.get_root_id())]
+                  tree.iter_child_entries('', tree.get_root_id())]
         self.assertEqual({'a', 'f'}, set(output))
         output = [e.name for e in
-            tree.iter_child_entries('a', tree.path2id('a'))]
+                  tree.iter_child_entries('a', tree.path2id('a'))]
         self.assertEqual({'b', 'd'}, set(output))
 
     def test_does_not_exist(self):
@@ -292,7 +293,7 @@ class TestIterChildEntries(TestCaseWithTree):
         work_tree.add(['a'])
         tree = self._convert_tree(work_tree)
         self.assertRaises(errors.NoSuchFile, lambda:
-            list(tree.iter_child_entries('unknown')))
+                          list(tree.iter_child_entries('unknown')))
 
 
 class TestHasId(TestCaseWithTree):

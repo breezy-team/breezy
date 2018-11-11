@@ -22,7 +22,10 @@ from breezy.tests import TestCaseInTempDir
 class TestPatch(TestCaseInTempDir):
 
     def test_diff3_binaries(self):
-        with open('this', 'wb') as f: f.write(b'a')
-        with open('other', 'wb') as f: f.write(b'a')
-        with open('base', 'wb') as f: f.write(b'\x00')
+        with open('this', 'wb') as f:
+            f.write(b'a')
+        with open('other', 'wb') as f:
+            f.write(b'a')
+        with open('base', 'wb') as f:
+            f.write(b'\x00')
         self.assertRaises(BinaryFile, diff3, 'unused', 'this', 'other', 'base')

@@ -59,7 +59,7 @@ class GitFulltextContentFactory(object):
         elif storage_kind == 'chunked':
             return self.store[self.blob_id].as_raw_chunks()
         raise UnavailableRepresentation(self.key, storage_kind,
-                'fulltext')
+                                        'fulltext')
 
 
 class GitAbsentContentFactory(object):
@@ -98,14 +98,15 @@ class AnnotateProvider(object):
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = self.change_scanner.find_last_change_revision(path.encode('utf-8'), commit_parent)
+                (path, text_parent) = self.change_scanner.find_last_change_revision(
+                    path.encode('utf-8'), commit_parent)
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
         return tuple([(path.decode('utf-8'),
-            self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
-            in text_parents])
+                       self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
+                      in text_parents])
 
     def get_parent_map(self, keys):
         ret = {}
@@ -139,7 +140,8 @@ class AnnotateProvider(object):
                 yield GitAbsentContentFactory(store, path, text_revision)
                 continue
             try:
-                (mode, blob_sha) = tree_lookup_path(store.__getitem__, tree_id, path.encode('utf-8'))
+                (mode, blob_sha) = tree_lookup_path(
+                    store.__getitem__, tree_id, path.encode('utf-8'))
             except KeyError:
                 yield GitAbsentContentFactory(store, path, text_revision)
             else:

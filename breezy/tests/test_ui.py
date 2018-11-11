@@ -77,7 +77,8 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_factory_unicode_password(self):
         """Test a unicode password."""
         ui = ui_testing.TextUIFactory(u'baz\u1234')
-        password = ui.get_password(u'Hello \u1234 %(user)s', user=u'some\u1234')
+        password = ui.get_password(
+            u'Hello \u1234 %(user)s', user=u'some\u1234')
         self.assertEqual(u'baz\u1234', password)
         self.assertEqual(u'Hello \u1234 some\u1234: ', ui.stderr.getvalue())
         # stdin and stdout should be empty
@@ -86,14 +87,14 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_ui_get_boolean(self):
         stdin_text = (
-            "y\n" # True
-            "n\n" # False
-            " \n y \n" # True
-            " no \n" # False
-            "yes with garbage\nY\n" # True
-            "not an answer\nno\n" # False
-            "I'm sure!\nyes\n" # True
-            "NO\n" # False
+            "y\n"  # True
+            "n\n"  # False
+            " \n y \n"  # True
+            " no \n"  # False
+            "yes with garbage\nY\n"  # True
+            "not an answer\nno\n"  # False
+            "I'm sure!\nyes\n"  # True
+            "NO\n"  # False
             "foo\n")
         with ui_testing.TextUIFactory(stdin_text) as factory:
             self.assertEqual(True, factory.get_boolean(u""))
@@ -141,15 +142,15 @@ class TestTextUIFactory(tests.TestCase):
         def choose():
             return factory.choose(u"", u"&Yes\n&No\nMaybe\nmore &info", 3)
         stdin_text = (
-            "y\n" # 0
-            "n\n" # 1
-            " \n" # default: 3
-            " no \n" # 1
-            "b\na\nd \n" # bad shortcuts, all ignored
-            "yes with garbage\nY\n" # 0
-            "not an answer\nno\n" # 1
-            "info\nmore info\n" # 3
-            "Maybe\n" # 2
+            "y\n"  # 0
+            "n\n"  # 1
+            " \n"  # default: 3
+            " no \n"  # 1
+            "b\na\nd \n"  # bad shortcuts, all ignored
+            "yes with garbage\nY\n"  # 0
+            "not an answer\nno\n"  # 1
+            "info\nmore info\n"  # 3
+            "Maybe\n"  # 2
             "foo\n")
         with ui_testing.TextUIFactory(stdin_text) as factory:
             self.assertEqual(0, choose())
@@ -168,8 +169,8 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_ui_choose_no_default(self):
         stdin_text = (
-            " \n" # no default, invalid!
-            " yes \n" # 0
+            " \n"  # no default, invalid!
+            " yes \n"  # 0
             "foo\n")
         with ui_testing.TextUIFactory(stdin_text) as factory:
             self.assertEqual(0, factory.choose(u"", u"&Yes\n&No"))
@@ -211,9 +212,9 @@ class TestTextUIFactory(tests.TestCase):
                     u"what do you want"))
             output = out.getvalue()
             self.assertContainsRe(output,
-                "| foo *\r\r  *\r*")
+                                  "| foo *\r\r  *\r*")
             self.assertContainsString(output,
-                r"what do you want? ([y]es, [n]o): what do you want? ([y]es, [n]o): ")
+                                      r"what do you want? ([y]es, [n]o): what do you want? ([y]es, [n]o): ")
             # stdin should have been totally consumed
             self.assertEqual('', factory.stdin.readline())
 
@@ -248,10 +249,10 @@ class TestTextUIFactory(tests.TestCase):
             stderr=ui_testing.StringIOAsTTY())
         with ui_factory:
             self.assertIsInstance(ui_factory._progress_view,
-                _mod_ui_text.TextProgressView)
+                                  _mod_ui_text.TextProgressView)
             ui_factory.be_quiet(True)
             self.assertIsInstance(ui_factory._progress_view,
-                _mod_ui_text.NullProgressView)
+                                  _mod_ui_text.NullProgressView)
 
     def test_text_ui_show_user_warning(self):
         from ..bzr.groupcompress_repo import RepositoryFormat2a
@@ -260,20 +261,20 @@ class TestTextUIFactory(tests.TestCase):
         remote_fmt = remote.RemoteRepositoryFormat()
         remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
-            to_format=remote_fmt)
+                             to_format=remote_fmt)
         self.assertEqual('', ui.stdout.getvalue())
         self.assertContainsRe(
             ui.stderr.getvalue(),
             "^Doing on-the-fly conversion from RepositoryFormat2a\\(\\) to "
-                "RemoteRepositoryFormat\\(_network_name="
-                "b?'Bazaar RepositoryFormatKnitPack5 \\(bzr 1.6\\)\\\\n'\\)\\.\n"
+            "RemoteRepositoryFormat\\(_network_name="
+            "b?'Bazaar RepositoryFormatKnitPack5 \\(bzr 1.6\\)\\\\n'\\)\\.\n"
             "This may take some time. Upgrade the repositories to "
-                "the same format for better performance\\.\n$")
+            "the same format for better performance\\.\n$")
         # and now with it suppressed please
         ui = ui_testing.TextUIFactory()
         ui.suppressed_warnings.add('cross_format_fetch')
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
-            to_format=remote_fmt)
+                             to_format=remote_fmt)
         self.assertEqual('', ui.stdout.getvalue())
         self.assertEqual('', ui.stderr.getvalue())
 
@@ -284,20 +285,21 @@ class TestTextUIOutputStream(tests.TestCase):
     def test_output_clears_terminal(self):
         clear_calls = []
 
-        uif =  ui_testing.TextUIFactory()
+        uif = ui_testing.TextUIFactory()
         uif.clear_term = lambda: clear_calls.append('clear')
 
-        stream = _mod_ui_text.TextUIOutputStream(uif, uif.stdout, 'utf-8', 'strict')
+        stream = _mod_ui_text.TextUIOutputStream(
+            uif, uif.stdout, 'utf-8', 'strict')
         stream.write(u"Hello world!\n")
         stream.write(u"there's more...\n")
         stream.writelines([u"1\n", u"2\n", u"3\n"])
 
         self.assertEqual(uif.stdout.getvalue(),
-            u"Hello world!\n"
-            u"there's more...\n"
-            u"1\n2\n3\n")
+                         u"Hello world!\n"
+                         u"there's more...\n"
+                         u"1\n2\n3\n")
         self.assertEqual(['clear', 'clear', 'clear'],
-            clear_calls)
+                         clear_calls)
 
         stream.flush()
 
@@ -310,22 +312,22 @@ class UITests(tests.TestCase):
         FileStringIO = ui_testing.StringIOWithEncoding
         TTYStringIO = ui_testing.StringIOAsTTY
         for (file_class, term, pb, expected_pb_class) in (
-            # on an xterm, either use them or not as the user requests,
-            # otherwise default on
-            (TTYStringIO, 'xterm', 'none', _mod_ui_text.NullProgressView),
-            (TTYStringIO, 'xterm', 'text', _mod_ui_text.TextProgressView),
-            (TTYStringIO, 'xterm', None, _mod_ui_text.TextProgressView),
-            # on a dumb terminal, again if there's explicit configuration do
-            # it, otherwise default off
-            (TTYStringIO, 'dumb', 'none', _mod_ui_text.NullProgressView),
-            (TTYStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
-            (TTYStringIO, 'dumb', None, _mod_ui_text.NullProgressView),
-            # on a non-tty terminal, it's null regardless of $TERM
-            (FileStringIO, 'xterm', None, _mod_ui_text.NullProgressView),
-            (FileStringIO, 'dumb', None, _mod_ui_text.NullProgressView),
-            # however, it can still be forced on
-            (FileStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
-            ):
+                # on an xterm, either use them or not as the user requests,
+                # otherwise default on
+                (TTYStringIO, 'xterm', 'none', _mod_ui_text.NullProgressView),
+                (TTYStringIO, 'xterm', 'text', _mod_ui_text.TextProgressView),
+                (TTYStringIO, 'xterm', None, _mod_ui_text.TextProgressView),
+                # on a dumb terminal, again if there's explicit configuration do
+                # it, otherwise default off
+                (TTYStringIO, 'dumb', 'none', _mod_ui_text.NullProgressView),
+                (TTYStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
+                (TTYStringIO, 'dumb', None, _mod_ui_text.NullProgressView),
+                # on a non-tty terminal, it's null regardless of $TERM
+                (FileStringIO, 'xterm', None, _mod_ui_text.NullProgressView),
+                (FileStringIO, 'dumb', None, _mod_ui_text.NullProgressView),
+                # however, it can still be forced on
+                (FileStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
+                ):
             self.overrideEnv('TERM', term)
             self.overrideEnv('BRZ_PROGRESS_BAR', pb)
             stdin = file_class(u'')
@@ -333,10 +335,10 @@ class UITests(tests.TestCase):
             stdout = file_class()
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+                                  "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
             self.assertIsInstance(uif.make_progress_view(),
-                expected_pb_class,
-                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+                                  expected_pb_class,
+                                  "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
@@ -345,7 +347,7 @@ class UITests(tests.TestCase):
             self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                'TERM=%r' % (term_type,))
+                                  'TERM=%r' % (term_type,))
 
 
 class SilentUITests(tests.TestCase):
@@ -459,7 +461,7 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
             self.assertEqual(
                 _mod_ui.ConfirmationUserInterfacePolicy(base_ui, answer, {})
                 .confirm_action("Do something?",
-                    "breezy.tests.do_something", {}),
+                                "breezy.tests.do_something", {}),
                 answer)
 
     def test_confirm_action_specific(self):
@@ -469,7 +471,8 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
                 for conf_id in ['given_id', 'other_id']:
                     wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
                         base_ui, default_answer, dict(given_id=specific_answer))
-                    result = wrapper.confirm_action("Do something?", conf_id, {})
+                    result = wrapper.confirm_action(
+                        "Do something?", conf_id, {})
                     if conf_id == 'given_id':
                         self.assertEqual(result, specific_answer)
                     else:
@@ -480,8 +483,8 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
         wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
             base_ui, True, dict(a=2))
         self.assertThat(repr(wrapper),
-            Equals("ConfirmationUserInterfacePolicy("
-                "NoninteractiveUIFactory(), True, {'a': 2})"))
+                        Equals("ConfirmationUserInterfacePolicy("
+                               "NoninteractiveUIFactory(), True, {'a': 2})"))
 
 
 class TestProgressRecordingUI(tests.TestCase):

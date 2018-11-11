@@ -49,7 +49,7 @@ from ..trace import mutter
 def load_tests(loader, standard_tests, pattern):
     """Parameterize the test for tempfile creation with different encodings."""
     to_adapt, result = split_suite_by_re(standard_tests,
-        "test__create_temp_file_with_commit_template_in_unicode_dir")
+                                         "test__create_temp_file_with_commit_template_in_unicode_dir")
     return multiply_tests(to_adapt, encoding_scenarios, result)
 
 
@@ -64,7 +64,7 @@ class MsgEditorTest(TestCaseWithTransport):
             self.build_tree_contents([(filename, b'contents of hello')])
         except UnicodeEncodeError:
             self.skipTest("can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding())
+                          "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
 
@@ -72,9 +72,9 @@ class MsgEditorTest(TestCaseWithTransport):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
         template = msgeditor.make_commit_message_template(working_tree,
-                                                                 None)
+                                                          None)
         self.assertEqualDiff(template,
-u"""\
+                             u"""\
 added:
   hell\u00d8
 """)
@@ -102,7 +102,7 @@ added:
         working_tree = self.make_multiple_pending_tree()
         template = msgeditor.make_commit_message_template(working_tree, None)
         self.assertEqualDiff(template,
-u"""\
+                             u"""\
 pending merges:
   Bilbo Baggins 2009-01-29 Feature X finished.
     Bilbo Baggins 2009-01-28 Feature X work.
@@ -116,11 +116,10 @@ pending merges:
                                                         None,
                                                         output_encoding='utf8')
         self.assertEqualDiff(template,
-u"""\
+                             u"""\
 added:
   hell\u00d8
 """.encode("utf8"))
-
 
     def test_commit_template_and_diff(self):
         """Test building a commit message template"""
@@ -163,8 +162,8 @@ added:
         See <https://bugs.launchpad.net/bzr/+bug/220331>
         """
         self.overrideEnv('BRZ_EDITOR',
-            '"%s"' % self.make_do_nothing_editor('name with spaces'))
-        self.assertEqual(True, msgeditor._run_editor('a_filename'))    
+                         '"%s"' % self.make_do_nothing_editor('name with spaces'))
+        self.assertEqual(True, msgeditor._run_editor('a_filename'))
 
     def make_fake_editor(self, message='test message from fed\n'):
         """Set up environment so that an editor will be a known script.
@@ -238,10 +237,10 @@ if len(sys.argv) == 2:
         self.make_fake_editor()
         self.assertEqual('test message from fed\nstart message\n',
                          msgeditor.edit_commit_message('',
-                                              start_message='start message\n'))
+                                                       start_message='start message\n'))
         self.assertEqual('test message from fed\n',
                          msgeditor.edit_commit_message('',
-                                              start_message=''))
+                                                       start_message=''))
 
     def test_deleted_commit_message(self):
         working_tree = self.make_uncommitted_tree()
@@ -253,7 +252,7 @@ if len(sys.argv) == 2:
         self.overrideEnv('BRZ_EDITOR', editor)
 
         self.assertRaises((EnvironmentError, errors.NoSuchFile),
-                msgeditor.edit_commit_message, '')
+                          msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
         self.overrideEnv('BRZ_EDITOR', 'bzr_editor')
@@ -275,7 +274,6 @@ if len(sys.argv) == 2:
             self.assertEqual(['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe'],
                              editors[4:])
 
-
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
         self.overrideEnv('BRZ_EDITOR', 'eacces.py')
@@ -288,6 +286,7 @@ if len(sys.argv) == 2:
         self.overrideEnv('EDITOR', self.make_do_nothing_editor())
         # Call _run_editor, capturing mutter.warning calls.
         warnings = []
+
         def warning(*args):
             if len(args) > 1:
                 warnings.append(args[0] % args[1:])
@@ -299,13 +298,15 @@ if len(sys.argv) == 2:
             msgeditor._run_editor('')
         finally:
             trace.warning = _warning
-        self.assertStartsWith(warnings[0], 'Could not start editor "eacces.py"')
+        self.assertStartsWith(
+            warnings[0], 'Could not start editor "eacces.py"')
 
     def test__create_temp_file_with_commit_template(self):
         # check that commit template written properly
         # and has platform native line-endings (CRLF on win32)
         create_file = msgeditor._create_temp_file_with_commit_template
-        msgfilename, hasinfo = create_file(b'infotext', '----', b'start message')
+        msgfilename, hasinfo = create_file(
+            b'infotext', '----', b'start message')
         self.assertNotEqual(None, msgfilename)
         self.assertTrue(hasinfo)
         expected = os.linesep.join(['start message',
@@ -344,7 +345,7 @@ if len(sys.argv) == 2:
         char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
             self.skipTest('Cannot find suitable non-ascii character '
-                'for user_encoding (%s)' % osutils.get_user_encoding())
+                          'for user_encoding (%s)' % osutils.get_user_encoding())
 
         self.make_fake_editor(message=char)
 
@@ -355,26 +356,26 @@ if len(sys.argv) == 2:
     def test_set_commit_message_no_hooks(self):
         commit_obj = commit.Commit()
         self.assertIs(None,
-            msgeditor.set_commit_message(commit_obj))
+                      msgeditor.set_commit_message(commit_obj))
 
     def test_set_commit_message_hook(self):
         msgeditor.hooks.install_named_hook("set_commit_message",
-                lambda commit_obj, existing_message: "save me some typing\n", None)
+                                           lambda commit_obj, existing_message: "save me some typing\n", None)
         commit_obj = commit.Commit()
         self.assertEqual("save me some typing\n",
-            msgeditor.set_commit_message(commit_obj))
+                         msgeditor.set_commit_message(commit_obj))
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()
         self.assertIs(None,
-            msgeditor.generate_commit_message_template(commit_obj))
+                      msgeditor.generate_commit_message_template(commit_obj))
 
     def test_generate_commit_message_template_hook(self):
         msgeditor.hooks.install_named_hook("commit_message_template",
-                lambda commit_obj, msg: "save me some typing\n", None)
+                                           lambda commit_obj, msg: "save me some typing\n", None)
         commit_obj = commit.Commit()
         self.assertEqual("save me some typing\n",
-            msgeditor.generate_commit_message_template(commit_obj))
+                         msgeditor.generate_commit_message_template(commit_obj))
 
 
 # GZ 2009-11-17: This wants moving to osutils when the errno checking code is
@@ -384,7 +385,8 @@ class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
     def test_subprocess_call_bad_file(self):
         if sys.platform != "win32":
             raise TestNotApplicable("Workarounds for windows only")
-        import subprocess, errno
+        import subprocess
+        import errno
         ERROR_BAD_EXE_FORMAT = 193
         open("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")

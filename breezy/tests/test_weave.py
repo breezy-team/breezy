@@ -69,7 +69,7 @@ class WeaveContains(TestBase):
     """Weave __contains__ operator"""
 
     def runTest(self):
-        k = Weave(get_scope=lambda:None)
+        k = Weave(get_scope=lambda: None)
         self.assertFalse(b'foo' in k)
         k.add_lines(b'foo', [], TEXT_1)
         self.assertTrue(b'foo' in k)
@@ -136,6 +136,7 @@ class InsertLines(TestBase):
 
     Look at the annotations to make sure that the first line is matched
     and not stored repeatedly."""
+
     def runTest(self):
         k = Weave()
 
@@ -161,8 +162,8 @@ class InsertLines(TestBase):
 
         text3 = [b'line 1', b'middle line', b'line 2']
         k.add_lines(b'text3',
-              [b'text0', b'text1'],
-              text3)
+                    [b'text0', b'text1'],
+                    text3)
 
         # self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
 
@@ -175,8 +176,8 @@ class InsertLines(TestBase):
 
         # now multiple insertions at different places
         k.add_lines(b'text4',
-              [b'text0', b'text1', b'text3'],
-              [b'line 1', b'aaa', b'middle line', b'bbb', b'line 2', b'ccc'])
+                    [b'text0', b'text1', b'text3'],
+                    [b'line 1', b'aaa', b'middle line', b'bbb', b'line 2', b'ccc'])
 
         self.assertEqual(k.annotate(b'text4'),
                          [(b'text0', b'line 1'),
@@ -191,6 +192,7 @@ class DeleteLines(TestBase):
     """Deletion of lines from existing text.
 
     Try various texts all based on a common ancestor."""
+
     def runTest(self):
         k = Weave()
 
@@ -207,32 +209,33 @@ class DeleteLines(TestBase):
         i = 1
         for t in texts:
             ver = k.add_lines(b'text%d' % i,
-                        [b'text0'], t)
+                              [b'text0'], t)
             i += 1
 
         self.log('final weave:')
         self.log('k._weave=' + pformat(k._weave))
 
         for i in range(len(texts)):
-            self.assertEqual(k.get_lines(i+1),
+            self.assertEqual(k.get_lines(i + 1),
                              texts[i])
 
 
 class SuicideDelete(TestBase):
     """Invalid weave which tries to add and delete simultaneously."""
+
     def runTest(self):
         k = Weave()
 
         k._parents = [(),
-                ]
+                      ]
         k._weave = [(b'{', 0),
-                b'first line',
-                (b'[', 0),
-                b'deleted in 0',
-                (b']', 0),
-                (b'}', 0),
-                ]
-        ################################### SKIPPED
+                    b'first line',
+                    (b'[', 0),
+                    b'deleted in 0',
+                    (b']', 0),
+                    (b'}', 0),
+                    ]
+        # SKIPPED
         # Weave.get doesn't trap this anymore
         return
 
@@ -243,22 +246,23 @@ class SuicideDelete(TestBase):
 
 class CannedDelete(TestBase):
     """Unpack canned weave with deleted lines."""
+
     def runTest(self):
         k = Weave()
 
         k._parents = [(),
-                frozenset([0]),
-                ]
+                      frozenset([0]),
+                      ]
         k._weave = [(b'{', 0),
-                b'first line',
-                (b'[', 1),
-                b'line to be deleted',
-                (b']', 1),
-                b'last line',
-                (b'}', 0),
-                ]
-        k._sha1s = [sha_string(b'first lineline to be deletedlast line')
-                  , sha_string(b'first linelast line')]
+                    b'first line',
+                    (b'[', 1),
+                    b'line to be deleted',
+                    (b']', 1),
+                    b'last line',
+                    (b'}', 0),
+                    ]
+        k._sha1s = [sha_string(b'first lineline to be deletedlast line'), sha_string(
+            b'first linelast line')]
 
         self.assertEqual(k.get_lines(0),
                          [b'first line',
@@ -274,25 +278,26 @@ class CannedDelete(TestBase):
 
 class CannedReplacement(TestBase):
     """Unpack canned weave with deleted lines."""
+
     def runTest(self):
         k = Weave()
 
         k._parents = [frozenset(),
-                frozenset([0]),
-                ]
+                      frozenset([0]),
+                      ]
         k._weave = [(b'{', 0),
-                b'first line',
-                (b'[', 1),
-                b'line to be deleted',
-                (b']', 1),
-                (b'{', 1),
-                b'replacement line',
-                (b'}', 1),
-                b'last line',
-                (b'}', 0),
-                ]
-        k._sha1s = [sha_string(b'first lineline to be deletedlast line')
-                  , sha_string(b'first linereplacement linelast line')]
+                    b'first line',
+                    (b'[', 1),
+                    b'line to be deleted',
+                    (b']', 1),
+                    (b'{', 1),
+                    b'replacement line',
+                    (b'}', 1),
+                    b'last line',
+                    (b'}', 0),
+                    ]
+        k._sha1s = [sha_string(b'first lineline to be deletedlast line'), sha_string(
+            b'first linereplacement linelast line')]
 
         self.assertEqual(k.get_lines(0),
                          [b'first line',
@@ -309,28 +314,28 @@ class CannedReplacement(TestBase):
 
 class BadWeave(TestBase):
     """Test that we trap an insert which should not occur."""
+
     def runTest(self):
         k = Weave()
 
         k._parents = [frozenset(),
-                ]
+                      ]
         k._weave = [b'bad line',
-                (b'{', 0),
-                b'foo {',
-                (b'{', 1),
-                b'  added in version 1',
-                (b'{', 2),
-                b'  added in v2',
-                (b'}', 2),
-                b'  also from v1',
-                (b'}', 1),
-                b'}',
-                (b'}', 0)]
+                    (b'{', 0),
+                    b'foo {',
+                    (b'{', 1),
+                    b'  added in version 1',
+                    (b'{', 2),
+                    b'  added in v2',
+                    (b'}', 2),
+                    b'  also from v1',
+                    (b'}', 1),
+                    b'}',
+                    (b'}', 0)]
 
-        ################################### SKIPPED
+        # SKIPPED
         # Weave.get doesn't trap this anymore
         return
-
 
         self.assertRaises(WeaveFormatError,
                           k.get,
@@ -339,27 +344,27 @@ class BadWeave(TestBase):
 
 class BadInsert(TestBase):
     """Test that we trap an insert which should not occur."""
+
     def runTest(self):
         k = Weave()
 
         k._parents = [frozenset(),
-                frozenset([0]),
-                frozenset([0]),
-                frozenset([0, 1, 2]),
-                ]
+                      frozenset([0]),
+                      frozenset([0]),
+                      frozenset([0, 1, 2]),
+                      ]
         k._weave = [(b'{', 0),
-                b'foo {',
-                (b'{', 1),
-                b'  added in version 1',
-                (b'{', 1),
-                b'  more in 1',
-                (b'}', 1),
-                (b'}', 1),
-                (b'}', 0)]
-
+                    b'foo {',
+                    (b'{', 1),
+                    b'  added in version 1',
+                    (b'{', 1),
+                    b'  more in 1',
+                    (b'}', 1),
+                    (b'}', 1),
+                    (b'}', 0)]
 
         # this is not currently enforced by get
-        return  ##########################################
+        return
 
         self.assertRaises(WeaveFormatError,
                           k.get,
@@ -372,31 +377,29 @@ class BadInsert(TestBase):
 
 class InsertNested(TestBase):
     """Insertion with nested instructions."""
+
     def runTest(self):
         k = Weave()
 
         k._parents = [frozenset(),
-                frozenset([0]),
-                frozenset([0]),
-                frozenset([0, 1, 2]),
-                ]
+                      frozenset([0]),
+                      frozenset([0]),
+                      frozenset([0, 1, 2]),
+                      ]
         k._weave = [(b'{', 0),
-                b'foo {',
-                (b'{', 1),
-                b'  added in version 1',
-                (b'{', 2),
-                b'  added in v2',
-                (b'}', 2),
-                b'  also from v1',
-                (b'}', 1),
-                b'}',
-                (b'}', 0)]
+                    b'foo {',
+                    (b'{', 1),
+                    b'  added in version 1',
+                    (b'{', 2),
+                    b'  added in v2',
+                    (b'}', 2),
+                    b'  also from v1',
+                    (b'}', 1),
+                    b'}',
+                    (b'}', 0)]
 
-        k._sha1s = [sha_string(b'foo {}')
-                  , sha_string(b'foo {  added in version 1  also from v1}')
-                  , sha_string(b'foo {  added in v2}')
-                  , sha_string(b'foo {  added in version 1  added in v2  also from v1}')
-                  ]
+        k._sha1s = [sha_string(b'foo {}'), sha_string(b'foo {  added in version 1  also from v1}'), sha_string(b'foo {  added in v2}'), sha_string(b'foo {  added in version 1  added in v2  also from v1}')
+                    ]
 
         self.assertEqual(k.get_lines(0),
                          [b'foo {',
@@ -426,18 +429,19 @@ class DeleteLines2(TestBase):
 
     This relies on the weave having a way to represent lines knocked
     out by a later revision."""
+
     def runTest(self):
         k = Weave()
 
         k.add_lines(b'text0', [], [b"line the first",
-                   b"line 2",
-                   b"line 3",
-                   b"fine"])
+                                   b"line 2",
+                                   b"line 3",
+                                   b"fine"])
 
         self.assertEqual(len(k.get_lines(0)), 4)
 
         k.add_lines(b'text1', [b'text0'], [b"line the first",
-                   b"fine"])
+                                           b"fine"])
 
         self.assertEqual(k.get_lines(1),
                          [b"line the first",
@@ -463,14 +467,14 @@ class IncludeVersions(TestBase):
 
         k._parents = [frozenset(), frozenset([0])]
         k._weave = [(b'{', 0),
-                b"first line",
-                (b'}', 0),
-                (b'{', 1),
-                b"second line",
-                (b'}', 1)]
+                    b"first line",
+                    (b'}', 0),
+                    (b'{', 1),
+                    b"second line",
+                    (b'}', 1)]
 
-        k._sha1s = [sha_string(b'first line')
-                  , sha_string(b'first linesecond line')]
+        k._sha1s = [sha_string(b'first line'), sha_string(
+            b'first linesecond line')]
 
         self.assertEqual(k.get_lines(1),
                          [b"first line",
@@ -483,30 +487,30 @@ class IncludeVersions(TestBase):
 class DivergedIncludes(TestBase):
     """Weave with two diverged texts based on version 0.
     """
+
     def runTest(self):
         # FIXME make the weave, dont poke at it.
         k = Weave()
 
         k._names = [b'0', b'1', b'2']
-        k._name_map = {b'0':0, b'1':1, b'2':2}
+        k._name_map = {b'0': 0, b'1': 1, b'2': 2}
         k._parents = [frozenset(),
-                frozenset([0]),
-                frozenset([0]),
-                ]
+                      frozenset([0]),
+                      frozenset([0]),
+                      ]
         k._weave = [(b'{', 0),
-                b"first line",
-                (b'}', 0),
-                (b'{', 1),
-                b"second line",
-                (b'}', 1),
-                (b'{', 2),
-                b"alternative second line",
-                (b'}', 2),
-                ]
+                    b"first line",
+                    (b'}', 0),
+                    (b'{', 1),
+                    b"second line",
+                    (b'}', 1),
+                    (b'{', 2),
+                    b"alternative second line",
+                    (b'}', 2),
+                    ]
 
-        k._sha1s = [sha_string(b'first line')
-                  , sha_string(b'first linesecond line')
-                  , sha_string(b'first linealternative second line')]
+        k._sha1s = [sha_string(b'first line'), sha_string(
+            b'first linesecond line'), sha_string(b'first linealternative second line')]
 
         self.assertEqual(k.get_lines(0),
                          [b"first line"])
@@ -581,6 +585,7 @@ class Conflicts(TestBase):
     A base version is inserted, then two descendents try to
     insert different lines in the same place.  These should be
     reported as a possible conflict and forwarded to the user."""
+
     def runTest(self):
         return  # NOT RUN
         k = Weave()
@@ -592,14 +597,15 @@ class Conflicts(TestBase):
         merged = k.merge([1, 2])
 
         self.assertEqual([[[b'aaa']],
-                           [[b'111'], [b'222']],
-                           [[b'bbb']]])
+                          [[b'111'], [b'222']],
+                          [[b'bbb']]])
 
 
 class NonConflict(TestBase):
     """Two descendants insert compatible changes.
 
     No conflict should be reported."""
+
     def runTest(self):
         return  # NOT RUN
         k = Weave()
@@ -645,7 +651,7 @@ class Khayyam(TestBase):
         i = 0
         for t in texts:
             ver = k.add_lines(b'text%d' % i,
-                        list(parents), t)
+                              list(parents), t)
             parents.add(b'text%d' % i)
             i += 1
 

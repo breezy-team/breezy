@@ -81,7 +81,6 @@ class TreeSupplement(object):
     """
 
 
-
 def parse_roundtripping_metadata(text):
     """Parse Bazaar roundtripping metadata."""
     ret = CommitSupplement()
@@ -115,7 +114,8 @@ def generate_roundtripping_metadata(metadata, encoding):
     if metadata.revision_id:
         lines.append(b"revision-id: %s\n" % metadata.revision_id)
     if metadata.explicit_parent_ids:
-        lines.append(b"parent-ids: %s\n" % b" ".join(metadata.explicit_parent_ids))
+        lines.append(b"parent-ids: %s\n" %
+                     b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         for l in metadata.properties[key].split(b"\n"):
             lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))

@@ -118,7 +118,7 @@ dir_source = '%s'
                 rel = osutils.relpath(self.test_dir, cache_dir)
                 self.log("moving %s in %s to %s", name, rel, magicless_name)
                 os.rename(os.path.join(cache_dir, name),
-                    os.path.join(directory, magicless_name))
+                          os.path.join(directory, magicless_name))
 
     def _unregister_finder(self):
         """Removes any test copies of _PluginsAtFinder from sys.meta_path."""
@@ -140,7 +140,7 @@ dir_source = '%s'
     def assertPluginModules(self, plugin_dict):
         self.assertEqual(
             dict((k[len(self.module_prefix):], sys.modules[k])
-                for k in sys.modules if k.startswith(self.module_prefix)),
+                 for k in sys.modules if k.startswith(self.module_prefix)),
             plugin_dict)
 
     def assertPluginUnknown(self, name):
@@ -166,7 +166,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
-        self.__class__.activeattributes [tempattribute] = []
+        self.__class__.activeattributes[tempattribute] = []
         self.assertTrue(tempattribute in self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
@@ -203,8 +203,8 @@ class TestLoadingPlugins(BaseTestPlugins):
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
-        breezy.tests.test_plugins.TestLoadingPlugins.activeattributes \
-            [tempattribute] = []
+        breezy.tests.test_plugins.TestLoadingPlugins.activeattributes[tempattribute] = [
+            ]
         self.assertTrue(tempattribute in self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
@@ -230,7 +230,7 @@ class TestLoadingPlugins(BaseTestPlugins):
             self.assertEqual(['first'], self.activeattributes[tempattribute])
             exec("import %splugintwo" % self.module_prefix)
             self.assertEqual(['first', 'second'],
-                self.activeattributes[tempattribute])
+                             self.activeattributes[tempattribute])
         finally:
             del self.activeattributes[tempattribute]
 
@@ -244,8 +244,8 @@ class TestLoadingPlugins(BaseTestPlugins):
         # set a place for the plugin to record its loading, and at the same
         # time validate that the location the plugin should record to is
         # valid and correct.
-        breezy.tests.test_plugins.TestLoadingPlugins.activeattributes \
-            [tempattribute] = []
+        breezy.tests.test_plugins.TestLoadingPlugins.activeattributes[tempattribute] = [
+            ]
         self.assertTrue(tempattribute in self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
@@ -259,7 +259,7 @@ class TestLoadingPlugins(BaseTestPlugins):
             outfile.write('\n')
 
         try:
-            self.load_with_paths(['plugin_test'+os.sep])
+            self.load_with_paths(['plugin_test' + os.sep])
             self.assertEqual(['plugin'], self.activeattributes[tempattribute])
             self.assertPluginKnown('ts_plugin')
         finally:
@@ -298,11 +298,11 @@ class TestLoadingPlugins(BaseTestPlugins):
         name = 'wants100.py'
         with open(name, 'w') as f:
             f.write("import breezy\n"
-                "from breezy.errors import IncompatibleVersion\n"
-                "raise IncompatibleVersion(breezy, [(1, 0, 0)], (0, 0, 5))\n")
+                    "from breezy.errors import IncompatibleVersion\n"
+                    "raise IncompatibleVersion(breezy, [(1, 0, 0)], (0, 0, 5))\n")
         log = self.load_and_capture(name)
         self.assertNotContainsRe(log,
-            r"It supports breezy version")
+                                 r"It supports breezy version")
         self.assertEqual({'wants100'}, viewkeys(self.plugin_warnings))
         self.assertContainsRe(
             self.plugin_warnings['wants100'][0],
@@ -314,9 +314,9 @@ class TestLoadingPlugins(BaseTestPlugins):
         open(name, 'w').close()
         log = self.load_and_capture(name)
         self.assertContainsRe(log,
-            r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
-            "because the file path isn't a valid module name; try renaming "
-            "it to 'bad_plugin_name_'\\.")
+                              r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
+                              "because the file path isn't a valid module name; try renaming "
+                              "it to 'bad_plugin_name_'\\.")
 
 
 class TestPlugins(BaseTestPlugins):
@@ -326,7 +326,8 @@ class TestPlugins(BaseTestPlugins):
         # check the plugin is not loaded already
         self.assertPluginUnknown('plugin')
         # write a plugin that _cannot_ fail to load.
-        with open('plugin.py', 'w') as f: f.write(source + '\n')
+        with open('plugin.py', 'w') as f:
+            f.write(source + '\n')
         self.load_with_paths(['.'])
 
     def test_plugin_loaded(self):
@@ -361,7 +362,7 @@ class TestPlugins(BaseTestPlugins):
         self.setup_plugin()
         self.promote_cache(self.test_dir)
         self.reset()
-        self.load_with_paths(['.']) # import plugin.pyc
+        self.load_with_paths(['.'])  # import plugin.pyc
         p = plugin.plugins()['plugin']
         plugin_path = self.test_dir + '/plugin.py'
         self.assertIsSameRealPath(plugin_path, osutils.normpath(p.path()))
@@ -372,7 +373,7 @@ class TestPlugins(BaseTestPlugins):
         os.unlink(self.test_dir + '/plugin.py')
         self.promote_cache(self.test_dir)
         self.reset()
-        self.load_with_paths(['.']) # import plugin.pyc (or .pyo)
+        self.load_with_paths(['.'])  # import plugin.pyc (or .pyo)
         p = plugin.plugins()['plugin']
         plugin_path = self.test_dir + '/plugin' + plugin.COMPILED_EXT
         self.assertIsSameRealPath(plugin_path, osutils.normpath(p.path()))
@@ -556,21 +557,21 @@ class TestModuleHelpTopic(tests.TestCase):
         mod = FakeModule(None, 'demo')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("Plugin 'demo' has no docstring.\n",
-            topic.get_help_text())
+                         topic.get_help_text())
 
     def test_get_help_text_no_carriage_return(self):
         """ModuleHelpTopic.get_help_text adds a \n if needed."""
         mod = FakeModule('one line of help', 'demo')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("one line of help\n",
-            topic.get_help_text())
+                         topic.get_help_text())
 
     def test_get_help_text_carriage_return(self):
         """ModuleHelpTopic.get_help_text adds a \n if needed."""
         mod = FakeModule('two lines of help\nand more\n', 'demo')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual("two lines of help\nand more\n",
-            topic.get_help_text())
+                         topic.get_help_text())
 
     def test_get_help_text_with_additional_see_also(self):
         mod = FakeModule('two lines of help\nand more', 'demo')
@@ -601,7 +602,7 @@ class TestEnvPluginPath(tests.TestCase):
         else:
             os.environ['BRZ_PLUGIN_PATH'] = os.pathsep.join(setting_dirs)
         actual = [(p if t == 'path' else t.upper())
-            for p, t in plugin._env_plugin_path()]
+                  for p, t in plugin._env_plugin_path()]
         self.assertEqual(expected_dirs, actual)
 
     def test_default(self):
@@ -728,7 +729,7 @@ class TestEnvDisablePlugins(tests.TestCase):
         value = os.pathsep.join(['valid', 'in-valid'])
         self.assertEqual(['valid'], self._get_names(value))
         self.assertContainsRe(self.get_log(),
-            r"Invalid name 'in-valid' in BRZ_DISABLE_PLUGINS=" + repr(value))
+                              r"Invalid name 'in-valid' in BRZ_DISABLE_PLUGINS=" + repr(value))
 
 
 class TestEnvPluginsAt(tests.TestCase):
@@ -763,7 +764,7 @@ class TestEnvPluginsAt(tests.TestCase):
     def test_bad_name(self):
         self.assertEqual([], self._get_paths('/usr/local/bzr-git'))
         self.assertContainsRe(self.get_log(),
-            r"Invalid name 'bzr-git' in BRZ_PLUGINS_AT='/usr/local/bzr-git'")
+                              r"Invalid name 'bzr-git' in BRZ_PLUGINS_AT='/usr/local/bzr-git'")
 
 
 class TestLoadPluginAt(BaseTestPlugins):
@@ -876,6 +877,7 @@ class TestDescribePlugins(BaseTestPlugins):
     def test_describe_plugins(self):
         class DummyModule(object):
             __doc__ = 'Hi there'
+
         class DummyPlugin(object):
             __version__ = '0.1.0'
             module = DummyModule()

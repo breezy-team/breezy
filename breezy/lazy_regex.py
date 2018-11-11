@@ -42,18 +42,17 @@ class InvalidPattern(errors.BzrError):
 class LazyRegex(object):
     """A proxy around a real regex, which won't be compiled until accessed."""
 
-
     # These are the parameters on a real _sre.SRE_Pattern object, which we
     # will map to local members so that we don't have the proxy overhead.
     _regex_attributes_to_copy = [
-                 '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
-                 'scanner', 'search', 'split', 'sub', 'subn'
-                 ]
+        '__copy__', '__deepcopy__', 'findall', 'finditer', 'match',
+        'scanner', 'search', 'split', 'sub', 'subn'
+        ]
 
     # We use slots to keep the overhead low. But we need a slot entry for
     # all of the attributes we will copy
     __slots__ = ['_real_regex', '_regex_args', '_regex_kwargs',
-                ] + _regex_attributes_to_copy
+                 ] + _regex_attributes_to_copy
 
     def __init__(self, args=(), kwargs={}):
         """Create a new proxy object, passing in the args to pass to re.compile
@@ -79,7 +78,7 @@ class LazyRegex(object):
         except re.error as e:
             # raise InvalidPattern instead of re.error as this gives a
             # cleaner message to the user.
-            raise InvalidPattern('"' + args[0] + '" ' +str(e))
+            raise InvalidPattern('"' + args[0] + '" ' + str(e))
 
     def __getstate__(self):
         """Return the state to use when pickling."""
@@ -137,7 +136,7 @@ def reset_compile():
 _real_re_compile = re.compile
 if _real_re_compile is lazy_compile:
     raise AssertionError(
-        "re.compile has already been overridden as lazy_compile, but this would" \
+        "re.compile has already been overridden as lazy_compile, but this would"
         " cause infinite recursion")
 
 

@@ -61,12 +61,12 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
         id = '%s,%s,%s' % (label, repository_format.__class__.__name__,
                            repository_format_to.__class__.__name__)
         scenario = (id,
-            {"transport_server": transport_server,
-             "transport_readonly_server": transport_readonly_server,
-             "repository_format": repository_format,
-             "repository_format_to": repository_format_to,
-             "extra_setup": extra_setup,
-             })
+                    {"transport_server": transport_server,
+                     "transport_readonly_server": transport_readonly_server,
+                     "repository_format": repository_format,
+                     "repository_format_to": repository_format_to,
+                     "extra_setup": extra_setup,
+                     })
         result.append(scenario)
     return result
 
@@ -79,6 +79,7 @@ def default_test_list():
         knitpack_repo,
         )
     result = []
+
     def add_combo(interrepo_cls, from_format, to_format, extra_setup=None,
                   label=None):
         if label is None:
@@ -88,7 +89,7 @@ def default_test_list():
     # default format.
     # XXX: robertc 20060220 reinstate this when there are two supported
     # formats which do not have an optimal code path between them.
-    #result.append((InterRepository,
+    # result.append((InterRepository,
     #               RepositoryFormat6(),
     #               RepositoryFormatKnit1()))
     for optimiser_class in InterRepository._optimisers:
@@ -100,6 +101,7 @@ def default_test_list():
     # XXX: although we attach InterRepository class names to these scenarios,
     # there's nothing asserting that these labels correspond to what is
     # actually used.
+
     def force_known_graph(testcase):
         from breezy.fetch import Inter1and2Helper
         testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
@@ -115,7 +117,7 @@ def default_test_list():
         except AttributeError:
             continue
         for (interrepo_cls, from_format, to_format) in (
-            get_extra_interrepo_test_combinations()):
+                get_extra_interrepo_test_combinations()):
             add_combo(interrepo_cls, from_format, to_format)
     add_combo(InterRepository,
               knitrepo.RepositoryFormatKnit1(),
@@ -192,7 +194,7 @@ class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def make_to_repository(self, relpath):
         made_control = self.make_controldir(relpath,
-            self.repository_format_to._matchingcontroldir)
+                                            self.repository_format_to._matchingcontroldir)
         return self.repository_format_to.initialize(made_control)
 
 

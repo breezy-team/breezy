@@ -73,16 +73,16 @@ class TestTransport(tests.TestCase):
         transport._clear_protocol_handlers()
         transport.register_transport_proto('foo')
         transport.register_lazy_transport('foo',
-                                            'breezy.tests.test_transport',
-                                            'TestTransport.SampleHandler')
+                                          'breezy.tests.test_transport',
+                                          'TestTransport.SampleHandler')
         transport.register_transport_proto('bar')
         transport.register_lazy_transport('bar',
-                                            'breezy.tests.test_transport',
-                                            'TestTransport.SampleHandler')
+                                          'breezy.tests.test_transport',
+                                          'TestTransport.SampleHandler')
         self.assertEqual([SampleHandler.__module__,
-                            'breezy.transport.chroot',
-                            'breezy.transport.pathfilter'],
-                            transport._get_transport_modules())
+                          'breezy.transport.chroot',
+                          'breezy.transport.pathfilter'],
+                         transport._get_transport_modules())
 
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
@@ -98,9 +98,9 @@ class TestTransport(tests.TestCase):
         except errors.UnsupportedProtocol as e:
             e_str = str(e)
             self.assertEqual('Unsupported protocol'
-                                ' for url "foo://fooserver/foo":'
-                                ' Unable to import library "some_lib":'
-                                ' testing missing dependency', str(e))
+                             ' for url "foo://fooserver/foo":'
+                             ' Unable to import library "some_lib":'
+                             ' testing missing dependency', str(e))
         else:
             self.fail('Did not raise UnsupportedProtocol')
 
@@ -124,10 +124,10 @@ class TestTransport(tests.TestCase):
         except errors.UnsupportedProtocol as e:
             e_str = str(e)
             self.assertEqual('Unsupported protocol'
-                              ' for url "ssh://fooserver/foo":'
-                              ' bzr supports bzr+ssh to operate over ssh,'
-                              ' use "bzr+ssh://fooserver/foo".',
-                              str(e))
+                             ' for url "ssh://fooserver/foo":'
+                             ' bzr supports bzr+ssh to operate over ssh,'
+                             ' use "bzr+ssh://fooserver/foo".',
+                             str(e))
         else:
             self.fail('Did not raise UnsupportedProtocol')
 
@@ -166,12 +166,12 @@ class TestCoalesceOffsets(tests.TestCase):
     def test_coalesce_unrelated(self):
         self.check([(0, 10, [(0, 10)]),
                     (20, 10, [(0, 10)]),
-                   ], [(0, 10), (20, 10)])
+                    ], [(0, 10), (20, 10)])
 
     def test_coalesce_unsorted(self):
         self.check([(20, 10, [(0, 10)]),
                     (0, 10, [(0, 10)]),
-                   ], [(20, 10), (0, 10)])
+                    ], [(20, 10), (0, 10)])
 
     def test_coalesce_nearby(self):
         self.check([(0, 20, [(0, 10), (10, 10)])],
@@ -179,32 +179,32 @@ class TestCoalesceOffsets(tests.TestCase):
 
     def test_coalesce_overlapped(self):
         self.assertRaises(ValueError,
-            self.check, [(0, 15, [(0, 10), (5, 10)])],
-                        [(0, 10), (5, 10)])
+                          self.check, [(0, 15, [(0, 10), (5, 10)])],
+                          [(0, 10), (5, 10)])
 
     def test_coalesce_limit(self):
         self.check([(10, 50, [(0, 10), (10, 10), (20, 10),
                               (30, 10), (40, 10)]),
                     (60, 50, [(0, 10), (10, 10), (20, 10),
                               (30, 10), (40, 10)]),
-                   ], [(10, 10), (20, 10), (30, 10), (40, 10),
-                       (50, 10), (60, 10), (70, 10), (80, 10),
-                       (90, 10), (100, 10)],
-                    limit=5)
+                    ], [(10, 10), (20, 10), (30, 10), (40, 10),
+                        (50, 10), (60, 10), (70, 10), (80, 10),
+                        (90, 10), (100, 10)],
+                   limit=5)
 
     def test_coalesce_no_limit(self):
         self.check([(10, 100, [(0, 10), (10, 10), (20, 10),
                                (30, 10), (40, 10), (50, 10),
                                (60, 10), (70, 10), (80, 10),
                                (90, 10)]),
-                   ], [(10, 10), (20, 10), (30, 10), (40, 10),
-                       (50, 10), (60, 10), (70, 10), (80, 10),
-                       (90, 10), (100, 10)])
+                    ], [(10, 10), (20, 10), (30, 10), (40, 10),
+                        (50, 10), (60, 10), (70, 10), (80, 10),
+                        (90, 10), (100, 10)])
 
     def test_coalesce_fudge(self):
         self.check([(10, 30, [(0, 10), (20, 10)]),
                     (100, 10, [(0, 10)]),
-                   ], [(10, 10), (30, 10), (100, 10)],
+                    ], [(10, 10), (30, 10), (100, 10)],
                    fudge=10)
 
     def test_coalesce_max_size(self):
@@ -212,24 +212,24 @@ class TestCoalesceOffsets(tests.TestCase):
                     (30, 50, [(0, 50)]),
                     # If one range is above max_size, it gets its own coalesced
                     # offset
-                    (100, 80, [(0, 80)]),],
+                    (100, 80, [(0, 80)]), ],
                    [(10, 10), (20, 10), (30, 50), (100, 80)],
                    max_size=50)
 
     def test_coalesce_no_max_size(self):
         self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)])],
                    [(10, 10), (20, 10), (30, 50), (80, 100)],
-                  )
+                   )
 
     def test_coalesce_default_limit(self):
         # By default we use a 100MB max size.
         ten_mb = 10 * 1024 * 1024
         self.check([(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
-                    (10*ten_mb, ten_mb, [(0, ten_mb)])],
-                   [(i*ten_mb, ten_mb) for i in range(11)])
+                    (10 * ten_mb, ten_mb, [(0, ten_mb)])],
+                   [(i * ten_mb, ten_mb) for i in range(11)])
         self.check([(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
                    [(i * ten_mb, ten_mb) for i in range(11)],
-                   max_size=1*1024*1024*1024)
+                   max_size=1 * 1024 * 1024 * 1024)
 
 
 class TestMemoryServer(tests.TestCase):
@@ -457,13 +457,13 @@ class TestHooks(tests.TestCase):
         """Check all expected transport hook points are set up"""
         hookpoint = transport.TransportHooks()
         self.assertTrue("post_connect" in hookpoint,
-            "post_connect not in %s" % (hookpoint,))
+                        "post_connect not in %s" % (hookpoint,))
 
     def test_post_connect(self):
         """Ensure the post_connect hook is called when _set_transport is"""
         calls = []
         transport.Transport.hooks.install_named_hook("post_connect",
-            calls.append, None)
+                                                     calls.append, None)
         t = self._get_connected_transport()
         self.assertLength(0, calls)
         t._set_connection("connection", "auth")
@@ -492,7 +492,7 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         :param filter_func: by default this will be a no-op function.  Use this
             parameter to override it."""
         if filter_func is None:
-            filter_func = lambda x: x
+            def filter_func(x): return x
         server = pathfilter.PathFilteringServer(
             transport.get_transport_from_url('memory:///foo/bar/'), filter_func)
         server.start_server()
@@ -708,20 +708,20 @@ class TestTransportFromPath(tests.TestCaseInTempDir):
         t = transport.get_transport_from_path(self.test_dir)
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base.rstrip("/"),
-            urlutils.local_path_to_url(self.test_dir))
+                         urlutils.local_path_to_url(self.test_dir))
 
     def test_with_url(self):
         t = transport.get_transport_from_path("file:")
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base.rstrip("/"),
-            urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
+                         urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
 
 
 class TestTransportFromUrl(tests.TestCaseInTempDir):
 
     def test_with_path(self):
         self.assertRaises(urlutils.InvalidURL, transport.get_transport_from_url,
-            self.test_dir)
+                          self.test_dir)
 
     def test_with_url(self):
         url = urlutils.local_path_to_url(self.test_dir)
@@ -730,7 +730,7 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
         self.assertEqual(t.base.rstrip("/"), url)
 
     def test_with_url_and_segment_parameters(self):
-        url = urlutils.local_path_to_url(self.test_dir)+",branch=foo"
+        url = urlutils.local_path_to_url(self.test_dir) + ",branch=foo"
         t = transport.get_transport_from_url(url)
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base.rstrip("/"), url)
@@ -778,6 +778,7 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
         # See https://bugs.launchpad.net/bzr/+bug/606537
         here = osutils.abspath('.')
         t = transport.get_transport(here)
+
         def fake_chmod(path, mode):
             e = OSError('permission denied')
             e.errno = errno.EPERM
@@ -793,7 +794,7 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
 
     def test_local_fdatasync_calls_fdatasync(self):
         """Check fdatasync on a stream tries to flush the data to the OS.
-        
+
         We can't easily observe the external effect but we can at least see
         it's called.
         """
@@ -872,7 +873,7 @@ class TestConnectedTransport(tests.TestCase):
         t = transport.ConnectedTransport('sftp://user@host.com/abs/path')
 
         self.assertEqual(t.relpath('sftp://user@host.com/abs/path/sub'),
-            'sub')
+                         'sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
                           'http://user@host.com/abs/path/sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
@@ -923,27 +924,27 @@ class TestReusedTransports(tests.TestCase):
     def test_reuse_same_transport(self):
         possible_transports = []
         t1 = transport.get_transport_from_url('http://foo/',
-                                     possible_transports=possible_transports)
+                                              possible_transports=possible_transports)
         self.assertEqual([t1], possible_transports)
         t2 = transport.get_transport_from_url('http://foo/',
-                                     possible_transports=[t1])
+                                              possible_transports=[t1])
         self.assertIs(t1, t2)
 
         # Also check that final '/' are handled correctly
         t3 = transport.get_transport_from_url('http://foo/path/')
         t4 = transport.get_transport_from_url('http://foo/path',
-                                     possible_transports=[t3])
+                                              possible_transports=[t3])
         self.assertIs(t3, t4)
 
         t5 = transport.get_transport_from_url('http://foo/path')
         t6 = transport.get_transport_from_url('http://foo/path/',
-                                     possible_transports=[t5])
+                                              possible_transports=[t5])
         self.assertIs(t5, t6)
 
     def test_don_t_reuse_different_transport(self):
         t1 = transport.get_transport_from_url('http://foo/path')
         t2 = transport.get_transport_from_url('http://bar/path',
-                                     possible_transports=[t1])
+                                              possible_transports=[t1])
         self.assertIsNot(t1, t2)
 
 
@@ -1080,7 +1081,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         t.mkdir('foo')
 
         self.assertEqual(
-            [b'%s serve --inet --directory=/ --allow-writes' % bzr_remote_path.encode()],
+            [b'%s serve --inet --directory=/ --allow-writes' %
+                bzr_remote_path.encode()],
             self.command_executed)
         # Make sure to disconnect, so that the remote process can stop, and we
         # can cleanup. Then pause the test until everything is shutdown
@@ -1133,7 +1135,7 @@ class TestLocationToUrl(tests.TestCase):
 
     def test_unicode_url(self):
         self.assertRaises(urlutils.InvalidURL, location_to_url,
-            b"http://fo/\xc3\xaf".decode("utf-8"))
+                          b"http://fo/\xc3\xaf".decode("utf-8"))
 
     def test_unicode_path(self):
         path, url = self.get_base_location()
@@ -1147,7 +1149,7 @@ class TestLocationToUrl(tests.TestCase):
 
     def test_relative_file_url(self):
         self.assertEqual(urlutils.local_path_to_url(".") + "/bar",
-            location_to_url("file:bar"))
+                         location_to_url("file:bar"))
 
     def test_absolute_file_url(self):
         self.assertEqual("file:///bar", location_to_url("file:/bar"))

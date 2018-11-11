@@ -28,12 +28,12 @@ class TestListFiles(TestCaseWithTree):
                     ('a', 'V', 'file', tree.path2id('a')),
                     ('b', 'V', 'directory', tree.path2id('b')),
                     ('b/c', 'V', 'file', tree.path2id('b/c')),
-                   ]
+                    ]
         tree.lock_read()
         try:
             actual = [(path, status, kind, file_id)
                       for path, status, kind, file_id, ie in
-                          tree.list_files(include_root=True)]
+                      tree.list_files(include_root=True)]
         finally:
             tree.unlock()
         self.assertEqual(expected, actual)
@@ -44,12 +44,12 @@ class TestListFiles(TestCaseWithTree):
         expected = [('a', 'V', 'file', tree.path2id('a')),
                     ('b', 'V', 'directory', tree.path2id('b')),
                     ('b/c', 'V', 'file', tree.path2id('b/c')),
-                   ]
+                    ]
         tree.lock_read()
         try:
             actual = [(path, status, kind, file_id)
                       for path, status, kind, file_id, ie in
-                          tree.list_files()]
+                      tree.list_files()]
         finally:
             tree.unlock()
         self.assertEqual(expected, actual)
@@ -59,13 +59,13 @@ class TestListFiles(TestCaseWithTree):
         tree = self.get_tree_no_parents_abc_content(work_tree)
         expected = [('', 'V', 'directory', tree.path2id('')),
                     ('a', 'V', 'file', tree.path2id('a')),
-                   ]
+                    ]
         expected.append(
             ('b', 'V', 'directory', tree.path2id('b')))
         with tree.lock_read():
             actual = [(path, status, kind, file_id)
-                for path, status, kind, file_id, ie in
-                    tree.list_files(include_root=True, recursive=False)]
+                      for path, status, kind, file_id, ie in
+                      tree.list_files(include_root=True, recursive=False)]
         self.assertEqual(expected, actual)
 
     def test_list_files_no_root_no_recurse(self):
@@ -77,8 +77,8 @@ class TestListFiles(TestCaseWithTree):
         tree.lock_read()
         try:
             actual = [(path, status, kind, file_id)
-                for path, status, kind, file_id, ie in
-                    tree.list_files(recursive=False)]
+                      for path, status, kind, file_id, ie in
+                      tree.list_files(recursive=False)]
         finally:
             tree.unlock()
         self.assertEqual(expected, actual)
@@ -87,12 +87,12 @@ class TestListFiles(TestCaseWithTree):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
         expected = [('c', 'V', 'file', tree.path2id('b/c')),
-                   ]
+                    ]
         tree.lock_read()
         try:
             actual = [(path, status, kind, file_id)
                       for path, status, kind, file_id, ie in
-                          tree.list_files(from_dir=u'b')]
+                      tree.list_files(from_dir=u'b')]
         finally:
             tree.unlock()
         self.assertEqual(expected, actual)
@@ -108,5 +108,5 @@ class TestListFiles(TestCaseWithTree):
         with tree.lock_read():
             actual = [(path, status, kind, file_id)
                       for path, status, kind, file_id, ie in
-                          tree.list_files(from_dir='', recursive=False)]
+                      tree.list_files(from_dir='', recursive=False)]
         self.assertEqual(expected, actual)

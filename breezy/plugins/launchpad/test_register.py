@@ -32,10 +32,10 @@ from ...tests import TestCaseWithTransport
 
 # local import
 from .lp_registration import (
-        BaseRequest,
-        ResolveLaunchpadPathRequest,
-        LaunchpadService,
-        )
+    BaseRequest,
+    ResolveLaunchpadPathRequest,
+    LaunchpadService,
+    )
 
 
 # TODO: Test that the command-line client, making sure that it'll pass the
@@ -91,7 +91,6 @@ class InstrumentedXMLRPCConnection(object):
         </param>
     </params>
 </methodResponse>''')
-
 
 
 class InstrumentedXMLRPCTransport(Transport):
@@ -176,6 +175,7 @@ class TestResolveLaunchpadPathRequest(TestCaseWithTransport):
         """Define a new type of xmlrpc request"""
         class DummyRequest(BaseRequest):
             _methodname = 'dummy_request'
+
             def _request_params(self):
                 return (42,)
 
@@ -189,22 +189,23 @@ class TestResolveLaunchpadPathRequest(TestCaseWithTransport):
 
     def test_mock_resolve_lp_url(self):
         test_case = self
+
         class MockService(MockLaunchpadService):
             def send_request(self, method_name, method_params,
                              verbose=None):
                 test_case.assertEqual(method_name, "resolve_lp_path")
                 test_case.assertEqual(list(method_params), ['bzr'])
                 return dict(urls=[
-                        'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
-                        'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
-                        'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
-                        'http://bazaar.launchpad.net~bzr/bzr/trunk'])
+                    'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+                    'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+                    'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+                    'http://bazaar.launchpad.net~bzr/bzr/trunk'])
         service = MockService()
         resolve = ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)
         self.assertTrue('urls' in result)
         self.assertEqual(result['urls'], [
-                'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
-                'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
-                'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
-                'http://bazaar.launchpad.net~bzr/bzr/trunk'])
+            'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+            'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+            'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+            'http://bazaar.launchpad.net~bzr/bzr/trunk'])

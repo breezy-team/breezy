@@ -233,7 +233,7 @@ class TestTCPServerInAThread(tests.TestCase):
         client.write(b'ping\n')
         # Wait for the exception to be caught
         caught.wait()
-        self.assertEqual(b'', client.read()) # connection closed
+        self.assertEqual(b'', client.read())  # connection closed
         # Check that the connection thread did catch the exception,
         # http://pad.lv/869366 was wrongly checking the server thread which
         # works for TestingTCPServer where the connection is handled in the
@@ -252,6 +252,7 @@ class TestTCPServerInAThread(tests.TestCase):
         # so the handler below can access it when it's executed (it's
         # instantiated when the request is processed)
         self.connection_thread = None
+
         class CantServe(Exception):
             pass
 
@@ -277,7 +278,7 @@ class TestTCPServerInAThread(tests.TestCase):
         client.connect((server.host, server.port))
         # Wait for the exception to be caught
         caught.wait()
-        self.assertEqual(b'', client.read()) # connection closed
+        self.assertEqual(b'', client.read())  # connection closed
         # The connection wasn't served properly but the exception should have
         # been swallowed (see test_server_crash_while_responding remark about
         # http://pad.lv/869366 explaining why we can't check the server thread
@@ -303,7 +304,7 @@ class TestTestingSmartServer(tests.TestCase):
 
     def test_sets_client_timeout(self):
         server = test_server.TestingSmartServer(('localhost', 0), None, None,
-            root_client_path='/no-such-client/path')
+                                                root_client_path='/no-such-client/path')
         self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
                          server._client_timeout)
         sock = socket.socket()
@@ -326,13 +327,14 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
         server_sock, client_sock = portable_socket_pair()
         # This should timeout quickly, but not generate an exception.
         handler = test_server.TestingSmartConnectionHandler(server_sock,
-            server_sock.getpeername(), s)
+                                                            server_sock.getpeername(), s)
 
     def test_connection_shutdown_while_serving_no_error(self):
         s = FakeServer()
         server_sock, client_sock = portable_socket_pair()
+
         class ShutdownConnectionHandler(
-            test_server.TestingSmartConnectionHandler):
+                test_server.TestingSmartConnectionHandler):
 
             def _build_protocol(self):
                 self.finished = True
@@ -340,4 +342,4 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
         # This should trigger shutdown after the entering _build_protocol, and
         # we should exit cleanly, without raising an exception.
         handler = ShutdownConnectionHandler(server_sock,
-            server_sock.getpeername(), s)
+                                            server_sock.getpeername(), s)

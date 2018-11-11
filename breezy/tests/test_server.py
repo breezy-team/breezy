@@ -457,8 +457,8 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         t = TestThread(
             sync_event=stopped,
             name='%s -> %s' % (client_address, self.server_address),
-            target = self.process_request_thread,
-            args = (started, detached, stopped, request, client_address))
+            target=self.process_request_thread,
+            args=(started, detached, stopped, request, client_address))
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
@@ -626,6 +626,7 @@ class TestingSmartConnectionHandler(socketserver.BaseRequestHandler,
 
 _DEFAULT_TESTING_CLIENT_TIMEOUT = 60.0
 
+
 class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
 
     def __init__(self, server_address, request_handler_class,
@@ -633,7 +634,7 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         TestingThreadingTCPServer.__init__(self, server_address,
                                            request_handler_class)
         server.SmartTCPServer.__init__(self, backing_transport,
-            root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
+                                       root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
 
     def serve(self):
         self.run_server_started_hooks()
@@ -652,22 +653,22 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
 
     This server is backed by the process's cwd.
     """
+
     def __init__(self, thread_name_suffix=''):
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
         self.host = '127.0.0.1'
         self.port = 0
         super(SmartTCPServer_for_testing, self).__init__(
-                (self.host, self.port),
-                TestingSmartServer,
-                TestingSmartConnectionHandler)
+            (self.host, self.port),
+            TestingSmartServer,
+            TestingSmartConnectionHandler)
 
     def create_server(self):
         return self.server_class((self.host, self.port),
                                  self.request_handler_class,
                                  self.backing_transport,
                                  self.root_client_path)
-
 
     def start_server(self, backing_transport_server=None,
                      client_path_extra='/extra/'):
@@ -737,7 +738,7 @@ class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
 
 
 class ReadonlySmartTCPServer_for_testing_v2_only(
-    SmartTCPServer_for_testing_v2_only):
+        SmartTCPServer_for_testing_v2_only):
     """Get a readonly server for testing."""
 
     def get_backing_transport(self, backing_transport_server):

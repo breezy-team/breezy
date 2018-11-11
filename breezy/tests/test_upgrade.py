@@ -48,7 +48,8 @@ class TestUpgrade(tests.TestCaseWithTransport):
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
-        target = controldir.format_registry.make_controldir('dirstate-with-subtree')
+        target = controldir.format_registry.make_controldir(
+            'dirstate-with-subtree')
         converter = b.controldir._format.get_converter(target)
         converter.convert(b.controldir, None)
         new_branch = branch.Branch.open(self.get_url('branch'))
@@ -109,7 +110,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id, new_tree.last_revision())
         for path in ['basis-inventory-cache', 'inventory', 'last-revision',
-            'pending-merges', 'stat-cache']:
+                     'pending-merges', 'stat-cache']:
             self.assertPathDoesNotExist('tree/.bzr/checkout/' + path)
 
     def test_convert_knit_merges_dirstate(self):
@@ -127,7 +128,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.assertEqual(rev_id2, new_tree.last_revision())
         self.assertEqual([rev_id2, rev_id3], new_tree.get_parent_ids())
         for path in ['basis-inventory-cache', 'inventory', 'last-revision',
-            'pending-merges', 'stat-cache']:
+                     'pending-merges', 'stat-cache']:
             self.assertPathDoesNotExist('tree/.bzr/checkout/' + path)
 
 
@@ -170,13 +171,13 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     def make_repo_with_branches(self):
         repo = self.make_repository('repo', shared=True,
-            format=self.from_format)
+                                    format=self.from_format)
         # Note: self.make_branch() always creates a new repo at the location
         # so we need to avoid using that here ...
         b1 = controldir.ControlDir.create_branch_convenience("repo/branch1",
-            format=self.from_format)
+                                                             format=self.from_format)
         b2 = controldir.ControlDir.create_branch_convenience("repo/branch2",
-            format=self.from_format)
+                                                             format=self.from_format)
         return repo.controldir
 
     def test_upgrade_repo_with_branches(self):

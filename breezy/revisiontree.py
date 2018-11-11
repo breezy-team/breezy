@@ -43,7 +43,7 @@ class RevisionTree(tree.Tree):
 
     def supports_tree_reference(self):
         return getattr(self._repository._format, "supports_tree_reference",
-            False)
+                       False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -91,5 +91,5 @@ class RevisionTree(tree.Tree):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
             self._rules_searcher = super(RevisionTree,
-                self)._get_rules_searcher(default_searcher)
+                                         self)._get_rules_searcher(default_searcher)
         return self._rules_searcher

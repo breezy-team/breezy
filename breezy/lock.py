@@ -50,19 +50,20 @@ from . import (
 from .hooks import Hooks
 from .i18n import gettext
 
+
 class LockHooks(Hooks):
 
     def __init__(self):
         Hooks.__init__(self, "breezy.lock", "Lock.hooks")
         self.add_hook('lock_acquired',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "acquired.", (1, 8))
+                      "Called with a breezy.lock.LockResult when a physical lock is "
+                      "acquired.", (1, 8))
         self.add_hook('lock_released',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "released.", (1, 8))
+                      "Called with a breezy.lock.LockResult when a physical lock is "
+                      "released.", (1, 8))
         self.add_hook('lock_broken',
-            "Called with a breezy.lock.LockResult when a physical lock is "
-            "broken.", (1, 15))
+                      "Called with a breezy.lock.LockResult when a physical lock is "
+                      "broken.", (1, 15))
 
 
 class Lock(object):
@@ -87,7 +88,7 @@ class LockResult(object):
 
     def __repr__(self):
         return '%s(%s, %s)' % (self.__class__.__name__,
-                             self.lock_url, self.details)
+                               self.lock_url, self.details)
 
 
 class LogicalLockResult(object):
@@ -128,7 +129,7 @@ def cant_unlock_not_held(locked_object):
     # raise LockNotHeld.
     if 'unlock' in debug.debug_flags:
         warnings.warn("%r is already unlocked" % (locked_object,),
-            stacklevel=3)
+                      stacklevel=3)
     else:
         raise errors.LockNotHeld(locked_object)
 
@@ -144,7 +145,9 @@ have_ctypes_win32 = False
 if sys.platform == 'win32':
     import msvcrt
     try:
-        import win32file, pywintypes, winerror
+        import win32file
+        import pywintypes
+        import winerror
         have_pywin32 = True
     except ImportError:
         pass
@@ -200,7 +203,6 @@ if have_fcntl:
             fcntl.lockf(self.f, fcntl.LOCK_UN)
             self._clear_f()
 
-
     class _fcntl_WriteLock(_fcntl_FileLock):
 
         _open_locks = set()
@@ -240,7 +242,6 @@ if have_fcntl:
         def unlock(self):
             _fcntl_WriteLock._open_locks.remove(self.filename)
             self._unlock()
-
 
     class _fcntl_ReadLock(_fcntl_FileLock):
 
@@ -289,14 +290,13 @@ if have_fcntl:
             """
             if self.filename in _fcntl_WriteLock._open_locks:
                 raise AssertionError('file already locked: %r'
-                    % (self.filename,))
+                                     % (self.filename,))
             try:
                 wlock = _fcntl_TemporaryWriteLock(self)
             except errors.LockError:
                 # We didn't unlock, so we can just return 'self'
                 return False, self
             return True, wlock
-
 
     class _fcntl_TemporaryWriteLock(_OSLock):
         """A token used when grabbing a temporary_write_lock.
@@ -317,7 +317,7 @@ if have_fcntl:
 
             if self.filename in _fcntl_WriteLock._open_locks:
                 raise AssertionError('file already locked: %r'
-                    % (self.filename,))
+                                     % (self.filename,))
 
             # See if we can open the file for writing. Another process might
             # have a read lock. We don't use self._open() because we don't want
@@ -352,7 +352,6 @@ if have_fcntl:
             self._read_lock = None
             return read_lock
 
-
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
 
 
@@ -365,8 +364,8 @@ if have_pywin32 and sys.platform == 'win32':
             self.filename = osutils.realpath(filename)
             try:
                 self._handle = win32file_CreateFile(filename, access, share,
-                    None, win32file.OPEN_ALWAYS,
-                    win32file.FILE_ATTRIBUTE_NORMAL, None)
+                                                    None, win32file.OPEN_ALWAYS,
+                                                    win32file.FILE_ATTRIBUTE_NORMAL, None)
             except pywintypes.error as e:
                 if e.args[0] == winerror.ERROR_ACCESS_DENIED:
                     raise errors.LockFailed(filename, e)
@@ -381,12 +380,11 @@ if have_pywin32 and sys.platform == 'win32':
             self._clear_f()
             self._handle = None
 
-
     class _w32c_ReadLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_ReadLock, self).__init__()
             self._open(filename, win32file.GENERIC_READ,
-                win32file.FILE_SHARE_READ, os.O_RDONLY, "rb")
+                       win32file.FILE_SHARE_READ, os.O_RDONLY, "rb")
 
         def temporary_write_lock(self):
             """Try to grab a write lock on the file.
@@ -407,13 +405,12 @@ if have_pywin32 and sys.platform == 'win32':
                 return False, _w32c_ReadLock(self.filename)
             return True, wlock
 
-
     class _w32c_WriteLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_WriteLock, self).__init__()
             self._open(filename,
-                win32file.GENERIC_READ | win32file.GENERIC_WRITE, 0,
-                os.O_RDWR, "rb+")
+                       win32file.GENERIC_READ | win32file.GENERIC_WRITE, 0,
+                       os.O_RDWR, "rb+")
 
         def restore_read_lock(self):
             """Restore the original ReadLock."""
@@ -422,26 +419,25 @@ if have_pywin32 and sys.platform == 'win32':
             self.unlock()
             return _w32c_ReadLock(self.filename)
 
-
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
 
 
 if have_ctypes_win32:
     from ctypes.wintypes import DWORD, LPWSTR
-    LPSECURITY_ATTRIBUTES = ctypes.c_void_p # used as NULL no need to declare
-    HANDLE = ctypes.c_int # rather than unsigned as in ctypes.wintypes
+    LPSECURITY_ATTRIBUTES = ctypes.c_void_p  # used as NULL no need to declare
+    HANDLE = ctypes.c_int  # rather than unsigned as in ctypes.wintypes
     _function_name = "CreateFileW"
 
     # CreateFile <http://msdn.microsoft.com/en-us/library/aa363858.aspx>
     _CreateFile = ctypes.WINFUNCTYPE(
-            HANDLE,                # return value
-            LPWSTR,                # lpFileName
-            DWORD,                 # dwDesiredAccess
-            DWORD,                 # dwShareMode
-            LPSECURITY_ATTRIBUTES, # lpSecurityAttributes
-            DWORD,                 # dwCreationDisposition
-            DWORD,                 # dwFlagsAndAttributes
-            HANDLE                 # hTemplateFile
+        HANDLE,                # return value
+        LPWSTR,                # lpFileName
+        DWORD,                 # dwDesiredAccess
+        DWORD,                 # dwShareMode
+        LPSECURITY_ATTRIBUTES,  # lpSecurityAttributes
+        DWORD,                 # dwCreationDisposition
+        DWORD,                 # dwFlagsAndAttributes
+        HANDLE                 # hTemplateFile
         )((_function_name, ctypes.windll.kernel32))
 
     INVALID_HANDLE_VALUE = -1
@@ -460,7 +456,7 @@ if have_ctypes_win32:
         def _open(self, filename, access, share, cflags, pymode):
             self.filename = osutils.realpath(filename)
             handle = _CreateFile(filename, access, share, None, OPEN_ALWAYS,
-                FILE_ATTRIBUTE_NORMAL, 0)
+                                 FILE_ATTRIBUTE_NORMAL, 0)
             if handle in (INVALID_HANDLE_VALUE, 0):
                 e = ctypes.WinError()
                 if e.args[0] == ERROR_ACCESS_DENIED:
@@ -475,12 +471,11 @@ if have_ctypes_win32:
         def unlock(self):
             self._clear_f()
 
-
     class _ctypes_ReadLock(_ctypes_FileLock):
         def __init__(self, filename):
             super(_ctypes_ReadLock, self).__init__()
             self._open(filename, GENERIC_READ, FILE_SHARE_READ, os.O_RDONLY,
-                "rb")
+                       "rb")
 
         def temporary_write_lock(self):
             """Try to grab a write lock on the file.
@@ -505,7 +500,7 @@ if have_ctypes_win32:
         def __init__(self, filename):
             super(_ctypes_WriteLock, self).__init__()
             self._open(filename, GENERIC_READ | GENERIC_WRITE, 0, os.O_RDWR,
-                "rb+")
+                       "rb+")
 
         def restore_read_lock(self):
             """Restore the original ReadLock."""
@@ -513,7 +508,6 @@ if have_ctypes_win32:
             # just unlock and create a new read lock.
             self.unlock()
             return _ctypes_ReadLock(self.filename)
-
 
     _lock_classes.append(('ctypes', _ctypes_WriteLock, _ctypes_ReadLock))
 
@@ -548,6 +542,7 @@ class _RelockDebugMixin(object):
                 type_name = 'write'
             trace.note(gettext('{0!r} was {1} locked again'), self, type_name)
         self._prev_lock = lock_type
+
 
 @contextlib.contextmanager
 def write_locked(lockable):

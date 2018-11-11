@@ -17,6 +17,7 @@
 
 from __future__ import absolute_import
 
+
 class IterableFileBase(object):
     """Create a file-like object from any iterable"""
 
@@ -51,7 +52,7 @@ class IterableFileBase(object):
                 if len(result) >= length:
                     return length
             try:
-                return result.index(sequence)+len(sequence)
+                return result.index(sequence) + len(sequence)
             except ValueError:
                 return None
         return self._read(test_contents)
@@ -84,7 +85,6 @@ class IterableFileBase(object):
         def no_stop(result):
             return None
         return self._read(no_stop)
-
 
     def push_back(self, contents):
         """

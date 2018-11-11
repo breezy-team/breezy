@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-
 from .. import (
     config,
     status as _mod_status,
@@ -129,8 +128,8 @@ class TestStatus(TestCaseWithTransport):
         r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
         show_tree_status(tree, to_file=output,
-                     revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                               RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+                         revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                                   RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         # return does not matter as long as it did not raise.
 
 
@@ -140,7 +139,8 @@ class TestHooks(TestCaseWithTransport):
         """Check that creating a StatusHooks instance has the right defaults.
         """
         hooks = _mod_status.StatusHooks()
-        self.assertTrue("post_status" in hooks, "post_status not in %s" % hooks)
+        self.assertTrue("post_status" in hooks,
+                        "post_status not in %s" % hooks)
         self.assertTrue("pre_status" in hooks, "pre_status not in %s" % hooks)
 
     def test_installed_hooks_are_StatusHooks(self):
@@ -148,7 +148,7 @@ class TestHooks(TestCaseWithTransport):
         """
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks[_mod_status][1],
-            _mod_status.StatusHooks)
+                              _mod_status.StatusHooks)
 
     def test_post_status_hook(self):
         """Ensure that post_status hook is invoked with the right args.
@@ -162,16 +162,16 @@ class TestHooks(TestCaseWithTransport):
         r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
         show_tree_status(tree, to_file=output,
-            revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+                         revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                                   RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
         attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
-            'show_ids', 'short', 'verbose', 'specific_files']
+                 'show_ids', 'short', 'verbose', 'specific_files']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
-                'Attribute "%s" not found in StatusHookParam' % a)
+                            'Attribute "%s" not found in StatusHookParam' % a)
 
     def test_pre_status_hook(self):
         """Ensure that pre_status hook is invoked with the right args.
@@ -185,14 +185,13 @@ class TestHooks(TestCaseWithTransport):
         r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
         show_tree_status(tree, to_file=output,
-            revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+                         revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                                   RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
         attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
-            'show_ids', 'short', 'verbose', 'specific_files']
+                 'show_ids', 'short', 'verbose', 'specific_files']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
-                'Attribute "%s" not found in StatusHookParam' % a)
-
+                            'Attribute "%s" not found in StatusHookParam' % a)

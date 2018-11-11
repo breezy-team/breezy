@@ -150,7 +150,7 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=b''.join):
 
 
 def merge_entries(base_entries, this_entries, other_entries,
-        guess_edits=default_guess_edits):
+                  guess_edits=default_guess_edits):
     """Merge changelog given base, this, and other versions."""
     m3 = Merge3(base_entries, this_entries, other_entries, allow_objects=True)
     result_entries = []
@@ -199,7 +199,7 @@ def merge_entries(base_entries, this_entries, other_entries,
             else:
                 result_entries.extend(new_in_other)
             result_entries.extend(updated_this)
-        else: # unchanged, same, a, or b.
+        else:  # unchanged, same, a, or b.
             lines = group[1]
             result_entries.extend(lines)
         at_top = False

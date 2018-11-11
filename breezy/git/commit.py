@@ -89,7 +89,8 @@ class GitCommitBuilder(CommitBuilder):
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
             if kind[1] in ("directory",):
-                self._inv_delta.append((path[0], path[1], file_id, entry_factory[kind[1]](file_id, name[1], parent[1])))
+                self._inv_delta.append(
+                    (path[0], path[1], file_id, entry_factory[kind[1]](file_id, name[1], parent[1])))
                 if kind[0] in ("file", "symlink"):
                     self._blobs[path[0].encode("utf-8")] = None
                     self._any_changes = True
@@ -119,7 +120,8 @@ class GitCommitBuilder(CommitBuilder):
                 self.store.add_object(blob)
                 sha = blob.id
             elif kind[1] == "symlink":
-                symlink_target = workingtree.get_symlink_target(path[1], file_id)
+                symlink_target = workingtree.get_symlink_target(
+                    path[1], file_id)
                 blob = Blob()
                 blob.data = symlink_target.encode("utf-8")
                 self.store.add_object(blob)
@@ -128,7 +130,8 @@ class GitCommitBuilder(CommitBuilder):
                 st = None
             elif kind[1] == "tree-reference":
                 sha = read_submodule_head(workingtree.abspath(path[1]))
-                reference_revision = workingtree.get_reference_revision(path[1], file_id)
+                reference_revision = workingtree.get_reference_revision(
+                    path[1], file_id)
                 entry.reference_revision = reference_revision
                 st = None
             else:
@@ -181,7 +184,8 @@ class GitCommitBuilder(CommitBuilder):
                 if self._mapping.BZR_FILE_IDS_FILE is None:
                     raise SettingCustomFileIdsUnsupported(fileid_map)
                 self.store.add_object(fileid_blob)
-                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (stat.S_IFREG | 0o644, fileid_blob.id)
+                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (
+                    stat.S_IFREG | 0o644, fileid_blob.id)
             else:
                 self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None
         self.new_inventory = None
@@ -192,7 +196,8 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in viewitems(self._blobs) if v is not None}
+        self._blobs = {k: v for (k, v) in viewitems(
+            self._blobs) if v is not None}
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha)) in viewitems(self._blobs))
@@ -200,12 +205,14 @@ class GitCommitBuilder(CommitBuilder):
     def commit(self, message):
         self._validate_unicode_text(message, 'commit message')
         c = Commit()
-        c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
+        c.parents = [self.repository.lookup_bzr_revision_id(
+            revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
         encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
         c.encoding = encoding.encode('ascii')
         c.committer = fix_person_identifier(self._committer.encode(encoding))
-        c.author = fix_person_identifier(self._revprops.pop('author', self._committer).encode(encoding))
+        c.author = fix_person_identifier(self._revprops.pop(
+            'author', self._committer).encode(encoding))
         if self._revprops:
             raise NotImplementedError(self._revprops)
         c.commit_time = int(self._timestamp)

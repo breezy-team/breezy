@@ -49,6 +49,7 @@ from . import (
     trace,
     )
 
+
 def _log_cleanup_error(exc):
     trace.mutter('Cleanup failed:')
     trace.log_exception_quietly()
@@ -83,6 +84,7 @@ class ObjectWithCleanups(object):
 
     Subclass or client code can call add_cleanup and then later `cleanup_now`.
     """
+
     def __init__(self):
         self.cleanups = deque()
 

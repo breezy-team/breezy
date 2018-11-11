@@ -61,18 +61,22 @@ from ...hooks import install_lazy_named_hook
 
 # Put most of the code in a separate module that we lazy-import to keep the
 # overhead of this plugin as minimal as possible.
+
+
 def changelog_merge_hook(merger):
     """Merger.merge_file_content hook for GNU-format ChangeLog files."""
     from ...plugins.changelog_merge.changelog_merge import ChangeLogMerger
     return ChangeLogMerger(merger)
 
+
 install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
-    changelog_merge_hook, 'GNU ChangeLog file merge')
+                        changelog_merge_hook, 'GNU ChangeLog file merge')
+
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests

@@ -34,7 +34,7 @@ from .bzr import (
     bzrdir,
     )
 from .errors import (NoWorkingTree, NotBranchError,
-                           NoRepositoryPresent, NotLocalUrl)
+                     NoRepositoryPresent, NotLocalUrl)
 from .missing import find_unmerged
 
 
@@ -79,11 +79,11 @@ class LocationList(object):
 
     def get_lines(self):
         max_len = max(len(l) for l, u in self.locs)
-        return ["  %*s: %s\n" % (max_len, l, u) for l, u in self.locs ]
+        return ["  %*s: %s\n" % (max_len, l, u) for l, u in self.locs]
 
 
 def gather_location_info(repository=None, branch=None, working=None,
-        control=None):
+                         control=None):
     locs = {}
     if branch is not None:
         branch_path = branch.user_url
@@ -162,7 +162,7 @@ def _gather_related_branches(branch):
     try:
         locs.add_url('stacked on', branch.get_stacked_on_url())
     except (_mod_branch.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
-        errors.NotStacked):
+            errors.NotStacked):
         pass
     return locs
 
@@ -191,24 +191,24 @@ def _show_format_info(control=None, repository=None, branch=None,
     outfile.write('Format:\n')
     if control:
         outfile.write('       control: %s\n' %
-            control._format.get_format_description())
+                      control._format.get_format_description())
     if working:
         outfile.write('  working tree: %s\n' %
-            working._format.get_format_description())
+                      working._format.get_format_description())
     if branch:
         outfile.write('        branch: %s\n' %
-            branch._format.get_format_description())
+                      branch._format.get_format_description())
     if repository:
         outfile.write('    repository: %s\n' %
-            repository._format.get_format_description())
+                      repository._format.get_format_description())
 
 
 def _show_locking_info(repository=None, branch=None, working=None,
-        outfile=None):
+                       outfile=None):
     """Show locking status of working, branch and repository."""
     if (repository and repository.get_physical_lock_status() or
         (branch and branch.get_physical_lock_status()) or
-        (working and working.get_physical_lock_status())):
+            (working and working.get_physical_lock_status())):
         outfile.write('\n')
         outfile.write('Lock status:\n')
         if working:
@@ -240,8 +240,8 @@ def _show_missing_revisions_branch(branch, outfile):
         if remote_extra:
             outfile.write('\n')
             outfile.write(('Branch is out of date: missing %d '
-                'revision%s.\n') % (len(remote_extra),
-                plural(len(remote_extra))))
+                           'revision%s.\n') % (len(remote_extra),
+                                               plural(len(remote_extra))))
 
 
 def _show_missing_revisions_working(working, outfile):
@@ -262,7 +262,7 @@ def _show_missing_revisions_working(working, outfile):
         missing_count = branch_revno - tree_last_revno
         outfile.write('\n')
         outfile.write(('Working tree is out of date: missing %d '
-            'revision%s.\n') % (missing_count, plural(missing_count)))
+                       'revision%s.\n') % (missing_count, plural(missing_count)))
 
 
 def _show_working_stats(working, outfile):
@@ -292,7 +292,7 @@ def _show_working_stats(working, outfile):
         if entry.kind == 'directory' and path != '':
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
-        plural(dir_cnt, 'subdirectory', 'subdirectories')))
+                                            plural(dir_cnt, 'subdirectory', 'subdirectories')))
 
 
 def _show_branch_stats(branch, verbose, outfile):
@@ -308,16 +308,16 @@ def _show_branch_stats(branch, verbose, outfile):
     if verbose:
         committers = stats['committers']
         outfile.write('  %8d committer%s\n' % (committers,
-            plural(committers)))
+                                               plural(committers)))
     if revno:
         timestamp, timezone = stats['firstrev']
         age = int((time.time() - timestamp) / 3600 / 24)
         outfile.write('  %8d day%s old\n' % (age, plural(age)))
         outfile.write('   first revision: %s\n' %
-            osutils.format_date(timestamp, timezone))
+                      osutils.format_date(timestamp, timezone))
         timestamp, timezone = stats['latestrev']
         outfile.write('  latest revision: %s\n' %
-            osutils.format_date(timestamp, timezone))
+                      osutils.format_date(timestamp, timezone))
     return stats
 
 
@@ -326,7 +326,7 @@ def _show_repository_info(repository, outfile):
     if repository.make_working_trees():
         outfile.write('\n')
         outfile.write('Create working tree for new branches inside '
-            'the repository.\n')
+                      'the repository.\n')
 
 
 def _show_repository_stats(repository, stats, outfile):
@@ -336,7 +336,7 @@ def _show_repository_stats(repository, stats, outfile):
         revisions = stats['revisions']
         f.write('  %8d revision%s\n' % (revisions, plural(revisions)))
     if 'size' in stats:
-        f.write('  %8d KiB\n' % (stats['size']/1024))
+        f.write('  %8d KiB\n' % (stats['size'] / 1024))
     for hook in hooks['repository']:
         hook(repository, stats, f)
     if f.getvalue() != "":
@@ -384,7 +384,7 @@ def show_bzrdir_info(a_controldir, verbose=False, outfile=None):
 
 
 def show_component_info(control, repository, branch=None, working=None,
-    verbose=1, outfile=None):
+                        verbose=1, outfile=None):
     """Write info about all bzrdir components to stdout"""
     if outfile is None:
         outfile = sys.stdout
@@ -397,7 +397,7 @@ def show_component_info(control, repository, branch=None, working=None,
     outfile.write("%s (format: %s)\n" % (layout, format))
     _show_location_info(
         gather_location_info(control=control, repository=repository,
-            branch=branch, working=working),
+                             branch=branch, working=working),
         outfile)
     if branch is not None:
         _show_related_info(branch, outfile)
@@ -467,7 +467,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
             phrase = "branchless tree"
         else:
             if (tree is not None and tree.controldir.control_url !=
-                branch.controldir.control_url):
+                    branch.controldir.control_url):
                 independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:
@@ -490,9 +490,9 @@ def describe_format(control, repository, branch, tree):
 
     If no matching candidate is found, "unnamed" is returned.
     """
-    candidates  = []
+    candidates = []
     if (branch is not None and tree is not None and
-        branch.user_url != tree.user_url):
+            branch.user_url != tree.user_url):
         branch = None
         repository = None
     non_aliases = set(controldir.format_registry.keys())
@@ -501,13 +501,13 @@ def describe_format(control, repository, branch, tree):
         format = controldir.format_registry.make_controldir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
             if (tree and format.workingtree_format !=
-                tree._format):
+                    tree._format):
                 continue
             if (branch and format.get_branch_format() !=
-                branch._format):
+                    branch._format):
                 continue
             if (repository and format.repository_format !=
-                repository._format):
+                    repository._format):
                 continue
         if format.__class__ is not control._format.__class__:
             continue
@@ -516,7 +516,7 @@ def describe_format(control, repository, branch, tree):
         return 'unnamed'
     candidates.sort()
     new_candidates = [c for c in candidates if not
-        controldir.format_registry.get_info(c).hidden]
+                      controldir.format_registry.get_info(c).hidden]
     if len(new_candidates) > 0:
         # If there are any non-hidden formats that match, only return those to
         # avoid listing hidden formats except when only a hidden format will
@@ -531,9 +531,9 @@ class InfoHooks(_mod_hooks.Hooks):
     def __init__(self):
         super(InfoHooks, self).__init__("breezy.info", "hooks")
         self.add_hook('repository',
-            "Invoked when displaying the statistics for a repository. "
-            "repository is called with a statistics dictionary as returned "
-            "by the repository and a file-like object to write to.", (1, 15))
+                      "Invoked when displaying the statistics for a repository. "
+                      "repository is called with a statistics dictionary as returned "
+                      "by the repository and a file-like object to write to.", (1, 15))
 
 
 hooks = InfoHooks()

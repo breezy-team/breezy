@@ -116,8 +116,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         :param branch: A branch to override probing for the branch.
         """
         super(InventoryWorkingTree, self).__init__(basedir=basedir,
-            branch=branch, _transport=_control_files._transport,
-            _internal=_internal, _format=_format, _controldir=_controldir)
+                                                   branch=branch, _transport=_control_files._transport,
+                                                   _internal=_internal, _format=_format, _controldir=_controldir)
 
         self._control_files = _control_files
         self._detect_case_handling()
@@ -268,7 +268,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         path = self._basis_inventory_name()
         sio = BytesIO(xml)
         self._transport.put_file(path, sio,
-            mode=self.controldir._get_file_mode())
+                                 mode=self.controldir._get_file_mode())
 
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
@@ -338,7 +338,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 entry.parent_id = inv.root.file_id
 
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
-        force=False):
+               force=False):
         """Remove nominated files from the working tree metadata.
 
         :files: File paths relative to the basedir.
@@ -351,8 +351,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         inv_delta = []
 
-        all_files = set() # specified and nested files 
-        unknown_nested_files=set()
+        all_files = set()  # specified and nested files
+        unknown_nested_files = set()
         if to_file is None:
             to_file = sys.stdout
 
@@ -385,7 +385,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             files = list(all_files)
 
             if len(files) == 0:
-                return # nothing to do
+                return  # nothing to do
 
             # Sort needed to first handle directory content before the directory
             files.sort(reverse=True)
@@ -394,19 +394,20 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             if not keep_files and not force:
                 for (file_id, path, content_change, versioned, parent_id, name,
                      kind, executable) in self.iter_changes(self.basis_tree(),
-                         include_unchanged=True, require_versioned=False,
-                         want_unversioned=True, specific_files=files):
+                                                            include_unchanged=True, require_versioned=False,
+                                                            want_unversioned=True, specific_files=files):
                     if versioned[0] == False:
                         # The record is unknown or newly added
                         files_to_backup.append(path[1])
-                    elif (content_change and (kind[1] is not None) and
-                            osutils.is_inside_any(files, path[1])):
+                    elif (content_change and (kind[1] is not None)
+                            and osutils.is_inside_any(files, path[1])):
                         # Versioned and changed, but not deleted, and still
                         # in one of the dirs to be deleted.
                         files_to_backup.append(path[1])
 
             def backup(file_to_backup):
-                backup_name = self.controldir._available_backup_name(file_to_backup)
+                backup_name = self.controldir._available_backup_name(
+                    file_to_backup)
                 osutils.rename(abs_path, self.abspath(backup_name))
                 return "removed %s (but kept a copy: %s)" % (file_to_backup,
                                                              backup_name)
@@ -427,7 +428,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             new_status = '?'
                         # XXX: Really should be a more abstract reporter interface
                         kind_ch = osutils.kind_marker(self.kind(f, fid))
-                        to_file.write(new_status + '       ' + f + kind_ch + '\n')
+                        to_file.write(new_status + '       '
+                                      + f + kind_ch + '\n')
                     # Unversion file
                     inv_delta.append((f, None, fid, None))
                     message = "removed %s" % (f,)
@@ -435,8 +437,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if not keep_files:
                     abs_path = self.abspath(f)
                     if osutils.lexists(abs_path):
-                        if (osutils.isdir(abs_path) and
-                            len(os.listdir(abs_path)) > 0):
+                        if (osutils.isdir(abs_path)
+                                and len(os.listdir(abs_path)) > 0):
                             if force:
                                 osutils.rmtree(abs_path)
                                 message = "deleted %s" % (f,)
@@ -465,7 +467,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         with self.lock_tree_write():
             self._check_parents_for_ghosts(parent_ids,
-                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                                           allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
             parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
 
@@ -483,7 +485,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 else:
                     inv = leftmost_parent_tree.root_inventory
                     xml = self._create_basis_xml_from_inventory(
-                                            leftmost_parent_id, inv)
+                        leftmost_parent_id, inv)
                     self._write_basis_inventory(xml)
             self._set_merges_from_parent_ids(parent_ids)
 
@@ -505,8 +507,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # contain a '"'.
             xml = self.branch.repository._get_inventory_xml(new_revision)
             firstline = xml.split(b'\n', 1)[0]
-            if (not b'revision_id="' in firstline or
-                b'format="7"' not in firstline):
+            if (not b'revision_id="' in firstline
+                    or b'format="7"' not in firstline):
                 inv = self.branch.repository._serializer.read_inventory_from_string(
                     xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
@@ -589,7 +591,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = globbing.ExceptionGlobster(self.get_ignore_list())
+            self._ignoreglobster = globbing.ExceptionGlobster(
+                self.get_ignore_list())
         return self._ignoreglobster.match(filename)
 
     def read_basis_inventory(self):
@@ -714,7 +717,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
-            mode=self.controldir._get_file_mode())
+                                 mode=self.controldir._get_file_mode())
         self._inventory_is_modified = False
 
     def get_file_mtime(self, path, file_id=None):
@@ -810,7 +813,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     parent_tree = self.revision_tree(parent_id)
                 except errors.NoSuchRevisionInTree:
                     parent_tree = self.branch.repository.revision_tree(
-                            parent_id)
+                        parent_id)
                 with parent_tree.lock_read():
 
                     try:
@@ -848,15 +851,16 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         self._must_be_locked()
         my_file = _mod_rio.rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
-            mode=self.controldir._get_file_mode())
+                                 mode=self.controldir._get_file_mode())
 
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
             for file_id in modified_hashes:
                 yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                    hash=modified_hashes[file_id])
+                                      hash=modified_hashes[file_id])
         with self.lock_tree_write():
-            self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+            self._put_rio('merge-hashes', iter_stanzas(),
+                          MERGE_MODIFIED_HEADER_1)
 
     def merge_modified(self):
         """Return a dictionary of files modified by a merge.
@@ -907,11 +911,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 other_tree_path = self.relpath(other_tree.basedir)
             except errors.PathNotChild:
                 raise errors.BadSubsumeSource(self, other_tree,
-                    'Tree is not contained by the other')
+                                              'Tree is not contained by the other')
             new_root_parent = self.path2id(osutils.dirname(other_tree_path))
             if new_root_parent is None:
                 raise errors.BadSubsumeSource(self, other_tree,
-                    'Parent directory is not versioned.')
+                                              'Parent directory is not versioned.')
             # We need to ensure that the result of a fetch will have a
             # versionedfile for the other_tree root, and only fetching into
             # RepositoryKnit2 guarantees that.
@@ -1003,13 +1007,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             # transport.base ends in a slash, we want the piece
             # between the last two slashes
-            transport_base_dir = self.controldir.transport.base.rsplit('/', 2)[1]
+            transport_base_dir = self.controldir.transport.base.rsplit(
+                '/', 2)[1]
 
             fk_entries = {
-                    'directory': TreeDirectory,
-                    'file': TreeFile,
-                    'symlink': TreeLink
-                    }
+                'directory': TreeDirectory,
+                'file': TreeFile,
+                'symlink': TreeLink
+                }
 
             # directory file_id, relative path, absolute path, reverse sorted
             # children
@@ -1159,19 +1164,19 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             to_abs = self.abspath(to_dir)
             if not osutils.isdir(to_abs):
                 raise errors.BzrMoveFailedError(
-                        '', to_dir, errors.NotADirectory(to_abs))
+                    '', to_dir, errors.NotADirectory(to_abs))
             if not self.has_filename(to_dir):
                 raise errors.BzrMoveFailedError(
-                        '', to_dir, errors.NotInWorkingDirectory(to_dir))
+                    '', to_dir, errors.NotInWorkingDirectory(to_dir))
             to_inv, to_dir_id = self._path2inv_file_id(to_dir)
             if to_dir_id is None:
                 raise errors.BzrMoveFailedError(
-                        '', to_dir, errors.NotVersionedError(path=to_dir))
+                    '', to_dir, errors.NotVersionedError(path=to_dir))
 
             to_dir_ie = to_inv.get_entry(to_dir_id)
             if to_dir_ie.kind != 'directory':
                 raise errors.BzrMoveFailedError(
-                        '', to_dir, errors.NotADirectory(to_abs))
+                    '', to_dir, errors.NotADirectory(to_abs))
 
             # create rename entries and tuples
             for from_rel in from_paths:
@@ -1179,7 +1184,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 from_inv, from_id = self._path2inv_file_id(from_rel)
                 if from_id is None:
                     raise errors.BzrMoveFailedError(from_rel, to_dir,
-                        errors.NotVersionedError(path=from_rel))
+                                                    errors.NotVersionedError(path=from_rel))
 
                 from_entry = from_inv.get_entry(from_id)
                 from_parent_id = from_entry.parent_id
@@ -1206,7 +1211,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # restore the inventory on error
                 self._inventory_is_modified = original_modified
                 raise
-            #FIXME: Should potentially also write the from_invs
+            # FIXME: Should potentially also write the from_invs
             self._write_inventory(to_inv)
             return rename_tuples
 
@@ -1248,7 +1253,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                         from_rel, to_rel,
                         errors.NotVersionedError(path=from_rel))
                 # put entry back in the inventory so we can rename it
-                from_entry = basis_tree.root_inventory.get_entry(from_id).copy()
+                from_entry = basis_tree.root_inventory.get_entry(
+                    from_id).copy()
                 from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
@@ -1257,12 +1263,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             to_dir, to_tail = os.path.split(to_rel)
             to_inv, to_dir_id = self._path2inv_file_id(to_dir)
             rename_entry = InventoryWorkingTree._RenameEntry(
-                    from_rel=from_rel,
-                    from_id=from_id,
-                    from_tail=from_tail,
-                    from_parent_id=from_parent_id,
-                    to_rel=to_rel, to_tail=to_tail,
-                    to_parent_id=to_dir_id)
+                from_rel=from_rel,
+                from_id=from_id,
+                from_tail=from_tail,
+                from_parent_id=from_parent_id,
+                to_rel=to_rel, to_tail=to_tail,
+                to_parent_id=to_dir_id)
             rename_entries.append(rename_entry)
 
             # determine which move mode to use. checks also for movability
@@ -1272,7 +1278,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # versioned
             if to_dir_id is None:
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NotVersionedError(path=to_dir))
+                                                errors.NotVersionedError(path=to_dir))
 
             # all checks done. now we can continue with our actual work
             mutter('rename_one:\n'
@@ -1321,7 +1327,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel, to_rel,
-                    errors.NotVersionedError(path=from_rel))
+                                                errors.NotVersionedError(path=from_rel))
             if to_id is not None:
                 allowed = False
                 # allow it with --after but only if dest is newly added
@@ -1333,30 +1339,30 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             allowed = True
                 if not allowed:
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.AlreadyVersionedError(path=to_rel))
+                                                    errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
                     raise errors.BzrMoveFailedError(from_rel, to_rel,
-                        errors.NoSuchFile(path=to_rel,
-                        extra="New file has not been created yet"))
+                                                    errors.NoSuchFile(path=to_rel,
+                                                                      extra="New file has not been created yet"))
                 only_change_inv = True
             elif not self.has_filename(from_rel) and self.has_filename(to_rel):
                 only_change_inv = True
             elif self.has_filename(from_rel) and not self.has_filename(to_rel):
                 only_change_inv = False
-            elif (not self.case_sensitive
-                  and from_rel.lower() == to_rel.lower()
-                  and self.has_filename(from_rel)):
+            elif (not self.case_sensitive and
+                  from_rel.lower() == to_rel.lower() and
+                  self.has_filename(from_rel)):
                 only_change_inv = False
             else:
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
                     raise errors.BzrRenameFailedError(from_rel, to_rel,
-                        errors.PathsDoNotExist(paths=(from_rel, to_rel)))
+                                                      errors.PathsDoNotExist(paths=(from_rel, to_rel)))
                 else:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
@@ -1389,9 +1395,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     entry.only_change_inv))
             except errors.BzrMoveFailedError as e:
                 raise errors.BzrMoveFailedError('', '', "Rollback failed."
-                        " The working tree is in an inconsistent state."
-                        " Please consider doing a 'bzr revert'."
-                        " Error message is: %s" % e)
+                                                " The working tree is in an inconsistent state."
+                                                " Please consider doing a 'bzr revert'."
+                                                " Error message is: %s" % e)
 
     def _move_entry(self, entry):
         inv = self.root_inventory
@@ -1399,7 +1405,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         to_rel_abs = self.abspath(entry.to_rel)
         if from_rel_abs == to_rel_abs:
             raise errors.BzrMoveFailedError(entry.from_rel, entry.to_rel,
-                "Source and target are identical.")
+                                            "Source and target are identical.")
 
         if not entry.only_change_inv:
             try:
@@ -1463,7 +1469,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         Currently returned depth-first, sorted by name within directories.
         This is the same order used by 'osutils.walkdirs'.
         """
-        ## TODO: Work from given directory downwards
+        # TODO: Work from given directory downwards
         for path, dir_entry in self.iter_entries_by_dir():
             if dir_entry.kind != 'directory':
                 continue
@@ -1529,8 +1535,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             current_disk = next(disk_iterator)
             disk_finished = False
         except OSError as e:
-            if not (e.errno == errno.ENOENT or
-                (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
+            if not (e.errno == errno.ENOENT
+                    or (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
                 raise
             current_disk = None
             disk_finished = True
@@ -1549,15 +1555,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     cur_disk_dir_content) = ((None, None), None)
             if not disk_finished:
                 # strip out .bzr dirs
-                if (cur_disk_dir_path_from_top[top_strip_len:] == '' and
-                    len(cur_disk_dir_content) > 0):
+                if (cur_disk_dir_path_from_top[top_strip_len:] == ''
+                        and len(cur_disk_dir_content) > 0):
                     # osutils.walkdirs can be made nicer -
                     # yield the path-from-prefix rather than the pathjoined
                     # value.
                     bzrdir_loc = bisect_left(cur_disk_dir_content,
-                        ('.bzr', '.bzr'))
-                    if (bzrdir_loc < len(cur_disk_dir_content)
-                        and self.controldir.is_control_filename(
+                                             ('.bzr', '.bzr'))
+                    if (bzrdir_loc < len(cur_disk_dir_content) and
+                        self.controldir.is_control_filename(
                             cur_disk_dir_content[bzrdir_loc][0])):
                         # we dont yield the contents of, or, .bzr itself.
                         del cur_disk_dir_content[bzrdir_loc]
@@ -1568,14 +1574,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # everything is missing
                 direction = -1
             else:
-                direction = ((current_inv[0][0] > cur_disk_dir_relpath) -
-                             (current_inv[0][0] < cur_disk_dir_relpath))
+                direction = ((current_inv[0][0] > cur_disk_dir_relpath)
+                             - (current_inv[0][0] < cur_disk_dir_relpath))
 
             if direction > 0:
                 # disk is before inventory - unknown
                 dirblock = [(relpath, basename, kind, stat, None, None) for
-                    relpath, basename, kind, stat, top_path in
-                    cur_disk_dir_content]
+                            relpath, basename, kind, stat, top_path in
+                            cur_disk_dir_content]
                 yield (cur_disk_dir_relpath, None), dirblock
                 try:
                     current_disk = next(disk_iterator)
@@ -1584,8 +1590,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             elif direction < 0:
                 # inventory is before disk - missing.
                 dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
-                    for relpath, basename, dkind, stat, fileid, kind in
-                    current_inv[1]]
+                            for relpath, basename, dkind, stat, fileid, kind in
+                            current_inv[1]]
                 yield (current_inv[0][0], current_inv[0][1]), dirblock
                 try:
                     current_inv = next(inventory_iterator)
@@ -1596,26 +1602,26 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # merge the inventory and disk data together
                 dirblock = []
                 for relpath, subiterator in itertools.groupby(sorted(
-                    current_inv[1] + cur_disk_dir_content,
-                    key=operator.itemgetter(0)), operator.itemgetter(1)):
+                        current_inv[1] + cur_disk_dir_content,
+                        key=operator.itemgetter(0)), operator.itemgetter(1)):
                     path_elements = list(subiterator)
                     if len(path_elements) == 2:
                         inv_row, disk_row = path_elements
                         # versioned, present file
                         dirblock.append((inv_row[0],
-                            inv_row[1], disk_row[2],
-                            disk_row[3], inv_row[4],
-                            inv_row[5]))
+                                         inv_row[1], disk_row[2],
+                                         disk_row[3], inv_row[4],
+                                         inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
                         dirblock.append((path_elements[0][0],
-                            path_elements[0][1], path_elements[0][2],
-                            path_elements[0][3], None, None))
+                                         path_elements[0][1], path_elements[0][2],
+                                         path_elements[0][3], None, None))
                     elif len(path_elements[0]) == 6:
                         # versioned, absent file.
                         dirblock.append((path_elements[0][0],
-                            path_elements[0][1], 'unknown', None,
-                            path_elements[0][4], path_elements[0][5]))
+                                         path_elements[0][1], 'unknown', None,
+                                         path_elements[0][4], path_elements[0][5]))
                     else:
                         raise NotImplementedError('unreachable code')
                 yield current_inv[0], dirblock
@@ -1659,8 +1665,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             if entry.kind == 'directory':
                 for name, child in entry.sorted_children():
                     dirblock.append((relroot + name, name, child.kind, None,
-                        child.file_id, child.kind
-                        ))
+                                     child.file_id, child.kind
+                                     ))
             yield (currentdir[0], entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
@@ -1675,7 +1681,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """
         with self.lock_write():
             self._format._update_feature_flags(updated_flags)
-            self.control_transport.put_bytes('format', self._format.as_string())
+            self.control_transport.put_bytes(
+                'format', self._format.as_string())
 
     def _check_for_tree_references(self, iterator):
         """See if directories have become tree-references."""
@@ -1698,7 +1705,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
         iterator = super(WorkingTree, self).iter_entries_by_dir(
-                specific_files=specific_files)
+            specific_files=specific_files)
         if not self.supports_tree_reference():
             return iterator
         else:
@@ -1714,10 +1721,11 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """
         with self.lock_read():
             if not self.case_sensitive:
-                normalize = lambda x: x.lower()
+                def normalize(x): return x.lower()
             elif sys.platform == 'darwin':
                 import unicodedata
-                normalize = lambda x: unicodedata.normalize('NFC', x)
+
+                def normalize(x): return unicodedata.normalize('NFC', x)
             else:
                 normalize = None
             for path in paths:
@@ -1750,12 +1758,12 @@ class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
         """Return the format for the working tree object in controldir."""
         format_string = klass.find_format_string(controldir)
         return klass._find_format(format_registry, 'working tree',
-                format_string)
+                                  format_string)
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
+                             basedir=None):
         WorkingTreeFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
+                                               allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+                                               basedir=basedir)
         bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
+                                              recommend_upgrade=recommend_upgrade, basedir=basedir)

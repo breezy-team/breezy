@@ -31,7 +31,6 @@ from ..features import (
     )
 
 
-
 class TestCICPBase(tests.TestCaseWithTransport):
     """Base class for tests on a case-insensitive, case-preserving filesystem.
     """
@@ -46,7 +45,7 @@ class TestCICPBase(tests.TestCaseWithTransport):
         self.build_tree_contents([('CamelCaseParent/CamelCase', b'camel case'),
                                   ('lowercaseparent/lowercase', b'lower case'),
                                   ('lowercaseparent/mixedCase', b'mixedCasecase'),
-                                 ])
+                                  ])
         return wt
 
 
@@ -175,7 +174,8 @@ lowercaseparent/lowercase is already versioned.
         # Remove the source and create a destination file on disk with a different case.
         # brz should report that the filename is already versioned.
         os.unlink('CamelCaseParent/CamelCase')
-        osutils.rename('lowercaseparent/lowercase', 'lowercaseparent/LOWERCASE')
+        osutils.rename('lowercaseparent/lowercase',
+                       'lowercaseparent/LOWERCASE')
         run_script(self, """
             $ brz mv --after camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
             2>brz: ERROR: Could not move CamelCase => lowercase: \
@@ -215,7 +215,7 @@ lowercaseparent/lowercase is already versioned.
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
         self.assertEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
-                             'CamelCaseParent/camelCase')
+                         'CamelCaseParent/camelCase')
 
     def test_mv_newcase_after(self):
         wt = self._make_mixed_case_tree()
@@ -224,14 +224,15 @@ lowercaseparent/lowercase is already versioned.
 
         # perform a mv to the new case - we must ensure the file-system has the
         # new case first.
-        osutils.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/camelCase')
+        osutils.rename('CamelCaseParent/CamelCase',
+                       'CamelCaseParent/camelCase')
         run_script(self, """
             $ brz mv --after camelcaseparent/camelcase camelcaseparent/camelCase
             CamelCaseParent/CamelCase => CamelCaseParent/camelCase
             """)
         # brz should not have renamed the file to a different case
         self.assertEqual(canonical_relpath(wt.basedir, 'camelcaseparent/camelcase'),
-                             'CamelCaseParent/camelCase')
+                         'CamelCaseParent/camelCase')
 
     def test_mv_multiple(self):
         wt = self._make_mixed_case_tree()
@@ -275,7 +276,6 @@ class TestMisc(TestCICPBase):
         got = self.run_bzr('rm camelcaseparent LOWERCASEPARENT')[1]
         for expected in ['lowercaseparent/lowercase', 'CamelCaseParent/CamelCase']:
             self.assertContainsRe(got, 'deleted ' + expected + '\n')
-
 
     # The following commands need tests and/or cicp lovin':
     # update, remove, file_id, file_path, diff, log, touching_revisions, ls,

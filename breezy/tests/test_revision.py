@@ -27,11 +27,13 @@ from breezy.tests.matchers import MatchesAncestry
 
 # We're allowed to test deprecated interfaces
 warnings.filterwarnings('ignore',
-        '.*get_intervening_revisions was deprecated',
-        DeprecationWarning,
-        r'breezy\.tests\.test_revision')
+                        '.*get_intervening_revisions was deprecated',
+                        DeprecationWarning,
+                        r'breezy\.tests\.test_revision')
 
 # XXX: Make this a method of a merge base case
+
+
 def make_branches(self, format=None):
     """Create two branches
 
@@ -77,7 +79,7 @@ def make_branches(self, format=None):
     try:
         graph = br1.repository.get_graph()
         revhistory = list(graph.iter_lefthand_ancestry(br1.last_revision(),
-            [revision.NULL_REVISION]))
+                                                       [revision.NULL_REVISION]))
         revhistory.reverse()
     finally:
         br1.unlock()
@@ -120,7 +122,7 @@ class TestIsAncestor(TestCaseWithTransport):
                 if rev_id in br2_only and not branch is br2:
                     continue
                 self.assertThat(anc,
-                    MatchesAncestry(branch.repository, rev_id))
+                                MatchesAncestry(branch.repository, rev_id))
 
 
 class TestIntermediateRevisions(TestCaseWithTransport):
@@ -241,13 +243,13 @@ class TestRevisionBugs(TestCase):
         r = revision.Revision(
             '1', properties={u'bugs': 'http://example.com/bugs/1'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
-                r.iter_bugs())
+                          r.iter_bugs())
 
     def test_too_much_information(self):
         r = revision.Revision(
             '1', properties={u'bugs': 'http://example.com/bugs/1 fixed bar'})
         self.assertRaises(bugtracker.InvalidLineInBugsProperty, list,
-                r.iter_bugs())
+                          r.iter_bugs())
 
     def test_invalid_status(self):
         r = revision.Revision(

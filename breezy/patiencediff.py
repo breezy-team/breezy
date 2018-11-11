@@ -89,7 +89,7 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
             yield '+++ %s%s%s' % (tofile, tofiledate, lineterm)
             started = True
         i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
-        yield "@@ -%d,%d +%d,%d @@%s" % (i1+1, i2-i1, j1+1, j2-j1, lineterm)
+        yield "@@ -%d,%d +%d,%d @@%s" % (i1 + 1, i2 - i1, j1 + 1, j2 - j1, lineterm)
         for tag, i1, i2, j1, j2 in group:
             if tag == 'equal':
                 for line in a[i1:i2]:
@@ -158,7 +158,7 @@ def unified_diff_bytes(a, b, fromfile=b'', tofile=b'', fromfiledate=b'',
             yield b'+++ %s%s%s' % (tofile, tofiledate, lineterm)
             started = True
         i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
-        yield b"@@ -%d,%d +%d,%d @@%s" % (i1+1, i2-i1, j1+1, j2-j1, lineterm)
+        yield b"@@ -%d,%d +%d,%d @@%s" % (i1 + 1, i2 - i1, j1 + 1, j2 - j1, lineterm)
         for tag, i1, i2, j1, j2 in group:
             if tag == 'equal':
                 for line in a[i1:i2]:
@@ -194,8 +194,8 @@ def unified_diff_files(a, b, sequencematcher=None):
 
     # TODO: Include fromfiledate and tofiledate
     return unified_diff_bytes(file_a.readlines(), file_b.readlines(),
-                        fromfile=a, tofile=b,
-                        sequencematcher=sequencematcher)
+                              fromfile=a, tofile=b,
+                              sequencematcher=sequencematcher)
 
 
 try:
@@ -221,7 +221,8 @@ def main(args):
     p.add_option('--difflib', dest='matcher', action='store_const', const='difflib',
                  default='patience', help='Use python\'s difflib algorithm')
 
-    algorithms = {'patience':PatienceSequenceMatcher, 'difflib':difflib.SequenceMatcher}
+    algorithms = {'patience': PatienceSequenceMatcher,
+                  'difflib': difflib.SequenceMatcher}
 
     (opts, args) = p.parse_args(args)
     matcher = algorithms[opts.matcher]

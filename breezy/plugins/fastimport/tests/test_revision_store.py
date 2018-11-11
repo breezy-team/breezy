@@ -67,10 +67,11 @@ class Test_TreeShim(tests.TestCase):
 
     def test_id2path_with_delta(self):
         basis_inv = self.make_trivial_basis_inv()
-        foo_entry = inventory.make_entry('file', 'foo2', b'TREE_ROOT', b'foo-id')
+        foo_entry = inventory.make_entry(
+            'file', 'foo2', b'TREE_ROOT', b'foo-id')
         inv_delta = [('foo', 'foo2', b'foo-id', foo_entry),
                      ('bar/baz', None, b'baz-id', None),
-                    ]
+                     ]
 
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=inv_delta,
@@ -135,7 +136,7 @@ class Test_TreeShim(tests.TestCase):
         inv_delta = [('foo', 'bar/foo2', b'foo-id', foo_entry),
                      ('bar/baz', None, b'baz-id', None),
                      (None, 'link', b'link-id', link_entry),
-                    ]
+                     ]
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=inv_delta,
                                         content_provider=None)
@@ -149,8 +150,7 @@ class Test_TreeShim(tests.TestCase):
                     (b'link-id', (None, 'link'), True, (False, True),
                      (None, b'TREE_ROOT'), (None, 'link'),
                      (None, 'symlink'), (None, False)),
-                   ]
+                    ]
         # from pprint import pformat
         # self.assertEqualDiff(pformat(expected), pformat(changes))
         self.assertEqual(expected, changes)
-

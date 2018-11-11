@@ -56,8 +56,8 @@ def check_availability(command_line):
                     for s in os.getenv('PATHEXT', '').split(os.pathsep)]
         return os.path.exists(exe) and ext in path_ext
     else:
-        return (os.access(exe, os.X_OK)
-                or osutils.find_executable_on_path(exe) is not None)
+        return (os.access(exe, os.X_OK) or
+                osutils.find_executable_on_path(exe) is not None)
 
 
 def invoke(command_line, filename, invoker=None):
@@ -73,11 +73,12 @@ def invoke(command_line, filename, invoker=None):
     if exe is not None:
         cmd_list[0] = exe
     args, tmp_file = _subst_filename(cmd_list, filename)
+
     def cleanup(retcode):
         if tmp_file is not None:
-            if retcode == 0: # on success, replace file with temp file
+            if retcode == 0:  # on success, replace file with temp file
                 shutil.move(tmp_file, filename)
-            else: # otherwise, delete temp file
+            else:  # otherwise, delete temp file
                 os.remove(tmp_file)
     return invoker(args[0], args[1:], cleanup)
 

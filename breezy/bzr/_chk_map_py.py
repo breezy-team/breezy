@@ -28,6 +28,7 @@ _LeafNode = None
 _InternalNode = None
 _unknown = None
 
+
 def _crc32(bit):
     # Depending on python version and platform, zlib.crc32 will return either a
     # signed (<= 2.5 >= 3.0) or an unsigned (2.5, 2.6).
@@ -40,7 +41,7 @@ def _crc32(bit):
     #       anyway.
     #       Though we really don't need that 32nd bit of accuracy. (even 2**24
     #       is probably enough node fan out for realistic trees.)
-    return zlib.crc32(bit)&0xFFFFFFFF
+    return zlib.crc32(bit) & 0xFFFFFFFF
 
 
 def _search_key_16(key):
@@ -95,21 +96,21 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
                 'Incorrect number of elements (%d vs %d) for: %r'
                 % (len(elements), width + 1, line))
         num_value_lines = int(elements[-1])
-        value_lines = lines[pos:pos+num_value_lines]
+        value_lines = lines[pos:pos + num_value_lines]
         pos += num_value_lines
         value = b'\n'.join(value_lines)
         items[StaticTuple.from_sequence(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError("item count (%d) mismatch for key %s,"
-            " bytes %r" % (length, key, bytes))
+                             " bytes %r" % (length, key, bytes))
     result._items = items
     result._len = length
     result._maximum_size = maximum_size
     result._key = key
     result._key_width = width
-    result._raw_size = (sum(map(len, lines[5:])) # the length of the suffix
-        + (length)*(len(prefix))
-        + (len(lines)-5))
+    result._raw_size = (sum(map(len, lines[5:]))  # the length of the suffix +
+                        (length) * (len(prefix))
+                        + (len(line s) - 5))
     if not items:
         result._search_prefix = None
         result._common_serialised_prefix = None
@@ -156,7 +157,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     result._key_width = width
     # XXX: InternalNodes don't really care about their size, and this will
     #      change if we add prefix compression
-    result._raw_size = None # len(bytes)
+    result._raw_size = None  # len(bytes)
     result._node_width = len(prefix)
     result._search_prefix = common_prefix
     return result
@@ -167,4 +168,3 @@ def _bytes_to_text_key(data):
     sections = data.split(b'\n')
     kind, file_id = sections[0].split(b': ')
     return (bytesintern(file_id), bytesintern(sections[3]))
-

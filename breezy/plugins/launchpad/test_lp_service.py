@@ -158,6 +158,7 @@ class TestURLInference(TestCase):
     def test_lp_branch_fault(self):
         service = LaunchpadService()
         factory = FakeResolveFactory(self, 'foo', None)
+
         def submit(service):
             raise Fault(42, 'something went wrong')
         factory.submit = submit

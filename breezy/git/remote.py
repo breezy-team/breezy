@@ -133,7 +133,7 @@ class GitPushResult(PushResult):
     def _lookup_revno(self, revid):
         try:
             return _quick_lookup_revno(self.source_branch, self.target_branch,
-                revid)
+                                       revid)
         except GitSmartRemoteNotSupported:
             return None
 
@@ -189,9 +189,9 @@ def parse_git_error(url, message):
     :param message: Message sent by the remote git server
     """
     message = str(message).strip()
-    if (message.startswith("Could not find Repository ") or
-        message == 'Repository not found.' or
-        (message.startswith('Repository ') and message.endswith(' not found.'))):
+    if (message.startswith("Could not find Repository ")
+        or message == 'Repository not found.'
+            or (message.startswith('Repository ') and message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
         base_url, _ = urlutils.split_segment_parameters(url)
@@ -263,7 +263,7 @@ class TCPGitSmartTransport(GitSmartTransport):
             # return dulwich.client.LocalGitClient()
             return dulwich.client.SubprocessGitClient()
         return dulwich.client.TCPGitClient(self._host, self._port,
-            report_activity=self._report_activity)
+                                           report_activity=self._report_activity)
 
 
 class SSHSocketWrapper(object):
@@ -289,7 +289,7 @@ class DulwichSSHVendor(dulwich.client.SSHVendor):
 
     def run_command(self, host, command, username=None, port=None):
         connection = self.bzr_ssh_vendor.connect_ssh(username=username,
-            password=None, port=port, host=host, command=command)
+                                                     password=None, port=port, host=host, command=command)
         (kind, io_object) = connection.get_sock_or_pipes()
         if kind == 'socket':
             return SSHSocketWrapper(io_object)
@@ -317,7 +317,7 @@ class SSHGitSmartTransport(GitSmartTransport):
             return ret
         location_config = config.LocationConfig(self.base)
         client = dulwich.client.SSHGitClient(self._host, self._port, self._username,
-            report_activity=self._report_activity)
+                                             report_activity=self._report_activity)
         # Set up alternate pack program paths
         upload_pack = location_config.get_user_option('git_upload_pack')
         if upload_pack:
@@ -397,8 +397,8 @@ class RemoteGitDir(GitDir):
             pb = None
         try:
             self._client.archive(self._client_path, committish,
-                write_data, progress, write_error, format=format,
-                subdirs=subdirs, prefix=prefix)
+                                 write_data, progress, write_error, format=format,
+                                 subdirs=subdirs, prefix=prefix)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -413,10 +413,11 @@ class RemoteGitDir(GitDir):
             pb = None
         try:
             result = self._client.fetch_pack(self._client_path, determine_wants,
-                graph_walker, pack_data, progress)
+                                             graph_walker, pack_data, progress)
             if result.refs is None:
                 result.refs = {}
-            self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
+            self._refs = remote_refs_dict_to_container(
+                result.refs, result.symrefs)
             return result
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
@@ -430,13 +431,14 @@ class RemoteGitDir(GitDir):
             progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
+
         def get_changed_refs_wrapper(refs):
             # TODO(jelmer): This drops symref information
             self._refs = remote_refs_dict_to_container(refs)
             return get_changed_refs(refs)
         try:
             return self._client.send_pack(self._client_path,
-                    get_changed_refs_wrapper, generate_pack_data, progress)
+                                          get_changed_refs_wrapper, generate_pack_data, progress)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -449,7 +451,8 @@ class RemoteGitDir(GitDir):
         if refname != b'HEAD' and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
         if refname in self.get_refs_container():
-            ref_chain, unused_sha = self.get_refs_container().follow(self._get_selected_ref(None))
+            ref_chain, unused_sha = self.get_refs_container().follow(
+                self._get_selected_ref(None))
             if ref_chain[0] == b'HEAD':
                 refname = ref_chain[1]
         repo = self.open_repository()
@@ -457,12 +460,14 @@ class RemoteGitDir(GitDir):
 
     def destroy_branch(self, name=None):
         refname = self._get_selected_ref(name)
+
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
             if not refname in ret:
                 raise NotBranchError(self.user_url)
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
+
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
         self.send_pack(get_changed_refs, generate_pack_data)
@@ -487,13 +492,13 @@ class RemoteGitDir(GitDir):
         return RemoteGitRepository(self)
 
     def open_branch(self, name=None, unsupported=False,
-            ignore_fallbacks=False, ref=None, possible_transports=None,
-            nascent_ok=False):
+                    ignore_fallbacks=False, ref=None, possible_transports=None,
+                    nascent_ok=False):
         repo = self.open_repository()
         ref = self._get_selected_ref(name, ref)
         if not nascent_ok and ref not in self.get_refs_container():
             raise NotBranchError(self.root_transport.base,
-                    controldir=self)
+                                 controldir=self)
         ref_chain, unused_sha = self.get_refs_container().follow(ref)
         return RemoteGitBranch(self, repo, ref_chain[-1])
 
@@ -510,9 +515,9 @@ class RemoteGitDir(GitDir):
         if self._refs is not None:
             return self._refs
         result = self.fetch_pack(lambda x: None, None,
-            lambda x: None, lambda x: trace.mutter("git: %s" % x))
+                                 lambda x: None, lambda x: trace.mutter("git: %s" % x))
         self._refs = remote_refs_dict_to_container(
-                result.refs, result.symrefs)
+            result.refs, result.symrefs)
         return self._refs
 
     def push_branch(self, source, revision_id=None, overwrite=False,
@@ -548,7 +553,7 @@ class RemoteGitDir(GitDir):
                 if not overwrite:
                     if remote_divergence(ret.get(refname), new_sha, source_store):
                         raise DivergedBranches(
-                                source, self.open_branch(name, nascent_ok=True))
+                            source, self.open_branch(name, nascent_ok=True))
                 ret[refname] = new_sha
                 return ret
             if lossy:
@@ -557,7 +562,7 @@ class RemoteGitDir(GitDir):
                 generate_pack_data = source_store.generate_pack_data
             new_refs = self.send_pack(get_changed_refs, generate_pack_data)
         push_result.new_revid = repo.lookup_foreign_revision_id(
-                new_refs[refname])
+            new_refs[refname])
         try:
             old_remote = self._refs[refname]
         except KeyError:
@@ -603,7 +608,7 @@ class TemporaryPackIterator(Pack):
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
                 self.data.create_index(path,
-                    progress=report_progress)
+                                       progress=report_progress)
             finally:
                 pb.finished()
         return load_pack_index(path)
@@ -621,7 +626,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
-        super(BzrGitHttpClient, self).__init__(transport.external_url(), *args, **kwargs)
+        super(BzrGitHttpClient, self).__init__(
+            transport.external_url(), *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
@@ -721,7 +727,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         else:
             raise NotBranchError(transport.base)
         if not _found:
-            pass # TODO(jelmer): Actually probe for something
+            pass  # TODO(jelmer): Actually probe for something
         return RemoteGitDir(transport, self, client, client_path)
 
     def get_format_description(self):
@@ -735,10 +741,10 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
             external_url = transport.external_url()
         except InProcessTransport:
             raise NotBranchError(path=transport.base)
-        return (external_url.startswith("http:") or
-                external_url.startswith("https:") or
-                external_url.startswith("git+") or
-                external_url.startswith("git:"))
+        return (external_url.startswith("http:")
+                or external_url.startswith("https:")
+                or external_url.startswith("git+")
+                or external_url.startswith("git:"))
 
 
 class GitRemoteRevisionTree(RevisionTree):
@@ -758,8 +764,8 @@ class GitRemoteRevisionTree(RevisionTree):
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
         reverse_refs = {
-                v: k for (k, v) in
-                self._repository.controldir.get_refs_container().as_dict().items()}
+            v: k for (k, v) in
+            self._repository.controldir.get_refs_container().as_dict().items()}
         try:
             committish = reverse_refs[commit]
         except KeyError:
@@ -767,9 +773,9 @@ class GitRemoteRevisionTree(RevisionTree):
             # Let's hope for the best.
             committish = commit
         self._repository.archive(
-                format, committish, f.write,
-                subdirs=([subdir] if subdir else None),
-                prefix=(root+'/') if root else '')
+            format, committish, f.write,
+            subdirs=([subdir] if subdir else None),
+            prefix=(root + '/') if root else '')
         f.seek(0)
         return osutils.file_iterator(f)
 
@@ -799,7 +805,7 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
             self.fetch_pack(determine_wants, graph_walker,
-                lambda x: os.write(fd, x), progress)
+                            lambda x: os.write(fd, x), progress)
         finally:
             os.close(fd)
         if os.path.getsize(path) == 0:
@@ -843,12 +849,14 @@ class RemoteGitTagDict(GitTags):
 
     def _set_ref(self, name, sha):
         ref = tag_name_to_ref(name)
+
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
             if sha == dulwich.client.ZERO_SHA and ref not in ret:
                 raise NoSuchTag(name)
             ret[ref] = sha
             return ret
+
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
         self.repository.send_pack(get_changed_refs, generate_pack_data)
@@ -859,7 +867,7 @@ class RemoteGitBranch(GitBranch):
     def __init__(self, controldir, repository, name):
         self._sha = None
         super(RemoteGitBranch, self).__init__(controldir, repository, name,
-                RemoteGitBranchFormat())
+                                              RemoteGitBranchFormat())
 
     def last_revision_info(self):
         raise GitSmartRemoteNotSupported(self.last_revision_info, self)

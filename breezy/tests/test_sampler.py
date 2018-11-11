@@ -28,7 +28,7 @@ search for sampler in there.
 import os
 import sys
 
-#import breezy specific imports here
+# import breezy specific imports here
 from breezy.tests import TestCaseInTempDir
 
 

@@ -47,7 +47,6 @@ from ._urllib2_wrappers import (
     )
 
 
-
 class HttpTransport(ConnectedTransport):
     """HTTP Client implementations.
 
@@ -71,7 +70,7 @@ class HttpTransport(ConnectedTransport):
             raise AssertionError("not a http url: %r" % base)
         self._unqualified_scheme = proto_match.group(1)
         super(HttpTransport, self).__init__(
-                base, _from_transport=_from_transport)
+            base, _from_transport=_from_transport)
         self._medium = None
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
@@ -126,7 +125,7 @@ class HttpTransport(ConnectedTransport):
 
         code = response.code
         if (request.follow_redirections is False
-            and code in (301, 302, 303, 307)):
+                and code in (301, 302, 303, 307)):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
                                            is_permanent=(code == 301))
@@ -148,7 +147,7 @@ class HttpTransport(ConnectedTransport):
         response = self._head(relpath)
 
         code = response.code
-        if code == 200: # "ok",
+        if code == 200:  # "ok",
             return True
         else:
             return False
@@ -188,7 +187,7 @@ class HttpTransport(ConnectedTransport):
         response = self._perform(request)
 
         code = response.code
-        if code == 404: # not found
+        if code == 404:  # not found
             raise errors.NoSuchFile(abspath)
         elif code in (400, 416):
             # We don't know which, but one of the ranges we specified was
@@ -287,7 +286,7 @@ class HttpTransport(ConnectedTransport):
             coalesced = list(coalesced)
             if 'http' in debug.debug_flags:
                 mutter('http readv of %s  offsets => %s collapsed %s',
-                    relpath, len(offsets), len(coalesced))
+                       relpath, len(offsets), len(coalesced))
 
             # Cache the data read, but only until it's been used
             data_map = {}
@@ -339,7 +338,7 @@ class HttpTransport(ConnectedTransport):
                     errors.InvalidHttpRange, errors.HttpBoundaryMissing) as e:
                 mutter('Exception %r: %s during http._readv', e, e)
                 if (not isinstance(e, errors.ShortReadvError)
-                    or retried_offset == cur_offset_and_size):
+                        or retried_offset == cur_offset_and_size):
                     # We don't degrade the range hint for ShortReadvError since
                     # they do not indicate a problem with the server ability to
                     # handle ranges. Except when we fail to get back a required
@@ -387,8 +386,8 @@ class HttpTransport(ConnectedTransport):
             ranges = []
             for coal in coalesced:
                 if ((self._get_max_size > 0
-                     and cumul + coal.length > self._get_max_size)
-                    or len(ranges) >= max_ranges):
+                     and cumul + coal.length > self._get_max_size) or
+                        len(ranges) >= max_ranges):
                     # Get that much and yield
                     for c, rfile in get_and_yield(relpath, ranges):
                         yield c, rfile
@@ -442,7 +441,6 @@ class HttpTransport(ConnectedTransport):
 
         return response
 
-
         raise NotImplementedError(self._post)
 
     def put_file(self, relpath, f, mode=None):
@@ -487,7 +485,7 @@ class HttpTransport(ConnectedTransport):
                 'http cannot be the target of copy_to()')
         else:
             return super(HttpTransport, self).\
-                    copy_to(relpaths, other, mode=mode, pb=pb)
+                copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -527,6 +525,7 @@ class HttpTransport(ConnectedTransport):
         class BogusLock(object):
             def __init__(self, path):
                 self.path = path
+
             def unlock(self):
                 pass
         return BogusLock(relpath)
@@ -632,7 +631,7 @@ class HttpTransport(ConnectedTransport):
                 and parsed_target.host == self._parsed_url.host
                 and parsed_target.port == self._parsed_url.port
                 and (parsed_target.user is None or
-                     parsed_target.user == self._parsed_url.user)):
+                 parsed_target.user == self._parsed_url.user)):
                 # If a user is specified, it should match, we don't care about
                 # passwords, wrong passwords will be rejected anyway.
                 return self.clone(target_path)
@@ -643,18 +642,18 @@ class HttpTransport(ConnectedTransport):
                 # user)
                 redir_scheme = parsed_target.scheme
                 new_url = self._unsplit_url(redir_scheme,
-                    self._parsed_url.user,
-                    self._parsed_url.password,
-                    parsed_target.host, parsed_target.port,
-                    target_path)
+                                            self._parsed_url.user,
+                                            self._parsed_url.password,
+                                            parsed_target.host, parsed_target.port,
+                                            target_path)
                 return transport.get_transport_from_url(new_url)
         else:
             # Redirected to a different protocol
             new_url = self._unsplit_url(parsed_target.scheme,
-                    parsed_target.user,
-                    parsed_target.password,
-                    parsed_target.host, parsed_target.port,
-                    target_path)
+                                        parsed_target.user,
+                                        parsed_target.password,
+                                        parsed_target.host, parsed_target.port,
+                                        target_path)
             return transport.get_transport_from_url(new_url)
 
 
@@ -762,7 +761,7 @@ def get_test_permutations():
         features,
         http_server,
         )
-    permutations = [(HttpTransport, http_server.HttpServer),]
+    permutations = [(HttpTransport, http_server.HttpServer), ]
     if features.HTTPSServerFeature.available():
         from breezy.tests import (
             https_server,

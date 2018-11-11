@@ -305,8 +305,8 @@ class Branch(controldir.ControlComponent):
         new_history = []
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         # Do not include ghosts or graph origin in revision_history
-        while (current_rev_id in parents_map and
-               len(parents_map[current_rev_id]) > 0):
+        while (current_rev_id in parents_map
+               and len(parents_map[current_rev_id]) > 0):
             check_not_reserved_id(current_rev_id)
             new_history.append(current_rev_id)
             current_rev_id = parents_map[current_rev_id][0]
@@ -442,7 +442,7 @@ class Branch(controldir.ControlComponent):
             in self.iter_merge_sorted_revisions()}
         return revision_id_to_revno
 
-    def iter_merge_sorted_revisions(self, start_revision_id=None, 
+    def iter_merge_sorted_revisions(self, start_revision_id=None,
                                     stop_revision_id=None,
                                     stop_rule='exclude', direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
@@ -573,8 +573,8 @@ class Branch(controldir.ControlComponent):
                 if rev_id == left_parent:
                     # reached the left parent after the stop_revision
                     return
-                if (not reached_stop_revision_id or
-                        rev_id in revision_id_whitelist):
+                if (not reached_stop_revision_id
+                        or rev_id in revision_id_whitelist):
                     yield (rev_id, node.merge_depth, node.revno,
                            node.end_of_merge)
                     if reached_stop_revision_id or rev_id == stop_revision_id:
@@ -832,7 +832,7 @@ class Branch(controldir.ControlComponent):
             pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
-            # repository into a new repository object without the fallbacks. 
+            # repository into a new repository object without the fallbacks.
             #
             # XXX: See <https://launchpad.net/bugs/397286> - this may not be
             # correct for CHKMap repostiories
@@ -1215,7 +1215,7 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-            repository=None, lossy=False):
+               repository=None, lossy=False):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1223,8 +1223,8 @@ class Branch(controldir.ControlComponent):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        if (repository_policy is not None and
-                repository_policy.requires_stacking()):
+        if (repository_policy is not None
+                and repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
         result = to_controldir.create_branch(repository=repository)
         if lossy:
@@ -1341,7 +1341,7 @@ class Branch(controldir.ControlComponent):
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
-        # XXX: Should this perhaps clone colocated branches as well, 
+        # XXX: Should this perhaps clone colocated branches as well,
         # rather than just the default branch? 20100319 JRV
         if revision_id is None:
             revision_id = self.last_revision()
@@ -1383,8 +1383,8 @@ class Branch(controldir.ControlComponent):
                 pass
             else:
                 raise errors.AlreadyControlDirError(t.base)
-            if (checkout.control_transport.base ==
-                    self.controldir.control_transport.base):
+            if (checkout.control_transport.base
+                    == self.controldir.control_transport.base):
                 # When checking out to the same control directory,
                 # always create a lightweight checkout
                 lightweight = True
@@ -1883,8 +1883,8 @@ class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
 
     def get_default(self):
         """Return the current default format."""
-        if (self._default_format_key is not None and
-                self._default_format is None):
+        if (self._default_format_key is not None
+                and self._default_format is None):
             self._default_format = self.get(self._default_format_key)
         return self._default_format
 
@@ -2364,7 +2364,7 @@ class GenericInterBranch(InterBranch):
             # the source one.
             self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
-            # TODO: Branch formats should have a flag that indicates 
+            # TODO: Branch formats should have a flag that indicates
             # that revno's are expensive, and pull() should honor that flag.
             # -- JRV20090506
             result.old_revno, result.old_revid = \

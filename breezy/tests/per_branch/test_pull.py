@@ -67,7 +67,8 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev1 = master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
 
-        other = master_tree.branch.controldir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout(
+            'other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull, which should update both checkout and master.
         checkout.branch.pull(other.branch)
@@ -81,10 +82,11 @@ class TestPull(per_branch.TestCaseWithBranch):
         rev1 = master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
 
-        other = master_tree.branch.controldir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout(
+            'other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull local, which should update checkout but not master.
-        checkout.branch.pull(other.branch, local = True)
+        checkout.branch.pull(other.branch, local=True)
         self.assertEqual(rev2, checkout.branch.last_revision())
         self.assertEqual(rev1, master_tree.branch.last_revision())
 
@@ -93,11 +95,12 @@ class TestPull(per_branch.TestCaseWithBranch):
         master_tree = self.make_branch_and_tree('branch')
         rev1 = master_tree.commit('master')
 
-        other = master_tree.branch.controldir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout(
+            'other').open_workingtree()
         rev2 = other.commit('other commit')
         # now pull --local, which should raise LocalRequiresBoundBranch error.
         self.assertRaises(errors.LocalRequiresBoundBranch,
-                          master_tree.branch.pull, other.branch, local = True)
+                          master_tree.branch.pull, other.branch, local=True)
         self.assertEqual(rev1, master_tree.branch.last_revision())
 
     def test_pull_returns_result(self):
@@ -147,7 +150,8 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
+            builder)
         target = source.controldir.sprout('target').open_branch()
         # Add a tag to the source, then pull from source
         try:
@@ -168,7 +172,8 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
+            builder)
         target = source.controldir.sprout('target').open_branch()
         # Add a new commit to the ancestry
         rev_2_again = builder.build_commit(message="Rev 2 again")
@@ -260,7 +265,8 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.controldir.clone(self.get_url('source'))
-        source = memorytree.MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = memorytree.MemoryTree.create_on_branch(
+            sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(
             'post_pull', self.capture_post_pull_hook, None)

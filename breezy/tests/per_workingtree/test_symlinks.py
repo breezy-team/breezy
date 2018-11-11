@@ -141,13 +141,13 @@ class TestOpenTree(TestCaseWithWorkingTree):
         self.check_open_containing('link/content', 'tree', 'content')
         self.check_open_containing('link/sublink', 'tree', 'sublink')
         # this next one is a bit debatable, but arguably it's better that
-        # open_containing is only concerned with opening the tree 
+        # open_containing is only concerned with opening the tree
         # and then you can deal with symlinks along the way if you want
         self.check_open_containing('link/sublink/subcontent', 'tree',
-            'sublink/subcontent')
+                                   'sublink/subcontent')
 
     def check_open_containing(self, to_open, expected_tree_name,
-        expected_relpath):
+                              expected_relpath):
         wt, relpath = workingtree.WorkingTree.open_containing(to_open)
         self.assertEqual(relpath, expected_relpath)
         self.assertEndsWith(wt.basedir, expected_tree_name)
@@ -158,11 +158,11 @@ class TestOpenTree(TestCaseWithWorkingTree):
         # <https://bugs.launchpad.net/bzr/+bug/128562>
         self.make_test_tree()
         self.check_tree_files(['tree/outerlink'],
-            'tree', ['outerlink'])
+                              'tree', ['outerlink'])
         self.check_tree_files(['link/outerlink'],
-            'tree', ['outerlink'])
+                              'tree', ['outerlink'])
         self.check_tree_files(['link/sublink/subcontent'],
-            'tree', ['subdir/subcontent'])
+                              'tree', ['subdir/subcontent'])
 
     def check_tree_files(self, to_open, expected_tree, expect_paths):
         tree, relpaths = workingtree.WorkingTree.open_containing_paths(to_open)

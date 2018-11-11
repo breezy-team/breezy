@@ -69,8 +69,8 @@ class LaunchpadDirectory(object):
         urlsplit.
         """
         return (scheme in ('bzr+ssh', 'sftp')
-                and (netloc.endswith('launchpad.net')
-                     or netloc.endswith('launchpad.dev')))
+                and (netloc.endswith('launchpad.net') or
+                 netloc.endswith('launchpad.dev')))
 
     def look_up(self, name, url):
         """See DirectoryService.look_up"""
@@ -93,7 +93,7 @@ class LaunchpadDirectory(object):
             # messages.
             parts = path.split('/')
             if (len(parts) < 3
-                or (parts[1] in ('ubuntu', 'debian') and len(parts) < 5)):
+                    or (parts[1] in ('ubuntu', 'debian') and len(parts) < 5)):
                 # This special case requires 5-parts to be valid.
                 maybe_invalid = True
         else:
@@ -156,8 +156,8 @@ class LaunchpadDirectory(object):
         if path.startswith('~/'):
             if lp_login is None:
                 raise InvalidURL(path=url,
-                    extra='Cannot resolve "~" to your username.'
-                          ' See "bzr help launchpad-login"')
+                                 extra='Cannot resolve "~" to your username.'
+                                 ' See "bzr help launchpad-login"')
             path = '~' + lp_login + path[1:]
         return path
 
@@ -177,7 +177,7 @@ class LaunchpadDirectory(object):
                 result = self._resolve_via_xmlrpc(path, url, _request_factory)
                 trace.note(gettext(
                     'resolution for {0}\n  local: {1}\n remote: {2}').format(
-                           url, local_res['urls'], result['urls']))
+                    url, local_res['urls'], result['urls']))
         else:
             result = self._resolve_via_xmlrpc(path, url, _request_factory)
 
@@ -196,8 +196,8 @@ class LaunchpadDirectory(object):
                 if _lp_login is None:
                     if not _warned_login:
                         trace.warning(
-'You have not informed bzr of your Launchpad ID, and you must do this to\n'
-'write to Launchpad or access private data.  See "bzr help launchpad-login".')
+                            'You have not informed bzr of your Launchpad ID, and you must do this to\n'
+                            'write to Launchpad or access private data.  See "bzr help launchpad-login".')
                         _warned_login = True
             else:
                 # Use the URL if we can create a transport for it.

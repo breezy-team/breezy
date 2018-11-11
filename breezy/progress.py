@@ -132,14 +132,15 @@ class ProgressTask(object):
 
     def make_sub_task(self):
         return ProgressTask(self, ui_factory=self.ui_factory,
-            progress_view=self.progress_view)
+                            progress_view=self.progress_view)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
 
         Returns None if no completion can be computed."""
         if self.current_cnt is not None and self.total_cnt:
-            own_fraction = (float(self.current_cnt) + child_fraction) / self.total_cnt
+            own_fraction = (float(self.current_cnt) +
+                            child_fraction) / self.total_cnt
         else:
             # if this task has no estimation, it just passes on directly
             # whatever the child has measured...
@@ -201,8 +202,8 @@ def str_tdelta(delt):
     if delt is None:
         return "-:--:--"
     delt = int(round(delt))
-    return '%d:%02d:%02d' % (delt/3600,
-                             (delt/60) % 60,
+    return '%d:%02d:%02d' % (delt / 3600,
+                             (delt / 60) % 60,
                              delt % 60)
 
 
@@ -240,6 +241,7 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
 
 class ProgressPhase(object):
     """Update progress object with the current phase"""
+
     def __init__(self, message, total, pb):
         object.__init__(self)
         self.pb = pb

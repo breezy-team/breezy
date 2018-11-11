@@ -148,14 +148,14 @@ class UIFactory(object):
 
     _user_warning_templates = dict(
         cross_format_fetch=("Doing on-the-fly conversion from "
-            "%(from_format)s to %(to_format)s.\n"
-            "This may take some time. Upgrade the repositories to the "
-            "same format for better performance."
-            ),
+                            "%(from_format)s to %(to_format)s.\n"
+                            "This may take some time. Upgrade the repositories to the "
+                            "same format for better performance."
+                            ),
         experimental_format_fetch=("Fetching into experimental format "
-            "%(to_format)s.\n"
-            "This format may be unreliable or change in the future "
-            "without an upgrade path.\n"),
+                                   "%(to_format)s.\n"
+                                   "This format may be unreliable or change in the future "
+                                   "without an upgrade path.\n"),
         deprecated_command=(
             "The command 'brz %(deprecated_name)s' "
             "has been deprecated in brz %(deprecated_in_version)s. "
@@ -165,10 +165,10 @@ class UIFactory(object):
             "has been deprecated in brz %(deprecated_in_version)s. "
             "Please use '%(recommended_name)s' instead."),
         recommend_upgrade=("%(current_format_name)s is deprecated "
-            "and a better format is available.\n"
-            "It is recommended that you upgrade by "
-            "running the command\n"
-            "  brz upgrade %(basedir)s"),
+                           "and a better format is available.\n"
+                           "It is recommended that you upgrade by "
+                           "running the command\n"
+                           "  brz upgrade %(basedir)s"),
         locks_steal_dead=(
             u"Stole dead lock %(lock_url)s %(other_holder_info)s."),
         not_checking_ssl_cert=(
@@ -186,7 +186,7 @@ class UIFactory(object):
         Override in a concrete factory class if initialisation before use is
         needed.
         """
-        return self # This is bound to the 'as' clause in a with statement.
+        return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit support.
@@ -195,7 +195,7 @@ class UIFactory(object):
         self.clear_term() is needed when the UIFactory is finished with.
         """
         self.clear_term()
-        return False # propogate exceptions.
+        return False  # propogate exceptions.
 
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.
@@ -265,7 +265,7 @@ class UIFactory(object):
 
     def _make_output_stream_explicit(self, encoding, encoding_type):
         raise NotImplementedError("%s doesn't support make_output_stream"
-            % (self.__class__.__name__))
+                                  % (self.__class__.__name__))
 
     def nested_progress_bar(self):
         """Return a nested progress bar.
@@ -284,12 +284,12 @@ class UIFactory(object):
         """Called by the ProgressTask when it finishes"""
         if not self._task_stack:
             warnings.warn("%r finished but nothing is active"
-                % (task,))
+                          % (task,))
         if task in self._task_stack:
             self._task_stack.remove(task)
         else:
             warnings.warn("%r is not in active stack %r"
-                % (task, self._task_stack))
+                          % (task, self._task_stack))
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -317,7 +317,8 @@ class UIFactory(object):
             template = self._user_warning_templates[warning_id]
         except KeyError:
             fail = "brz warning: %r, %r" % (warning_id, message_args)
-            warnings.warn("no template for warning: " + fail)   # so tests will fail etc
+            warnings.warn("no template for warning: "emplate for warning: " +
+                          + fail)   # so tests will fail etc
             return text_type(fail)
         try:
             return text_type(template) % message_args
@@ -382,7 +383,7 @@ class UIFactory(object):
         :param basedir: Location of the control dir
         """
         self.show_user_warning('recommend_upgrade',
-            current_format_name=current_format_name, basedir=basedir)
+                               current_format_name=current_format_name, basedir=basedir)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -509,7 +510,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def assert_all_input_consumed(self):
         if self.responses:
             raise AssertionError("expected all input in %r to be consumed"
-                % (self,))
+                                 % (self,))
 
 
 ui_factory = SilentUIFactory()

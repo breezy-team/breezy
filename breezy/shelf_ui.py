@@ -48,14 +48,14 @@ class ShelfReporter(object):
     vocab = {'add file': gettext('Shelve adding file "%(path)s"?'),
              'binary': gettext('Shelve binary changes?'),
              'change kind': gettext('Shelve changing "%s" from %(other)s'
-             ' to %(this)s?'),
+                                    ' to %(this)s?'),
              'delete file': gettext('Shelve removing file "%(path)s"?'),
              'final': gettext('Shelve %d change(s)?'),
              'hunk': gettext('Shelve?'),
              'modify target': gettext('Shelve changing target of'
-             ' "%(path)s" from "%(other)s" to "%(this)s"?'),
+                                      ' "%(path)s" from "%(other)s" to "%(this)s"?'),
              'rename': gettext('Shelve renaming "%(other)s" =>'
-                        ' "%(this)s"?')
+                               ' "%(this)s"?')
              }
 
     invert_diff = False
@@ -100,12 +100,12 @@ class ApplyReporter(ShelfReporter):
     vocab = {'add file': gettext('Delete file "%(path)s"?'),
              'binary': gettext('Apply binary changes?'),
              'change kind': gettext('Change "%(path)s" from %(this)s'
-             ' to %(other)s?'),
+                                    ' to %(other)s?'),
              'delete file': gettext('Add file "%(path)s"?'),
              'final': gettext('Apply %d change(s)?'),
              'hunk': gettext('Apply change?'),
              'modify target': gettext('Change target of'
-             ' "%(path)s" from "%(this)s" to "%(other)s"?'),
+                                      ' "%(path)s" from "%(this)s" to "%(other)s"?'),
              'rename': gettext('Rename "%(this)s" => "%(other)s"?'),
              }
 
@@ -181,7 +181,7 @@ class Shelver(object):
         tree.lock_tree_write()
         try:
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
-                tree.branch, tree)
+                                                          tree.branch, tree)
             files = tree.safe_relpath_files(file_list)
             return klass(tree, target_tree, diff_writer, all, all, files,
                          message, destroy)
@@ -211,7 +211,7 @@ class Shelver(object):
             if changes_shelved > 0:
                 self.reporter.selected_changes(creator.work_transform)
                 if (self.auto_apply or self.prompt_bool(
-                    self.reporter.vocab['final'] % changes_shelved)):
+                        self.reporter.vocab['final'] % changes_shelved)):
                     if self.destroy:
                         creator.transform()
                         self.reporter.changes_destroyed()
@@ -249,7 +249,7 @@ class Shelver(object):
         new_path = new_tree.id2path(file_id)
         path_encoding = osutils.get_terminal_encoding()
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
-            path_encoding=path_encoding)
+                                    path_encoding=path_encoding)
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -406,7 +406,8 @@ class Unshelver(object):
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
-                    raise errors.BzrCommandError(gettext('No changes are shelved.'))
+                    raise errors.BzrCommandError(
+                        gettext('No changes are shelved.'))
             apply_changes = True
             delete_shelf = True
             read_shelf = True
@@ -464,7 +465,8 @@ class Unshelver(object):
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:
-                trace.note(gettext('Using changes with id "%d".') % self.shelf_id)
+                trace.note(gettext('Using changes with id "%d".') %
+                           self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 cleanups.append(unshelver.finalize)
                 if unshelver.message is not None:
@@ -480,7 +482,8 @@ class Unshelver(object):
                     self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
-                trace.note(gettext('Deleted changes with id "%d".') % self.shelf_id)
+                trace.note(gettext('Deleted changes with id "%d".') %
+                           self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
@@ -491,10 +494,11 @@ class Unshelver(object):
         tt = tree_merger.make_preview_transform()
         new_tree = tt.get_preview_tree()
         if self.write_diff_to is None:
-            self.write_diff_to = ui.ui_factory.make_output_stream(encoding_type='exact')
+            self.write_diff_to = ui.ui_factory.make_output_stream(
+                encoding_type='exact')
         path_encoding = osutils.get_diff_header_encoding()
         diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to,
-            path_encoding=path_encoding)
+                             path_encoding=path_encoding)
         tt.finalize()
 
     def show_changes(self, merger):

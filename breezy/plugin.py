@@ -421,8 +421,8 @@ def _load_plugin_module(name, dir):
             if sanitised_name.startswith('brz_'):
                 sanitised_name = sanitised_name[len('brz_'):]
             trace.warning("Unable to load %r in %r as a plugin because the "
-                    "file path isn't a valid module name; try renaming "
-                    "it to %r." % (name, dir, sanitised_name))
+                          "file path isn't a valid module name; try renaming "
+                          "it to %r." % (name, dir, sanitised_name))
         else:
             return record_plugin_warning(
                 'Unable to load plugin %r from %r: %s' % (name, dir, e))
@@ -464,7 +464,7 @@ def format_concise_plugin_list(state=None):
     items = []
     for name, a_plugin in sorted(getattr(state, 'plugins', {}).items()):
         items.append("%s[%s]" %
-            (name, a_plugin.__version__))
+                     (name, a_plugin.__version__))
     return ', '.join(items)
 
 

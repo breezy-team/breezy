@@ -98,4 +98,3 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
             b'contents of bar/file\n',
             tree.get_file('bar/file').read())
         builder.finish_tree()
-

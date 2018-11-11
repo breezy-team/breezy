@@ -24,6 +24,7 @@ from . import errors
 
 __all__ = ['profile', 'Stats']
 
+
 def profile(f, *args, **kwds):
     """Run a function profile.
 
@@ -47,7 +48,7 @@ def profile(f, *args, **kwds):
 
 class BzrProfiler(object):
     """Bzr utility wrapper around Profiler.
-    
+
     For most uses the module level 'profile()' function will be suitable.
     However profiling when a simple wrapped function isn't available may
     be easier to accomplish using this class.
@@ -72,7 +73,7 @@ class BzrProfiler(object):
 
     def start(self):
         """Start profiling.
-        
+
         This hooks into threading and will record all calls made until
         stop() is called.
         """
@@ -297,7 +298,9 @@ class _CallTreeFilter(object):
                 subentry.callcount, code.co_firstlineno))
         out_file.write('%d %d\n' % (lineno, totaltime))
 
+
 _fn2mod = {}
+
 
 def label(code, calltree=False):
     if isinstance(code, str):
@@ -316,7 +319,7 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = '<%s>'%code.co_filename
+            mname = _fn2mod[code.co_filename] = '<%s>' % code.co_filename
     if calltree:
         return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
     else:

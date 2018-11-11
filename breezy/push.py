@@ -52,7 +52,7 @@ class PushResult(object):
         if self.branch_push_result is None:
             if self.stacked_on is not None:
                 note(gettext('Created new stacked branch referring to %s.') %
-                    self.stacked_on)
+                     self.stacked_on)
             else:
                 note(gettext('Created new branch.'))
         else:
@@ -60,8 +60,8 @@ class PushResult(object):
 
 
 def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
-    overwrite=False, remember=False, stacked_on=None, create_prefix=False,
-    use_existing_dir=False, no_tree=False, lossy=False):
+                      overwrite=False, remember=False, stacked_on=None, create_prefix=False,
+                      use_existing_dir=False, no_tree=False, lossy=False):
     """Push a branch to a location.
 
     :param br_from: the source branch
@@ -91,9 +91,9 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     if dir_to is None:
         try:
             br_to = br_from.create_clone_on_transport(to_transport,
-                revision_id=revision_id, stacked_on=stacked_on,
-                create_prefix=create_prefix, use_existing_dir=use_existing_dir,
-                no_tree=no_tree)
+                                                      revision_id=revision_id, stacked_on=stacked_on,
+                                                      create_prefix=create_prefix, use_existing_dir=use_existing_dir,
+                                                      no_tree=no_tree)
         except errors.AlreadyControlDirError as err:
             raise errors.BzrCommandError(gettext(
                 "Target directory %s already contains a .bzr directory, "
@@ -101,19 +101,19 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         except errors.FileExists as err:
             if not use_existing_dir:
                 raise errors.BzrCommandError(gettext("Target directory %s"
-                     " already exists, but does not have a .bzr"
-                     " directory. Supply --use-existing-dir to push"
-                     " there anyway.") % location)
+                                                     " already exists, but does not have a .bzr"
+                                                     " directory. Supply --use-existing-dir to push"
+                                                     " there anyway.") % location)
             # This shouldn't occur, but if it does the FileExists error will be
             # more informative than an UnboundLocalError for br_to.
             raise
         except errors.NoSuchFile:
             if not create_prefix:
                 raise errors.BzrCommandError(gettext("Parent directory of %s"
-                    " does not exist."
-                    "\nYou may supply --create-prefix to create all"
-                    " leading parent directories.")
-                    % location)
+                                                     " does not exist."
+                                                     "\nYou may supply --create-prefix to create all"
+                                                     " leading parent directories.")
+                                             % location)
             # This shouldn't occur (because create_prefix is true, so
             # create_clone_on_transport should be catching NoSuchFile and
             # creating the missing directories) but if it does the original
@@ -122,7 +122,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             raise
         except errors.TooManyRedirections:
             raise errors.BzrCommandError(gettext("Too many redirections trying "
-                                         "to make %s.") % location)
+                                                 "to make %s.") % location)
         push_result = PushResult()
         # TODO: Some more useful message about what was copied
         try:
@@ -136,7 +136,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         push_result.old_revno = 0
         # Remembers if asked explicitly or no previous location is set
         if (remember
-            or (remember is None and br_from.get_push_location() is None)):
+                or (remember is None and br_from.get_push_location() is None)):
             # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
             br_from.set_push_location(br_to.base)
     else:
@@ -145,24 +145,24 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                     "already exists at the destination location.")
         try:
             push_result = dir_to.push_branch(br_from, revision_id, overwrite,
-                remember, create_prefix, lossy=lossy)
+                                             remember, create_prefix, lossy=lossy)
         except errors.DivergedBranches:
             raise errors.BzrCommandError(gettext('These branches have diverged.'
-                                    '  See "brz help diverged-branches"'
-                                    ' for more information.'))
+                                                 '  See "brz help diverged-branches"'
+                                                 ' for more information.'))
         except errors.NoRoundtrippingSupport as e:
             raise errors.BzrCommandError(gettext("It is not possible to losslessly "
-                "push to %s. You may want to use dpush instead.") % 
-                    e.target_branch.mapping.vcs.abbreviation)
+                                                 "push to %s. You may want to use dpush instead.") %
+                                         e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
             # we have a controldir but no branch or repository
             # XXX: Figure out what to do other than complain.
             raise errors.BzrCommandError(gettext("At %s you have a valid .bzr"
-                " control directory, but not a branch or repository. This"
-                " is an unsupported configuration. Please move the target"
-                " directory out of the way and try again.") % location)
+                                                 " control directory, but not a branch or repository. This"
+                                                 " is an unsupported configuration. Please move the target"
+                                                 " directory out of the way and try again.") % location)
         if push_result.workingtree_updated == False:
-            warning("This transport does not update the working " 
+            warning("This transport does not update the working "
                     "tree of: %s. See 'brz help working-trees' for "
                     "more information." % push_result.target_branch.base)
     push_result.report(to_file)
@@ -171,9 +171,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         br_to.lock_read()
         try:
             from .log import show_branch_change
-            show_branch_change(br_to, to_file, push_result.old_revno, 
+            show_branch_change(br_to, to_file, push_result.old_revno,
                                push_result.old_revid)
         finally:
             br_to.unlock()
-
-

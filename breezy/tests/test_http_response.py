@@ -112,7 +112,7 @@ garbage""")
         # Read part of the response
         self.assertEqual(b'0123456789\n', resp.read(11))
         # Override the thresold to force the warning emission
-        conn._range_warning_thresold = 6 # There are 7 bytes pending
+        conn._range_warning_thresold = 6  # There are 7 bytes pending
         conn.cleanup_pipe()
         self.assertContainsRe(self.get_log(), 'Got a 200 response when asking')
 
@@ -136,7 +136,7 @@ class TestRangeFileMixin(object):
         start = self.first_range_start
         # Before any use, tell() should be at the range start
         self.assertEqual(start, f.tell())
-        cur = start # For an overall offset assertion
+        cur = start  # For an overall offset assertion
         f.seek(start + 3)
         cur += 3
         self.assertEqual(b'def', f.read(3))
@@ -200,21 +200,21 @@ class TestRangeFileMixin(object):
         self.assertRaises(errors.InvalidRange, f.read, 10)
 
     def test_seek_from_end(self):
-       """Test seeking from the end of the file.
+        """Test seeking from the end of the file.
 
-       The semantic is unclear in case of multiple ranges. Seeking from end
-       exists only for the http transports, cannot be used if the file size is
-       unknown and is not used in breezy itself. This test must be (and is)
-       overridden by daughter classes.
+        The semantic is unclear in case of multiple ranges. Seeking from end
+        exists only for the http transports, cannot be used if the file size is
+        unknown and is not used in breezy itself. This test must be (and is)
+        overridden by daughter classes.
 
-       Reading from end makes sense only when a range has been requested from
-       the end of the file (see HttpTransportBase._get() when using the
-       'tail_amount' parameter). The HTTP response can only be a whole file or
-       a single range.
-       """
-       f = self._file
-       f.seek(-2, 2)
-       self.assertEqual(b'yz', f.read())
+        Reading from end makes sense only when a range has been requested from
+        the end of the file (see HttpTransportBase._get() when using the
+        'tail_amount' parameter). The HTTP response can only be a whole file or
+        a single range.
+        """
+        f = self._file
+        f.seek(-2, 2)
+        self.assertEqual(b'yz', f.read())
 
 
 class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
@@ -225,7 +225,7 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
         self._file = response.RangeFile('Whole_file_size_known',
                                         BytesIO(self.alpha))
         # We define no range, relying on RangeFile to provide default values
-        self.first_range_start = 0 # It's the whole file
+        self.first_range_start = 0  # It's the whole file
 
     def test_seek_from_end(self):
         """See TestRangeFileMixin.test_seek_from_end.
@@ -250,7 +250,7 @@ class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
         self._file = response.RangeFile('Whole_file_size_known',
                                         BytesIO(self.alpha))
         self._file.set_range(0, len(self.alpha))
-        self.first_range_start = 0 # It's the whole file
+        self.first_range_start = 0  # It's the whole file
 
 
 class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
@@ -263,11 +263,10 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         self.first_range_start = 15
         self._file.set_range(self.first_range_start, len(self.alpha))
 
-
     def test_read_before_range(self):
         # This can't occur under normal circumstances, we have to force it
         f = self._file
-        f._pos = 0 # Force an invalid pos
+        f._pos = 0  # Force an invalid pos
         self.assertRaises(errors.InvalidRange, f.read, 2)
 
 
@@ -297,7 +296,7 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
         content = b''
         self.first_range_start = 25
-        file_size = 200 # big enough to encompass all ranges
+        file_size = 200  # big enough to encompass all ranges
         for (start, part) in [(self.first_range_start, self.alpha),
                               # Two contiguous ranges
                               (100, self.alpha),
@@ -347,7 +346,8 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
         if isinstance(file_size, int):
             file_size = b'%d' % file_size
         range += b'Content-Range: bytes %d-%d/%s\r\n' % (offset,
-                                                         offset+len(data)-1,
+                                                         offset +
+                                                         len(data) - 1,
                                                          file_size)
         range += b'\r\n'
         # Finally the raw bytes
@@ -356,11 +356,11 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
     def test_read_all_ranges(self):
         f = self._file
-        self.assertEqual(self.alpha, f.read()) # Read first range
-        f.seek(100) # Trigger the second range recognition
-        self.assertEqual(self.alpha, f.read()) # Read second range
+        self.assertEqual(self.alpha, f.read())  # Read first range
+        f.seek(100)  # Trigger the second range recognition
+        self.assertEqual(self.alpha, f.read())  # Read second range
         self.assertEqual(126, f.tell())
-        f.seek(126) # Start of third range which is also the current pos !
+        f.seek(126)  # Start of third range which is also the current pos !
         self.assertEqual(b'A', f.read(1))
         f.seek(10, 1)
         self.assertEqual(b'LMN', f.read(3))
@@ -390,20 +390,20 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
     def test_seek_across_ranges(self):
         f = self._file
-        f.seek(126) # skip the two first ranges
+        f.seek(126)  # skip the two first ranges
         self.assertEqual(b'AB', f.read(2))
 
     def test_checked_read_dont_overflow_buffers(self):
         f = self._file
         # We force a very low value to exercise all code paths in _checked_read
         f._discarded_buf_size = 8
-        f.seek(126) # skip the two first ranges
+        f.seek(126)  # skip the two first ranges
         self.assertEqual(b'AB', f.read(2))
 
     def test_seek_twice_between_ranges(self):
         f = self._file
         start = self.first_range_start
-        f.seek(start + 40) # Past the first range but before the second
+        f.seek(start + 40)  # Past the first range but before the second
         # Now the file is positioned at the second range start (100)
         self.assertRaises(errors.InvalidRange, f.seek, start + 41)
 
@@ -474,7 +474,7 @@ class TestRangeFileVarious(tests.TestCase):
         ok((12, 2), '\tbytes 12-13/*')
         ok((28, 1), '  bytes 28-28/*')
         ok((2123, 2120), 'bytes  2123-4242/12310')
-        ok((1, 10), 'bytes 1-10/ttt') # We don't check total (ttt)
+        ok((1, 10), 'bytes 1-10/ttt')  # We don't check total (ttt)
 
         def nok(header_value):
             self.assertRaises(errors.InvalidHttpRange,
@@ -594,7 +594,7 @@ X-Cache-Lookup: HIT from localhost.localdomain:3128\r
 Proxy-Connection: keep-alive\r
 \r
 """,
-b"""\r
+                                   b"""\r
 --squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196\r
 Content-Type: text/plain\r
 Content-Range: bytes 0-99/18672\r
@@ -689,7 +689,7 @@ Content-Type: multipart/byteranges; boundary=THIS_SEPARATES\r
 Content-Length: 598\r
 \r
 """,
-b"""\r
+                               b"""\r
 --THIS_SEPARATES\r
 Content-Type: text/plain\r
 \r
@@ -703,7 +703,7 @@ Content-Type: multipart/byteranges; boundary=THIS_SEPARATES\r
 Content-Length: 598\r
 \r
 """,
-b"""\r
+                          b"""\r
 --THIS_SEPARATES\r
 Content-Type: text/plain\r
 Content-Range: bytes 0-18/18672\r
@@ -821,7 +821,7 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
         # create a test datablock larger than _max_read_size.
         chunk_size = response.RangeFile._max_read_size
         test_pattern = b'0123456789ABCDEF'
-        self.test_data =  test_pattern * (3 * chunk_size // len(test_pattern))
+        self.test_data = test_pattern * (3 * chunk_size // len(test_pattern))
         self.test_data_len = len(self.test_data)
 
     def test_max_read_size(self):
@@ -844,4 +844,3 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
         if response_data != self.test_data:
             message = "Data not equal.  Expected %d bytes, received %d."
             self.fail(message % (len(response_data), self.test_data_len))
-

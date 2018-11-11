@@ -60,6 +60,7 @@ except ImportError:
 else:
     CAPABILITIES.append("import")
 
+
 def open_remote_dir(url):
     try:
         return ControlDir.open(url)
@@ -75,7 +76,7 @@ def fetch(outf, wants, shortname, remote_dir, local_dir):
     for (sha1, ref) in wants:
         revs.append((sha1, None))
     if (isinstance(remote_repo, GitRepository) and
-        isinstance(local_repo, GitRepository)):
+            isinstance(local_repo, GitRepository)):
         lossy = False
     else:
         lossy = True
@@ -109,7 +110,7 @@ class RemoteHelper(object):
         self.wants = []
 
     def cmd_capabilities(self, outf, argv):
-        outf.write(b"\n".join([c.encode() for c in CAPABILITIES])+b"\n\n")
+        outf.write(b"\n".join([c.encode() for c in CAPABILITIES]) + b"\n\n")
 
     def cmd_list(self, outf, argv):
         try:
@@ -148,11 +149,11 @@ class RemoteHelper(object):
             dest_branch_name = None
         remote_branch = self.remote_dir.open_branch(name=dest_branch_name)
         exporter = fastexporter.BzrFastExporter(remote_branch,
-            outf=outf, ref=ref,
-            checkpoint=None, import_marks_file=None,
-            export_marks_file=None, revision=None,
-            verbose=None, plain_format=True,
-            rewrite_tags=False)
+                                                outf=outf, ref=ref,
+                                                checkpoint=None, import_marks_file=None,
+                                                export_marks_file=None, revision=None,
+                                                verbose=None, plain_format=True,
+                                                rewrite_tags=False)
         exporter.run()
 
     commands = {
@@ -175,9 +176,11 @@ class RemoteHelper(object):
         argv = l.strip().split()
         if argv == []:
             if self.batchcmd == "fetch":
-                fetch(outf, self.wants, self.shortname, self.remote_dir, self.local_dir)
+                fetch(outf, self.wants, self.shortname,
+                      self.remote_dir, self.local_dir)
             elif self.batchcmd == "push":
-                push(outf, self.wants, self.shortname, self.remote_dir, self.local_dir)
+                push(outf, self.wants, self.shortname,
+                     self.remote_dir, self.local_dir)
             elif self.batchcmd is None:
                 return
             else:
@@ -185,9 +188,9 @@ class RemoteHelper(object):
             self.batchcmd = None
         else:
             try:
-               self.commands[argv[0]](self, outf, argv)
+                self.commands[argv[0]](self, outf, argv)
             except KeyError:
-               raise Exception("Unknown remote command %r" % argv)
+                raise Exception("Unknown remote command %r" % argv)
         outf.flush()
 
 

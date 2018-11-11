@@ -24,6 +24,7 @@ from ..revspec import (
     valid_git_sha1,
     )
 
+
 class Sha1ValidTests(TestCase):
 
     def test_invalid(self):

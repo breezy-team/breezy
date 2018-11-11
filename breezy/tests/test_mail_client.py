@@ -32,20 +32,20 @@ class TestMutt(tests.TestCase):
         # The temporary filename is randomly generated, so it is not matched.
         self.assertEqual(['-a', 'file%', '-i'], commandline[:-1])
         commandline = mutt._get_compose_commandline('jrandom@example.org',
-                                                     'Hi there!', None)
+                                                    'Hi there!', None)
         self.assertEqual(['-s', 'Hi there!', '--', 'jrandom@example.org'],
                          commandline)
 
     def test_commandline_is_8bit(self):
         mutt = mail_client.Mutt(None)
         cmdline = mutt._get_compose_commandline(u'jrandom@example.org',
-            u'Hi there!', u'file%')
+                                                u'Hi there!', u'file%')
         self.assertEqual(
             ['-s', 'Hi there!', '-a', 'file%', '--', 'jrandom@example.org'],
             cmdline)
         for item in cmdline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
 
 class TestThunderbird(tests.TestCase):
@@ -62,20 +62,20 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(['-compose', "body=bo%27dy,"
                                       "subject='Hi there!',"
                                       "to='jrandom@example.org'"],
-                                      commandline)
+                         commandline)
 
     def test_commandline_is_8bit(self):
         # test for bug #139318
         tbird = mail_client.Thunderbird(None)
         cmdline = tbird._get_compose_commandline(u'jrandom@example.org',
-            u'Hi there!', u'file%')
+                                                 u'Hi there!', u'file%')
         self.assertEqual(['-compose',
-            ("attachment='%s'," % urlutils.local_path_to_url('file%')) +
-            "subject='Hi there!',to='jrandom@example.org'",
-            ], cmdline)
+                          ("attachment='%s'," % urlutils.local_path_to_url('file%'))
+                          + "subject='Hi there!',to='jrandom@example.org'",
+                          ], cmdline)
         for item in cmdline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
 
 class TestEmacsMail(tests.TestCase):
@@ -107,12 +107,12 @@ class TestEmacsMail(tests.TestCase):
     def test_commandline_is_8bit(self):
         eclient = mail_client.EmacsMail(None)
         commandline = eclient._get_compose_commandline(u'jrandom@example.org',
-            u'Hi there!', u'file%')
+                                                       u'Hi there!', u'file%')
         if eclient.elisp_tmp_file is not None:
             self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         for item in commandline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
 
 class TestXDGEmail(tests.TestCase):
@@ -134,14 +134,14 @@ class TestXDGEmail(tests.TestCase):
     def test_commandline_is_8bit(self):
         xdg_email = mail_client.XDGEmail(None)
         cmdline = xdg_email._get_compose_commandline(u'jrandom@example.org',
-            u'Hi there!', u'file%')
+                                                     u'Hi there!', u'file%')
         self.assertEqual(
             ['jrandom@example.org', '--subject', 'Hi there!',
              '--attach', 'file%'],
             cmdline)
         for item in cmdline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
 
 class TestEvolution(tests.TestCase):
@@ -158,14 +158,14 @@ class TestEvolution(tests.TestCase):
     def test_commandline_is_8bit(self):
         evo = mail_client.Evolution(None)
         cmdline = evo._get_compose_commandline(u'jrandom@example.org',
-            u'Hi there!', u'file%')
+                                               u'Hi there!', u'file%')
         self.assertEqual(
             ['mailto:jrandom@example.org?attach=file%25&subject=Hi%20there%21'
-            ],
+             ],
             cmdline)
         for item in cmdline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
 
 class TestKMail(tests.TestCase):
@@ -182,13 +182,13 @@ class TestKMail(tests.TestCase):
     def test_commandline_is_8bit(self):
         kmail = mail_client.KMail(None)
         cmdline = kmail._get_compose_commandline(u'jrandom@example.org',
-            u'Hi there!', u'file%')
+                                                 u'Hi there!', u'file%')
         self.assertEqual(
             ['-s', 'Hi there!', '--attach', 'file%', 'jrandom@example.org'],
             cmdline)
         for item in cmdline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
 
 class TestClaws(tests.TestCase):
@@ -221,7 +221,7 @@ class TestClaws(tests.TestCase):
             cmdline)
         for item in cmdline:
             self.assertTrue(isinstance(item, str),
-                'Command-line item %r is not a native string!' % item)
+                            'Command-line item %r is not a native string!' % item)
 
     def test_with_from(self):
         claws = mail_client.Claws(None)
@@ -254,9 +254,9 @@ class TestEditor(tests.TestCase):
         """Prompt, to and subject are unicode, the attachement is binary"""
         editor = mail_client.Editor(None)
         prompt = editor._get_merge_prompt(u'foo\u1234',
-                                        u'bar\u1234',
-                                        u'baz\u1234',
-                                        u'qux\u1234'.encode('utf-8'))
+                                          u'bar\u1234',
+                                          u'baz\u1234',
+                                          u'qux\u1234'.encode('utf-8'))
         self.assertContainsRe(prompt, u'foo\u1234(.|\n)*bar\u1234'
                               u'(.|\n)*baz\u1234(.|\n)*qux\u1234')
         editor._get_merge_prompt(u'foo', u'bar', u'baz', b'qux\xff')

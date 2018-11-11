@@ -243,7 +243,7 @@ class LaunchpadBranch(object):
         lp_branch = launchpad.branches.getByUrl(url=url)
         if lp_branch is None:
             raise errors.BzrError(gettext('%s is not registered on Launchpad') %
-                                                                            url)
+                                  url)
         return lp_branch
 
     def get_target(self):
@@ -253,11 +253,11 @@ class LaunchpadBranch(object):
             dev_focus = lp_branch.project.development_focus
             if dev_focus is None:
                 raise errors.BzrError(gettext('%s has no development focus.') %
-                                  lp_branch.bzr_identity)
+                                      lp_branch.bzr_identity)
             target = dev_focus.branch
             if target is None:
                 raise errors.BzrError(gettext(
-                        'development focus %s has no branch.') % dev_focus)
+                    'development focus %s has no branch.') % dev_focus)
         elif lp_branch.sourcepackage is not None:
             target = lp_branch.sourcepackage.getBranch(pocket="Release")
             if target is None:
@@ -266,8 +266,8 @@ class LaunchpadBranch(object):
                                       lp_branch.sourcepackage)
         else:
             raise errors.BzrError(gettext(
-                        '%s has no associated product or source package.') %
-                                  lp_branch.bzr_identity)
+                '%s has no associated product or source package.') %
+                lp_branch.bzr_identity)
         return LaunchpadBranch(target, target.bzr_identity)
 
     def update_lp(self):

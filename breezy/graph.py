@@ -141,6 +141,7 @@ class CachingParentsProvider(object):
 
     The cache is enabled by default, but may be disabled and re-enabled.
     """
+
     def __init__(self, parent_provider=None, get_parent_map=None):
         """Constructor.
 
@@ -376,7 +377,7 @@ class Graph(object):
             to_search.update(searching_known_tips)
             parent_map = self.get_parent_map(to_search)
             parents = parent_map.get(cur_tip, None)
-            if not parents: # An empty list or None is a ghost
+            if not parents:  # An empty list or None is a ghost
                 raise errors.GhostRevisionsHaveNoRevno(target_revision_id,
                                                        cur_tip)
             cur_tip = parents[0]
@@ -466,7 +467,7 @@ class Graph(object):
 
         (all_unique_searcher,
          unique_tip_searchers) = self._make_unique_searchers(unique_nodes,
-                                    unique_searcher, common_searcher)
+                                                             unique_searcher, common_searcher)
 
         self._refine_unique_nodes(unique_searcher, all_unique_searcher,
                                   unique_tip_searchers, common_searcher)
@@ -504,12 +505,13 @@ class Graph(object):
                 next_common_nodes.intersection(unique_searcher.seen))
             if unique_are_common_nodes:
                 ancestors = unique_searcher.find_seen_ancestors(
-                                unique_are_common_nodes)
+                    unique_are_common_nodes)
                 # TODO: This is a bit overboard, we only really care about
                 #       the ancestors of the tips because the rest we
                 #       already know. This is *correct* but causes us to
                 #       search too much ancestry.
-                ancestors.update(common_searcher.find_seen_ancestors(ancestors))
+                ancestors.update(
+                    common_searcher.find_seen_ancestors(ancestors))
                 unique_searcher.stop_searching_any(ancestors)
                 common_searcher.start_searching(ancestors)
 
@@ -525,11 +527,12 @@ class Graph(object):
         :return: (all_unique_searcher, unique_tip_searchers)
         """
         unique_tips = self._remove_simple_descendants(unique_nodes,
-                        self.get_parent_map(unique_nodes))
+                                                      self.get_parent_map(unique_nodes))
 
         if len(unique_tips) == 1:
             unique_tip_searchers = []
-            ancestor_all_unique = unique_searcher.find_seen_ancestors(unique_tips)
+            ancestor_all_unique = unique_searcher.find_seen_ancestors(
+                unique_tips)
         else:
             unique_tip_searchers = []
             for tip in unique_tips:
@@ -548,10 +551,10 @@ class Graph(object):
                     ancestor_all_unique = set(searcher.seen)
                 else:
                     ancestor_all_unique = ancestor_all_unique.intersection(
-                                                searcher.seen)
+                        searcher.seen)
         # Collapse all the common nodes into a single searcher
         all_unique_searcher = self._make_breadth_first_searcher(
-                                ancestor_all_unique)
+            ancestor_all_unique)
         if ancestor_all_unique:
             # We've seen these nodes in all the searchers, so we'll just go to
             # the next
@@ -605,7 +608,7 @@ class Graph(object):
         for searcher in unique_tip_searchers:
             common_to_all_unique_nodes.intersection_update(searcher.seen)
         common_to_all_unique_nodes.intersection_update(
-                                    all_unique_searcher.seen)
+            all_unique_searcher.seen)
         # Step all-unique less frequently than the other searchers.
         # In the common case, we don't need to spider out far here, so
         # avoid doing extra work.
@@ -692,7 +695,7 @@ class Graph(object):
             # These nodes are common ancestors of all unique nodes
             common_to_all_unique_nodes = self._find_nodes_common_to_all_unique(
                 unique_tip_searchers, all_unique_searcher, newly_seen_unique,
-                step_all_unique_counter==0)
+                step_all_unique_counter == 0)
             step_all_unique_counter = ((step_all_unique_counter + 1)
                                        % STEP_UNIQUE_SEARCHER_EVERY)
 
@@ -839,7 +842,7 @@ class Graph(object):
         if len(candidate_heads) < 2:
             return candidate_heads
         searchers = dict((c, self._make_breadth_first_searcher([c]))
-                          for c in candidate_heads)
+                         for c in candidate_heads)
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
         for searcher in viewvalues(active_searchers):
@@ -935,7 +938,7 @@ class Graph(object):
                     break
                 continue
             parent_ids = self.get_parent_map([next]).get(next, None)
-            if not parent_ids: # Ghost, nothing to search here
+            if not parent_ids:  # Ghost, nothing to search here
                 continue
             for parent_id in reversed(parent_ids):
                 # TODO: (performance) We see the parent at this point, but we
@@ -1032,6 +1035,7 @@ class Graph(object):
         if stop_keys is None:
             stop_keys = ()
         next_key = start_key
+
         def get_parents(key):
             try:
                 return self._parents_provider.get_parent_map([key])[key]
@@ -1076,8 +1080,8 @@ class Graph(object):
         """
         return ((upper_bound_revid is None or
                     self.is_ancestor(revid, upper_bound_revid)) and
-               (lower_bound_revid is None or
-                    self.is_ancestor(lower_bound_revid, revid)))
+                (lower_bound_revid is None or
+                     self.is_ancestor(lower_bound_revid, revid)))
 
     def _search_for_extra_common(self, common, searchers):
         """Make sure that unique nodes are genuinely unique.
@@ -1116,11 +1120,11 @@ class Graph(object):
         left_searcher = searchers[0]
         right_searcher = searchers[1]
         unique = left_searcher.seen.symmetric_difference(right_searcher.seen)
-        if not unique: # No unique nodes, nothing to do
+        if not unique:  # No unique nodes, nothing to do
             return
         total_unique = len(unique)
         unique = self._remove_simple_descendants(unique,
-                    self.get_parent_map(unique))
+                                                 self.get_parent_map(unique))
         simple_unique = len(unique)
 
         unique_searchers = []
@@ -1130,7 +1134,7 @@ class Graph(object):
             else:
                 parent_searcher = right_searcher
             revs_to_search = parent_searcher.find_seen_ancestors([revision_id])
-            if not revs_to_search: # XXX: This shouldn't be possible
+            if not revs_to_search:  # XXX: This shouldn't be possible
                 revs_to_search = [revision_id]
             searcher = self._make_breadth_first_searcher(revs_to_search)
             # We don't care about the starting nodes.
@@ -1147,12 +1151,12 @@ class Graph(object):
                 ancestor_all_unique = set(searcher.seen)
             else:
                 ancestor_all_unique = ancestor_all_unique.intersection(
-                                            searcher.seen)
+                    searcher.seen)
 
         trace.mutter('Started %d unique searchers for %d unique revisions',
                      simple_unique, total_unique)
 
-        while True: # If we have no more nodes we have nothing to do
+        while True:  # If we have no more nodes we have nothing to do
             newly_seen_common = set()
             for searcher in common_searchers:
                 newly_seen_common.update(searcher.step())
@@ -1185,7 +1189,7 @@ class Graph(object):
                 # If a 'common' node is an ancestor of all unique searchers, we
                 # can stop searching it.
                 stop_searching_common = ancestor_all_unique.intersection(
-                                            newly_seen_common)
+                    newly_seen_common)
                 if stop_searching_common:
                     for searcher in common_searchers:
                         searcher.stop_searching_any(stop_searching_common)
@@ -1244,18 +1248,18 @@ class Graph(object):
 
         # This is the same as the following loop. I don't know that it is any
         # faster.
-        ## simple_ancestors.difference_update(r for r, p_ids in parent_map.iteritems()
-        ##     if p_ids is not None and revisions.intersection(p_ids))
-        ## return simple_ancestors
+        # simple_ancestors.difference_update(r for r, p_ids in parent_map.iteritems()
+        # if p_ids is not None and revisions.intersection(p_ids))
+        # return simple_ancestors
 
         # Yet Another Way, invert the parent map (which can be cached)
         ## descendants = {}
-        ## for revision_id, parent_ids in parent_map.iteritems():
-        ##   for p_id in parent_ids:
+        # for revision_id, parent_ids in parent_map.iteritems():
+        # for p_id in parent_ids:
         ##       descendants.setdefault(p_id, []).append(revision_id)
-        ## for revision in revisions.intersection(descendants):
-        ##   simple_ancestors.difference_update(descendants[revision])
-        ## return simple_ancestors
+        # for revision in revisions.intersection(descendants):
+        # simple_ancestors.difference_update(descendants[revision])
+        # return simple_ancestors
         for revision, parent_ids in viewitems(parent_map):
             if parent_ids is None:
                 continue
@@ -1508,7 +1512,8 @@ class _BreadthFirstSearcher(object):
             # a ghost
             for parent_ids in viewvalues(parent_map):
                 all_parents.extend(parent_ids)
-            next_pending = all_seen.intersection(all_parents).difference(seen_ancestors)
+            next_pending = all_seen.intersection(
+                all_parents).difference(seen_ancestors)
             seen_ancestors.update(next_pending)
             next_pending.difference_update(not_searched_yet)
             pending = next_pending

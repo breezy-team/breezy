@@ -85,6 +85,7 @@ class TestInventoryCreateByApplyDelta(TestInventory):
     See test_inv which has comprehensive delta application tests for
     inventories, dirstate, and repository based inventories.
     """
+
     def test_add(self):
         inv = self.make_init_inventory()
         inv = inv.create_by_apply_delta([
@@ -111,7 +112,8 @@ class TestInventoryCreateByApplyDelta(TestInventory):
         self.assertEqual('a', inv.id2path(b'a-id'))
         a_ie = inv.get_entry(b'a-id')
         b_ie = self.make_file(a_ie.file_id, "b", a_ie.parent_id)
-        inv = inv.create_by_apply_delta([("a", "b", b"a-id", b_ie)], b'new-rev-2')
+        inv = inv.create_by_apply_delta(
+            [("a", "b", b"a-id", b_ie)], b'new-rev-2')
         self.assertEqual("b", inv.id2path(b'a-id'))
 
     def test_illegal(self):
@@ -188,7 +190,7 @@ class TestInventoryReads(TestInventory):
             ('sub/a', b'a-id'),
             ('zz.c', b'zzc-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries(
-            from_dir=b'src-id')])
+                from_dir=b'src-id')])
 
         # Test not recursing at the root level
         self.assertEqual([
@@ -198,7 +200,7 @@ class TestInventoryReads(TestInventory):
             ('src', b'src-id'),
             ('zz', b'zz-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries(
-            recursive=False)])
+                recursive=False)])
 
         # Test not recursing at a subdirectory level
         self.assertEqual([
@@ -207,7 +209,7 @@ class TestInventoryReads(TestInventory):
             ('sub', b'sub-id'),
             ('zz.c', b'zzc-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries(
-            from_dir=b'src-id', recursive=False)])
+                from_dir=b'src-id', recursive=False)])
 
     def test_iter_just_entries(self):
         inv = self.prepare_inv_with_nested_dirs()
@@ -251,8 +253,8 @@ class TestInventoryReads(TestInventory):
             ('src/sub/a', b'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=(b'a-id', b'zzc-id', b'doc-id', b'tree-root',
-                b'hello-id', b'bye-id', b'zz-id', b'src-id', b'makefile-id',
-                b'sub-id'))])
+                                   b'hello-id', b'bye-id', b'zz-id', b'src-id', b'makefile-id',
+                                   b'sub-id'))])
 
         self.assertEqual([
             ('Makefile', b'makefile-id'),
@@ -264,7 +266,7 @@ class TestInventoryReads(TestInventory):
             ('src/sub/a', b'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=(b'a-id', b'zzc-id', b'doc-id',
-                b'hello-id', b'bye-id', b'zz-id', b'makefile-id'))])
+                                   b'hello-id', b'bye-id', b'zz-id', b'makefile-id'))])
 
         self.assertEqual([
             ('Makefile', b'makefile-id'),
@@ -282,7 +284,7 @@ class TestInventoryReads(TestInventory):
             ('src/bye.c', b'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=(b'bye-id',))])
- 
+
 
 class TestInventoryFiltering(TestInventory):
 
@@ -292,7 +294,7 @@ class TestInventoryFiltering(TestInventory):
         self.assertEqual([
             ('', b'tree-root'),
             ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
-    
+
     def test_inv_filter_files(self):
         inv = self.prepare_inv_with_nested_dirs()
         new_inv = inv.filter([b'zz-id', b'hello-id', b'a-id'])
@@ -304,7 +306,7 @@ class TestInventoryFiltering(TestInventory):
             ('src/sub/a', b'a-id'),
             ('zz', b'zz-id'),
             ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
-    
+
     def test_inv_filter_dirs(self):
         inv = self.prepare_inv_with_nested_dirs()
         new_inv = inv.filter([b'doc-id', b'sub-id'])

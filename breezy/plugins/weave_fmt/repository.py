@@ -118,7 +118,8 @@ class AllInOneRepository(VersionedFileRepository):
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             self._text_store = get_store('text-store')
-        super(AllInOneRepository, self).__init__(_format, a_controldir, a_controldir._control_files)
+        super(AllInOneRepository, self).__init__(
+            _format, a_controldir, a_controldir._control_files)
 
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
@@ -161,12 +162,12 @@ class AllInOneRepository(VersionedFileRepository):
                            revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = VersionedFileCommitBuilder(self, parents, config, timestamp,
-            timezone, committer, revprops, revision_id, lossy=lossy)
+                                            timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
     def _inventory_add_lines(self, revision_id, parents, lines,
-        check_content=True):
+                             check_content=True):
         """Store lines in inv_vf and return the sha1 of the inventory."""
         present_parents = self.get_graph().get_parent_map(parents)
         final_parents = []
@@ -174,7 +175,7 @@ class AllInOneRepository(VersionedFileRepository):
             if parent in present_parents:
                 final_parents.append((parent,))
         return self.inventories.add_lines((revision_id,), final_parents, lines,
-            check_content=check_content)[0]
+                                          check_content=check_content)[0]
 
     def is_shared(self):
         """AllInOne repositories cannot be shared."""
@@ -201,7 +202,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def __init__(self, _format, a_controldir, control_files):
         super(WeaveMetaDirRepository, self).__init__(
-                _format, a_controldir, control_files)
+            _format, a_controldir, control_files)
         self._serializer = _format._serializer
 
     def _all_possible_ids(self):
@@ -245,7 +246,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
                            revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = VersionedFileCommitBuilder(self, parents, config, timestamp,
-            timezone, committer, revprops, revision_id, lossy=lossy)
+                                            timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -255,7 +256,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             return self.get_revision_reconcile(revision_id)
 
     def _inventory_add_lines(self, revision_id, parents, lines,
-        check_content=True):
+                             check_content=True):
         """Store lines in inv_vf and return the sha1 of the inventory."""
         present_parents = self.get_graph().get_parent_map(parents)
         final_parents = []
@@ -263,7 +264,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             if parent in present_parents:
                 final_parents.append((parent,))
         return self.inventories.add_lines((revision_id,), final_parents, lines,
-            check_content=check_content)[0]
+                                          check_content=check_content)[0]
 
 
 class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
@@ -303,7 +304,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(a_controldir.transport,
-            'branch-lock', lockable_files.TransportLock)
+                                                     'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
         transport = a_controldir.transport
@@ -312,7 +313,7 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
                             mode=a_controldir._get_dir_mode())
             transport.mkdir('weaves', mode=a_controldir._get_dir_mode())
             transport.put_bytes_non_atomic('inventory.weave', empty_weave,
-                mode=a_controldir._get_file_mode())
+                                           mode=a_controldir._get_file_mode())
         finally:
             control_files.unlock()
         repository = self.open(a_controldir, _found=True)
@@ -378,13 +379,13 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     def _get_revisions(self, repo_transport, repo):
         from .xml4 import serializer_v4
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v4, True, versionedfile.PrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                 serializer_v4, True, versionedfile.PrefixMapper(),
+                                 repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
         return SignatureTextStore(repo_transport.clone('revision-store'),
-            False, versionedfile.PrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                  False, versionedfile.PrefixMapper(),
+                                  repo.is_locked, repo.is_write_locked)
 
     def _get_texts(self, repo_transport, repo):
         return None
@@ -418,23 +419,23 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+                                                   weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            xml5.serializer_v5, False, versionedfile.PrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                 xml5.serializer_v5, False, versionedfile.PrefixMapper(),
+                                 repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
         return SignatureTextStore(repo_transport.clone('revision-store'),
-            False, versionedfile.PrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                  False, versionedfile.PrefixMapper(),
+                                  repo.is_locked, repo.is_write_locked)
 
     def _get_texts(self, repo_transport, repo):
         mapper = versionedfile.PrefixMapper()
         base_transport = repo_transport.clone('weaves')
         return versionedfile.ThunkedVersionedFiles(base_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+                                                   weave.WeaveFile, mapper, repo.is_locked)
 
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
@@ -449,6 +450,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     _versionedfile_class = weave.WeaveFile
     _matchingcontroldir = weave_bzrdir.BzrDirFormat6()
     supports_funky_characters = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -464,23 +466,23 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+                                                   weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            xml5.serializer_v5, False, versionedfile.HashPrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                 xml5.serializer_v5, False, versionedfile.HashPrefixMapper(),
+                                 repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
         return SignatureTextStore(repo_transport.clone('revision-store'),
-            False, versionedfile.HashPrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                  False, versionedfile.HashPrefixMapper(),
+                                  repo.is_locked, repo.is_write_locked)
 
     def _get_texts(self, repo_transport, repo):
         mapper = versionedfile.HashPrefixMapper()
         base_transport = repo_transport.clone('weaves')
         return versionedfile.ThunkedVersionedFiles(base_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+                                                   weave.WeaveFile, mapper, repo.is_locked)
 
 
 class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
@@ -504,6 +506,7 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -520,23 +523,23 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+                                                   weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            xml5.serializer_v5, True, versionedfile.HashPrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                 xml5.serializer_v5, True, versionedfile.HashPrefixMapper(),
+                                 repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
         return SignatureTextStore(repo_transport.clone('revision-store'),
-            True, versionedfile.HashPrefixMapper(),
-            repo.is_locked, repo.is_write_locked)
+                                  True, versionedfile.HashPrefixMapper(),
+                                  repo.is_locked, repo.is_write_locked)
 
     def _get_texts(self, repo_transport, repo):
         mapper = versionedfile.HashPrefixMapper()
         base_transport = repo_transport.clone('weaves')
         return versionedfile.ThunkedVersionedFiles(base_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+                                                   weave.WeaveFile, mapper, repo.is_locked)
 
     def initialize(self, a_controldir, shared=False):
         """Create a weave repository.
@@ -555,7 +558,8 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
                  ]
         utf8_files = [('format', self.get_format_string())]
 
-        self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
+        self._upload_blank_content(
+            a_controldir, dirs, files, utf8_files, shared)
         return self.open(a_controldir=a_controldir, _found=True)
 
     def open(self, a_controldir, _found=False, _override_transport=None):
@@ -572,9 +576,9 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
         else:
             repo_transport = a_controldir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+                                                     'lock', lockdir.LockDir)
         result = WeaveMetaDirRepository(_format=self, a_controldir=a_controldir,
-            control_files=control_files)
+                                        control_files=control_files)
         result.revisions = self._get_revisions(repo_transport, result)
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
@@ -614,8 +618,8 @@ class TextVersionedFiles(VersionedFiles):
             chunks = tuned_gzip.chunks_to_gzip(chunks)
         path = self._map(key)
         self._transport.put_file_non_atomic(
-                path, BytesIO(b''.join(chunks)),
-                create_parent_dir=True)
+            path, BytesIO(b''.join(chunks)),
+            create_parent_dir=True)
 
     def insert_record_stream(self, stream):
         adapters = {}
@@ -626,7 +630,7 @@ class TextVersionedFiles(VersionedFiles):
             # adapt to non-tuple interface
             if record.storage_kind == 'fulltext':
                 self.add_lines(record.key, None,
-                    osutils.split_lines(record.get_bytes_as('fulltext')))
+                               osutils.split_lines(record.get_bytes_as('fulltext')))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 try:
@@ -672,10 +676,10 @@ class RevisionTextStore(TextVersionedFiles):
     """Legacy thunk for format 4 repositories."""
 
     def __init__(self, transport, serializer, compressed, mapper, is_locked,
-        can_write):
+                 can_write):
         """Create a RevisionTextStore at transport with serializer."""
         TextVersionedFiles.__init__(self, transport, compressed, mapper,
-            is_locked, can_write)
+                                    is_locked, can_write)
         self._serializer = serializer
 
     def _load_text_parents(self, key):
@@ -729,7 +733,7 @@ class SignatureTextStore(TextVersionedFiles):
 
     def __init__(self, transport, compressed, mapper, is_locked, can_write):
         TextVersionedFiles.__init__(self, transport, compressed, mapper,
-            is_locked, can_write)
+                                    is_locked, can_write)
         self._ext = '.sig' + self._ext
 
     def get_parent_map(self, keys):
@@ -784,8 +788,8 @@ class InterWeaveRepo(InterSameDataRepository):
         try:
             return (isinstance(source._format, (RepositoryFormat5,
                                                 RepositoryFormat6,
-                                                RepositoryFormat7)) and
-                    isinstance(target._format, (RepositoryFormat5,
+                                                RepositoryFormat7))
+                    and isinstance(target._format, (RepositoryFormat5,
                                                 RepositoryFormat6,
                                                 RepositoryFormat7)))
         except AttributeError:
@@ -796,7 +800,8 @@ class InterWeaveRepo(InterSameDataRepository):
         with self.lock_write():
             # weave specific optimised path:
             try:
-                self.target.set_make_working_trees(self.source.make_working_trees())
+                self.target.set_make_working_trees(
+                    self.source.make_working_trees())
             except (errors.RepositoryUpgradeRequired, NotImplementedError):
                 pass
             # FIXME do not peek!
@@ -843,12 +848,12 @@ class InterWeaveRepo(InterSameDataRepository):
             # know we do not have a revision as that would be pointless.
             target_ids = set(self.target._all_possible_ids())
             possibly_present_revisions = target_ids.intersection(
-                    source_ids_set)
+                source_ids_set)
             actually_present_revisions = set(
                 self.target._eliminate_revisions_not_present(
                     possibly_present_revisions))
             required_revisions = source_ids_set.difference(
-                    actually_present_revisions)
+                actually_present_revisions)
             if revision_ids is not None:
                 # we used get_ancestry to determine source_ids then we are
                 # assured all revisions referenced are present as they are
@@ -874,4 +879,4 @@ InterRepository.register_optimiser(InterWeaveRepo)
 def get_extra_interrepo_test_combinations():
     from ...bzr import knitrepo
     return [(InterRepository, RepositoryFormat5(),
-        knitrepo.RepositoryFormatKnit3())]
+             knitrepo.RepositoryFormatKnit3())]

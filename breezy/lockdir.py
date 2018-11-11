@@ -124,19 +124,19 @@ from . import (
     )
 from .decorators import only_raises
 from .errors import (
-        DirectoryNotEmpty,
-        FileExists,
-        LockBreakMismatch,
-        LockBroken,
-        LockContention,
-        LockCorrupt,
-        LockFailed,
-        LockNotHeld,
-        NoSuchFile,
-        PathError,
-        ResourceBusy,
-        TransportError,
-        )
+    DirectoryNotEmpty,
+    FileExists,
+    LockBreakMismatch,
+    LockBroken,
+    LockContention,
+    LockCorrupt,
+    LockFailed,
+    LockNotHeld,
+    NoSuchFile,
+    PathError,
+    ResourceBusy,
+    TransportError,
+    )
 from .i18n import gettext
 from .osutils import format_delta, rand_chars, get_host_name
 from .sixish import (
@@ -172,7 +172,7 @@ class LockDir(lock.Lock):
     __INFO_NAME = '/info'
 
     def __init__(self, transport, path, file_modebits=0o644, dir_modebits=0o755,
-        extra_holder_info=None):
+                 extra_holder_info=None):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -273,14 +273,14 @@ class LockDir(lock.Lock):
         self._trace("after locking, info=%r", info)
         if info is None:
             raise LockFailed(self, "lock was renamed into place, but "
-                "now is missing!")
+                             "now is missing!")
         if info.get('nonce') != self.nonce:
             self._trace("rename succeeded, "
-                "but lock is still held by someone else")
+                        "but lock is still held by someone else")
             raise LockContention(self)
         self._lock_held = True
         self._trace("... lock succeeded after %dms",
-                (time.time() - start_time) * 1000)
+                    (time.time() - start_time) * 1000)
         return self.nonce
 
     def _handle_lock_contention(self, other_holder):
@@ -340,7 +340,7 @@ class LockDir(lock.Lock):
         # We'll rename the whole directory into place to get atomic
         # properties
         self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
-            info.to_bytes())
+                                            info.to_bytes())
         return tmpname
 
     @only_raises(LockNotHeld, LockBroken)
@@ -375,10 +375,10 @@ class LockDir(lock.Lock):
                 # deletion where we list the directory and remove everything
                 # within it.
                 self._trace("doing recursive deletion of non-empty directory "
-                        "%s", tmpname)
+                            "%s", tmpname)
                 self.transport.delete_tree(tmpname)
             self._trace("... unlock succeeded after %dms",
-                    (time.time() - start_time) * 1000)
+                        (time.time() - start_time) * 1000)
             result = lock.LockResult(self.transport.abspath(self.path),
                                      old_nonce)
             for hook in self.hooks['lock_released']:
@@ -406,7 +406,7 @@ class LockDir(lock.Lock):
             if ui.ui_factory.confirm_action(
                 u"Break %(lock_info)s",
                 'breezy.lockdir.break',
-                dict(lock_info=text_type(holder_info))):
+                    dict(lock_info=text_type(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
@@ -549,7 +549,7 @@ class LockDir(lock.Lock):
             raise LockContention(self)
         result = self._attempt_lock()
         hook_result = lock.LockResult(self.transport.abspath(self.path),
-                self.nonce)
+                                      self.nonce)
         for hook in self.hooks['lock_acquired']:
             hook(hook_result)
         return result
@@ -616,14 +616,14 @@ class LockDir(lock.Lock):
                     start = gettext('Lock owner changed for')
                 last_info = new_info
                 msg = gettext('{0} lock {1} {2}.').format(start, lock_url,
-                                                                    new_info)
+                                                          new_info)
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
-                                                    time.localtime(deadline))
+                                                 time.localtime(deadline))
                 if timeout > 0:
                     msg += '\n' + gettext(
-                             'Will continue to try until %s, unless '
-                             'you press Ctrl-C.') % deadline_str
+                        'Will continue to try until %s, unless '
+                        'you press Ctrl-C.') % deadline_str
                 msg += '\n' + gettext('See "brz help break-lock" for more.')
                 self._report_function(msg)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
@@ -733,7 +733,7 @@ class LockHeldInfo(object):
     def __unicode__(self):
         """Return a user-oriented description of this object."""
         d = self.to_readable_dict()
-        return ( gettext(
+        return (gettext(
             u'held by %(user)s on %(hostname)s (process #%(pid)s), '
             u'acquired %(time_ago)s') % d)
 
@@ -796,7 +796,7 @@ class LockHeldInfo(object):
         except ValueError as e:
             mutter('Corrupt lock info file: %r', lines)
             raise LockCorrupt("could not parse lock info file: " + str(e),
-                lines)
+                              lines)
         if stanza is None:
             # see bug 185013; we fairly often end up with the info file being
             # empty after an interruption; we could log a message here but
@@ -855,7 +855,7 @@ class LockHeldInfo(object):
             pid = int(pid_str)
         except ValueError:
             mutter("can't parse pid %r from %r"
-                % (pid_str, self))
+                   % (pid_str, self))
             return False
         return osutils.is_local_pid_dead(pid)
 

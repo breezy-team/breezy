@@ -54,7 +54,7 @@ class cmd_dump_btree(Command):
     takes_args = ['path']
     takes_options = [Option('raw', help='Write the uncompressed bytes out,'
                                         ' rather than the parsed tuples.'),
-                    ]
+                     ]
 
     def run(self, path, raw=False):
         dirname, basename = osutils.split(path)
@@ -90,7 +90,7 @@ class cmd_dump_btree(Command):
                 page_bytes = data
             self.outf.write('\nPage %d\n' % (page_idx,))
             if len(page_bytes) == 0:
-                self.outf.write('(empty)\n');
+                self.outf.write('(empty)\n')
             else:
                 decomp_bytes = zlib.decompress(page_bytes)
                 self.outf.write(decomp_bytes)
@@ -117,12 +117,13 @@ class cmd_dump_btree(Command):
             if PY3:
                 if refs_as_tuples is not None:
                     refs_as_tuples = tuple(
-                        tuple(tuple(r.decode('utf-8') for r in t1) for t1 in t2)
+                        tuple(tuple(r.decode('utf-8')
+                                    for r in t1) for t1 in t2)
                         for t2 in refs_as_tuples)
                 as_tuple = (
-                        tuple([r.decode('utf-8') for r in node[1]]),
-                        node[2].decode('utf-8'),
-                        refs_as_tuples)
+                    tuple([r.decode('utf-8') for r in node[1]]),
+                    node[2].decode('utf-8'),
+                    refs_as_tuples)
             else:
                 as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))

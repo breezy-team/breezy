@@ -101,10 +101,10 @@ class TestImport(TestCaseInTempDir):
         try:
             os.mkdir('project-0.1')
             if subdir:
-                prefix='project-0.1/'
+                prefix = 'project-0.1/'
                 archive_file.add('project-0.1')
             else:
-                prefix=''
+                prefix = ''
                 os.chdir('project-0.1')
             os.mkdir(prefix + 'junk')
             archive_file.add(prefix + 'junk')
@@ -131,10 +131,10 @@ class TestImport(TestCaseInTempDir):
         os.mkdir('project-0.2')
         try:
             if subdir:
-                prefix='project-0.2/'
+                prefix = 'project-0.2/'
                 archive_file.add('project-0.2')
             else:
-                prefix=''
+                prefix = ''
                 os.chdir('project-0.2')
 
             os.mkdir(prefix + 'junk')

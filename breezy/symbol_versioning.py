@@ -99,7 +99,7 @@ def deprecated_function(deprecation_version):
             from . import trace
             trace.mutter_callsite(4, "Deprecated function called")
             warn(deprecation_string(callable, deprecation_version),
-                DeprecationWarning, stacklevel=2)
+                 DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
         _populate_decorated(callable, deprecation_version, "function",
                             decorated_function)
@@ -135,7 +135,8 @@ def deprecated_method(deprecation_version):
                                        callable.__name__
                                        )
             trace.mutter_callsite(4, "Deprecated method called")
-            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
+            warn(deprecation_version %
+                 symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",
                             decorated_method)
@@ -175,7 +176,7 @@ def _decorate_docstring(callable, deprecation_version, label,
                                     + "\n"
                                     + "\n"
                                     + deprecation_version % ("This " + label)
-                                    + "\n")
+                                      + "\n")
     else:
         spaces = len(docstring_lines[-1])
         new_doc = callable.__doc__
@@ -214,11 +215,11 @@ class DeprecatedDict(dict):
     is_deprecated = True
 
     def __init__(self,
-        deprecation_version,
-        variable_name,
-        initial_value,
-        advice,
-        ):
+                 deprecation_version,
+                 variable_name,
+                 initial_value,
+                 advice,
+                 ):
         """Create a dict that warns when read or modified.
 
         :param deprecation_version: string for the warning format to raise,

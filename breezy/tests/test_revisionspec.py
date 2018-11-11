@@ -123,7 +123,6 @@ class TestRevisionSpecBase(TestRevisionSpec):
         self.assertEqual((self.tree.branch, None), spec.last_call)
 
 
-
 class TestOddRevisionSpec(TestRevisionSpec):
     """Test things that aren't normally thought of as revision specs"""
 
@@ -190,6 +189,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
 
     def test_append_dwim_revspec(self):
         original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+
         def reset_dwim_revspecs():
             RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
         self.addCleanup(reset_dwim_revspecs)
@@ -198,6 +198,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
 
     def test_append_lazy_dwim_revspec(self):
         original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+
         def reset_dwim_revspecs():
             RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
         self.addCleanup(reset_dwim_revspecs)
@@ -330,7 +331,6 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         wtb.commit('Commit two', rev_id=b'b@r-0-2')
         wtb.commit('Commit three', rev_id=b'b@r-0-3')
 
-
         self.assertEqual((1, b'a@r-0-1'),
                          spec_in_history('revno:1:a/', ba))
         # The argument of in_history should be ignored since it is
@@ -397,7 +397,8 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         revision_id = u'\N{SNOWMAN}'.encode('utf-8')
         self.tree.commit('unicode', rev_id=revision_id)
         self.assertInHistoryIs(3, revision_id, u'revid:\N{SNOWMAN}')
-        self.assertInHistoryIs(3, revision_id, 'revid:' + revision_id.decode('utf-8'))
+        self.assertInHistoryIs(3, revision_id, 'revid:' +
+                               revision_id.decode('utf-8'))
 
     def test_as_revision_id(self):
         self.assertAsRevisionId(b'r1', 'revid:r1')
@@ -499,8 +500,8 @@ class TestRevisionSpec_tag(TestRevisionSpec):
         # tags that don't exist give a specific message: arguably we should
         # just give InvalidRevisionSpec but I think this is more helpful
         self.assertRaises(errors.NoSuchTag,
-            self.get_in_history,
-            'tag:some-random-tag')
+                          self.get_in_history,
+                          'tag:some-random-tag')
 
     def test_as_revision_id(self):
         self.tree.branch.tags.set_tag('my-tag', b'r2')
@@ -517,7 +518,7 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
         new_tree = self.make_branch_and_tree('new_tree')
         new_tree.commit('Commit one', rev_id=b'new_r1',
-                        timestamp=time.time() - 60*60*24)
+                        timestamp=time.time() - 60 * 60 * 24)
         new_tree.commit('Commit two', rev_id=b'new_r2')
         new_tree.commit('Commit three', rev_id=b'new_r3')
 
@@ -543,7 +544,7 @@ class TestRevisionSpec_date(TestRevisionSpec):
     def test_day(self):
         now = datetime.datetime.now()
         self.assertInHistoryIs(2, b'new_r2',
-            'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
+                               'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
 
     def test_as_revision_id(self):
         self.assertAsRevisionId(b'new_r2', 'date:today')
@@ -660,7 +661,7 @@ class TestRevisionSpec_submit(TestRevisionSpec):
         self.assertInHistoryIs(None, b'alt_r2', 'submit:')
         self.tree.branch.set_parent('bogus')
         self.assertRaises(errors.NotBranchError, self.get_in_history,
-            'submit:')
+                          'submit:')
         # submit branch overrides parent branch
         self.tree.branch.set_submit_branch('tree2')
         self.assertInHistoryIs(None, b'alt_r2', 'submit:')
@@ -680,8 +681,8 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
-            "Requested revision: 'mainline:revid:alt_r22' does not exist in"
-            " branch: ")
+                              "Requested revision: 'mainline:revid:alt_r22' does not exist in"
+                              " branch: ")
 
     def test_in_history(self):
         self.assertInHistoryIs(2, b'r2', 'mainline:revid:alt_r2')
@@ -710,37 +711,37 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
-            r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
-            " exist in branch: .*\nLine 3 has not been committed.")
+                              r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
+                              " exist in branch: .*\nLine 3 has not been committed.")
 
     def test_non_existent_line(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:4')
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
-            r"Requested revision: \'annotate:annotate-tree/file1:4\' does not"
-            " exist in branch: .*\nNo such line: 4")
+                              r"Requested revision: \'annotate:annotate-tree/file1:4\' does not"
+                              " exist in branch: .*\nNo such line: 4")
 
     def test_invalid_line(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:q')
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
-            r"Requested revision: \'annotate:annotate-tree/file1:q\' does not"
-            " exist in branch: .*\nNo such line: q")
+                              r"Requested revision: \'annotate:annotate-tree/file1:q\' does not"
+                              " exist in branch: .*\nNo such line: q")
 
     def test_no_such_file(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file2:1')
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
-            r"Requested revision: \'annotate:annotate-tree/file2:1\' does not"
-            " exist in branch: .*\nFile 'file2' is not versioned")
+                              r"Requested revision: \'annotate:annotate-tree/file2:1\' does not"
+                              " exist in branch: .*\nFile 'file2' is not versioned")
 
     def test_no_such_file_with_colon(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/fi:le2:1')
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
-            r"Requested revision: \'annotate:annotate-tree/fi:le2:1\' does not"
-            " exist in branch: .*\nFile 'fi:le2' is not versioned")
+                              r"Requested revision: \'annotate:annotate-tree/fi:le2:1\' does not"
+                              " exist in branch: .*\nFile 'fi:le2' is not versioned")

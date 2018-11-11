@@ -48,7 +48,6 @@ from ..transport import (
     )
 
 
-
 class MemoryStat(object):
 
     def __init__(self, size, kind, perms):
@@ -81,7 +80,7 @@ class MemoryTransport(transport.Transport):
         self._scheme = url[:split]
         self._cwd = url[split:]
         # dictionaries from absolute path to file mode
-        self._dirs = {'/':None}
+        self._dirs = {'/': None}
         self._symlinks = {}
         self._files = {}
         self._locks = {}
@@ -129,9 +128,9 @@ class MemoryTransport(transport.Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return ((_abspath in self._files) or
-                (_abspath in self._dirs) or
-                (_abspath in self._symlinks))
+        return ((_abspath in self._files)
+                or (_abspath in self._dirs)
+                or (_abspath in self._symlinks))
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -170,7 +169,7 @@ class MemoryTransport(transport.Transport):
         self._check_parent(_abspath)
         if _abspath in self._dirs:
             raise FileExists(relpath)
-        self._dirs[_abspath]=mode
+        self._dirs[_abspath] = mode
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
@@ -254,7 +253,8 @@ class MemoryTransport(transport.Transport):
                                       relpath)
         for path in self._dirs:
             if path.startswith(_abspath + '/') and path != _abspath:
-                self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
+                self._translate_error(
+                    IOError(errno.ENOTEMPTY, relpath), relpath)
         if not _abspath in self._dirs:
             raise NoSuchFile(relpath)
         del self._dirs[_abspath]
@@ -292,7 +292,7 @@ class MemoryTransport(transport.Transport):
             if i == '..':
                 if not r:
                     raise ValueError("illegal relpath %r under %r"
-                        % (relpath, self._cwd))
+                                     % (relpath, self._cwd))
                 r = r[:-1]
             elif i == '.' or i == '':
                 pass
@@ -334,10 +334,11 @@ class MemoryServer(transport.Server):
     """Server for the MemoryTransport for testing with."""
 
     def start_server(self):
-        self._dirs = {'/':None}
+        self._dirs = {'/': None}
         self._files = {}
         self._locks = {}
         self._scheme = "memory+%s:///" % id(self)
+
         def memory_factory(url):
             from . import memory
             result = memory.MemoryTransport(url)

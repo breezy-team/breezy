@@ -21,7 +21,6 @@ import os
 from breezy.tests.per_tree import TestCaseWithTree
 
 
-
 class TestGetFileWithStat(TestCaseWithTree):
 
     def test_get_file_with_stat_id_only(self):

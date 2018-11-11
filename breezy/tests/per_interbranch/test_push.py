@@ -47,7 +47,7 @@ from . import (
 from .. import test_server
 
 
-# These tests are based on similar tests in 
+# These tests are based on similar tests in
 # breezy.tests.per_branch.test_push.
 
 
@@ -86,7 +86,8 @@ class TestPush(TestCaseWithInterBranch):
         mine = self.make_from_branch_and_tree('mine')
         p1 = mine.commit('1st post', allow_pointless=True)
         try:
-            target = self.sprout_to(mine.controldir, 'target').open_workingtree()
+            target = self.sprout_to(
+                mine.controldir, 'target').open_workingtree()
         except errors.NoRoundtrippingSupport:
             raise tests.TestNotApplicable(
                 'lossless push between %r and %r not supported' %
@@ -117,7 +118,8 @@ class TestPush(TestCaseWithInterBranch):
         rev1 = checkout.commit('master')
 
         try:
-            other_bzrdir = self.sprout_from(master_tree.branch.controldir, 'other')
+            other_bzrdir = self.sprout_from(
+                master_tree.branch.controldir, 'other')
         except errors.NoRoundtrippingSupport:
             raise tests.TestNotApplicable(
                 'lossless push between %r and %r not supported' %
@@ -144,7 +146,7 @@ class TestPush(TestCaseWithInterBranch):
         master_tree.controldir.destroy_branch()
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
-                other.branch.push, checkout.branch)
+                          other.branch.push, checkout.branch)
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
@@ -157,7 +159,8 @@ class TestPush(TestCaseWithInterBranch):
 
         try:
             with source.branch.lock_read(), target.lock_write():
-                source.branch.push(target, stop_revision=source.last_revision())
+                source.branch.push(
+                    target, stop_revision=source.last_revision())
         except errors.NoRoundtrippingSupport:
             raise tests.TestNotApplicable(
                 'lossless push between %r and %r not supported' %
@@ -174,7 +177,8 @@ class TestPush(TestCaseWithInterBranch):
 
         try:
             with source.branch.lock_read(), target.lock_write():
-                source.branch.push(target, stop_revision=source.last_revision(), lossy=True)
+                source.branch.push(
+                    target, stop_revision=source.last_revision(), lossy=True)
         except errors.LossyPushToSameVCS:
             raise tests.TestNotApplicable(
                 'push between branches of same format')
@@ -202,7 +206,8 @@ class TestPush(TestCaseWithInterBranch):
             if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir = controldir.ControlDir.open(self.get_vfs_only_url('repo/tree'))
+                local_controldir = controldir.ControlDir.open(
+                    self.get_vfs_only_url('repo/tree'))
                 tree = local_controldir.create_workingtree()
             else:
                 tree = a_branch.create_checkout('repo/tree', lightweight=True)
@@ -270,7 +275,7 @@ class TestPush(TestCaseWithInterBranch):
             ('add', ('filename', None, 'file', b'content\n'))])
         revid2 = builder.build_snapshot([revid1], [])
         revid3 = builder.build_snapshot([revid2],
-            [('modify', ('filename', b'new-content\n'))])
+                                        [('modify', ('filename', b'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
@@ -336,7 +341,7 @@ class TestPush(TestCaseWithInterBranch):
             [b'Repository.insert_stream_1.19', b'Repository.insert_stream_1.19',
              b'Branch.set_last_revision_info', b'get', b'Branch.unlock'])
         self.assertThat(calls_after_insert_stream,
-            MatchesAny(bzr_core_trace, bzr_loom_trace))
+                        MatchesAny(bzr_core_trace, bzr_loom_trace))
 
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
@@ -344,7 +349,7 @@ class TestPush(TestCaseWithInterBranch):
         self.overrideAttr(vf_repository.InterVersionedFileRepository,
                           '_walk_to_common_revisions_batch_size', 1)
         self.overrideAttr(SmartServerRepositoryGetParentMap,
-                            'no_extra_results', True)
+                          'no_extra_results', True)
 
 
 class TestPushHook(TestCaseWithInterBranch):

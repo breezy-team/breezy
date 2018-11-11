@@ -136,6 +136,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
         # wsgi.RelpathSetter is WSGI "middleware" to set the 'breezy.relpath'
         # variable.
         calls = []
+
         def fake_app(environ, start_response):
             calls.append(environ['breezy.relpath'])
         wrapped_app = wsgi.RelpathSetter(
@@ -189,6 +190,7 @@ class TestWSGI(tests.TestCaseInTempDir, WSGITestMixin):
     def test_incomplete_request(self):
         transport = FakeTransport()
         wsgi_app = wsgi.SmartWSGIApp(transport)
+
         def make_request(transport, write_func, bytes, root_client_path):
             request = IncompleteRequest(transport, write_func)
             request.accept_bytes(bytes)
@@ -326,4 +328,3 @@ class IncompleteRequest(FakeRequest):
     def next_read_size(self):
         # this request always asks for more
         return 1
-

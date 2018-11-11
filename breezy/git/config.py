@@ -22,6 +22,7 @@ from .. import (
     config,
     )
 
+
 class GitBranchConfig(config.BranchConfig):
     """BranchConfig that uses locations.conf in place of branch.conf"""
 
@@ -34,10 +35,10 @@ class GitBranchConfig(config.BranchConfig):
         return "<%s of %r>" % (self.__class__.__name__, self.branch)
 
     def set_user_option(self, name, value, store=config.STORE_BRANCH,
-            warn_masked=False):
+                        warn_masked=False):
         """Force local to True"""
         config.BranchConfig.set_user_option(self, name, value,
-            store=config.STORE_LOCATION, warn_masked=warn_masked)
+                                            store=config.STORE_LOCATION, warn_masked=warn_masked)
 
     def _get_user_id(self):
         # TODO: Read from ~/.gitconfig
