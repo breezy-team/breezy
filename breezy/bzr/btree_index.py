@@ -317,8 +317,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
                         optimize_for_size = self._optimize_for_size
                     else:
                         optimize_for_size = False
-                    internal_row.writer = chunk_writer.ChunkWriter(length, 0,
-                                                                   optimize_for_size=optimize_for_size)
+                    internal_row.writer = chunk_writer.ChunkWriter(
+                        length, 0, optimize_for_size=optimize_for_size)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET
                                               + b"%d\n" % rows[pos + 1].nodes)
@@ -326,8 +326,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             length = _PAGE_SIZE
             if rows[-1].nodes == 0:
                 length -= _RESERVED_HEADER_BYTES  # padded
-            rows[-1].writer = chunk_writer.ChunkWriter(length,
-                                                       optimize_for_size=self._optimize_for_size)
+            rows[-1].writer = chunk_writer.ChunkWriter(
+                length, optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
             # if we failed to write, despite having an empty page to write to,
@@ -400,8 +400,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
             key_count += 1
-            string_key, line = _btree_serializer._flatten_node(node,
-                                                               self.reference_lists)
+            string_key, line = _btree_serializer._flatten_node(
+                node, self.reference_lists)
             self._add_key(string_key, line, rows,
                           allow_optimize=allow_optimize)
         for row in reversed(rows):
@@ -420,7 +420,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
             result = BytesIO()
         result.writelines(lines)
         position = sum(map(len, lines))
-        root_row = True
         if position > _RESERVED_HEADER_BYTES:
             raise AssertionError("Could not fit the header in the"
                                  " reserved space: %d > %d"
@@ -465,8 +464,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             efficient order for the index (in this case dictionary hash order).
         """
         if 'evil' in debug.debug_flags:
-            trace.mutter_callsite(3,
-                                  "iter_all_entries scales with size of history.")
+            trace.mutter_callsite(
+                3, "iter_all_entries scales with size of history.")
         # Doing serial rather than ordered would be faster; but this shouldn't
         # be getting called routinely anyway.
         iterators = [self._iter_mem_nodes()]
@@ -481,8 +480,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
         """Iterate over keys within the index.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (index, key, value, reference_lists). There is no
-            defined order for the result iteration - it will be in the most
+        :return: An iterable of (index, key, value, reference_lists). There is
+            no defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """
         keys = set(keys)
@@ -582,8 +581,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
         For InMemoryGraphIndex the estimate is exact.
         """
-        return len(self._nodes) + sum(backing.key_count() for backing in
-                                      self._backing_indices if backing is not None)
+        return len(self._nodes) + sum(
+            backing.key_count()
+            for backing in self._backing_indices
+            if backing is not None)
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""
@@ -605,8 +606,8 @@ class _LeafNode(dict):
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
-        key_list = _btree_serializer._parse_leaf_lines(bytes,
-                                                       key_length, ref_list_length)
+        key_list = _btree_serializer._parse_leaf_lines(
+            bytes, key_length, ref_list_length)
         if key_list:
             self.min_key = key_list[0][0]
             self.max_key = key_list[-1][0]
@@ -986,15 +987,16 @@ class BTreeGraphIndex(object):
     def iter_all_entries(self):
         """Iterate over all keys within the index.
 
-        :return: An iterable of (index, key, value) or (index, key, value, reference_lists).
+        :return: An iterable of (index, key, value) or
+            (index, key, value, reference_lists).
             The former tuple is used when there are no reference lists in the
             index, making the API compatible with simple key:value index types.
             There is no defined order for the result iteration - it will be in
             the most efficient order for the index.
         """
         if 'evil' in debug.debug_flags:
-            trace.mutter_callsite(3,
-                                  "iter_all_entries scales with size of history.")
+            trace.mutter_callsite(
+                3, "iter_all_entries scales with size of history.")
         if not self.key_count():
             return
         if self._row_offsets[-1] == 1:
@@ -1183,7 +1185,6 @@ class BTreeGraphIndex(object):
                 else:
                     needed_keys.append(key)
 
-        last_key = None
         needed_keys = keys
         if not needed_keys:
             return
@@ -1313,7 +1314,8 @@ class BTreeGraphIndex(object):
                             # LeafNode
                             parents_not_on_page.add(key)
                         else:
-                            # assert key != node.min_key and key != node.max_key
+                            # assert (key != node.min_key and
+                            #         key != node.max_key)
                             # If it was going to be present, it would be on
                             # *this* page, so mark it missing.
                             missing_keys.add(key)
@@ -1501,7 +1503,8 @@ class BTreeGraphIndex(object):
                     self._size = num_bytes - base_offset
                     # the whole thing should be parsed out of 'bytes'
                     ranges = [(start, min(_PAGE_SIZE, num_bytes - start))
-                              for start in range(base_offset, num_bytes, _PAGE_SIZE)]
+                              for start in range(
+                                  base_offset, num_bytes, _PAGE_SIZE)]
                     break
             else:
                 if offset > self._size:

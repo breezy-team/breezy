@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from .. import (
     cache_utf8,
     errors,
+    osutils,
     )
 from . import (
     inventory,
@@ -77,9 +78,10 @@ class Serializer_v5(xml6.Serializer_v6):
                 raise errors.DuplicateFileId(ie.file_id,
                                              byid[ie.file_id])
             if ie.name in parent.children:
-                raise errors.BzrError("%s is already versioned"
-                                      % (osutils.pathjoin(inv.id2path(parent_id),
-                                                          ie.name).encode('utf-8'),))
+                raise errors.BzrError(
+                    "%s is already versioned" % (
+                        osutils.pathjoin(
+                            inv.id2path(parent_id), ie.name).encode('utf-8'),))
             parent.children[ie.name] = ie
             byid[ie.file_id] = ie
         if revision_id is not None:

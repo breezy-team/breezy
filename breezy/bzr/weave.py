@@ -160,18 +160,6 @@ class WeaveTextDiffers(WeaveError):
         self.weave_b = weave_b
 
 
-class WeaveTextDiffers(WeaveError):
-
-    _fmt = ("Weaves differ on text content. Revision:"
-            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
-
-    def __init__(self, revision_id, weave_a, weave_b):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave_a = weave_a
-        self.weave_b = weave_b
-
-
 class WeaveContentFactory(ContentFactory):
     """Content factory for streaming from weaves.
 
@@ -309,7 +297,8 @@ class Weave(VersionedFile):
         else:
             self._matcher = matcher
         if get_scope is None:
-            def get_scope(): return None
+            def get_scope():
+                return None
         self._get_scope = get_scope
         self._scope = get_scope()
         self._access_mode = access_mode
@@ -435,8 +424,9 @@ class Weave(VersionedFile):
             parents = [parent[0] for parent in record.parents]
             if (record.storage_kind == 'fulltext' or
                     record.storage_kind == 'chunked'):
-                self.add_lines(record.key[0], parents,
-                               osutils.chunks_to_lines(record.get_bytes_as('chunked')))
+                self.add_lines(
+                    record.key[0], parents,
+                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 try:
@@ -463,7 +453,8 @@ class Weave(VersionedFile):
         return idx
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks, nostore_sha, random_id, check_content):
+                   left_matching_blocks, nostore_sha, random_id,
+                   check_content):
         """See VersionedFile.add_lines."""
         idx = self._add(version_id, lines, list(map(self._lookup, parents)),
                         nostore_sha=nostore_sha)
@@ -501,8 +492,8 @@ class Weave(VersionedFile):
         self._check_versions(parents)
         new_version = len(self._parents)
 
-        # if we abort after here the (in-memory) weave will be corrupt because only
-        # some fields are updated
+        # if we abort after here the (in-memory) weave will be corrupt because
+        # only some fields are updated
         # XXX: FIXME implement a succeed-or-fail of the rest of this routine.
         #      - Robert Collins 20060226
         self._parents.append(parents[:])
@@ -556,14 +547,14 @@ class Weave(VersionedFile):
         s = self._matcher(None, basis_lines, lines)
 
         # offset gives the number of lines that have been inserted
-        # into the weave up to the current point; if the original edit instruction
-        # says to change line A then we actually change (A+offset)
+        # into the weave up to the current point; if the original edit
+        # instruction says to change line A then we actually change (A+offset)
         offset = 0
 
         for tag, i1, i2, j1, j2 in s.get_opcodes():
-            # i1,i2 are given in offsets within basis_lines; we need to map them
-            # back to offsets within the entire weave
-            # print 'raw match', tag, i1, i2, j1, j2
+            # i1,i2 are given in offsets within basis_lines; we need to map
+            # them back to offsets within the entire weave print 'raw match',
+            # tag, i1, i2, j1, j2
             if tag == 'equal':
                 continue
             i1 = basis_lineno[i1]
@@ -634,7 +625,8 @@ class Weave(VersionedFile):
         if version_ids is None:
             version_ids = self.versions()
         version_ids = set(version_ids)
-        for lineno, inserted, deletes, line in self._walk_internal(version_ids):
+        for lineno, inserted, deletes, line in self._walk_internal(
+                version_ids):
             if inserted not in version_ids:
                 continue
             if not line.endswith(b'\n'):
@@ -653,7 +645,6 @@ class Weave(VersionedFile):
         for l in self._weave:
             if l.__class__ == tuple:
                 c, v = l
-                isactive = None
                 if c == b'{':
                     istack.append(self._names[v])
                 elif c == b'}':
@@ -672,8 +663,8 @@ class Weave(VersionedFile):
             raise WeaveFormatError("unclosed insertion blocks "
                                    "at end of weave: %s" % istack)
         if dset:
-            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
-                                   % dset)
+            raise WeaveFormatError(
+                "unclosed deletion blocks at end of weave: %s" % dset)
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
@@ -687,7 +678,8 @@ class Weave(VersionedFile):
         inc_b = set(self.get_ancestry([ver_b]))
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in self._walk_internal([ver_a, ver_b]):
+        for lineno, insert, deleteset, line in self._walk_internal(
+                [ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
@@ -744,8 +736,6 @@ class Weave(VersionedFile):
 
         result = []
 
-        WFE = WeaveFormatError
-
         # wow.
         #  449       0   4474.6820   2356.5590   breezy.weave:556(_extract)
         #  +285282   0   1676.8040   1676.8040   +<isinstance>
@@ -767,8 +757,8 @@ class Weave(VersionedFile):
         # +71352     0    354.9980    354.9980   +<method 'append' of 'list'
         #                                          objects>
         # - a 5% win, or possibly just noise. However with large istacks that
-        # 'in' test could dominate, so I'm leaving this change in place -
-        # when its fast enough to consider profiling big datasets we can review.
+        # 'in' test could dominate, so I'm leaving this change in place - when
+        # its fast enough to consider profiling big datasets we can review.
 
         for l in self._weave:
             if l.__class__ == tuple:
@@ -798,8 +788,8 @@ class Weave(VersionedFile):
             raise WeaveFormatError("unclosed insertion blocks "
                                    "at end of weave: %s" % istack)
         if dset:
-            raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
-                                   % dset)
+            raise WeaveFormatError(
+                "unclosed deletion blocks at end of weave: %s" % dset)
         return result
 
     def _maybe_lookup(self, name_or_index):
@@ -837,8 +827,7 @@ class Weave(VersionedFile):
 
     def num_versions(self):
         """How many versions are in this weave?"""
-        l = len(self._parents)
-        return l
+        return len(self._parents)
 
     __len__ = num_versions
 
@@ -851,8 +840,9 @@ class Weave(VersionedFile):
             if inclusions:
                 inclusions.sort()
                 if inclusions[-1] >= version:
-                    raise WeaveFormatError("invalid included version %d for index %d"
-                                           % (inclusions[-1], version))
+                    raise WeaveFormatError(
+                        "invalid included version %d for index %d"
+                        % (inclusions[-1], version))
 
         # try extracting all versions; parallel extraction is used
         nv = self.num_versions()
@@ -891,7 +881,8 @@ class Weave(VersionedFile):
                 # The active inclusion must be an ancestor,
                 # and no ancestors must have deleted this line,
                 # because we don't support resurrection.
-                if (insert in name_inclusions) and not (deleteset & name_inclusions):
+                if ((insert in name_inclusions) and
+                        not (deleteset & name_inclusions)):
                     sha1s[name].update(line)
 
         for i in range(nv):
@@ -941,8 +932,9 @@ class Weave(VersionedFile):
             n1 = {self._names[i] for i in self_parents}
             n2 = {other._names[i] for i in other_parents}
             if not self._compatible_parents(n1, n2):
-                raise WeaveParentMismatch("inconsistent parents "
-                                          "for version {%s}: %s vs %s" % (name, n1, n2))
+                raise WeaveParentMismatch(
+                    "inconsistent parents "
+                    "for version {%s}: %s vs %s" % (name, n1, n2))
             else:
                 return True         # ok!
         else:
@@ -970,7 +962,8 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
 
-    def __init__(self, name, transport, filemode=None, create=False, access_mode='w', get_scope=None):
+    def __init__(self, name, transport, filemode=None, create=False,
+                 access_mode='w', get_scope=None):
         """Create a WeaveFile.
 
         :param create: If not True, only open an existing knit.
@@ -989,12 +982,13 @@ class WeaveFile(Weave):
             self._save()
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-                   left_matching_blocks, nostore_sha, random_id, check_content):
+                   left_matching_blocks, nostore_sha, random_id,
+                   check_content):
         """Add a version and save the weave."""
         self.check_not_reserved_id(version_id)
-        result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
-                                                   parent_texts, left_matching_blocks, nostore_sha, random_id,
-                                                   check_content)
+        result = super(WeaveFile, self)._add_lines(
+            version_id, parents, lines, parent_texts, left_matching_blocks,
+            nostore_sha, random_id, check_content)
         self._save()
         return result
 

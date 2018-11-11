@@ -217,8 +217,8 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
             # Performance is equivalent once you use cache_utf8. *However*
             # this makes the serialized texts incompatible with old versions
             # of bzr. So no net gain. (Perhaps the read code would handle utf8
-            # better than entity escapes, but cElementTree seems to do just fine
-            # either way)
+            # better than entity escapes, but cElementTree seems to do just
+            # fine either way)
             text = _unicode_re.sub(
                 _unicode_escape_replace, unicode_or_utf8_str).encode() + b'"'
         else:
