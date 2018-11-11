@@ -253,10 +253,10 @@ class WriteGroup(object):
     def __init__(self, repository, suppress_errors=False):
         self.repository = repository
         self._suppress_errors = suppress_errors
-        return self
 
     def __enter__(self):
         self.repository.start_write_group()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type:
