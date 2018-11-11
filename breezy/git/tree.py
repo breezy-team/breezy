@@ -389,7 +389,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if self.tree is None:
             return
-        if from_dir is None:
+        if from_dir is None or from_dir == '.':
             from_dir = u""
         (store, mode, hexsha) = self._lookup_path(from_dir)
         if mode is None: # Root

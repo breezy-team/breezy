@@ -746,7 +746,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_basis(path, stat_result)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
-        if from_dir is None:
+        if from_dir is None or from_dir == '.':
             from_dir = u""
         dir_ids = {}
         fk_entries = {'directory': tree.TreeDirectory,

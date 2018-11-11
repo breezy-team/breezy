@@ -2214,6 +2214,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         """See WorkingTree.list_files."""
         # XXX This should behave like WorkingTree.list_files, but is really
         # more like RevisionTree.list_files.
+        if from_dir == '.':
+            from_dir = None
         if recursive:
             prefix = None
             if from_dir:
