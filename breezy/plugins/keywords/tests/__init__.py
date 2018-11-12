@@ -15,3 +15,5 @@
 #
 
 """Tests for bzr-keywords."""
+
+from __future__ import absolute_import
