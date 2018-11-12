@@ -149,7 +149,7 @@ class TestRemoteGitBranch(TestCaseWithTransport):
                          newbranch.last_revision())
         newbranch.set_last_revision_info(
             1, newbranch.lookup_foreign_revision_id(c1))
-        self.assertEqual(c1, self.remote_real.refs['refs/heads/newbranch'])
+        self.assertEqual(c1, self.remote_real.refs[b'refs/heads/newbranch'])
         self.assertEqual(newbranch.last_revision(),
                          newbranch.lookup_foreign_revision_id(c1))
 
