@@ -972,9 +972,11 @@ class TestTestResult(tests.TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def stopTestRun(self): pass
+            def stopTestRun(self):
+                pass
 
-            def report_tests_starting(self): pass
+            def report_tests_starting(self):
+                pass
 
             def addNotSupported(self, test, feature):
                 self._call = test, feature
@@ -1020,7 +1022,8 @@ class TestTestResult(tests.TestCase):
         class InstrumentedTestResult(tests.ExtendedTestResult):
             calls = 0
 
-            def startTests(self): self.calls += 1
+            def startTests(self):
+                self.calls += 1
         result = InstrumentedTestResult(None, None, None, None)
 
         def test_function():
@@ -1034,7 +1037,8 @@ class TestTestResult(tests.TestCase):
         class InstrumentedTestResult(tests.ExtendedTestResult):
             calls = 0
 
-            def startTests(self): self.calls += 1
+            def startTests(self):
+                self.calls += 1
         result = InstrumentedTestResult(None, None, None, None)
         suite = unittest.TestSuite([
             unittest.FunctionTestCase(lambda: None),
@@ -1080,22 +1084,22 @@ class TestRunner(tests.TestCase):
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
-        result = self.run_test_runner(runner, test)
-        lines = stream.getvalue().splitlines()
-        self.assertContainsRe(stream.getvalue(),
-                              '(?sm)^brz selftest.*$'
-                              '.*'
-                              '^======================================================================\n'
-                              '^FAIL: failing_test\n'
-                              '^----------------------------------------------------------------------\n'
-                              'Traceback \\(most recent call last\\):\n'
-                              '  .*'  # File .*, line .*, in failing_test' - but maybe not from .pyc
-                              '    raise AssertionError\\(\'foo\'\\)\n'
-                              '.*'
-                              '^----------------------------------------------------------------------\n'
-                              '.*'
-                              'FAILED \\(failures=1, known_failure_count=1\\)'
-                              )
+        self.run_test_runner(runner, test)
+        self.assertContainsRe(
+            stream.getvalue(),
+            '(?sm)^brz selftest.*$'
+            '.*'
+            '^======================================================================\n'
+            '^FAIL: failing_test\n'
+            '^----------------------------------------------------------------------\n'
+            'Traceback \\(most recent call last\\):\n'
+            '  .*'  # File .*, line .*, in failing_test' - but maybe not from .pyc
+            '    raise AssertionError\\(\'foo\'\\)\n'
+            '.*'
+            '^----------------------------------------------------------------------\n'
+            '.*'
+            'FAILED \\(failures=1, known_failure_count=1\\)'
+            )
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in
@@ -1106,7 +1110,7 @@ class TestRunner(tests.TestCase):
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
-        result = self.run_test_runner(runner, test)
+        self.run_test_runner(runner, test)
         self.assertContainsRe(stream.getvalue(),
                               '\n'
                               '-*\n'
@@ -1119,7 +1123,7 @@ class TestRunner(tests.TestCase):
             def test_truth(self):
                 self.expectFailure("No absolute truth", self.assertTrue, True)
         runner = tests.TextTestRunner(stream=StringIO())
-        result = self.run_test_runner(runner, Test("test_truth"))
+        self.run_test_runner(runner, Test("test_truth"))
         self.assertContainsRe(runner.stream.getvalue(),
                               "=+\n"
                               "FAIL: \\S+\\.test_truth\n"
@@ -1147,7 +1151,7 @@ class TestRunner(tests.TestCase):
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream,
                                       result_decorators=[LoggingDecorator])
-        result = self.run_test_runner(runner, test)
+        self.run_test_runner(runner, test)
         self.assertLength(1, calls)
 
     def test_skipped_test(self):
@@ -1228,10 +1232,12 @@ class TestRunner(tests.TestCase):
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
         class Feature1(features.Feature):
-            def _probe(self): return False
+            def _probe(self):
+                return False
 
         class Feature2(features.Feature):
-            def _probe(self): return False
+            def _probe(self):
+                return False
         # create sample tests
         test1 = SampleTestCase('_test_pass')
         test1._test_needs_features = [Feature1()]
@@ -1242,7 +1248,7 @@ class TestRunner(tests.TestCase):
         test.addTest(test2)
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
-        result = self.run_test_runner(runner, test)
+        self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertEqual([
             'OK',
@@ -1260,7 +1266,7 @@ class TestRunner(tests.TestCase):
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream, verbosity=2)
         # Need to use the CountingDecorator as that's what sets num_tests
-        result = self.run_test_runner(runner, tests.CountingDecorator(suite))
+        self.run_test_runner(runner, tests.CountingDecorator(suite))
         self.assertStartsWith(stream.getvalue(), "running 2 tests")
 
     def test_startTestRun(self):
@@ -1275,7 +1281,7 @@ class TestRunner(tests.TestCase):
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream,
                                       result_decorators=[LoggingDecorator])
-        result = self.run_test_runner(runner, test)
+        self.run_test_runner(runner, test)
         self.assertLength(1, calls)
 
     def test_stopTestRun(self):
@@ -1290,7 +1296,7 @@ class TestRunner(tests.TestCase):
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream,
                                       result_decorators=[LoggingDecorator])
-        result = self.run_test_runner(runner, test)
+        self.run_test_runner(runner, test)
         self.assertLength(1, calls)
 
     def test_unicode_test_output_on_ascii_stream(self):
@@ -1306,8 +1312,9 @@ class TestRunner(tests.TestCase):
             bio = out = StringIO()
         self.overrideAttr(osutils, "get_terminal_encoding",
                           lambda trace=False: "ascii")
-        result = self.run_test_runner(tests.TextTestRunner(stream=out),
-                                      FailureWithUnicode("test_log_unicode"))
+        self.run_test_runner(
+            tests.TextTestRunner(stream=out),
+            FailureWithUnicode("test_log_unicode"))
         out.flush()
         self.assertContainsRe(bio.getvalue(),
                               b"(?:Text attachment: )?log"
@@ -1496,7 +1503,7 @@ class TestTestCase(tests.TestCase):
         self.time(time.sleep, 0.007)
 
     def test_time_creates_benchmark_in_result(self):
-        """Test that the TestCase.time() method accumulates a benchmark time."""
+        """The TestCase.time() method accumulates a benchmark time."""
         sample_test = TestTestCase("method_that_times_a_bit_twice")
         output_stream = StringIO()
         result = breezy.tests.VerboseTestResult(
@@ -1563,14 +1570,16 @@ class TestTestCase(tests.TestCase):
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
         class Available(features.Feature):
-            def _probe(self): return True
+            def _probe(self):
+                return True
         feature = Available()
         self.requireFeature(feature)
 
     def test_requireFeature_unavailable(self):
         """self.requireFeature(unavailable) raises UnavailableFeature."""
         class Unavailable(features.Feature):
-            def _probe(self): return False
+            def _probe(self):
+                return False
         feature = Unavailable()
         self.assertRaises(tests.UnavailableFeature,
                           self.requireFeature, feature)
@@ -1687,10 +1696,12 @@ class TestTestCase(tests.TestCase):
             raise _NotTestException()
 
         # Wrong exceptions are not intercepted
-        self.assertRaises(_NotTestException,
-                          self.assertListRaises, _TestException, wrong_exception)
-        self.assertRaises(_NotTestException,
-                          self.assertListRaises, _TestException, wrong_exception_generator)
+        self.assertRaises(
+            _NotTestException,
+            self.assertListRaises, _TestException, wrong_exception)
+        self.assertRaises(
+            _NotTestException,
+            self.assertListRaises, _TestException, wrong_exception_generator)
 
     def test_assert_list_raises_no_exception(self):
         def success():
@@ -1703,8 +1714,9 @@ class TestTestCase(tests.TestCase):
         self.assertRaises(AssertionError,
                           self.assertListRaises, _TestException, success)
 
-        self.assertRaises(AssertionError,
-                          self.assertListRaises, _TestException, success_generator)
+        self.assertRaises(
+            AssertionError,
+            self.assertListRaises, _TestException, success_generator)
 
     def _run_successful_test(self, test):
         result = testtools.TestResult()
@@ -1972,20 +1984,26 @@ class TestExtraAssertions(tests.TestCase):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', (str, text_type))
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
-        self.assertIn(str(e),
-                      ["None is an instance of <type 'NoneType'> rather than <type 'int'>",
-                       "None is an instance of <class 'NoneType'> rather than <class 'int'>"])
+        self.assertIn(
+            str(e),
+            ["None is an instance of <type 'NoneType'> rather than "
+             "<type 'int'>",
+             "None is an instance of <class 'NoneType'> rather than "
+             "<class 'int'>"])
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
         e = self.assertRaises(AssertionError,
-                              self.assertIsInstance, None, int, "it's just not")
+                              self.assertIsInstance, None, int,
+                              "it's just not")
         if PY3:
-            self.assertEqual(str(e),
-                             "None is an instance of <class 'NoneType'> rather than <class 'int'>: it's "
-                             "just not")
+            self.assertEqual(
+                str(e),
+                "None is an instance of <class 'NoneType'> rather "
+                "than <class 'int'>: it's just not")
         else:
-            self.assertEqual(str(e),
-                             "None is an instance of <type 'NoneType'> rather than <type 'int'>"
-                             ": it's just not")
+            self.assertEqual(
+                str(e),
+                "None is an instance of <type 'NoneType'> "
+                "rather than <type 'int'>: it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2019,26 +2037,32 @@ class TestDeprecations(tests.TestCase):
         # expected deprecation fails.
         self.assertRaises(AssertionError, self.applyDeprecated,
                           deprecated_in((0, 10, 0)),
-                          sample_object.sample_deprecated_method, "a param value")
+                          sample_object.sample_deprecated_method,
+                          "a param value")
         self.assertRaises(AssertionError, self.applyDeprecated,
                           deprecated_in((0, 10, 0)),
                           sample_deprecated_function)
         # calling a deprecated callable (function or method) with the right
         # expected deprecation returns the functions result.
-        self.assertEqual("a param value",
-                         self.applyDeprecated(deprecated_in((0, 11, 0)),
-                                              sample_object.sample_deprecated_method, "a param value"))
+        self.assertEqual(
+            "a param value",
+            self.applyDeprecated(
+                deprecated_in((0, 11, 0)),
+                sample_object.sample_deprecated_method, "a param value"))
         self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 11, 0)),
                                                  sample_deprecated_function))
         # calling a nested deprecation with the wrong deprecation version
         # fails even if a deeper nested function was deprecated with the
         # supplied version.
-        self.assertRaises(AssertionError, self.applyDeprecated,
-                          deprecated_in((0, 11, 0)), sample_object.sample_nested_deprecation)
+        self.assertRaises(
+            AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)), sample_object.sample_nested_deprecation)
         # calling a nested deprecation with the right deprecation value
         # returns the calls result.
-        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 10, 0)),
-                                                 sample_object.sample_nested_deprecation))
+        self.assertEqual(
+            2, self.applyDeprecated(
+                deprecated_in((0, 10, 0)),
+                sample_object.sample_nested_deprecation))
 
     def test_callDeprecated(self):
         def testfunc(be_deprecated, result=None):
@@ -2128,7 +2152,8 @@ class SelfTestHelper(object):
 class TestSelftest(tests.TestCase, SelfTestHelper):
     """Tests of breezy.tests.selftest."""
 
-    def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
+    def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(
+            self):
         factory_called = []
 
         def factory():
@@ -2229,10 +2254,11 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
                          output.getvalue())
 
     def test_starting_with_multiple_argument(self):
-        output = self.run_selftest(test_suite_factory=self.factory,
-                                   starting_with=['breezy.tests.test_selftest.Test.a',
-                                                  'breezy.tests.test_selftest.Test.b'],
-                                   list_only=True)
+        output = self.run_selftest(
+            test_suite_factory=self.factory,
+            starting_with=['breezy.tests.test_selftest.Test.a',
+                           'breezy.tests.test_selftest.Test.b'],
+            list_only=True)
         self.assertEqual(b'breezy.tests.test_selftest.Test.a\n'
                          b'breezy.tests.test_selftest.Test.b\n',
                          output.getvalue())
@@ -2276,8 +2302,8 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
     def test_load_unknown(self):
         # Provide a list with one test - this test.
         # And generate a list of the tests in  the suite.
-        err = self.assertRaises(errors.NoSuchFile, self.run_selftest,
-                                load_list='missing file name', list_only=True)
+        self.assertRaises(errors.NoSuchFile, self.run_selftest,
+                          load_list='missing file name', list_only=True)
 
 
 class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
@@ -2317,9 +2343,9 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         self.assertEqual({'reason'}, set(reasons))
         skips = reasons['reason']
         self.assertEqual(1, len(skips))
-        test = skips[0]
+        # test = skips[0]
         # RemotedTestCase doesn't preserve the "details"
-        ## self.assertFalse('log' in test.getDetails())
+        # self.assertFalse('log' in test.getDetails())
 
     def test_missing_feature_has_no_log(self):
         content, result = self.run_subunit_stream('test_missing_feature')
@@ -2329,9 +2355,9 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         self.assertEqual({'_MissingFeature\n'}, set(reasons))
         skips = reasons['_MissingFeature\n']
         self.assertEqual(1, len(skips))
-        test = skips[0]
+        # test = skips[0]
         # RemotedTestCase doesn't preserve the "details"
-        ## self.assertFalse('log' in test.getDetails())
+        # self.assertFalse('log' in test.getDetails())
 
     def test_xfail_has_no_log(self):
         content, result = self.run_subunit_stream('test_xfail')
@@ -2348,9 +2374,9 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         self.assertContainsRe(content, b'(?m)^log$')
         self.assertContainsRe(content, b'test with unexpected success')
         self.assertEqual(1, len(result.unexpectedSuccesses))
-        test = result.unexpectedSuccesses[0]
+        # test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
-        ## self.assertTrue('log' in test.getDetails())
+        # self.assertTrue('log' in test.getDetails())
 
     def test_success_has_no_log(self):
         content, result = self.run_subunit_stream('test_success')
@@ -2526,10 +2552,11 @@ class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
                              working_dir=None,
                              allow_plugins=False):
         """capture what run_bzr_subprocess tries to do."""
-        self.subprocess_calls.append({'process_args': process_args,
-                                      'env_changes': env_changes,
-                                      'skip_if_plan_to_signal': skip_if_plan_to_signal,
-                                      'working_dir': working_dir, 'allow_plugins': allow_plugins})
+        self.subprocess_calls.append(
+            {'process_args': process_args,
+             'env_changes': env_changes,
+             'skip_if_plan_to_signal': skip_if_plan_to_signal,
+             'working_dir': working_dir, 'allow_plugins': allow_plugins})
         return self.next_subprocess
 
 
@@ -2545,7 +2572,7 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
         self.next_subprocess = process
         try:
             result = self.run_bzr_subprocess(*args, **kwargs)
-        except:
+        except BaseException:
             self.next_subprocess = None
             for key, expected in expected_args.items():
                 self.assertEqual(expected, self.subprocess_calls[-1][key])
@@ -2563,10 +2590,10 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
         self.assertRunBzrSubprocess({'process_args': ['--version']},
                                     StubProcess(), ['--version'])
         # retcode=None disables retcode checking
-        result = self.assertRunBzrSubprocess({},
-                                             StubProcess(retcode=3), '--version', retcode=None)
-        result = self.assertRunBzrSubprocess({},
-                                             StubProcess(out="is free software"), '--version')
+        result = self.assertRunBzrSubprocess(
+            {}, StubProcess(retcode=3), '--version', retcode=None)
+        result = self.assertRunBzrSubprocess(
+            {}, StubProcess(out="is free software"), '--version')
         self.assertContainsRe(result[0], 'is free software')
         # Running a subcommand that is missing errors
         self.assertRaises(AssertionError, self.assertRunBzrSubprocess,
@@ -2574,13 +2601,12 @@ class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
                            }, StubProcess(retcode=3),
                           '--versionn')
         # Unless it is told to expect the error from the subprocess
-        result = self.assertRunBzrSubprocess({},
-                                             StubProcess(retcode=3), '--versionn', retcode=3)
+        result = self.assertRunBzrSubprocess(
+            {}, StubProcess(retcode=3), '--versionn', retcode=3)
         # Or to ignore retcode checking
-        result = self.assertRunBzrSubprocess({},
-                                             StubProcess(
-                                                 err="unknown command", retcode=3), '--versionn',
-                                             retcode=None)
+        result = self.assertRunBzrSubprocess(
+            {}, StubProcess(err="unknown command", retcode=3),
+            '--versionn', retcode=None)
         self.assertContainsRe(result[1], 'unknown command')
 
     def test_env_change_passes_through(self):
@@ -2704,8 +2730,6 @@ class TestStartBzrSubProcess(tests.TestCase):
 
     def test_working_dir(self):
         """Test that we can specify the working dir for the child"""
-        orig_getcwd = osutils.getcwd
-        orig_chdir = os.chdir
         chdirs = []
 
         def chdir(path):
@@ -2790,8 +2814,8 @@ class TestSelftestFiltering(tests.TestCase):
     def test_exclude_tests_by_condition(self):
         excluded_name = ('breezy.tests.test_selftest.TestSelftestFiltering.'
                          'test_exclude_tests_by_condition')
-        filtered_suite = tests.exclude_tests_by_condition(self.suite,
-                                                          lambda x: x.id() == excluded_name)
+        filtered_suite = tests.exclude_tests_by_condition(
+            self.suite, lambda x: x.id() == excluded_name)
         self.assertEqual(len(self.all_names) - 1,
                          filtered_suite.countTestCases())
         self.assertFalse(excluded_name in _test_ids(filtered_suite))
@@ -2815,16 +2839,17 @@ class TestSelftestFiltering(tests.TestCase):
     def test_filter_suite_by_condition(self):
         test_name = ('breezy.tests.test_selftest.TestSelftestFiltering.'
                      'test_filter_suite_by_condition')
-        filtered_suite = tests.filter_suite_by_condition(self.suite,
-                                                         lambda x: x.id() == test_name)
+        filtered_suite = tests.filter_suite_by_condition(
+            self.suite, lambda x: x.id() == test_name)
         self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_filter_suite_by_re(self):
         filtered_suite = tests.filter_suite_by_re(self.suite,
                                                   'test_filter_suite_by_r')
         filtered_names = _test_ids(filtered_suite)
-        self.assertEqual(filtered_names, ['breezy.tests.test_selftest.'
-                                          'TestSelftestFiltering.test_filter_suite_by_re'])
+        self.assertEqual(
+            filtered_names, ['breezy.tests.test_selftest.'
+                             'TestSelftestFiltering.test_filter_suite_by_re'])
 
     def test_filter_suite_by_id_list(self):
         test_list = ['breezy.tests.test_selftest.'
@@ -2939,8 +2964,8 @@ class TestBlackboxSupport(tests.TestCase):
         self.permit_url(url)
         out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
         self.assertEqual(out, '')
-        self.assertContainsRe(err,
-                              'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
+        self.assertContainsRe(
+            err, 'brz: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
 class TestTestLoader(tests.TestCase):
@@ -3144,10 +3169,10 @@ class TestTestSuite(tests.TestCase):
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
-        # We cannot test this at the same time as the main load, because we want
-        # to know that starting_with == None works. So a second load is
-        # incurred - note that the starting_with parameter causes a partial load
-        # rather than a full load so this test should be pretty quick.
+        # We cannot test this at the same time as the main load, because we
+        # want to know that starting_with == None works. So a second load is
+        # incurred - note that the starting_with parameter causes a partial
+        # load rather than a full load so this test should be pretty quick.
         test_list = [
             'breezy.tests.test_selftest.TestTestSuite.test_test_suite']
         suite = tests.test_suite(test_list,
@@ -3232,7 +3257,6 @@ class TestFilteredByNameStartTestLoader(tests.TestCase):
         self.assertEqual(test_list, _test_ids(suite))
 
     def test_exclude_tests(self):
-        test_list = ['bogus']
         loader = self._create_loader('bogus')
 
         suite = loader.loadTestsFromModuleName('breezy.tests.test_sampler')
@@ -3598,8 +3622,7 @@ class TestUncollectedWarnings(_Selftest, tests.TestCase):
         self.assertNotContainsRe(out, b"test_skip")
 
     def test_additonal_decorator(self):
-        out = self._run_selftest_with_suite(
-            suite_decorators=[tests.TestDecorator])
+        self._run_selftest_with_suite(suite_decorators=[tests.TestDecorator])
 
 
 class TestUncollectedWarningsSubunit(TestUncollectedWarnings):

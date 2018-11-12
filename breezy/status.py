@@ -363,22 +363,24 @@ class StatusHooks(_mod_hooks.Hooks):
         notified.
         """
         _mod_hooks.Hooks.__init__(self, "breezy.status", "hooks")
-        self.add_hook('post_status',
-                      "Called with argument StatusHookParams after Bazaar has "
-                      "displayed the status. StatusHookParams has the attributes "
-                      "(old_tree, new_tree, to_file, versioned, show_ids, short, "
-                      "verbose). The last four arguments correspond to the command "
-                      "line options specified by the user for the status command. "
-                      "to_file is the output stream for writing.",
-                      (2, 3))
-        self.add_hook('pre_status',
-                      "Called with argument StatusHookParams before Bazaar "
-                      "displays the status. StatusHookParams has the attributes "
-                      "(old_tree, new_tree, to_file, versioned, show_ids, short, "
-                      "verbose). The last four arguments correspond to the command "
-                      "line options specified by the user for the status command. "
-                      "to_file is the output stream for writing.",
-                      (2, 3))
+        self.add_hook(
+            'post_status',
+            "Called with argument StatusHookParams after Bazaar has "
+            "displayed the status. StatusHookParams has the attributes "
+            "(old_tree, new_tree, to_file, versioned, show_ids, short, "
+            "verbose). The last four arguments correspond to the command "
+            "line options specified by the user for the status command. "
+            "to_file is the output stream for writing.",
+            (2, 3))
+        self.add_hook(
+            'pre_status',
+            "Called with argument StatusHookParams before Bazaar "
+            "displays the status. StatusHookParams has the attributes "
+            "(old_tree, new_tree, to_file, versioned, show_ids, short, "
+            "verbose). The last four arguments correspond to the command "
+            "line options specified by the user for the status command. "
+            "to_file is the output stream for writing.",
+            (2, 3))
 
 
 class StatusHookParams(object):
@@ -405,8 +407,8 @@ class StatusHookParams(object):
         :param short: Use short status indicators.
         :param verbose: Verbose flag.
         :param specific_files: If set, a list of filenames whose status should be
-            shown.  It is an error to give a filename that is not in the working
-            tree, or in the working inventory or in the basis inventory.
+            shown.  It is an error to give a filename that is not in the
+            working tree, or in the working inventory or in the basis inventory.
         """
         self.old_tree = old_tree
         self.new_tree = new_tree
@@ -421,9 +423,10 @@ class StatusHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s(%s, %s, %s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
-                                                         self.old_tree, self.new_tree, self.to_file, self.versioned,
-                                                         self.show_ids, self.short, self.verbose, self.specific_files)
+        return "<%s(%s, %s, %s, %s, %s, %s, %s, %s)>" % (
+            self.__class__.__name__, self.old_tree, self.new_tree,
+            self.to_file, self.versioned, self.show_ids, self.short,
+            self.verbose, self.specific_files)
 
 
 def _show_shelve_summary(params):

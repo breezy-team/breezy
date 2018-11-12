@@ -409,7 +409,6 @@ class Graph(object):
         """
         # Optimisable by concurrent searching, but a random spread should get
         # some sort of hit rate.
-        result = {}
         known_revnos = []
         ghosts = []
         for key in keys:
@@ -466,8 +465,8 @@ class Graph(object):
             return unique_nodes
 
         (all_unique_searcher,
-         unique_tip_searchers) = self._make_unique_searchers(unique_nodes,
-                                                             unique_searcher, common_searcher)
+         unique_tip_searchers) = self._make_unique_searchers(
+             unique_nodes, unique_searcher, common_searcher)
 
         self._refine_unique_nodes(unique_searcher, all_unique_searcher,
                                   unique_tip_searchers, common_searcher)
@@ -526,8 +525,8 @@ class Graph(object):
 
         :return: (all_unique_searcher, unique_tip_searchers)
         """
-        unique_tips = self._remove_simple_descendants(unique_nodes,
-                                                      self.get_parent_map(unique_nodes))
+        unique_tips = self._remove_simple_descendants(
+            unique_nodes, self.get_parent_map(unique_nodes))
 
         if len(unique_tips) == 1:
             unique_tip_searchers = []
@@ -763,7 +762,6 @@ class Graph(object):
         common_ancestors = set()
         searchers = [self._make_breadth_first_searcher([r])
                      for r in revisions]
-        active_searchers = searchers[:]
         border_ancestors = set()
 
         while True:
@@ -1081,7 +1079,7 @@ class Graph(object):
         return ((upper_bound_revid is None or
                     self.is_ancestor(revid, upper_bound_revid)) and
                 (lower_bound_revid is None or
-                     self.is_ancestor(lower_bound_revid, revid)))
+                    self.is_ancestor(lower_bound_revid, revid)))
 
     def _search_for_extra_common(self, common, searchers):
         """Make sure that unique nodes are genuinely unique.
@@ -1220,7 +1218,8 @@ class Graph(object):
                 for searcher in unique_searchers:
                     will_search_set = frozenset(searcher._next_query)
                     if will_search_set not in unique_search_sets:
-                        # This searcher is searching a unique set of nodes, let it
+                        # This searcher is searching a unique set of nodes, let
+                        # it
                         unique_search_sets.add(will_search_set)
                         next_unique_searchers.append(searcher)
                 unique_searchers = next_unique_searchers
@@ -1656,7 +1655,6 @@ def collapse_linear_regions(parent_map):
         for p in parents:
             children.setdefault(p, []).append(child)
 
-    orig_children = dict(children)
     removed = set()
     result = dict(parent_map)
     for node in parent_map:

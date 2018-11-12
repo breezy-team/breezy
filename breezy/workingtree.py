@@ -273,7 +273,8 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         # self.relpath exists as a "thunk" to osutils, but canonical_relpath
         # doesn't - fix that up here before we enter the loop.
         if canonicalize:
-            def fixer(p): return osutils.canonical_relpath(self.basedir, p)
+            def fixer(p):
+                return osutils.canonical_relpath(self.basedir, p)
         else:
             fixer = self.relpath
         for filename in file_list:

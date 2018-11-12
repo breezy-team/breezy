@@ -165,9 +165,10 @@ class KnownGraph(object):
                 if parent_keys == existing_parent_keys:
                     return  # Identical content
                 else:
-                    raise ValueError('Parent key mismatch, existing node %s'
-                                     ' has parents of %s not %s'
-                                     % (key, existing_parent_keys, parent_keys))
+                    raise ValueError(
+                        'Parent key mismatch, existing node %s'
+                        ' has parents of %s not %s'
+                        % (key, existing_parent_keys, parent_keys))
         else:
             node = _KnownGraphNode(key, parent_keys)
             nodes[key] = node

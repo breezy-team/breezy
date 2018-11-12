@@ -34,7 +34,7 @@ class TopoSortTests(TestCase):
                          list(TopoSorter(graph).iter_topo_order()))
 
     def assertSortAndIterateRaise(self, exception_type, graph):
-        """Try both iterating and topo_sorting graph and expect an exception."""
+        """Try iterating and topo_sorting graph and expect an exception."""
         self.assertRaises(exception_type, topo_sort, graph)
         self.assertRaises(exception_type,
                           list,
@@ -99,7 +99,7 @@ class TopoSortTests(TestCase):
     def test_tsort_partial(self):
         """Topological sort with partial ordering.
 
-        Multiple correct orderings are possible, so test for 
+        Multiple correct orderings are possible, so test for
         correctness, not for exact match on the resulting list.
         """
         self.assertSortAndIterateOrder([(0, []),
@@ -123,7 +123,7 @@ class MergeSortTests(TestCase):
 
     def assertSortAndIterate(self, graph, branch_tip, result_list,
                              generate_revno, mainline_revisions=None):
-        """Check that merge based sorting and iter_topo_order on graph works."""
+        """Check that merge based sort and iter_topo_order on graph works."""
         value = merge_sort(graph, branch_tip,
                            mainline_revisions=mainline_revisions,
                            generate_revno=generate_revno)
@@ -494,8 +494,8 @@ class MergeSortTests(TestCase):
         # C 2 [D]
         # D 1 [E]
         # E 0
-        # with a mainline of NONE,E,A (the inferred one) this will show the merge
-        # depths above.
+        # with a mainline of NONE,E,A (the inferred one) this will show the
+        # merge depths above.
         # with a overriden mainline of NONE,E,D,B,A it should show:
         # A 0
         # B 0

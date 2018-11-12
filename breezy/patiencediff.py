@@ -147,7 +147,7 @@ def unified_diff_bytes(a, b, fromfile=b'', tofile=b'', fromfiledate=b'',
         sequencematcher = difflib.SequenceMatcher
 
     if fromfiledate:
-        fromfiledate = b'\t' + byes(fromfiledate)
+        fromfiledate = b'\t' + bytes(fromfiledate)
     if tofiledate:
         tofiledate = b'\t' + bytes(tofiledate)
 

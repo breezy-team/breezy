@@ -261,7 +261,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (errors.NoSuchFile,) as e:
+    except (errors.NoSuchFile,):
         pass
     except IOError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
@@ -1997,7 +1997,7 @@ def copy_ownership_from_path(dst, src=None):
     if chown is None:
         return
 
-    if src == None:
+    if src is None:
         src = os.path.dirname(dst)
         if src == '':
             src = '.'
@@ -2005,7 +2005,7 @@ def copy_ownership_from_path(dst, src=None):
     try:
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
-    except OSError as e:
+    except OSError:
         trace.warning(
             'Unable to copy ownership from "%s" to "%s". '
             'You may want to set it manually.', src, dst)
@@ -2268,7 +2268,7 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from ._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError as e:
+        except ImportError:
             # This is one time where we won't warn that an extension failed to
             # load. The extension is never available on Windows anyway.
             from ._readdir_py import (
@@ -2393,7 +2393,7 @@ def local_concurrency(use_cache=True):
     except (TypeError, ValueError):
         concurrency = 1
     if use_cache:
-        _cached_concurrency = concurrency
+        _cached_local_concurrency = concurrency
     return concurrency
 
 
@@ -2539,7 +2539,7 @@ def _posix_is_local_pid_dead(pid):
             # exists, though not ours
             return False
         else:
-            mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            trace.mutter("os.kill(%d, 0) failed: %s" % (pid, e))
             # Don't really know.
             return False
     else:

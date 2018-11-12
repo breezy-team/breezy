@@ -631,7 +631,7 @@ class HttpTransport(ConnectedTransport):
                 and parsed_target.host == self._parsed_url.host
                 and parsed_target.port == self._parsed_url.port
                 and (parsed_target.user is None or
-                 parsed_target.user == self._parsed_url.user)):
+                     parsed_target.user == self._parsed_url.user)):
                 # If a user is specified, it should match, we don't care about
                 # passwords, wrong passwords will be rejected anyway.
                 return self.clone(target_path)

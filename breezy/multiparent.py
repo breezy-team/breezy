@@ -32,6 +32,7 @@ from breezy import (
     ui,
     )
 """)
+from .i18n import gettext
 from .sixish import (
     BytesIO,
     range,
@@ -440,7 +441,6 @@ class BaseVersionedFile(object):
     def select_snapshots(self, vf):
         """Determine which versions to add as snapshots"""
         build_ancestors = {}
-        descendants = {}
         snapshots = set()
         for version_id in topo_iter(vf):
             potential_build_ancestors = set(vf.get_parents(version_id))
@@ -467,7 +467,6 @@ class BaseVersionedFile(object):
     def get_size_ranking(self):
         """Get versions ranked by size"""
         versions = []
-        new_snapshots = set()
         for version_id in self.versions():
             if version_id in self._snapshots:
                 continue

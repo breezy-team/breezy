@@ -18,7 +18,6 @@
 """Tests for the RevisionTree class."""
 
 from breezy import (
-    errors,
     revision,
     )
 from breezy.tree import FileTimestampUnavailable

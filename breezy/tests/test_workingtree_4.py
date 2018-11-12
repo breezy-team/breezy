@@ -42,7 +42,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
-        tree = workingtree_4.WorkingTreeFormat4().initialize(control)
+        workingtree_4.WorkingTreeFormat4().initialize(control)
         # we want:
         # format 'Bazaar Working Tree format 4'
         # stat-cache = ??
@@ -101,8 +101,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         if relpath:
             self.build_tree([relpath + '/'])
         dir = bzrdir.BzrDirMetaFormat1().initialize(url)
-        repo = dir.create_repository()
-        branch = dir.create_branch()
+        dir.create_repository()
+        dir.create_branch()
         try:
             return workingtree_4.WorkingTreeFormat4().initialize(dir)
         except errors.NotLocalUrl:
@@ -231,7 +231,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # dont uncomment this: the revision object must be accessed to
         # answer 'get_parent_ids' for the revision tree- dirstate does not
         # cache the parents of a parent tree at this point.
-        #repo.get_revision = self.fail
+        # repo.get_revision = self.fail
         self.overrideAttr(repo, "get_inventory", self.fail)
         self.overrideAttr(repo, "_get_inventory_xml", self.fail)
         # set the parent trees.
@@ -309,7 +309,6 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         def fail_set_parent_trees(trees, ghosts):
             raise AssertionError('dirstate.set_parent_trees() was called')
         state.set_parent_trees = fail_set_parent_trees
-        repo = tree.branch.repository
         tree.pull(source_branch, stop_revision=b'B')
         self.assertEqual([b'B'], called)
         basis = tree.basis_tree()
@@ -369,7 +368,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     def test_constructing_invalid_interdirstate_raises(self):
         tree = self.make_workingtree()
         rev_id = tree.commit('first post')
-        rev_id2 = tree.commit('second post')
+        tree.commit('second post')
         rev_tree = tree.branch.repository.revision_tree(rev_id)
         # Exception is not a great thing to raise, but this test is
         # very short, and code is used to sanity check other tests, so
@@ -403,7 +402,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # the source is not in the dirstate of the target.
         tree = self.make_workingtree()
         rev_id = tree.commit('first post')
-        rev_id2 = tree.commit('second post')
+        tree.commit('second post')
         rev_tree = tree.branch.repository.revision_tree(rev_id)
         tree.lock_read()
         optimiser = InterTree.get(rev_tree, tree)
@@ -537,7 +536,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                                           format=format_name)
         self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
         # when you branch, it inherits the same root id
-        rev1 = tree1.commit('first post')
+        tree1.commit('first post')
         tree3 = tree1.controldir.sprout('tree3').open_workingtree()
         self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
 
@@ -579,7 +578,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # for testing easily.
         tree.set_root_id(b'root')
         tree.add(['dir'], [b'dir-id'])
-        subtree = self.make_branch_and_tree('dir')
+        self.make_branch_and_tree('dir')
         # the most primitive operation: kind
         self.assertEqual('directory', tree.kind('dir'))
         # a diff against the basis should give us a directory and the root (as
@@ -595,8 +594,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                      (None, False)),
                     (b'root', (None, u''), True, (False, True), (None, None),
                      (None, u''), (None, 'directory'), (None, 0))]
-        self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
-                                                          specific_files=['dir'])))
+        self.assertEqual(
+            expected,
+            list(tree.iter_changes(tree.basis_tree(), specific_files=['dir'])))
         tree.unlock()
         # do a commit, we want to trigger the dirstate fast-path too
         tree.commit('first post')
@@ -681,10 +681,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
 
-        def tree_iter_changes(files): return [
-            c for c in tree.iter_changes(tree.basis_tree(), specific_files=files,
-                                         require_versioned=True)
-        ]
+        def tree_iter_changes(files):
+            return [
+                c for c in tree.iter_changes(
+                    tree.basis_tree(), specific_files=files,
+                    require_versioned=True)]
         e = self.assertRaises(errors.PathsNotVersionedError,
                               tree_iter_changes, ['bar', 'foo'])
         self.assertEqual(e.paths, ['foo'])
@@ -697,8 +698,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.add(['f'], [b'f-id'])
 
         def tree_iter_changes(tree, files):
-            return list(tree.iter_changes(tree.basis_tree(),
-                                          specific_files=files, require_versioned=True))
+            return list(tree.iter_changes(
+                tree.basis_tree(), specific_files=files,
+                require_versioned=True))
         tree.lock_read()
         self.addCleanup(tree.unlock)
         e = self.assertRaises(errors.PathsNotVersionedError,
@@ -716,7 +718,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_commit_updates_hash_cache(self):
         tree = self.get_tree_with_cachable_file_foo()
-        revid = tree.commit('a commit')
+        tree.commit('a commit')
         # tree's dirstate should now have a valid stat entry for foo.
         entry = tree._get_entry(path='foo')
         expected_sha1 = osutils.sha_file_by_name('foo')
@@ -749,8 +751,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         with tree.lock_read():
             current_sha1 = tree._get_entry(path="foo")[1][0][1]
         with tree.lock_write():
-            tree._observed_sha1(b"foo-id", "foo",
-                                (osutils.sha_file_by_name('foo'), os.lstat("foo")))
+            tree._observed_sha1(
+                b"foo-id", "foo",
+                (osutils.sha_file_by_name('foo'), os.lstat("foo")))
             # Must not have changed
             self.assertEqual(current_sha1,
                              tree._get_entry(path="foo")[1][0][1])
@@ -842,11 +845,12 @@ class TestCorruptDirstate(TestCaseWithTransport):
         new_dir.revision = b'new-revision-id'
         new_file = inventory.InventoryFile(b'file-id', 'new-file', root_id)
         new_file.revision = b'new-revision-id'
-        self.assertRaises(errors.InconsistentDelta,
-                          tree.update_basis_by_delta, b'new-revision-id',
-                          [('dir', 'new-dir', b'dir-id', new_dir),
-                           ('dir/file', 'new-dir/new-file', b'file-id', new_file),
-                           ])
+        self.assertRaises(
+            errors.InconsistentDelta,
+            tree.update_basis_by_delta, b'new-revision-id',
+            [('dir', 'new-dir', b'dir-id', new_dir),
+             ('dir/file', 'new-dir/new-file', b'file-id', new_file),
+            ])
         del state
 
         # Now when we re-read the file it should not have been modified

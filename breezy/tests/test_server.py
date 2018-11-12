@@ -22,7 +22,6 @@ except ImportError:
     import SocketServer as socketserver
 import sys
 import threading
-import traceback
 
 
 from breezy import (
@@ -267,7 +266,7 @@ class TestThread(cethread.CatchingExceptionThread):
             # platforms, this doesn't occur, so just mentioning the problem is
             # enough for now -- vila 2010824
             sys.stderr.write('thread %s hung\n' % (self.name,))
-            #raise AssertionError('thread %s hung' % (self.name,))
+            # raise AssertionError('thread %s hung' % (self.name,))
 
 
 class TestingTCPServerMixin(object):
@@ -314,7 +313,7 @@ class TestingTCPServerMixin(object):
         if self.verify_request(request, client_address):
             try:
                 self.process_request(request, client_address)
-            except:
+            except BaseException:
                 self.handle_error(request, client_address)
         else:
             self.close_request(request)
@@ -562,7 +561,7 @@ class TestingTCPServerInAThread(transport.Server):
             last_conn = None
             try:
                 last_conn = osutils.connect_socket((self.host, self.port))
-            except socket.error as e:
+            except socket.error:
                 # But ignore connection errors as the point is to unblock the
                 # server thread, it may happen that it's not blocked or even
                 # not started.
@@ -633,8 +632,9 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
                  backing_transport, root_client_path):
         TestingThreadingTCPServer.__init__(self, server_address,
                                            request_handler_class)
-        server.SmartTCPServer.__init__(self, backing_transport,
-                                       root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
+        server.SmartTCPServer.__init__(
+            self, backing_transport,
+            root_client_path, client_timeout=_DEFAULT_TESTING_CLIENT_TIMEOUT)
 
     def serve(self):
         self.run_server_started_hooks()

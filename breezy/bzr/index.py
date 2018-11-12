@@ -859,8 +859,8 @@ class GraphIndex(object):
             if (len(self._parsed_key_map) and
                 self._parsed_key_map[index][0] <= key and
                 (self._parsed_key_map[index][1] >= key or
-                     # end of the file has been parsed
-                     self._parsed_byte_map[index][1] == self._size)):
+                 # end of the file has been parsed
+                 self._parsed_byte_map[index][1] == self._size)):
                 # the key has been parsed, so no lookup is needed even if its
                 # not present.
                 continue
@@ -929,8 +929,8 @@ class GraphIndex(object):
                 index = self._parsed_key_index(key)
                 if (self._parsed_key_map[index][0] <= key and
                     (self._parsed_key_map[index][1] >= key or
-                         # end of the file has been parsed
-                         self._parsed_byte_map[index][1] == self._size)):
+                     # end of the file has been parsed
+                     self._parsed_byte_map[index][1] == self._size)):
                     result.append(((location, key), False))
                     continue
             # no, is the key above or below the probed location:

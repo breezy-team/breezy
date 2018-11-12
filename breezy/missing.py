@@ -22,13 +22,9 @@ from . import (
     errors,
     log,
     )
-from . import revision as _mod_revision
 
 
 def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
-    last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
-    last_rev_id = None
-
     if rev_tag_dict is None:
         rev_tag_dict = {}
     for revno, rev_id, merge_depth in revisions:
@@ -213,8 +209,8 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                                      local_revision_id, backward)
         remotes = _enumerate_mainline(remote_extra, graph, remote_revno,
                                       remote_revision_id, backward)
-    return _filter_revs(graph, locals, local_revid_range), _filter_revs(graph,
-                                                                        remotes, remote_revid_range)
+    return _filter_revs(graph, locals, local_revid_range), _filter_revs(
+        graph, remotes, remote_revid_range)
 
 
 def sorted_revisions(revisions, history_map):

@@ -171,8 +171,8 @@ class LockDir(lock.Lock):
 
     __INFO_NAME = '/info'
 
-    def __init__(self, transport, path, file_modebits=0o644, dir_modebits=0o755,
-                 extra_holder_info=None):
+    def __init__(self, transport, path, file_modebits=0o644,
+                 dir_modebits=0o755, extra_holder_info=None):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -251,7 +251,7 @@ class LockDir(lock.Lock):
                 self._trace("other holder is %r" % other_holder)
                 try:
                     self._handle_lock_contention(other_holder)
-                except:
+                except BaseException:
                     self._remove_pending_dir(tmpname)
                     raise
             except Exception as e:
@@ -369,7 +369,7 @@ class LockDir(lock.Lock):
             self.transport.delete(tmpname + self.__INFO_NAME)
             try:
                 self.transport.rmdir(tmpname)
-            except DirectoryNotEmpty as e:
+            except DirectoryNotEmpty:
                 # There might have been junk left over by a rename that moved
                 # another locker within the 'held' directory.  do a slower
                 # deletion where we list the directory and remove everything
@@ -529,7 +529,7 @@ class LockDir(lock.Lock):
             info = self._read_info_file(self._held_info_path)
             self._trace("peek -> held")
             return info
-        except NoSuchFile as e:
+        except NoSuchFile:
             self._trace("peek -> not held")
 
     def _prepare_info(self):
@@ -681,7 +681,7 @@ class LockDir(lock.Lock):
         # we can't rely on that remotely.  Once this is cleaned up,
         # reenable this warning to prevent it coming back in
         # -- mbp 20060303
-        ## warn("LockDir.lock_read falls back to write lock")
+        # warn("LockDir.lock_read falls back to write lock")
         if self._lock_held or self._fake_read_lock:
             raise LockContention(self)
         self._fake_read_lock = True

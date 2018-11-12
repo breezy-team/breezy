@@ -17,7 +17,6 @@
 """Tests for version_info"""
 
 import os
-import sys
 
 from .. import (
     registry,
@@ -235,8 +234,9 @@ class TestVersionInfoRio(VersionInfoTestCase):
         wt.add('c')
         wt.rename_one('b', 'd')
 
-        stanza = self.regen(wt, check_for_clean=True,
-                            include_file_revisions=True, revision_id=wt.last_revision())
+        stanza = self.regen(
+            wt, check_for_clean=True, include_file_revisions=True,
+            revision_id=wt.last_revision())
         file_rev_stanza = self.get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r1', 'r3', 'r2'],
@@ -337,16 +337,18 @@ class CustomVersionInfoTests(VersionInfoTestCase):
         builder.generate(sio)
         self.assertEqual("revno: 0", sio.getvalue())
 
-        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
-                                           template='{revno} revid: {revision_id}')
+        builder = CustomVersionInfoBuilder(
+            wt.branch, working_tree=wt,
+            template='{revno} revid: {revision_id}')
         # revision_id is not available yet
         self.assertRaises(MissingTemplateVariable, builder.generate, sio)
 
     def test_custom_dotted_revno(self):
         sio = StringIO()
         wt = self.create_tree_with_dotted_revno()
-        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
-                                           template='{revno} revid: {revision_id}')
+        builder = CustomVersionInfoBuilder(
+            wt.branch, working_tree=wt,
+            template='{revno} revid: {revision_id}')
         builder.generate(sio)
         self.assertEqual("1.1.1 revid: o2", sio.getvalue())
 

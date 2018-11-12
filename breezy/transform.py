@@ -425,7 +425,6 @@ class TreeTransformBase(object):
         changed_ids.update(changed_kind)
         # To find entries with changed parent_ids, find parents which existed,
         # but changed file_id.
-        changed_file_id = set(t for t in new_file_id if t in self._removed_id)
         # Now add all their children to the set.
         for parent_trans_id in new_file_id:
             changed_ids.update(self.iter_tree_children(parent_trans_id))
@@ -1161,8 +1160,9 @@ class TreeTransformBase(object):
                           for k, v in viewitems(attribs[b'_new_name'])}
         self._new_parent = {k.decode('utf-8'): v.decode('utf-8')
                             for k, v in viewitems(attribs[b'_new_parent'])}
-        self._new_executability = {k.decode('utf-8'): bool(v)
-                                   for k, v in viewitems(attribs[b'_new_executability'])}
+        self._new_executability = {
+            k.decode('utf-8'): bool(v)
+            for k, v in viewitems(attribs[b'_new_executability'])}
         self._new_id = {k.decode('utf-8'): v
                         for k, v in viewitems(attribs[b'_new_id'])}
         self._r_new_id = {v: k for k, v in viewitems(self._new_id)}
@@ -1175,10 +1175,12 @@ class TreeTransformBase(object):
             self._tree_id_paths[trans_id] = path
         self._removed_id = {trans_id.decode('utf-8')
                             for trans_id in attribs[b'_removed_id']}
-        self._removed_contents = set(trans_id.decode('utf-8')
-                                     for trans_id in attribs[b'_removed_contents'])
-        self._non_present_ids = {k: v.decode('utf-8')
-                                 for k, v in viewitems(attribs[b'_non_present_ids'])}
+        self._removed_contents = set(
+            trans_id.decode('utf-8')
+            for trans_id in attribs[b'_removed_contents'])
+        self._non_present_ids = {
+            k: v.decode('utf-8')
+            for k, v in viewitems(attribs[b'_non_present_ids'])}
         for ((trans_id, kind),), content in records:
             trans_id = trans_id.decode('utf-8')
             kind = kind.decode('ascii')
@@ -1370,7 +1372,7 @@ class DiskTreeTransform(TreeTransformBase):
             raise errors.HardLinkNotSupported(path)
         try:
             unique_add(self._new_contents, trans_id, 'file')
-        except:
+        except BaseException:
             # Clean up the file, it never got registered so
             # TreeTransform.finalize() won't clean it up.
             os.unlink(name)
@@ -1575,7 +1577,7 @@ class TreeTransform(DiskTreeTransform):
             osutils.ensure_empty_directory_exists(
                 deletiondir,
                 errors.ExistingPendingDeletion)
-        except:
+        except BaseException:
             tree.unlock()
             raise
 
@@ -1747,7 +1749,7 @@ class TreeTransform(DiskTreeTransform):
                 self._apply_removals(mover)
                 child_pb.update(gettext('Apply phase'), 1 + offset, 2 + offset)
                 modified_paths = self._apply_insertions(mover)
-            except:
+            except BaseException:
                 mover.rollback()
                 raise
             else:
@@ -1781,7 +1783,6 @@ class TreeTransform(DiskTreeTransform):
                 inventory_delta.append((path, None, file_id, None))
             new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                      new_paths)
-            final_kinds = {}
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
                     child_pb.update(gettext('adding file'),
@@ -1789,7 +1790,6 @@ class TreeTransform(DiskTreeTransform):
                 file_id = new_path_file_ids[trans_id]
                 if file_id is None:
                     continue
-                needs_entry = False
                 kind = self.final_kind(trans_id)
                 if kind is None:
                     kind = self._tree.stored_kind(
@@ -1861,8 +1861,6 @@ class TreeTransform(DiskTreeTransform):
         """
         new_paths = self.new_paths(filesystem_only=True)
         modified_paths = []
-        new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
-                                 new_paths)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
@@ -2655,7 +2653,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         pp.next_phase()
         divert_trans = set(file_trans_id[f] for f in divert)
 
-        def resolver(t, c): return resolve_checkout(t, c, divert_trans)
+        def resolver(t, c):
+            return resolve_checkout(t, c, divert_trans)
         raw_conflicts = resolve_conflicts(tt, pass_func=resolver)
         if len(raw_conflicts) > 0:
             precomputed_delta = None
@@ -2821,8 +2820,9 @@ def create_from_tree(tt, trans_id, tree, path, file_id=None, chunks=None,
             wt = tt._tree
             if wt.supports_content_filtering() and filter_tree_path is not None:
                 filters = wt._content_filter_stack(filter_tree_path)
-                chunks = filtered_output_bytes(chunks, filters,
-                                               ContentFilterContext(filter_tree_path, tree))
+                chunks = filtered_output_bytes(
+                    chunks, filters,
+                    ContentFilterContext(filter_tree_path, tree))
             tt.create_file(chunks, trans_id)
         finally:
             if f is not None:
@@ -2873,8 +2873,8 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                                       child_pb, filenames, backups,
                                       merge_modified, basis_tree)
     with ui.ui_factory.nested_progress_bar() as child_pb:
-        raw_conflicts = resolve_conflicts(tt, child_pb,
-                                          lambda t, c: conflict_pass(t, c, target_tree))
+        raw_conflicts = resolve_conflicts(
+            tt, child_pb, lambda t, c: conflict_pass(t, c, target_tree))
     conflicts = cook_conflicts(raw_conflicts, tt)
     return conflicts, merge_modified
 
@@ -2887,8 +2887,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     # than the target changes relative to the working tree. Because WT4 has an
     # optimizer to compare itself to a target, but no optimizer for the
     # reverse.
-    change_list = working_tree.iter_changes(target_tree,
-                                            specific_files=specific_files, pb=pb)
+    change_list = working_tree.iter_changes(
+        target_tree, specific_files=specific_files, pb=pb)
     if not target_tree.is_versioned(u''):
         skip_root = True
     else:
@@ -2996,8 +2996,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 # here IMO - Ian C 27/Oct/2009
                 filter_tree_path = target_tree.id2path(file_id)
                 filters = working_tree._content_filter_stack(filter_tree_path)
-                bytes = filtered_output_bytes(bytes, filters,
-                                              ContentFilterContext(filter_tree_path, working_tree))
+                bytes = filtered_output_bytes(
+                    bytes, filters,
+                    ContentFilterContext(filter_tree_path, working_tree))
                 tt.create_file(bytes, trans_id, mode_id)
         else:
             for (trans_id, mode_id, file_id), bytes in target_tree.iter_files_bytes(
@@ -3199,16 +3200,16 @@ class _FileMover(object):
             except OSError as e:
                 raise errors.TransformRenameFailed(to, from_, str(e), e.errno)
         # after rollback, don't reuse _FileMover
-        past_renames = None
-        pending_deletions = None
+        self.past_renames = None
+        self.pending_deletions = None
 
     def apply_deletions(self):
         """Apply all marked deletions"""
         for path in self.pending_deletions:
             delete_any(path)
         # after apply_deletions, don't reuse _FileMover
-        past_renames = None
-        pending_deletions = None
+        self.past_renames = None
+        self.pending_deletions = None
 
 
 def link_tree(target_tree, source_tree):

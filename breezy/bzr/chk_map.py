@@ -739,9 +739,9 @@ class LeafNode(Node):
             bytes_for_items = (self._raw_size - (prefix_len * self._len))
         return (9  # 'chkleaf:\n' +
                 len(str(self._maximum_size)) + 1 +
-            len(str(self._key_width)) + 1 +
-            len(str(self._len)) + 1 +
-            prefix_len + 1 +
+                len(str(self._key_width)) + 1 +
+                len(str(self._len)) + 1 +
+                prefix_len + 1 +
                 bytes_for_items)
 
     @classmethod

@@ -194,7 +194,7 @@ class ControlDir(ControlComponent):
     def destroy_branch(self, name=None):
         """Destroy a branch in this ControlDir.
 
-        :param name: Name of the branch to destroy, None for the 
+        :param name: Name of the branch to destroy, None for the
             user selected branch or "" for the active branch.
         :raise NotBranchError: When the branch does not exist
         """
@@ -205,7 +205,7 @@ class ControlDir(ControlComponent):
         """Create a working tree at this ControlDir.
 
         :param revision_id: create it as of this revision id.
-        :param from_branch: override controldir branch 
+        :param from_branch: override controldir branch
             (for lightweight checkouts)
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
@@ -773,7 +773,7 @@ class ControlDir(ControlComponent):
             try:
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
-            except errors.NotBranchError as e:
+            except errors.NotBranchError:
                 pass
             except errors.PermissionDenied:
                 pass

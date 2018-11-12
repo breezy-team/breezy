@@ -39,7 +39,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_rich_root(self):
         tree = self.make_branch_and_tree('tree', format='rich-root')
-        rev_id = tree.commit('first post')
+        tree.commit('first post')
         upgrade.upgrade('tree')
 
     def test_convert_branch5_branch6(self):
@@ -115,7 +115,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_knit_merges_dirstate(self):
         tree = self.make_branch_and_tree('tree', format='knit')
-        rev_id = tree.commit('first post')
+        tree.commit('first post')
         merge_tree = tree.controldir.sprout('tree2').open_workingtree()
         rev_id2 = tree.commit('second post')
         rev_id3 = merge_tree.commit('second merge post')
@@ -174,10 +174,10 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
                                     format=self.from_format)
         # Note: self.make_branch() always creates a new repo at the location
         # so we need to avoid using that here ...
-        b1 = controldir.ControlDir.create_branch_convenience("repo/branch1",
-                                                             format=self.from_format)
-        b2 = controldir.ControlDir.create_branch_convenience("repo/branch2",
-                                                             format=self.from_format)
+        controldir.ControlDir.create_branch_convenience(
+            "repo/branch1", format=self.from_format)
+        b2 = controldir.ControlDir.create_branch_convenience(
+            "repo/branch2", format=self.from_format)
         return repo.controldir
 
     def test_upgrade_repo_with_branches(self):

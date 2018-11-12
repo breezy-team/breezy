@@ -63,7 +63,7 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_factory_ascii_password(self):
         ui = ui_testing.TestUIFactory('secret\n')
-        with ui.nested_progress_bar() as pb:
+        with ui.nested_progress_bar():
             self.assertEqual('secret',
                              self.apply_redirected(ui.stdin, ui.stdout,
                                                    ui.stderr,
@@ -213,8 +213,10 @@ class TestTextUIFactory(tests.TestCase):
             output = out.getvalue()
             self.assertContainsRe(output,
                                   "| foo *\r\r  *\r*")
-            self.assertContainsString(output,
-                                      r"what do you want? ([y]es, [n]o): what do you want? ([y]es, [n]o): ")
+            self.assertContainsString(
+                output,
+                r"what do you want? ([y]es, [n]o): what do you want? "
+                r"([y]es, [n]o): ")
             # stdin should have been totally consumed
             self.assertEqual('', factory.stdin.readline())
 
@@ -260,8 +262,9 @@ class TestTextUIFactory(tests.TestCase):
         ui = ui_testing.TextUIFactory()
         remote_fmt = remote.RemoteRepositoryFormat()
         remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
-        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
-                             to_format=remote_fmt)
+        ui.show_user_warning(
+            'cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
         self.assertEqual('', ui.stdout.getvalue())
         self.assertContainsRe(
             ui.stderr.getvalue(),
@@ -273,8 +276,9 @@ class TestTextUIFactory(tests.TestCase):
         # and now with it suppressed please
         ui = ui_testing.TextUIFactory()
         ui.suppressed_warnings.add('cross_format_fetch')
-        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
-                             to_format=remote_fmt)
+        ui.show_user_warning(
+            'cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
         self.assertEqual('', ui.stdout.getvalue())
         self.assertEqual('', ui.stderr.getvalue())
 
@@ -317,8 +321,8 @@ class UITests(tests.TestCase):
                 (TTYStringIO, 'xterm', 'none', _mod_ui_text.NullProgressView),
                 (TTYStringIO, 'xterm', 'text', _mod_ui_text.TextProgressView),
                 (TTYStringIO, 'xterm', None, _mod_ui_text.TextProgressView),
-                # on a dumb terminal, again if there's explicit configuration do
-                # it, otherwise default off
+                # on a dumb terminal, again if there's explicit configuration
+                # do it, otherwise default off
                 (TTYStringIO, 'dumb', 'none', _mod_ui_text.NullProgressView),
                 (TTYStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
                 (TTYStringIO, 'dumb', None, _mod_ui_text.NullProgressView),
@@ -334,11 +338,13 @@ class UITests(tests.TestCase):
             stderr = file_class()
             stdout = file_class()
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
-            self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
-                                  "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
-            self.assertIsInstance(uif.make_progress_view(),
-                                  expected_pb_class,
-                                  "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+            self.assertIsInstance(
+                uif, _mod_ui_text.TextUIFactory,
+                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
+            self.assertIsInstance(
+                uif.make_progress_view(),
+                expected_pb_class,
+                "TERM=%s BRZ_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
 
     def test_text_ui_non_terminal(self):
         """Even on non-ttys, make_ui_for_terminal gives a text ui."""
@@ -470,7 +476,8 @@ class TestConfirmationUserInterfacePolicy(tests.TestCase):
             for specific_answer in [True, False]:
                 for conf_id in ['given_id', 'other_id']:
                     wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
-                        base_ui, default_answer, dict(given_id=specific_answer))
+                        base_ui, default_answer,
+                        dict(given_id=specific_answer))
                     result = wrapper.confirm_action(
                         "Do something?", conf_id, {})
                     if conf_id == 'given_id':

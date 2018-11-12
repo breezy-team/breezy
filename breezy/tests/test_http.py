@@ -1621,7 +1621,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def _check_password_prompt(self, scheme, user, actual_prompt):
         expected_prompt = (self._password_prompt_prefix
                            + ("%s %s@%s:%d, Realm: '%s' password: "
-                            % (scheme.upper(),
+                              % (scheme.upper(),
                                  user, self.server.host, self.server.port,
                                  self.server.auth_realm)))
         self.assertEqual(expected_prompt, actual_prompt)
@@ -1629,8 +1629,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def _expected_username_prompt(self, scheme):
         return (self._username_prompt_prefix
                 + "%s %s:%d, Realm: '%s' username: " % (scheme.upper(),
-                                                      self.server.host, self.server.port,
-                                                      self.server.auth_realm))
+                                                        self.server.host, self.server.port,
+                                                        self.server.auth_realm))
 
     def test_no_prompt_for_password_when_using_auth_config(self):
         user = ' joe'

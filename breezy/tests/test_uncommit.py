@@ -95,7 +95,8 @@ class TestUncommit(tests.TestCaseWithTransport):
 
         # If this tree isn't bound, local=True raises an exception
         self.assertRaises(errors.LocalRequiresBoundBranch,
-                          uncommit.uncommit, tree.branch, tree=tree, local=True)
+                          uncommit.uncommit, tree.branch, tree=tree,
+                          local=True)
 
     def test_uncommit_remove_tags(self):
         tree, history = self.make_linear_tree()

@@ -22,7 +22,6 @@ import os
 from breezy import (
     branch,
     errors,
-    lock,
     merge as _mod_merge,
     switch,
     tests,
@@ -119,7 +118,6 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree.commit('rev2')
         self.build_tree(['checkout/file-3'])
         checkout.add('file-3')
-        checkout_dir = checkout.controldir
         # rename the branch on disk, the checkout object is now invalid.
         os.rename('branch-1', 'branch-2')
         to_branch = branch.Branch.open('branch-2')

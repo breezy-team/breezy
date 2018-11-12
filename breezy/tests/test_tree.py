@@ -126,7 +126,8 @@ class TestTree(TestCaseWithTransport):
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-                ('compare', tree2, tree, False, None, None, False, False, False),
+                ('compare', tree2, tree, False, None, None, False, False,
+                    False),
                 ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
                     'require', True, False),
                 ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
@@ -148,9 +149,11 @@ class TestTree(TestCaseWithTransport):
         self.build_tree(['known_file', 'unknown_file'])
         wt.add('known_file')
 
-        self.assertRaises(errors.PathsNotVersionedError,
-                          wt.changes_from, wt.basis_tree(), wt, specific_files=['known_file',
-                                                                                'unknown_file'], require_versioned=True)
+        self.assertRaises(
+            errors.PathsNotVersionedError,
+            wt.changes_from, wt.basis_tree(), wt,
+            specific_files=['known_file', 'unknown_file'],
+            require_versioned=True)
 
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
@@ -408,13 +411,13 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertRaises(StopIteration, next, iterator)
 
     def assertLtByDirblock(self, lt_val, path1, path2):
-        self.assertEqual(lt_val,
-                         _mod_tree.MultiWalker._lt_path_by_dirblock(path1, path2))
+        self.assertEqual(
+            lt_val, _mod_tree.MultiWalker._lt_path_by_dirblock(path1, path2))
 
     def test__lt_path_by_dirblock(self):
         # We only support Unicode strings at this point
-        self.assertRaises(TypeError,
-                          _mod_tree.MultiWalker._lt_path_by_dirblock, b'', b'b')
+        self.assertRaises(
+            TypeError, _mod_tree.MultiWalker._lt_path_by_dirblock, b'', b'b')
         self.assertLtByDirblock(False, u'', u'')
         self.assertLtByDirblock(False, u'a', u'a')
         self.assertLtByDirblock(False, u'a/b', u'a/b')

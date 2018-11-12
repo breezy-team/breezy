@@ -158,7 +158,7 @@ class Splitter(object):
             state = state.process(next_char, self)
             if state is None:
                 break
-        if not state is None and not getattr(state, 'finish', None) is None:
+        if state is not None and not getattr(state, 'finish', None) is None:
             state.finish(self)
         result = u''.join(self.token)
         if not self.quoted and result == '':

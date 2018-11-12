@@ -443,9 +443,9 @@ class NewPack(Pack):
     def data_inserted(self):
         """True if data has been added to this pack."""
         return bool(self.get_revision_count() or
-            self.inventory_index.key_count() or
-            self.text_index.key_count() or
-            self.signature_index.key_count() or
+                    self.inventory_index.key_count() or
+                    self.text_index.key_count() or
+                    self.signature_index.key_count() or
                     (self.chk_index is not None and self.chk_index.key_count()))
 
     def finish_content(self):

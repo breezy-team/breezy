@@ -216,8 +216,9 @@ class TestRegistry(tests.TestCase):
                          a_registry.get_info('two'))
         self.assertEqual('own info', a_registry.get_info('three'))
         self.assertEqual({'two': 'one', 'three': 'one'}, a_registry.aliases())
-        self.assertEqual({'one': ['three', 'two']},
-                         {k: sorted(v) for (k, v) in viewitems(a_registry.alias_map())})
+        self.assertEqual(
+            {'one': ['three', 'two']},
+            {k: sorted(v) for (k, v) in viewitems(a_registry.alias_map())})
 
     def test_registry_alias_exists(self):
         a_registry = registry.Registry()

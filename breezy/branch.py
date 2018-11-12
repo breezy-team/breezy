@@ -462,7 +462,7 @@ class Branch(controldir.ControlComponent):
             * 'include' - the stop revision is the last item in the result
             * 'with-merges' - include the stop revision and all of its
               merged revisions in the result
-            * 'with-merges-without-common-ancestry' - filter out revisions 
+            * 'with-merges-without-common-ancestry' - filter out revisions
               that are in both ancestries
         :param direction: either 'reverse' or 'forward':
 
@@ -719,7 +719,7 @@ class Branch(controldir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         :param lossy: Whether to discard data that can not be natively
-            represented, when pushing to a foreign VCS 
+            represented, when pushing to a foreign VCS
         """
 
         if config_stack is None:
@@ -1681,8 +1681,8 @@ class BranchHooks(Hooks):
         self.add_hook(
             'post_push',
             "Called after a push operation completes. post_push is called "
-            "with a breezy.branch.BranchPushResult object and only runs in the "
-            "bzr client.", (0, 15))
+            "with a breezy.branch.BranchPushResult object and only runs in "
+            "the bzr client.", (0, 15))
         self.add_hook(
             'post_pull',
             "Called after a pull operation completes. post_pull is called "

@@ -78,7 +78,7 @@ class WeaveContains(TestBase):
 class Easy(TestBase):
 
     def runTest(self):
-        k = Weave()
+        Weave()
 
 
 class AnnotateOne(TestBase):
@@ -118,7 +118,7 @@ class InvalidRepeatedAdd(TestBase):
     def runTest(self):
         k = Weave()
         k.add_lines(b'basis', [], TEXT_0)
-        idx = k.add_lines(b'text0', [], TEXT_0)
+        k.add_lines(b'text0', [], TEXT_0)
         self.assertRaises(errors.RevisionAlreadyPresent,
                           k.add_lines,
                           b'text0',
@@ -165,7 +165,8 @@ class InsertLines(TestBase):
                     [b'text0', b'text1'],
                     text3)
 
-        # self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]), text3))))
+        # self.log("changes to text3: " + pformat(list(k._delta(set([0, 1]),
+        # text3))))
 
         self.log("k._weave=" + pformat(k._weave))
 
@@ -175,9 +176,9 @@ class InsertLines(TestBase):
                           (b'text1', b'line 2')])
 
         # now multiple insertions at different places
-        k.add_lines(b'text4',
-                    [b'text0', b'text1', b'text3'],
-                    [b'line 1', b'aaa', b'middle line', b'bbb', b'line 2', b'ccc'])
+        k.add_lines(
+            b'text4', [b'text0', b'text1', b'text3'],
+            [b'line 1', b'aaa', b'middle line', b'bbb', b'line 2', b'ccc'])
 
         self.assertEqual(k.annotate(b'text4'),
                          [(b'text0', b'line 1'),
@@ -208,8 +209,7 @@ class DeleteLines(TestBase):
 
         i = 1
         for t in texts:
-            ver = k.add_lines(b'text%d' % i,
-                              [b'text0'], t)
+            k.add_lines(b'text%d' % i, [b'text0'], t)
             i += 1
 
         self.log('final weave:')
@@ -261,8 +261,9 @@ class CannedDelete(TestBase):
                     b'last line',
                     (b'}', 0),
                     ]
-        k._sha1s = [sha_string(b'first lineline to be deletedlast line'), sha_string(
-            b'first linelast line')]
+        k._sha1s = [
+            sha_string(b'first lineline to be deletedlast line'),
+            sha_string(b'first linelast line')]
 
         self.assertEqual(k.get_lines(0),
                          [b'first line',
@@ -296,8 +297,9 @@ class CannedReplacement(TestBase):
                     b'last line',
                     (b'}', 0),
                     ]
-        k._sha1s = [sha_string(b'first lineline to be deletedlast line'), sha_string(
-            b'first linereplacement linelast line')]
+        k._sha1s = [
+            sha_string(b'first lineline to be deletedlast line'),
+            sha_string(b'first linereplacement linelast line')]
 
         self.assertEqual(k.get_lines(0),
                          [b'first line',
@@ -398,8 +400,13 @@ class InsertNested(TestBase):
                     b'}',
                     (b'}', 0)]
 
-        k._sha1s = [sha_string(b'foo {}'), sha_string(b'foo {  added in version 1  also from v1}'), sha_string(b'foo {  added in v2}'), sha_string(b'foo {  added in version 1  added in v2  also from v1}')
-                    ]
+        k._sha1s = [
+            sha_string(b'foo {}'),
+            sha_string(b'foo {  added in version 1  also from v1}'),
+            sha_string(b'foo {  added in v2}'),
+            sha_string(
+                b'foo {  added in version 1  added in v2  also from v1}')
+            ]
 
         self.assertEqual(k.get_lines(0),
                          [b'foo {',
@@ -509,8 +516,10 @@ class DivergedIncludes(TestBase):
                     (b'}', 2),
                     ]
 
-        k._sha1s = [sha_string(b'first line'), sha_string(
-            b'first linesecond line'), sha_string(b'first linealternative second line')]
+        k._sha1s = [
+            sha_string(b'first line'),
+            sha_string(b'first linesecond line'),
+            sha_string(b'first linealternative second line')]
 
         self.assertEqual(k.get_lines(0),
                          [b"first line"])
@@ -549,11 +558,12 @@ class Merge(TestBase):
     def runTest(self):
         k = Weave()
 
-        texts = [[b'header'],
-                 [b'header', b'', b'line from 1'],
-                 [b'header', b'', b'line from 2', b'more from 2'],
-                 [b'header', b'', b'line from 1', b'fixup line', b'line from 2'],
-                 ]
+        texts = [
+            [b'header'],
+            [b'header', b'', b'line from 1'],
+            [b'header', b'', b'line from 2', b'more from 2'],
+            [b'header', b'', b'line from 1', b'fixup line', b'line from 2'],
+            ]
 
         k.add_lines(b'text0', [], texts[0])
         k.add_lines(b'text1', [b'text0'], texts[1])
@@ -594,7 +604,7 @@ class Conflicts(TestBase):
         k.add_lines([0], [b'aaa', b'111', b'bbb'])
         k.add_lines([1], [b'aaa', b'222', b'bbb'])
 
-        merged = k.merge([1, 2])
+        k.merge([1, 2])
 
         self.assertEqual([[[b'aaa']],
                           [[b'111'], [b'222']],
@@ -650,8 +660,7 @@ class Khayyam(TestBase):
         parents = set()
         i = 0
         for t in texts:
-            ver = k.add_lines(b'text%d' % i,
-                              list(parents), t)
+            k.add_lines(b'text%d' % i, list(parents), t)
             parents.add(b'text%d' % i)
             i += 1
 
@@ -688,18 +697,21 @@ class JoinWeavesTests(TestBase):
         tmpf = BytesIO()
         write_weave(w, tmpf)
 
-        # Because we are corrupting, we need to make sure we have the exact text
-        self.assertEqual(b'# bzr weave file v5\n'
-                         b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
-                         b'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
-                         b'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n',
-                         tmpf.getvalue())
+        # Because we are corrupting, we need to make sure we have the exact
+        # text
+        self.assertEqual(
+            b'# bzr weave file v5\n'
+            b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+            b'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+            b'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n',
+            tmpf.getvalue())
 
         # Change a single letter
-        tmpf = BytesIO(b'# bzr weave file v5\n'
-                       b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
-                       b'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
-                       b'w\n{ 0\n. hello\n}\n{ 1\n. There\n}\nW\n')
+        tmpf = BytesIO(
+            b'# bzr weave file v5\n'
+            b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+            b'i 0\n1 90f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+            b'w\n{ 0\n. hello\n}\n{ 1\n. There\n}\nW\n')
 
         w = read_weave(tmpf)
 
@@ -709,10 +721,11 @@ class JoinWeavesTests(TestBase):
         self.assertRaises(WeaveInvalidChecksum, w.check)
 
         # Change the sha checksum
-        tmpf = BytesIO(b'# bzr weave file v5\n'
-                       b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
-                       b'i 0\n1 f0f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
-                       b'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n')
+        tmpf = BytesIO(
+            b'# bzr weave file v5\n'
+            b'i\n1 f572d396fae9206628714fb2ce00f72e94f2258f\nn v1\n\n'
+            b'i 0\n1 f0f265c6e75f1c8f9ab76dcf85528352c5f215ef\nn v2\n\n'
+            b'w\n{ 0\n. hello\n}\n{ 1\n. there\n}\nW\n')
 
         w = read_weave(tmpf)
 

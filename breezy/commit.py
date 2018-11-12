@@ -210,7 +210,7 @@ class Commit(object):
             revprops = {}
         if possible_master_transports is None:
             possible_master_transports = []
-        if (not u'branch-nick' in revprops and
+        if (u'branch-nick' not in revprops and
                 branch.repository._format.supports_storing_branch_nick):
             revprops[u'branch-nick'] = branch._get_nick(
                 local,
@@ -250,7 +250,8 @@ class Commit(object):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
-        :param message_callback: A callback: message = message_callback(cmt_obj)
+        :param message_callback: A callback: message =
+            message_callback(cmt_obj)
 
         :param timestamp: if not None, seconds-since-epoch for a
             postdated/predated commit.
@@ -324,7 +325,8 @@ class Commit(object):
                 if isinstance(message, bytes):
                     message = message.decode(get_user_encoding())
 
-                def message_callback(x): return message
+                def message_callback(x):
+                    return message
             else:
                 raise BzrError("The message or message_callback keyword"
                                " parameter is required for commit().")
@@ -411,9 +413,9 @@ class Commit(object):
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
         self._lossy = lossy
-        self.builder = self.branch.get_commit_builder(self.parents,
-                                                      self.config_stack, timestamp, timezone, committer, self.revprops,
-                                                      rev_id, lossy=lossy)
+        self.builder = self.branch.get_commit_builder(
+            self.parents, self.config_stack, timestamp, timezone, committer,
+            self.revprops, rev_id, lossy=lossy)
 
         if self.builder.updates_branch and self.bound_branch:
             self.builder.abort()
@@ -448,7 +450,7 @@ class Commit(object):
             # Add revision data to the local branch
             self.rev_id = self.builder.commit(self.message)
 
-        except Exception as e:
+        except Exception:
             mutter("aborting commit write group because of exception:")
             trace.log_exception_quietly()
             self.builder.abort()
@@ -497,7 +499,7 @@ class Commit(object):
         else:
             try:
                 self._process_pre_hooks(old_revno, new_revno)
-            except:
+            except BaseException:
                 # The commit builder will already have updated the branch,
                 # revert it.
                 self.branch.set_last_revision_info(old_revno, old_revid)
@@ -551,8 +553,8 @@ class Commit(object):
         # If the master branch is bound, we must fail
         master_bound_location = self.master_branch.get_bound_location()
         if master_bound_location:
-            raise errors.CommitToDoubleBoundBranch(self.branch,
-                                                   self.master_branch, master_bound_location)
+            raise errors.CommitToDoubleBoundBranch(
+                self.branch, self.master_branch, master_bound_location)
 
         # TODO: jam 20051230 We could automatically push local
         #       commits to the remote branch if they would fit.
@@ -670,8 +672,8 @@ class Commit(object):
         mutter("Selecting files for commit with filter %r", specific_files)
 
         self._check_strict()
-        iter_changes = self.work_tree.iter_changes(self.basis_tree,
-                                                   specific_files=specific_files)
+        iter_changes = self.work_tree.iter_changes(
+            self.basis_tree, specific_files=specific_files)
         if self.exclude:
             iter_changes = filter_excluded(iter_changes, self.exclude)
         iter_changes = self._filter_iter_changes(iter_changes)
@@ -682,7 +684,7 @@ class Commit(object):
     def _filter_iter_changes(self, iter_changes):
         """Process iter_changes.
 
-        This method reports on the changes in iter_changes to the user, and 
+        This method reports on the changes in iter_changes to the user, and
         converts 'missing' entries in the iter_changes iterator to 'deleted'
         entries. 'missing' entries have their
 
@@ -759,7 +761,8 @@ class Commit(object):
             return sub_tree.commit(message=None, revprops=self.revprops,
                                    recursive=self.recursive,
                                    message_callback=self.message_callback,
-                                   timestamp=self.timestamp, timezone=self.timezone,
+                                   timestamp=self.timestamp,
+                                   timezone=self.timezone,
                                    committer=self.committer,
                                    allow_pointless=self.allow_pointless,
                                    strict=self.strict, verbose=self.verbose,

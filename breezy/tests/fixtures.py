@@ -18,7 +18,7 @@
 """Fixtures that can be used within tests.
 
 Fixtures can be created during a test as a way to separate out creation of
-objects to test.  Fixture objects can hold some state so that different 
+objects to test.  Fixture objects can hold some state so that different
 objects created during a test instance can be related.  Normally a fixture
 should live only for the duration of a single test, and its tearDown method
 should be passed to `addCleanup` on the test.
@@ -62,7 +62,7 @@ def generate_unicode_encodings(universal_encoding=None):
     These can be passed to Python encode/decode/etc.
 
     :param universal_encoding: True/False/None tristate to say whether the
-        generated encodings either can or cannot encode all unicode 
+        generated encodings either can or cannot encode all unicode
         strings.
 
     >>> n1 = next(generate_unicode_names())

@@ -81,8 +81,9 @@ class TestTrace(TestCase):
             raise MemoryError()
         except MemoryError:
             msg = _format_exception()
-        self.assertEqual(msg,
-                         "brz: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
+        self.assertEqual(
+            msg,
+            "brz: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
     def test_format_mem_dump(self):
         self.requireFeature(features.meliae)
@@ -111,7 +112,8 @@ class TestTrace(TestCase):
             msg = _format_exception()
         # Even though Windows and Linux differ for 'os.rmdir', they both give
         # 'No such file' for open()
-        # However it now gets translated so we can not test for a specific message
+        # However it now gets translated so we can not test for a specific
+        # message
         self.assertContainsRe(msg,
                               '^brz: ERROR: \\[Errno .*\\] .*nosuchfile')
 
@@ -125,8 +127,8 @@ class TestTrace(TestCase):
             msg = _format_exception()
         # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
         #                with errno, function name, and locale error message
-        self.assertContainsRe(msg,
-                              "^brz: ERROR: \\(2, 'RemoveDirectory[AW]?', .*\\)")
+        self.assertContainsRe(
+            msg, "^brz: ERROR: \\(2, 'RemoveDirectory[AW]?', .*\\)")
 
     def test_format_sockets_error(self):
         try:
@@ -163,18 +165,19 @@ class TestTrace(TestCase):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
-        except ImportError as e:
+        except ImportError:
             msg = _format_exception()
         else:
             self.fail("somehow succeeded in importing %r" % ImaginaryModule)
-        self.assertContainsRe(msg,
-                              "^brz: ERROR: No module named '?ImaginaryModule'?\n"
-                              "You may need to install this Python library separately.\n$")
+        self.assertContainsRe(
+            msg,
+            "^brz: ERROR: No module named '?ImaginaryModule'?\n"
+            "You may need to install this Python library separately.\n$")
 
     def test_report_import_syntax_error(self):
         try:
             raise ImportError("syntax error")
-        except ImportError as e:
+        except ImportError:
             msg = _format_exception()
         self.assertContainsRe(msg,
                               'Bazaar has encountered an internal error')
@@ -207,7 +210,7 @@ class TestTrace(TestCase):
     def test_report_broken_pipe(self):
         try:
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
-        except IOError as e:
+        except IOError:
             msg = _format_exception()
             self.assertEqual(msg, "brz: broken pipe\n")
         else:
@@ -226,8 +229,8 @@ class TestTrace(TestCase):
         # begin with the message
         self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
-        self.assertContainsRe(log,
-                              'test_trace\\.py", line \\d+, in test_mutter_callsite_1\n')
+        self.assertContainsRe(
+            log, 'test_trace\\.py", line \\d+, in test_mutter_callsite_1\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 
@@ -238,8 +241,8 @@ class TestTrace(TestCase):
         # begin with the message
         self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
-        self.assertContainsRe(log,
-                              'test_trace.py", line \\d+, in test_mutter_callsite_2\n')
+        self.assertContainsRe(
+            log, 'test_trace.py", line \\d+, in test_mutter_callsite_2\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 
@@ -267,7 +270,7 @@ class TestTrace(TestCase):
         show_error('arg2: %(key)s', {'key': 'stuff'})
         try:
             raise Exception("oops")
-        except:
+        except BaseException:
             show_error('kwarg', exc_info=True)
         log = self.get_log()
         self.assertContainsRe(log, 'error1')
@@ -397,8 +400,8 @@ class TestLogging(TestCase):
         logging.getLogger("brz").debug(b"\xa7")
         log = self.get_log()
         self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsRe(log,
-                              "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n")
+        self.assertContainsRe(
+            log, "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n")
 
     def test_log_bytes_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xa7")
@@ -407,8 +410,9 @@ class TestLogging(TestCase):
             self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
         else:
             self.assertContainsString(log, "UnicodeDecodeError: ")
-            self.assertContainsRe(log,
-                                  "Logging record unformattable: ?'%s' % \\(b?'\\\\xa7',\\)\n")
+            self.assertContainsRe(
+                log,
+                "Logging record unformattable: ?'%s' % \\(b?'\\\\xa7',\\)\n")
 
     def test_log_mixed_strings(self):
         logging.getLogger("brz").debug(u"%s", b"\xa7")
@@ -417,8 +421,9 @@ class TestLogging(TestCase):
             self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
         else:
             self.assertContainsString(log, "UnicodeDecodeError: ")
-            self.assertContainsRe(log,
-                                  "Logging record unformattable: u'%s' % \\('\\\\xa7',\\)\n")
+            self.assertContainsRe(
+                log,
+                "Logging record unformattable: u'%s' % \\('\\\\xa7',\\)\n")
 
     def test_log_repr_broken(self):
         class BadRepr(object):

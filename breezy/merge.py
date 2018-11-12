@@ -1186,29 +1186,6 @@ class Merge3Merger(object):
         # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
-    def merge_names(self, paths):
-        def get_entry(tree, path):
-            try:
-                return next(tree.iter_entries_by_dir(specific_files=[path]))[1]
-            except StopIteration:
-                return None
-        used_base_path, other_path, this_path = paths
-        this_entry = get_entry(self.this_tree, this_path)
-        other_entry = get_entry(self.other_tree, other_path)
-        base_entry = get_entry(self.base_tree, base_path)
-        entries = (base_entry, other_entry, this_entry)
-        names = []
-        parents = []
-        for entry in entries:
-            if entry is None:
-                names.append(None)
-                parents.append(None)
-            else:
-                names.append(entry.name)
-                parents.append(entry.parent_id)
-        return self._merge_names(file_id, paths, parents, names,
-                                 resolver=self._three_way)
-
     def _merge_names(self, file_id, paths, parents, names, resolver):
         """Perform a merge on file_id names and parents"""
         base_name, other_name, this_name = names
@@ -1322,7 +1299,6 @@ class Merge3Merger(object):
             result = None
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            duplicate = False
             inhibit_content_conflict = False
             if params.this_kind is None:  # file_id is not in THIS
                 # Is the name used for a different file_id ?
@@ -1545,8 +1521,8 @@ class Merge3Merger(object):
 
     def merge_executable(self, paths, file_id, file_status):
         """Perform a merge on the execute bit."""
-        executable = [self.executable(t, p, file_id) for t, p in zip([self.base_tree,
-                                                                      self.other_tree, self.this_tree], paths)]
+        executable = [self.executable(t, p, file_id)
+                      for t, p in zip([self.base_tree, self.other_tree, self.this_tree], paths)]
         self._merge_executable(paths, file_id, executable, file_status,
                                resolver=self._three_way)
 

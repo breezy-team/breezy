@@ -356,7 +356,6 @@ class ImportProcessor(object):
         """
         out = []
         cur = None
-        continuing = False
 
         for line in text.split('\n'):
             line = line.strip()

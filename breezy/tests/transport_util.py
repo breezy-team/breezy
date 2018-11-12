@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import features
-from . import TestCaseWithTransport
 from ..transport import Transport
 
 # SFTPTransport is the only bundled transport that properly counts connections

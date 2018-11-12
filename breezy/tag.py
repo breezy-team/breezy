@@ -171,7 +171,7 @@ class BasicTags(_Tags):
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except errors.NoSuchFile as e:
+            except errors.NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
                               'This branch was probably created by bzr 0.15pre.  '

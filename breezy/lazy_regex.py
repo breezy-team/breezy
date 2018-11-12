@@ -18,7 +18,7 @@
 
 This module defines a class which creates proxy objects for regex
 compilation.  This allows overriding re.compile() to return lazily compiled
-objects.  
+objects.
 
 We do this rather than just providing a new interface so that it will also
 be used by existing Python modules that create regexs.
@@ -136,8 +136,8 @@ def reset_compile():
 _real_re_compile = re.compile
 if _real_re_compile is lazy_compile:
     raise AssertionError(
-        "re.compile has already been overridden as lazy_compile, but this would"
-        " cause infinite recursion")
+        "re.compile has already been overridden as lazy_compile, but this "
+        "would cause infinite recursion")
 
 
 # Some libraries calls re.finditer which fails it if receives a LazyRegex.

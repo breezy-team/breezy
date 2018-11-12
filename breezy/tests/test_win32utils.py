@@ -20,7 +20,6 @@ import os
 
 from .. import (
     osutils,
-    symbol_versioning,
     tests,
     win32utils,
     )
@@ -228,7 +227,8 @@ class TestLocationsCtypes(TestCase):
         lad = win32utils.get_local_appdata_location()
         env = os.environ.get("LOCALAPPDATA")
         if env:
-            # XXX - See bug 262874, which asserts the correct encoding is 'mbcs'
+            # XXX - See bug 262874, which asserts the correct encoding is
+            # 'mbcs'
             encoding = osutils.get_user_encoding()
             self.assertPathsEqual(lad, env.decode(encoding))
 
@@ -270,8 +270,8 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         # expansions, but it's not really worth the effort here
         if argv is None:
             argv = [line]
-        argv = win32utils._command_line_to_argv(line, argv,
-                                                single_quotes_allowed=single_quotes_allowed)
+        argv = win32utils._command_line_to_argv(
+            line, argv, single_quotes_allowed=single_quotes_allowed)
         self.assertEqual(expected, sorted(argv))
 
     def test_glob_paths(self):

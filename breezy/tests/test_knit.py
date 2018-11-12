@@ -939,7 +939,8 @@ class LowLevelKnitIndexTests(TestCase):
         mapper = ConstantMapper(name)
         self.overrideAttr(knit, '_load_data', self._load_data)
 
-        def allow_writes(): return 'w' in mode
+        def allow_writes():
+            return 'w' in mode
         return _KndxIndex(transport, mapper, lambda: None, allow_writes, lambda: True)
 
     def test_create_file(self):
@@ -2239,7 +2240,6 @@ class TestStacking(KnitTests):
         basis, test = self.get_basis_and_test_knit()
         key = (b'foo',)
         key_basis = (b'bar',)
-        key_missing = (b'missing',)
         test.add_lines(key, (), [b'foo\n'])
         details = test.annotate(key)
         self.assertEqual([(key, b'foo\n')], details)
@@ -2486,7 +2486,6 @@ class TestStacking(KnitTests):
     def test_insert_record_stream(self):
         # records are inserted as normal; insert_record_stream builds on
         # add_lines, so a smoke test should be all that's needed:
-        key = (b'foo',)
         key_basis = (b'bar',)
         key_delta = (b'zaphod',)
         basis, test = self.get_basis_and_test_knit()
@@ -2555,7 +2554,6 @@ class TestStacking(KnitTests):
     def test_add_mpdiffs(self):
         # records are inserted as normal; add_mpdiff builds on
         # add_lines, so a smoke test should be all that's needed:
-        key = (b'foo',)
         key_basis = (b'bar',)
         key_delta = (b'zaphod',)
         basis, test = self.get_basis_and_test_knit()

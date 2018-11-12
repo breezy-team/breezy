@@ -209,7 +209,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         if len(file_contents) > 0 and not file_contents.endswith(b'\n'):
             f.write(newline)
         for pattern in name_pattern_list:
-            if not pattern in ignores:
+            if pattern not in ignores:
                 f.write(pattern.encode('utf-8'))
                 f.write(newline)
 

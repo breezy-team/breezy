@@ -38,7 +38,6 @@ from breezy.tests import (
     TestSkipped,
     )
 from breezy.tests.http_server import HttpServer
-import breezy.transport.http
 
 if features.paramiko.available():
     from breezy.transport import sftp as _mod_sftp
@@ -220,8 +219,8 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
       'loopback': Doesn't use ssh, just uses a local socket. Most tests are
                   done this way to save the handshaking time, so it is not
                   tested again here
-      'none':     This uses paramiko's built-in ssh client and server, and layers
-                  sftp on top of it.
+      'none':     This uses paramiko's built-in ssh client and server, and
+                  layers sftp on top of it.
       None:       If 'ssh' exists on the machine, then it will be spawned as a
                   child process.
     """
@@ -395,8 +394,8 @@ class TestSocketDelay(TestCase):
 
     def test_bandwidth(self):
         sending = FakeSocket()
-        receiving = stub_sftp.SocketDelay(sending, 0, bandwidth=8.0 / (1024 * 1024),
-                                          really_sleep=False)
+        receiving = stub_sftp.SocketDelay(
+            sending, 0, bandwidth=8.0 / (1024 * 1024), really_sleep=False)
         # check that simulated time is charged only per round-trip:
         t1 = stub_sftp.SocketDelay.simulated_time
         receiving.send("connect")
@@ -465,8 +464,9 @@ class Test_SFTPReadvHelper(tests.TestCase):
         # Out of order requests. The requests should get combined, but then be
         # yielded out-of-order. We also need one that is at the end of a
         # previous range. See bug #293746
-        self.checkRequestAndYield([(0, b'a'), (10, b'k'), (4, b'efg'), (1, b'bcd')],
-                                  data, [(0, 1), (10, 1), (4, 3), (1, 3)])
+        self.checkRequestAndYield(
+            [(0, b'a'), (10, b'k'), (4, b'efg'), (1, b'bcd')],
+            data, [(0, 1), (10, 1), (4, 3), (1, 3)])
 
 
 class TestUsesAuthConfig(TestCaseWithSFTPServer):

@@ -140,7 +140,7 @@ class IterableFile(object):
         # If there was an error raised, prefer the original one
         try:
             self.close()
-        except:
+        except BaseException:
             if exc_type is None:
                 raise
         return False

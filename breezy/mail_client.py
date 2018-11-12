@@ -298,10 +298,11 @@ class Mutt(BodyExternalMailClient):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
-            message_options.extend(['-s', self._encode_safe(subject)])
+            message_options.extend(
+                ['-s', self._encode_safe(subject)])
         if attach_path is not None:
-            message_options.extend(['-a',
-                                    self._encode_path(attach_path, 'attachment')])
+            message_options.extend(
+                ['-a', self._encode_path(attach_path, 'attachment')])
         if body is not None:
             # Store the temp file object in self, so that it does not get
             # garbage collected and delete the file before mutt can read it.
@@ -329,9 +330,10 @@ class Thunderbird(BodyExternalMailClient):
     send attachments.
     """
 
-    _client_commands = ['thunderbird', 'mozilla-thunderbird', 'icedove',
-                        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin',
-                        '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
+    _client_commands = [
+        'thunderbird', 'mozilla-thunderbird', 'icedove',
+        '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin',
+        '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
     def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
@@ -368,8 +370,8 @@ class KMail(ExternalMailClient):
         if subject is not None:
             message_options.extend(['-s', self._encode_safe(subject)])
         if attach_path is not None:
-            message_options.extend(['--attach',
-                                    self._encode_path(attach_path, 'attachment')])
+            message_options.extend(
+                ['--attach', self._encode_path(attach_path, 'attachment')])
         if to is not None:
             message_options.extend([self._encode_safe(to)])
         return message_options
@@ -426,7 +428,7 @@ mail_client_registry.register('claws', Claws,
 
 
 class XDGEmail(BodyExternalMailClient):
-    __doc__ = """xdg-email attempts to invoke the user's preferred mail client"""
+    __doc__ = """xdg-email attempts to invoke the preferred mail client"""
 
     _client_commands = ['xdg-email']
 
@@ -612,7 +614,7 @@ class MailApp(BodyExternalMailClient):
             if from_ is not None:
                 # though from_ doesn't actually seem to be used
                 os.write(fd, 'set sender to "%s"\n'
-                         % sender.replace('"', '\\"'))
+                         % from_.replace('"', '\\"'))
             if subject is not None:
                 os.write(fd, 'set subject to "%s"\n'
                          % subject.replace('"', '\\"'))
@@ -666,23 +668,24 @@ class DefaultMail(MailClient):
                                                attachment, mime_subtype,
                                                extension, basename, body)
         except MailClientNotFound:
-            return Editor(self.config).compose(prompt, to, subject,
-                                               attachment, mime_subtype, extension, body)
+            return Editor(self.config).compose(
+                prompt, to, subject, attachment, mime_subtype, extension, body)
 
     def compose_merge_request(self, to, subject, directive, basename=None,
                               body=None):
         """See MailClient.compose_merge_request"""
         try:
-            return self._mail_client().compose_merge_request(to, subject,
-                                                             directive, basename=basename, body=body)
+            return self._mail_client().compose_merge_request(
+                to, subject, directive, basename=basename, body=body)
         except MailClientNotFound:
-            return Editor(self.config).compose_merge_request(to, subject,
-                                                             directive, basename=basename, body=body)
+            return Editor(self.config).compose_merge_request(
+                to, subject, directive, basename=basename, body=body)
 
 
 mail_client_registry.register(u'default', DefaultMail,
                               help=DefaultMail.__doc__)
 mail_client_registry.default_key = u'default'
 
-opt_mail_client = _mod_config.RegistryOption('mail_client',
-                                             mail_client_registry, help='E-mail client to use.', invalid='error')
+opt_mail_client = _mod_config.RegistryOption(
+    'mail_client', mail_client_registry, help='E-mail client to use.',
+    invalid='error')

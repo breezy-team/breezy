@@ -41,6 +41,7 @@ from .sixish import (
     int2byte,
     PY3,
     text_type,
+    unichr,
     )
 
 
@@ -103,9 +104,8 @@ if PY3:
     quote = urlparse.quote
     unquote_to_bytes = urlparse.unquote_to_bytes
 else:
-    # Private copies of quote and unquote, copied from Python's
-    # urllib module because urllib unconditionally imports socket, which imports
-    # ssl.
+    # Private copies of quote and unquote, copied from Python's urllib module
+    # because urllib unconditionally imports socket, which imports ssl.
 
     always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                    'abcdefghijklmnopqrstuvwxyz'
@@ -327,7 +327,7 @@ def _win32_local_path_from_url(url):
     # usual local path with drive letter
     if (len(win32_url) < 6
         or win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
-                             'ABCDEFGHIJKLMNOPQRSTUVWXYZ') or
+                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ') or
         win32_url[4] not in '|:'
             or win32_url[5] != '/'):
         raise InvalidURL(url, 'Win32 file urls start with'
@@ -423,7 +423,6 @@ def normalize_url(url):
 
     for i in range(len(path_chars)):
         if path_chars[i] not in _url_safe_characters:
-            chars = path_chars[i].encode('utf-8')
             path_chars[i] = ''.join(
                 ['%%%02X' % c for c in bytearray(path_chars[i].encode('utf-8'))])
     path = ''.join(path_chars)
@@ -502,8 +501,8 @@ def split(url, exclude_trailing_slash=True):
     :param exclude_trailing_slash: Strip off a final '/' if it is part
         of the path (but not if it is part of the protocol specification)
 
-    :return: (parent_url, child_dir).  child_dir may be the empty string if we're at
-        the root.
+    :return: (parent_url, child_dir).  child_dir may be the empty string if
+        we're at the root.
     """
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
 
@@ -549,7 +548,8 @@ def split_segment_parameters_raw(url):
     segment_start = lurl.find(",", lurl.rfind("/") + 1)
     if segment_start == -1:
         return (url, [])
-    return (lurl[:segment_start], [str(s) for s in lurl[segment_start + 1:].split(",")])
+    return (lurl[:segment_start],
+            [str(s) for s in lurl[segment_start + 1:].split(",")])
 
 
 def split_segment_parameters(url):
@@ -571,7 +571,7 @@ def split_segment_parameters(url):
 
 
 def join_segment_parameters_raw(base, *subsegments):
-    """Create a new URL by adding subsegments to an existing one. 
+    """Create a new URL by adding subsegments to an existing one.
 
     This adds the specified subsegments to the last path in the specified
     base URL. The subsegments should be bytestrings.
@@ -611,8 +611,8 @@ def join_segment_parameters(url, parameters):
             raise InvalidURLJoin("= exists in parameter key", url,
                                  parameters)
         new_parameters[key] = value
-    return join_segment_parameters_raw(base,
-                                       *["%s=%s" % item for item in sorted(new_parameters.items())])
+    return join_segment_parameters_raw(
+        base, *["%s=%s" % item for item in sorted(new_parameters.items())])
 
 
 def _win32_strip_local_trailing_slash(url):
@@ -915,7 +915,8 @@ class URL(object):
         :param url: URL as bytestring
         """
         # GZ 2017-06-09: Actually validate ascii-ness
-        # pad.lv/1696545: For the moment, accept both native strings and unicode.
+        # pad.lv/1696545: For the moment, accept both native strings and
+        # unicode.
         if isinstance(url, str):
             pass
         elif isinstance(url, text_type):
@@ -985,7 +986,8 @@ class URL(object):
         :param relpath: relative url string for relative part of remote path.
         :return: urlencoded string for final path.
         """
-        # pad.lv/1696545: For the moment, accept both native strings and unicode.
+        # pad.lv/1696545: For the moment, accept both native strings and
+        # unicode.
         if isinstance(relpath, str):
             pass
         elif isinstance(relpath, text_type):

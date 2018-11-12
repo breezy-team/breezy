@@ -255,7 +255,7 @@ class TestShelver(ShelfTestCase):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_all(self):
-        tree = self.create_shelvable_tree()
+        self.create_shelvable_tree()
         shelver = ExpectShelver.from_args(sys.stdout, all=True,
                                           directory='tree')
         try:

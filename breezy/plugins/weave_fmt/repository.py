@@ -790,8 +790,8 @@ class InterWeaveRepo(InterSameDataRepository):
                                                 RepositoryFormat6,
                                                 RepositoryFormat7))
                     and isinstance(target._format, (RepositoryFormat5,
-                                                RepositoryFormat6,
-                                                RepositoryFormat7)))
+                                                    RepositoryFormat6,
+                                                    RepositoryFormat7)))
         except AttributeError:
             return False
 

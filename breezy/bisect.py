@@ -340,7 +340,8 @@ class cmd_bisect(Command):
         bisect_log.save()
         return False
 
-    def run(self, subcommand, args_list, directory='.', revision=None, output=None):
+    def run(self, subcommand, args_list, directory='.', revision=None,
+            output=None):
         """Handle the bisect command."""
 
         log_fn = None
@@ -401,7 +402,7 @@ class cmd_bisect(Command):
         self._set_state(controldir, revspec, "yes")
 
     def no(self, controldir, revspec):
-        """Mark that a given revision does not have the state we're looking for."""
+        """Mark a given revision as wrong."""
         self._set_state(controldir, revspec, "no")
 
     def move(self, controldir, revspec):

@@ -106,10 +106,8 @@ def debug_memory_win32api(message='', short=True):
                         ]
         cur_process = ctypes.windll.kernel32.GetCurrentProcess()
         mem_struct = PROCESS_MEMORY_COUNTERS_EX()
-        ret = ctypes.windll.psapi.GetProcessMemoryInfo(cur_process,
-                                                       ctypes.byref(
-                                                           mem_struct),
-                                                       ctypes.sizeof(mem_struct))
+        ret = ctypes.windll.psapi.GetProcessMemoryInfo(
+            cur_process, ctypes.byref(mem_struct), ctypes.sizeof(mem_struct))
         if not ret:
             trace.note(gettext('Failed to GetProcessMemoryInfo()'))
             return
@@ -330,7 +328,7 @@ def get_host_name():
                                         None)
             if (GetComputerNameEx is not None
                 and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
-                                  buf, ctypes.byref(n))):
+                                      buf, ctypes.byref(n))):
                 return extract_buffer(buf)
 
             # Try GetComputerName in case GetComputerNameEx wasn't found

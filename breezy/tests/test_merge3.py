@@ -318,8 +318,8 @@ bbb
         m_lines = m3.merge_lines(b'OTHER', b'THIS', reprocess=True)
         merged_text = b"".join(list(m_lines))
         optimal_text = (b"a\n" * 10 + b"<<<<<<< OTHER\nc\n"
-            + 8 * b"b\n" + b"c\n=======\n"
-                        +  10*b"b\n" + b">>>>>>> THIS\n")
+                        + 8 * b"b\n" + b"c\n=======\n"
+                        + 10 * b"b\n" + b">>>>>>> THIS\n")
         self.assertEqualDiff(optimal_text, merged_text)
 
     def test_minimal_conflicts_unique(self):
@@ -334,10 +334,10 @@ bbb
         m_lines = m3.merge_lines(b'OTHER', b'THIS', reprocess=True)
         merged_text = b"".join(list(m_lines))
         optimal_text = b''.join(add_newline(b"abcdefghijklm")
-            + [b"<<<<<<< OTHER\n1\n=======\nN\n>>>>>>> THIS\n"]
-            + add_newline(b'OPQRSTUVWXY')
-            + [b"<<<<<<< OTHER\n2\n=======\nZ\n>>>>>>> THIS\n"]
-            )
+                                + [b"<<<<<<< OTHER\n1\n=======\nN\n>>>>>>> THIS\n"]
+                                + add_newline(b'OPQRSTUVWXY')
+                                + [b"<<<<<<< OTHER\n2\n=======\nZ\n>>>>>>> THIS\n"]
+                                )
         self.assertEqualDiff(optimal_text, merged_text)
 
     def test_minimal_conflicts_nonunique(self):
@@ -352,10 +352,10 @@ bbb
         m_lines = m3.merge_lines(b'OTHER', b'THIS', reprocess=True)
         merged_text = b"".join(list(m_lines))
         optimal_text = b''.join(add_newline(b"abacddefgghijk")
-            + [b"<<<<<<< OTHER\nn\n=======\na\n>>>>>>> THIS\n"]
-            + add_newline(b'lmontfpr')
-            + [b"<<<<<<< OTHER\nd\n=======\nz\n>>>>>>> THIS\n"]
-            )
+                                + [b"<<<<<<< OTHER\nn\n=======\na\n>>>>>>> THIS\n"]
+                                + add_newline(b'lmontfpr')
+                                + [b"<<<<<<< OTHER\nd\n=======\nz\n>>>>>>> THIS\n"]
+                                )
         self.assertEqualDiff(optimal_text, merged_text)
 
     def test_reprocess_and_base(self):

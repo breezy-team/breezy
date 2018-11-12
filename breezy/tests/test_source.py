@@ -422,7 +422,7 @@ class TestSource(TestSourceHelper):
             if "/tests/" in fname or "test_" in fname:
                 # We don't really care about tests
                 continue
-            if not "from __future__ import absolute_import" in text:
+            if "from __future__ import absolute_import" not in text:
                 missing_absolute_import.append(fname)
 
         if missing_absolute_import:

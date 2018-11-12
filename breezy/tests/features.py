@@ -238,7 +238,7 @@ class _HTTPSServerFeature(Feature):
 
     def _probe(self):
         try:
-            import ssl
+            import ssl  # noqa: F401
             return True
         except ImportError:
             return False
@@ -286,7 +286,7 @@ class _BreakinFeature(Feature):
             # We trigger SIGBREAK via a Console api so we need ctypes to
             # access the function
             try:
-                import ctypes
+                import ctypes  # noqa: F401
             except OSError:
                 return False
         return True
@@ -498,6 +498,7 @@ class _StraceFeature(Feature):
             proc.communicate()
             return True
         except OSError as e:
+            import errno
             if e.errno == errno.ENOENT:
                 # strace is not installed
                 return False
@@ -518,7 +519,7 @@ class _AttribFeature(Feature):
             return False
         try:
             proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
-        except OSError as e:
+        except OSError:
             return False
         return (0 == proc.wait())
 

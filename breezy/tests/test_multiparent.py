@@ -168,7 +168,7 @@ class TestParentText(TestCase):
                          == multiparent.ParentText(2, 2, 3, 4))
         self.assertFalse(multiparent.ParentText(1, 2, 3, 4)
                          == Mock(parent=1, parent_pos=2, child_pos=3,
-                              num_lines=4))
+                                 num_lines=4))
 
     def test_to_patch(self):
         self.assertEqual([b'c 0 1 2 3\n'],

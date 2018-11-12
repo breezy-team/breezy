@@ -117,9 +117,9 @@ class TestIsAncestor(TestCaseWithTransport):
         br2_only = (b'b@u-0-6',)
         for branch in br1, br2:
             for rev_id, anc in d:
-                if rev_id in br1_only and not branch is br1:
+                if rev_id in br1_only and branch is not br1:
                     continue
-                if rev_id in br2_only and not branch is br2:
+                if rev_id in br2_only and branch is not br2:
                     continue
                 self.assertThat(anc,
                                 MatchesAncestry(branch.repository, rev_id))

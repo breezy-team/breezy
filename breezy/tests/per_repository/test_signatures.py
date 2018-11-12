@@ -51,7 +51,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.commit_write_group()
         self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
                          + Testament.from_revision(repo,
-                                                 a).as_short_text() +
+                                                   a).as_short_text() +
                          b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
 

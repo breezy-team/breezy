@@ -3746,8 +3746,8 @@ class ProcessEntryPython(object):
 
             source_exec = source_details[3]
             changed = (content_change
-                or source_parent_id != target_parent_id
-                or old_basename != entry[0][1]
+                       or source_parent_id != target_parent_id
+                       or old_basename != entry[0][1]
                        or source_exec != target_exec
                        )
             if not changed and not self.include_unchanged:
@@ -3997,7 +3997,7 @@ class ProcessEntryPython(object):
                         current_dir_info = None
                     elif (sys.platform == 'win32'
                           and (e.errno in win_errors or
-                           e_winerror in win_errors)):
+                               e_winerror in win_errors)):
                         current_dir_info = None
                     else:
                         raise
@@ -4013,7 +4013,7 @@ class ProcessEntryPython(object):
             # are exhausted.
             if (block_index < len(self.state._dirblocks) and
                 osutils.is_inside(current_root,
-                                      self.state._dirblocks[block_index][0])):
+                                  self.state._dirblocks[block_index][0])):
                 current_block = self.state._dirblocks[block_index]
             else:
                 current_block = None
@@ -4088,7 +4088,7 @@ class ProcessEntryPython(object):
                         block_index += 1
                         if (block_index < len(self.state._dirblocks) and
                             osutils.is_inside(current_root,
-                                                  self.state._dirblocks[block_index][0])):
+                                              self.state._dirblocks[block_index][0])):
                             current_block = self.state._dirblocks[block_index]
                         else:
                             current_block = None
@@ -4218,7 +4218,7 @@ class ProcessEntryPython(object):
                     block_index += 1
                     if (block_index < len(self.state._dirblocks) and
                         osutils.is_inside(current_root,
-                                              self.state._dirblocks[block_index][0])):
+                                          self.state._dirblocks[block_index][0])):
                         current_block = self.state._dirblocks[block_index]
                     else:
                         current_block = None

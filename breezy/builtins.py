@@ -448,8 +448,8 @@ class cmd_cat_revision(Command):
             raise errors.BzrCommandError(gettext('You can only supply one of'
                                                  ' revision_id or --revision'))
         if revision_id is None and revision is None:
-            raise errors.BzrCommandError(gettext('You must supply either'
-                                                 ' --revision or a revision_id'))
+            raise errors.BzrCommandError(
+                gettext('You must supply either --revision or a revision_id'))
 
         b = controldir.ControlDir.open_containing_tree_or_branch(directory)[1]
 
@@ -942,13 +942,15 @@ class cmd_cp(Command):
             try:
                 (src, dst) = rel_names
             except IndexError:
-                raise errors.BzrCommandError(gettext('to copy multiple files the'
-                                                     ' destination must be a versioned'
-                                                     ' directory'))
+                raise errors.BzrCommandError(
+                    gettext('to copy multiple files the'
+                            ' destination must be a versioned'
+                            ' directory'))
             pairs = [(src, dst)]
         else:
-            pairs = [(n, osutils.joinpath([rel_names[-1], osutils.basename(n)]))
-                     for n in rel_names[:-1]]
+            pairs = [
+                (n, osutils.joinpath([rel_names[-1], osutils.basename(n)]))
+                for n in rel_names[:-1]]
 
         for src, dst in pairs:
             try:
@@ -1032,11 +1034,11 @@ class cmd_mv(Command):
 
     def run_auto(self, names_list, after, dry_run):
         if names_list is not None and len(names_list) > 1:
-            raise errors.BzrCommandError(gettext('Only one path may be specified to'
-                                                 ' --auto.'))
+            raise errors.BzrCommandError(
+                gettext('Only one path may be specified to --auto.'))
         if after:
-            raise errors.BzrCommandError(gettext('--after cannot be specified with'
-                                                 ' --auto.'))
+            raise errors.BzrCommandError(
+                gettext('--after cannot be specified with --auto.'))
         work_tree, file_list = WorkingTree.open_containing_paths(
             names_list, default_directory='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
@@ -1535,9 +1537,10 @@ class cmd_branch(Command):
             note(gettext('Created new stacked branch referring to %s.') %
                  branch.get_stacked_on_url())
         except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat) as e:
+                errors.UnstackableRepositoryFormat):
             note(ngettext('Branched %d revision.',
-                          'Branched %d revisions.', branch.revno()) % branch.revno())
+                          'Branched %d revisions.',
+                          branch.revno()) % branch.revno())
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
@@ -3918,7 +3921,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
-        except _mod_config.NoEmailInUsername as e:
+        except _mod_config.NoEmailInUsername:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
 
@@ -4572,7 +4575,7 @@ class cmd_merge(Command):
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
-                not merger.merge_type is _mod_merge.Merge3Merger):
+                merger.merge_type is not _mod_merge.Merge3Merger):
             raise errors.BzrCommandError(gettext("Show-base is not supported for this"
                                                  " merge type. %s") % merger.merge_type)
         if merger.reprocess is None:
@@ -4752,10 +4755,9 @@ class cmd_remerge(Command):
         self.add_cleanup(tree.lock_write().unlock)
         parents = tree.get_parent_ids()
         if len(parents) != 2:
-            raise errors.BzrCommandError(gettext("Sorry, remerge only works after normal"
-                                                 " merges.  Not cherrypicking or"
-                                                 " multi-merges."))
-        repository = tree.branch.repository
+            raise errors.BzrCommandError(
+                gettext("Sorry, remerge only works after normal"
+                        " merges.  Not cherrypicking or multi-merges."))
         interesting_files = None
         new_conflicts = []
         conflicts = tree.conflicts()
@@ -4768,7 +4770,8 @@ class cmd_remerge(Command):
                 if tree.kind(filename) != "directory":
                     continue
 
-                for path, ie in tree.iter_entries_by_dir(specific_files=[filename]):
+                for path, ie in tree.iter_entries_by_dir(
+                        specific_files=[filename]):
                     interesting_files.add(path)
             new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
         else:
@@ -5294,7 +5297,7 @@ class cmd_re_sign(Command):
                 for revision_id in revision_id_list:
                     revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
-            except:
+            except BaseException:
                 b.repository.abort_write_group()
                 raise
             else:
@@ -5305,7 +5308,7 @@ class cmd_re_sign(Command):
                 b.repository.start_write_group()
                 try:
                     b.repository.sign_revision(rev_id, gpg_strategy)
-                except:
+                except BaseException:
                     b.repository.abort_write_group()
                     raise
                 else:
@@ -5326,7 +5329,7 @@ class cmd_re_sign(Command):
                     for revno in range(from_revno, to_revno + 1):
                         b.repository.sign_revision(b.get_rev_id(revno),
                                                    gpg_strategy)
-                except:
+                except BaseException:
                     b.repository.abort_write_group()
                     raise
                 else:
@@ -5358,8 +5361,9 @@ class cmd_bind(Command):
             try:
                 location = b.get_old_bound_location()
             except errors.UpgradeRequired:
-                raise errors.BzrCommandError(gettext('No location supplied.  '
-                                                     'This format does not remember old locations.'))
+                raise errors.BzrCommandError(
+                    gettext('No location supplied.  '
+                            'This format does not remember old locations.'))
             else:
                 if location is None:
                     if b.get_bound_location() is not None:
@@ -5373,8 +5377,9 @@ class cmd_bind(Command):
         try:
             b.bind(b_other)
         except errors.DivergedBranches:
-            raise errors.BzrCommandError(gettext('These branches have diverged.'
-                                                 ' Try merging, and then bind again.'))
+            raise errors.BzrCommandError(
+                gettext('These branches have diverged.'
+                        ' Try merging, and then bind again.'))
         if b.get_config().has_explicit_nickname():
             b.nick = b_other.nick
 
@@ -5423,8 +5428,8 @@ class cmd_uncommit(Command):
                      Option('keep-tags',
                             help='Keep tags that point to removed revisions.'),
                      Option('local',
-                            help="Only remove the commits from the local branch"
-                            " when in a checkout."
+                            help="Only remove the commits from the local "
+                            "branch when in a checkout."
                             ),
                      ]
     takes_args = ['location?']
@@ -5505,8 +5510,10 @@ class cmd_uncommit(Command):
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
-        self.outf.write(gettext('You can restore the old tip by running:\n'
-                                '  brz pull . -r revid:%s\n') % last_rev_id.decode('utf-8'))
+        self.outf.write(
+            gettext('You can restore the old tip by running:\n'
+                    '  brz pull . -r revid:%s\n')
+            % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):
@@ -5581,7 +5588,8 @@ class cmd_serve(Command):
                                       'transport_server_registry'),
                        value_switches=True),
         Option('listen',
-               help='Listen for connections on nominated address.', type=text_type),
+               help='Listen for connections on nominated address.',
+               type=text_type),
         Option('port',
                help='Listen for connections on nominated port.  Passing 0 as '
                     'the port number will result in a dynamically allocated '
@@ -5714,17 +5722,19 @@ class cmd_merge_directive(Command):
 
     takes_options = [
         'directory',
-        RegistryOption.from_kwargs('patch-type',
-                                   'The type of patch to include in the directive.',
-                                   title='Patch type',
-                                   value_switches=True,
-                                   enum_switch=False,
-                                   bundle='Bazaar revision bundle (default).',
-                                   diff='Normal unified diff.',
-                                   plain='No patch, just directive.'),
+        RegistryOption.from_kwargs(
+            'patch-type',
+            'The type of patch to include in the directive.',
+            title='Patch type',
+            value_switches=True,
+            enum_switch=False,
+            bundle='Bazaar revision bundle (default).',
+            diff='Normal unified diff.',
+            plain='No patch, just directive.'),
         Option('sign', help='GPG-sign the directive.'), 'revision',
         Option('mail-to', type=text_type,
-               help='Instead of printing the directive, email to this address.'),
+               help='Instead of printing the directive, email to this '
+               'address.'),
         Option('message', type=text_type, short_name='m',
                help='Message to use when committing this merge.')
         ]
@@ -5760,13 +5770,14 @@ class cmd_merge_directive(Command):
             # FIXME: Should be done only if we succeed ? -- vila 2012-01-03
             branch.set_public_branch(public_branch)
         if not include_bundle and public_branch is None:
-            raise errors.BzrCommandError(gettext('No public branch specified or'
-                                                 ' known'))
+            raise errors.BzrCommandError(
+                gettext('No public branch specified or known'))
         base_revision_id = None
         if revision is not None:
             if len(revision) > 2:
-                raise errors.BzrCommandError(gettext('brz merge-directive takes '
-                                                     'at most two one revision identifiers'))
+                raise errors.BzrCommandError(
+                    gettext('brz merge-directive takes '
+                            'at most two one revision identifiers'))
             revision_id = revision[-1].as_revision_id(branch)
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)

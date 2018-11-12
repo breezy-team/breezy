@@ -48,8 +48,9 @@ from ..trace import mutter
 
 def load_tests(loader, standard_tests, pattern):
     """Parameterize the test for tempfile creation with different encodings."""
-    to_adapt, result = split_suite_by_re(standard_tests,
-                                         "test__create_temp_file_with_commit_template_in_unicode_dir")
+    to_adapt, result = split_suite_by_re(
+        standard_tests,
+        "test__create_temp_file_with_commit_template_in_unicode_dir")
     return multiply_tests(to_adapt, encoding_scenarios, result)
 
 
@@ -58,7 +59,6 @@ class MsgEditorTest(TestCaseWithTransport):
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
         working_tree = self.make_branch_and_tree('.')
-        b = working_tree.branch
         filename = u'hell\u00d8'
         try:
             self.build_tree_contents([(filename, b'contents of hello')])
@@ -200,7 +200,7 @@ if len(sys.argv) == 2:
             self.overrideEnv('BRZ_EDITOR', './fed.py')
 
     def test_edit_commit_message_without_infotext(self):
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         self.make_fake_editor()
 
         mutter('edit_commit_message without infotext')
@@ -208,7 +208,7 @@ if len(sys.argv) == 2:
                          msgeditor.edit_commit_message(''))
 
     def test_edit_commit_message_with_ascii_infotext(self):
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         self.make_fake_editor()
 
         mutter('edit_commit_message with ascii string infotext')
@@ -216,7 +216,7 @@ if len(sys.argv) == 2:
                          msgeditor.edit_commit_message('spam'))
 
     def test_edit_commit_message_with_unicode_infotext(self):
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         self.make_fake_editor()
 
         mutter('edit_commit_message with unicode infotext')
@@ -236,14 +236,14 @@ if len(sys.argv) == 2:
         self.make_uncommitted_tree()
         self.make_fake_editor()
         self.assertEqual('test message from fed\nstart message\n',
-                         msgeditor.edit_commit_message('',
-                                                       start_message='start message\n'))
+                         msgeditor.edit_commit_message(
+                             '', start_message='start message\n'))
         self.assertEqual('test message from fed\n',
-                         msgeditor.edit_commit_message('',
-                                                       start_message=''))
+                         msgeditor.edit_commit_message(
+                             '', start_message=''))
 
     def test_deleted_commit_message(self):
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
 
         if sys.platform == 'win32':
             editor = 'cmd.exe /c del'
@@ -344,12 +344,13 @@ if len(sys.argv) == 2:
         # in default user encoding
         char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
-            self.skipTest('Cannot find suitable non-ascii character '
-                          'for user_encoding (%s)' % osutils.get_user_encoding())
+            self.skipTest(
+                'Cannot find suitable non-ascii character '
+                'for user_encoding (%s)' % osutils.get_user_encoding())
 
         self.make_fake_editor(message=char)
 
-        working_tree = self.make_uncommitted_tree()
+        self.make_uncommitted_tree()
         self.assertRaises(msgeditor.BadCommitMessageEncoding,
                           msgeditor.edit_commit_message, '')
 

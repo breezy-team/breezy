@@ -112,7 +112,6 @@ class TestSimpleSet(tests.TestCase):
     def test_initial(self):
         obj = self.module.SimpleSet()
         self.assertEqual(0, len(obj))
-        st = ('foo', 'bar')
         self.assertFillState(0, 0, 0x3ff, obj)
 
     def test__lookup(self):
@@ -339,7 +338,8 @@ class TestSimpleSet(tests.TestCase):
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()
-        chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
+        chars = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                 'abcdefghijklmnopqrstuvwxyz1234567890')
         for i in chars:
             for j in chars:
                 k = (i, j)

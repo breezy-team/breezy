@@ -21,7 +21,6 @@ from .. import (
     tests,
     utextwrap,
     )
-from . import features
 
 
 # Japanese "Good morning".

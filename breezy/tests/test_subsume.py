@@ -96,7 +96,6 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree, sub_tree = self.make_trees()
         if base_tree.get_root_id() == sub_tree.get_root_id():
             raise tests.TestSkipped('This test requires unique roots')
-        sub_root_id = sub_tree.get_root_id()
         self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           base_tree)
         self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,

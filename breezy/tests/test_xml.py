@@ -240,7 +240,8 @@ class TestSerializer(TestCase):
         inv = breezy.bzr.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
-        eq(inv.revision_id, b'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
+        eq(inv.revision_id,
+           b'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
         ie = inv.get_entry(b'bar-20050824000535-6bc48cfad47ed134')
         eq(ie.kind, 'file')
         eq(ie.revision, b'mbp@foo-00')
@@ -343,14 +344,14 @@ class TestSerializer(TestCase):
         outfile_contents = outp.getvalue()
         self.assertEqual(outfile_contents[-1:], b'\n')
         self.assertEqualDiff(
-            outfile_contents, breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev))
+            outfile_contents,
+            breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev))
         self.assertEqualDiff(outfile_contents, _expected_rev_v5)
 
     def test_empty_property_value(self):
         """Create an empty property value check that it serializes correctly"""
         s_v5 = breezy.bzr.xml5.serializer_v5
         rev = s_v5.read_revision_from_string(_revision_v5)
-        outp = BytesIO()
         props = {'empty': '', 'one': 'one'}
         rev.properties = props
         txt = s_v5.write_revision_to_string(rev)

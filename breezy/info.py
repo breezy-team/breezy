@@ -247,7 +247,6 @@ def _show_missing_revisions_branch(branch, outfile):
 def _show_missing_revisions_working(working, outfile):
     """Show missing revisions in working tree."""
     branch = working.branch
-    basis = working.basis_tree()
     try:
         branch_revno, branch_last_revision = branch.last_revision_info()
     except errors.UnsupportedOperation:
@@ -530,10 +529,11 @@ class InfoHooks(_mod_hooks.Hooks):
 
     def __init__(self):
         super(InfoHooks, self).__init__("breezy.info", "hooks")
-        self.add_hook('repository',
-                      "Invoked when displaying the statistics for a repository. "
-                      "repository is called with a statistics dictionary as returned "
-                      "by the repository and a file-like object to write to.", (1, 15))
+        self.add_hook(
+            'repository',
+            "Invoked when displaying the statistics for a repository. "
+            "repository is called with a statistics dictionary as returned "
+            "by the repository and a file-like object to write to.", (1, 15))
 
 
 hooks = InfoHooks()

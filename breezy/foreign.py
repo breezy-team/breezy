@@ -110,7 +110,7 @@ class ForeignRevision(Revision):
     """
 
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
-        if not "inventory_sha1" in kwargs:
+        if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = b""
         super(ForeignRevision, self).__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid

@@ -70,7 +70,8 @@ class TestThunderbird(tests.TestCase):
         cmdline = tbird._get_compose_commandline(u'jrandom@example.org',
                                                  u'Hi there!', u'file%')
         self.assertEqual(['-compose',
-                          ("attachment='%s'," % urlutils.local_path_to_url('file%'))
+                          ("attachment='%s'," %
+                           urlutils.local_path_to_url('file%'))
                           + "subject='Hi there!',to='jrandom@example.org'",
                           ], cmdline)
         for item in cmdline:

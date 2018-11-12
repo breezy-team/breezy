@@ -248,11 +248,9 @@ class Merge3(object):
             #   matchlen == (bend - bmatch)
             len_a = amatch - ia
             len_b = bmatch - ib
-            len_base = zmatch - iz
             # invariants:
             # assert len_a >= 0
             # assert len_b >= 0
-            # assert len_base >= 0
 
             # print 'unmatched a=%d, b=%d' % (len_a, len_b)
 
@@ -279,7 +277,8 @@ class Merge3(object):
                                     ib, bmatch):
                                 yield node
                         else:
-                            yield 'conflict', iz, zmatch, ia, amatch, ib, bmatch
+                            yield ('conflict', iz, zmatch, ia, amatch, ib,
+                                   bmatch)
                     else:
                         raise AssertionError(
                             "can't handle a=b=base but unmatched")
@@ -302,17 +301,18 @@ class Merge3(object):
                 ia = aend
                 ib = bend
 
-    def _refine_cherrypick_conflict(self, zstart, zend, astart, aend, bstart, bend):
+    def _refine_cherrypick_conflict(self, zstart, zend, astart, aend, bstart,
+                                    bend):
         """When cherrypicking b => a, ignore matches with b and base."""
         # Do not emit regions which match, only regions which do not match
-        matches = patiencediff.PatienceSequenceMatcher(None,
-                                                       self.base[zstart:zend], self.b[bstart:bend]).get_matching_blocks()
+        matches = patiencediff.PatienceSequenceMatcher(
+            None, self.base[zstart:zend], self.b[bstart:bend]
+            ).get_matching_blocks()
         last_base_idx = 0
         last_b_idx = 0
         last_b_idx = 0
         yielded_a = False
         for base_idx, b_idx, match_len in matches:
-            conflict_z_len = base_idx - last_base_idx
             conflict_b_len = b_idx - last_b_idx
             if conflict_b_len == 0:  # There are no lines in b which conflict,
                                     # so skip it

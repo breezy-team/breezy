@@ -66,7 +66,6 @@ from breezy import (
     diff,
     foreign,
     revision as _mod_revision,
-    tsort,
     )
 from breezy.i18n import gettext, ngettext
 """)
@@ -462,7 +461,8 @@ class _DefaultLogGenerator(LogGenerator):
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
-                if levels != 0 and merge_depth is not None and merge_depth >= levels:
+                if (levels != 0 and merge_depth is not None and
+                        merge_depth >= levels):
                     continue
                 if omit_merges and len(rev.parent_ids) > 1:
                     continue
@@ -476,8 +476,9 @@ class _DefaultLogGenerator(LogGenerator):
                     signature = format_signature_validity(rev_id, self.branch)
                 else:
                     signature = None
-                yield LogRevision(rev, revno, merge_depth, delta,
-                                  self.rev_tag_dict.get(rev_id), diff, signature)
+                yield LogRevision(
+                    rev, revno, merge_depth, delta,
+                    self.rev_tag_dict.get(rev_id), diff, signature)
                 if limit:
                     log_count += 1
                     if log_count >= limit:
@@ -519,8 +520,9 @@ class _DefaultLogGenerator(LogGenerator):
             # not a directory
             file_count = len(self.rqst.get('specific_fileids'))
             if file_count != 1:
-                raise BzrError("illegal LogRequest: must match-using-deltas "
-                               "when logging %d files" % file_count)
+                raise errors.BzrError(
+                    "illegal LogRequest: must match-using-deltas "
+                    "when logging %d files" % file_count)
             return self._log_revision_iterator_using_per_file_graph()
 
     def _log_revision_iterator_using_delta_matching(self):
@@ -582,7 +584,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
 
     if (end_rev_id and start_rev_id == end_rev_id
         and (not generate_merge_revisions
-         or not _has_merges(branch, end_rev_id))):
+             or not _has_merges(branch, end_rev_id))):
         # If a single revision is requested, check we can handle it
         return _generate_one_revision(branch, end_rev_id, br_rev_id,
                                       branch.revno())
@@ -880,11 +882,12 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
         # It would be nicer if log adapters were first class objects
         # with custom parameters. This will do for now. IGC 20090127
         if adapter == _make_delta_filter:
-            log_rev_iterator = adapter(branch, generate_delta,
-                                       search, log_rev_iterator, file_ids, direction)
+            log_rev_iterator = adapter(
+                branch, generate_delta, search, log_rev_iterator, file_ids,
+                direction)
         else:
-            log_rev_iterator = adapter(branch, generate_delta,
-                                       search, log_rev_iterator)
+            log_rev_iterator = adapter(
+                branch, generate_delta, search, log_rev_iterator)
     return log_rev_iterator
 
 
@@ -1111,8 +1114,8 @@ def _get_revision_limits(branch, start_revision, end_revision):
             raise errors.BzrCommandError(
                 gettext('Logging revision 0 is invalid.'))
         if end_revno is not None and start_revno > end_revno:
-            raise errors.BzrCommandError(gettext("Start revision must be "
-                                                 "older than the end revision."))
+            raise errors.BzrCommandError(
+                gettext("Start revision must be older than the end revision."))
     return (start_rev_id, end_rev_id)
 
 
@@ -1287,7 +1290,7 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     """Reverse revisions by depth.
 
     Revisions with a different depth are sorted as a group with the previous
-    revision of that depth.  There may be no topological justification for this,
+    revision of that depth.  There may be no topological justification for this
     but it looks much nicer.
     """
     # Add a fake revision at start so that we can always attach sub revisions
@@ -1400,13 +1403,14 @@ class LogFormatter(object):
         """
         self.to_file = to_file
         # 'exact' stream used to show diff, it should print content 'as is'
-        # and should not try to decode/encode it to unicode to avoid bug #328007
+        # and should not try to decode/encode it to unicode to avoid bug
+        # #328007
         if to_exact_file is not None:
             self.to_exact_file = to_exact_file
         else:
-            # XXX: somewhat hacky; this assumes it's a codec writer; it's better
-            # for code that expects to get diffs to pass in the exact file
-            # stream
+            # XXX: somewhat hacky; this assumes it's a codec writer; it's
+            # better for code that expects to get diffs to pass in the exact
+            # file stream
             self.to_exact_file = getattr(to_file, 'stream', to_file)
         self.show_ids = show_ids
         self.show_timezone = show_timezone
@@ -1530,7 +1534,7 @@ class LogFormatter(object):
                 rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
-        if not b":" in rev.revision_id:
+        if b":" not in rev.revision_id:
             return []
 
         # Revision was once imported from a foreign repository
@@ -2035,7 +2039,6 @@ def show_flat_log(repository, history, last_revno, lf):
     :param last_revno: The revno of the last revision_id in the history.
     :param lf: The log formatter to use.
     """
-    start_revno = last_revno - len(history) + 1
     revisions = repository.get_revisions(history)
     for i, rev in enumerate(revisions):
         lr = LogRevision(rev, i + last_revno, 0, None)

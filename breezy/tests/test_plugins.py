@@ -25,14 +25,11 @@ import types
 
 import breezy
 from .. import (
-    errors,
     osutils,
     plugin,
     tests,
-    trace,
     )
 from ..sixish import (
-    PY3,
     StringIO,
     viewkeys,
     )
@@ -576,8 +573,9 @@ class TestModuleHelpTopic(tests.TestCase):
     def test_get_help_text_with_additional_see_also(self):
         mod = FakeModule('two lines of help\nand more', 'demo')
         topic = plugin.ModuleHelpTopic(mod)
-        self.assertEqual("two lines of help\nand more\n\n:See also: bar, foo\n",
-                         topic.get_help_text(['foo', 'bar']))
+        self.assertEqual(
+            "two lines of help\nand more\n\n:See also: bar, foo\n",
+            topic.get_help_text(['foo', 'bar']))
 
     def test_get_help_topic(self):
         """The help topic for a plugin is its module name."""
@@ -728,8 +726,9 @@ class TestEnvDisablePlugins(tests.TestCase):
     def test_mixed(self):
         value = os.pathsep.join(['valid', 'in-valid'])
         self.assertEqual(['valid'], self._get_names(value))
-        self.assertContainsRe(self.get_log(),
-                              r"Invalid name 'in-valid' in BRZ_DISABLE_PLUGINS=" + repr(value))
+        self.assertContainsRe(
+            self.get_log(),
+            r"Invalid name 'in-valid' in BRZ_DISABLE_PLUGINS=" + repr(value))
 
 
 class TestEnvPluginsAt(tests.TestCase):
@@ -763,8 +762,9 @@ class TestEnvPluginsAt(tests.TestCase):
 
     def test_bad_name(self):
         self.assertEqual([], self._get_paths('/usr/local/bzr-git'))
-        self.assertContainsRe(self.get_log(),
-                              r"Invalid name 'bzr-git' in BRZ_PLUGINS_AT='/usr/local/bzr-git'")
+        self.assertContainsRe(
+            self.get_log(),
+            r"Invalid name 'bzr-git' in BRZ_PLUGINS_AT='/usr/local/bzr-git'")
 
 
 class TestLoadPluginAt(BaseTestPlugins):
@@ -826,10 +826,10 @@ class TestLoadPluginAt(BaseTestPlugins):
         self.create_plugin_package('test_bar', dir='non-standard-dir/test_bar')
         self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@non-standard-dir')
         self.update_module_paths(['standard'])
-        import breezy.testingplugins.test_foo
+        import breezy.testingplugins.test_foo  # noqa: F401
         self.assertEqual(self.module_prefix + 'test_foo',
                          self.module.test_foo.__package__)
-        import breezy.testingplugins.test_foo.test_bar
+        import breezy.testingplugins.test_foo.test_bar  # noqa: F401
         self.assertIsSameRealPath('non-standard-dir/test_bar/__init__.py',
                                   self.module.test_foo.test_bar.__file__)
 
@@ -841,7 +841,7 @@ from . import test_bar
         self.create_plugin_package('test_bar', dir='another-dir/test_bar')
         self.overrideEnv('BRZ_PLUGINS_AT', 'test_foo@another-dir')
         self.update_module_paths(['standard'])
-        import breezy.testingplugins.test_foo
+        import breezy.testingplugins.test_foo  # noqa: F401
         self.assertEqual(self.module_prefix + 'test_foo',
                          self.module.test_foo.__package__)
         self.assertIsSameRealPath('another-dir/test_bar/__init__.py',

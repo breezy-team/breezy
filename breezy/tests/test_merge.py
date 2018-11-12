@@ -2986,10 +2986,11 @@ class TestLCAMultiWay(tests.TestCase):
     def test_other_in_lca(self):
         # OTHER takes a value of one of the LCAs, THIS takes a new value, which
         # theoretically supersedes both LCA values and 'wins'
-        self.assertLCAMultiWay('this',
-                               'bval', ['lca1val', 'lca2val'], 'lca1val', 'newval')
-        self.assertLCAMultiWay('this',
-                               'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'newval')
+        self.assertLCAMultiWay(
+            'this', 'bval', ['lca1val', 'lca2val'], 'lca1val', 'newval')
+        self.assertLCAMultiWay(
+            'this', 'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val',
+            'newval')
         self.assertLCAMultiWay('conflict',
                                'bval', ['lca1val',
                                         'lca2val'], 'lca1val', 'newval',
@@ -3000,10 +3001,11 @@ class TestLCAMultiWay(tests.TestCase):
                                allow_overriding_lca=False)
         # THIS reverted back to BASE, but that is an explicit supersede of all
         # LCAs
-        self.assertLCAMultiWay('this',
-                               'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val', 'bval')
-        self.assertLCAMultiWay('this',
-                               'bval', ['lca1val', 'lca2val', 'bval'], 'lca1val', 'bval')
+        self.assertLCAMultiWay(
+            'this', 'bval', ['lca1val', 'lca2val', 'lca3val'], 'lca1val',
+            'bval')
+        self.assertLCAMultiWay(
+            'this', 'bval', ['lca1val', 'lca2val', 'bval'], 'lca1val', 'bval')
         self.assertLCAMultiWay('conflict',
                                'bval', ['lca1val', 'lca2val',
                                         'lca3val'], 'lca1val', 'bval',
@@ -3016,10 +3018,10 @@ class TestLCAMultiWay(tests.TestCase):
     def test_this_in_lca(self):
         # THIS takes a value of one of the LCAs, OTHER takes a new value, which
         # theoretically supersedes both LCA values and 'wins'
-        self.assertLCAMultiWay('other',
-                               'bval', ['lca1val', 'lca2val'], 'oval', 'lca1val')
-        self.assertLCAMultiWay('other',
-                               'bval', ['lca1val', 'lca2val'], 'oval', 'lca2val')
+        self.assertLCAMultiWay(
+            'other', 'bval', ['lca1val', 'lca2val'], 'oval', 'lca1val')
+        self.assertLCAMultiWay(
+            'other', 'bval', ['lca1val', 'lca2val'], 'oval', 'lca2val')
         self.assertLCAMultiWay('conflict',
                                'bval', ['lca1val',
                                         'lca2val'], 'oval', 'lca1val',
@@ -3030,20 +3032,22 @@ class TestLCAMultiWay(tests.TestCase):
                                allow_overriding_lca=False)
         # OTHER reverted back to BASE, but that is an explicit supersede of all
         # LCAs
-        self.assertLCAMultiWay('other',
-                               'bval', ['lca1val', 'lca2val', 'lca3val'], 'bval', 'lca3val')
-        self.assertLCAMultiWay('conflict',
-                               'bval', ['lca1val', 'lca2val',
-                                        'lca3val'], 'bval', 'lca3val',
-                               allow_overriding_lca=False)
+        self.assertLCAMultiWay(
+            'other', 'bval', ['lca1val', 'lca2val', 'lca3val'], 'bval',
+            'lca3val')
+        self.assertLCAMultiWay(
+            'conflict', 'bval', ['lca1val', 'lca2val', 'lca3val'],
+            'bval', 'lca3val', allow_overriding_lca=False)
 
     def test_all_differ(self):
-        self.assertLCAMultiWay('conflict',
-                               'bval', ['lca1val', 'lca2val'], 'oval', 'tval')
-        self.assertLCAMultiWay('conflict',
-                               'bval', ['lca1val', 'lca2val', 'lca2val'], 'oval', 'tval')
-        self.assertLCAMultiWay('conflict',
-                               'bval', ['lca1val', 'lca2val', 'lca3val'], 'oval', 'tval')
+        self.assertLCAMultiWay(
+            'conflict', 'bval', ['lca1val', 'lca2val'], 'oval', 'tval')
+        self.assertLCAMultiWay(
+            'conflict', 'bval', ['lca1val', 'lca2val', 'lca2val'], 'oval',
+            'tval')
+        self.assertLCAMultiWay(
+            'conflict', 'bval', ['lca1val', 'lca2val', 'lca3val'], 'oval',
+            'tval')
 
 
 class TestConfigurableFileMerger(tests.TestCaseWithTransport):
@@ -3117,19 +3121,19 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def test_hook_called_for_text_conflicts(self):
         builder = self.make_text_conflict()
-        conflicts = builder.merge()
+        builder.merge()
         # The hook should call the merge_text() method
         self.assertEqual(['merge_text'], self.calls)
 
     def test_hook_not_called_for_kind_change(self):
         builder = self.make_kind_change()
-        conflicts = builder.merge()
+        builder.merge()
         # The hook should not call the merge_text() method
         self.assertEqual([], self.calls)
 
     def test_hook_not_called_for_other_files(self):
         builder = self.make_text_conflict('foobar')
-        conflicts = builder.merge()
+        builder.merge()
         # The hook should not call the merge_text() method
         self.assertEqual([], self.calls)
 
@@ -3193,9 +3197,9 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         other_tree = branch_to_merge.basis_tree()
         op.add_cleanup(other_tree.lock_read().unlock)
         # Perform the merge
-        merger = _mod_merge.MergeIntoMerger(this_tree=wt, other_tree=other_tree,
-                                            other_branch=branch_to_merge, target_subdir=subdir_relpath,
-                                            source_subpath=subdir_to_merge)
+        merger = _mod_merge.MergeIntoMerger(
+            this_tree=wt, other_tree=other_tree, other_branch=branch_to_merge,
+            target_subdir=subdir_relpath, source_subpath=subdir_to_merge)
         merger.set_base_revision(_mod_revision.NULL_REVISION, branch_to_merge)
         conflicts = merger.do_merge()
         merger.set_pending()
@@ -3282,7 +3286,7 @@ class TestMergeInto(TestMergeIntoBase):
         generated and the original directory is renamed to foo.moved.
         """
         dest_wt = self.setup_simple_branch('dest', ['dir/', 'dir/file.txt'])
-        src_wt = self.setup_simple_branch('src', ['README'])
+        self.setup_simple_branch('src', ['README'])
         conflicts = self.do_merge_into('src', 'dest/dir')
         self.assertEqual(1, conflicts)
         dest_wt.lock_read()
@@ -3301,7 +3305,7 @@ class TestMergeInto(TestMergeIntoBase):
         """A conflict is generated if the merge-into adds a file (or other
         inventory entry) with a file-id that already exists in the target tree.
         """
-        dest_wt = self.setup_simple_branch('dest', ['file.txt'])
+        self.setup_simple_branch('dest', ['file.txt'])
         # Make a second tree with a file-id that will clash with file.txt in
         # dest.
         src_wt = self.make_branch_and_tree('src')
@@ -3319,9 +3323,8 @@ class TestMergeInto(TestMergeIntoBase):
         subtree.
         """
         dest_wt = self.setup_simple_branch('dest')
-        src_wt = self.setup_simple_branch(
-            'src', ['hello.txt', 'dir/', 'dir/foo.c'])
-        conflicts = self.do_merge_into('src/dir', 'dest/dir')
+        self.setup_simple_branch('src', ['hello.txt', 'dir/', 'dir/foo.c'])
+        self.do_merge_into('src/dir', 'dest/dir')
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The r1-lib1 revision should NOT be merged into this one (this is a
@@ -3336,9 +3339,8 @@ class TestMergeInto(TestMergeIntoBase):
     def test_only_file(self):
         """An edge case: merge just one file, not a whole dir."""
         dest_wt = self.setup_simple_branch('dest')
-        two_file_wt = self.setup_simple_branch(
-            'two-file', ['file1.txt', 'file2.txt'])
-        conflicts = self.do_merge_into('two-file/file1.txt', 'dest/file1.txt')
+        self.setup_simple_branch('two-file', ['file1.txt', 'file2.txt'])
+        self.do_merge_into('two-file/file1.txt', 'dest/file1.txt')
         dest_wt.lock_read()
         self.addCleanup(dest_wt.unlock)
         # The r1-lib1 revision should NOT be merged into this one
@@ -3352,7 +3354,7 @@ class TestMergeInto(TestMergeIntoBase):
         does not exist.
         """
         dest_wt = self.setup_simple_branch('dest')
-        two_file_wt = self.setup_simple_branch('src', ['dir/'])
+        self.setup_simple_branch('src', ['dir/'])
         self.assertRaises(_mod_merge.PathNotInTree, self.do_merge_into,
                           'src/no-such-dir', 'dest/foo')
         dest_wt.lock_read()
@@ -3366,7 +3368,7 @@ class TestMergeInto(TestMergeIntoBase):
         tree does not exist.
         """
         dest_wt = self.setup_simple_branch('dest')
-        two_file_wt = self.setup_simple_branch('src', ['file.txt'])
+        self.setup_simple_branch('src', ['file.txt'])
         self.assertRaises(_mod_merge.PathNotInTree, self.do_merge_into,
                           'src', 'dest/no-such-dir/foo')
         dest_wt.lock_read()

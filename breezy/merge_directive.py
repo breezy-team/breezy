@@ -65,20 +65,21 @@ class MergeDirectiveHooks(hooks.Hooks):
     def __init__(self):
         hooks.Hooks.__init__(self, "breezy.merge_directive",
                              "BaseMergeDirective.hooks")
-        self.add_hook('merge_request_body',
-                      "Called with a MergeRequestBodyParams when a body is needed for"
-                      " a merge request.  Callbacks must return a body.  If more"
-                      " than one callback is registered, the output of one callback is"
-                      " provided to the next.", (1, 15, 0))
+        self.add_hook(
+            'merge_request_body',
+            "Called with a MergeRequestBodyParams when a body is needed for"
+            " a merge request.  Callbacks must return a body.  If more"
+            " than one callback is registered, the output of one callback is"
+            " provided to the next.", (1, 15, 0))
 
 
 class BaseMergeDirective(object):
     """A request to perform a merge into a branch.
 
-    This is the base class that all merge directive implementations 
+    This is the base class that all merge directive implementations
     should derive from.
 
-    :cvar multiple_output_files: Whether or not this merge directive 
+    :cvar multiple_output_files: Whether or not this merge directive
         stores a set of revisions in more than one file
     """
 

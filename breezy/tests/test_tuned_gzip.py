@@ -19,7 +19,6 @@
 
 import gzip
 from io import BytesIO
-import zlib
 
 from .. import (
     tuned_gzip,

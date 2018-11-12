@@ -113,23 +113,23 @@ class TestStatus(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         output = StringIO()
         show_pending_merges(tree, output, verbose=True)
-        self.assertEqualDiff('pending merges:\n'
-                             '  Joe Foo 2007-12-04 another non-ghost\n'
-                             '    Joe Foo 2007-12-04 [merge] commit with ghost\n'
-                             '    (ghost) a-ghost-revision\n'
-                             '    Joe Foo 2007-12-04 a non-ghost\n',
-                             output.getvalue())
+        self.assertEqualDiff(
+            'pending merges:\n'
+            '  Joe Foo 2007-12-04 another non-ghost\n'
+            '    Joe Foo 2007-12-04 [merge] commit with ghost\n'
+            '    (ghost) a-ghost-revision\n'
+            '    Joe Foo 2007-12-04 a non-ghost\n',
+            output.getvalue())
 
     def tests_revision_to_revision(self):
         """doing a status between two revision trees should work."""
         tree = self.make_branch_and_tree('.')
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
-        r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
-        show_tree_status(tree, to_file=output,
-                         revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                                   RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+        show_tree_status(tree, to_file=output, revision=[
+            RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+            RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         # return does not matter as long as it did not raise.
 
 
@@ -159,11 +159,10 @@ class TestHooks(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
-        r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
-        show_tree_status(tree, to_file=output,
-                         revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                                   RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+        show_tree_status(tree, to_file=output, revision=[
+            RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+            RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)
@@ -182,11 +181,12 @@ class TestHooks(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         r1_id = tree.commit('one', allow_pointless=True)
         r2_id = tree.commit('two', allow_pointless=True)
-        r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
-        show_tree_status(tree, to_file=output,
-                         revision=[RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
-                                   RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
+        show_tree_status(
+            tree, to_file=output,
+            revision=[
+                RevisionSpec.from_string("revid:%s" % r1_id.decode('utf-8')),
+                RevisionSpec.from_string("revid:%s" % r2_id.decode('utf-8'))])
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusHookParams)

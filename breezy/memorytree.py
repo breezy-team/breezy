@@ -177,7 +177,7 @@ class MemoryTree(MutableInventoryTree):
                 self._lock_mode = "r"
                 self._populate_from_branch()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -191,7 +191,7 @@ class MemoryTree(MutableInventoryTree):
                 self._populate_from_branch()
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
         return lock.LogicalLockResult(self.unlock)
@@ -207,7 +207,7 @@ class MemoryTree(MutableInventoryTree):
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -229,8 +229,8 @@ class MemoryTree(MutableInventoryTree):
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
-                self._file_transport.put_file(path,
-                                              self._basis_tree.get_file(path, entry.file_id))
+                self._file_transport.put_file(
+                    path, self._basis_tree.get_file(path, entry.file_id))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 

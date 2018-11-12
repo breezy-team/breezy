@@ -912,7 +912,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             if not (isinstance(tree, DirStateRevisionTree) and
                     tree._revision_id in parents):
                 return super(DirStateWorkingTree, self).paths2ids(
-                        paths, trees, require_versioned)
+                    paths, trees, require_versioned)
         search_indexes = [
             0] + [1 + parents.index(tree._revision_id) for tree in trees]
         paths_utf8 = set()
@@ -1246,7 +1246,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # if there are any un-unversioned ids at the end, raise
             for key, details in state._dirblocks[0][1]:
                 if (details[0][0] not in (b'a', b'r') and  # absent or relocated
-                    key[2] in ids_to_unversion):
+                        key[2] in ids_to_unversion):
                     # I haven't written the code to unversion / yet - it should
                     # be supported.
                     raise errors.BzrError(
@@ -1260,7 +1260,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 for path in paths_to_unversion:
                     if (block[0].startswith(path) and
                         (len(block[0]) == len(path) or
-                             block[0][len(path)] == '/')):
+                         block[0][len(path)] == '/')):
                         # this entire block should be deleted - its the block for a
                         # path to unversion; or the child of one
                         delete_block = True

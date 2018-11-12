@@ -525,8 +525,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             delta_dict = dict((change[2], change) for change in delta)
             if tree.branch.repository._format.records_per_file_revision:
                 version_recorded = (file_id in delta_dict
-                    and delta_dict[file_id][3] is not None
-                    and delta_dict[file_id][3].revision == rev2)
+                                    and delta_dict[file_id][3] is not None
+                                    and delta_dict[file_id][3].revision == rev2)
                 if records_version:
                     self.assertTrue(version_recorded)
                 else:

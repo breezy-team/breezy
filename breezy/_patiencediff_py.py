@@ -23,9 +23,6 @@ import difflib
 from .trace import mutter
 
 
-__all__ = ['PatienceSequenceMatcher', 'unified_diff', 'unified_diff_files']
-
-
 def unique_lcs_py(a, b):
     """Find the longest common subset for unique lines.
 

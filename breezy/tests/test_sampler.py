@@ -24,11 +24,6 @@ Be sure to register your new test script in breezy/tests/__init__.py -
 search for sampler in there.
 """
 
-# import system imports here
-import os
-import sys
-
-# import breezy specific imports here
 from breezy.tests import TestCaseInTempDir
 
 

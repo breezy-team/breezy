@@ -636,7 +636,7 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         self.assertTrue(self.tree.branch.repository.has_revision(b'new_r3'))
 
     def test_no_commits(self):
-        new_tree = self.make_branch_and_tree('new_tree')
+        self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
                           self.get_in_history, 'branch:new_tree')
         self.assertRaises(errors.NoCommits,

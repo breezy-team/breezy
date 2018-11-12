@@ -27,7 +27,6 @@ from stat import S_ISDIR
 import breezy
 from breezy.errors import (
     UnknownFormatError,
-    UnsupportedFormatError,
     )
 from breezy import (
     tests,
@@ -142,7 +141,6 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingcontroldir.initialize(url)
             format.initialize(dir)
-            t = transport.get_transport_from_path(url)
             found_format = bzrrepository.RepositoryFormatMetaDir.find_format(
                 dir)
             self.assertIsInstance(found_format, format.__class__)
@@ -178,10 +176,10 @@ class TestRepositoryFormat(TestCaseWithTransport):
         self.assertIsInstance(
             found_format, bzrrepository.RepositoryFormatMetaDir)
         self.assertEqual(found_format.features.get(b"name"), b"necessity")
-        self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
-                          True)
-        self.addCleanup(bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-                        b"name")
+        self.assertRaises(
+            bzrdir.MissingFeature, found_format.check_support_status, True)
+        self.addCleanup(
+            bzrrepository.RepositoryFormatMetaDir.unregister_feature, b"name")
         bzrrepository.RepositoryFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
@@ -226,14 +224,14 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_attribute__fetch_order(self):
         """Knits need topological data insertion."""
-        repo = self.make_repository('.',
-                                    format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
-        repo = self.make_repository('.',
-                                    format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
@@ -257,7 +255,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
         # Check per-file knits.
-        branch = control.create_branch()
+        control.create_branch()
         tree = control.create_workingtree()
         tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
         tree.put_file_bytes_non_atomic('foo', b'')
@@ -278,7 +276,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
+        knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
         # lock: is a directory
@@ -298,7 +296,8 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(
+            control, shared=True)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
@@ -327,16 +326,16 @@ class TestFormatKnit1(TestCaseWithTransport):
         the whole inventory. So we grab the one from the expected text. Which
         is valid when the api is not being abused.
         """
-        repo = self.make_repository('.',
-                                    format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         inv_xml = b'<inventory format="5">\n</inventory>\n'
         inv = repo._deserialise_inventory(b'test-rev-id', inv_xml)
         self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
         """If it is set, then we re-use the global revision id"""
-        repo = self.make_repository('.',
-                                    format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         inv_xml = (b'<inventory format="5" revision_id="other-rev-id">\n'
                    b'</inventory>\n')
         # Arguably, the deserialise_inventory should detect a mismatch, and
@@ -348,8 +347,8 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqual(b'other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):
-        repo = self.make_repository('.',
-                                    format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         self.assertFalse(repo._format.supports_external_lookups)
 
 
@@ -428,13 +427,17 @@ class TestInterRepository(TestCaseWithTransport):
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
         dummy_a._serializer = repo._serializer
-        dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_a._format.supports_tree_reference = (
+            repo._format.supports_tree_reference)
         dummy_a._format.rich_root_data = repo._format.rich_root_data
-        dummy_a._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
+        dummy_a._format.supports_full_versioned_files = (
+            repo._format.supports_full_versioned_files)
         dummy_b._serializer = repo._serializer
-        dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_b._format.supports_tree_reference = (
+            repo._format.supports_tree_reference)
         dummy_b._format.rich_root_data = repo._format.rich_root_data
-        dummy_b._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
+        dummy_b._format.supports_full_versioned_files = (
+            repo._format.supports_full_versioned_files)
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -532,8 +535,9 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         revision_tree = tree.branch.repository.revision_tree(b'dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
-        self.assertEqual(b'dull',
-                         revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
+        self.assertEqual(
+            b'dull',
+            revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -648,8 +652,8 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         inv.parent_id_basename_to_file_id._ensure_root()
         inv.id_to_entry._ensure_root()
         self.assertEqual(65536, inv.id_to_entry._root_node.maximum_size)
-        self.assertEqual(65536,
-                         inv.parent_id_basename_to_file_id._root_node.maximum_size)
+        self.assertEqual(
+            65536, inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
     def test_autopack_unchanged_chk_nodes(self):
         # at 20 unchanged commits, chk pages are packed that are split into
@@ -847,15 +851,17 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
         self.builder = self.make_branch_builder('source')
         self.builder.start_series()
-        self.builder.build_snapshot(None,
-                                    [('add', ('', b'tree-root', 'directory', None))],
-                                    revision_id=b'initial')
+        self.builder.build_snapshot(
+            None,
+            [('add', ('', b'tree-root', 'directory', None))],
+            revision_id=b'initial')
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
 
     def assertParentIds(self, expected_result, rev_set):
-        self.assertEqual(sorted(expected_result),
-                         sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
+        self.assertEqual(
+            sorted(expected_result),
+            sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
 
     def test_simple(self):
         self.builder.build_snapshot(None, [], revision_id=b'revid1')
@@ -921,9 +927,10 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             self.add_file(repo, inv, 'file1', b'rev1a', [])
             repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
             repo.add_inventory(b'rev1a', inv, [])
-            revision = _mod_revision.Revision(b'rev1a',
-                                              committer='jrandom@example.com', timestamp=0,
-                                              inventory_sha1='', timezone=0, message='foo', parent_ids=[])
+            revision = _mod_revision.Revision(
+                b'rev1a',
+                committer='jrandom@example.com', timestamp=0,
+                inventory_sha1='', timezone=0, message='foo', parent_ids=[])
             repo.add_revision(b'rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
@@ -962,9 +969,10 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         inv.root.revision = revision_id
         repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
-        revision = _mod_revision.Revision(revision_id,
-                                          committer='jrandom@example.com', timestamp=0, inventory_sha1='',
-                                          timezone=0, message='foo', parent_ids=parent_ids)
+        revision = _mod_revision.Revision(
+            revision_id,
+            committer='jrandom@example.com', timestamp=0, inventory_sha1='',
+            timezone=0, message='foo', parent_ids=parent_ids)
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
@@ -1258,8 +1266,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         inv_index = GraphIndex(packs._index_transport, name + '.iix', sizes[1])
         txt_index = GraphIndex(packs._index_transport, name + '.tix', sizes[2])
         sig_index = GraphIndex(packs._index_transport, name + '.six', sizes[3])
-        self.assertEqual(pack_repo.ExistingPack(packs._pack_transport,
-                                                name, rev_index, inv_index, txt_index, sig_index), pack_1)
+        self.assertEqual(
+            pack_repo.ExistingPack(
+                packs._pack_transport, name, rev_index, inv_index, txt_index,
+                sig_index), pack_1)
         # and the same instance should be returned on successive calls.
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
@@ -1341,7 +1351,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
             (b'bogus-rev',), (), None, b'bogus-content\n')])
         # This should trigger an autopack, which will combine everything into a
         # single pack file.
-        new_names = r.commit_write_group()
+        r.commit_write_group()
         names = packs.names()
         self.assertEqual(1, len(names))
         self.assertEqual([names[0] + '.pack'],
@@ -1520,7 +1530,7 @@ class TestPacker(TestCaseWithTransport):
         # The new ordering moves B & C to the front of the .packs attribute,
         # and leaves the others in the original order.
         new_packs = [packs[1], packs[2], packs[0], packs[3]]
-        new_pack = packer.pack()
+        packer.pack()
         self.assertEqual(new_packs, packer.packs)
 
 
@@ -1685,7 +1695,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         source_tree = self.make_branch_and_tree('src', format=src_fmt)
         source_tree.lock_write()
         self.addCleanup(source_tree.unlock)
-        tip = source_tree.commit('foo')
+        source_tree.commit('foo')
         target = self.make_repository('target', format=target_fmt)
         target.lock_write()
         self.addCleanup(target.unlock)

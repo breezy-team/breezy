@@ -1678,8 +1678,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 raise RevisionNotPresent([record.key], self)
             elif ((record.storage_kind in knit_types) and
                   (compression_parent is None or
-                       not self._immediate_fallback_vfs or
-                       compression_parent in self._index or
+                   not self._immediate_fallback_vfs or
+                   compression_parent in self._index or
                    compression_parent not in self)):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf

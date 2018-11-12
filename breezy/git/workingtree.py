@@ -828,7 +828,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 else:
                     ie = fk_entries[kind]()
                     yield (posixpath.relpath(path, from_dir), ("I" if
-                           self.is_ignored(path) else "?"), kind, None, ie)
+                                                               self.is_ignored(path) else "?"), kind, None, ie)
 
     def all_file_ids(self):
         with self.lock_read():

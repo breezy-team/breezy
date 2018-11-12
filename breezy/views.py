@@ -189,8 +189,8 @@ class PathBasedViews(_Views):
                 keywords = {}
             else:
                 keywords = {'current': self._current}
-            self.tree._transport.put_bytes('views',
-                                           self._serialize_view_content(keywords, self._views))
+            self.tree._transport.put_bytes(
+                'views', self._serialize_view_content(keywords, self._views))
 
     def _load_view_info(self):
         """Load the current view and dictionary of view definitions."""
@@ -198,7 +198,7 @@ class PathBasedViews(_Views):
             with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes('views')
-                except errors.NoSuchFile as e:
+                except errors.NoSuchFile:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = \

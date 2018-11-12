@@ -32,7 +32,7 @@ We never send crash data across the network without user opt-in.
 In principle apport can run on any platform though as of Feb 2010 there seem
 to be some portability bugs.
 
-To force this off in brz turn set APPORT_DISABLE in the environment or 
+To force this off in brz turn set APPORT_DISABLE in the environment or
 -Dno_apport.
 """
 
@@ -88,8 +88,8 @@ def report_bug_legacy(exc_info, err_file):
     import textwrap
 
     def print_wrapped(l):
-        err_file.write(textwrap.fill(l,
-                                     width=78, subsequent_indent='    ') + '\n')
+        err_file.write(textwrap.fill(
+            l, width=78, subsequent_indent='    ') + '\n')
     print_wrapped('brz %s on python %s (%s)\n' %
                   (breezy.__version__,
                    breezy._format_version_tuple(sys.version_info),

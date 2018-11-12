@@ -65,9 +65,10 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def test_top_prefix_to_starting_dir(self):
         # preparing an iteration should create a unicode native path.
-        self.assertEqual(('prefix', None, None, None, u'\x12'),
-                         self.reader.top_prefix_to_starting_dir(u'\x12'.encode('utf8'),
-                                                                'prefix'))
+        self.assertEqual(
+            ('prefix', None, None, None, u'\x12'),
+            self.reader.top_prefix_to_starting_dir(
+                u'\x12'.encode('utf8'), 'prefix'))
 
     def test_empty_directory(self):
         self.assertReadDir([], 'prefix', u'.')

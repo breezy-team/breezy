@@ -2285,12 +2285,12 @@ class TestColorGrep(GrepTestBase):
         # prepare colored result
         foo = color_string('foo', fg=FG.BOLD_RED)
         res = (FG.MAGENTA + 'file0.txt'
-            + self._rev_sep + '1' + self._sep
+               + self._rev_sep + '1' + self._sep
                + foo + ' is ' + foo + 'bar1' + '\n')
         txt_res = 'file0.txt~1:foo is foobar1\n'
 
         nres = (FG.MAGENTA + 'file0.txt'
-            + self._rev_sep + '1' + self._sep + '1' + self._sep
+                + self._rev_sep + '1' + self._sep + '1' + self._sep
                 + foo + ' is ' + foo + 'bar1' + '\n')
 
         out, err = self.run_bzr(['grep', '--color',
@@ -2355,7 +2355,7 @@ class TestColorGrep(GrepTestBase):
                + self._sep + foo + ' is ' + foo + 'bar1' + '\n')
 
         nres = (FG.MAGENTA + 'file0.txt'
-            + self._sep + '1' + self._sep
+                + self._sep + '1' + self._sep
                 + foo + ' is ' + foo + 'bar1' + '\n')
 
         out, err = self.run_bzr(['grep', '--color',

@@ -135,8 +135,8 @@ def import_git_blob(texts, mapping, path, name, hexshas,
                   ptree.get_symlink_target(ppath, file_id) ==
                   ie.symlink_target) or
                  (pkind == "file" and
-                 ptree.get_file_sha1(ppath, file_id) == ie.text_sha1 and
-                 ptree.is_executable(ppath, file_id) == ie.executable))):
+                  ptree.get_file_sha1(ppath, file_id) == ie.text_sha1 and
+                  ptree.is_executable(ppath, file_id) == ie.executable))):
             # found a revision in one of the parents to use
             ie.revision = ptree.get_file_revision(ppath, file_id)
             break

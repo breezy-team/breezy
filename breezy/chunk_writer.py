@@ -101,7 +101,8 @@ class ChunkWriter(object):
         :param chunk_size: The total byte count to emit at the end of the
             chunk.
         :param reserved: How many bytes to allow for reserved data. reserved
-            data space can only be written to via the write(..., reserved=True).
+            data space can only be written to via the write(...,
+            reserved=True).
         """
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()

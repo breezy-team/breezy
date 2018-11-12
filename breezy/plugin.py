@@ -437,7 +437,7 @@ def plugins():
     for fullname in sys.modules:
         if fullname.startswith(_MODULE_PREFIX):
             name = fullname[len(_MODULE_PREFIX):]
-            if not "." in name and sys.modules[fullname] is not None:
+            if "." not in name and sys.modules[fullname] is not None:
                 result[name] = PlugIn(name, sys.modules[fullname])
     return result
 

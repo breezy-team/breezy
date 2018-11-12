@@ -193,7 +193,7 @@ class GPGStrategy(object):
             self.context = gpg.Context()
             self.context.armor = True
             self.context.signers = self._get_signing_keys()
-        except ImportError as error:
+        except ImportError:
             pass  # can't use verify()
 
     def _get_signing_keys(self):
@@ -226,7 +226,7 @@ class GPGStrategy(object):
         try:
             import gpg  # noqa: F401
             return True
-        except ImportError as error:
+        except ImportError:
             return False
 
     def sign(self, content, mode):
@@ -281,7 +281,8 @@ class GPGStrategy(object):
 
             # GPG does not know this key.
             # test_verify_unknown_key()
-            if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_MISSING:
+            if (error.result.signatures[0].summary &
+                    gpg.constants.SIGSUM_KEY_MISSING):
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:], None
 
             return SIGNATURE_NOT_VALID, None, None
@@ -297,7 +298,7 @@ class GPGStrategy(object):
         # it.  test_verify_unacceptable_key()
         fingerprint = result.signatures[0].fpr
         if self.acceptable_keys is not None:
-            if not fingerprint in self.acceptable_keys:
+            if fingerprint not in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:], plain_output
         # Yay gpg set the valid bit.
         # Can't write a test for this one as you can't set a key to be
@@ -306,14 +307,18 @@ class GPGStrategy(object):
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
-            return SIGNATURE_VALID, name.decode('utf-8') + u" <" + email.decode('utf-8') + u">", plain_output
+            return (
+                SIGNATURE_VALID,
+                name.decode('utf-8') + u" <" + email.decode('utf-8') + u">",
+                plain_output)
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None, plain_output
         # Summary isn't set if sig is valid but key is untrusted but if user
         # has explicity set the key as acceptable we can validate it.
-        if result.signatures[0].summary == 0 and self.acceptable_keys is not None:
+        if (result.signatures[0].summary == 0 and
+                self.acceptable_keys is not None):
             if fingerprint in self.acceptable_keys:
                 # test_verify_untrusted_but_accepted()
                 return SIGNATURE_VALID, None, plain_output

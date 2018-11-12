@@ -90,7 +90,7 @@ class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
             self.close_connection = 1
             if (len(e.args) == 0
                 or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
-                                  errno.ECONNABORTED, errno.EBADF)):
+                                     errno.ECONNABORTED, errno.EBADF)):
                 raise
 
     error_content_type = 'text/plain'
@@ -102,7 +102,7 @@ Message: %(message)s.
     def send_error(self, code, message=None):
         """Send and log an error reply.
 
-        We redefine the python-provided version to be able to set a 
+        We redefine the python-provided version to be able to set a
         ``Content-Length`` header as some http/1.1 clients complain otherwise
         (see bug #568421).
 
@@ -473,7 +473,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         # disk.
         if not (backing_transport_server is None
                 or isinstance(backing_transport_server,
-                           test_server.LocalURLServer)):
+                              test_server.LocalURLServer)):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" %
                 backing_transport_server)

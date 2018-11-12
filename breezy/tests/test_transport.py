@@ -96,7 +96,6 @@ class TestTransport(tests.TestCase):
         try:
             transport.get_transport_from_url('foo://fooserver/foo')
         except errors.UnsupportedProtocol as e:
-            e_str = str(e)
             self.assertEqual('Unsupported protocol'
                              ' for url "foo://fooserver/foo":'
                              ' Unable to import library "some_lib":'
@@ -122,7 +121,6 @@ class TestTransport(tests.TestCase):
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
         except errors.UnsupportedProtocol as e:
-            e_str = str(e)
             self.assertEqual('Unsupported protocol'
                              ' for url "ssh://fooserver/foo":'
                              ' bzr supports bzr+ssh to operate over ssh,'
@@ -224,12 +222,14 @@ class TestCoalesceOffsets(tests.TestCase):
     def test_coalesce_default_limit(self):
         # By default we use a 100MB max size.
         ten_mb = 10 * 1024 * 1024
-        self.check([(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
-                    (10 * ten_mb, ten_mb, [(0, ten_mb)])],
-                   [(i * ten_mb, ten_mb) for i in range(11)])
-        self.check([(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
-                   [(i * ten_mb, ten_mb) for i in range(11)],
-                   max_size=1 * 1024 * 1024 * 1024)
+        self.check(
+            [(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
+             (10 * ten_mb, ten_mb, [(0, ten_mb)])],
+            [(i * ten_mb, ten_mb) for i in range(11)])
+        self.check(
+            [(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
+            [(i * ten_mb, ten_mb) for i in range(11)],
+            max_size=1 * 1024 * 1024 * 1024)
 
 
 class TestMemoryServer(tests.TestCase):
@@ -492,9 +492,11 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         :param filter_func: by default this will be a no-op function.  Use this
             parameter to override it."""
         if filter_func is None:
-            def filter_func(x): return x
+            def filter_func(x):
+                return x
         server = pathfilter.PathFilteringServer(
-            transport.get_transport_from_url('memory:///foo/bar/'), filter_func)
+            transport.get_transport_from_url('memory:///foo/bar/'),
+            filter_func)
         server.start_server()
         self.addCleanup(server.stop_server)
         return transport.get_transport_from_url(server.get_url())
@@ -713,8 +715,9 @@ class TestTransportFromPath(tests.TestCaseInTempDir):
     def test_with_url(self):
         t = transport.get_transport_from_path("file:")
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEqual(t.base.rstrip("/"),
-                         urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
+        self.assertEqual(
+            t.base.rstrip("/"),
+            urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
 
 
 class TestTransportFromUrl(tests.TestCaseInTempDir):
@@ -748,7 +751,6 @@ class TestLocalTransports(tests.TestCase):
         self.assertEqual(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
-        here = osutils.abspath('.')
         t = transport.get_transport('.')
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base, urlutils.local_path_to_url('.') + '/')
@@ -923,8 +925,8 @@ class TestReusedTransports(tests.TestCase):
 
     def test_reuse_same_transport(self):
         possible_transports = []
-        t1 = transport.get_transport_from_url('http://foo/',
-                                              possible_transports=possible_transports)
+        t1 = transport.get_transport_from_url(
+            'http://foo/', possible_transports=possible_transports)
         self.assertEqual([t1], possible_transports)
         t2 = transport.get_transport_from_url('http://foo/',
                                               possible_transports=[t1])

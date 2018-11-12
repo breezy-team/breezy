@@ -100,7 +100,8 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     scenarios = [
         ('HPSS-v2',
-            {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
+            {'transport_server':
+                test_server.SmartTCPServer_for_testing_v2_only}),
         ('HPSS-v3',
             {'transport_server': test_server.SmartTCPServer_for_testing})]
 
@@ -257,9 +258,8 @@ class FakeClient(_SmartClient):
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
-        except IndexError as e:
-            raise AssertionError("%r didn't expect any more calls"
-                                 % (self,))
+        except IndexError:
+            raise AssertionError("%r didn't expect any more calls" % (self,))
         if response_tuple[0] == b'unknown':
             raise errors.UnknownSmartMethod(response_tuple[1])
         elif response_tuple[0] == b'error':
@@ -279,9 +279,9 @@ class FakeClient(_SmartClient):
         if next_call is None:
             return
         if method != next_call[0] or args != next_call[1]:
-            raise AssertionError("%r expected %r%r "
-                                 "but got %r%r"
-                                 % (self, next_call[0], next_call[1], method, args,))
+            raise AssertionError(
+                "%r expected %r%r but got %r%r" %
+                (self, next_call[0], next_call[1], method, args,))
 
     def call(self, method, *args):
         self._check_call(method, args)
@@ -449,7 +449,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.reset_smart_call_log()
         verb = b'BzrDir.cloning_metadir'
         self.disable_verb(verb)
-        format = a_dir.cloning_metadir()
+        a_dir.cloning_metadir()
         call_count = len([call for call in self.hpss_calls if
                           call.call.method == verb])
         self.assertEqual(1, call_count)
@@ -499,7 +499,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
     def test_unknown(self):
         transport = self.get_transport('quack')
         referenced = self.make_branch('referenced')
-        expected = referenced.controldir.cloning_metadir()
+        referenced.controldir.cloning_metadir()
         client = FakeClient(transport.base)
         client.add_expected_call(
             b'BzrDir.cloning_metadir', (b'quack/', b'False'),
@@ -585,7 +585,7 @@ class TestBzrDirDestroyBranch(TestRemote):
 
     def test_destroy_default(self):
         transport = self.get_transport('quack')
-        referenced = self.make_branch('referenced')
+        self.make_branch('referenced')
         client = FakeClient(transport.base)
         client.add_expected_call(
             b'BzrDir.destroy_branch', (b'quack/', ),
@@ -649,7 +649,8 @@ class TestBzrDirOpen(TestRemote):
         client.add_expected_call(
             b'BzrDir.open_2.1', (b'quack/',), b'success', (b'no',))
         self.assertRaises(errors.NotBranchError, RemoteBzrDir, transport,
-                          RemoteBzrDirFormat(), _client=client, _force_probe=True)
+                          RemoteBzrDirFormat(), _client=client,
+                          _force_probe=True)
         self.assertFinished(client)
 
     def test_present_without_workingtree(self):
@@ -677,7 +678,8 @@ class TestBzrDirOpen(TestRemote):
     def test_backwards_compat(self):
         client, transport = self.make_fake_client_and_transport()
         client.add_expected_call(
-            b'BzrDir.open_2.1', (b'quack/',), b'unknown', (b'BzrDir.open_2.1',))
+            b'BzrDir.open_2.1', (b'quack/',), b'unknown',
+            (b'BzrDir.open_2.1',))
         client.add_expected_call(
             b'BzrDir.open', (b'quack/',), b'success', (b'yes',))
         bd = RemoteBzrDir(transport, RemoteBzrDirFormat(),
@@ -700,7 +702,8 @@ class TestBzrDirOpen(TestRemote):
             client._check_call(method, args)
         client._check_call = check_call
         client.add_expected_call(
-            b'BzrDir.open_2.1', (b'quack/',), b'unknown', (b'BzrDir.open_2.1',))
+            b'BzrDir.open_2.1', (b'quack/',), b'unknown',
+            (b'BzrDir.open_2.1',))
         client.add_expected_call(
             b'BzrDir.open', (b'quack/',), b'success', (b'yes',))
         bd = RemoteBzrDir(transport, RemoteBzrDirFormat(),
@@ -718,7 +721,7 @@ class TestBzrDirOpenBranch(TestRemote):
         self.reset_smart_call_log()
         verb = b'BzrDir.open_branchV3'
         self.disable_verb(verb)
-        format = a_dir.open_branch()
+        a_dir.open_branch()
         call_count = len([call for call in self.hpss_calls if
                           call.call.method == verb])
         self.assertEqual(1, call_count)
@@ -798,10 +801,11 @@ class TestBzrDirOpenBranch(TestRemote):
             b'error', (b'NotStacked',))
         bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
                               _client=client)
-        result = bzrdir.open_branch()
+        bzrdir.open_branch()
         self.assertFinished(client)
 
-    def check_open_repository(self, rich_root, subtrees, external_lookup=b'no'):
+    def check_open_repository(self, rich_root, subtrees,
+                              external_lookup=b'no'):
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
         transport = MemoryTransport()
@@ -841,8 +845,9 @@ class TestBzrDirOpenBranch(TestRemote):
         """RemoteBzrDirFormat should fail to probe if the server version is too
         old.
         """
-        self.assertRaises(errors.NotBranchError,
-                          RemoteBzrProber.probe_transport, OldServerTransport())
+        self.assertRaises(
+            errors.NotBranchError,
+            RemoteBzrProber.probe_transport, OldServerTransport())
 
 
 class TestBzrDirCreateBranch(TestRemote):
@@ -852,9 +857,10 @@ class TestBzrDirCreateBranch(TestRemote):
         repo = self.make_repository('.')
         self.reset_smart_call_log()
         self.disable_verb(b'BzrDir.create_branch')
-        branch = repo.controldir.create_branch()
-        create_branch_call_count = len([call for call in self.hpss_calls if
-                                        call.call.method == b'BzrDir.create_branch'])
+        repo.controldir.create_branch()
+        create_branch_call_count = len(
+            [call for call in self.hpss_calls
+             if call.call.method == b'BzrDir.create_branch'])
         self.assertEqual(1, create_branch_call_count)
 
     def test_current_server(self):
@@ -916,7 +922,7 @@ class TestBzrDirCreateRepository(TestRemote):
         bzrdir = self.make_controldir('.')
         self.reset_smart_call_log()
         self.disable_verb(b'BzrDir.create_repository')
-        repo = bzrdir.create_repository()
+        bzrdir.create_repository()
         create_repo_call_count = len([call for call in self.hpss_calls if
                                       call.call.method == b'BzrDir.create_repository'])
         self.assertEqual(1, create_repo_call_count)
@@ -1013,7 +1019,8 @@ class TestBzrDirOpenRepository(TestRemote):
              ('call', b'BzrDir.find_repositoryV2', (b'quack/',)),
              ('call_expecting_body', b'get', (b'/quack/.bzr/branch-format',)),
              ('call', b'stat', (b'/quack/.bzr',)),
-             ('call_expecting_body', b'get', (b'/quack/.bzr/repository/format',)),
+             ('call_expecting_body', b'get',
+                 (b'/quack/.bzr/repository/format',)),
              ('call', b'stat', (b'/quack/.bzr/repository',)),
              ],
             client._calls)
@@ -1055,8 +1062,9 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # XXX: It would be better to call fmt.initialize_on_transport_ex, but
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
-        result = fmt._initialize_on_transport_ex_rpc(client, b'path',
-                                                     transport, False, False, False, None, None, None, None, False)
+        fmt._initialize_on_transport_ex_rpc(
+            client, b'path', transport, False, False, False, None, None, None,
+            None, False)
         self.assertFinished(client)
 
     def test_error(self):
@@ -1076,9 +1084,10 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         # XXX: It would be better to call fmt.initialize_on_transport_ex, but
         # it's currently hard to test that without supplying a real remote
         # transport connected to a real server.
-        err = self.assertRaises(errors.PermissionDenied,
-                                fmt._initialize_on_transport_ex_rpc, client, b'path', transport,
-                                False, False, False, None, None, None, None, False)
+        err = self.assertRaises(
+            errors.PermissionDenied,
+            fmt._initialize_on_transport_ex_rpc, client, b'path', transport,
+            False, False, False, None, None, None, None, False)
         self.assertEqual('path', err.path)
         self.assertEqual(': extra info', err.extra)
         self.assertFinished(client)
@@ -1088,8 +1097,9 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = self.make_smart_server('foo')
         transport = transport.clone('no-such-path')
         fmt = RemoteBzrDirFormat()
-        err = self.assertRaises(errors.NoSuchFile,
-                                fmt.initialize_on_transport_ex, transport, create_prefix=False)
+        self.assertRaises(
+            errors.NoSuchFile, fmt.initialize_on_transport_ex, transport,
+            create_prefix=False)
 
 
 class OldSmartClient(object):
@@ -1159,7 +1169,6 @@ class RemoteBranchTestCase(RemoteBzrDirTestCase):
 class TestBranchBreakLock(RemoteBranchTestCase):
 
     def test_break_lock(self):
-        transport_path = 'quack'
         transport = MemoryTransport()
         client = FakeClient(transport.base)
         client.add_expected_call(
@@ -1544,7 +1553,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         # doesn't just open in - this test probably needs to be rewritten using
         # a spawn()ed server.
         stacked_branch = self.make_branch('stacked', format='1.9')
-        memory_branch = self.make_branch('base', format='1.9')
+        self.make_branch('base', format='1.9')
         vfs_url = self.get_vfs_only_url('base')
         stacked_branch.set_stacked_on_url(vfs_url)
         transport = stacked_branch.controldir.root_transport
@@ -1568,7 +1577,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
 
     def test_backwards_compatible(self):
         # like with bzr1.6 with no Branch.get_stacked_on_url rpc
-        base_branch = self.make_branch('base', format='1.6')
+        self.make_branch('base', format='1.6')
         stacked_branch = self.make_branch('stacked', format='1.6')
         stacked_branch.set_stacked_on_url('../base')
         client = FakeClient(self.get_url())
@@ -1602,7 +1611,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
                          len(branch.repository._real_repository._fallback_repositories))
 
     def test_get_stacked_on_real_branch(self):
-        base_branch = self.make_branch('base')
+        self.make_branch('base')
         stacked_branch = self.make_branch('stacked')
         stacked_branch.set_stacked_on_url('../base')
         reference_format = self.get_repo_format()
@@ -1887,7 +1896,7 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         self.lock_remote_branch(branch)
 
         # Call set_last_revision_info, and verify it behaved as expected.
-        result = branch.set_last_revision_info(1234, b'a-revision-id')
+        branch.set_last_revision_info(1234, b'a-revision-id')
         self.assertEqual(
             [('set_last_revision_info', 1234, b'a-revision-id')],
             real_branch.calls)
@@ -2110,12 +2119,15 @@ class TestBranchGetPutConfigStore(RemoteBranchTestCase):
         self.assertEqual(
             [('call', b'Branch.get_stacked_on_url', (b'memory:///',)),
              ('call', b'Branch.lock_write', (b'memory:///', b'', b'')),
-             ('call_expecting_body', b'Branch.get_config_file', (b'memory:///',)),
-             ('call_expecting_body', b'Branch.get_config_file', (b'memory:///',)),
+             ('call_expecting_body', b'Branch.get_config_file',
+                 (b'memory:///',)),
+             ('call_expecting_body', b'Branch.get_config_file',
+                 (b'memory:///',)),
              ('call_with_body_bytes_expecting_body', b'Branch.put_config_file',
                  (b'memory:///', b'branch token', b'repo token'),
                  b'# line 1\nemail = The Dude <lebowski@example.com>\n'),
-             ('call', b'Branch.unlock', (b'memory:///', b'branch token', b'repo token'))],
+             ('call', b'Branch.unlock',
+                 (b'memory:///', b'branch token', b'repo token'))],
             client._calls)
 
 
@@ -2199,7 +2211,8 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
         config = bzrdir.get_config()
         self.assertEqual('/', config.get_default_stack_on())
         self.assertEqual(
-            [('call_expecting_body', b'BzrDir.get_config_file', (b'memory:///',))],
+            [('call_expecting_body', b'BzrDir.get_config_file',
+                (b'memory:///',))],
             client._calls)
 
     def test_set_option_uses_vfs(self):
@@ -2535,8 +2548,8 @@ class TestRepositoryAddSignatureText(TestRemoteRepository):
             b'success', (b'ok', ), None)
         repo.lock_write()
         repo.start_write_group()
-        self.assertIs(None,
-                      repo.add_signature_text(b"rev1", b"every bloody emperor"))
+        self.assertIs(
+            None, repo.add_signature_text(b"rev1", b"every bloody emperor"))
         self.assertEqual(
             ('call_with_body_bytes_expecting_body',
              b'Repository.add_signature_text',
@@ -2651,21 +2664,21 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        self.assertEqual({},
-                         graph.get_parent_map([b'some-missing', b'other-missing']))
+        self.assertEqual(
+            {}, graph.get_parent_map([b'some-missing', b'other-missing']))
         self.assertLength(1, self.hpss_calls)
         # No call if we repeat this
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        self.assertEqual({},
-                         graph.get_parent_map([b'some-missing', b'other-missing']))
+        self.assertEqual(
+            {}, graph.get_parent_map([b'some-missing', b'other-missing']))
         self.assertLength(0, self.hpss_calls)
         # Asking for more unknown keys makes a request.
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        self.assertEqual({},
-                         graph.get_parent_map([b'some-missing', b'other-missing',
-                                               b'more-missing']))
+        self.assertEqual(
+            {}, graph.get_parent_map([b'some-missing', b'other-missing',
+                                     b'more-missing']))
         self.assertLength(1, self.hpss_calls)
 
     def disableExtraResults(self):
@@ -2692,8 +2705,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         graph = repo.get_graph()
         # Query for b'first' and b'null:'.  Because b'null:' is a parent of
         # 'first' it will be a candidate for the stop_keys of subsequent
-        # requests, and because b'null:' was queried but not returned it will be
-        # cached as missing.
+        # requests, and because b'null:' was queried but not returned it will
+        # be cached as missing.
         self.assertEqual({b'first': (b'null:',)},
                          graph.get_parent_map([b'first', b'null:']))
         # Now query for another key.  This request will pass along a recipe of
@@ -2787,8 +2800,9 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         self.assertRaises(errors.NoSuchRevision, repo.get_revisions,
                           [b'somerev1', b'anotherrev2'])
         self.assertEqual(
-            [('call_with_body_bytes_expecting_body', b'Repository.iter_revisions',
-              (b'quack/', ), b"somerev1\nanotherrev2")],
+            [('call_with_body_bytes_expecting_body',
+              b'Repository.iter_revisions', (b'quack/', ),
+              b"somerev1\nanotherrev2")],
             client._calls)
 
     def test_hpss_get_single_revision(self):
@@ -2809,7 +2823,8 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         revs = repo.get_revisions([b'somerev1'])
         self.assertEqual(revs, [somerev1])
         self.assertEqual(
-            [('call_with_body_bytes_expecting_body', b'Repository.iter_revisions',
+            [('call_with_body_bytes_expecting_body',
+              b'Repository.iter_revisions',
               (b'quack/', ), b"somerev1")],
             client._calls)
 
@@ -2963,7 +2978,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         tree.lock_write()
         tree.add('')
         rev1 = tree.commit('First')
-        rev2 = tree.commit('Second')
+        tree.commit('Second')
         tree.unlock()
         branch = tree.branch
         self.assertFalse(branch.is_locked())
@@ -3907,7 +3922,6 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         # To translate a NoSuchRevision error _translate_error needs a 'branch'
         # in the context dict.  So let's give it an empty context dict instead
         # to exercise its error recovery.
-        empty_context = {}
         error_tuple = (b'NoSuchRevision', b'revid')
         server_error = errors.ErrorFromSmartServer(error_tuple)
         translated_error = self.translateErrorFromSmartServer(server_error)
@@ -3943,7 +3957,6 @@ class TestStacking(tests.TestCaseWithTransport):
         # make a branch stacked on another repository containing an empty
         # revision, then open it over hpss - we should be able to see that
         # revision.
-        base_transport = self.get_transport()
         base_builder = self.make_branch_builder('base', format='1.9')
         base_builder.start_series()
         base_revid = base_builder.build_snapshot(None,
@@ -4067,8 +4080,8 @@ class TestStacking(tests.TestCaseWithTransport):
             branch.lock_read()
             self.addCleanup(branch.unlock)
             return None, branch
-        rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered',
-                                                       branch_factory=make_stacked_stacked)
+        rev_ord, expected_revs = self.get_ordered_revs(
+            '1.9', 'unordered', branch_factory=make_stacked_stacked)
         self.assertEqual(set(expected_revs), set(rev_ord))
         # Getting unordered results should have made a streaming data request
         # from the server, and one from each backing repo
@@ -4103,7 +4116,7 @@ class TestStacking(tests.TestCaseWithTransport):
         # branch pulling content from stacked and trunk.
         self.setup_smart_server_with_call_log()
         trunk = self.make_branch_and_tree('trunk', format="1.9-rich-root")
-        r1 = trunk.commit('start')
+        trunk.commit('start')
         stacked_branch = trunk.branch.create_clone_on_transport(
             self.get_transport('stacked'), stacked_on=trunk.branch.base)
         local = self.make_branch('local', format='1.9-rich-root')
@@ -4417,9 +4430,11 @@ class TestRepositoryAnnotate(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         fmt = controldir.format_registry.get('2a')().repository_format
         repo._format = fmt
-        stream = [('inventory-deltas', [
-            versionedfile.FulltextContentFactory(b'somerevid', None, None,
-                                                 self._serialize_inv_delta(b'null:', b'somerevid', []))])]
+        stream = [
+            ('inventory-deltas', [
+                versionedfile.FulltextContentFactory(
+                    b'somerevid', None, None,
+                    self._serialize_inv_delta(b'null:', b'somerevid', []))])]
         client.add_expected_call(
             b'VersionedFileRepository.get_inventories', (
                 b'quack/', b'unordered'),

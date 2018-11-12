@@ -131,13 +131,13 @@ def _set_branch_location(control, to_branch, force=False):
             with b.lock_read():
                 graph = b.repository.get_graph(to_branch.repository)
                 if (b.controldir._format.colocated_branches and
-                    (force or graph.is_ancestor(b.last_revision(),
-                                                    to_branch.last_revision()))):
+                    (force or graph.is_ancestor(
+                        b.last_revision(), to_branch.last_revision()))):
                     b.controldir.destroy_branch()
                     b.controldir.set_branch_reference(to_branch, name="")
                 else:
-                    raise errors.BzrCommandError(gettext('Cannot switch a branch, '
-                                                         'only a checkout.'))
+                    raise errors.BzrCommandError(
+                        gettext('Cannot switch a branch, only a checkout.'))
 
 
 def _any_local_commits(this_branch, possible_transports):
@@ -172,7 +172,8 @@ def _update(tree, source_repository, quiet=False, revision_id=None,
             revision_id = to_branch.last_revision()
         if tree.last_revision() == revision_id:
             if not quiet:
-                note(gettext("Tree is up to date at revision %d."), to_branch.revno())
+                note(gettext("Tree is up to date at revision %d."),
+                     to_branch.revno())
         else:
             base_tree = source_repository.revision_tree(tree.last_revision())
             merge.Merge3Merger(tree, tree, base_tree,

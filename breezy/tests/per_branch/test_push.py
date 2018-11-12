@@ -406,7 +406,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         # Skip some scenarios that don't apply to these tests.
         if (self.transport_server is not None and
             issubclass(self.transport_server,
-                           test_server.SmartTCPServer_for_testing)):
+                       test_server.SmartTCPServer_for_testing)):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')

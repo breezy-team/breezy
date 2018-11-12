@@ -75,7 +75,6 @@ from .. import (
     hooks,
     lock as _mod_lock,
     lockdir,
-    memorytree,
     osutils,
     plugin as _mod_plugin,
     pyutils,
@@ -113,7 +112,6 @@ from ..tests import (
     treeshape,
     ui_testing,
     )
-from ..tests.features import _CompatabilityThunkFeature
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -311,8 +309,8 @@ class ExtendedTestResult(testtools.TextTestResult):
         self._show_list('ERROR', self.errors)
         self._show_list('FAIL', self.failures)
         self.stream.write(self.sep2)
-        self.stream.write("%s %d test%s in %.3fs\n\n" % (actionTaken,
-                                                         run, run != 1 and "s" or "", timeTaken))
+        self.stream.write("%s %d test%s in %.3fs\n\n" % (
+            actionTaken, run, run != 1 and "s" or "", timeTaken))
         if not self.wasSuccessful():
             self.stream.write("FAILED (")
             failed, errored = map(len, (self.failures, self.errors))
@@ -371,11 +369,12 @@ class ExtendedTestResult(testtools.TextTestResult):
         # to decide whether to round/floor/ceiling. This was added when we
         # had pyp3 test failures that suggest a floor was happening.
         shift = 10 ** precision
-        return math.ceil((a_timedelta.days * 86400.0 + a_timedelta.seconds
-                          + a_timedelta.microseconds / 1000000.0) * shift) / shift
+        return math.ceil(
+            (a_timedelta.days * 86400.0 + a_timedelta.seconds +
+             a_timedelta.microseconds / 1000000.0) * shift) / shift
 
     def _elapsedTestTimeString(self):
-        """Return a time string for the overall time the current test has taken."""
+        """Return time string for overall time the current test has taken."""
         return self._formatTime(self._delta_to_float(
             self._now() - self._start_datetime, 3))
 
@@ -632,9 +631,9 @@ class TextTestResult(ExtendedTestResult):
         # tests skipped as known not to be relevant are not important enough
         # to show here
         # if self.skip_count:
-        ##     a += ', %d skip' % self.skip_count
+        #     a += ', %d skip' % self.skip_count
         # if self.known_failure_count:
-        ##     a += '+%dX' % self.known_failure_count
+        #     a += '+%dX' % self.known_failure_count
         if self.num_tests:
             a += '/%d' % self.num_tests
         a += ' in '
@@ -654,8 +653,8 @@ class TextTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.pb.update(
             self._progress_prefix_text() +
-                ' ' +
-                self._shortened_test_description(test))
+            ' ' +
+            self._shortened_test_description(test))
 
     def _test_description(self, test):
         return self._shortened_test_description(test)
@@ -783,7 +782,7 @@ class TextTestRunner(object):
 
         :param result_decorators: An optional list of decorators to apply
             to the result object being used by the runner. Decorators are
-            applied left to right - the first element in the list is the 
+            applied left to right - the first element in the list is the
             innermost decorator.
         """
         # stream may know claim to know to write unicode strings, but in older
@@ -864,10 +863,10 @@ class TestNotApplicable(TestSkipped):
 def _clever_some_str(value):
     try:
         return str(value)
-    except:
+    except BaseException:
         try:
             return repr(value).replace('\\n', '\n')
-        except:
+        except BaseException:
             return '<unprintable %s object>' % type(value).__name__
 
 
@@ -949,10 +948,10 @@ class TestCase(testtools.TestCase):
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
         self._directory_isolation = True
-        self.exception_handlers.insert(0,
-                                       (UnavailableFeature, self._do_unsupported_or_skip))
-        self.exception_handlers.insert(0,
-                                       (TestNotApplicable, self._do_not_applicable))
+        self.exception_handlers.insert(
+            0, (UnavailableFeature, self._do_unsupported_or_skip))
+        self.exception_handlers.insert(
+            0, (TestNotApplicable, self._do_not_applicable))
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -1036,8 +1035,9 @@ class TestCase(testtools.TestCase):
             raise AssertionError('%s is already used as a counter name'
                                  % (counter_name,))
         _counters[counter_name] = 0
-        self.addDetail(counter_name, content.Content(content.UTF8_TEXT,
-                                                     lambda: [b'%d' % (_counters[counter_name],)]))
+        self.addDetail(counter_name, content.Content(
+            content.UTF8_TEXT,
+            lambda: [b'%d' % (_counters[counter_name],)]))
 
         def increment_counter(*args, **kwargs):
             _counters[counter_name] += 1
@@ -1219,8 +1219,8 @@ class TestCase(testtools.TestCase):
             return
         # This prevents all transports, including e.g. sftp ones backed on disk
         # from working unless they are explicitly granted permission. We then
-        # depend on the code that sets up test transports to check that they are
-        # appropriately isolated and enable their use by calling
+        # depend on the code that sets up test transports to check that they
+        # are appropriately isolated and enable their use by calling
         # self.permit_transport()
         if not osutils.is_inside_any(self._bzr_selftest_roots, url):
             raise errors.BzrError("Attempt to escape test isolation: %r %r"
@@ -1283,8 +1283,9 @@ class TestCase(testtools.TestCase):
         # hook into brz dir opening. This leaves a small window of error for
         # transport tests, but they are well known, and we can improve on this
         # step.
-        controldir.ControlDir.hooks.install_named_hook("pre_open",
-                                                       self._preopen_isolate_transport, "Check brz directories are safe.")
+        controldir.ControlDir.hooks.install_named_hook(
+            "pre_open", self._preopen_isolate_transport,
+            "Check brz directories are safe.")
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1417,7 +1418,8 @@ class TestCase(testtools.TestCase):
     def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack, flags):
-            if ('\n' if isinstance(haystack, str) else b'\n') in haystack or len(haystack) > 60:
+            if (('\n' if isinstance(haystack, str) else b'\n') in haystack or
+                    len(haystack) > 60):
                 # a long string, format it in a more readable way
                 raise AssertionError(
                     'pattern "%s" not found in\n"""\\\n%s"""\n'
@@ -1536,7 +1538,8 @@ class TestCase(testtools.TestCase):
         """Fail if path does not contain 'content'."""
         self.assertPathExists(path)
 
-        with open(path, 'r' + ('b' if isinstance(content, bytes) else '')) as f:
+        mode = 'r' + ('b' if isinstance(content, bytes) else '')
+        with open(path, mode) as f:
             s = f.read()
         self.assertEqualDiff(content, s)
 
@@ -1619,8 +1622,8 @@ class TestCase(testtools.TestCase):
         :param kwargs: The keyword arguments for the callable
         :return: The result of a_callable(``*args``, ``**kwargs``)
         """
-        call_warnings, result = self._capture_deprecation_warnings(a_callable,
-                                                                   *args, **kwargs)
+        call_warnings, result = self._capture_deprecation_warnings(
+            a_callable, *args, **kwargs)
         expected_first_warning = symbol_versioning.deprecation_string(
             a_callable, deprecation_format)
         if len(call_warnings) == 0:
@@ -1678,8 +1681,8 @@ class TestCase(testtools.TestCase):
         :param args: The positional arguments for the callable
         :param kwargs: The keyword arguments for the callable
         """
-        call_warnings, result = self._capture_deprecation_warnings(callable,
-                                                                   *args, **kwargs)
+        call_warnings, result = self._capture_deprecation_warnings(
+            callable, *args, **kwargs)
         self.assertEqual(expected, call_warnings)
         return result
 
@@ -1690,9 +1693,10 @@ class TestCase(testtools.TestCase):
         def _get_log_contents_for_weird_testtools_api():
             return [pseudo_log_file.getvalue().decode(
                 "utf-8", "replace").encode("utf-8")]
-        self.addDetail("log", content.Content(content.ContentType("text",
-                                                                  "plain", {"charset": "utf8"}),
-                                              _get_log_contents_for_weird_testtools_api))
+        self.addDetail(
+            "log", content.Content(
+                content.ContentType("text", "plain", {"charset": "utf8"}),
+                _get_log_contents_for_weird_testtools_api))
         self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
@@ -1752,7 +1756,7 @@ class TestCase(testtools.TestCase):
 
         :param name: The environment variable name.
 
-        :param new: The value to set the variable to. If None, the 
+        :param new: The value to set the variable to. If None, the
             variable is deleted from the environment.
 
         :returns: The actual variable value.
@@ -1768,8 +1772,7 @@ class TestCase(testtools.TestCase):
 
         :param obj: The namespace holding the reference to be replaced;
             typically a module, class, or object.
-        :param attr_name: A string for the name of the attribute to 
-            patch.
+        :param attr_name: A string for the name of the attribute to patch.
         :returns: A list that will be extended with one item every time the
             function is called, with a tuple of (args, kwargs).
         """
@@ -1892,8 +1895,9 @@ class TestCase(testtools.TestCase):
         self._benchcalls.
         """
         if self._benchtime is None:
-            self.addDetail('benchtime', content.Content(content.UTF8_TEXT,
-                                                        lambda: [str(self._benchtime).encode('utf-8')]))
+            self.addDetail('benchtime', content.Content(
+                content.UTF8_TEXT,
+                lambda: [str(self._benchtime).encode('utf-8')]))
             self._benchtime = 0
         start = time.time()
         try:
@@ -2106,10 +2110,9 @@ class TestCase(testtools.TestCase):
         logger.addHandler(handler)
 
         try:
-            result = self._run_bzr_core(args,
-                                        encoding=encoding, stdin=stdin, stdout=stdout,
-                                        stderr=stderr, working_dir=working_dir,
-                                        )
+            result = self._run_bzr_core(
+                args, encoding=encoding, stdin=stdin, stdout=stdout,
+                stderr=stderr, working_dir=working_dir)
         finally:
             logger.removeHandler(handler)
 
@@ -2149,8 +2152,9 @@ class TestCase(testtools.TestCase):
             # Make sure --strict is handling an unknown file, rather than
             # giving us the 'nothing to do' error
             self.build_tree(['unknown'])
-            self.run_bzr_error(['Commit refused because there are unknown files'],
-                               ['commit', --strict', '-m', 'my commit comment'])
+            self.run_bzr_error(
+                ['Commit refused because there are unknown files'],
+                ['commit', --strict', '-m', 'my commit comment'])
         """
         kwargs.setdefault('retcode', 3)
         kwargs['error_regexes'] = error_regexes
@@ -2300,8 +2304,9 @@ class TestCase(testtools.TestCase):
             #    log_file_path, buffer_now=True)
             with open(log_file_path, 'rb') as log_file:
                 log_file_bytes = log_file.read()
-            detail_content = content.Content(content.ContentType("text",
-                                                                 "plain", {"charset": "utf8"}), lambda: [log_file_bytes])
+            detail_content = content.Content(
+                content.ContentType("text", "plain", {"charset": "utf8"}),
+                lambda: [log_file_bytes])
             self.addDetail("start_bzr_subprocess-log-%d" % (count,),
                            detail_content)
 
@@ -2514,8 +2519,8 @@ class TestCaseWithMemoryTransport(TestCase):
             """
             self.addCleanup(transport.disconnect)
 
-        _mod_transport.Transport.hooks.install_named_hook('post_connect',
-                                                          _add_disconnect_cleanup, None)
+        _mod_transport.Transport.hooks.install_named_hook(
+            'post_connect', _add_disconnect_cleanup, None)
 
         self._make_test_root()
         self.addCleanup(os.chdir, osutils.getcwd())
@@ -2572,7 +2577,8 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.__readonly_server = test_server.ReadonlyServer()
             else:
                 # explicit readonly transport.
-                self.__readonly_server = self.create_transport_readonly_server()
+                self.__readonly_server = (
+                    self.create_transport_readonly_server())
             self.start_server(self.__readonly_server,
                               self.get_vfs_only_server())
         return self.__readonly_server
@@ -2733,7 +2739,8 @@ class TestCaseWithMemoryTransport(TestCase):
         This must set self.test_home_dir and self.test_dir and chdir to
         self.test_dir.
 
-        For TestCaseWithMemoryTransport we chdir to the TEST_ROOT for this test.
+        For TestCaseWithMemoryTransport we chdir to the TEST_ROOT for this
+        test.
         """
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
         self.test_dir = TestCaseWithMemoryTransport.TEST_ROOT
@@ -4272,7 +4279,7 @@ def test_suite(keep_only=None, starting_with=None):
                 if (
                         # Either the module name starts with the specified string
                         name.startswith(start)
- or                     # or it may contain tests starting with the specified string
+                    or                     # or it may contain tests starting with the specified string
                         start.startswith(name)
                         ):
                     return True

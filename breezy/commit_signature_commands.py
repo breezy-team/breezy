@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Command which looks for unsigned commits by the current user, and signs them.
-"""
+"""Command that signs unsigned commits by the current user. """
 
 from __future__ import absolute_import
 
@@ -87,14 +86,14 @@ class cmd_sign_my_commits(Command):
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)
-            except:
+            except BaseException:
                 repo.abort_write_group()
                 raise
             else:
                 repo.commit_write_group()
         self.outf.write(
-            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n', count) %
-            count)
+            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n',
+                     count) % count)
 
 
 class cmd_verify_signatures(Command):
@@ -143,8 +142,9 @@ class cmd_verify_signatures(Command):
                 if to_revid is None:
                     to_revno = branch.revno()
                 if from_revno is None or to_revno is None:
-                    raise errors.BzrCommandError(gettext(
-                        'Cannot verify a range of non-revision-history revisions'))
+                    raise errors.BzrCommandError(
+                        gettext('Cannot verify a range of non-revision-history'
+                                ' revisions'))
                 for revno in range(from_revno, to_revno + 1):
                     revisions.append(branch.get_rev_id(revno))
         else:

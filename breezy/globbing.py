@@ -288,7 +288,7 @@ class Globster(object):
         try:
             re_obj = lazy_regex.lazy_compile(tpattern, re.UNICODE)
             re_obj.search("")  # force compile
-        except lazy_regex.InvalidPattern as e:
+        except lazy_regex.InvalidPattern:
             result = False
         return result
 

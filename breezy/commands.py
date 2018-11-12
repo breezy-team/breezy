@@ -38,7 +38,6 @@ import errno
 
 import breezy
 from breezy import (
-    config,
     cleanup,
     cmdline,
     debug,
@@ -177,7 +176,7 @@ plugin_cmds.overridden_registry = builtin_command_registry
 def register_command(cmd, decorate=False):
     """Register a plugin command.
 
-    Should generally be avoided in favor of lazy registration. 
+    Should generally be avoided in favor of lazy registration.
     """
     global plugin_cmds
     return plugin_cmds.register(cmd, decorate)
@@ -211,7 +210,8 @@ def _scan_module_for_commands(module):
 def _list_bzr_commands(names):
     """Find commands from bzr's core and plugins.
 
-    This is not the public interface, just the default hook called by all_command_names.
+    This is not the public interface, just the default hook called by
+    all_command_names.
     """
     # to eliminate duplicates
     names.update(builtin_command_names())
@@ -677,7 +677,8 @@ class Command(object):
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, order, label, section)
                 label, section = line[1:-1], ''
-            elif (label is not None) and len(line) > 1 and not line[0].isspace():
+            elif (label is not None and len(line) > 1 and
+                    not line[0].isspace()):
                 save_section(sections, order, label, section)
                 label, section = None, line
             else:
@@ -797,7 +798,7 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
 
-        This method is automatically wrapped by Command.__init__ with a 
+        This method is automatically wrapped by Command.__init__ with a
         cleanup operation, stored as self._operation. This can be used
         via self.add_cleanup to perform automatic cleanups at the end of
         run().
@@ -829,7 +830,7 @@ class Command(object):
     def name(self):
         """Return the canonical name for this command.
 
-        The name under which it was actually invoked is available in invoked_as.
+        The name under which it was actually invoked is available in invoked_as
         """
         return _unsquish_command_name(self.__class__.__name__)
 
@@ -851,35 +852,41 @@ class CommandHooks(Hooks):
         notified.
         """
         Hooks.__init__(self, "breezy.commands", "Command.hooks")
-        self.add_hook('extend_command',
-                      "Called after creating a command object to allow modifications "
-                      "such as adding or removing options, docs etc. Called with the "
-                      "new breezy.commands.Command object.", (1, 13))
-        self.add_hook('get_command',
-                      "Called when creating a single command. Called with "
-                      "(cmd_or_None, command_name). get_command should either return "
-                      "the cmd_or_None parameter, or a replacement Command object that "
-                      "should be used for the command. Note that the Command.hooks "
-                      "hooks are core infrastructure. Many users will prefer to use "
-                      "breezy.commands.register_command or plugin_cmds.register_lazy.",
-                      (1, 17))
-        self.add_hook('get_missing_command',
-                      "Called when creating a single command if no command could be "
-                      "found. Called with (command_name). get_missing_command should "
-                      "either return None, or a Command object to be used for the "
-                      "command.", (1, 17))
-        self.add_hook('list_commands',
-                      "Called when enumerating commands. Called with a set of "
-                      "cmd_name strings for all the commands found so far. This set "
-                      " is safe to mutate - e.g. to remove a command. "
-                      "list_commands should return the updated set of command names.",
-                      (1, 17))
-        self.add_hook('pre_command',
-                      "Called prior to executing a command. Called with the command "
-                      "object.", (2, 6))
-        self.add_hook('post_command',
-                      "Called after executing a command. Called with the command "
-                      "object.", (2, 6))
+        self.add_hook(
+            'extend_command',
+            "Called after creating a command object to allow modifications "
+            "such as adding or removing options, docs etc. Called with the "
+            "new breezy.commands.Command object.", (1, 13))
+        self.add_hook(
+            'get_command',
+            "Called when creating a single command. Called with "
+            "(cmd_or_None, command_name). get_command should either return "
+            "the cmd_or_None parameter, or a replacement Command object that "
+            "should be used for the command. Note that the Command.hooks "
+            "hooks are core infrastructure. Many users will prefer to use "
+            "breezy.commands.register_command or plugin_cmds.register_lazy.",
+            (1, 17))
+        self.add_hook(
+            'get_missing_command',
+            "Called when creating a single command if no command could be "
+            "found. Called with (command_name). get_missing_command should "
+            "either return None, or a Command object to be used for the "
+            "command.", (1, 17))
+        self.add_hook(
+            'list_commands',
+            "Called when enumerating commands. Called with a set of "
+            "cmd_name strings for all the commands found so far. This set "
+            " is safe to mutate - e.g. to remove a command. "
+            "list_commands should return the updated set of command names.",
+            (1, 17))
+        self.add_hook(
+            'pre_command',
+            "Called prior to executing a command. Called with the command "
+            "object.", (2, 6))
+        self.add_hook(
+            'post_command',
+            "Called after executing a command. Called with the command "
+            "object.", (2, 6))
 
 
 Command.hooks = CommandHooks()
@@ -905,7 +912,7 @@ def parse_args(command, argv, alias_argv=None):
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
-    except UnicodeEncodeError as e:
+    except UnicodeEncodeError:
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
@@ -1007,7 +1014,7 @@ def exception_to_return_code(the_callable, *args, **kwargs):
     """
     try:
         return the_callable(*args, **kwargs)
-    except (KeyboardInterrupt, Exception) as e:
+    except (KeyboardInterrupt, Exception):
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         exc_info = sys.exc_info()
@@ -1090,7 +1097,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Generate code coverage report
 
     --concurrency
-        Specify the number of processes that can be run concurrently (selftest).
+        Specify the number of processes that can be run concurrently
+        (selftest).
     """
     trace.mutter("breezy version: " + breezy.__version__)
     argv = _specified_or_unicode_argv(argv)
@@ -1285,7 +1293,8 @@ def run_bzr_catch_errors(argv):
     """Run a bzr command with parameters as described by argv.
 
     This function assumed that that UI layer is setup, that symbol deprecations
-    are already applied, and that unicode decoding has already been performed on argv.
+    are already applied, and that unicode decoding has already been performed
+    on argv.
     """
     # done here so that they're covered for every test run
     install_bzr_command_hooks()

@@ -163,8 +163,6 @@ class HashCache(object):
             cache_sha1, cache_fp = None, None
 
         if cache_fp == file_fp:
-            ## mutter("hashcache hit for %s %r -> %s", path, file_fp, cache_sha1)
-            ## mutter("now = %s", time.time())
             self.hit_count += 1
             return cache_sha1
 
@@ -232,7 +230,7 @@ class HashCache(object):
                 outf.write(b''.join(line_info))
             self.needs_write = False
             # mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
-            ##        self.cache_file_name(), self.hit_count, self.miss_count,
+            #        self.cache_file_name(), self.hit_count, self.miss_count,
             # self.stat_count,
             # self.danger_count, self.update_count)
 

@@ -33,7 +33,7 @@ _translations = None
 
 
 def gettext(message):
-    """Translate message. 
+    """Translate message.
 
     :returns: translated message as unicode.
     """

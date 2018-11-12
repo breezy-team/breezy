@@ -297,14 +297,16 @@ def enable_default_logging():
     brz_log_file = _open_brz_log()
     if brz_log_file is not None:
         brz_log_file.write(start_time.encode('utf-8') + b'\n')
-    memento = push_log_file(brz_log_file,
-                            r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
-                            r'%Y-%m-%d %H:%M:%S')
+    memento = push_log_file(
+        brz_log_file,
+        r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
+        r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     if sys.version_info[0] == 2:
-        stderr_handler = EncodedStreamHandler(sys.stderr,
-                                              osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
+        stderr_handler = EncodedStreamHandler(
+            sys.stderr, osutils.get_terminal_encoding(), 'replace',
+            level=logging.INFO)
     else:
         stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
@@ -342,7 +344,6 @@ def push_log_file(to_file, log_format=None, date_format=None):
     old_trace_file = _trace_file
     # send traces to the new one
     _trace_file = to_file
-    result = new_handler, _trace_file
     return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
 
 
@@ -464,7 +465,7 @@ def _dump_memory_usage(err_file):
         except ImportError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
-        except:
+        except BaseException:
             err_file.write("Exception while dumping memory.\n")
             log_exception_quietly()
     finally:
@@ -513,8 +514,9 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
             and str(exc_object).startswith("No module named "):
-        report_user_error(exc_info, err_file,
-                          'You may need to install this Python library separately.')
+        report_user_error(
+            exc_info, err_file,
+            'You may need to install this Python library separately.')
         return errors.EXIT_ERROR
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
@@ -566,7 +568,7 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-    except ValueError as e:
+    except ValueError:
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass

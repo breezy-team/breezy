@@ -704,7 +704,7 @@ class TdbGitShaMap(GitShaMap):
                     yield (type_name, (data[1], data[2], {}))
                 else:
                     yield (type_name, (data[1], data[2],
-                           {"testament3-sha1": data[3]}))
+                                       {"testament3-sha1": data[3]}))
             elif type_name in ("tree", "blob"):
                 yield (type_name, tuple(data[1:]))
             else:

@@ -55,15 +55,18 @@ class LockHooks(Hooks):
 
     def __init__(self):
         Hooks.__init__(self, "breezy.lock", "Lock.hooks")
-        self.add_hook('lock_acquired',
-                      "Called with a breezy.lock.LockResult when a physical lock is "
-                      "acquired.", (1, 8))
-        self.add_hook('lock_released',
-                      "Called with a breezy.lock.LockResult when a physical lock is "
-                      "released.", (1, 8))
-        self.add_hook('lock_broken',
-                      "Called with a breezy.lock.LockResult when a physical lock is "
-                      "broken.", (1, 15))
+        self.add_hook(
+            'lock_acquired',
+            "Called with a breezy.lock.LockResult when a physical lock is "
+            "acquired.", (1, 8))
+        self.add_hook(
+            'lock_released',
+            "Called with a breezy.lock.LockResult when a physical lock is "
+            "released.", (1, 8))
+        self.add_hook(
+            'lock_broken',
+            "Called with a breezy.lock.LockResult when a physical lock is "
+            "broken.", (1, 15))
 
 
 class Lock(object):
@@ -111,7 +114,7 @@ class LogicalLockResult(object):
         # If there was an error raised, prefer the original one
         try:
             self.unlock()
-        except:
+        except BaseException:
             if exc_type is None:
                 raise
         return False
@@ -120,8 +123,8 @@ class LogicalLockResult(object):
 def cant_unlock_not_held(locked_object):
     """An attempt to unlock failed because the object was not locked.
 
-    This provides a policy point from which we can generate either a warning 
-    or an exception.
+    This provides a policy point from which we can generate either a warning or
+    an exception.
     """
     # This is typically masking some other error and called from a finally
     # block, so it's useful to have the option not to generate a new error
@@ -342,8 +345,8 @@ if have_fcntl:
 
         def restore_read_lock(self):
             """Restore the original ReadLock."""
-            # For fcntl, since we never released the read lock, just release the
-            # write lock, and return the original lock.
+            # For fcntl, since we never released the read lock, just release
+            # the write lock, and return the original lock.
             fcntl.lockf(self.f, fcntl.LOCK_UN)
             self._clear_f()
             _fcntl_WriteLock._open_locks.remove(self.filename)
@@ -363,9 +366,9 @@ if have_pywin32 and sys.platform == 'win32':
         def _open(self, filename, access, share, cflags, pymode):
             self.filename = osutils.realpath(filename)
             try:
-                self._handle = win32file_CreateFile(filename, access, share,
-                                                    None, win32file.OPEN_ALWAYS,
-                                                    win32file.FILE_ATTRIBUTE_NORMAL, None)
+                self._handle = win32file_CreateFile(
+                    filename, access, share, None, win32file.OPEN_ALWAYS,
+                    win32file.FILE_ATTRIBUTE_NORMAL, None)
             except pywintypes.error as e:
                 if e.args[0] == winerror.ERROR_ACCESS_DENIED:
                     raise errors.LockFailed(filename, e)

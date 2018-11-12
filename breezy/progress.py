@@ -66,7 +66,7 @@ class ProgressTask(object):
         synchronously.
 
     :ivar show_transport_activity: If true (default), transport activity
-        will be shown when this task is drawn.  Disable it if you're sure 
+        will be shown when this task is drawn.  Disable it if you're sure
         that only irrelevant or uninteresting transport activity can occur
         during this task.
     """
@@ -78,7 +78,7 @@ class ProgressTask(object):
 
         :param progress_view: ProgressView to display this ProgressTask.
 
-        :param ui_factory: The UI factory that will display updates; 
+        :param ui_factory: The UI factory that will display updates;
             deprecated in favor of passing progress_view directly.
 
         Normally you should not call this directly but rather through
@@ -207,7 +207,8 @@ def str_tdelta(delt):
                              delt % 60)
 
 
-def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_recent=10):
+def get_eta(start_time, current, total, enough_samples=3, last_updates=None,
+            n_recent=10):
     if start_time is None:
         return None
 

@@ -1761,12 +1761,12 @@ class ConvertMetaToMeta(controldir.Converter):
             while old != new:
                 if (old == fullhistorybranch.BzrBranchFormat5
                     and new in (_mod_bzrbranch.BzrBranchFormat6,
-                            _mod_bzrbranch.BzrBranchFormat7,
-                            _mod_bzrbranch.BzrBranchFormat8)):
+                                _mod_bzrbranch.BzrBranchFormat7,
+                                _mod_bzrbranch.BzrBranchFormat8)):
                     branch_converter = _mod_bzrbranch.Converter5to6()
                 elif (old == _mod_bzrbranch.BzrBranchFormat6
                       and new in (_mod_bzrbranch.BzrBranchFormat7,
-                              _mod_bzrbranch.BzrBranchFormat8)):
+                                  _mod_bzrbranch.BzrBranchFormat8)):
                     branch_converter = _mod_bzrbranch.Converter6to7()
                 elif (old == _mod_bzrbranch.BzrBranchFormat7
                       and new is _mod_bzrbranch.BzrBranchFormat8):
@@ -1787,17 +1787,17 @@ class ConvertMetaToMeta(controldir.Converter):
             if (isinstance(tree, workingtree_3.WorkingTree3)
                 and not isinstance(tree, workingtree_4.DirStateWorkingTree)
                 and isinstance(self.target_format.workingtree_format,
-                           workingtree_4.DirStateWorkingTreeFormat)):
+                               workingtree_4.DirStateWorkingTreeFormat)):
                 workingtree_4.Converter3to4().convert(tree)
             if (isinstance(tree, workingtree_4.DirStateWorkingTree)
                 and not isinstance(tree, workingtree_4.WorkingTree5)
                 and isinstance(self.target_format.workingtree_format,
-                           workingtree_4.WorkingTreeFormat5)):
+                               workingtree_4.WorkingTreeFormat5)):
                 workingtree_4.Converter4to5().convert(tree)
             if (isinstance(tree, workingtree_4.DirStateWorkingTree)
                 and not isinstance(tree, workingtree_4.WorkingTree6)
                 and isinstance(self.target_format.workingtree_format,
-                           workingtree_4.WorkingTreeFormat6)):
+                               workingtree_4.WorkingTreeFormat6)):
                 workingtree_4.Converter4or5to6().convert(tree)
         self.pb.finished()
         return to_convert

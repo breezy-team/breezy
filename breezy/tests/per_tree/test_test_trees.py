@@ -148,7 +148,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # __iter__ has no strongly defined order
         expected_paths = (
             ['', 'a']
-                + (['b'] if tree.has_versioned_directories() else [])
+            + (['b'] if tree.has_versioned_directories() else [])
             + ['e'])
         self.assertEqual(
             set(expected_paths),

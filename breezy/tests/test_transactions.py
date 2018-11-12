@@ -45,8 +45,8 @@ class DummyWeave(object):
 class TestSymbols(TestCase):
 
     def test_public_symbols(self):
-        from breezy.transactions import ReadOnlyTransaction
-        from breezy.transactions import PassThroughTransaction
+        from breezy.transactions import ReadOnlyTransaction  # noqa: F401
+        from breezy.transactions import PassThroughTransaction  # noqa: F401
 
 
 class TestReadOnlyTransaction(TestCase):

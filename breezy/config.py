@@ -53,8 +53,8 @@ editor - this option sets the pop up editor to use during commits.
 email - this option sets the user id brz will use when committing.
 check_signatures - this option will control whether brz will require good gpg
                    signatures, ignore them, or check them if they are
-                   present.  Currently it is unused except that check_signatures
-                   turns on create_signatures.
+                   present.  Currently it is unused except that
+                   check_signatures turns on create_signatures.
 create_signatures - this option controls whether brz will always create
                     gpg signatures or not on commits.  There is an unused
                     option which in future is expected to work if
@@ -94,7 +94,6 @@ from breezy import (
     controldir,
     debug,
     directory_service,
-    lazy_regex,
     lock,
     lockdir,
     mergetools,
@@ -726,8 +725,8 @@ class IniBasedConfig(Config):
     def from_string(cls, str_or_unicode, file_name=None, save=False):
         """Create a config object from a string.
 
-        :param str_or_unicode: A string representing the file content. This will
-            be utf-8 encoded.
+        :param str_or_unicode: A string representing the file content. This
+            will be utf-8 encoded.
 
         :param file_name: The configuration file path.
 
@@ -822,7 +821,6 @@ class IniBasedConfig(Config):
             which sections should be searched. This is a list of (name,
             configobj) tuples.
         """
-        opts = []
         if sections is None:
             parser = self._get_parser()
             sections = []
@@ -955,8 +953,8 @@ class LockableConfig(IniBasedConfig):
     If several processes try to write the config file, the accesses need to be
     serialized.
 
-    Daughter classes should use the self.lock_write() decorator method when they 
-    upate a config (they call, directly or indirectly, the
+    Daughter classes should use the self.lock_write() decorator method when
+    they upate a config (they call, directly or indirectly, the
     ``_write_config_file()`` method. These methods (typically ``set_option()``
     and variants must reload the config file from disk before calling
     ``_write_config_file()``), this can be achieved by calling the
@@ -1356,7 +1354,6 @@ class BranchConfig(Config):
                 yield section
 
     def _get_options(self, sections=None):
-        opts = []
         # First the locations options
         for option in self._get_location_config()._get_options():
             yield option
@@ -1457,8 +1454,8 @@ def bazaar_config_dir():
     """Return per-user configuration directory as unicode string
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
-    and Linux.  On Mac OS X and Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
-    that will be used instead.
+    and Linux.  On Mac OS X and Linux, if there is a $XDG_CONFIG_HOME/bazaar
+    directory, that will be used instead
 
     TODO: Global option --config-dir to override this.
     """
@@ -1583,7 +1580,7 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
         return None
     try:
         f = open(mailname_file)
-    except (IOError, OSError) as e:
+    except (IOError, OSError):
         return None
     try:
         domain = f.readline().strip()
@@ -1619,11 +1616,11 @@ def _auto_user_id():
 
     Only used when none is set in the environment or the id file.
 
-    This only returns an email address if we can be fairly sure the 
+    This only returns an email address if we can be fairly sure the
     address is reasonable, ie if /etc/mailname is set on unix.
 
-    This doesn't use the FQDN as the default domain because that may be 
-    slow, and it doesn't use the hostname alone because that's not normally 
+    This doesn't use the FQDN as the default domain because that may be
+    slow, and it doesn't use the hostname alone because that's not normally
     a reasonable address.
     """
     if sys.platform == 'win32':
@@ -1656,7 +1653,7 @@ def _auto_user_id():
             try:
                 encoding = osutils.get_user_encoding()
                 gecos = gecos.decode(encoding)
-            except UnicodeError as e:
+            except UnicodeError:
                 trace.mutter("cannot decode passwd entry %s" % w)
                 return None, None
 
@@ -1664,7 +1661,7 @@ def _auto_user_id():
     if isinstance(username, bytes):
         try:
             username = username.decode(encoding)
-        except UnicodeError as e:
+        except UnicodeError:
             trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
 
@@ -1705,7 +1702,8 @@ def extract_email_address(e):
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
 
-    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+    # XXX: Really needs a better name, as this is not part of the tree!
+    # -- mbp 20080507
 
     def __init__(self, branch):
         self._config = branch._get_config()
@@ -1782,9 +1780,9 @@ class AuthenticationConfig(object):
             return
         mode = stat.S_IMODE(st.st_mode)
         if ((stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP
-             | stat.S_IWGRP | stat.S_IRGRP ) & mode):
+             | stat.S_IWGRP | stat.S_IRGRP) & mode):
             # Only warn once
-            if (not self._filename in _authentication_config_permission_errors and
+            if (self._filename not in _authentication_config_permission_errors and
                 not GlobalConfig().suppress_warning(
                     'insecure_permissions')):
                 trace.warning("The file '%s' has insecure "
@@ -1947,7 +1945,6 @@ class AuthenticationConfig(object):
         if realm is not None:
             values['realm'] = realm
         config = self._get_config()
-        for_deletion = []
         for section, existing_values in config.iteritems():
             for key in ('scheme', 'host', 'port', 'path', 'realm'):
                 if existing_values.get(key) != values.get(key):
@@ -1971,7 +1968,7 @@ class AuthenticationConfig(object):
 
         :param path: the absolute path on the server (optional)
 
-        :param ask: Ask the user if there is no explicitly configured username 
+        :param ask: Ask the user if there is no explicitly configured username
                     (optional)
 
         :param default: The username returned if none is defined (optional).
@@ -2032,7 +2029,8 @@ class AuthenticationConfig(object):
         if password is None:
             if prompt is None:
                 # Create a default prompt suitable for most cases
-                prompt = u'%s' % scheme.upper() + u' %(user)s@%(host)s password'
+                prompt = (u'%s' %
+                          scheme.upper() + u' %(user)s@%(host)s password')
             # Special handling for optional fields in the prompt
             if port is not None:
                 prompt_host = '%s:%d' % (host, port)
@@ -2286,10 +2284,13 @@ class TransportConfig(object):
             return f
         except errors.NoSuchFile:
             return BytesIO()
-        except errors.PermissionDenied as e:
-            trace.warning("Permission denied while trying to open "
-                          "configuration file %s.", urlutils.unescape_for_display(
-                              urlutils.join(self._transport.base, self._filename), "utf-8"))
+        except errors.PermissionDenied:
+            trace.warning(
+                "Permission denied while trying to open "
+                "configuration file %s.",
+                urlutils.unescape_for_display(
+                    urlutils.join(self._transport.base, self._filename),
+                    "utf-8"))
             return BytesIO()
 
     def _external_url(self):
@@ -2490,7 +2491,7 @@ def int_SI_from_store(unicode_str):
     by a trailing b (i.e. Kb, MB). This is intended to be practical and not
     pedantic.
 
-    :return Integer, expanded to its base-10 value if a proper SI unit is 
+    :return Integer, expanded to its base-10 value if a proper SI unit is
         found, None otherwise.
     """
     regexp = "^(\\d+)(([" + ''.join(_unit_suffixes) + "])b?)?$"
@@ -2643,7 +2644,7 @@ class OptionRegistry(registry.Registry):
 
         :param module_name: the python path to the module. Such as 'os.path'.
 
-        :param member_name: the member of the module to return.  If empty or 
+        :param member_name: the member of the module to return.  If empty or
                 None, get() will return the module itself.
         """
         self._check_option_name(key)
@@ -3210,7 +3211,7 @@ class IniFileStore(Store):
         self._config_obj = None
 
     def is_loaded(self):
-        return self._config_obj != None
+        return self._config_obj is not None
 
     def unload(self):
         self._config_obj = None

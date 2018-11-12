@@ -91,8 +91,8 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # we have to stop early due to error, but we would also have to use the
         # HTTP trailer facility which may not be widely available.
         request_bytes = self.rfile.read(data_length)
-        protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
-            request_bytes)
+        protocol_factory, unused_bytes = (
+            medium._get_protocol_factory_for_bytes(request_bytes))
         out_buffer = BytesIO()
         smart_protocol_request = protocol_factory(t, out_buffer.write, '/')
         # Perhaps there should be a SmartServerHTTPMedium that takes care of
@@ -476,10 +476,11 @@ class DigestAuthServer(AuthServer):
         A1 = ('%s:%s:%s' % (user, realm, password)).encode('utf-8')
         A2 = ('%s:%s' % (command, auth['uri'])).encode('utf-8')
 
-        def H(x): return osutils.md5(x).hexdigest()
+        def H(x):
+            return osutils.md5(x).hexdigest()
 
-        def KD(secret, data): return H(
-            ("%s:%s" % (secret, data)).encode('utf-8'))
+        def KD(secret, data):
+            return H(("%s:%s" % (secret, data)).encode('utf-8'))
 
         nonce_count = int(auth['nc'], 16)
 

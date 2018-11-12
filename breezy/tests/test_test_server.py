@@ -218,7 +218,7 @@ class TestTCPServerInAThread(tests.TestCase):
             # We use 'request' instead of 'self' below because the test matters
             # more and we need a container to properly set connection_thread.
             def handle_connection(request):
-                req = request.readline()
+                request.readline()
                 # Capture the thread and make it use 'caught' so we can wait on
                 # the event that will be set when the exception is caught. We
                 # also capture the thread to know where to look.
@@ -303,8 +303,9 @@ class TestTCPServerInAThread(tests.TestCase):
 class TestTestingSmartServer(tests.TestCase):
 
     def test_sets_client_timeout(self):
-        server = test_server.TestingSmartServer(('localhost', 0), None, None,
-                                                root_client_path='/no-such-client/path')
+        server = test_server.TestingSmartServer(
+            ('localhost', 0), None, None,
+            root_client_path='/no-such-client/path')
         self.assertEqual(test_server._DEFAULT_TESTING_CLIENT_TIMEOUT,
                          server._client_timeout)
         sock = socket.socket()
@@ -326,8 +327,8 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
         s = FakeServer()
         server_sock, client_sock = portable_socket_pair()
         # This should timeout quickly, but not generate an exception.
-        handler = test_server.TestingSmartConnectionHandler(server_sock,
-                                                            server_sock.getpeername(), s)
+        test_server.TestingSmartConnectionHandler(
+            server_sock, server_sock.getpeername(), s)
 
     def test_connection_shutdown_while_serving_no_error(self):
         s = FakeServer()
@@ -341,5 +342,4 @@ class TestTestingSmartConnectionHandler(tests.TestCase):
                 return super(ShutdownConnectionHandler, self)._build_protocol()
         # This should trigger shutdown after the entering _build_protocol, and
         # we should exit cleanly, without raising an exception.
-        handler = ShutdownConnectionHandler(server_sock,
-                                            server_sock.getpeername(), s)
+        ShutdownConnectionHandler(server_sock, server_sock.getpeername(), s)

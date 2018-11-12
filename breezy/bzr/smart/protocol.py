@@ -763,7 +763,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if (result_tuple == (b'error', b"Generic bzr smart protocol error: "
                              b"bad request '" + self._last_verb + b"'")
             or result_tuple == (b'error', b"Generic bzr smart protocol error: "
-                             b"bad request u'%s'" % self._last_verb)):
+                                b"bad request u'%s'" % self._last_verb)):
             # The response will have no body, so we've finished reading.
             self._request.finished_reading()
             raise errors.UnknownSmartMethod(self._last_verb)

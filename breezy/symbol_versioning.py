@@ -71,9 +71,9 @@ def deprecation_string(a_callable, deprecation_version):
     """Generate an automatic deprecation string for a_callable.
 
     :param a_callable: The callable to substitute into deprecation_version.
-    :param deprecation_version: A deprecation format warning string. This should
-        have a single %s operator in it. a_callable will be turned into a nice
-        python symbol and then substituted into deprecation_version.
+    :param deprecation_version: A deprecation format warning string. This
+        should have a single %s operator in it. a_callable will be turned into
+        a nice python symbol and then substituted into deprecation_version.
     """
     if getattr(a_callable, '__self__', None) is not None:
         symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
@@ -160,7 +160,7 @@ def deprecated_passed(parameter_value):
     # def __init__(self, bad, other)
     # def __init__(self, **kwargs)
     # RBC 20060116
-    return not parameter_value is DEPRECATED_PARAMETER
+    return parameter_value is not DEPRECATED_PARAMETER
 
 
 def _decorate_docstring(callable, deprecation_version, label,
@@ -172,11 +172,9 @@ def _decorate_docstring(callable, deprecation_version, label,
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
-        decorated_callable.__doc__ = (callable.__doc__
-                                    + "\n"
-                                    + "\n"
-                                    + deprecation_version % ("This " + label)
-                                      + "\n")
+        decorated_callable.__doc__ = (
+            callable.__doc__ + "\n" + "\n" +
+            deprecation_version % ("This " + label) + "\n")
     else:
         spaces = len(docstring_lines[-1])
         new_doc = callable.__doc__

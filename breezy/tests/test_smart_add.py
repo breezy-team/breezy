@@ -17,7 +17,6 @@
 from .. import (
     add,
     cache_utf8,
-    osutils,
     tests,
     )
 from ..bzr import (

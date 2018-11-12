@@ -35,8 +35,11 @@ from .test_graph import TestGraphBase
 #   rev3  /
 #     |  /
 #   rev4
-ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1'],
-              b'rev3': [b'rev2a'], b'rev4': [b'rev3', b'rev2b']}
+ancestry_1 = {b'rev1': [NULL_REVISION],
+              b'rev2a': [b'rev1'],
+              b'rev2b': [b'rev1'],
+              b'rev3': [b'rev2a'],
+              b'rev4': [b'rev3', b'rev2b']}
 
 # Ancestry 2:
 #
@@ -49,8 +52,11 @@ ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1']
 # rev3a
 #   |
 # rev4a
-ancestry_2 = {b'rev1a': [NULL_REVISION], b'rev2a': [b'rev1a'],
-              b'rev1b': [NULL_REVISION], b'rev3a': [b'rev2a'], b'rev4a': [b'rev3a']}
+ancestry_2 = {b'rev1a': [NULL_REVISION],
+              b'rev2a': [b'rev1a'],
+              b'rev1b': [NULL_REVISION],
+              b'rev3a': [b'rev2a'],
+              b'rev4a': [b'rev3a']}
 
 
 # Extended history shortcut
@@ -82,11 +88,12 @@ class TestSearchResultRefine(tests.TestCase):
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions
         # being satisfied from the stacking branch.
-        g = self.make_graph(
+        self.make_graph(
             {b"tip": [b"mid"], b"mid": [b"base"], b"tag": [b"base"],
              b"base": [NULL_REVISION], NULL_REVISION: []})
-        result = vf_search.SearchResult({b'tip', b'tag'},
-                                        {NULL_REVISION}, 4, {b'tip', b'mid', b'tag', b'base'})
+        result = vf_search.SearchResult(
+            {b'tip', b'tag'},
+            {NULL_REVISION}, 4, {b'tip', b'mid', b'tag', b'base'})
         result = result.refine({b'tip'}, {b'mid'})
         recipe = result.get_recipe()
         # We should be starting from tag (original head) and mid (seen ref)

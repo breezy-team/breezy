@@ -89,7 +89,7 @@ class CatchingExceptionThread(threading.Thread):
             try:
                 self.set_sync_event(new)
                 # From now on, any exception will be synced with the new event
-            except:
+            except BaseException:
                 # Unlucky, we couldn't set the new sync event, try restoring a
                 # safe state
                 self.set_sync_event(cur)
@@ -126,7 +126,7 @@ class CatchingExceptionThread(threading.Thread):
         try:
             try:
                 super(CatchingExceptionThread, self).run()
-            except:
+            except BaseException:
                 self.exception = sys.exc_info()
         finally:
             # Make sure the calling thread is released

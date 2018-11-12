@@ -3060,7 +3060,7 @@ class TestMessageHandlerErrors(tests.TestCase):
         # fact it has that part twice, to trigger multiple errors.
         invalid_request = (
             protocol.MESSAGE_VERSION_THREE  # protocol version marker
-            + b'\0\0\0\x02de' # empty headers
+            + b'\0\0\0\x02de'  # empty headers
             + b'oX'  # + # a single byte part: 'X'.  ConventionalRequestHandler will
             # error at this part.
             b'oX'  # + # and again.

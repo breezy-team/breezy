@@ -20,7 +20,6 @@ from __future__ import absolute_import, division
 
 import errno
 import os
-import re
 import select
 import socket
 import sys
@@ -29,9 +28,7 @@ import time
 
 from .. import (
     errors,
-    lazy_regex,
     osutils,
-    symbol_versioning,
     tests,
     trace,
     win32utils,
@@ -1739,7 +1736,7 @@ class TestSetUnsetEnv(tests.TestCase):
                 'Cannot find a unicode character that works in encoding %s'
                 % (osutils.get_user_encoding(),))
 
-        old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
+        osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
         if PY3:
             self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
         else:
@@ -1926,7 +1923,6 @@ class TestDirReader(tests.TestCaseInTempDir):
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
-        target_utf8 = target.encode('UTF-8')
         link_name_utf8 = link_name.encode('UTF-8')
         expected_dirblocks = [
             ((b'', '.'),
@@ -1993,7 +1989,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def _try_loading(self):
         try:
-            import breezy._fictional_extension_py
+            import breezy._fictional_extension_py  # noqa: F401
         except ImportError as e:
             osutils.failed_to_load_extension(e)
             return True
@@ -2006,8 +2002,9 @@ class TestFailedToLoadExtension(tests.TestCase):
         self._try_loading()
         self.assertLength(1, osutils._extension_load_failures)
         if PY3:
-            self.assertEqual(osutils._extension_load_failures[0],
-                             "No module named 'breezy._fictional_extension_py'")
+            self.assertEqual(
+                osutils._extension_load_failures[0],
+                "No module named 'breezy._fictional_extension_py'")
         else:
             self.assertEqual(osutils._extension_load_failures[0],
                              "No module named _fictional_extension_py")
@@ -2104,7 +2101,7 @@ class TestTerminalWidth(tests.TestCase):
         termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
-            orig = termios.TIOCGWINSZ
+            termios.TIOCGWINSZ
         except AttributeError:
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
@@ -2133,7 +2130,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
     def test_copy_ownership_from_path(self):
         """copy_ownership_from_path test with specified src."""
         ownsrc = '/'
-        f = open('test_file', 'wt')
+        open('test_file', 'wt').close()
         osutils.copy_ownership_from_path('test_file', ownsrc)
 
         s = os.stat(ownsrc)
@@ -2143,7 +2140,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_copy_ownership_nonesrc(self):
         """copy_ownership_from_path test with src=None."""
-        f = open('test_file', 'wt')
+        open('test_file', 'wt').close()
         # should use parent dir for permissions
         osutils.copy_ownership_from_path('test_file')
 
@@ -2182,8 +2179,9 @@ class TestPathFromEnviron(tests.TestCase):
             self.assertEqual(u'/home/\u0407test',
                              osutils._posix_path_from_environ('BRZ_TEST_PATH'))
             osutils._fs_enc = "utf-8"
-            self.assertRaises(errors.BadFilenameEncoding,
-                              osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
+            self.assertRaises(
+                errors.BadFilenameEncoding,
+                osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
 
 
 class TestGetHomeDir(tests.TestCase):

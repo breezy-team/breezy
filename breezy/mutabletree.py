@@ -339,8 +339,8 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
-        :param file_list: List of zero or more paths.  *NB: these are 
-            interpreted relative to the process cwd, not relative to the 
+        :param file_list: List of zero or more paths.  *NB: these are
+            interpreted relative to the process cwd, not relative to the
             tree.*  (Add and most other tree methods use tree-relative
             paths.)
         :param action: A reporter to be called with the inventory, parent_ie,

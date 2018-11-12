@@ -17,7 +17,6 @@
 """HTTPS test server, available when ssl python module is available"""
 
 import ssl
-import sys
 
 from . import (
     http_server,
@@ -51,7 +50,7 @@ class TestingHTTPSServerMixin:
         if serving:
             try:
                 request.do_handshake()
-            except ssl.SSLError as e:
+            except ssl.SSLError:
                 # FIXME: We proabaly want more tests to capture which ssl
                 # errors are worth reporting but mostly our tests want an https
                 # server that works -- vila 2012-01-19

@@ -53,8 +53,8 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
 
     def test_spaces_and_quotes(self):
         cmd_list = ['kdiff3', '{base}', '{this}', '{other}', '-o', '{result}']
-        args, tmpfile = mergetools._subst_filename(cmd_list,
-                                                   'file with "space and quotes".txt')
+        args, tmpfile = mergetools._subst_filename(
+            cmd_list, 'file with "space and quotes".txt')
         self.assertEqual(
             ['kdiff3',
              'file with "space and quotes".txt.BASE',

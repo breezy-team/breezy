@@ -70,7 +70,7 @@ class LaunchpadDirectory(object):
         """
         return (scheme in ('bzr+ssh', 'sftp')
                 and (netloc.endswith('launchpad.net') or
-                 netloc.endswith('launchpad.dev')))
+                     netloc.endswith('launchpad.dev')))
 
     def look_up(self, name, url):
         """See DirectoryService.look_up"""
