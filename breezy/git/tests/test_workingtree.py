@@ -230,7 +230,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         self.build_tree(['a/'])
         a = Blob.from_string(b'irrelevant\n')
         with self.wt.lock_tree_write():
-            (index, index_path) = self.wt._lookup_index('a')
+            (index, index_path) = self.wt._lookup_index(b'a')
             index[b'a'] = IndexEntry(
                     0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
             self.wt._index_dirty = True
