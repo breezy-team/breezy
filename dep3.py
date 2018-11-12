@@ -22,7 +22,11 @@
 
 from __future__ import absolute_import
 
-from ... import diff
+from ... import (
+    diff,
+    errors,
+    )
+from breezy.foreign import foreign_vcs_registry
 
 from io import BytesIO
 
@@ -81,11 +85,18 @@ def write_dep3_patch_header(f, description=None, origin=None, forwarded=None,
             write_dep3_bug_line(f, bug_url, status)
     if last_update is not None:
         f.write("Last-Update: %s\n" % time.strftime("%Y-%m-%d",
-            time.gmtime(last_update)))
+                time.gmtime(last_update)))
     if applied_upstream is not None:
         f.write("Applied-Upstream: %s\n" % applied_upstream)
     if revision_id is not None:
-        f.write("X-Bzr-Revision-Id: %s\n" % revision_id.decode('utf-8'))
+        try:
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
+                    revision_id)
+        except errors.InvalidRevisionId:
+            f.write("X-Bzr-Revision-Id: %s\n" % revision_id.decode('utf-8'))
+        else:
+            if mapping.vcs.abbreviation == "git":
+                f.write("X-Git-Commit: %s\n" % foreign_revid.decode('utf-8'))
     f.write("\n")
 
 
@@ -124,6 +135,15 @@ def determine_applied_upstream(upstream_branch, feature_branch,
     merger = upstream_graph.find_lefthand_merger(feature_revid,
         upstream_branch.last_revision())
     if merger is not None:
+        try:
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
+                merger)
+        except errors.InvalidRevisionId:
+            pass
+        else:
+            if mapping.vcs.abbreviation == 'git':
+                return "merged in commit %s" % (
+                    foreign_revid.decode('ascii')[:7], )
         return "merged in revision %s" % (
             ".".join(str(x) for x in upstream_branch.revision_id_to_dotted_revno(merger)), )
     else:
@@ -153,10 +173,27 @@ def describe_origin(branch, revid):
     """
     public_branch_url = branch.get_public_branch()
     if public_branch_url is not None:
+        try:
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
+                revid)
+        except errors.InvalidRevisionId:
+            pass
+        else:
+            if mapping.vcs.abbreviation == 'git':
+                return "commit, %s, commit: %s" % (
+                    public_branch_url, foreign_revid.decode('ascii')[:7], )
         return "commit, %s, revision: %s" % (
             public_branch_url,
             ".".join(str(x) for x in branch.revision_id_to_dotted_revno(revid)), )
     else:
+        try:
+            (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
+                revid)
+        except errors.InvalidRevisionId:
+            pass
+        else:
+            if mapping.vcs.abbreviation == 'git':
+                return "commit: %s" % (foreign_revid.decode('ascii')[:7], )
         return "commit, revision id: %s" % revid.decode('utf-8')
 
 

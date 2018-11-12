@@ -3,6 +3,8 @@ breezy-debian (2.8.21) UNRELEASED; urgency=medium
   * Support finding upstream revisions based on bzr revno.
   * Fix error when attempting to release from branch without colocated
     branch support.
+  * brz dep3-patch: Use git commit ids when generating patches from Git
+    repositories.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 02 Nov 2018 03:00:37 +0000
 
