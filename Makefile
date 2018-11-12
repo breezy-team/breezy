@@ -51,7 +51,7 @@ check-nodocs3:
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -Wignore::CryptographyDeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 --strict \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
@@ -66,7 +66,7 @@ check-nodocs2: extensions
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
 	echo `date` ": selftest starts" 1>&2
-	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -O \
+	set -o pipefail; BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::ImportWarning -Wignore::DeprecationWarning -Wignore::CryptographyDeprecationWarning -O \
 	  ./brz selftest -Oselftest.timeout=120 \
 	  --subunit2 $(tests) | tee selftest.log | subunit-2to1
 	echo `date` ": selftest ends" 1>&2
