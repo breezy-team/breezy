@@ -33,7 +33,6 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     bugtracker,
-    bundle,
     cache_utf8,
     controldir,
     directory_service,
@@ -46,6 +45,7 @@ from breezy import (
     lazy_regex,
     log,
     merge as _mod_merge,
+    mergeable as _mod_mergeable,
     merge_directive,
     osutils,
     reconfigure,
@@ -1193,7 +1193,7 @@ class cmd_pull(Command):
         possible_transports = []
         if location is not None:
             try:
-                mergeable = bundle.read_mergeable_from_url(location,
+                mergeable = _mod_mergeable.read_mergeable_from_url(location,
                     possible_transports=possible_transports)
             except errors.NotABundle:
                 mergeable = None
@@ -4428,7 +4428,7 @@ class cmd_merge(Command):
         self.add_cleanup(tree.lock_write().unlock)
         if location is not None:
             try:
-                mergeable = bundle.read_mergeable_from_url(location,
+                mergeable = _mod_mergeable.read_mergeable_from_url(location,
                     possible_transports=possible_transports)
             except errors.NotABundle:
                 mergeable = None
