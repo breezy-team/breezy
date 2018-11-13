@@ -62,9 +62,11 @@ class cmd_publish_derived(Command):
     takes_options = [
             'directory',
             Option('owner', help='Owner of the new remote branch.', type=str),
-            Option('project', help='Project name for the new remote branch.', type=str),
+            Option('project', help='Project name for the new remote branch.',
+                   type=str),
             Option('name', help='Name of the new remote branch.', type=str),
-            Option('no-allow-lossy', help='Allow fallback to lossy push, if necessary.'),
+            Option('no-allow-lossy',
+                   help='Allow fallback to lossy push, if necessary.'),
             Option('overwrite', help="Overwrite existing commits."),
             ]
     takes_args = ['submit_branch?']
@@ -92,26 +94,26 @@ class cmd_publish_derived(Command):
         note(gettext("Pushed to %s") % public_url)
 
 
-def summarize_unmerged(branch, target):
+def summarize_unmerged(local_branch, remote_branch, target):
     """Generate a text description of the unmerged revisions in branch.
 
     :param branch: The proposed branch
     :param target: Target branch
     :return: A string
     """
-    log_format = _mod_log.log_formatter_registry.get_default(branch)
+    log_format = _mod_log.log_formatter_registry.get_default(local_branch)
     to_file = StringIO()
     lf = log_format(to_file=to_file, show_ids=False, show_timezone='original')
     local_extra = _mod_missing.find_unmerged(
-        branch, target, restrict='local')[0]
+        remote_branch, target, restrict='local')[0]
 
-    if branch.supports_tags():
-        rev_tag_dict = branch.tags.get_reverse_tag_dict()
+    if remote_branch.supports_tags():
+        rev_tag_dict = remote_branch.tags.get_reverse_tag_dict()
     else:
         rev_tag_dict = {}
 
     for revision in _mod_missing.iter_log_revisions(
-            local_extra, branch.repository, False, rev_tag_dict):
+            local_extra, local_branch.repository, False, rev_tag_dict):
         lf.log_revision(revision)
     return to_file.getvalue()
 
@@ -171,7 +173,7 @@ class cmd_propose_merge(Command):
         if description is None:
             body = proposal_builder.get_initial_body()
             info = proposal_builder.get_infotext()
-            info += "\n\n" + summarize_unmerged(branch, target)
+            info += "\n\n" + summarize_unmerged(branch, remote_branch, target)
             description = msgeditor.edit_commit_message(
                 info, start_message=body)
         try:
@@ -203,7 +205,8 @@ class cmd_find_merge_proposal(Command):
         if submit_branch is None:
             submit_branch = branch.get_parent()
         if submit_branch is None:
-            raise errors.BzrCommandError(gettext("No target location specified or remembered"))
+            raise errors.BzrCommandError(
+                gettext("No target location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)
         hoster = _mod_propose.get_hoster(branch)
@@ -219,8 +222,6 @@ class cmd_github_login(Command):
     takes_args = ['username?']
 
     def run(self, username=None):
-        import configparser
-        import os
         from github import Github, GithubException
         from breezy.config import AuthenticationConfig
         authconfig = AuthenticationConfig()
