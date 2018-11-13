@@ -4107,6 +4107,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
         'breezy.tests.test_merge3',
+        'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
         'breezy.tests.test_mergetools',

@@ -17,10 +17,6 @@
 import bz2
 from io import BytesIO
 import os
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
 import sys
 
 from .. import (
@@ -36,10 +32,8 @@ from ..bzr import (
     bzrdir,
     inventory,
     )
-from ..bundle import read_mergeable_from_url
 from ..bundle.apply_bundle import install_bundle, merge_bundle
 from ..bundle.bundle_data import BundleTree
-from ..directory_service import directories
 from ..bundle.serializer import write_bundle, read_bundle, v09, v4
 from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
@@ -48,8 +42,6 @@ from ..bzr import knitrepo
 from . import (
     features,
     test_commit,
-    test_read_bundle,
-    test_server,
     )
 from ..transform import TreeTransform
 
@@ -1847,61 +1839,3 @@ class TestBundleWriterReader(tests.TestCase):
             'info', None, None), record)
         self.assertRaises(errors.BadBundle, next, record_iter)
 
-
-class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
-
-    def test_read_mergeable_skips_local(self):
-        """A local bundle named like the URL should not be read.
-        """
-        out, wt = test_read_bundle.create_bundle_file(self)
-        class FooService(object):
-            """A directory service that always returns source"""
-
-            def look_up(self, name, url):
-                return 'source'
-        directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(directories.remove, 'foo:')
-        self.build_tree_contents([('./foo:bar', out.getvalue())])
-        self.assertRaises(errors.NotABundle, read_mergeable_from_url,
-                          'foo:bar')
-
-    def test_infinite_redirects_are_not_a_bundle(self):
-        """If a URL causes TooManyRedirections then NotABundle is raised.
-        """
-        from .blackbox.test_push import RedirectingMemoryServer
-        server = RedirectingMemoryServer()
-        self.start_server(server)
-        url = server.get_url() + 'infinite-loop'
-        self.assertRaises(errors.NotABundle, read_mergeable_from_url, url)
-
-    def test_smart_server_connection_reset(self):
-        """If a smart server connection fails during the attempt to read a
-        bundle, then the ConnectionReset error should be propagated.
-        """
-        # Instantiate a server that will provoke a ConnectionReset
-        sock_server = DisconnectingServer()
-        self.start_server(sock_server)
-        # We don't really care what the url is since the server will close the
-        # connection without interpreting it
-        url = sock_server.get_url()
-        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
-
-
-class DisconnectingHandler(socketserver.BaseRequestHandler):
-    """A request handler that immediately closes any connection made to it."""
-
-    def handle(self):
-        self.request.close()
-
-
-class DisconnectingServer(test_server.TestingTCPServerInAThread):
-
-    def __init__(self):
-        super(DisconnectingServer, self).__init__(
-            ('127.0.0.1', 0),
-            test_server.TestingTCPServer,
-            DisconnectingHandler)
-
-    def get_url(self):
-        """Return the url of the server"""
-        return "bzr://%s:%d/" % self.server.server_address

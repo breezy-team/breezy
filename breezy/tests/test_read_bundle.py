@@ -16,7 +16,7 @@
 
 """Test read_bundle works properly across various transports."""
 
-import breezy.bundle
+import breezy.mergeable
 from ..bundle.serializer import write_bundle
 import breezy.bzr.bzrdir
 from .. import errors
@@ -72,7 +72,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
         wt = self.create_test_bundle()
 
     def read_mergeable_from_url(self, url):
-        return breezy.bundle.read_mergeable_from_url(
+        return breezy.mergeable.read_mergeable_from_url(
             url, possible_transports=self.possible_transports)
 
     def get_url(self, relpath=''):
