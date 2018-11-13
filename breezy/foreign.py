@@ -185,7 +185,7 @@ class ForeignVcsRegistry(registry.Registry):
         if b":" not in revid or b"-" not in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
-            foreign_vcs = self.get(revid.split(b"-")[0])
+            foreign_vcs = self.get(revid.split(b"-")[0].decode('ascii'))
         except KeyError:
             raise errors.InvalidRevisionId(revid, None)
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
