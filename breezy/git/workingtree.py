@@ -482,7 +482,13 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     trace.warning('skipping nested tree %r', abs_user_dir)
                     continue
 
-                for name in os.listdir(abs_user_dir):
+                for name in os.listdir(abs_user_dir.encode(osutils._fs_enc)):
+                    try:
+                        name = name.decode(osutils._fs_enc)
+                    except UnicodeDecodeError:
+                        relpath = user_dir.encode(osutils._fs_enc) + b'/' + name
+                        raise errors.BadFilenameEncoding(relpath,
+                                                         osutils._fs_enc)
                     subp = os.path.join(user_dir, name)
                     if self.is_control_filename(subp) or self.mapping.is_special_file(subp):
                         continue

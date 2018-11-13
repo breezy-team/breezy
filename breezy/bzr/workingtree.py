@@ -1104,7 +1104,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     # But do this child first if recursing down
                     if recursive:
-                        new_children = sorted(os.listdir(fap))
+                        new_children = []
+                        for subf in os.listdir(fap.encode(osutils._fs_enc)):
+                            try:
+                                new_children.append(subf.decode(osutils._fs_enc))
+                            except UnicodeDecodeError:
+                                relpath = fp.lstrip('/').encode(osutils._fs_enc) + b'/' + subf
+                                raise errors.BadFilenameEncoding(relpath,
+                                                                 osutils._fs_enc)
+                        new_children.sort()
                         new_children = collections.deque(new_children)
                         stack.append((f_ie.file_id, fp, fap, new_children))
                         # Break out of inner loop,

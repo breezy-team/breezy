@@ -377,3 +377,28 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         #       just ignore files that don't fit the normalization
         #       rules, rather than exploding
         self.assertRaises(errors.InvalidNormalization, self.wt.smart_add, [])
+
+
+class TestIllegalPaths(per_workingtree.TestCaseWithWorkingTree):
+
+    def test_bad_fs_path(self):
+        if osutils.normalizes_filenames():
+            # You *can't* create an illegal filename on OSX.
+            raise tests.TestNotApplicable('OSX normalizes filenames')
+        self.requireFeature(features.UTF8Filesystem)
+        # We require a UTF8 filesystem, because otherwise we would need to get
+        # tricky to figure out how to create an illegal filename.
+        # \xb5 is an illegal path because it should be \xc2\xb5 for UTF-8
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/subdir/', 'tree/subdir/somefile'])
+        tree.add(['subdir', 'subdir/somefile'])
+
+        with open(b'tree/subdir/m\xb5', 'wb') as f:
+            f.write(b'trivial\n')
+
+        with tree.lock_tree_write():
+            e = self.assertListRaises(errors.BadFilenameEncoding,
+                                      tree.smart_add, ['tree'])
+        # We should display the relative path
+        self.assertEqual(b'subdir/m\xb5', e.filename)
+        self.assertEqual(osutils._fs_enc, e.fs_encoding)
