@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-from ..lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,
@@ -28,10 +28,10 @@ from breezy.merge_directive import MergeDirective
 from breezy.i18n import gettext
 """)
 
-from ..sixish import (
+from .sixish import (
     BytesIO,
     )
-from ..trace import note
+from .trace import note
 
 
 class Mergeable(object):
