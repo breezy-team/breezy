@@ -1109,7 +1109,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                             try:
                                 new_children.append(subf.decode(osutils._fs_enc))
                             except UnicodeDecodeError:
-                                relpath = fp.lstrip('/').encode(osutils._fs_enc) + '/' + subf
+                                relpath = fp.lstrip('/').encode(osutils._fs_enc) + b'/' + subf
                                 raise errors.BadFilenameEncoding(relpath,
                                                                  osutils._fs_enc)
                         new_children.sort()

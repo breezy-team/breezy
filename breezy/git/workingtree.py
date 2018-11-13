@@ -486,7 +486,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                     try:
                         name = name.decode(osutils._fs_enc)
                     except UnicodeDecodeError:
-                        relpath = user_dir.encode(osutils._fs_enc) + '/' + name
+                        relpath = user_dir.encode(osutils._fs_enc) + b'/' + name
                         raise errors.BadFilenameEncoding(relpath,
                                                          osutils._fs_enc)
                     subp = os.path.join(user_dir, name)
