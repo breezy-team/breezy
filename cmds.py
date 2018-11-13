@@ -18,10 +18,14 @@
 
 from __future__ import absolute_import
 
+from io import StringIO
+
 from ... import (
     branch as _mod_branch,
     controldir,
     errors,
+    log as _mod_log,
+    missing as _mod_missing,
     msgeditor,
     urlutils,
     )
@@ -88,6 +92,30 @@ class cmd_publish_derived(Command):
         note(gettext("Pushed to %s") % public_url)
 
 
+def summarize_unmerged(branch, target):
+    """Generate a text description of the unmerged revisions in branch.
+
+    :param branch: The proposed branch
+    :param target: Target branch
+    :return: A string
+    """
+    log_format = _mod_log.log_formatter_registry.get_default(branch)
+    to_file = StringIO()
+    lf = log_format(to_file=to_file, show_ids=False, show_timezone='original')
+    local_extra = _mod_missing.find_unmerged(
+        branch, target, restrict='local')[0]
+
+    if branch.supports_tags():
+        rev_tag_dict = branch.tags.get_reverse_tag_dict()
+    else:
+        rev_tag_dict = {}
+
+    for revision in _mod_missing.iter_log_revisions(
+            local_extra, branch.repository, False, rev_tag_dict):
+        lf.log_revision(revision)
+    return to_file.getvalue()
+
+
 class cmd_propose_merge(Command):
     __doc__ = """Propose a branch for merging.
 
@@ -96,33 +124,37 @@ class cmd_propose_merge(Command):
     proposal depends on the submit branch.
     """
 
-    takes_options = ['directory',
+    takes_options = [
+            'directory',
             RegistryOption(
                 'hoster',
                 help='Use the hoster.',
                 lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
             ListOption('reviewers', short_name='R', type=text_type,
-                help='Requested reviewers.'),
+                       help='Requested reviewers.'),
             Option('name', help='Name of the new remote branch.', type=str),
             Option('description', help='Description of the change.', type=str),
             ListOption('labels', short_name='l', type=text_type,
-                help='Labels to apply.'),
-            Option('no-allow-lossy', help='Allow fallback to lossy push, if necessary.'),
+                       help='Labels to apply.'),
+            Option('no-allow-lossy',
+                   help='Allow fallback to lossy push, if necessary.'),
             ]
     takes_args = ['submit_branch?']
 
     aliases = ['propose']
 
-    def run(self, submit_branch=None, directory='.', hoster=None, reviewers=None, name=None,
-            no_allow_lossy=False, description=None, labels=None):
-        tree, branch, relpath = controldir.ControlDir.open_containing_tree_or_branch(
-            directory)
+    def run(self, submit_branch=None, directory='.', hoster=None,
+            reviewers=None, name=None, no_allow_lossy=False, description=None,
+            labels=None):
+        tree, branch, relpath = (
+            controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
             submit_branch = branch.get_submit_branch()
         if submit_branch is None:
             submit_branch = branch.get_parent()
         if submit_branch is None:
-            raise errors.BzrCommandError(gettext("No target location specified or remembered"))
+            raise errors.BzrCommandError(
+                gettext("No target location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)
         if hoster is None:
@@ -139,7 +171,9 @@ class cmd_propose_merge(Command):
         if description is None:
             body = proposal_builder.get_initial_body()
             info = proposal_builder.get_infotext()
-            description = msgeditor.edit_commit_message(info, start_message=body)
+            info += "\n\n" + summarize_unmerged(branch, target)
+            description = msgeditor.edit_commit_message(
+                info, start_message=body)
         try:
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers, labels=labels)
