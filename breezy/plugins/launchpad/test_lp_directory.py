@@ -594,48 +594,27 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     def test_ubuntu_natty_distroseries_expansion(self):
         self.assertURL('ubuntu/natty/foo', 'ubuntu:natty/foo', series='natty')
 
-    def test_ubuntu_n_distroseries_expansion(self):
-        self.assertURL('ubuntu/natty/foo', 'ubuntu:n/foo', series='natty')
-
     def test_ubuntu_maverick_distroseries_expansion(self):
         self.assertURL('ubuntu/maverick/foo', 'ubuntu:maverick/foo',
                        series='maverick')
 
-    def test_ubuntu_m_distroseries_expansion(self):
-        self.assertURL('ubuntu/maverick/foo', 'ubuntu:m/foo', series='maverick')
-
     def test_ubuntu_lucid_distroseries_expansion(self):
         self.assertURL('ubuntu/lucid/foo', 'ubuntu:lucid/foo', series='lucid')
-
-    def test_ubuntu_l_distroseries_expansion(self):
-        self.assertURL('ubuntu/lucid/foo', 'ubuntu:l/foo', series='lucid')
 
     def test_ubuntu_karmic_distroseries_expansion(self):
         self.assertURL('ubuntu/karmic/foo', 'ubuntu:karmic/foo',
                        series='karmic')
 
-    def test_ubuntu_k_distroseries_expansion(self):
-        self.assertURL('ubuntu/karmic/foo', 'ubuntu:k/foo', series='karmic')
-
     def test_ubuntu_jaunty_distroseries_expansion(self):
         self.assertURL('ubuntu/jaunty/foo', 'ubuntu:jaunty/foo',
                        series='jaunty')
 
-    def test_ubuntu_j_distroseries_expansion(self):
-        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:j/foo', series='jaunty')
-
     def test_ubuntu_hardy_distroseries_expansion(self):
         self.assertURL('ubuntu/hardy/foo', 'ubuntu:hardy/foo', series='hardy')
-
-    def test_ubuntu_h_distroseries_expansion(self):
-        self.assertURL('ubuntu/hardy/foo', 'ubuntu:h/foo', series='hardy')
 
     def test_ubuntu_dapper_distroseries_expansion(self):
         self.assertURL('ubuntu/dapper/foo', 'ubuntu:dapper/foo',
                        series='dapper')
-
-    def test_ubuntu_d_distroseries_expansion(self):
-        self.assertURL('ubuntu/dapper/foo', 'ubuntu:d/foo', series='dapper')
 
     # Debian default distro series.
 
