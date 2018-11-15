@@ -171,7 +171,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param foreign_vcs: ForeignVCS instance
         :param help: Description of the foreign VCS
         """
-        if b":" in key or b"-" in key:
+        if ":" in key or "-" in key:
             raise ValueError("vcs name can not contain : or -")
         registry.Registry.register(self, key, foreign_vcs, help)
 
