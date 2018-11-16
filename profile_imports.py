@@ -63,7 +63,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
     # Find all of the roots with import = 0
     out_file.write(
         '%5s %5s %-40s @ %s:%s\n' % ('cum', 'inline', 'name', 'file', 'line'))
-    todo = [(value[-1], key) for key,value in _info.iteritems()
+    todo = [(value[-1], key) for key, value in _info.iteritems()
             if value[0] == 0]
 
     if sorted:

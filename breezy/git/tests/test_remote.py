@@ -288,7 +288,7 @@ class FetchFromRemoteTestBase(object):
             local_branch.tags.get_tag_dict())
 
 
-class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase,TestCaseWithTransport):
+class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase ,TestCaseWithTransport):
 
     _to_format = '2a'
 

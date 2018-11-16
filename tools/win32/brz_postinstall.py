@@ -49,7 +49,7 @@ OPTIONS:
 """ % os.path.basename(sys.argv[0])
 
 # Windows version
-_major,_minor,_build,_platform,_text = sys.getwindowsversion()
+_major, _minor, _build, _platform, _text = sys.getwindowsversion()
 # from MSDN:
 # dwPlatformId
 #   The operating system platform.

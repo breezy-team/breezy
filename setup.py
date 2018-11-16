@@ -487,7 +487,7 @@ if 'bdist_wininst' in sys.argv:
         for root, dirs, files in os.walk('doc'):
             r = []
             for f in files:
-                if (os.path.splitext(f)[1] in ('.html','.css','.png','.pdf')
+                if (os.path.splitext(f)[1] in ('.html', '.css', '.png', '.pdf')
                         or f == 'quick-start-summary.svg'):
                     r.append(os.path.join(root, f))
             if r:
@@ -563,7 +563,7 @@ elif 'py2exe' in sys.argv:
 
     target = py2exe.build_exe.Target(script = "brz",
                                      dest_base = "brz",
-                                     icon_resources = [(0,'brz.ico')],
+                                     icon_resources = [(0, 'brz.ico')],
                                      name = META_INFO['name'],
                                      version = version_str,
                                      description = META_INFO['description'],
