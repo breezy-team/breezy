@@ -97,7 +97,7 @@ class TransportRefsContainer(RefsContainer):
 
     def _ensure_dir_exists(self, path):
         for n in range(path.count("/")):
-            dirname = "/".join(path.split("/")[:n+1])
+            dirname = "/".join(path.split("/")[:n + 1])
             try:
                 self.transport.mkdir(dirname)
             except FileExists:
@@ -126,7 +126,8 @@ class TransportRefsContainer(RefsContainer):
         else:
             keys.add(b"HEAD")
         try:
-            iter_files = list(self.transport.clone("refs").iter_files_recursive())
+            iter_files = list(self.transport.clone(
+                "refs").iter_files_recursive())
             for filename in iter_files:
                 unquoted_filename = urlutils.unquote_to_bytes(filename)
                 refname = osutils.pathjoin(b"refs", unquoted_filename)
@@ -175,9 +176,9 @@ class TransportRefsContainer(RefsContainer):
         """Return the cached peeled value of a ref, if available.
 
         :param name: Name of the ref to peel
-        :return: The peeled value of the ref. If the ref is known not point to a
-            tag, this will be the SHA the ref refers to. If the ref may point to
-            a tag, but no cached information is available, None is returned.
+        :return: The peeled value of the ref. If the ref is known not point to
+            a tag, this will be the SHA the ref refers to. If the ref may point
+            to a tag, but no cached information is available, None is returned.
         """
         self.get_packed_refs()
         if self._peeled_refs is None or name not in self._packed_refs:
@@ -215,7 +216,7 @@ class TransportRefsContainer(RefsContainer):
                 return header + next(iter(f)).rstrip(b"\r\n")
             else:
                 # Read only the first 40 bytes
-                return header + f.read(40-len(SYMREF))
+                return header + f.read(40 - len(SYMREF))
 
     def _remove_packed_ref(self, name):
         if self._packed_refs is None:
@@ -250,7 +251,8 @@ class TransportRefsContainer(RefsContainer):
             self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         else:
             transport = self.worktree_transport
-        transport.put_bytes(urlutils.quote_from_bytes(name), SYMREF + other + b'\n')
+        transport.put_bytes(urlutils.quote_from_bytes(
+            name), SYMREF + other + b'\n')
 
     def set_if_equals(self, name, old_ref, new_ref):
         """Set a refname to new_ref only if it currently equals old_ref.
@@ -274,7 +276,8 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
             self._ensure_dir_exists(urlutils.quote_from_bytes(realname))
-        transport.put_bytes(urlutils.quote_from_bytes(realname), new_ref+b"\n")
+        transport.put_bytes(urlutils.quote_from_bytes(
+            realname), new_ref + b"\n")
         return True
 
     def add_if_new(self, name, ref):
@@ -300,7 +303,7 @@ class TransportRefsContainer(RefsContainer):
         else:
             transport = self.transport
             self._ensure_dir_exists(urlutils.quote_from_bytes(realname))
-        transport.put_bytes(urlutils.quote_from_bytes(realname), ref+b"\n")
+        transport.put_bytes(urlutils.quote_from_bytes(realname), ref + b"\n")
         return True
 
     def remove_if_equals(self, name, old_ref):
@@ -310,8 +313,8 @@ class TransportRefsContainer(RefsContainer):
         perform an atomic compare-and-delete operation.
 
         :param name: The refname to delete.
-        :param old_ref: The old sha the refname must refer to, or None to delete
-            unconditionally.
+        :param old_ref: The old sha the refname must refer to, or None to
+            delete unconditionally.
         :return: True if the delete was successful, False otherwise.
         """
         self._check_refname(name)
@@ -340,7 +343,7 @@ class TransportRefsContainer(RefsContainer):
             transport = self.transport
         lockname = name + b".lock"
         try:
-            self.transport.delete(urlutils.quote_from_bytes(lockname))
+            transport.delete(urlutils.quote_from_bytes(lockname))
         except NoSuchFile:
             pass
 
@@ -352,13 +355,14 @@ class TransportRefsContainer(RefsContainer):
         self._ensure_dir_exists(urlutils.quote_from_bytes(name))
         lockname = urlutils.quote_from_bytes(name + b".lock")
         try:
-            local_path = self.transport.local_abspath(urlutils.quote_from_bytes(name))
+            local_path = transport.local_abspath(
+                urlutils.quote_from_bytes(name))
         except NotLocalUrl:
             # This is racy, but what can we do?
-            if self.transport.has(lockname):
+            if transport.has(lockname):
                 raise LockContention(name)
-            lock_result = self.transport.put_bytes(lockname, b'Locked by brz-git')
-            return LogicalLockResult(lambda: self.transport.delete(lockname))
+            transport.put_bytes(lockname, b'Locked by brz-git')
+            return LogicalLockResult(lambda: transport.delete(lockname))
         else:
             try:
                 gf = GitFile(local_path, 'wb')
@@ -367,10 +371,11 @@ class TransportRefsContainer(RefsContainer):
             else:
                 def unlock():
                     try:
-                        self.transport.delete(lockname)
+                        transport.delete(lockname)
                     except NoSuchFile:
                         raise LockBroken(lockname)
-                    # GitFile.abort doesn't care if the lock has already disappeared
+                    # GitFile.abort doesn't care if the lock has already
+                    # disappeared
                     gf.abort()
                 return LogicalLockResult(unlock)
 
@@ -405,7 +410,8 @@ class TransportRepo(BaseRepo):
             else:
                 self._controltransport = self.transport.clone('.git')
         else:
-            self._controltransport = self.transport.clone(urlutils.quote_from_bytes(path))
+            self._controltransport = self.transport.clone(
+                urlutils.quote_from_bytes(path))
         commondir = self.get_named_file(COMMONDIR)
         if commondir is not None:
             with commondir:
@@ -422,16 +428,17 @@ class TransportRepo(BaseRepo):
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
-                head = TransportRefsContainer(self._commontransport).read_loose_ref("HEAD")
+                head = TransportRefsContainer(
+                    self._commontransport).read_loose_ref("HEAD")
             except KeyError:
                 pass
             else:
                 refs_container._refs["HEAD"] = head
         else:
             refs_container = TransportRefsContainer(
-                    self._commontransport, self._controltransport)
+                self._commontransport, self._controltransport)
         super(TransportRepo, self).__init__(object_store,
-                refs_container)
+                                            refs_container)
 
     def controldir(self):
         return self._controltransport.local_abspath('.')
@@ -621,12 +628,13 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(name).st_size
                 except TransportNotPossible:
                     f = self.pack_transport.get(name)
-                    pd = PackData(name, f, size=len(contents))
+                    pd = PackData(name, f)
                 else:
                     pd = PackData(name, self.pack_transport.get(name),
-                            size=size)
+                                  size=size)
                 idxname = name.replace(".pack", ".idx")
-                idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
+                idx = load_pack_index_file(
+                    idxname, self.pack_transport.get(idxname))
                 pack = Pack.from_objects(pd, idx)
                 pack._basename = idxname[:-4]
                 ret.append(pack)
@@ -637,7 +645,7 @@ class TransportObjectStore(PackBasedObjectStore):
             if len(base) != 2:
                 continue
             for rest in self.transport.list_dir(base):
-                yield (base+rest).encode(sys.getfilesystemencoding())
+                yield (base + rest).encode(sys.getfilesystemencoding())
 
     def _split_loose_object(self, sha):
         return (sha[:2], sha[2:])
@@ -666,7 +674,7 @@ class TransportObjectStore(PackBasedObjectStore):
             pass
         path = urlutils.quote_from_bytes(osutils.pathjoin(dir, file))
         if self.transport.has(path):
-            return # Already there, no need to write again
+            return  # Already there, no need to write again
         self.transport.put_bytes(path, obj.as_legacy_object())
 
     def move_in_pack(self, f):
@@ -680,7 +688,8 @@ class TransportObjectStore(PackBasedObjectStore):
         f.seek(0)
         p = PackData("", f, len(f.getvalue()))
         entries = p.sorted_entries()
-        basename = "pack-%s" % iter_sha1(entry[0] for entry in entries).decode('ascii')
+        basename = "pack-%s" % iter_sha1(entry[0]
+                                         for entry in entries).decode('ascii')
         p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
@@ -690,7 +699,7 @@ class TransportObjectStore(PackBasedObjectStore):
         finally:
             idxfile.close()
         idxfile = self.pack_transport.get(basename + ".idx")
-        idx = load_pack_index_file(basename+".idx", idxfile)
+        idx = load_pack_index_file(basename + ".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
         final_pack._basename = basename
         self._add_known_pack(basename, final_pack)
@@ -708,12 +717,13 @@ class TransportObjectStore(PackBasedObjectStore):
         p = Pack('', resolve_ext_ref=self.get_raw)
         p._data = PackData.from_file(f, len(f.getvalue()))
         p._data.pack = p
-        p._idx_load = lambda: MemoryPackIndex(p.data.sorted_entries(), p.data.get_stored_checksum())
+        p._idx_load = lambda: MemoryPackIndex(
+            p.data.sorted_entries(), p.data.get_stored_checksum())
 
         pack_sha = p.index.objects_sha1()
 
         datafile = self.pack_transport.open_write_stream(
-                "pack-%s.pack" % pack_sha.decode('ascii'))
+            "pack-%s.pack" % pack_sha.decode('ascii'))
         try:
             entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
         finally:
@@ -735,11 +745,13 @@ class TransportObjectStore(PackBasedObjectStore):
             call when the pack is finished.
         """
         f = BytesIO()
+
         def commit():
             if len(f.getvalue()) > 0:
                 return self.move_in_pack(f)
             else:
                 return None
+
         def abort():
             return None
         return f, commit, abort

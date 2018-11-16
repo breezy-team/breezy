@@ -66,7 +66,7 @@ class RemoteTransport(transport.ConnectedTransport):
     """
 
     # When making a readv request, cap it at requesting 5MB of data
-    _max_readv_bytes = 5*1024*1024
+    _max_readv_bytes = 5 * 1024 * 1024
 
     # IMPORTANT FOR IMPLEMENTORS: RemoteTransport MUST NOT be given encoding
     # responsibilities: Put those on SmartClient or similar. This is vital for
@@ -102,7 +102,7 @@ class RemoteTransport(transport.ConnectedTransport):
         # what we want to share is really the shared connection.
 
         if (_from_transport is not None
-            and isinstance(_from_transport, RemoteTransport)):
+                and isinstance(_from_transport, RemoteTransport)):
             _client = _from_transport._client
         elif _from_transport is None:
             # If no _from_transport is specified, we need to intialize the
@@ -228,7 +228,8 @@ class RemoteTransport(transport.ConnectedTransport):
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
         try:
-            resp, response_handler = self._client.call_expecting_body(b'get', remote)
+            resp, response_handler = self._client.call_expecting_body(
+                b'get', remote)
         except errors.ErrorFromSmartServer as err:
             self._translate_error(err, relpath)
         if resp != (b'ok', ):
@@ -244,7 +245,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def mkdir(self, relpath, mode=None):
         resp = self._call2(b'mkdir', self._remote_path(relpath),
-            self._serialise_optional_mode(mode))
+                           self._serialise_optional_mode(mode))
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
@@ -331,9 +332,9 @@ class RemoteTransport(transport.ConnectedTransport):
 
         sorted_offsets = sorted(offsets)
         coalesced = list(self._coalesce_offsets(sorted_offsets,
-                               limit=self._max_readv_combine,
-                               fudge_factor=self._bytes_to_read_before_seek,
-                               max_size=self._max_readv_bytes))
+                                                limit=self._max_readv_combine,
+                                                fudge_factor=self._bytes_to_read_before_seek,
+                                                max_size=self._max_readv_bytes))
 
         # now that we've coallesced things, avoid making enormous requests
         requests = []
@@ -389,11 +390,11 @@ class RemoteTransport(transport.ConnectedTransport):
         for c_offset in coalesced:
             if len(data) < c_offset.length:
                 raise errors.ShortReadvError(relpath, c_offset.start,
-                            c_offset.length, actual=len(data))
+                                             c_offset.length, actual=len(data))
             for suboffset, subsize in c_offset.ranges:
-                key = (c_offset.start+suboffset, subsize)
-                this_data = data[data_offset+suboffset:
-                                 data_offset+suboffset+subsize]
+                key = (c_offset.start + suboffset, subsize)
+                this_data = data[data_offset + suboffset:
+                                 data_offset + suboffset + subsize]
                 # Special case when the data is in-order, rather than packing
                 # into a map and then back out again. Benchmarking shows that
                 # this has 100% hit rate, but leave in the data_map work just
@@ -404,7 +405,8 @@ class RemoteTransport(transport.ConnectedTransport):
                 if key == cur_offset_and_size:
                     yield cur_offset_and_size[0], this_data
                     try:
-                        cur_offset_and_size = next_offset[0] = next(offset_stack)
+                        cur_offset_and_size = next_offset[0] = next(
+                            offset_stack)
                     except StopIteration:
                         return
                 else:
@@ -451,18 +453,18 @@ class RemoteTransport(transport.ConnectedTransport):
             return _SmartStat(int(resp[1]), int(resp[2], 8))
         raise errors.UnexpectedSmartServerResponse(resp)
 
-    ## def lock_read(self, relpath):
-    ##     """Lock the given file for shared (read) access.
-    ##     :return: A lock object, which should be passed to Transport.unlock()
-    ##     """
-    ##     # The old RemoteBranch ignore lock for reading, so we will
-    ##     # continue that tradition and return a bogus lock object.
-    ##     class BogusLock(object):
-    ##         def __init__(self, path):
+    # def lock_read(self, relpath):
+    # """Lock the given file for shared (read) access.
+    # :return: A lock object, which should be passed to Transport.unlock()
+    # """
+    # The old RemoteBranch ignore lock for reading, so we will
+    # continue that tradition and return a bogus lock object.
+    # class BogusLock(object):
+    # def __init__(self, path):
     ##             self.path = path
-    ##         def unlock(self):
-    ##             pass
-    ##     return BogusLock(relpath)
+    # def unlock(self):
+    # pass
+    # return BogusLock(relpath)
 
     def listable(self):
         return True
@@ -522,10 +524,10 @@ class RemoteSSHTransport(RemoteTransport):
         if user is None:
             auth = config.AuthenticationConfig()
             user = auth.get_user('ssh', self._parsed_url.host,
-                self._parsed_url.port)
+                                 self._parsed_url.port)
         ssh_params = medium.SSHParams(self._parsed_url.host,
-                self._parsed_url.port, user, self._parsed_url.password,
-                bzr_remote_path)
+                                      self._parsed_url.port, user, self._parsed_url.password,
+                                      bzr_remote_path)
         client_medium = medium.SmartSSHClientMedium(self.base, ssh_params)
         return client_medium, (user, self._parsed_url.password)
 
@@ -591,7 +593,7 @@ class RemoteHTTPTransport(RemoteTransport):
         """See transport._redirected_to"""
         redirected = self._http_transport._redirected_to(source, target)
         if (redirected is not None
-            and isinstance(redirected, type(self._http_transport))):
+                and isinstance(redirected, type(self._http_transport))):
             return RemoteHTTPTransport('bzr+' + redirected.external_url(),
                                        http_transport=redirected)
         else:
@@ -604,12 +606,12 @@ class HintingSSHTransport(transport.Transport):
 
     def __init__(self, url):
         raise errors.UnsupportedProtocol(url,
-            'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
+                                         'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
 
 
 def get_test_permutations():
     """Return (transport, server) permutations for testing."""
-    ### We may need a little more test framework support to construct an
-    ### appropriate RemoteTransport in the future.
+    # We may need a little more test framework support to construct an
+    # appropriate RemoteTransport in the future.
     from ..tests import test_server
     return [(RemoteTCPTransport, test_server.SmartTCPServer_for_testing)]

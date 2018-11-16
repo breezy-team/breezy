@@ -38,12 +38,12 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
     def make_snapshot(self, builder, parents, revid_name):
         self.assertNotIn(revid_name, self.revids)
         if parents is None:
-            files = [('add', ('', None, 'directory', '')),]
+            files = [('add', ('', None, 'directory', '')), ]
         else:
             parents = [self.revids[name] for name in parents]
             files = []
         self.revids[revid_name] = builder.build_snapshot(
-                parents, files, message="Revision %s" % revid_name)
+            parents, files, message="Revision %s" % revid_name)
 
     def make_builder_with_merges(self, relpath):
         try:
@@ -168,12 +168,12 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
     def make_snapshot(self, builder, parents, revid_name):
         self.assertNotIn(revid_name, self.revids)
         if parents is None:
-            files = [('add', ('', None, 'directory', '')),]
+            files = [('add', ('', None, 'directory', '')), ]
         else:
             parents = [self.revids[name] for name in parents]
             files = []
         self.revids[revid_name] = builder.build_snapshot(
-                parents, files, message="Revision %s" % revid_name)
+            parents, files, message="Revision %s" % revid_name)
 
     def make_branch_with_embedded_merges(self, relpath='.'):
         builder = self.make_branch_builder(relpath)
@@ -246,7 +246,7 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         self.make_snapshot(builder, ['2.1.1'], '2.1.2')
         self.make_snapshot(builder, ['2.1.1'], '2.2.1')
         self.make_snapshot(builder, ['2.1.2', '2.2.1'], '2.1.3')
-        self.make_snapshot(builder, ['2',  '1.2.3'], '3')
+        self.make_snapshot(builder, ['2', '1.2.3'], '3')
         # .. to bring them all and ... bind them
         self.make_snapshot(builder, ['3', '2.1.3'], '4')
         builder.finish_series()
@@ -331,4 +331,3 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
                               stop_rule='with-merges-without-common-ancestry',
                               start_revision_id='1.1.2',
                               stop_revision_id='1.1.1')
-

@@ -69,7 +69,7 @@ class BisectTestCase(TestCaseWithTransport):
         test_file_append.close()
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file_append')))
-        self.tree.commit(message = "add test files")
+        self.tree.commit(message="add test files")
 
         ControlDir.open(".").sprout("../temp-clone")
         clone_bzrdir = ControlDir.open("../temp-clone")
@@ -81,7 +81,7 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append = open("../temp-clone/test_file_append", "a")
             test_file_append.write(content + "\n")
             test_file_append.close()
-            clone_tree.commit(message = "make branch test change")
+            clone_tree.commit(message="make branch test change")
             saved_subtree_revid = clone_tree.branch.last_revision()
 
         self.tree.merge_from_branch(clone_tree.branch)
@@ -91,7 +91,7 @@ class BisectTestCase(TestCaseWithTransport):
         test_file_append = open("test_file_append", "a")
         test_file_append.write("two\n")
         test_file_append.close()
-        self.tree.commit(message = "merge external branch")
+        self.tree.commit(message="merge external branch")
         shutil.rmtree("../temp-clone")
 
         self.subtree_rev = saved_subtree_revid
@@ -104,7 +104,7 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append = open("test_file_append", "a")
             test_file_append.write(content + "\n")
             test_file_append.close()
-            self.tree.commit(message = "make test change")
+            self.tree.commit(message="make test change")
 
 
 class BisectHarnessTests(BisectTestCase):
@@ -186,7 +186,8 @@ class BisectLogUnitTests(BisectTestCase):
 
     def testLoad(self):
         """Test loading a log."""
-        preloaded_log = open(os.path.join('.bzr', bisect.BISECT_INFO_PATH), "w")
+        preloaded_log = open(os.path.join(
+            '.bzr', bisect.BISECT_INFO_PATH), "w")
         preloaded_log.write("rev1 yes\nrev2 no\nrev3 yes\n")
         preloaded_log.close()
 
@@ -199,7 +200,8 @@ class BisectLogUnitTests(BisectTestCase):
     def testSave(self):
         """Test saving the log."""
         bisect_log = bisect.BisectLog(self.tree.controldir)
-        bisect_log._items = [(b"rev1", "yes"), (b"rev2", "no"), (b"rev3", "yes")]
+        bisect_log._items = [
+            (b"rev1", "yes"), (b"rev2", "no"), (b"rev3", "yes")]
         bisect_log.save()
 
         with open(os.path.join('.bzr', bisect.BISECT_INFO_PATH), 'rb') as logfile:

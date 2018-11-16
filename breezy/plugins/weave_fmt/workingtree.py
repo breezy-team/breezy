@@ -104,12 +104,12 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             branch.unlock()
         inv = inventory.Inventory()
         wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
-                         branch,
-                         inv,
-                         _internal=True,
-                         _format=self,
-                         _controldir=a_controldir,
-                         _control_files=branch.control_files)
+                          branch,
+                          inv,
+                          _internal=True,
+                          _format=self,
+                          _controldir=a_controldir,
+                          _control_files=branch.control_files)
         basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.get_root_id() is not None:
             wt.set_root_id(basis_tree.get_root_id())
@@ -141,10 +141,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         if not isinstance(a_controldir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_controldir.transport.base)
         wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
-                           _internal=True,
-                           _format=self,
-                           _controldir=a_controldir,
-                           _control_files=a_controldir.open_branch().control_files)
+                          _internal=True,
+                          _format=self,
+                          _controldir=a_controldir,
+                          _control_files=a_controldir.open_branch().control_files)
         return wt
 
 
@@ -170,7 +170,6 @@ class WorkingTree2(PreDirStateWorkingTree):
     def _get_check_refs(self):
         """Return the references needed to perform a check of this tree."""
         return [('trees', self.last_revision())]
-
 
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
@@ -229,17 +228,19 @@ class WorkingTree2(PreDirStateWorkingTree):
                 if text is True:
                     for suffix in ('.THIS', '.OTHER'):
                         try:
-                            kind = osutils.file_kind(self.abspath(conflicted+suffix))
+                            kind = osutils.file_kind(
+                                self.abspath(conflicted + suffix))
                             if kind != "file":
                                 text = False
                         except errors.NoSuchFile:
                             text = False
                         if text == False:
                             break
-                ctype = {True: 'text conflict', False: 'contents conflict'}[text]
+                ctype = {True: 'text conflict',
+                         False: 'contents conflict'}[text]
                 conflicts.append(_mod_conflicts.Conflict.factory(ctype,
-                                 path=conflicted,
-                                 file_id=self.path2id(conflicted)))
+                                                                 path=conflicted,
+                                                                 file_id=self.path2id(conflicted)))
             return conflicts
 
     def set_conflicts(self, arg):

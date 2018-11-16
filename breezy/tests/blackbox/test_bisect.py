@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-
 """Tests of the 'brz bisect' command."""
 
 from __future__ import absolute_import
@@ -72,7 +71,7 @@ class BisectTestCase(TestCaseWithTransport):
         test_file_append.close()
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file_append')))
-        self.tree.commit(message = "add test files")
+        self.tree.commit(message="add test files")
 
         BzrDir.open(".").sprout("../temp-clone")
         clone_bzrdir = BzrDir.open("../temp-clone")
@@ -84,7 +83,7 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append = open("../temp-clone/test_file_append", "a")
             test_file_append.write(content + "\n")
             test_file_append.close()
-            clone_tree.commit(message = "make branch test change")
+            clone_tree.commit(message="make branch test change")
             saved_subtree_revid = clone_tree.branch.last_revision()
 
         self.tree.merge_from_branch(clone_tree.branch)
@@ -94,7 +93,7 @@ class BisectTestCase(TestCaseWithTransport):
         test_file_append = open("test_file_append", "a")
         test_file_append.write("two\n")
         test_file_append.close()
-        self.tree.commit(message = "merge external branch")
+        self.tree.commit(message="merge external branch")
         shutil.rmtree("../temp-clone")
 
         self.subtree_rev = saved_subtree_revid
@@ -107,7 +106,7 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append = open("test_file_append", "a")
             test_file_append.write(content + "\n")
             test_file_append.close()
-            self.tree.commit(message = "make test change")
+            self.tree.commit(message="make test change")
 
     def testWorkflow(self):
         """Run through a basic usage scenario."""
@@ -277,9 +276,8 @@ class BisectTestCase(TestCaseWithTransport):
         try:
             self.assertRevno(2)
         except AssertionError:
-            raise KnownFailure\
-                ("bisect does not drill down into merge commits: "
-                 "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+            raise KnownFailure("bisect does not drill down into merge commits: "
+                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
 
     def testRunScriptSubtree(self):
         """Make a test script and run it."""
@@ -297,6 +295,5 @@ class BisectTestCase(TestCaseWithTransport):
         try:
             self.assertRevno(1.2)
         except AssertionError:
-            raise KnownFailure\
-                ("bisect does not drill down into merge commits: "
-                 "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+            raise KnownFailure("bisect does not drill down into merge commits: "
+                               "https://bugs.launchpad.net/bzr-bisect/+bug/539937")

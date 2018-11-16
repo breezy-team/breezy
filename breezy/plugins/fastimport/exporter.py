@@ -51,7 +51,9 @@ try:
     from email.utils import parseaddr
 except ImportError:  # python < 3
     from email.Utils import parseaddr
-import sys, time, re
+import sys
+import time
+import re
 
 import breezy.branch
 import breezy.revision
@@ -75,7 +77,7 @@ from . import (
     )
 
 lazy_import.lazy_import(globals(),
-"""
+                        """
 from fastimport import commands
 """)
 
@@ -90,6 +92,8 @@ def _get_output_stream(destination):
         return open(destination, 'wb')
 
 # from dulwich.repo:
+
+
 def check_ref_format(refname):
     """Check if a refname is correctly formatted.
 
@@ -109,7 +113,7 @@ def check_ref_format(refname):
     if b'..' in refname:
         return False
     for i in range(len(refname)):
-        if ord(refname[i:i+1]) < 0o40 or refname[i] in b'\177 ~^:?*[':
+        if ord(refname[i:i + 1]) < 0o40 or refname[i] in b'\177 ~^:?*[':
             return False
     if refname[-1] in b'/.':
         return False
@@ -157,9 +161,9 @@ def sanitize_ref_name_for_git(refname):
 class BzrFastExporter(object):
 
     def __init__(self, source, outf, ref=None, checkpoint=-1,
-        import_marks_file=None, export_marks_file=None, revision=None,
-        verbose=False, plain_format=False, rewrite_tags=False,
-        no_tags=False, baseline=False):
+                 import_marks_file=None, export_marks_file=None, revision=None,
+                 verbose=False, plain_format=False, rewrite_tags=False,
+                 no_tags=False, baseline=False):
         """Export branch data in fast import format.
 
         :param plain_format: if True, 'classic' fast-import format is
@@ -185,7 +189,7 @@ class BzrFastExporter(object):
         self.no_tags = no_tags
         self.baseline = baseline
         self._multi_author_api_available = hasattr(breezy.revision.Revision,
-            'get_apparent_authors')
+                                                   'get_apparent_authors')
         self.properties_to_exclude = ['authors', 'author']
 
         # Progress reporting stuff
@@ -204,14 +208,14 @@ class BzrFastExporter(object):
             marks_info = marks_file.import_marks(self.import_marks_file)
             if marks_info is not None:
                 self.revid_to_mark = dict((r, m) for m, r in
-                    marks_info.items())
+                                          marks_info.items())
                 # These are no longer included in the marks file
                 #self.branch_names = marks_info[1]
 
     def interesting_history(self):
         if self.revision:
             rev1, rev2 = builtins._get_revision_range(self.revision,
-                self.branch, "fast-export")
+                                                      self.branch, "fast-export")
             start_rev_id = rev1.rev_id
             end_rev_id = rev2.rev_id
         else:
@@ -219,7 +223,7 @@ class BzrFastExporter(object):
             end_rev_id = None
         self.note("Calculating the revisions to include ...")
         view_revisions = [rev_id for rev_id, _, _, _ in
-            self.branch.iter_merge_sorted_revisions(end_rev_id, start_rev_id)]
+                          self.branch.iter_merge_sorted_revisions(end_rev_id, start_rev_id)]
         view_revisions.reverse()
         # If a starting point was given, we need to later check that we don't
         # start emitting revisions from before that point. Collect the
@@ -227,7 +231,7 @@ class BzrFastExporter(object):
         if start_rev_id is not None:
             self.note("Calculating the revisions to exclude ...")
             self.excluded_revisions = set([rev_id for rev_id, _, _, _ in
-                self.branch.iter_merge_sorted_revisions(start_rev_id)])
+                                           self.branch.iter_merge_sorted_revisions(start_rev_id)])
             if self.baseline:
                 # needed so the first relative commit knows its parent
                 self.excluded_revisions.remove(start_rev_id)
@@ -240,7 +244,7 @@ class BzrFastExporter(object):
             interesting = self.interesting_history()
             self._commit_total = len(interesting)
             self.note("Starting export of %d revisions ..." %
-                self._commit_total)
+                      self._commit_total)
             if not self.plain_format:
                 self.emit_features()
             if self.baseline:
@@ -287,8 +291,8 @@ class BzrFastExporter(object):
         time_required = progress.str_tdelta(time.time() - self._start_time)
         rc = len(self.revid_to_mark)
         self.note("Exported %d %s in %s",
-            rc, helpers.single_plural(rc, "revision", "revisions"),
-            time_required)
+                  rc, helpers.single_plural(rc, "revision", "revisions"),
+                  time_required)
 
     def print_cmd(self, cmd):
         if PY3:
@@ -308,7 +312,7 @@ class BzrFastExporter(object):
                 return False
         except bazErrors.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
-                (path,))
+                         (path,))
             return False
 
         # Use treewalk to find the contents of our directory
@@ -327,7 +331,8 @@ class BzrFastExporter(object):
         revobj = self.branch.repository.get_revision(revid)
         mark = 1
         self.revid_to_mark[revid] = mark
-        file_cmds = self._get_filecommands(breezy.revision.NULL_REVISION, revid)
+        file_cmds = self._get_filecommands(
+            breezy.revision.NULL_REVISION, revid)
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
     def emit_commit(self, revid, ref):
@@ -341,7 +346,7 @@ class BzrFastExporter(object):
             # This is a ghost revision. Mark it as not found and next!
             self.revid_to_mark[revid] = -1
             return
- 
+
         # Get the primary parent
         # TODO: Consider the excluded revisions when deciding the parents.
         # Currently, a commit with parents that are excluded ought to be
@@ -368,10 +373,10 @@ class BzrFastExporter(object):
 
         # Report progress and checkpoint if it's time for that
         self.report_progress(ncommits)
-        if (self.checkpoint is not None and self.checkpoint > 0 and ncommits
-            and ncommits % self.checkpoint == 0):
+        if (self.checkpoint is not None and self.checkpoint > 0 and ncommits and
+                ncommits % self.checkpoint == 0):
             self.note("Exported %i commits - adding checkpoint to output"
-                % ncommits)
+                      % ncommits)
             self._save_marks()
             self.print_cmd(commands.CheckpointCommand())
 
@@ -446,14 +451,16 @@ class BzrFastExporter(object):
 
         # Build and return the result
         return commands.CommitCommand(git_ref, mark, author_info,
-            committer_info, revobj.message.encode("utf-8"), from_, merges, iter(file_cmds),
-            more_authors=more_author_info, properties=properties)
+                                      committer_info, revobj.message.encode(
+                                          "utf-8"), from_, merges, iter(file_cmds),
+                                      more_authors=more_author_info, properties=properties)
 
     def _get_revision_trees(self, parent, revision_id):
         try:
             tree_old = self.branch.repository.revision_tree(parent)
         except bazErrors.UnexpectedInventoryFormat:
-            self.warning("Parent is malformed - diffing against previous parent")
+            self.warning(
+                "Parent is malformed - diffing against previous parent")
             # We can't find the old parent. Let's diff against his parent
             pp = self.branch.repository.get_revision(parent)
             tree_old = self.branch.repository.revision_tree(pp.parent_ids[0])
@@ -475,7 +482,7 @@ class BzrFastExporter(object):
         changes = tree_new.changes_from(tree_old)
 
         # Make "modified" have 3-tuples, as added does
-        my_modified = [ x[0:3] for x in changes.modified ]
+        my_modified = [x[0:3] for x in changes.modified]
 
         # The potential interaction between renames and deletes is messy.
         # Handle it here ...
@@ -488,7 +495,7 @@ class BzrFastExporter(object):
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
-            #file_cmds.append(commands.FileDeleteCommand(path))
+            # file_cmds.append(commands.FileDeleteCommand(path))
             my_modified.append((path, id_, kind2))
 
         # Record modifications
@@ -500,22 +507,24 @@ class BzrFastExporter(object):
                         'file', tree_new.is_executable(path)),
                     None, text))
             elif kind == 'symlink':
-                file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
+                file_cmds.append(commands.FileModifyCommand(
+                    path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
                     None, tree_new.get_symlink_target(path)))
             elif kind == 'directory':
                 if not self.plain_format:
                     file_cmds.append(
-                            commands.FileModifyCommand(path.encode("utf-8"),
-                                helpers.kind_to_mode('directory', False), None,
-                                None))
+                        commands.FileModifyCommand(path.encode("utf-8"),
+                                                   helpers.kind_to_mode(
+                                                       'directory', False), None,
+                                                   None))
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
-                    (path, kind))
+                             (path, kind))
         return file_cmds
 
     def _process_renames_and_deletes(self, renames, deletes,
-        revision_id, tree_old):
+                                     revision_id, tree_old):
         file_cmds = []
         modifies = []
         renamed = []
@@ -548,13 +557,14 @@ class BzrFastExporter(object):
             emit = kind != 'directory' or not self.plain_format
             if newpath in deleted_paths:
                 if emit:
-                    file_cmds.append(commands.FileDeleteCommand(newpath.encode("utf-8")))
+                    file_cmds.append(commands.FileDeleteCommand(
+                        newpath.encode("utf-8")))
                 deleted_paths.remove(newpath)
             if (self.is_empty_dir(tree_old, oldpath)):
                 self.note("Skipping empty dir %s in rev %s" % (oldpath,
-                    revision_id))
+                                                               revision_id))
                 continue
-            #oldpath = self._adjust_path_for_renames(oldpath, renamed,
+            # oldpath = self._adjust_path_for_renames(oldpath, renamed,
             #    revision_id)
             renamed.append([oldpath, newpath])
             old_to_new[oldpath] = newpath
@@ -582,9 +592,9 @@ class BzrFastExporter(object):
                 new_child_path = must_be_renamed[old_child_path]
                 if self.verbose:
                     self.note("implicitly renaming %s => %s" % (old_child_path,
-                        new_child_path))
+                                                                new_child_path))
                 file_cmds.append(commands.FileRenameCommand(old_child_path.encode("utf-8"),
-                    new_child_path.encode("utf-8")))
+                                                            new_child_path.encode("utf-8")))
 
         # Record remaining deletes
         for path, id_, kind in deletes:
@@ -601,7 +611,7 @@ class BzrFastExporter(object):
         for old, new in renamed:
             if path == old:
                 self.note("Changing path %s given rename to %s in revision %s"
-                    % (path, new, revision_id))
+                          % (path, new, revision_id))
                 path = new
             elif path.startswith(old + '/'):
                 self.note(
@@ -616,7 +626,7 @@ class BzrFastExporter(object):
                 mark = self.revid_to_mark[revid]
             except KeyError:
                 self.warning('not creating tag %r pointing to non-existent '
-                    'revision %s' % (tag, revid))
+                             'revision %s' % (tag, revid))
             else:
                 git_ref = b'refs/tags/%s' % tag.encode("utf-8")
                 if self.plain_format and not check_ref_format(git_ref):

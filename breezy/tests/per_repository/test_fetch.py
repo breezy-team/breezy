@@ -46,7 +46,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # fetch with a default limit (grab everything)
         repo = self.make_repository('b')
         if (tree_a.branch.repository.supports_rich_root() and not
-            repo.supports_rich_root()):
+                repo.supports_rich_root()):
             raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None)
@@ -97,13 +97,13 @@ class TestFetchSameRepository(TestCaseWithRepository):
                 tree_b = b_branch.create_checkout('b', lightweight=True)
             except errors.NotLocalUrl:
                 raise TestSkipped("cannot make working tree with transport %r"
-                              % b_bzrdir.transport)
+                                  % b_bzrdir.transport)
         rev2 = tree_b.commit('no change')
         rev2_tree = knit3_repo.revision_tree(rev2)
         self.assertEqual(rev1, rev2_tree.get_file_revision(u''))
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
-        snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
+                                                          snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
         """Assert that result is the parents of b'tip' after fetching snapshots.
 
         This helper constructs a 1.9 format source, and a test-format target
@@ -120,7 +120,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo = self.make_repository('target')
         remote_format = isinstance(repo, remote.RemoteRepository)
         if not repo._format.rich_root_data and not remote_format:
-            return # not relevant
+            return  # not relevant
         if not repo._format.supports_full_versioned_files:
             raise TestNotApplicable(
                 'format does not support full versioned files')
@@ -128,26 +128,26 @@ class TestFetchSameRepository(TestCaseWithRepository):
         builder.start_series()
         for revision_id, parent_ids, actions in snapshots:
             builder.build_snapshot(parent_ids, actions,
-            allow_leftmost_as_ghost=allow_lefthand_ghost,
-            revision_id=revision_id)
+                                   allow_leftmost_as_ghost=allow_lefthand_ghost,
+                                   revision_id=revision_id)
         builder.finish_series()
         source = builder.get_branch()
         if remote_format and not repo._format.rich_root_data:
             # use a manual rich root format to ensure the code path is tested.
             repo = self.make_repository('remote-target',
-                format='1.9-rich-root')
+                                        format='1.9-rich-root')
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(source.repository)
         graph = repo.get_file_graph()
         self.assertEqual(result,
-            graph.get_parent_map([(root_id, b'tip')])[(root_id, b'tip')])
+                         graph.get_parent_map([(root_id, b'tip')])[(root_id, b'tip')])
 
     def test_fetch_to_rich_root_set_parent_no_parents(self):
         # No parents rev -> No parents
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
-            [(b'tip', None, [('add', ('', ROOT_ID, 'directory', ''))]),
-            ])
+                                                               [(b'tip', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+                                                                ])
 
     def test_fetch_to_rich_root_set_parent_1_parent(self):
         # 1 parent rev -> 1 parent
@@ -155,16 +155,16 @@ class TestFetchSameRepository(TestCaseWithRepository):
             ((ROOT_ID, b'base'),),
             [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              (b'tip', None, []),
-            ])
+             ])
 
     def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
         # 1 ghost parent -> No parents
         if not self.repository_format.supports_ghosts:
             raise TestNotApplicable("repository format does not support "
-                 "ghosts")
+                                    "ghosts")
         self.do_test_fetch_to_rich_root_sets_parents_correctly((),
-            [(b'tip', [b'ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
-            ], allow_lefthand_ghost=True)
+                                                               [(b'tip', [b'ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
+                                                                ], allow_lefthand_ghost=True)
 
     def test_fetch_to_rich_root_set_parent_2_head_parents(self):
         # 2 parents both heads -> 2 parents
@@ -174,7 +174,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
              (b'left', None, []),
              (b'right', [b'base'], []),
              (b'tip', [b'left', b'right'], []),
-            ])
+             ])
 
     def test_fetch_to_rich_root_set_parent_2_parents_1_head(self):
         # 2 parents one head -> 1 parent
@@ -183,7 +183,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             [(b'left', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              (b'right', None, []),
              (b'tip', [b'left', b'right'], []),
-            ])
+             ])
 
     def test_fetch_to_rich_root_set_parent_1_parent_different_id_gone(self):
         # 1 parent different fileid, ours missing -> no parents
@@ -191,9 +191,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
             (),
             [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              (b'tip', None, [('unversion', ''),
-                            ('add', ('', b'my-root', 'directory', '')),
-                            ]),
-            ], root_id=b'my-root')
+                             ('add', ('', b'my-root', 'directory', '')),
+                             ]),
+             ], root_id=b'my-root')
 
     def test_fetch_to_rich_root_set_parent_1_parent_different_id_moved(self):
         # 1 parent different fileid, ours moved -> 1 parent
@@ -201,14 +201,14 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((b'my-root', b'origin'),),
             [(b'origin', None, [('add', ('', ROOT_ID, 'directory', '')),
-                             ('add', ('child', b'my-root', 'directory', ''))]),
+                                ('add', ('child', b'my-root', 'directory', ''))]),
              (b'base', None, []),
              (b'tip', None, [('unversion', 'child'),
-                            ('unversion', ''),
-                            ('flush', None),
-                            ('add', ('', b'my-root', 'directory', '')),
-                            ]),
-            ], root_id=b'my-root')
+                             ('unversion', ''),
+                             ('flush', None),
+                             ('add', ('', b'my-root', 'directory', '')),
+                             ]),
+             ], root_id=b'my-root')
 
     def test_fetch_to_rich_root_set_parent_2_parent_1_different_id_gone(self):
         # 2 parents, 1 different fileid, our second missing -> 1 parent
@@ -216,11 +216,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
             ((b'my-root', b'right'),),
             [(b'base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
              (b'right', None, [('unversion', ''),
-                              ('add', ('', b'my-root', 'directory', ''))]),
+                               ('add', ('', b'my-root', 'directory', ''))]),
              (b'tip', [b'base', b'right'], [('unversion', ''),
-                            ('add', ('', b'my-root', 'directory', '')),
-                            ]),
-            ], root_id=b'my-root')
+                                            ('add', ('', b'my-root', 'directory', '')),
+                                            ]),
+             ], root_id=b'my-root')
 
     def test_fetch_to_rich_root_set_parent_2_parent_2_different_id_moved(self):
         # 2 parents, 1 different fileid, our second moved -> 2 parent
@@ -229,19 +229,19 @@ class TestFetchSameRepository(TestCaseWithRepository):
             ((b'my-root', b'right'),),
             # b'my-root' at 'child'.
             [(b'origin', None, [('add', ('', ROOT_ID, 'directory', '')),
-                             ('add', ('child', b'my-root', 'directory', ''))]),
+                                ('add', ('child', b'my-root', 'directory', ''))]),
              (b'base', None, []),
-            # b'my-root' at root
+             # b'my-root' at root
              (b'right', None, [('unversion', 'child'),
-                              ('unversion', ''),
-                              ('flush', None),
-                              ('add', ('', b'my-root', 'directory', ''))]),
+                               ('unversion', ''),
+                               ('flush', None),
+                               ('add', ('', b'my-root', 'directory', ''))]),
              (b'tip', [b'base', b'right'], [('unversion', ''),
-                            ('unversion', 'child'),
-                            ('flush', None),
-                            ('add', ('', b'my-root', 'directory', '')),
-                            ]),
-            ], root_id=b'my-root')
+                                            ('unversion', 'child'),
+                                            ('flush', None),
+                                            ('add', ('', b'my-root', 'directory', '')),
+                                            ]),
+             ], root_id=b'my-root')
 
     def test_fetch_all_from_self(self):
         tree = self.make_branch_and_tree('.')
@@ -278,7 +278,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
             repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             self.assertFalse(repo._format.supports_revision_signatures)
-            raise TestNotApplicable("repository format does not support signatures")
+            raise TestNotApplicable(
+                "repository format does not support signatures")
         repo.commit_write_group()
         repo.unlock()
         return repo, rev1
@@ -318,7 +319,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
     def make_simple_branch_with_ghost(self):
         if not self.repository_format.supports_ghosts:
             raise TestNotApplicable("repository format does not support "
-                 "ghosts")
+                                    "ghosts")
         builder = self.make_branch_builder('source')
         builder.start_series()
         a_revid = builder.build_snapshot(None, [
@@ -355,7 +356,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             # causes weird problems with 'lock_not_held' later on...
             target.lock_read()
             self.knownFailure('some repositories fail to fetch'
-                ' via the smart server because of locking issues.')
+                              ' via the smart server because of locking issues.')
 
     def test_fetch_from_smart_with_ghost(self):
         trans = self.make_smart_server('source')
@@ -370,4 +371,3 @@ class TestFetchSameRepository(TestCaseWithRepository):
         source.lock_read()
         self.addCleanup(source.unlock)
         target.fetch(source, revision_id=b_revid)
-

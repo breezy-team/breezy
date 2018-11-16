@@ -38,7 +38,6 @@ import errno
 
 import breezy
 from breezy import (
-    config,
     cleanup,
     cmdline,
     debug,
@@ -99,7 +98,7 @@ class CommandInfo(object):
 
 class CommandRegistry(registry.Registry):
     """Special registry mapping command names to command classes.
-    
+
     :ivar overridden_registry: Look in this registry for commands being
         overridden by this registry.  This can be used to tell plugin commands
         about the builtin they're decorating.
@@ -148,9 +147,9 @@ class CommandRegistry(registry.Registry):
         except KeyError:
             trace.warning('Two plugins defined the same command: %r' % k)
             trace.warning('Not loading the one in %r' %
-                sys.modules[cmd.__module__])
+                          sys.modules[cmd.__module__])
             trace.warning('Previously this command was registered from %r' %
-                sys.modules[previous.__module__])
+                          sys.modules[previous.__module__])
         for a in cmd.aliases:
             self._alias_dict[a] = k_unsquished
         return previous
@@ -177,7 +176,7 @@ plugin_cmds.overridden_registry = builtin_command_registry
 def register_command(cmd, decorate=False):
     """Register a plugin command.
 
-    Should generally be avoided in favor of lazy registration. 
+    Should generally be avoided in favor of lazy registration.
     """
     global plugin_cmds
     return plugin_cmds.register(cmd, decorate)
@@ -210,8 +209,9 @@ def _scan_module_for_commands(module):
 
 def _list_bzr_commands(names):
     """Find commands from bzr's core and plugins.
-    
-    This is not the public interface, just the default hook called by all_command_names.
+
+    This is not the public interface, just the default hook called by
+    all_command_names.
     """
     # to eliminate duplicates
     names.update(builtin_command_names())
@@ -232,7 +232,7 @@ def all_command_names():
 
 def builtin_command_names():
     """Return list of builtin command names.
-    
+
     Use of all_command_names() is encouraged rather than builtin_command_names
     and/or plugin_command_names.
     """
@@ -247,7 +247,7 @@ def plugin_command_names():
 
 # Overrides for common mispellings that heuristics get wrong
 _GUESS_OVERRIDES = {
-    'ic': {'ci': 0}, # heuristic finds nick
+    'ic': {'ci': 0},  # heuristic finds nick
     }
 
 
@@ -271,15 +271,15 @@ def guess_command(cmd_name):
         opcodes = matcher.get_opcodes()
         for opcode, l1, l2, r1, r2 in opcodes:
             if opcode == 'delete':
-                distance += l2-l1
+                distance += l2 - l1
             elif opcode == 'replace':
-                distance += max(l2-l1, r2-l1)
+                distance += max(l2 - l1, r2 - l1)
             elif opcode == 'insert':
-                distance += r2-r1
+                distance += r2 - r1
             elif opcode == 'equal':
                 # Score equal ranges lower, making similar commands of equal
                 # length closer than arbitrary same length commands.
-                distance -= 0.1 * (l2-l1)
+                distance -= 0.1 * (l2 - l1)
         costs[name] = distance
     costs.update(_GUESS_OVERRIDES.get(cmd_name, {}))
     costs = sorted((costs[key], key) for key in costs)
@@ -304,10 +304,10 @@ def get_cmd_object(cmd_name, plugins_override=True):
         candidate = guess_command(cmd_name)
         if candidate is not None:
             raise errors.BzrCommandError(
-                    gettext('unknown command "%s". Perhaps you meant "%s"')
-                    % (cmd_name, candidate))
+                gettext('unknown command "%s". Perhaps you meant "%s"')
+                % (cmd_name, candidate))
         raise errors.BzrCommandError(gettext('unknown command "%s"')
-                % cmd_name)
+                                     % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
@@ -582,7 +582,8 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        parser = option.get_optparser([v for k, v in sorted(self.options().items())])
+        parser = option.get_optparser(
+            [v for k, v in sorted(self.options().items())])
         options = parser.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
@@ -615,7 +616,7 @@ class Command(object):
                 result += '\n'
         else:
             result += (gettext("See brz help %s for more details and examples.\n\n")
-                % self.name())
+                       % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
@@ -636,7 +637,7 @@ class Command(object):
                     else:
                         # Use a Sphinx link for this entry
                         link_text = gettext(":doc:`{0} <{1}-help>`").format(
-                                                                    item, item)
+                            item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
             result += gettext(':See also: %s') % ', '.join(see_also) + '\n'
@@ -676,7 +677,8 @@ class Command(object):
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
                 save_section(sections, order, label, section)
                 label, section = line[1:-1], ''
-            elif (label is not None) and len(line) > 1 and not line[0].isspace():
+            elif (label is not None and len(line) > 1 and
+                    not line[0].isspace()):
                 save_section(sections, order, label, section)
                 label, section = None, line
             else:
@@ -773,6 +775,7 @@ class Command(object):
         you can override this method.
         """
         class_run = self.run
+
         def run(*args, **kwargs):
             for hook in Command.hooks['pre_command']:
                 hook(self)
@@ -795,7 +798,7 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
 
-        This method is automatically wrapped by Command.__init__ with a 
+        This method is automatically wrapped by Command.__init__ with a
         cleanup operation, stored as self._operation. This can be used
         via self.add_cleanup to perform automatic cleanups at the end of
         run().
@@ -827,7 +830,7 @@ class Command(object):
     def name(self):
         """Return the canonical name for this command.
 
-        The name under which it was actually invoked is available in invoked_as.
+        The name under which it was actually invoked is available in invoked_as
         """
         return _unsquish_command_name(self.__class__.__name__)
 
@@ -849,11 +852,13 @@ class CommandHooks(Hooks):
         notified.
         """
         Hooks.__init__(self, "breezy.commands", "Command.hooks")
-        self.add_hook('extend_command',
+        self.add_hook(
+            'extend_command',
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
             "new breezy.commands.Command object.", (1, 13))
-        self.add_hook('get_command',
+        self.add_hook(
+            'get_command',
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
@@ -861,23 +866,28 @@ class CommandHooks(Hooks):
             "hooks are core infrastructure. Many users will prefer to use "
             "breezy.commands.register_command or plugin_cmds.register_lazy.",
             (1, 17))
-        self.add_hook('get_missing_command',
+        self.add_hook(
+            'get_missing_command',
             "Called when creating a single command if no command could be "
             "found. Called with (command_name). get_missing_command should "
             "either return None, or a Command object to be used for the "
             "command.", (1, 17))
-        self.add_hook('list_commands',
+        self.add_hook(
+            'list_commands',
             "Called when enumerating commands. Called with a set of "
             "cmd_name strings for all the commands found so far. This set "
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
             (1, 17))
-        self.add_hook('pre_command',
+        self.add_hook(
+            'pre_command',
             "Called prior to executing a command. Called with the command "
             "object.", (2, 6))
-        self.add_hook('post_command',
+        self.add_hook(
+            'post_command',
             "Called after executing a command. Called with the command "
             "object.", (2, 6))
+
 
 Command.hooks = CommandHooks()
 
@@ -892,7 +902,7 @@ def parse_args(command, argv, alias_argv=None):
     """
     # TODO: make it a method of the Command?
     parser = option.get_optparser(
-            [v for k, v in sorted(command.options().items())])
+        [v for k, v in sorted(command.options().items())])
     if alias_argv is not None:
         args = alias_argv + argv
     else:
@@ -902,7 +912,7 @@ def parse_args(command, argv, alias_argv=None):
     # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
-    except UnicodeEncodeError as e:
+    except UnicodeEncodeError:
         raise errors.BzrCommandError(
             gettext('Only ASCII permitted in option names'))
 
@@ -920,7 +930,7 @@ def _match_argform(cmd, takes_args, args):
         if ap[-1] == '?':
             if args:
                 argdict[argname] = args.pop(0)
-        elif ap[-1] == '*': # all remaining arguments
+        elif ap[-1] == '*':  # all remaining arguments
             if args:
                 argdict[argname + '_list'] = args[:]
                 args = []
@@ -929,16 +939,16 @@ def _match_argform(cmd, takes_args, args):
         elif ap[-1] == '+':
             if not args:
                 raise errors.BzrCommandError(gettext(
-                      "command {0!r} needs one or more {1}").format(
-                      cmd, argname.upper()))
+                    "command {0!r} needs one or more {1}").format(
+                    cmd, argname.upper()))
             else:
                 argdict[argname + '_list'] = args[:]
                 args = []
-        elif ap[-1] == '$': # all but one
+        elif ap[-1] == '$':  # all but one
             if len(args) < 2:
                 raise errors.BzrCommandError(
-                      gettext("command {0!r} needs one or more {1}").format(
-                                             cmd, argname.upper()))
+                    gettext("command {0!r} needs one or more {1}").format(
+                        cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
             args[:-1] = []
         else:
@@ -946,15 +956,15 @@ def _match_argform(cmd, takes_args, args):
             argname = ap
             if not args:
                 raise errors.BzrCommandError(
-                     gettext("command {0!r} requires argument {1}").format(
-                               cmd, argname.upper()))
+                    gettext("command {0!r} requires argument {1}").format(
+                        cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError( gettext(
-                              "extra argument to command {0}: {1}").format(
-                                       cmd, args[0]) )
+        raise errors.BzrCommandError(gettext(
+            "extra argument to command {0}: {1}").format(
+            cmd, args[0]))
 
     return argdict
 
@@ -980,14 +990,14 @@ def apply_profiled(the_callable, *args, **kwargs):
         prof = hotshot.Profile(pfname)
         try:
             ret = prof.runcall(exception_to_return_code, the_callable, *args,
-                **kwargs) or 0
+                               **kwargs) or 0
         finally:
             prof.close()
         stats = hotshot.stats.load(pfname)
         stats.strip_dirs()
         stats.sort_stats('cum')   # 'time'
-        ## XXX: Might like to write to stderr or the trace file instead but
-        ## print_stats seems hardcoded to stdout
+        # XXX: Might like to write to stderr or the trace file instead but
+        # print_stats seems hardcoded to stdout
         stats.print_stats(20)
         return ret
     finally:
@@ -1004,7 +1014,7 @@ def exception_to_return_code(the_callable, *args, **kwargs):
     """
     try:
         return the_callable(*args, **kwargs)
-    except (KeyboardInterrupt, Exception) as e:
+    except (KeyboardInterrupt, Exception):
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         exc_info = sys.exc_info()
@@ -1087,14 +1097,15 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Generate code coverage report
 
     --concurrency
-        Specify the number of processes that can be run concurrently (selftest).
+        Specify the number of processes that can be run concurrently
+        (selftest).
     """
     trace.mutter("breezy version: " + breezy.__version__)
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("brz arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
-            opt_coverage = opt_no_l10n = opt_no_aliases = False
+        opt_coverage = opt_no_l10n = opt_no_aliases = False
     opt_lsprof_file = None
 
     # --no-plugins is handled specially at a very early stage. We need
@@ -1128,7 +1139,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == '--coverage':
             opt_coverage = True
         elif a == '--profile-imports':
-            pass # already handled in startup script Bug #588277
+            pass  # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         elif a.startswith('-O'):
@@ -1197,7 +1208,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         if 'memory' in debug.debug_flags:
             trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
-        # Reset the overrides 
+        # Reset the overrides
         cmdline_overrides._reset()
 
 
@@ -1226,17 +1237,16 @@ def install_bzr_command_hooks():
     if _list_bzr_commands in Command.hooks["list_commands"]:
         return
     Command.hooks.install_named_hook("list_commands", _list_bzr_commands,
-        "bzr commands")
+                                     "bzr commands")
     Command.hooks.install_named_hook("get_command", _get_bzr_command,
-        "bzr commands")
+                                     "bzr commands")
     Command.hooks.install_named_hook("get_command", _get_plugin_command,
-        "bzr plugin commands")
+                                     "bzr plugin commands")
     Command.hooks.install_named_hook("get_command", _get_external_command,
-        "bzr external command lookup")
+                                     "bzr external command lookup")
     Command.hooks.install_named_hook("get_missing_command",
                                      _try_plugin_provider,
                                      "bzr plugin-provider-db check")
-
 
 
 def _specified_or_unicode_argv(argv):
@@ -1283,7 +1293,8 @@ def run_bzr_catch_errors(argv):
     """Run a bzr command with parameters as described by argv.
 
     This function assumed that that UI layer is setup, that symbol deprecations
-    are already applied, and that unicode decoding has already been performed on argv.
+    are already applied, and that unicode decoding has already been performed
+    on argv.
     """
     # done here so that they're covered for every test run
     install_bzr_command_hooks()
@@ -1302,7 +1313,7 @@ def run_bzr_catch_user_errors(argv):
         return run_bzr(argv)
     except Exception as e:
         if (isinstance(e, (OSError, IOError))
-            or not getattr(e, 'internal_error', True)):
+                or not getattr(e, 'internal_error', True)):
             trace.report_exception(sys.exc_info(), sys.stderr)
             return 3
         else:
@@ -1350,5 +1361,6 @@ class ProvidersRegistry(registry.Registry):
     def __iter__(self):
         for key, provider in self.items():
             yield provider
+
 
 command_providers_registry = ProvidersRegistry()

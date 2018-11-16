@@ -38,9 +38,9 @@ class TestRevert(TestCaseInTempDir):
         locks_acquired = []
         locks_released = []
         lock.Lock.hooks.install_named_hook('lock_acquired',
-            locks_acquired.append, None)
+                                           locks_acquired.append, None)
         lock.Lock.hooks.install_named_hook('lock_released',
-            locks_released.append, None)
+                                           locks_released.append, None)
 
         # execute the revert command (There is nothing to actually revert,
         # but locks are acquired either way.)
@@ -58,4 +58,3 @@ class TestRevert(TestCaseInTempDir):
         # make sure that the locks are checkout locks.
         self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
         self.assertEndsWith(locks_released[0].lock_url, "/checkout/lock")
-

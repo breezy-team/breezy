@@ -31,7 +31,7 @@ class TestErrors(tests.TestCase):
     def test_invalid_pattern(self):
         error = lazy_regex.InvalidPattern('Bad pattern msg.')
         self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
-            str(error))
+                             str(error))
 
 
 class InstrumentedLazyRegex(lazy_regex.LazyRegex):
@@ -49,7 +49,7 @@ class InstrumentedLazyRegex(lazy_regex.LazyRegex):
 
     def _real_re_compile(self, *args, **kwargs):
         self._actions.append(('_real_re_compile',
-                                               args, kwargs))
+                              args, kwargs))
         return super(InstrumentedLazyRegex, self)._real_re_compile(
             *args, **kwargs)
 
@@ -72,18 +72,19 @@ class TestLazyRegex(tests.TestCase):
         self.assertEqual([('created regex', 'foo'),
                           ('__getattr__', 'match'),
                           ('_real_re_compile', ('foo',), {}),
-                         ], actions)
+                          ], actions)
 
     def test_bad_pattern(self):
         """Ensure lazy regex handles bad patterns cleanly."""
         p = lazy_regex.lazy_compile('RE:[')
         # As p.match is lazy, we make it into a lambda so its handled
         # by assertRaises correctly.
-        e = self.assertRaises(lazy_regex.InvalidPattern, lambda: p.match('foo'))
+        e = self.assertRaises(lazy_regex.InvalidPattern,
+                              lambda: p.match('foo'))
         # Expect either old or new form of error message
         self.assertContainsRe(e.msg, '^"RE:\\[" '
-            '(unexpected end of regular expression'
-            '|unterminated character set at position 3)$')
+                              '(unexpected end of regular expression'
+                              '|unterminated character set at position 3)$')
 
 
 class TestLazyCompile(tests.TestCase):
@@ -135,7 +136,7 @@ class TestLazyCompile(tests.TestCase):
         pickled = pickle.dumps(lazy_pattern)
         unpickled_lazy_pattern = pickle.loads(pickled)
         self.assertEqual(['x', 'y', 'z'],
-            unpickled_lazy_pattern.split('x,y;z'))
+                         unpickled_lazy_pattern.split('x,y;z'))
 
 
 class TestInstallLazyCompile(tests.TestCase):
@@ -157,8 +158,8 @@ class TestInstallLazyCompile(tests.TestCase):
         self.addCleanup(lazy_regex.install_lazy_compile)
         pattern = re.compile('foo')
         self.assertFalse(isinstance(pattern, lazy_regex.LazyRegex),
-            'lazy_regex.reset_compile() did not restore the original'
-            ' compile() function %s' % (type(pattern),))
+                         'lazy_regex.reset_compile() did not restore the original'
+                         ' compile() function %s' % (type(pattern),))
         # but the returned object should still support regex operations
         m = pattern.match('foo')
         self.assertEqual('foo', m.group())

@@ -171,12 +171,12 @@ class BasicTags(_Tags):
         with self.branch.lock_read():
             try:
                 tag_content = self.branch._get_tags_bytes()
-            except errors.NoSuchFile as e:
+            except errors.NoSuchFile:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
-                     'This branch was probably created by bzr 0.15pre.  '
-                     'Create an empty file to silence this message.'
-                     % (self.branch, ))
+                              'This branch was probably created by bzr 0.15pre.  '
+                              'Create an empty file to silence this message.'
+                              % (self.branch, ))
                 return {}
             return self._deserialize_tag_dict(tag_content)
 
@@ -240,7 +240,7 @@ class BasicTags(_Tags):
             return r
         except ValueError as e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
-                % (tag_content, e))
+                             % (tag_content, e))
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False):
         """Copy tags between repositories if necessary and possible.
@@ -301,7 +301,7 @@ class BasicTags(_Tags):
         updates, conflicts = self._merge_to(to_tags, source_dict, overwrite)
         if master is not None:
             extra_updates, extra_conflicts = self._merge_to(master.tags,
-                source_dict, overwrite)
+                                                            source_dict, overwrite)
             updates.update(extra_updates)
             conflicts += extra_conflicts
         # We use set() to remove any duplicate conflicts from the master
@@ -311,7 +311,7 @@ class BasicTags(_Tags):
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = self._reconcile_tags(source_dict,
-            dest_dict, overwrite)
+                                                          dest_dict, overwrite)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
@@ -341,7 +341,7 @@ class BasicTags(_Tags):
         """
         conflicts = []
         updates = {}
-        result = dict(dest_dict) # copy
+        result = dict(dest_dict)  # copy
         for name, target in source_dict.items():
             if result.get(name) == target:
                 pass
@@ -362,7 +362,7 @@ def sort_natural(branch, tags):
     def natural_sort_key(tag):
         return [f(s) for f, s in
                 zip(itertools.cycle((text_type.lower, int)),
-                                    re.split('([0-9]+)', tag[0]))]
+                    re.split('([0-9]+)', tag[0]))]
     tags.sort(key=natural_sort_key)
 
 
@@ -386,7 +386,7 @@ def sort_time(branch, tags):
         try:
             revobj = branch.repository.get_revision(revid)
         except errors.NoSuchRevision:
-            timestamp = sys.maxsize # place them at the end
+            timestamp = sys.maxsize  # place them at the end
         else:
             timestamp = revobj.timestamp
         timestamps[revid] = timestamp
@@ -395,7 +395,7 @@ def sort_time(branch, tags):
 
 tag_sort_methods = Registry()
 tag_sort_methods.register("natural", sort_natural,
-    'Sort numeric substrings as numbers. (default)')
+                          'Sort numeric substrings as numbers. (default)')
 tag_sort_methods.register("alpha", sort_alpha, 'Sort tags lexicographically.')
 tag_sort_methods.register("time", sort_time, 'Sort tags chronologically.')
 tag_sort_methods.default_key = "natural"

@@ -128,8 +128,8 @@ class Tree(object):
         return True
 
     def changes_from(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False,
-        want_unversioned=False):
+                     extra_trees=None, require_versioned=False, include_root=False,
+                     want_unversioned=False):
         """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -167,7 +167,7 @@ class Tree(object):
         """See InterTree.iter_changes"""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
-            extra_trees, require_versioned, want_unversioned=want_unversioned)
+                                      extra_trees, require_versioned, want_unversioned=want_unversioned)
 
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -271,7 +271,7 @@ class Tree(object):
 
     def kind(self, path):
         raise NotImplementedError("Tree subclass %s must implement kind"
-            % self.__class__.__name__)
+                                  % self.__class__.__name__)
 
     def stored_kind(self, path):
         """File kind stored for this path.
@@ -302,7 +302,7 @@ class Tree(object):
     def get_reference_revision(self, path):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
-            % self.__class__.__name__)
+                                  % self.__class__.__name__)
 
     def _comparison_data(self, entry, path):
         """Return a tuple of kind, executable, stat_value for a file.
@@ -471,7 +471,7 @@ class Tree(object):
         return self.path2id(path) is not None
 
     def find_related_paths_across_trees(self, paths, trees=[],
-            require_versioned=True):
+                                        require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 
@@ -583,7 +583,8 @@ class Tree(object):
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note(gettext("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk))
+            trace.note(
+                gettext("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk))
         return stk
 
     def _content_filter_stack_provider(self):
@@ -596,12 +597,12 @@ class Tree(object):
         """
         if self.supports_content_filtering():
             return lambda path, file_id: \
-                    self._content_filter_stack(path)
+                self._content_filter_stack(path)
         else:
             return None
 
     def iter_search_rules(self, path_names, pref_names=None,
-        _default_searcher=None):
+                          _default_searcher=None):
         """Find the preferences for filenames in a tree.
 
         :param path_names: an iterable of paths to find attributes for.
@@ -640,7 +641,7 @@ class Tree(object):
         from .archive import create_archive
         with self.lock_read():
             return create_archive(format, self, name, root,
-                    subdir, force_mtime=force_mtime)
+                                  subdir, force_mtime=force_mtime)
 
     @classmethod
     def versionable_kind(cls, kind):
@@ -735,9 +736,9 @@ class InterTree(InterObject):
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
         executable = (source_executable, target_executable)
-        if (changed_content is not False or versioned[0] != versioned[1]
-            or parent[0] != parent[1] or name[0] != name[1] or
-            executable[0] != executable[1]):
+        if (changed_content is not False or versioned[0] != versioned[1] or
+            parent[0] != parent[1] or name[0] != name[1] or
+                executable[0] != executable[1]):
             changes = True
         else:
             changes = False
@@ -745,8 +746,8 @@ class InterTree(InterObject):
                 versioned, parent, name, kind, executable), changes
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False,
-        want_unversioned=False):
+                extra_trees=None, require_versioned=False, include_root=False,
+                want_unversioned=False):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
@@ -768,13 +769,13 @@ class InterTree(InterObject):
             trees = trees + tuple(extra_trees)
         with self.lock_read():
             return delta._compare_trees(self.source, self.target, want_unchanged,
-                specific_files, include_root, extra_trees=extra_trees,
-                require_versioned=require_versioned,
-                want_unversioned=want_unversioned)
+                                        specific_files, include_root, extra_trees=extra_trees,
+                                        require_versioned=require_versioned,
+                                        want_unversioned=want_unversioned)
 
     def iter_changes(self, include_unchanged=False,
-                      specific_files=None, pb=None, extra_trees=[],
-                      require_versioned=True, want_unversioned=False):
+                     specific_files=None, pb=None, extra_trees=[],
+                     require_versioned=True, want_unversioned=False):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
@@ -809,9 +810,9 @@ class InterTree(InterObject):
             for the versioned pair.
         """
         if not extra_trees:
-             extra_trees = []
+            extra_trees = []
         else:
-             extra_trees = list(extra_trees)
+            extra_trees = list(extra_trees)
         # The ids of items we need to examine to insure delta consistency.
         precise_file_ids = set()
         changed_file_ids = []
@@ -820,11 +821,11 @@ class InterTree(InterObject):
             source_specific_files = []
         else:
             target_specific_files = self.target.find_related_paths_across_trees(
-                    specific_files, [self.source] + extra_trees,
-                    require_versioned=require_versioned)
+                specific_files, [self.source] + extra_trees,
+                require_versioned=require_versioned)
             source_specific_files = self.source.find_related_paths_across_trees(
-                    specific_files, [self.target] + extra_trees,
-                    require_versioned=require_versioned)
+                specific_files, [self.target] + extra_trees,
+                require_versioned=require_versioned)
         if specific_files is not None:
             # reparented or added entries must have their parents included
             # so that valid deltas can be created. The seen_parents set
@@ -836,9 +837,9 @@ class InterTree(InterObject):
             seen_dirs = set()
         if want_unversioned:
             all_unversioned = sorted([(p.split('/'), p) for p in
-                                     self.target.extras()
-                if specific_files is None or
-                    osutils.is_inside_any(specific_files, p)])
+                                      self.target.extras()
+                                      if specific_files is None or
+                                      osutils.is_inside_any(specific_files, p)])
             all_unversioned = collections.deque(all_unversioned)
         else:
             all_unversioned = collections.deque()
@@ -856,19 +857,20 @@ class InterTree(InterObject):
         fake_entry = TreeFile()
         for target_path, target_entry in to_entries_by_dir:
             while (all_unversioned and
-                all_unversioned[0][0] < target_path.split('/')):
+                   all_unversioned[0][0] < target_path.split('/')):
                 unversioned_path = all_unversioned.popleft()
                 target_kind, target_executable, target_stat = \
-                    self.target._comparison_data(fake_entry, unversioned_path[1])
+                    self.target._comparison_data(
+                        fake_entry, unversioned_path[1])
                 yield (None, (None, unversioned_path[1]), True, (False, False),
-                    (None, None),
-                    (None, unversioned_path[0][-1]),
-                    (None, target_kind),
-                    (None, target_executable))
+                       (None, None),
+                       (None, unversioned_path[0][-1]),
+                       (None, target_kind),
+                       (None, target_executable))
             source_path, source_entry = from_data.get(target_entry.file_id,
-                (None, None))
+                                                      (None, None))
             result, changes = self._changes_from_entries(source_entry,
-                target_entry, source_path=source_path, target_path=target_path)
+                                                         target_entry, source_path=source_path, target_path=target_path)
             to_paths[result[0]] = result[1][1]
             entry_count += 1
             if result[3][0]:
@@ -897,10 +899,10 @@ class InterTree(InterObject):
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
             yield (None, (None, unversioned_path[1]), True, (False, False),
-                (None, None),
-                (None, unversioned_path[0][-1]),
-                (None, to_kind),
-                (None, to_executable))
+                   (None, None),
+                   (None, unversioned_path[0][-1]),
+                   (None, to_kind),
+                   (None, to_executable))
         # Yield all remaining source paths
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
@@ -926,7 +928,7 @@ class InterTree(InterObject):
         changed_file_ids = set(changed_file_ids)
         if specific_files is not None:
             for result in self._handle_precise_ids(precise_file_ids,
-                changed_file_ids):
+                                                   changed_file_ids):
                 yield result
 
     def _get_entry(self, tree, path):
@@ -947,7 +949,7 @@ class InterTree(InterObject):
             return None
 
     def _handle_precise_ids(self, precise_file_ids, changed_file_ids,
-        discarded_changes=None):
+                            discarded_changes=None):
         """Fill out a partial iter_changes to be consistent.
 
         :param precise_file_ids: The file ids of parents that were seen during
@@ -1002,14 +1004,16 @@ class InterTree(InterObject):
                         source_path = None
                         source_entry = None
                     else:
-                        source_entry = self._get_entry(self.source, source_path)
+                        source_entry = self._get_entry(
+                            self.source, source_path)
                     try:
                         target_path = self.target.id2path(file_id)
                     except errors.NoSuchId:
                         target_path = None
                         target_entry = None
                     else:
-                        target_entry = self._get_entry(self.target, target_path)
+                        target_entry = self._get_entry(
+                            self.target, target_path)
                     result, changes = self._changes_from_entries(
                         source_entry, target_entry, source_path, target_path)
                 else:
@@ -1024,10 +1028,11 @@ class InterTree(InterObject):
                         # to be included.
                         if source_entry is None:
                             # Reusing a discarded change.
-                            source_entry = self._get_entry(self.source, result[1][0])
+                            source_entry = self._get_entry(
+                                self.source, result[1][0])
                         precise_file_ids.update(
-                                child.file_id
-                                for child in self.source.iter_child_entries(result[1][0]))
+                            child.file_id
+                            for child in self.source.iter_child_entries(result[1][0]))
                     changed_file_ids.add(result[0])
                     yield result
 
@@ -1049,7 +1054,7 @@ class InterTree(InterObject):
         """
         with self.lock_read():
             source_verifier_kind, source_verifier_data = (
-                    self.source.get_file_verifier(source_path, source_stat))
+                self.source.get_file_verifier(source_path, source_stat))
             target_verifier_kind, target_verifier_data = (
                 self.target.get_file_verifier(
                     target_path, target_stat))
@@ -1058,15 +1063,16 @@ class InterTree(InterObject):
             # Fall back to SHA1 for now
             if source_verifier_kind != "SHA1":
                 source_sha1 = self.source.get_file_sha1(
-                        source_path, source_file_id, source_stat)
+                    source_path, source_file_id, source_stat)
             else:
                 source_sha1 = source_verifier_data
             if target_verifier_kind != "SHA1":
                 target_sha1 = self.target.get_file_sha1(
-                        target_path, target_file_id, target_stat)
+                    target_path, target_file_id, target_stat)
             else:
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)
+
 
 InterTree.register_optimiser(InterTree)
 
@@ -1295,12 +1301,12 @@ class MultiWalker(object):
                 other_extra.pop(file_id)
                 other_values = [(None, None)] * idx
                 other_values.append((other_path, other_ie))
-                for alt_idx, alt_extra in enumerate(self._others_extra[idx+1:]):
+                for alt_idx, alt_extra in enumerate(self._others_extra[idx + 1:]):
                     alt_idx = alt_idx + idx + 1
                     alt_extra = self._others_extra[alt_idx]
                     alt_tree = self._other_trees[alt_idx]
                     other_values.append(self._lookup_by_file_id(
-                                            alt_extra, alt_tree, file_id))
+                        alt_extra, alt_tree, file_id))
                 yield other_path, file_id, None, other_values
 
 

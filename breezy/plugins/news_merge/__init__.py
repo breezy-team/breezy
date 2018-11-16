@@ -45,7 +45,7 @@ def news_merge_hook(merger):
 
 
 install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
-    news_merge_hook, "NEWS file merge")
+                        news_merge_hook, "NEWS file merge")
 
 
 def test_suite():

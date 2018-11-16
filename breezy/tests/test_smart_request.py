@@ -50,7 +50,7 @@ class DoUnexpectedErrorRequest(request.SmartServerRequest):
 
 class ChunkErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do_chunk()."""
-    
+
     def do(self):
         """No-op."""
         pass
@@ -61,7 +61,7 @@ class ChunkErrorRequest(request.SmartServerRequest):
 
 class EndErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do_end()."""
-    
+
     def do(self):
         """No-op."""
         pass
@@ -69,7 +69,7 @@ class EndErrorRequest(request.SmartServerRequest):
     def do_chunk(self, bytes):
         """No-op."""
         pass
-        
+
     def do_end(self):
         raise errors.NoSuchFile('xyzzy')
 
@@ -135,7 +135,7 @@ class TestSmartRequest(TestCase):
                 unclassified_requests.append(key)
         if unclassified_requests:
             self.fail('These requests were not categorized as safe/unsafe'
-                      ' to retry: %s'  % (unclassified_requests,))
+                      ' to retry: %s' % (unclassified_requests,))
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):
@@ -215,17 +215,17 @@ class TestRequestHanderErrorTranslation(TestCase):
 
     def test_generic_Exception(self):
         self.assertTranslationEqual((b'error', b'Exception', b""),
-            Exception())
+                                    Exception())
 
     def test_generic_BzrError(self):
         self.assertTranslationEqual((b'error', b'BzrError', b"some text"),
-            errors.BzrError(msg="some text"))
+                                    errors.BzrError(msg="some text"))
 
     def test_generic_zlib_error(self):
         from zlib import error
         msg = "Error -3 while decompressing data: incorrect data check"
         self.assertTranslationEqual((b'error', b'zlib.error', msg.encode('utf-8')),
-            error(msg))
+                                    error(msg))
 
 
 class TestRequestJail(TestCaseWithMemoryTransport):
@@ -244,6 +244,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
 
     def setUp(self):
         super(TestJailHook, self).setUp()
+
         def clear_jail_info():
             request.jail_info.transports = None
         self.addCleanup(clear_jail_info)
@@ -267,7 +268,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
 
     def test_open_bzrdir_in_non_main_thread(self):
         """Opening a bzrdir in a non-main thread should work ok.
-        
+
         This makes sure that the globally-installed
         breezy.bzr.smart.request._pre_open_hook, which uses a threading.local(),
         works in a newly created thread.
@@ -275,6 +276,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
         bzrdir = self.make_controldir('.')
         transport = bzrdir.root_transport
         thread_result = []
+
         def t():
             BzrDir.open_from_transport(transport)
             thread_result.append('ok')
@@ -282,4 +284,3 @@ class TestJailHook(TestCaseWithMemoryTransport):
         thread.start()
         thread.join()
         self.assertEqual(['ok'], thread_result)
-

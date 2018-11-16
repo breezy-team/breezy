@@ -28,6 +28,7 @@ from .branch import Branch
 from .i18n import gettext
 from .trace import note
 
+
 def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
     from .branch import SwitchHookParams
     hooks = Branch.hooks['post_switch']
@@ -36,6 +37,7 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
     params = SwitchHookParams(control_dir, to_branch, force, revision_id)
     for hook in hooks:
         hook(params)
+
 
 def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
            store_uncommitted=False):
@@ -62,6 +64,7 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
     _update(tree, source_repository, quiet, revision_id, store_uncommitted)
     _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
+
 def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.
 
@@ -79,7 +82,7 @@ def _check_pending_merges(control, force=False):
     existing_pending_merges = tree.get_parent_ids()[1:]
     if len(existing_pending_merges) > 0:
         raise errors.BzrCommandError(gettext('Pending merges must be '
-            'committed or reverted before using switch.'))
+                                             'committed or reverted before using switch.'))
 
 
 def _set_branch_location(control, to_branch, force=False):
@@ -110,9 +113,9 @@ def _set_branch_location(control, to_branch, force=False):
                         'throw them away.'))
             except errors.BoundBranchConnectionFailure as e:
                 raise errors.BzrCommandError(gettext(
-                        'Unable to connect to current master branch %(target)s: '
-                        '%(error)s To switch anyway, use --force.') %
-                        e.__dict__)
+                    'Unable to connect to current master branch %(target)s: '
+                    '%(error)s To switch anyway, use --force.') %
+                    e.__dict__)
             b.lock_write()
             try:
                 b.set_bound_location(None)
@@ -128,13 +131,13 @@ def _set_branch_location(control, to_branch, force=False):
             with b.lock_read():
                 graph = b.repository.get_graph(to_branch.repository)
                 if (b.controldir._format.colocated_branches and
-                     (force or graph.is_ancestor(b.last_revision(),
-                        to_branch.last_revision()))):
+                    (force or graph.is_ancestor(
+                        b.last_revision(), to_branch.last_revision()))):
                     b.controldir.destroy_branch()
                     b.controldir.set_branch_reference(to_branch, name="")
                 else:
-                    raise errors.BzrCommandError(gettext('Cannot switch a branch, '
-                        'only a checkout.'))
+                    raise errors.BzrCommandError(
+                        gettext('Cannot switch a branch, only a checkout.'))
 
 
 def _any_local_commits(this_branch, possible_transports):
@@ -169,7 +172,8 @@ def _update(tree, source_repository, quiet=False, revision_id=None,
             revision_id = to_branch.last_revision()
         if tree.last_revision() == revision_id:
             if not quiet:
-                note(gettext("Tree is up to date at revision %d."), to_branch.revno())
+                note(gettext("Tree is up to date at revision %d."),
+                     to_branch.revno())
         else:
             base_tree = source_repository.revision_tree(tree.last_revision())
             merge.Merge3Merger(tree, tree, base_tree,

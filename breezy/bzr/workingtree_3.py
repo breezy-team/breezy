@@ -57,12 +57,12 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
         wt_trans = self.controldir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-            self.controldir._get_file_mode(),
-            self._content_filter_stack_provider())
+                                              self.controldir._get_file_mode(),
+                                              self._content_filter_stack_provider())
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
-        #hc.scan()
+        # hc.scan()
 
         if hc.needs_write:
             trace.mutter("write hc")
@@ -80,7 +80,7 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 #       warning might be sufficient to let the user know what
                 #       is going on.
                 trace.mutter('Could not write hashcache for %s\nError: %s',
-                              self._hashcache.cache_file_name(), e)
+                             self._hashcache.cache_file_name(), e)
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():
@@ -118,7 +118,7 @@ class WorkingTree3(PreDirStateWorkingTree):
             return False
         else:
             self._transport.put_bytes('last-revision', revision_id,
-                mode=self.controldir._get_file_mode())
+                                      mode=self.controldir._get_file_mode())
             return True
 
     def _get_check_refs(self):
@@ -198,7 +198,7 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.as_string(),
-            mode=a_controldir._get_file_mode())
+                            mode=a_controldir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
@@ -212,12 +212,12 @@ class WorkingTreeFormat3(WorkingTreeFormatMetaDir):
         # inv = Inventory(root_id=gen_root_id())
         inv = self._initial_inventory()
         wt = self._tree_class(a_controldir.root_transport.local_abspath('.'),
-                         branch,
-                         inv,
-                         _internal=True,
-                         _format=self,
-                         _controldir=a_controldir,
-                         _control_files=control_files)
+                              branch,
+                              inv,
+                              _internal=True,
+                              _format=self,
+                              _controldir=a_controldir,
+                              _control_files=control_files)
         wt.lock_tree_write()
         try:
             basis_tree = branch.repository.revision_tree(revision_id)

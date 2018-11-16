@@ -54,7 +54,7 @@ def send(target_branch, revision, public_branch, remember,
                 mail_to = config_stack.get('submit_to')
             mail_client = config_stack.get('mail_client')(config_stack)
             if (not getattr(mail_client, 'supports_body', False)
-                and body is not None):
+                    and body is not None):
                 raise errors.BzrCommandError(gettext(
                     'Mail client "%s" does not support specifying body') %
                     mail_client.__class__.__name__)
@@ -76,15 +76,15 @@ def send(target_branch, revision, public_branch, remember,
             remembered_target_branch = "parent"
         if target_branch is None:
             raise errors.BzrCommandError(gettext('No submit branch known or'
-                                         ' specified'))
+                                                 ' specified'))
         if remembered_target_branch is not None:
             trace.note(gettext('Using saved {0} location "{1}" to determine '
-                       'what changes to submit.').format(
-                                    remembered_target_branch,
-                                    target_branch))
+                               'what changes to submit.').format(
+                remembered_target_branch,
+                target_branch))
 
         submit_branch = Branch.open(target_branch,
-            possible_transports=possible_transports)
+                                    possible_transports=possible_transports)
         possible_transports.append(submit_branch.controldir.root_transport)
         if mail_to is None or format is None:
             if mail_to is None:
@@ -107,13 +107,13 @@ def send(target_branch, revision, public_branch, remember,
             branch.set_public_branch(public_branch)
         if no_bundle and public_branch is None:
             raise errors.BzrCommandError(gettext('No public branch specified or'
-                                         ' known'))
+                                                 ' known'))
         base_revision_id = None
         revision_id = None
         if revision is not None:
             if len(revision) > 2:
                 raise errors.BzrCommandError(gettext('bzr send takes '
-                    'at most two one revision identifiers'))
+                                                     'at most two one revision identifiers'))
             revision_id = revision[-1].as_revision_id(branch)
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
@@ -129,8 +129,8 @@ def send(target_branch, revision, public_branch, remember,
         if format is None:
             format = format_registry.get()
         directive = format(branch, revision_id, target_branch,
-            public_branch, no_patch, no_bundle, message, base_revision_id,
-            submit_branch)
+                           public_branch, no_patch, no_bundle, message, base_revision_id,
+                           submit_branch)
         if output is None:
             directive.compose_merge_request(mail_client, mail_to, body,
                                             branch, tree)
@@ -138,7 +138,7 @@ def send(target_branch, revision, public_branch, remember,
             if directive.multiple_output_files:
                 if output == '-':
                     raise errors.BzrCommandError(gettext('- not supported for '
-                        'merge directives that use more than one output file.'))
+                                                         'merge directives that use more than one output file.'))
                 if not os.path.exists(output):
                     os.mkdir(output, 0o755)
                 for (filename, lines) in directive.to_files():
@@ -184,7 +184,7 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
             patch_type = 'bundle'
         else:
             raise errors.BzrCommandError(gettext('Format 0.9 does not'
-                ' permit bundle with no patch'))
+                                                 ' permit bundle with no patch'))
     else:
         if not no_patch:
             patch_type = 'diff'
@@ -199,7 +199,7 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
 
 
 format_registry.register('4',
-    _send_4, 'Bundle format 4, Merge Directive 2 (default)')
+                         _send_4, 'Bundle format 4, Merge Directive 2 (default)')
 format_registry.register('0.9',
-    _send_0_9, 'Bundle format 0.9, Merge Directive 1')
+                         _send_0_9, 'Bundle format 0.9, Merge Directive 1')
 format_registry.default_key = '4'

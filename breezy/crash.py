@@ -32,13 +32,13 @@ We never send crash data across the network without user opt-in.
 In principle apport can run on any platform though as of Feb 2010 there seem
 to be some portability bugs.
 
-To force this off in brz turn set APPORT_DISABLE in the environment or 
+To force this off in brz turn set APPORT_DISABLE in the environment or
 -Dno_apport.
 """
 
 from __future__ import absolute_import
 
-# for interactive testing, try the 'brz assert-fail' command 
+# for interactive testing, try the 'brz assert-fail' command
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
 #
 # to test with apport it's useful to set
@@ -65,7 +65,7 @@ from .sixish import (
 
 def report_bug(exc_info, stderr):
     if ('no_apport' in debug.debug_flags) or \
-        os.environ.get('APPORT_DISABLE', None):
+            os.environ.get('APPORT_DISABLE', None):
         return report_bug_legacy(exc_info, stderr)
     try:
         if report_bug_to_apport(exc_info, stderr):
@@ -86,13 +86,14 @@ def report_bug_legacy(exc_info, err_file):
     trace.print_exception(exc_info, err_file)
     err_file.write('\n')
     import textwrap
+
     def print_wrapped(l):
-        err_file.write(textwrap.fill(l,
-            width=78, subsequent_indent='    ') + '\n')
-    print_wrapped('brz %s on python %s (%s)\n' % \
-        (breezy.__version__,
-        breezy._format_version_tuple(sys.version_info),
-        platform.platform(aliased=1)))
+        err_file.write(textwrap.fill(
+            l, width=78, subsequent_indent='    ') + '\n')
+    print_wrapped('brz %s on python %s (%s)\n' %
+                  (breezy.__version__,
+                   breezy._format_version_tuple(sys.version_info),
+                   platform.platform(aliased=1)))
     print_wrapped('arguments: %r\n' % sys.argv)
     print_wrapped(textwrap.fill(
         'plugins: ' + plugin.format_concise_plugin_list(),
@@ -130,15 +131,15 @@ def report_bug_to_apport(exc_info, stderr):
 
     if crash_filename is None:
         stderr.write("\n"
-            "apport is set to ignore crashes in this version of brz.\n"
-            )
+                     "apport is set to ignore crashes in this version of brz.\n"
+                     )
     else:
         trace.print_exception(exc_info, stderr)
         stderr.write("\n"
-            "You can report this problem to Bazaar's developers by running\n"
-            "    apport-bug %s\n"
-            "if a bug-reporting window does not automatically appear.\n"
-            % (crash_filename))
+                     "You can report this problem to Bazaar's developers by running\n"
+                     "    apport-bug %s\n"
+                     "if a bug-reporting window does not automatically appear.\n"
+                     % (crash_filename))
         # XXX: on Windows, Mac, and other platforms where we might have the
         # apport libraries but not have an apport always running, we could
         # synchronously file now
@@ -183,7 +184,7 @@ def _write_apport_report_to_file(exc_info):
     pr['SourcePackage'] = 'brz'
     pr['Package'] = 'brz'
 
-    # tell apport to file directly against the brz package using 
+    # tell apport to file directly against the brz package using
     # <https://bugs.launchpad.net/bzr/+bug/391015>
     #
     # XXX: unfortunately apport may crash later if the crashdb definition
@@ -206,9 +207,9 @@ def _write_apport_report_to_file(exc_info):
     # these may contain some sensitive info (smtp_passwords)
     # TODO: strip that out and attach the rest
     #
-    #attach_file_if_exists(report,
+    # attach_file_if_exists(report,
     #   os.path.join(dot_brz, 'breezy.conf', 'BrzConfig')
-    #attach_file_if_exists(report,
+    # attach_file_if_exists(report,
     #   os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
 
     # strip username, hostname, etc
@@ -258,9 +259,9 @@ def _open_crash_file():
     # be careful here that people can't play tmp-type symlink mischief in the
     # world-writable directory
     return filename, os.fdopen(
-        os.open(filename, 
-            os.O_WRONLY|os.O_CREAT|os.O_EXCL,
-            0o600),
+        os.open(filename,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o600),
         'wb')
 
 

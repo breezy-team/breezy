@@ -87,4 +87,3 @@ class TestGetFileMTime(TestCaseWithWorkingTree):
         os.remove('tree/one')
         with tree.lock_read():
             self.assertRaises(errors.NoSuchFile, tree.get_file_mtime, 'one')
-
