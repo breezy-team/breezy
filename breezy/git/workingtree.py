@@ -764,7 +764,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 path, stat_result)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
-        if from_dir is None:
+        if from_dir is None or from_dir == '.':
             from_dir = u""
         dir_ids = {}
         fk_entries = {'directory': tree.TreeDirectory,
