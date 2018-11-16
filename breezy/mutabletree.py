@@ -31,7 +31,6 @@ from . import (
 
 from .sixish import (
     text_type,
-    viewvalues,
     )
 
 

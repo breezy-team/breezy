@@ -125,7 +125,7 @@ class BisectLog(object):
         if not self._branch:
             self._branch = self._controldir.open_branch()
 
-    def _find_range_and_middle(self, branch_last_rev = None):
+    def _find_range_and_middle(self, branch_last_rev=None):
         """Find the current revision range, and the midpoint."""
         self._load_tree()
         self._middle_revid = None

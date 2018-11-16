@@ -29,13 +29,11 @@ import sys
 
 dulwich_minimum_version = (0, 19, 7)
 
-from breezy.i18n import gettext
-
 from .. import (
     __version__ as breezy_version,
     errors as brz_errors,
     trace,
-    version_info,
+    version_info,  # noqa: F401
     )
 
 from ..controldir import (

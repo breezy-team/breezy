@@ -22,13 +22,10 @@ from io import BytesIO
 from ... import (
     errors,
     graph as _mod_graph,
-    lru_cache,
     osutils,
     revision as _mod_revision,
-    trace,
     )
 from ...bzr import (
-    knit,
     inventory,
     )
 

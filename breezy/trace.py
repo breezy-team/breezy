@@ -64,7 +64,6 @@ import time
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import locale
 import tempfile
 import traceback
 """)
@@ -81,7 +80,6 @@ from breezy import (
 """)
 
 from .sixish import (
-    BytesIO,
     PY3,
     StringIO,
     text_type,

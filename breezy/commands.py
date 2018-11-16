@@ -35,7 +35,6 @@ from . import (
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
-import threading
 
 import breezy
 from breezy import (
@@ -56,8 +55,6 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
 from .sixish import (
     string_types,
-    text_type,
-    viewvalues,
     )
 
 

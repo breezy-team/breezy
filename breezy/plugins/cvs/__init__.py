@@ -21,7 +21,7 @@ Currently limited to referencing tools for migration.
 
 from __future__ import absolute_import
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     controldir,

@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 import gzip
-from io import BytesIO
 import re
 
 from .. import (
@@ -45,7 +44,6 @@ from ..errors import (
     NoSuchTag,
     NotBranchError,
     NotLocalUrl,
-    NoWorkingTree,
     PermissionDenied,
     UninitializableFormat,
     )
@@ -72,7 +70,6 @@ from .branch import (
 from .dir import (
     GitControlDirFormat,
     GitDir,
-    BareLocalGitControlDirFormat,
     )
 from .errors import (
     GitSmartRemoteNotSupported,
@@ -118,7 +115,6 @@ from dulwich.repo import (
 import os
 import select
 import tempfile
-import urllib
 
 try:
     import urllib.parse as urlparse

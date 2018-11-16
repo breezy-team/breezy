@@ -28,14 +28,12 @@ from dulwich.repo import Repo
 
 from ...tests import (
     TestCaseWithTransport,
-    TestSkipped,
     )
 
 from ..object_store import get_object_store
 from ..git_remote_helper import (
     RemoteHelper,
     open_local_dir,
-    fastexporter,
     fetch,
     )
 

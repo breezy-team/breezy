@@ -58,7 +58,6 @@ from ..decorators import (
     )
 from .inventory import (
     Inventory,
-    InventoryDirectory,
     ROOT_ID,
     entry_factory,
     )

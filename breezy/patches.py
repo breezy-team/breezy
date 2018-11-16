@@ -22,7 +22,6 @@ from .errors import (
     )
 
 import re
-import sys
 
 
 binary_files_re = b'Binary files (.*) and (.*) differ\n'

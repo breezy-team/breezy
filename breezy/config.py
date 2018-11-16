@@ -95,7 +95,6 @@ from breezy import (
     debug,
     directory_service,
     lazy_regex,
-    library_state,
     lock,
     lockdir,
     mergetools,

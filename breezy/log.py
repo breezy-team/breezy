@@ -65,7 +65,6 @@ from breezy import (
     controldir,
     diff,
     foreign,
-    repository as _mod_repository,
     revision as _mod_revision,
     tsort,
     )
@@ -74,7 +73,6 @@ from breezy.i18n import gettext, ngettext
 
 from . import (
     errors,
-    lazy_regex,
     registry,
     revisionspec,
     )

@@ -29,7 +29,6 @@ lazy_import(globals(), """
 import fnmatch
 import subprocess
 import tempfile
-import sys
 
 from breezy import (
     cmdline,

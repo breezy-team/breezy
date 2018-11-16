@@ -46,7 +46,6 @@ from . import osutils
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import imp
-import importlib
 from importlib import util as importlib_util
 
 from breezy import (

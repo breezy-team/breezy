@@ -23,6 +23,7 @@
 
 from __future__ import absolute_import
 
+import breezy.bzr  # noqa: F401
 from ..commands import (
     Command,
     display_command,
@@ -70,7 +71,6 @@ class cmd_git_import(Command):
 
     def run(self, src_location, dest_location=None, colocated=False):
         import os
-        import urllib
         from .. import (
             controldir,
             trace,
@@ -85,7 +85,7 @@ class cmd_git_import(Command):
             NoRepositoryPresent,
             NotBranchError,
             )
-        from . import gettext
+        from ..i18n import gettext
         from ..repository import (
             InterRepository,
             Repository,

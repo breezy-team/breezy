@@ -30,10 +30,8 @@ from dulwich.repo import (
     )
 
 import os
-import urllib
 
 from ... import (
-    errors,
     revision,
     urlutils,
     )

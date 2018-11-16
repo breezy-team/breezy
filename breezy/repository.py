@@ -18,7 +18,6 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import itertools
 import time
 
 from breezy import (
@@ -47,7 +46,6 @@ from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
     text_type,
     viewitems,
-    viewvalues,
     )
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -104,7 +102,7 @@ class CommitBuilder(object):
         if committer is None:
             self._committer = self._config_stack.get('email')
         elif not isinstance(committer, text_type):
-            self._committer = committer.decode() # throw if non-ascii
+            self._committer = committer.decode()  # throw if non-ascii
         else:
             self._committer = committer
 

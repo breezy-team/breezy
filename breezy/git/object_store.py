@@ -41,7 +41,6 @@ from .. import (
     trace,
     osutils,
     ui,
-    urlutils,
     )
 from ..lock import LogicalLockResult
 from ..revision import (

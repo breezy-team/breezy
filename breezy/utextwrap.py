@@ -25,7 +25,6 @@
 
 from __future__ import absolute_import
 
-import sys
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 

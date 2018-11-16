@@ -22,7 +22,6 @@ from . import (
     controldir,
     commit,
     errors,
-    memorytree,
     revision,
     )
 from .sixish import (

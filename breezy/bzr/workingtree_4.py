@@ -26,7 +26,6 @@ from __future__ import absolute_import
 
 from io import BytesIO
 import os
-import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -36,8 +35,6 @@ import stat
 from breezy import (
     cache_utf8,
     cleanup,
-    config,
-    conflicts as _mod_conflicts,
     controldir,
     debug,
     errors,
@@ -51,7 +48,6 @@ from breezy import (
     views,
     )
 from breezy.bzr import (
-    bzrdir,
     dirstate,
     )
 """)

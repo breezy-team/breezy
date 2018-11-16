@@ -79,7 +79,6 @@ from .push import (
     remote_divergence,
     )
 from .refs import (
-    get_refs_container,
     is_tag,
     )
 from .repository import (

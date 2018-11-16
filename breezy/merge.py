@@ -16,8 +16,6 @@
 
 from __future__ import absolute_import
 
-import warnings
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -51,7 +49,6 @@ from . import (
     registry,
     )
 from .sixish import (
-    text_type,
     viewitems,
     )
 # TODO: Report back as changes are merged in

@@ -22,7 +22,7 @@ This plugin provides a command called bash-completion that generates a
 bash completion function for bzr. See its documentation for details.
 """
 
-from ... import commands, version_info
+from ... import commands, version_info  # noqa: F401
 
 
 bzr_plugin_name = 'bash_completion'

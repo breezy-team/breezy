@@ -18,13 +18,10 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import warnings
-
 from breezy import (
     counted_lock,
     errors,
     lock,
-    osutils,
     transactions,
     urlutils,
     )

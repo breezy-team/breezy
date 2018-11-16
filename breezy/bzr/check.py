@@ -50,7 +50,6 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 from __future__ import absolute_import
 
 from .. import (
-    errors,
     ui,
     )
 from ..branch import Branch

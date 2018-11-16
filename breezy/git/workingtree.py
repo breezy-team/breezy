@@ -30,10 +30,8 @@ from dulwich.index import (
     Index,
     SHA1Writer,
     build_index_from_tree,
-    changes_from_tree,
     index_entry_from_path,
     index_entry_from_stat,
-    iter_fresh_entries,
     FLAG_STAGEMASK,
     read_submodule_head,
     validate_path,
@@ -43,19 +41,10 @@ from dulwich.object_store import (
     tree_lookup_path,
     )
 from dulwich.objects import (
-    Blob,
-    Tree,
-    S_IFGITLINK,
     S_ISGITLINK,
-    ZERO_SHA,
-    )
-from dulwich.repo import (
-    NotGitRepository,
-    Repo as GitRepo,
     )
 import os
 import posixpath
-import re
 import stat
 import sys
 

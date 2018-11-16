@@ -22,20 +22,14 @@ from __future__ import absolute_import
 from .branch import (
     Branch,
     )
-from .commands import Command, Option
 from .repository import Repository
 from .revision import Revision
-from .sixish import (
-    text_type,
-    )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,
     registry,
-    transform,
     )
-from breezy.i18n import gettext
 """)
 
 class VcsMapping(object):
