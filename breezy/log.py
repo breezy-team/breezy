@@ -65,6 +65,7 @@ from breezy import (
     controldir,
     diff,
     foreign,
+    lazy_regex,
     revision as _mod_revision,
     tsort,
     )
@@ -901,7 +902,8 @@ def _make_search_filter(branch, generate_delta, match, log_rev_iterator):
     """
     if not match:
         return log_rev_iterator
-    searchRE = [(k, [re.compile(x, re.IGNORECASE) for x in v])
+    # Use lazy_compile so mapping to InvalidPattern error occurs.
+    searchRE = [(k, [lazy_regex.lazy_compile(x, re.IGNORECASE) for x in v])
                 for k, v in match.items()]
     return _filter_re(searchRE, log_rev_iterator)
 
@@ -921,13 +923,13 @@ def _match_filter(searchRE, rev):
                }
     strings[''] = [item for inner_list in strings.values()
                    for item in inner_list]
-    for (k, v) in searchRE:
+    for k, v in searchRE:
         if k in strings and not _match_any_filter(strings[k], v):
             return False
     return True
 
 def _match_any_filter(strings, res):
-    return any(re.search(s) for re in res for s in strings)
+    return any(r.search(s) for r in res for s in strings)
 
 def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
     fileids=None, direction='reverse'):
