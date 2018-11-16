@@ -77,20 +77,20 @@ except ImportError:
 #
 # Default values::
 
-reader=None
-reader_name='standalone'
-parser=None
-parser_name='restructuredtext'
-writer=None
-writer_name='pseudoxml'
-settings=None
-settings_spec=None
-settings_overrides=None
-config_section=None
-enable_exit_status=1
-argv=None
-usage=default_usage
-description=default_description
+reader = None
+reader_name ='standalone'
+parser = None
+parser_name ='restructuredtext'
+writer = None
+writer_name ='pseudoxml'
+settings = None
+settings_spec = None
+settings_overrides = None
+config_section = None
+enable_exit_status = 1
+argv = None
+usage = default_usage
+description = default_description
 
 # Argument values given to publish_cmdline() in rst2latex.py::
 

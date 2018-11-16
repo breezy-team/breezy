@@ -94,7 +94,7 @@ class ImageFixer(object):
     def replace_extension(self, path, newext):
         if path.endswith(newext):
             raise Exception("File '" + path + "' already has extension '"
-                            + newext +"'")
+                            + newext + "'")
         dot = path.rfind('.')
         if dot == -1:
             return path + newext

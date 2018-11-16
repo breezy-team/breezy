@@ -390,7 +390,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     # Make a windows version which is the same except for the base name.
     tbzrcachew = tbzrcache.copy()
-    tbzrcachew["dest_base"]="tbzrcachew"
+    tbzrcachew["dest_base"] = "tbzrcachew"
     gui_targets.append(tbzrcachew)
 
     # ditto for the tbzrcommand tool
@@ -401,9 +401,9 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()
-    tbzrcommandw["dest_base"]="tbzrcommandw"
+    tbzrcommandw["dest_base"] = "tbzrcommandw"
     gui_targets.append(tbzrcommandw)
-    
+
     # A utility to see python output from both C++ and Python based shell
     # extensions
     tracer = dict(script=os.path.join(tbzr_root, "scripts", "tbzrtrace.py"))

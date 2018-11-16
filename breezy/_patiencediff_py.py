@@ -44,7 +44,7 @@ def unique_lcs_py(a, b):
         if line in index:
             index[line] = None
         else:
-            index[line]= i
+            index[line] = i
     # make btoa[i] = position of line i in a, unless
     # that line doesn't occur exactly once in both,
     # in which case it's set to None
