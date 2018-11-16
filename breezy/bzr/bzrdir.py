@@ -34,7 +34,6 @@ lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
     cleanup,
-    fetch,
     lockable_files,
     lockdir,
     osutils,
@@ -47,6 +46,7 @@ from breezy import (
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
+    fetch,
     remote,
     vf_search,
     workingtree_3,

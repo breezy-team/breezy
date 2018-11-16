@@ -2154,16 +2154,22 @@ properties_handler_registry = registry.Registry()
 
 
 def _bugs_properties_handler(revision):
+    ret = {}
     if 'bugs' in revision.properties:
         bug_lines = revision.properties['bugs'].split('\n')
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-
+        related_bug_urls = [row[0] for row in bug_rows if
+                            len(row) > 1 and row[1] == 'related']
         if fixed_bug_urls:
-            return {ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls)):
-                    ' '.join(fixed_bug_urls)}
-    return {}
+            text = ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls))
+            ret[text] = ' '.join(fixed_bug_urls)
+        if related_bug_urls:
+            text = ngettext('related bug', 'related bugs',
+                            len(related_bug_urls))
+            ret[text] = ' '.join(related_bug_urls)
+    return ret
 
 
 properties_handler_registry.register('bugs_properties_handler',

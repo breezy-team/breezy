@@ -619,7 +619,7 @@ class cmd_revno(Command):
                 revid = b.last_revision()
         try:
             revno_t = b.revision_id_to_dotted_revno(revid)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
             revno_t = ('???',)
         revno = ".".join(str(n) for n in revno_t)
         self.cleanup_now()
@@ -1537,10 +1537,14 @@ class cmd_branch(Command):
             note(gettext('Created new stacked branch referring to %s.') %
                  branch.get_stacked_on_url())
         except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
-            note(ngettext('Branched %d revision.',
-                          'Branched %d revisions.',
-                          branch.revno()) % branch.revno())
+            errors.UnstackableRepositoryFormat) as e:
+            revno = branch.revno()
+            if revno is not None:
+                note(ngettext('Branched %d revision.',
+                              'Branched %d revisions.',
+                              branch.revno()) % revno)
+            else:
+                note(gettext('Created new branch.'))
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
@@ -3533,51 +3537,53 @@ class cmd_commit(Command):
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
-        ListOption('exclude', type=text_type, short_name='x',
-                   help="Do not consider changes made to a given path."),
-        Option('message', type=text_type,
-               short_name='m',
-               help="Description of the new revision."),
-        'verbose',
-        Option('unchanged',
-               help='Commit even if nothing has changed.'),
-        Option('file', type=text_type,
-               short_name='F',
-               argname='msgfile',
-               help='Take commit message from this file.'),
-        Option('strict',
-               help="Refuse to commit if there are unknown "
-               "files in the working tree."),
-        Option('commit-time', type=text_type,
-               help="Manually set a commit time using commit date "
-               "format, e.g. '2009-10-10 08:00:00 +0100'."),
-        ListOption('fixes', type=text_type,
-                   help="Mark a bug as being fixed by this revision "
-                   "(see \"brz help bugs\")."),
-        ListOption('author', type=text_type,
-                   help="Set the author's name, if it's different "
-                   "from the committer."),
-        Option('local',
-               help="Perform a local commit in a bound "
-               "branch.  Local commits are not pushed to "
-               "the master branch until a normal commit "
-               "is performed."
-               ),
-        Option('show-diff', short_name='p',
-               help='When no message is supplied, show the diff along'
-               ' with the status summary in the message editor.'),
-        Option('lossy',
-               help='When committing to a foreign version control '
-               'system do not push data that can not be natively '
+            ListOption('exclude', type=text_type, short_name='x',
+                help="Do not consider changes made to a given path."),
+            Option('message', type=text_type,
+                   short_name='m',
+                   help="Description of the new revision."),
+            'verbose',
+             Option('unchanged',
+                    help='Commit even if nothing has changed.'),
+             Option('file', type=text_type,
+                    short_name='F',
+                    argname='msgfile',
+                    help='Take commit message from this file.'),
+             Option('strict',
+                    help="Refuse to commit if there are unknown "
+                    "files in the working tree."),
+             Option('commit-time', type=text_type,
+                    help="Manually set a commit time using commit date "
+                    "format, e.g. '2009-10-10 08:00:00 +0100'."),
+             ListOption('bugs', type=text_type,
+                    help="Link to a related bug. (see \"brz help bugs\")."),
+             ListOption('fixes', type=text_type,
+                    help="Mark a bug as being fixed by this revision "
+                         "(see \"brz help bugs\")."),
+             ListOption('author', type=text_type,
+                    help="Set the author's name, if it's different "
+                         "from the committer."),
+             Option('local',
+                    help="Perform a local commit in a bound "
+                         "branch.  Local commits are not pushed to "
+                         "the master branch until a normal commit "
+                         "is performed."
+                    ),
+             Option('show-diff', short_name='p',
+                    help='When no message is supplied, show the diff along'
+                    ' with the status summary in the message editor.'),
+             Option('lossy',
+                    help='When committing to a foreign version control '
+                    'system do not push data that can not be natively '
                     'represented.'),
         ]
     aliases = ['ci', 'checkin']
 
-    def _iter_bug_fix_urls(self, fixes, branch):
+    def _iter_bug_urls(self, bugs, branch, status):
         default_bugtracker = None
         # Configure the properties for bug fixing attributes.
-        for fixed_bug in fixes:
-            tokens = fixed_bug.split(':')
+        for bug in bugs:
+            tokens = bug.split(':')
             if len(tokens) == 1:
                 if default_bugtracker is None:
                     branch_config = branch.get_config_stack()
@@ -3589,29 +3595,30 @@ class cmd_commit(Command):
                         "'tracker:id' or specify a default bug tracker "
                         "using the `bugtracker` option.\nSee "
                         "\"brz help bugs\" for more information on this "
-                        "feature. Commit refused.") % fixed_bug)
+                        "feature. Commit refused.") % bug)
                 tag = default_bugtracker
                 bug_id = tokens[0]
             elif len(tokens) != 2:
                 raise errors.BzrCommandError(gettext(
                     "Invalid bug %s. Must be in the form of 'tracker:id'. "
                     "See \"brz help bugs\" for more information on this "
-                    "feature.\nCommit refused.") % fixed_bug)
+                    "feature.\nCommit refused.") % bug)
             else:
                 tag, bug_id = tokens
             try:
-                yield bugtracker.get_bug_url(tag, branch, bug_id)
+                yield bugtracker.get_bug_url(tag, branch, bug_id), status
             except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
-                    'Unrecognized bug %s. Commit refused.') % fixed_bug)
+                    'Unrecognized bug %s. Commit refused.') % bug)
             except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     u"%s\nCommit refused.") % (e,))
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None,
+            unchanged=False, strict=False, local=False, fixes=None, bugs=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
+        import itertools
         from .commit import (
             PointlessCommit,
             )
@@ -3645,8 +3652,12 @@ class cmd_commit(Command):
 
         if fixes is None:
             fixes = []
+        if bugs is None:
+            bugs = []
         bug_property = bugtracker.encode_fixes_bug_urls(
-            self._iter_bug_fix_urls(fixes, tree.branch))
+            itertools.chain(
+                self._iter_bug_urls(bugs, tree.branch, bugtracker.RELATED),
+                self._iter_bug_urls(fixes, tree.branch, bugtracker.FIXED)))
         if bug_property:
             properties[u'bugs'] = bug_property
 
@@ -4449,7 +4460,7 @@ class cmd_merge(Command):
         verified = 'inapplicable'
 
         tree = WorkingTree.open_containing(directory)[0]
-        if tree.branch.revno() == 0:
+        if tree.branch.last_revision() == _mod_revision.NULL_REVISION:
             raise errors.BzrCommandError(gettext('Merging into empty branches not currently supported, '
                                                  'https://bugs.launchpad.net/bzr/+bug/308562'))
 
@@ -5854,22 +5865,15 @@ class cmd_send(Command):
     If the preferred client can't be found (or used), your editor will be used.
 
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
-    Mail.app), "mutt", and "thunderbird"; generic options are "default",
-    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
-    supported clients.
+    Supported values for specific clients are "claws", "evolution", "kmail",
+    "mail.app" (MacOS X's Mail.app), "mutt", and "thunderbird"; generic options
+    are "default", "editor", "emacsclient", "mapi", and "xdg-email".  Plugins
+    may also add supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
     option in the branch itself or the child_submit_to configuration option
     in the submit branch.
-
-    Two formats are currently supported: "4" uses revision bundle format 4 and
-    merge directive format 2.  It is significantly faster and smaller than
-    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
-    default.  "0.9" uses revision bundle format 0.9 and merge directive
-    format 1.  It is compatible with Bazaar 0.12 - 0.18.
 
     The merge directives created by brz send may be applied using brz merge or
     brz pull by specifying a file containing a merge directive as the location.
@@ -5951,12 +5955,6 @@ class cmd_bundle_revisions(cmd_send):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
-
-    Two formats are currently supported: "4" uses revision bundle format 4 and
-    merge directive format 2.  It is significantly faster and smaller than
-    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
-    default.  "0.9" uses revision bundle format 0.9 and merge directive
-    format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
     takes_options = [
@@ -6334,20 +6332,26 @@ class cmd_switch(Command):
             if branch is None:
                 raise errors.BzrCommandError(
                     gettext('cannot create branch without source branch'))
-            to_location = lookup_new_sibling_branch(control_dir, to_location,
-                                                    possible_transports=possible_transports)
-            to_branch = branch.controldir.sprout(to_location,
-                                                 possible_transports=possible_transports,
-                                                 source_branch=branch).open_branch()
+            to_location = lookup_new_sibling_branch(
+                control_dir, to_location,
+                 possible_transports=possible_transports)
+            if revision is not None:
+                revision = revision.as_revision_id(branch)
+            to_branch = branch.controldir.sprout(
+                to_location,
+                 possible_transports=possible_transports,
+                 revision_id=revision,
+                 source_branch=branch).open_branch()
         else:
             try:
                 to_branch = Branch.open(to_location,
                                         possible_transports=possible_transports)
             except errors.NotBranchError:
-                to_branch = open_sibling_branch(control_dir, to_location,
-                                                possible_transports=possible_transports)
-        if revision is not None:
-            revision = revision.as_revision_id(to_branch)
+                to_branch = open_sibling_branch(
+                    control_dir, to_location,
+                    possible_transports=possible_transports)
+            if revision is not None:
+                revision = revision.as_revision_id(to_branch)
         try:
             switch.switch(control_dir, to_branch, force, revision_id=revision,
                           store_uncommitted=store)

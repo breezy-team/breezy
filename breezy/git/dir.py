@@ -21,7 +21,7 @@ from __future__ import absolute_import
 
 from .. import (
     branch as _mod_branch,
-    errors as bzr_errors,
+    errors as brz_errors,
     trace,
     osutils,
     urlutils,
@@ -58,7 +58,7 @@ class GitDirConfig(object):
         return None
 
     def set_default_stack_on(self, value):
-        raise bzr_errors.BzrError("Cannot set configuration")
+        raise brz_errors.BzrError("Cannot set configuration")
 
 
 class GitControlDirFormat(ControlDirFormat):
@@ -122,7 +122,7 @@ class GitDir(ControlDir):
 
     def _get_selected_ref(self, branch, ref=None):
         if ref is not None and branch is not None:
-            raise bzr_errors.BzrError("can't specify both ref and branch")
+            raise brz_errors.BzrError("can't specify both ref and branch")
         if ref is not None:
             return ref
         if branch is not None:
@@ -159,13 +159,13 @@ class GitDir(ControlDir):
         # Create/update the result branch
         try:
             result = ControlDir.open_from_transport(target_transport)
-        except bzr_errors.NotBranchError:
+        except brz_errors.NotBranchError:
             result = cloning_format.initialize_on_transport(target_transport)
         source_branch = self.open_branch()
         source_repository = self.find_repository()
         try:
             result_repo = result.find_repository()
-        except bzr_errors.NoRepositoryPresent:
+        except brz_errors.NoRepositoryPresent:
             result_repo = result.create_repository()
         if stacked:
             raise _mod_branch.UnstackableBranchFormat(
@@ -231,7 +231,7 @@ class GitDir(ControlDir):
             if result_dir.open_repository().make_working_trees():
                 self.open_workingtree().clone(
                     result_dir, revision_id=revision_id)
-        except (bzr_errors.NoWorkingTree, bzr_errors.NotLocalUrl):
+        except (brz_errors.NoWorkingTree, brz_errors.NotLocalUrl):
             pass
 
         return result_dir
@@ -295,7 +295,7 @@ class GitDir(ControlDir):
         push_result.stacked_on = None
         from .branch import GitBranch
         if isinstance(source, GitBranch) and lossy:
-            raise bzr_errors.LossyPushToSameVCS(source.controldir, self)
+            raise brz_errors.LossyPushToSameVCS(source.controldir, self)
         target = self.open_branch(name, nascent_ok=True)
         push_result.branch_push_result = source.push(
             target, overwrite=overwrite, stop_revision=revision_id,
@@ -346,7 +346,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
             return transport._redirected_to(e.source, e.target)
         gitrepo = do_catching_redirections(_open, transport, redirected)
         if not gitrepo._controltransport.has('HEAD'):
-            raise bzr_errors.NotBranchError(path=transport.base)
+            raise brz_errors.NotBranchError(path=transport.base)
         return LocalGitDir(transport, gitrepo, self)
 
     def get_format_description(self):
@@ -371,12 +371,12 @@ class LocalGitControlDirFormat(GitControlDirFormat):
             trace.note(redirection_notice)
             return transport._redirected_to(e.source, e.target)
         try:
-            transport = do_catching_redirections(make_directory, transport,
-                                                 redirected)
-        except bzr_errors.FileExists:
+            transport = do_catching_redirections(
+                make_directory, transport, redirected)
+        except brz_errors.FileExists:
             if not use_existing_dir:
                 raise
-        except bzr_errors.NoSuchFile:
+        except brz_errors.NoSuchFile:
             if not create_prefix:
                 raise
             transport.create_prefix()
@@ -397,8 +397,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def supports_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except bzr_errors.InProcessTransport:
-            raise bzr_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport:
+            raise brz_errors.NotBranchError(path=transport.base)
         return external_url.startswith("file:")
 
 
@@ -463,9 +463,11 @@ class LocalGitDir(GitDir):
             self._git.refs.set_symbolic_ref(ref, target_branch.ref)
         else:
             try:
-                target_path = target_transport.local_abspath('.')
-            except bzr_errors.NotLocalUrl:
-                raise bzr_errors.IncompatibleFormat(
+                target_path = (
+                    target_branch.controldir.control_transport.local_abspath(
+                        '.'))
+            except brz_errors.NotLocalUrl:
+                raise brz_errors.IncompatibleFormat(
                     target_branch._format, self._format)
             # TODO(jelmer): Do some consistency checking across branches..
             self.control_transport.put_bytes(
@@ -483,9 +485,8 @@ class LocalGitDir(GitDir):
                     continue
                 break
             else:
-                # Can't create a reference to something that is not a in a
-                # repository.
-                raise bzr_errors.IncompatibleFormat(
+                # Can't create a reference to something that is not a in a repository.
+                raise brz_errors.IncompatibleFormat(
                     self.set_branch_reference, self)
             self._git.refs.set_symbolic_ref(ref, target_ref)
 
@@ -506,7 +507,7 @@ class LocalGitDir(GitDir):
                     params = {}
             try:
                 commondir = self.control_transport.get_bytes('commondir')
-            except bzr_errors.NoSuchFile:
+            except brz_errors.NoSuchFile:
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
@@ -527,21 +528,21 @@ class LocalGitDir(GitDir):
             return self.transport
         if isinstance(branch_format, LocalGitControlDirFormat):
             return self.transport
-        raise bzr_errors.IncompatibleFormat(branch_format, self._format)
+        raise brz_errors.IncompatibleFormat(branch_format, self._format)
 
     def get_repository_transport(self, format):
         if format is None:
             return self.transport
         if isinstance(format, LocalGitControlDirFormat):
             return self.transport
-        raise bzr_errors.IncompatibleFormat(format, self._format)
+        raise brz_errors.IncompatibleFormat(format, self._format)
 
     def get_workingtree_transport(self, format):
         if format is None:
             return self.transport
         if isinstance(format, LocalGitControlDirFormat):
             return self.transport
-        raise bzr_errors.IncompatibleFormat(format, self._format)
+        raise brz_errors.IncompatibleFormat(format, self._format)
 
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None,
                     ref=None, possible_transports=None, nascent_ok=False):
@@ -550,8 +551,8 @@ class LocalGitDir(GitDir):
         from .branch import LocalGitBranch
         ref = self._get_selected_ref(name, ref)
         if not nascent_ok and ref not in self._git.refs:
-            raise bzr_errors.NotBranchError(self.root_transport.base,
-                                            controldir=self)
+            raise brz_errors.NotBranchError(
+                self.root_transport.base, controldir=self)
         ref_chain, unused_sha = self._git.refs.follow(ref)
         if ref_chain[-1] == b'HEAD':
             controldir = self
@@ -563,22 +564,22 @@ class LocalGitDir(GitDir):
         refname = self._get_selected_ref(name)
         if refname == b'HEAD':
             # HEAD can't be removed
-            raise bzr_errors.UnsupportedOperation(
+            raise brz_errors.UnsupportedOperation(
                 self.destroy_branch, self)
         try:
             del self._git.refs[refname]
         except KeyError:
-            raise bzr_errors.NotBranchError(self.root_transport.base,
-                                            controldir=self)
+            raise brz_errors.NotBranchError(
+                self.root_transport.base, controldir=self)
 
     def destroy_repository(self):
-        raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)
+        raise brz_errors.UnsupportedOperation(self.destroy_repository, self)
 
     def destroy_workingtree(self):
-        raise bzr_errors.UnsupportedOperation(self.destroy_workingtree, self)
+        raise brz_errors.UnsupportedOperation(self.destroy_workingtree, self)
 
     def destroy_workingtree_metadata(self):
-        raise bzr_errors.UnsupportedOperation(
+        raise brz_errors.UnsupportedOperation(
             self.destroy_workingtree_metadata, self)
 
     def needs_format_conversion(self, format=None):
@@ -587,7 +588,7 @@ class LocalGitDir(GitDir):
     def open_repository(self):
         """'open' a repository for this dir."""
         if self.control_transport.has('commondir'):
-            raise bzr_errors.NoRepositoryPresent(self)
+            raise brz_errors.NoRepositoryPresent(self)
         return self._gitrepository_class(self)
 
     def has_workingtree(self):
@@ -600,12 +601,12 @@ class LocalGitDir(GitDir):
             branch = self.open_branch(ref=b'HEAD', nascent_ok=True)
             return GitWorkingTree(self, repo, branch)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
-        raise bzr_errors.NoWorkingTree(loc)
+        raise brz_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
         from .repository import GitRepositoryFormat
         if shared:
-            raise bzr_errors.IncompatibleFormat(
+            raise brz_errors.IncompatibleFormat(
                 GitRepositoryFormat(), self._format)
         return self.find_repository()
 
@@ -613,7 +614,7 @@ class LocalGitDir(GitDir):
                       append_revisions_only=None, ref=None):
         refname = self._get_selected_ref(name, ref)
         if refname != b'HEAD' and refname in self._git.refs:
-            raise bzr_errors.AlreadyBranchError(self.user_url)
+            raise brz_errors.AlreadyBranchError(self.user_url)
         repo = self.open_repository()
         if refname in self._git.refs:
             ref_chain, unused_sha = self._git.refs.follow(
@@ -639,7 +640,7 @@ class LocalGitDir(GitDir):
     def create_workingtree(self, revision_id=None, from_branch=None,
                            accelerator_tree=None, hardlink=False):
         if self._git.bare:
-            raise bzr_errors.UnsupportedOperation(
+            raise brz_errors.UnsupportedOperation(
                 self.create_workingtree, self)
         if from_branch is None:
             from_branch = self.open_branch(nascent_ok=True)
@@ -668,7 +669,7 @@ class LocalGitDir(GitDir):
         self._mode_check_done = True
         try:
             st = self.transport.stat('.')
-        except bzr_errors.TransportNotPossible:
+        except brz_errors.TransportNotPossible:
             self._dir_mode = None
             self._file_mode = None
         else:
@@ -708,7 +709,7 @@ class LocalGitDir(GitDir):
     def _find_commondir(self):
         try:
             commondir = self.control_transport.get_bytes('commondir')
-        except bzr_errors.NoSuchFile:
+        except brz_errors.NoSuchFile:
             return self
         else:
             commondir = commondir.rstrip(b'/.git/').decode(osutils._fs_enc)

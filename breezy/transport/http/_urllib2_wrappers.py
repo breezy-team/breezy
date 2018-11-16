@@ -284,6 +284,12 @@ class Response(http_client.HTTPResponse):
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
 
+    if PY3:
+        def __init__(self, sock, debuglevel=0, method=None, url=None):
+            self.url = url
+            super(Response, self).__init__(sock, debuglevel=debuglevel,
+                    method=method, url=url)
+
     def begin(self):
         """Begin to read the response from the server.
 
@@ -716,8 +722,12 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
         exc_type, exc_val, exc_tb = sys.exc_info()
         if exc_type == socket.gaierror:
             # No need to retry, that will not help
+            if PY3:
+                origin_req_host = request.origin_req_host
+            else:
+                origin_req_host = request.get_origin_req_host()
             raise errors.ConnectionError("Couldn't resolve host '%s'"
-                                         % request.get_origin_req_host(),
+                                         % origin_req_host,
                                          orig_error=exc_val)
         elif isinstance(exc_val, http_client.ImproperConnectionState):
             # The http_client pipeline is in incorrect state, it's a bug in our

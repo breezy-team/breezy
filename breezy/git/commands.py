@@ -86,7 +86,7 @@ class cmd_git_import(Command):
             NoRepositoryPresent,
             NotBranchError,
             )
-        from . import gettext
+        from ..i18n import gettext
         from ..repository import (
             InterRepository,
             Repository,

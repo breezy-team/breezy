@@ -20,6 +20,7 @@ import os
 import sys
 
 from ... import (
+    add as _mod_add,
     errors,
     ignores,
     osutils,
@@ -37,22 +38,30 @@ from .. import (
     )
 
 
+class RecordingAddAction(_mod_add.AddAction):
+
+    def __init__(self):
+        self.adds = []
+
+    def __call__(self, wt, parent_ie, path, kind):
+        self.adds.append((wt, path, kind))
+
+
 class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
     def test_single_file(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.smart_add(['tree'])
+        action = RecordingAddAction()
+        tree.smart_add(['tree'], action=action)
 
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             files = [(path, status, kind)
                      for path, status, kind, file_id, parent_id
-                     in tree.list_files(include_root=True)]
-        finally:
-            tree.unlock()
+                      in tree.list_files(include_root=True)]
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)
+        self.assertEqual([(tree, 'a', 'file')], action.adds)
 
     def assertFilenameSkipped(self, filename):
         tree = self.make_branch_and_tree('tree')
@@ -74,14 +83,11 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_save_false(self):
         """Dry-run add doesn't permanently affect the tree."""
         wt = self.make_branch_and_tree('.')
-        wt.lock_write()
-        try:
+        with wt.lock_write():
             self.build_tree(['file'])
             wt.smart_add(['file'], save=False)
             # the file should not be added - no id.
             self.assertEqual(wt.path2id('file'), None)
-        finally:
-            wt.unlock()
         # and the disk state should be the same - reopen to check.
         wt = wt.controldir.open_workingtree()
         self.assertFalse(wt.is_versioned('file'))
@@ -91,9 +97,21 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
-        wt.smart_add((u".",))
+        action = RecordingAddAction()
+        wt.smart_add((u".",), action=action)
         for path in paths:
             self.assertTrue(wt.is_versioned(path))
+        if wt.has_versioned_directories():
+            self.assertEqual(
+                {(wt, 'original', 'directory'),
+                 (wt, 'original/file1', 'file'),
+                 (wt, 'original/file2', 'file')},
+                set(action.adds))
+        else:
+            self.assertEqual(
+                {(wt, 'original/file1', 'file'),
+                 (wt, 'original/file2', 'file')},
+                set(action.adds))
 
     def test_skip_nested_trees(self):
         """Test smart-adding a nested tree ignors it and warns."""

@@ -407,16 +407,17 @@ tracker_registry.register('generic', GenericBugTracker())
 
 
 FIXED = 'fixed'
+RELATED = 'related'
 
-ALLOWED_BUG_STATUSES = {FIXED}
+ALLOWED_BUG_STATUSES = {FIXED, RELATED}
 
 
 def encode_fixes_bug_urls(bug_urls):
     """Get the revision property value for a commit that fixes bugs.
 
-    :param bug_urls: An iterable of escaped URLs to bugs. These normally
+    :param bug_urls: An iterable of (escaped URL, tag) tuples. These normally
         come from `get_bug_url`.
     :return: A string that will be set as the 'bugs' property of a revision
         as part of a commit.
     """
-    return '\n'.join(('%s %s' % (url, FIXED)) for url in bug_urls)
+    return '\n'.join(('%s %s' % (url, tag)) for (url, tag) in bug_urls)

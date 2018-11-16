@@ -269,7 +269,7 @@ class Serializer_v8(XMLSerializer):
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""
         props_elt = elt.find('properties')
-        if not props_elt:
+        if props_elt is None:
             return
         for prop_elt in props_elt:
             if prop_elt.tag != 'property':

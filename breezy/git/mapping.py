@@ -30,9 +30,6 @@ from .. import (
     trace,
     urlutils,
     )
-from ..bzr.inventory import (
-    ROOT_ID,
-    )
 from ..foreign import (
     ForeignVcs,
     VcsMappingRegistry,
@@ -72,6 +69,9 @@ HG_EXTRA = b"HG:extra"
 HG_EXTRA_AMEND_SOURCE = b"amend_source"
 
 FILE_ID_PREFIX = b'git:'
+
+# Always the same.
+ROOT_ID = b"TREE_ROOT"
 
 
 def escape_file_id(file_id):

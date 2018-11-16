@@ -269,9 +269,8 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
             inv_b.id_to_entry.key(), inv_b.parent_id_basename_to_file_id.key(),
             inv_c.id_to_entry.key(), inv_c.parent_id_basename_to_file_id.key()]
         all_chks = src_repo.chk_bytes.keys()
-        # Pick a non-root key to drop
-        key_to_drop = all_chks.difference(chk_root_keys_only).pop()
-        all_chks.discard(key_to_drop)
+        for key_to_drop in all_chks.difference(chk_root_keys_only):
+            all_chks.discard(key_to_drop)
         repo.lock_write()
         repo.start_write_group()
         repo.chk_bytes.insert_record_stream(
