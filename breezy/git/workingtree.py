@@ -833,17 +833,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                                                self.is_ignored(path) else "?"), kind, None, ie)
 
     def all_file_ids(self):
-        with self.lock_read():
-            ids = {u"": self.path2id("")}
-            for path in self.index:
-                if self.mapping.is_special_file(path):
-                    continue
-                path = path.decode("utf-8")
-                parent = posixpath.dirname(path).strip("/")
-                for e in self._add_missing_parent_ids(parent, ids):
-                    pass
-                ids[path] = self.path2id(path)
-            return set(ids.values())
+        raise errors.UnsupportedOperation(self.all_file_ids, self)
 
     def all_versioned_paths(self):
         with self.lock_read():
