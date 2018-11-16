@@ -70,92 +70,92 @@ complete -F %(function_name)s -o default brz
         return ("""\
 %(function_name)s ()
 {
-	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
-	local curOpt optEnums
-	local IFS=$' \\n'
+    local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
+    local curOpt optEnums
+    local IFS=$' \\n'
 
-	COMPREPLY=()
-	cur=${COMP_WORDS[COMP_CWORD]}
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
 
-	cmds='%(cmds)s'
-	globalOpts=( %(global_options)s )
+    cmds='%(cmds)s'
+    globalOpts=( %(global_options)s )
 
-	# do ordinary expansion if we are anywhere after a -- argument
-	for ((i = 1; i < COMP_CWORD; ++i)); do
-		[[ ${COMP_WORDS[i]} == "--" ]] && return 0
-	done
+    # do ordinary expansion if we are anywhere after a -- argument
+    for ((i = 1; i < COMP_CWORD; ++i)); do
+        [[ ${COMP_WORDS[i]} == "--" ]] && return 0
+    done
 
-	# find the command; it's the first word not starting in -
-	cmd=
-	for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
-		if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
-			cmd=${COMP_WORDS[cmdIdx]}
-			break
-		fi
-	done
+    # find the command; it's the first word not starting in -
+    cmd=
+    for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
+        if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
+            cmd=${COMP_WORDS[cmdIdx]}
+            break
+        fi
+    done
 
-	# complete command name if we are not already past the command
-	if [[ $COMP_CWORD -le cmdIdx ]]; then
-		COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
-		return 0
-	fi
+    # complete command name if we are not already past the command
+    if [[ $COMP_CWORD -le cmdIdx ]]; then
+        COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
+        return 0
+    fi
 
-	# find the option for which we want to complete a value
-	curOpt=
-	if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
-		curOpt=${COMP_WORDS[COMP_CWORD - 1]}
-		if [[ $curOpt == = ]]; then
-			curOpt=${COMP_WORDS[COMP_CWORD - 2]}
-		elif [[ $cur == : ]]; then
-			cur=
-			curOpt="$curOpt:"
-		elif [[ $curOpt == : ]]; then
-			curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
-		fi
-	fi
+    # find the option for which we want to complete a value
+    curOpt=
+    if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
+        curOpt=${COMP_WORDS[COMP_CWORD - 1]}
+        if [[ $curOpt == = ]]; then
+            curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+        elif [[ $cur == : ]]; then
+            cur=
+            curOpt="$curOpt:"
+        elif [[ $curOpt == : ]]; then
+            curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
+        fi
+    fi
 %(debug)s
-	cmdOpts=( )
-	optEnums=( )
-	fixedWords=( )
-	case $cmd in
+    cmdOpts=( )
+    optEnums=( )
+    fixedWords=( )
+    case $cmd in
 %(cases)s\
-	*)
-		cmdOpts=(--help -h)
-		;;
-	esac
+    *)
+        cmdOpts=(--help -h)
+        ;;
+    esac
 
-	IFS=$'\\n'
-	if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
-		case $curOpt in
-			tag:|*..tag:)
-				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
-				;;
-		esac
-		case $cur in
-			[\\"\\']tag:*)
-				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
-				;;
-			[\\"\\']*..tag:*)
-				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
-				fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
-				;;
-		esac
-	elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
-		# complete directly after "--option=", list all enum values
-		COMPREPLY=( "${optEnums[@]}" )
-		return 0
-	else
-		fixedWords=( "${cmdOpts[@]}"
-		             "${globalOpts[@]}"
-		             "${optEnums[@]}"
-		             "${fixedWords[@]}" )
-	fi
+    IFS=$'\\n'
+    if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
+        case $curOpt in
+            tag:|*..tag:)
+                fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
+                ;;
+        esac
+        case $cur in
+            [\\"\\']tag:*)
+                fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
+                ;;
+            [\\"\\']*..tag:*)
+                fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
+                fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
+                ;;
+        esac
+    elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
+        # complete directly after "--option=", list all enum values
+        COMPREPLY=( "${optEnums[@]}" )
+        return 0
+    else
+        fixedWords=( "${cmdOpts[@]}"
+                     "${globalOpts[@]}"
+                     "${optEnums[@]}"
+                     "${fixedWords[@]}" )
+    fi
 
-	if [[ ${#fixedWords[@]} -gt 0 ]]; then
-		COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
-	fi
+    if [[ ${#fixedWords[@]} -gt 0 ]]; then
+        COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
+    fi
 
-	return 0
+    return 0
 }
 """ % {
             "cmds": self.command_names(),
@@ -174,16 +174,16 @@ complete -F %(function_name)s -o default brz
             return ''
         else:
             return (r"""
-	# Debugging code enabled using the --debug command line switch.
-	# Will dump some variables to the top portion of the terminal.
-	echo -ne '\e[s\e[H'
-	for (( i=0; i < ${#COMP_WORDS[@]}; ++i)); do
-		echo "\$COMP_WORDS[$i]='${COMP_WORDS[i]}'"$'\e[K'
-	done
-	for i in COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY cur curOpt; do
-		echo "\$${i}=\"${!i}\""$'\e[K'
-	done
-	echo -ne '---\e[K\e[u'
+    # Debugging code enabled using the --debug command line switch.
+    # Will dump some variables to the top portion of the terminal.
+    echo -ne '\e[s\e[H'
+    for (( i=0; i < ${#COMP_WORDS[@]}; ++i)); do
+        echo "\$COMP_WORDS[$i]='${COMP_WORDS[i]}'"$'\e[K'
+    done
+    for i in COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY cur curOpt; do
+        echo "\$${i}=\"${!i}\""$'\e[K'
+    done
+    echo -ne '---\e[K\e[u'
 """)
 
     def brz_version(self):
