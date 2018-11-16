@@ -78,11 +78,11 @@ except ImportError:
 # Default values::
 
 reader = None
-reader_name ='standalone'
+reader_name = 'standalone'
 parser = None
-parser_name ='restructuredtext'
+parser_name = 'restructuredtext'
 writer = None
-writer_name ='pseudoxml'
+writer_name = 'pseudoxml'
 settings = None
 settings_spec = None
 settings_overrides = None

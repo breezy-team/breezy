@@ -43,7 +43,8 @@ def stack_add(name, frame_name, frame_lineno, scope_name=None):
         _total_stack[_parent_stack[-1]].append(this_stack)
     _total_stack[this_stack] = []
     _parent_stack.append(this_stack)
-    _info[this_stack] = [len(_parent_stack)-1, frame_name, frame_lineno, scope_name]
+    _info[this_stack] = [len(_parent_stack) - 1, frame_name, frame_lineno,
+                         scope_name]
 
     return this_stack
 
@@ -89,8 +90,8 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
         # scope_name, frame_name, frame_lineno
         out_file.write(
             '%5.1f %5.1f %-40s @ %s:%d\n' % (
-                info[-1]*1000., mod_time*1000.,
-                ('+'*info[0] + cur[1]), info[1], info[2]))
+                info[-1] * 1000., mod_time * 1000.,
+                ('+' * info[0] + cur[1]), info[1], info[2]))
 
         if sorted:
             c_times.sort()
@@ -153,14 +154,14 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
         # Do the import
         return _real_import(name, globals, locals, fromlist, level=level)
     finally:
-        tload = _timer()-tstart
+        tload = _timer() - tstart
         stack_finish(this, tload)
 
 
 def _repr_regexp(pattern, max_len=30):
     """Present regexp pattern for logging, truncating if over max_len."""
     if len(pattern) > max_len:
-        return repr(pattern[:max_len-3]) + "..."
+        return repr(pattern[:max_len - 3]) + "..."
     return repr(pattern)
 
 
@@ -181,7 +182,7 @@ def timed_compile(*args, **kwargs):
         frame = sys._getframe(5)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    this = stack_add(extra+_repr_regexp(args[0]), frame_name, frame_lineno)
+    this = stack_add(extra + _repr_regexp(args[0]), frame_name, frame_lineno)
 
     tstart = _timer()
     try:

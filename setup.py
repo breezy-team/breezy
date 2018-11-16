@@ -361,7 +361,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # First always brz's icon and its in the root of the brz tree.
     icos.append(('', 'brz.ico'))
     for root, dirs, files in os.walk(ico_root):
-        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root)+1:])
+        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root) + 1:])
                      for f in files if f.endswith('.ico')])
     # allocate an icon ID for each file and the full path to the ico
     icon_resources = [(rid, os.path.join(ico_dir, ico_name))

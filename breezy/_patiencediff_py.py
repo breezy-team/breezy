@@ -77,12 +77,12 @@ def unique_lcs_py(a, b):
         # as an optimization, check if the next line comes right after
         # the previous line, because usually it does
         elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or
-                                              stacks[k+1] > apos):
+                                              stacks[k + 1] > apos):
             k += 1
         else:
             k = bisect(stacks, apos)
         if k > 0:
-            backpointers[bpos] = lasts[k-1]
+            backpointers[bpos] = lasts[k - 1]
         if k < len(stacks):
             stacks[k] = apos
             lasts[k] = bpos
@@ -124,23 +124,23 @@ def recurse_matches_py(a, b, alo, blo, ahi, bhi, answer, maxrecursion):
     oldlength = len(answer)
     if alo == ahi or blo == bhi:
         return
-    last_a_pos = alo-1
-    last_b_pos = blo-1
+    last_a_pos = alo - 1
+    last_b_pos = blo - 1
     for apos, bpos in unique_lcs_py(a[alo:ahi], b[blo:bhi]):
         # recurse between lines which are unique in each file and match
         apos += alo
         bpos += blo
         # Most of the time, you will have a sequence of similar entries
-        if last_a_pos+1 != apos or last_b_pos+1 != bpos:
+        if last_a_pos + 1 != apos or last_b_pos + 1 != bpos:
             recurse_matches_py(
-                a, b, last_a_pos+1, last_b_pos+1, apos, bpos, answer,
+                a, b, last_a_pos + 1, last_b_pos + 1, apos, bpos, answer,
                 maxrecursion - 1)
         last_a_pos = apos
         last_b_pos = bpos
         answer.append((apos, bpos))
     if len(answer) > oldlength:
         # find matches between the last match and the end
-        recurse_matches_py(a, b, last_a_pos+1, last_b_pos+1,
+        recurse_matches_py(a, b, last_a_pos + 1, last_b_pos + 1,
                            ahi, bhi, answer, maxrecursion - 1)
     elif a[alo] == b[blo]:
         # find matching lines at the very beginning
@@ -157,7 +157,7 @@ def recurse_matches_py(a, b, alo, blo, ahi, bhi, answer, maxrecursion):
         while nahi > alo and nbhi > blo and a[nahi - 1] == b[nbhi - 1]:
             nahi -= 1
             nbhi -= 1
-        recurse_matches_py(a, b, last_a_pos+1, last_b_pos+1,
+        recurse_matches_py(a, b, last_a_pos + 1, last_b_pos + 1,
                            nahi, nbhi, answer, maxrecursion - 1)
         for i in range(ahi - nahi):
             answer.append((nahi + i, nbhi + i))

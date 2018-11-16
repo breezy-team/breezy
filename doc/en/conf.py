@@ -77,7 +77,7 @@ brz_documents = [
 ]
 
 latex_documents = [
-    (start, target+'.tex', title, author, doc_class)
+    (start, target + '.tex', title, author, doc_class)
     for start, target, title, author, doc_class in brz_documents
     ]
 
