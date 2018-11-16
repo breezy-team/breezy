@@ -48,8 +48,7 @@ class InstrumentedLazyRegex(lazy_regex.LazyRegex):
         return super(InstrumentedLazyRegex, self).__getattr__(attr)
 
     def _real_re_compile(self, *args, **kwargs):
-        self._actions.append(('_real_re_compile',
-                                               args, kwargs))
+        self._actions.append(('_real_re_compile', args, kwargs))
         return super(InstrumentedLazyRegex, self)._real_re_compile(
             *args, **kwargs)
 
@@ -61,7 +60,7 @@ class TestLazyRegex(tests.TestCase):
         actions = []
         InstrumentedLazyRegex.use_actions(actions)
 
-        pattern = InstrumentedLazyRegex(args=('foo',))
+        pattern = InstrumentedLazyRegex(args=('foo',), kwargs={})
         actions.append(('created regex', 'foo'))
         # This match call should compile the regex and go through __getattr__
         pattern.match('foo')
@@ -136,29 +135,3 @@ class TestLazyCompile(tests.TestCase):
         unpickled_lazy_pattern = pickle.loads(pickled)
         self.assertEqual(['x', 'y', 'z'],
             unpickled_lazy_pattern.split('x,y;z'))
-
-
-class TestInstallLazyCompile(tests.TestCase):
-    """Tests for lazy compiled regexps.
-
-    Other tests, and breezy in general, count on the lazy regexp compiler
-    being installed, and this is done by loading breezy.  So these tests
-    assume it is installed, and leave it installed when they're done.
-    """
-
-    def test_install(self):
-        # Don't count on it being present
-        lazy_regex.install_lazy_compile()
-        pattern = re.compile('foo')
-        self.assertIsInstance(pattern, lazy_regex.LazyRegex)
-
-    def test_reset(self):
-        lazy_regex.reset_compile()
-        self.addCleanup(lazy_regex.install_lazy_compile)
-        pattern = re.compile('foo')
-        self.assertFalse(isinstance(pattern, lazy_regex.LazyRegex),
-            'lazy_regex.reset_compile() did not restore the original'
-            ' compile() function %s' % (type(pattern),))
-        # but the returned object should still support regex operations
-        m = pattern.match('foo')
-        self.assertEqual('foo', m.group())
