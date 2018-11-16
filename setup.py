@@ -714,7 +714,7 @@ elif 'py2exe' in sys.argv:
                                "dist_dir": "win32_bzr.exe",
                                "optimize": 2,
                                "custom_boot_script":
-                                        "tools/win32/py2exe_boot_common.py",
+                                   "tools/win32/py2exe_boot_common.py",
                                },
                     }
 

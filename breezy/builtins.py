@@ -4649,7 +4649,7 @@ class cmd_merge(Command):
         if (user_location is not None
             and ((remember or
               (remember is None and
-                   tree.branch.get_submit_branch() is None)))):
+               tree.branch.get_submit_branch() is None)))):
             tree.branch.set_submit_branch(other_branch.base)
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
