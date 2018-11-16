@@ -26,6 +26,7 @@ class RecordCounter(object):
     the user an estimate of the amount of work pending for a fetch (push,
     pull, branch, checkout) operation.
     """
+
     def __init__(self):
         self.initialized = False
         self.current = 0
@@ -86,4 +87,3 @@ class RecordCounter(object):
         self.current += count
         if self.current > self.max:
             self.max += self.key_count
-

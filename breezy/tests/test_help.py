@@ -39,8 +39,8 @@ class TestErrors(tests.TestCase):
     def test_no_help_topic(self):
         error = help.NoHelpTopic("topic")
         self.assertEqualDiff("No help could be found for 'topic'. "
-            "Please use 'brz help topics' to obtain a list of topics.",
-            str(error))
+                             "Please use 'brz help topics' to obtain a list of topics.",
+                             str(error))
 
 
 class TestCommandHelp(tests.TestCase):
@@ -86,10 +86,10 @@ Options:
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext,
-            'Purpose: A sample command.\n'
-            'Usage:   brz Demo')
+                              'Purpose: A sample command.\n'
+                              'Usage:   brz Demo')
         self.assertEndsWith(helptext,
-            '  -v, --verbose  Display more information.\n\n')
+                            '  -v, --verbose  Display more information.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -170,7 +170,7 @@ Examples:
         brz Demo something
 
 ''',
-                                         helptext)
+                             helptext)
         helptext = cmd.get_help_text(plain=False)
         self.assertEqualDiff('''\
 :Purpose: A sample command.
@@ -424,7 +424,6 @@ zz{{:Options:
 zz{{:See also: gam}}
 ''')
 
-
     def test_help_custom_section_ordering(self):
         """Custom descriptive sections should remain in the order given."""
         # The help formatter expect the class name to start with 'cmd_'
@@ -539,9 +538,9 @@ class TestRegisteredTopic(TestHelp):
         # Pick a known topic stored in an external file
         topic = help_topics.RegisteredTopic('authentication')
         self.assertStartsWith(topic.get_help_text(),
-            'Authentication Settings\n'
-            '=======================\n'
-            '\n')
+                              'Authentication Settings\n'
+                              '=======================\n'
+                              '\n')
 
     def test_get_help_topic(self):
         """The help topic for RegisteredTopic is its topic from construction."""
@@ -675,9 +674,11 @@ class TestHelpIndices(tests.TestCase):
     def test_search_calls_get_topic(self):
         """Searching should call get_topics in all indexes in order."""
         calls = []
+
         class RecordingIndex(object):
             def __init__(self, name):
                 self.prefix = name
+
             def get_topics(self, topic):
                 calls.append(('get_topics', self.prefix, topic))
                 return ['something']
@@ -705,6 +706,7 @@ class TestHelpIndices(tests.TestCase):
             def __init__(self, prefix, search_result):
                 self.prefix = prefix
                 self.result = search_result
+
             def get_topics(self, topic):
                 return self.result
         index = help.HelpIndices()
@@ -712,11 +714,11 @@ class TestHelpIndices(tests.TestCase):
         index_two = CannedIndex('2', ['b', 'c'])
         index.search_path = [index_one, index_two]
         self.assertEqual([(index_one, 'a'), (index_two, 'b'), (index_two, 'c')],
-            index.search(None))
+                         index.search(None))
 
     def test_search_checks_for_duplicate_prefixes(self):
         """Its an error when there are multiple indices with the same prefix."""
         indices = help.HelpIndices()
         indices.search_path = [help_topics.HelpTopicIndex(),
-            help_topics.HelpTopicIndex()]
+                               help_topics.HelpTopicIndex()]
         self.assertRaises(errors.DuplicateHelpPrefix, indices.search, None)

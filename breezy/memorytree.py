@@ -121,7 +121,7 @@ class MemoryTree(MutableInventoryTree):
             bytes = self._file_transport.get_bytes(path)
             size = len(bytes)
             executable = self._inventory[id].executable
-            sha1 = None # no stat cache
+            sha1 = None  # no stat cache
             return (kind, size, executable, sha1)
         elif kind == 'directory':
             # memory tree does not support nested trees yet.
@@ -144,8 +144,8 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.has_filename()."""
         return self._file_transport.has(filename)
 
-    def is_executable(self, path, file_id=None):
-        return self._inventory[file_id].executable
+    def is_executable(self, path):
+        return self._inventory.get_entry_by_path(path).executable
 
     def kind(self, path, file_id=None):
         if file_id is None:
@@ -177,7 +177,7 @@ class MemoryTree(MutableInventoryTree):
                 self._lock_mode = "r"
                 self._populate_from_branch()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -191,7 +191,7 @@ class MemoryTree(MutableInventoryTree):
                 self._populate_from_branch()
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
         return lock.LogicalLockResult(self.unlock)
@@ -207,7 +207,7 @@ class MemoryTree(MutableInventoryTree):
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -229,8 +229,8 @@ class MemoryTree(MutableInventoryTree):
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
-                self._file_transport.put_file(path,
-                    self._basis_tree.get_file(path, entry.file_id))
+                self._file_transport.put_file(
+                    path, self._basis_tree.get_file(path))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
@@ -313,7 +313,7 @@ class MemoryTree(MutableInventoryTree):
         if len(parents_list) == 0:
             self._parent_ids = []
             self._basis_tree = self.branch.repository.revision_tree(
-                                   _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
@@ -321,7 +321,7 @@ class MemoryTree(MutableInventoryTree):
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None or parents_list[0][1] == b'null:':
                 self._basis_tree = self.branch.repository.revision_tree(
-                                       _mod_revision.NULL_REVISION)
+                    _mod_revision.NULL_REVISION)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

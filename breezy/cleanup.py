@@ -44,11 +44,11 @@ details.
 from __future__ import absolute_import
 
 from collections import deque
-import sys
 from . import (
     debug,
     trace,
     )
+
 
 def _log_cleanup_error(exc):
     trace.mutter('Cleanup failed:')
@@ -84,13 +84,14 @@ class ObjectWithCleanups(object):
 
     Subclass or client code can call add_cleanup and then later `cleanup_now`.
     """
+
     def __init__(self):
         self.cleanups = deque()
 
     def add_cleanup(self, cleanup_func, *args, **kwargs):
         """Add a cleanup to run.
 
-        Cleanups may be added at any time.  
+        Cleanups may be added at any time.
         Cleanups will be executed in LIFO order.
         """
         self.cleanups.appendleft((cleanup_func, args, kwargs))
@@ -163,7 +164,7 @@ def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
     """
     try:
         result = func(*args, **kwargs)
-    except:
+    except BaseException:
         # We have an exception from func already, so suppress cleanup errors.
         _run_cleanups(cleanup_funcs)
         raise
@@ -172,7 +173,7 @@ def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
     try:
         for cleanup, c_args, c_kwargs in pending_cleanups:
             cleanup(*c_args, **c_kwargs)
-    except:
+    except BaseException:
         # Still run the remaining cleanups but suppress any further errors.
         _run_cleanups(pending_cleanups)
         raise

@@ -49,9 +49,6 @@ from . import (
     errors,
     registry,
     )
-from .sixish import (
-    viewitems,
-    )
 
 
 class MustHaveWorkingTree(errors.BzrError):
@@ -134,13 +131,13 @@ class ControlDir(ControlComponent):
 
     def get_branches(self):
         """Get all branches in this control directory, as a dictionary.
-        
+
         :return: Dictionary mapping branch names to instances.
         """
         try:
-           return { "": self.open_branch() }
+            return {"": self.open_branch()}
         except (errors.NotBranchError, errors.NoRepositoryPresent):
-           return {}
+            return {}
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for
@@ -197,18 +194,18 @@ class ControlDir(ControlComponent):
     def destroy_branch(self, name=None):
         """Destroy a branch in this ControlDir.
 
-        :param name: Name of the branch to destroy, None for the 
+        :param name: Name of the branch to destroy, None for the
             user selected branch or "" for the active branch.
         :raise NotBranchError: When the branch does not exist
         """
         raise NotImplementedError(self.destroy_branch)
 
     def create_workingtree(self, revision_id=None, from_branch=None,
-        accelerator_tree=None, hardlink=False):
+                           accelerator_tree=None, hardlink=False):
         """Create a working tree at this ControlDir.
 
         :param revision_id: create it as of this revision id.
-        :param from_branch: override controldir branch 
+        :param from_branch: override controldir branch
             (for lightweight checkouts)
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
@@ -403,7 +400,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.sprout)
 
     def push_branch(self, source, revision_id=None, overwrite=False,
-        remember=False, create_prefix=False, lossy=False):
+                    remember=False, create_prefix=False, lossy=False):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -446,13 +443,13 @@ class ControlDir(ControlComponent):
             try:
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
-                push_result.branch_push_result = source.push(br_to, 
-                    overwrite, stop_revision=revision_id, lossy=lossy)
+                push_result.branch_push_result = source.push(br_to,
+                                                             overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(br_to,
-                    overwrite, stop_revision=revision_id, lossy=lossy)
-                push_result.workingtree_updated = None # Not applicable
+                                                             overwrite, stop_revision=revision_id, lossy=lossy)
+                push_result.workingtree_updated = None  # Not applicable
             else:
                 with tree_to.lock_write():
                     push_result.branch_push_result = source.push(
@@ -515,8 +512,8 @@ class ControlDir(ControlComponent):
                                        preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
-        force_new_repo=False, preserve_stacking=False, stacked_on=None,
-        create_prefix=False, use_existing_dir=True, no_tree=False):
+                           force_new_repo=False, preserve_stacking=False, stacked_on=None,
+                           create_prefix=False, use_existing_dir=True, no_tree=False):
         """Clone this controldir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -689,8 +686,8 @@ class ControlDir(ControlComponent):
         if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
         controldir = klass.create_branch_and_repo(base,
-                                               force_new_repo=True,
-                                               format=format).controldir
+                                                  force_new_repo=True,
+                                                  format=format).controldir
         return controldir.create_workingtree()
 
     @classmethod
@@ -707,7 +704,7 @@ class ControlDir(ControlComponent):
         """
         t = _mod_transport.get_transport(base, possible_transports)
         return klass.open_from_transport(t, probers=probers,
-                _unsupported=_unsupported)
+                                         _unsupported=_unsupported)
 
     @classmethod
     def open_from_transport(klass, transport, _unsupported=False,
@@ -722,16 +719,17 @@ class ControlDir(ControlComponent):
         # Keep initial base since 'transport' may be modified while following
         # the redirections.
         base = transport.base
+
         def find_format(transport):
             return transport, ControlDirFormat.find_format(transport,
-                probers=probers)
+                                                           probers=probers)
 
         def redirected(transport, e, redirection_notice):
             redirected_transport = transport._redirected_to(e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(base)
             trace.note(gettext('{0} is{1} redirected to {2}').format(
-                 transport.base, e.permanently, redirected_transport.base))
+                transport.base, e.permanently, redirected_transport.base))
             return redirected_transport
 
         try:
@@ -775,7 +773,7 @@ class ControlDir(ControlComponent):
             try:
                 result = klass.open_from_transport(a_transport)
                 return result, urlutils.unescape(a_transport.relpath(url))
-            except errors.NotBranchError as e:
+            except errors.NotBranchError:
                 pass
             except errors.PermissionDenied:
                 pass
@@ -803,7 +801,7 @@ class ControlDir(ControlComponent):
 
     @classmethod
     def open_containing_tree_or_branch(klass, location,
-            possible_transports=None):
+                                       possible_transports=None):
         """Return the branch and working tree contained by a location.
 
         Returns (tree, branch, relpath).
@@ -813,7 +811,7 @@ class ControlDir(ControlComponent):
         relpath is the portion of the path that is contained by the branch.
         """
         controldir, relpath = klass.open_containing(location,
-            possible_transports=possible_transports)
+                                                    possible_transports=possible_transports)
         tree, branch = controldir._get_tree_branch()
         return tree, branch, relpath
 
@@ -853,7 +851,7 @@ class ControlDir(ControlComponent):
         """
         if klass is not ControlDir:
             raise AssertionError("ControlDir.create always creates the"
-                "default format, not one of %r" % klass)
+                                 "default format, not one of %r" % klass)
         t = _mod_transport.get_transport(base, possible_transports)
         t.ensure_base()
         if format is None:
@@ -868,13 +866,14 @@ class ControlDirHooks(hooks.Hooks):
         """Create the default hooks."""
         hooks.Hooks.__init__(self, "breezy.controldir", "ControlDir.hooks")
         self.add_hook('pre_open',
-            "Invoked before attempting to open a ControlDir with the transport "
-            "that the open will use.", (1, 14))
+                      "Invoked before attempting to open a ControlDir with the transport "
+                      "that the open will use.", (1, 14))
         self.add_hook('post_repo_init',
-            "Invoked after a repository has been initialized. "
-            "post_repo_init is called with a "
-            "breezy.controldir.RepoInitHookParams.",
-            (2, 2))
+                      "Invoked after a repository has been initialized. "
+                      "post_repo_init is called with a "
+                      "breezy.controldir.RepoInitHookParams.",
+                      (2, 2))
+
 
 # install the default hooks
 ControlDir.hooks = ControlDirHooks()
@@ -899,7 +898,7 @@ class ControlComponentFormat(object):
         return True
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-        basedir=None):
+                             basedir=None):
         """Give an error or warning on old formats.
 
         :param allow_unsupported: If true, allow opening
@@ -1000,7 +999,7 @@ class Converter(object):
 
     def step(self, message):
         """Update the pb by a step."""
-        self.count +=1
+        self.count += 1
         self.pb.update(message, self.count, self.total)
 
 
@@ -1088,7 +1087,7 @@ class ControlDirFormat(object):
         return self.is_supported()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-        basedir=None):
+                             basedir=None):
         """Give an error or warning on old formats.
 
         :param allow_unsupported: If true, allow opening
@@ -1108,7 +1107,7 @@ class ControlDirFormat(object):
 
     def same_model(self, target_format):
         return (self.repository_format.rich_root_data ==
-            target_format.rich_root_data)
+                target_format.rich_root_data)
 
     @classmethod
     def register_prober(klass, prober):
@@ -1184,9 +1183,9 @@ class ControlDirFormat(object):
         raise NotImplementedError(self.initialize_on_transport)
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
-        create_prefix=False, force_new_repo=False, stacked_on=None,
-        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
-        shared_repo=False, vfs_only=False):
+                                   create_prefix=False, force_new_repo=False, stacked_on=None,
+                                   stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+                                   shared_repo=False, vfs_only=False):
         """Create this format on transport.
 
         The directory to initialize will be created.
@@ -1318,7 +1317,7 @@ class ControlDirFormatRegistry(registry.Registry):
         supplied directly.
         """
         registry.Registry.register(self, key, factory, help,
-            ControlDirFormatInfo(native, deprecated, hidden, experimental))
+                                   ControlDirFormatInfo(native, deprecated, hidden, experimental))
         self._registration_order.append(key)
 
     def register_alias(self, key, target, hidden=False):
@@ -1330,14 +1329,14 @@ class ControlDirFormatRegistry(registry.Registry):
         """
         info = self.get_info(target)
         registry.Registry.register_alias(self, key, target,
-                ControlDirFormatInfo(
-                    native=info.native, deprecated=info.deprecated,
-                    hidden=hidden, experimental=info.experimental))
+                                         ControlDirFormatInfo(
+                                             native=info.native, deprecated=info.deprecated,
+                                             hidden=hidden, experimental=info.experimental))
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
-        deprecated=False, hidden=False, experimental=False):
+                      deprecated=False, hidden=False, experimental=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
-            help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
+                                        help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
         self._registration_order.append(key)
 
     def set_default(self, key):
@@ -1379,9 +1378,9 @@ class ControlDirFormatRegistry(registry.Registry):
             if info.native:
                 help = '(native) ' + help
             return ':%s:\n%s\n\n' % (key,
-                textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    ',
-                    break_long_words=False))
+                                     textwrap.fill(help, initial_indent='    ',
+                                                   subsequent_indent='    ',
+                                                   break_long_words=False))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))
@@ -1416,7 +1415,7 @@ class ControlDirFormatRegistry(registry.Registry):
             other_output += \
                 "\nNo deprecated formats are available.\n\n"
         other_output += \
-                "\nSee :doc:`formats-help` for more about storage formats."
+            "\nSee :doc:`formats-help` for more about storage formats."
 
         if topic == 'other-formats':
             return other_output
@@ -1454,10 +1453,10 @@ class RepoInitHookParams(object):
     def __repr__(self):
         if self.repository:
             return "<%s for %s>" % (self.__class__.__name__,
-                self.repository)
+                                    self.repository)
         else:
             return "<%s for %s>" % (self.__class__.__name__,
-                self.controldir)
+                                    self.controldir)
 
 
 def is_control_filename(filename):
@@ -1473,6 +1472,7 @@ class RepositoryAcquisitionPolicy(object):
     for a branch that is being created.  The most basic policy decision is
     whether to create a new repository or use an existing one.
     """
+
     def __init__(self, stack_on, stack_on_pwd, require_stacking):
         """Constructor.
 
@@ -1497,8 +1497,8 @@ class RepositoryAcquisitionPolicy(object):
         else:
             try:
                 stack_on = urlutils.rebase_url(self._stack_on,
-                    self._stack_on_pwd,
-                    branch.user_url)
+                                               self._stack_on_pwd,
+                                               branch.user_url)
             except urlutils.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:
@@ -1528,7 +1528,7 @@ class RepositoryAcquisitionPolicy(object):
             return
         try:
             stacked_dir = ControlDir.open(
-                    stack_on, possible_transports=possible_transports)
+                stack_on, possible_transports=possible_transports)
         except errors.JailBreak:
             # We keep the stacking details, but we are in the server code so
             # actually stacking is not needed.
@@ -1546,7 +1546,7 @@ class RepositoryAcquisitionPolicy(object):
             self._require_stacking = True
 
     def acquire_repository(self, make_working_trees=None, shared=False,
-            possible_transports=None):
+                           possible_transports=None):
         """Acquire a repository for this controlrdir.
 
         Implementations may create a new repository or use a pre-exising
@@ -1558,7 +1558,8 @@ class RepositoryAcquisitionPolicy(object):
         :return: A repository, is_new_flag (True if the repository was
             created).
         """
-        raise NotImplementedError(RepositoryAcquisitionPolicy.acquire_repository)
+        raise NotImplementedError(
+            RepositoryAcquisitionPolicy.acquire_repository)
 
 
 # Please register new formats after old formats so that formats

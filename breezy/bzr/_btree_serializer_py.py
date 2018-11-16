@@ -70,5 +70,5 @@ def _flatten_node(node, reference_lists):
         flattened_references = []
     string_key = b'\x00'.join(node[1])
     line = (b"%s\x00%s\x00%s\n" % (string_key,
-        b'\t'.join(flattened_references), node[2]))
+                                   b'\t'.join(flattened_references), node[2]))
     return string_key, line

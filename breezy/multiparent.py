@@ -32,6 +32,7 @@ from breezy import (
     ui,
     )
 """)
+from .i18n import gettext
 from .sixish import (
     BytesIO,
     range,
@@ -44,15 +45,18 @@ def topo_iter_keys(vf, keys=None):
     parents = vf.get_parent_map(keys)
     return _topo_iter(parents, keys)
 
+
 def topo_iter(vf, versions=None):
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
     return _topo_iter(parents, versions)
 
+
 def _topo_iter(parents, versions):
     seen = set()
     descendants = {}
+
     def pending_parents(version):
         if parents[version] is None:
             return []
@@ -116,6 +120,7 @@ class MultiParent(object):
         parent_text = []
         block_iter = [iter(i) for i in parent_comparisons]
         diff = MultiParent([])
+
         def next_block(p):
             try:
                 return next(block_iter[p])
@@ -252,7 +257,7 @@ class MultiParent(object):
         extra_n = 0
         for hunk in reversed(self.hunks):
             if isinstance(hunk, ParentText):
-               return hunk.child_pos + hunk.num_lines + extra_n
+                return hunk.child_pos + hunk.num_lines + extra_n
             extra_n += len(hunk.lines)
         return extra_n
 
@@ -338,7 +343,7 @@ class BaseVersionedFile(object):
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\
-            len(self._snapshots) == self.max_snapshots:
+                len(self._snapshots) == self.max_snapshots:
             return False
         if len(parent_ids) == 0:
             return True
@@ -436,7 +441,6 @@ class BaseVersionedFile(object):
     def select_snapshots(self, vf):
         """Determine which versions to add as snapshots"""
         build_ancestors = {}
-        descendants = {}
         snapshots = set()
         for version_id in topo_iter(vf):
             potential_build_ancestors = set(vf.get_parents(version_id))
@@ -463,7 +467,6 @@ class BaseVersionedFile(object):
     def get_size_ranking(self):
         """Get versions ranked by size"""
         versions = []
-        new_snapshots = set()
         for version_id in self.versions():
             if version_id in self._snapshots:
                 continue
@@ -497,8 +500,8 @@ class BaseVersionedFile(object):
         ranking = []
         while len(available_versions) > 0:
             available_versions.sort(key=lambda x:
-                len(could_avoid[x]) *
-                len(referenced_by.get(x, [])))
+                                    len(could_avoid[x]) *
+                                    len(referenced_by.get(x, [])))
             selected = available_versions.pop()
             ranking.append(selected)
             for version_id in referenced_by[selected]:
@@ -571,14 +574,14 @@ class MultiVersionedFile(BaseVersionedFile):
     def add_diff(self, diff, version_id, parent_ids):
         with open(self._filename + '.mpknit', 'ab') as outfile:
             outfile.seek(0, 2)      # workaround for windows bug:
-                                    # .tell() for files opened in 'ab' mode
-                                    # before any write returns 0
+            # .tell() for files opened in 'ab' mode
+            # before any write returns 0
             start = outfile.tell()
             with gzip.GzipFile(None, mode='ab', fileobj=outfile) as zipfile:
                 zipfile.writelines(itertools.chain(
                     [b'version %s\n' % version_id], diff.to_patch()))
             end = outfile.tell()
-        self._diff_offset[version_id] = (start, end-start)
+        self._diff_offset[version_id] = (start, end - start)
         self._parents[version_id] = parent_ids
 
     def destroy(self):

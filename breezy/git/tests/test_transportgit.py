@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from dulwich.objects import Blob
 from dulwich.tests.test_object_store import PackBasedObjectStoreTests
-from dulwich.tests.test_refs import RefsContainerTests
 from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport
@@ -50,7 +49,7 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         self.assertEqual({'pack-%s.pack' % packname.decode('ascii'), 'pack-%s.idx' % packname.decode('ascii')},
                          set(self.store._pack_names()))
         self.store.transport.put_bytes_non_atomic('info/packs',
-                b'P foo-pack.pack\n')
+                                                  b'P foo-pack.pack\n')
         self.assertEqual({'pack-%s.pack' % packname.decode('ascii'), 'pack-%s.idx' % packname.decode('ascii')},
                          set(self.store._pack_names()))
 
@@ -74,20 +73,17 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
 
 class TransportRefContainerTests(TestCaseWithTransport):
 
-   def setUp(self):
-       TestCaseWithTransport.setUp(self)
-       self._refs = TransportRefsContainer(self.get_transport())
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self._refs = TransportRefsContainer(self.get_transport())
 
-   def test_packed_refs_missing(self):
+    def test_packed_refs_missing(self):
         self.assertEqual({}, self._refs.get_packed_refs())
 
-   def test_packed_refs(self):
+    def test_packed_refs(self):
         self.get_transport().put_bytes_non_atomic('packed-refs',
-                b'# pack-refs with: peeled fully-peeled sorted \n'
-                b'2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee refs/heads/master')
+                                                  b'# pack-refs with: peeled fully-peeled sorted \n'
+                                                  b'2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee refs/heads/master')
         self.assertEqual(
-                {b'refs/heads/master': b'2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee'},
-                self._refs.get_packed_refs())
-
-
-
+            {b'refs/heads/master': b'2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee'},
+            self._refs.get_packed_refs())

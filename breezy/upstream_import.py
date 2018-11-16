@@ -21,7 +21,6 @@ from __future__ import absolute_import
 import errno
 from io import (
     BytesIO,
-    StringIO,
     )
 import os
 import re
@@ -75,7 +74,7 @@ class ZipFileWrapper(object):
 
     def add(self, filename):
         if isdir(filename):
-            self.zipfile.writestr(filename+'/', '')
+            self.zipfile.writestr(filename + '/', '')
         else:
             self.zipfile.write(filename)
 
@@ -220,6 +219,7 @@ def import_tar(tree, tar_input):
     tar_file = tarfile.open('lala', 'r', tar_input)
     import_archive(tree, tar_file)
 
+
 def import_zip(tree, zip_input):
     zip_file = ZipFileWrapper(zip_input, 'r')
     import_archive(tree, zip_file)
@@ -263,7 +263,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         if not isinstance(relative_path, text_type):
             relative_path = relative_path.decode('utf-8')
         if prefix is not None:
-            relative_path = relative_path[len(prefix)+1:]
+            relative_path = relative_path[len(prefix) + 1:]
             relative_path = relative_path.rstrip('/')
         if relative_path == '':
             continue

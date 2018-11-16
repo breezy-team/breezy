@@ -35,7 +35,7 @@ def sample_deprecated_function():
 
 
 a_deprecated_list = symbol_versioning.deprecated_list(deprecated_in((0, 9, 0)),
-    'a_deprecated_list', ['one'], extra="Don't use me")
+                                                      'a_deprecated_list', ['one'], extra="Don't use me")
 
 
 a_deprecated_dict = symbol_versioning.DeprecatedDict(
@@ -54,7 +54,7 @@ class TestDeprecationWarnings(TestCase):
     def setUp(self):
         super(TestDeprecationWarnings, self).setUp()
         self._warnings = []
-    
+
     @deprecated_method(deprecated_in((0, 7, 0)))
     def deprecated_method(self):
         """Deprecated method docstring.
@@ -139,24 +139,25 @@ class TestDeprecationWarnings(TestCase):
             self.assertEqual(['one', 'foo'], a_deprecated_list)
 
             a_deprecated_list.extend(['bar', 'baz'])
-            self.assertEqual([expected_warning]*2, self._warnings)
+            self.assertEqual([expected_warning] * 2, self._warnings)
             self.assertEqual(['one', 'foo', 'bar', 'baz'], a_deprecated_list)
 
             a_deprecated_list.insert(1, 'xxx')
-            self.assertEqual([expected_warning]*3, self._warnings)
-            self.assertEqual(['one', 'xxx', 'foo', 'bar', 'baz'], a_deprecated_list)
+            self.assertEqual([expected_warning] * 3, self._warnings)
+            self.assertEqual(
+                ['one', 'xxx', 'foo', 'bar', 'baz'], a_deprecated_list)
 
             a_deprecated_list.remove('foo')
-            self.assertEqual([expected_warning]*4, self._warnings)
+            self.assertEqual([expected_warning] * 4, self._warnings)
             self.assertEqual(['one', 'xxx', 'bar', 'baz'], a_deprecated_list)
 
             val = a_deprecated_list.pop()
-            self.assertEqual([expected_warning]*5, self._warnings)
+            self.assertEqual([expected_warning] * 5, self._warnings)
             self.assertEqual('baz', val)
             self.assertEqual(['one', 'xxx', 'bar'], a_deprecated_list)
 
             val = a_deprecated_list.pop(1)
-            self.assertEqual([expected_warning]*6, self._warnings)
+            self.assertEqual([expected_warning] * 6, self._warnings)
             self.assertEqual('xxx', val)
             self.assertEqual(['one', 'bar'], a_deprecated_list)
         finally:
@@ -181,7 +182,6 @@ class TestDeprecationWarnings(TestCase):
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
 
-
     def check_deprecated_callable(self, expected_warning, expected_docstring,
                                   expected_name, expected_module,
                                   deprecated_callable):
@@ -196,9 +196,11 @@ class TestDeprecationWarnings(TestCase):
             deprecated_callable()
             self.assertEqual([expected_warning, expected_warning],
                              self._warnings)
-            self.assertEqualDiff(expected_docstring, deprecated_callable.__doc__)
+            self.assertEqualDiff(expected_docstring,
+                                 deprecated_callable.__doc__)
             self.assertEqualDiff(expected_name, deprecated_callable.__name__)
-            self.assertEqualDiff(expected_module, deprecated_callable.__module__)
+            self.assertEqualDiff(
+                expected_module, deprecated_callable.__module__)
             self.assertTrue(deprecated_callable.is_deprecated)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
@@ -209,7 +211,7 @@ class TestDeprecationWarnings(TestCase):
         self.assertEqual(True, symbol_versioning.deprecated_passed(False))
         self.assertEqual(False,
                          symbol_versioning.deprecated_passed(
-                            symbol_versioning.DEPRECATED_PARAMETER))
+                             symbol_versioning.DEPRECATED_PARAMETER))
 
     def test_deprecation_string(self):
         """We can get a deprecation string for a method or function."""
@@ -217,15 +219,15 @@ class TestDeprecationWarnings(TestCase):
             self.test_deprecation_string,
             deprecated_in((0, 11, 0)))
         self.assertEqual(err_message,
-                 'breezy.tests.test_symbol_versioning.TestDeprecationWarnings.'
-                 'test_deprecation_string was deprecated in '
-                 'version 0.11.0.')
+                         'breezy.tests.test_symbol_versioning.TestDeprecationWarnings.'
+                         'test_deprecation_string was deprecated in '
+                         'version 0.11.0.')
 
         self.assertEqual('breezy.symbol_versioning.deprecated_function was '
-            'deprecated in version 0.11.0.',
-            symbol_versioning.deprecation_string(
-                symbol_versioning.deprecated_function,
-                deprecated_in((0, 11, 0))))
+                         'deprecated in version 0.11.0.',
+                         symbol_versioning.deprecation_string(
+                             symbol_versioning.deprecated_function,
+                             deprecated_in((0, 11, 0))))
 
 
 class TestSuppressAndActivate(TestCase):
@@ -233,6 +235,7 @@ class TestSuppressAndActivate(TestCase):
     def setUp(self):
         super(TestSuppressAndActivate, self).setUp()
         existing_filters = list(warnings.filters)
+
         def restore():
             warnings.filters[:] = existing_filters
         self.addCleanup(restore)

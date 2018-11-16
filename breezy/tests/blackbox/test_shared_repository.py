@@ -30,7 +30,7 @@ class TestSharedRepo(TestCaseInTempDir):
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository a")
         self.assertEqual(out,
-"""Shared repository with trees (format: 2a)
+                         """Shared repository with trees (format: 2a)
 Location:
   shared repository: a
 """)
@@ -82,7 +82,8 @@ Location:
     def test_branch_tree(self):
         self.run_bzr("init-repo --trees a")
         self.run_bzr("init --format=default b")
-        with open('b/hello', 'wt') as f: f.write('bar')
+        with open('b/hello', 'wt') as f:
+            f.write('bar')
         self.run_bzr("add b/hello")
         self.run_bzr("commit -m bar b/hello")
 
@@ -131,7 +132,7 @@ Location:
         self.assertEqual(out, "")
         self.assertEqual(err, "")
         dir = ControlDir.open('a')
-        dir.open_repository() # there is a repository there
+        dir.open_repository()  # there is a repository there
         e = self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertContainsRe(str(e), "location is a repository")
 
@@ -146,7 +147,8 @@ Location:
 
     def test_init_repo_with_post_repo_init_hook(self):
         calls = []
-        ControlDir.hooks.install_named_hook('post_repo_init', calls.append, None)
+        ControlDir.hooks.install_named_hook(
+            'post_repo_init', calls.append, None)
         self.assertLength(0, calls)
         self.run_bzr("init-repository a")
         self.assertLength(1, calls)

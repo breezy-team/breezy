@@ -49,9 +49,9 @@ def load_tests(loader, standard_tests, pattern):
         else:
             colo_unsupported_formats.append(format)
     supported_scenarios = make_scenarios(default_transport, None, None,
-        colo_supported_formats)
+                                         colo_supported_formats)
     unsupported_scenarios = make_scenarios(default_transport, None, None,
-        colo_unsupported_formats)
+                                           colo_unsupported_formats)
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     unsupported_scenarios.extend(make_scenarios(

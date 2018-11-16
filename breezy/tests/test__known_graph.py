@@ -72,7 +72,7 @@ alt_merge = {b'a': [], b'b': [b'a'], b'c': [b'b'], b'd': [b'a', b'c']}
 class TestCaseWithKnownGraph(tests.TestCase):
 
     scenarios = caching_scenarios()
-    module = None # Set by load_tests
+    module = None  # Set by load_tests
 
     def make_known_graph(self, ancestry):
         return self.module.KnownGraph(ancestry, do_cache=self.do_cache)
@@ -103,7 +103,7 @@ class TestKnownGraph(TestCaseWithKnownGraph):
         self.assertEqual([b'rev2b', b'rev3'],
                          sorted(graph.get_parent_keys(b'rev4')))
         self.assertRaises(KeyError, graph.get_child_keys, b'not_in_graph')
-    
+
     def test_parent_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
         self.assertEqual(None, graph.get_parent_keys(b'g'))
@@ -212,7 +212,7 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
 
     scenarios = caching_scenarios() + non_caching_scenarios()
-    do_cache = None # Set by load_tests
+    do_cache = None  # Set by load_tests
 
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
@@ -359,7 +359,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
     def test_topo_sort_cycle(self):
         """TopoSort traps graph with cycles"""
         g = self.make_known_graph({0: [1],
-                                  1: [0]})
+                                   1: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_2(self):
@@ -484,12 +484,12 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
                  'F': ['B', 'D'],
                  }
         self.assertSortAndIterate(graph, 'F',
-            [('F', 0, (3,), False),
-             ('D', 1, (2, 2, 1), False),
-             ('C', 2, (2, 1, 1), True),
-             ('B', 0, (2,), False),
-             ('A', 0, (1,), True),
-             ])
+                                  [('F', 0, (3,), False),
+                                   ('D', 1, (2, 2, 1), False),
+                                      ('C', 2, (2, 1, 1), True),
+                                      ('B', 0, (2,), False),
+                                      ('A', 0, (1,), True),
+                                   ])
         # A
         # |
         # B-.
@@ -507,13 +507,13 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
                  'F': ['B', 'D'],
                  }
         self.assertSortAndIterate(graph, 'F',
-            [('F', 0, (3,), False),
-             ('D', 1, (2, 1, 2), False),
-             ('C', 2, (2, 2, 1), True),
-             ('X', 1, (2, 1, 1), True),
-             ('B', 0, (2,), False),
-             ('A', 0, (1,), True),
-             ])
+                                  [('F', 0, (3,), False),
+                                   ('D', 1, (2, 1, 2), False),
+                                      ('C', 2, (2, 2, 1), True),
+                                      ('X', 1, (2, 1, 1), True),
+                                      ('B', 0, (2,), False),
+                                      ('A', 0, (1,), True),
+                                   ])
 
     def test_merge_depth_with_nested_merges(self):
         # the merge depth marker should reflect the depth of the revision
@@ -538,7 +538,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'H': []
              },
             'A',
-            [('A', 0, (3,),  False),
+            [('A', 0, (3,), False),
              ('B', 1, (1, 3, 2), False),
              ('C', 1, (1, 3, 1), True),
              ('D', 0, (2,), False),
@@ -574,7 +574,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'J': ['G', 'H'],
              'K': ['I'],
              'L': ['J', 'K'],
-            },
+             },
             'L',
             [('L', 0, (6,), False),
              ('K', 1, (1, 3, 2), False),
@@ -587,7 +587,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              ('C', 1, (1, 1, 1), True),
              ('D', 0, (3,), False),
              ('B', 0, (2,), False),
-             ('A', 0, (1,),  True),
+             ('A', 0, (1,), True),
              ],
             )
         # Adding a shortcut from the first revision should not change any of
@@ -607,7 +607,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'L': ['J', 'K'],
              'M': ['A'],
              'N': ['L', 'M'],
-            },
+             },
             'N',
             [('N', 0, (7,), False),
              ('M', 1, (1, 4, 1), True),
@@ -622,7 +622,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              ('C', 1, (1, 1, 1), True),
              ('D', 0, (3,), False),
              ('B', 0, (2,), False),
-             ('A', 0, (1,),  True),
+             ('A', 0, (1,), True),
              ],
             )
 
@@ -709,7 +709,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         # root: A: []
         self.assertSortAndIterate(
             {'J': ['G', 'I'],
-             'I': ['H',],
+             'I': ['H', ],
              'H': ['A'],
              'G': ['D', 'F'],
              'F': ['E'],
@@ -768,7 +768,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'P': ['N'],
              'Q': ['O', 'P'],
              'R': ['J', 'Q'],
-            },
+             },
             'R',
             [('R', 0, (6,), False),
              ('Q', 1, (0, 4, 5), False),
@@ -802,12 +802,12 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
             {'A': [],
              'B': ['A'],
              'C': ['B', 'ghost'],
-            },
+             },
             'C',
             [('C', 0, (3,), False),
              ('B', 0, (2,), False),
              ('A', 0, (1,), True),
-            ])
+             ])
 
     def test_lefthand_ghost(self):
         # ghost
@@ -818,10 +818,10 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         self.assertSortAndIterate(
             {'A': ['ghost'],
              'B': ['A'],
-            }, 'B',
+             }, 'B',
             [('B', 0, (2,), False),
              ('A', 0, (1,), True),
-            ])
+             ])
 
     def test_graph_cycle(self):
         # merge_sort should fail with a simple error when a graph cycle is
@@ -837,15 +837,15 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         # |'-'
         # E
         self.assertRaises(errors.GraphCycleError,
-            self.assertSortAndIterate,
-                {'A': [],
-                 'B': ['D'],
-                 'C': ['B'],
-                 'D': ['C'],
-                 'E': ['D'],
-                },
-                'E',
-                [])
+                          self.assertSortAndIterate,
+                          {'A': [],
+                           'B': ['D'],
+                              'C': ['B'],
+                              'D': ['C'],
+                              'E': ['D'],
+                           },
+                          'E',
+                          [])
 
 
 class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
@@ -862,16 +862,16 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
         self.assertSorted([], {})
 
     def test_single(self):
-        self.assertSorted(['a'], {'a':()})
-        self.assertSorted([('a',)], {('a',):()})
-        self.assertSorted([('F', 'a')], {('F', 'a'):()})
+        self.assertSorted(['a'], {'a': ()})
+        self.assertSorted([('a',)], {('a',): ()})
+        self.assertSorted([('F', 'a')], {('F', 'a'): ()})
 
     def test_linear(self):
-        self.assertSorted(['c', 'b', 'a'], {'a':(), 'b':('a',), 'c':('b',)})
+        self.assertSorted(['c', 'b', 'a'], {'a': (), 'b': ('a',), 'c': ('b',)})
         self.assertSorted([('c',), ('b',), ('a',)],
-                          {('a',):(), ('b',): (('a',),), ('c',): (('b',),)})
+                          {('a',): (), ('b',): (('a',),), ('c',): (('b',),)})
         self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a')],
-                          {('F', 'a'):(), ('F', 'b'): (('F', 'a'),),
+                          {('F', 'a'): (), ('F', 'b'): (('F', 'a'),),
                            ('F', 'c'): (('F', 'b'),)})
 
     def test_mixed_ancestries(self):
@@ -879,26 +879,26 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
         self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a'),
                            ('G', 'c'), ('G', 'b'), ('G', 'a'),
                            ('Q', 'c'), ('Q', 'b'), ('Q', 'a'),
-                          ],
+                           ],
                           {('F', 'a'): (), ('F', 'b'): (('F', 'a'),),
                            ('F', 'c'): (('F', 'b'),),
                            ('G', 'a'): (), ('G', 'b'): (('G', 'a'),),
                            ('G', 'c'): (('G', 'b'),),
                            ('Q', 'a'): (), ('Q', 'b'): (('Q', 'a'),),
                            ('Q', 'c'): (('Q', 'b'),),
-                          })
+                           })
 
     def test_stable_sorting(self):
         # the sort order should be stable even when extra nodes are added
         self.assertSorted(['b', 'c', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',)})
         self.assertSorted(['b', 'c', 'd', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',)})
         self.assertSorted(['b', 'c', 'd', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',)})
         self.assertSorted(['Z', 'b', 'c', 'd', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',),
-                           'Z':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',),
+                           'Z': ('a',)})
         self.assertSorted(['e', 'b', 'c', 'f', 'Z', 'd', 'a'],
                           {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',),
                            'Z': ('a',),
@@ -908,8 +908,8 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
 
     def test_skip_ghost(self):
         self.assertSorted(['b', 'c', 'a'],
-                          {'a':(), 'b':('a', 'ghost'), 'c':('a',)})
+                          {'a': (), 'b': ('a', 'ghost'), 'c': ('a',)})
 
     def test_skip_mainline_ghost(self):
         self.assertSorted(['b', 'c', 'a'],
-                          {'a':(), 'b':('ghost', 'a'), 'c':('a',)})
+                          {'a': (), 'b': ('ghost', 'a'), 'c': ('a',)})

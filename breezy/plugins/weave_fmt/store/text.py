@@ -34,7 +34,6 @@ from . import TransportStore
 from ....trace import mutter
 
 
-
 class TextStore(TransportStore):
     """Store that holds files indexed by unique names.
 
