@@ -225,7 +225,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
             revprops={'author': 'Joe Example <joe@example.com>'})
         rev = wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo('.')
-        self.assertEqual('Joe Example <joe@example.com>', r[r.head()].author)
+        self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
 
     def test_authors(self):
         wt = self.make_branch_and_tree('.', format='git')
@@ -234,7 +234,7 @@ class RevpropsRepository(tests.TestCaseWithTransport):
             revprops={'authors': 'Joe Example <joe@example.com>'})
         rev = wt.branch.repository.get_revision(revid)
         r = dulwich.repo.Repo('.')
-        self.assertEqual('Joe Example <joe@example.com>', r[r.head()].author)
+        self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
 
     def test_multiple_authors(self):
         wt = self.make_branch_and_tree('.', format='git')
