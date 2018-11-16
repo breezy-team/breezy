@@ -6277,8 +6277,11 @@ class cmd_switch(Command):
                     gettext('cannot create branch without source branch'))
             to_location = lookup_new_sibling_branch(control_dir, to_location,
                  possible_transports=possible_transports)
+            if revision is not None:
+                revision = revision.as_revision_id(branch)
             to_branch = branch.controldir.sprout(to_location,
                  possible_transports=possible_transports,
+                 revision_id=revision,
                  source_branch=branch).open_branch()
         else:
             try:
@@ -6287,8 +6290,8 @@ class cmd_switch(Command):
             except errors.NotBranchError:
                 to_branch = open_sibling_branch(control_dir, to_location,
                     possible_transports=possible_transports)
-        if revision is not None:
-            revision = revision.as_revision_id(to_branch)
+            if revision is not None:
+                revision = revision.as_revision_id(to_branch)
         try:
             switch.switch(control_dir, to_branch, force, revision_id=revision,
                           store_uncommitted=store)
