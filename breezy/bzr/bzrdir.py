@@ -35,7 +35,6 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     cleanup,
-    fetch,
     graph,
     lockable_files,
     lockdir,
@@ -50,6 +49,7 @@ from breezy import (
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
+    fetch,
     remote,
     vf_search,
     workingtree_3,
