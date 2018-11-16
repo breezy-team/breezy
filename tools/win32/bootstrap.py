@@ -47,7 +47,7 @@ else:
         return c
 
 cmd = 'from setuptools.command.easy_install import main; main()'
-ws  = pkg_resources.working_set
+ws = pkg_resources.working_set
 
 if is_jython:
     import subprocess
