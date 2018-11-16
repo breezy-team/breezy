@@ -316,7 +316,7 @@ class GitBranchFormat(branch.BranchFormat):
         raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
-        return controldir.get_branch_reference(name)
+        return controldir.get_branch_reference(name=name)
 
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
@@ -407,13 +407,13 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
-        cs = self.repository._git.get_config_stack()
-        try:
-            nick = cs.get((b"branch", self.name.encode('utf-8')), b"nick")
-        except KeyError:
-            pass
-        else:
-            return nick.decode("utf-8")
+        if getattr(self.repository, '_git', None):
+            cs = self.repository._git.get_config_stack()
+            try:
+                return cs.get((b"branch", self.name.encode('utf-8')),
+                               b"nick").decode("utf-8")
+            except KeyError:
+                pass
         return self.name or u"HEAD"
 
     def _set_nick(self, nick):
@@ -902,7 +902,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                     _override_hook_target, _hook_master):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = GitBranchPullResult()
         result.source_branch = self.source
@@ -988,7 +988,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def _basic_push(self, overwrite, stop_revision):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = branch.BranchPushResult()
         result.source_branch = self.source
@@ -1085,7 +1085,7 @@ class InterGitLocalGitBranch(InterGitBranch):
     def _basic_push(self, overwrite=False, stop_revision=None):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = GitBranchPushResult()
         result.source_branch = self.source
@@ -1133,7 +1133,7 @@ class InterGitLocalGitBranch(InterGitBranch):
             raise errors.LocalRequiresBoundBranch()
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
 
         result = GitPullResult()
