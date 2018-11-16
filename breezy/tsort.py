@@ -619,7 +619,7 @@ class MergeSorter(object):
                 end_of_merge = True
             elif (scheduled_nodes[-1][1] == merge_depth
                   and (scheduled_nodes[-1][0] not in
-                   original_graph[node_name])):
+                       original_graph[node_name])):
                 # the next node was part of a multiple-merge.
                 end_of_merge = True
             else:

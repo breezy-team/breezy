@@ -3537,7 +3537,8 @@ class cmd_commit(Command):
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
-        ListOption('exclude', type=text_type, short_name='x',
+        ListOption(
+            'exclude', type=text_type, short_name='x',
             help="Do not consider changes made to a given path."),
         Option('message', type=text_type,
                short_name='m',
@@ -3555,14 +3556,17 @@ class cmd_commit(Command):
          Option('commit-time', type=text_type,
                 help="Manually set a commit time using commit date "
                 "format, e.g. '2009-10-10 08:00:00 +0100'."),
-         ListOption('bugs', type=text_type,
-                help="Link to a related bug. (see \"brz help bugs\")."),
-         ListOption('fixes', type=text_type,
-                help="Mark a bug as being fixed by this revision "
-                     "(see \"brz help bugs\")."),
-         ListOption('author', type=text_type,
-                help="Set the author's name, if it's different "
-                     "from the committer."),
+         ListOption(
+             'bugs', type=text_type,
+             help="Link to a related bug. (see \"brz help bugs\")."),
+         ListOption(
+             'fixes', type=text_type,
+             help="Mark a bug as being fixed by this revision "
+                  "(see \"brz help bugs\")."),
+         ListOption(
+             'author', type=text_type,
+             help="Set the author's name, if it's different "
+                  "from the committer."),
          Option('local',
                 help="Perform a local commit in a bound "
                      "branch.  Local commits are not pushed to "
@@ -4648,8 +4652,8 @@ class cmd_merge(Command):
         #   from and user didn't ask to *not* remember
         if (user_location is not None
             and ((remember or
-              (remember is None and
-               tree.branch.get_submit_branch() is None)))):
+                 (remember is None and
+                  tree.branch.get_submit_branch() is None)))):
             tree.branch.set_submit_branch(other_branch.base)
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.

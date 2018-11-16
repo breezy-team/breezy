@@ -60,9 +60,10 @@ def stack_finish(this, cost):
 
 def log_stack_info(out_file, sorted=True, hide_fast=True):
     # Find all of the roots with import = 0
-    out_file.write('%5s %5s %-40s @ %s:%s\n'
-        % ('cum', 'inline', 'name', 'file', 'line'))
-    todo = [(value[-1], key) for key,value in _info.iteritems() if value[0] == 0]
+    out_file.write(
+        '%5s %5s %-40s @ %s:%s\n' % ('cum', 'inline', 'name', 'file', 'line'))
+    todo = [(value[-1], key) for key,value in _info.iteritems()
+            if value[0] == 0]
 
     if sorted:
         todo.sort()
@@ -86,10 +87,10 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
         # indent, cum_time, mod_time, name,
         # scope_name, frame_name, frame_lineno
-        out_file.write('%5.1f %5.1f %-40s @ %s:%d\n'
-            % (info[-1]*1000., mod_time*1000.,
-               ('+'*info[0] + cur[1]),
-               info[1], info[2]))
+        out_file.write(
+            '%5.1f %5.1f %-40s @ %s:%d\n' % (
+                info[-1]*1000., mod_time*1000.,
+                ('+'*info[0] + cur[1]), info[1], info[2]))
 
         if sorted:
             c_times.sort()

@@ -325,7 +325,8 @@ controldir_network_format_registry.register_lazy(
 
 
 from ..diff import format_registry as diff_format_registry
-diff_format_registry.register_lazy('git', __name__ + '.send',
+diff_format_registry.register_lazy(
+    'git', __name__ + '.send',
     'GitDiffTree', 'Git am-style diff format')
 
 from ..send import (
@@ -345,14 +346,14 @@ directories.register_lazy('git@github.com:', __name__ + '.directory',
 from ..help_topics import (
     topic_registry,
     )
-topic_registry.register_lazy('git', __name__ + '.help', 'help_git',
-    'Using Bazaar with Git')
+topic_registry.register_lazy(
+    'git', __name__ + '.help', 'help_git', 'Using Bazaar with Git')
 
 from ..foreign import (
     foreign_vcs_registry,
     )
-foreign_vcs_registry.register_lazy("git",
-    __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
+foreign_vcs_registry.register_lazy(
+    "git", __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
 
 
 def update_git_cache(repository, revid):

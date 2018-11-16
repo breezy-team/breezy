@@ -107,8 +107,9 @@ def get_breezy_packages():
             if not package_path:
                 package_name = 'breezy'
             else:
-                package_name = ('breezy.' +
-                            package_path.replace('/', '.').replace('\\', '.'))
+                package_name = (
+                    'breezy.' +
+                    package_path.replace('/', '.').replace('\\', '.'))
             packages.append(package_name)
     return sorted(packages)
 
@@ -291,9 +292,10 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
             source = [c_name]
     source.extend(extra_source)
     include_dirs = ['breezy']
-    ext_modules.append(Extension(module_name, source,
-        define_macros=define_macros, libraries=libraries,
-        include_dirs=include_dirs))
+    ext_modules.append(
+        Extension(
+            module_name, source, define_macros=define_macros,
+            libraries=libraries, include_dirs=include_dirs))
 
 
 add_cython_extension('breezy._simple_set_pyx')
@@ -303,13 +305,13 @@ add_cython_extension('breezy._annotator_pyx')
 add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
 add_cython_extension('breezy.bzr._groupcompress_pyx',
-                    extra_source=['breezy/bzr/diff-delta.c'])
+                     extra_source=['breezy/bzr/diff-delta.c'])
 add_cython_extension('breezy.bzr._knit_load_data_pyx')
 add_cython_extension('breezy._known_graph_pyx')
 add_cython_extension('breezy._rio_pyx')
 if sys.platform == 'win32':
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
-                        libraries=['Ws2_32'])
+                         libraries=['Ws2_32'])
     add_cython_extension('breezy._walkdirs_win32')
 else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
@@ -698,7 +700,7 @@ elif 'py2exe' in sys.argv:
         # at build time.  Also to stdout so it appears in the log
         for f in (sys.stderr, sys.stdout):
             f.write("Skipping TBZR binaries - "
-                "please set TBZR to a directory to enable\n")
+                    "please set TBZR to a directory to enable\n")
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.

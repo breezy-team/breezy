@@ -132,8 +132,9 @@ def recurse_matches_py(a, b, alo, blo, ahi, bhi, answer, maxrecursion):
         bpos += blo
         # Most of the time, you will have a sequence of similar entries
         if last_a_pos+1 != apos or last_b_pos+1 != bpos:
-            recurse_matches_py(a, b, last_a_pos+1, last_b_pos+1,
-                apos, bpos, answer, maxrecursion - 1)
+            recurse_matches_py(
+                a, b, last_a_pos+1, last_b_pos+1, apos, bpos, answer,
+                maxrecursion - 1)
         last_a_pos = apos
         last_b_pos = bpos
         answer.append((apos, bpos))

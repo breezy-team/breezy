@@ -512,8 +512,8 @@ class RemoteGitDir(GitDir):
         ref = self._get_selected_ref(name, ref)
         try:
             if not nascent_ok and ref not in self.get_refs_container():
-                raise NotBranchError(self.root_transport.base,
-                        controldir=self)
+                raise NotBranchError(
+                    self.root_transport.base, controldir=self)
         except NotGitRepository:
             raise NotBranchError(self.root_transport.base,
                                  controldir=self)

@@ -2622,8 +2622,9 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                         else:
                             divert.add(file_id)
                     if (file_id not in divert
-                        and _content_match(tree, entry, tree_path, file_id, kind,
-                                       target_path)):
+                        and _content_match(
+                            tree, entry, tree_path, file_id, kind,
+                            target_path)):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
                             reparent = True

@@ -59,8 +59,9 @@ if is_jython:
         )
 
     assert subprocess.Popen(
-        [sys.executable] + ['-c', quote(cmd), '-mqNxd',
-        quote(tmpeggs), 'zc.buildout'], env=env,).wait() == 0
+        [sys.executable] +
+        ['-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout'],
+        env=env,).wait() == 0
 
 else:
     assert os.spawnle(
