@@ -576,3 +576,30 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
             $ brz branches
             * br1
             ''', null_output_matches_anything=True)
+
+    def test_switch_to_new_branch_on_old_rev(self):
+        """switch to previous rev in a standalone directory
+
+        Inspired by: https://bugs.launchpad.net/brz/+bug/933362
+        """
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+           $ brz init
+           Created a standalone tree (format: 2a)
+           $ brz switch -b trunk
+           2>Tree is up to date at revision 0.
+           2>Switched to branch:...
+           $ brz commit -m 1 --unchanged
+           2>Committing to: ...
+           2>Committed revision 1.
+           $ brz commit -m 2 --unchanged
+           2>Committing to: ...
+           2>Committed revision 2.
+           $ brz switch -b blah -r1
+           2>Updated to revision 1.
+           2>Switched to branch:...
+           $ brz branches
+           * blah
+             trunk
+           $ brz st
+           ''')
