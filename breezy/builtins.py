@@ -3427,9 +3427,9 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            fileobj = filter_tree.get_file(relpath, actual_file_id)
+            fileobj = filter_tree.get_file(relpath)
         else:
-            fileobj = rev_tree.get_file(relpath, actual_file_id)
+            fileobj = rev_tree.get_file(relpath)
         shutil.copyfileobj(fileobj, self.outf)
         self.cleanup_now()
 
@@ -5235,10 +5235,10 @@ class cmd_annotate(Command):
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, relpath, self.outf, long, all,
-                show_ids=show_ids, file_id=file_id)
+                               show_ids=show_ids)
         else:
             annotate_file_tree(tree, relpath, self.outf, long, all,
-                show_ids=show_ids, branch=branch, file_id=file_id)
+                               show_ids=show_ids, branch=branch)
 
 
 class cmd_re_sign(Command):
@@ -5648,11 +5648,10 @@ class cmd_split(Command):
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
-        sub_id = containing_tree.path2id(subdir)
-        if sub_id is None:
+        if not containing_tree.is_versioned(subdir):
             raise errors.NotVersionedError(subdir)
         try:
-            containing_tree.extract(subdir, sub_id)
+            containing_tree.extract(subdir)
         except errors.RootNotRich:
             raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 

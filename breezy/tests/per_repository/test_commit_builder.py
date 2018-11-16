@@ -235,8 +235,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_revision_tree_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([])
             try:
                 list(builder.record_iter_changes(tree,
@@ -252,8 +251,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # the RevisionTree api.
             self.assertEqual(rev_id, rev_tree.get_revision_id())
             self.assertEqual((), tuple(rev_tree.get_parent_ids()))
-        finally:
-            tree.unlock()
 
     def test_root_entry_has_revision(self):
         # test the root revision created and put in the basis
@@ -266,19 +263,15 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
-        self.assertEqual(rev_id,
-            basis_tree.get_file_revision(u'', basis_tree.get_root_id()))
+        self.assertEqual(rev_id, basis_tree.get_file_revision(u''))
 
     def _get_revtrees(self, tree, revision_ids):
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             trees = list(tree.branch.repository.revision_trees(revision_ids))
             for _tree in trees:
                 _tree.lock_read()
                 self.addCleanup(_tree.unlock)
             return trees
-        finally:
-            tree.unlock()
 
     def test_last_modified_revision_after_commit_root_unchanged(self):
         # commiting without changing the root does not change the
@@ -655,7 +648,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             tree3, = self._get_revtrees(in_tree, [rev2])
             self.assertEqual(
                     rev2,
-                    tree3.get_file_revision('new_' + name, file_id))
+                    tree3.get_file_revision('new_' + name))
             expected_graph = {}
             expected_graph[(file_id, rev1)] = ()
             expected_graph[(file_id, rev2)] = ((file_id, rev1),)

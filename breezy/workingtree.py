@@ -1283,7 +1283,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
             for conflict in self.conflicts():
                 path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(path, conflict.file_id) != 'file'):
+                    self.kind(path) != 'file'):
                     un_resolved.append(conflict)
                     continue
                 with open(self.abspath(path), 'rb') as my_file:

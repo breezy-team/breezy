@@ -211,7 +211,7 @@ class Inter1and2Helper(object):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.get_root_id()
-            revision_id = tree.get_file_revision(u'', root_id)
+            revision_id = tree.get_file_revision(u'')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set(viewvalues(parent_map))
@@ -317,7 +317,7 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id), root_id))
+                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id)))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

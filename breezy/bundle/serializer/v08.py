@@ -273,7 +273,7 @@ class BundleSerializerV08(BundleSerializer):
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, path, require_text=False):
                 if tree.has_id(file_id):
-                    tree_file = tree.get_file(path, file_id)
+                    tree_file = tree.get_file(path)
                     if require_text is True:
                         tree_file = text_file(tree_file)
                     return tree_file.readlines()
@@ -318,7 +318,7 @@ class BundleSerializerV08(BundleSerializer):
         for path, file_id, kind in delta.added:
             action = Action('added', [kind, path], [('file-id', file_id.decode('utf-8'))])
             meta_modified = (kind=='file' and
-                             new_tree.is_executable(path, file_id))
+                             new_tree.is_executable(path))
             finish_action(action, file_id, kind, meta_modified, True,
                           DEVNULL, path)
 
@@ -335,12 +335,12 @@ class BundleSerializerV08(BundleSerializer):
                           path, path)
 
         for path, file_id, kind in delta.unchanged:
-            new_rev = new_tree.get_file_revision(path, file_id)
+            new_rev = new_tree.get_file_revision(path)
             if new_rev is None:
                 continue
-            old_rev = old_tree.get_file_revision(old_tree.id2path(file_id), file_id)
+            old_rev = old_tree.get_file_revision(old_tree.id2path(file_id))
             if new_rev != old_rev:
-                action = Action('modified', [new_tree.kind(path, file_id),
+                action = Action('modified', [new_tree.kind(path),
                                              path])
                 action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)

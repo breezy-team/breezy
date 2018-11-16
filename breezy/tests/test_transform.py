@@ -190,7 +190,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             orig(*args)
         self.wt._observed_sha1 = _observed_sha1
         trans.apply()
-        self.assertEqual([(None, 'file1', trans._observed_sha1s[trans_id])],
+        self.assertEqual([('file1', trans._observed_sha1s[trans_id])],
                          calls)
 
     def test_create_file_caches_sha1(self):
@@ -2274,9 +2274,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         entry2_state = entry2[1][0]
         # Now, make sure that we don't have to re-read the content. The
         # packed_stat should match exactly.
-        self.assertEqual(entry1_sha, target.get_file_sha1('file1', b'file1-id'))
-        self.assertEqual(entry2_sha,
-                         target.get_file_sha1('dir/file2', b'file2-id'))
+        self.assertEqual(entry1_sha, target.get_file_sha1('file1'))
+        self.assertEqual(entry2_sha, target.get_file_sha1('dir/file2'))
         self.assertEqual(entry1_state, entry1[1][0])
         self.assertEqual(entry2_state, entry2[1][0])
 
@@ -2352,7 +2351,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         rev = tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path(b'file-id'))
-        self.assertEqual(b'contents', tree.get_file_text('file', b'file-id'))
+        self.assertEqual(b'contents', tree.get_file_text('file'))
         self.assertEqual('dir', tree.id2path(b'dir-id'))
         if SymlinkFeature.available():
             self.assertEqual('dir/symlink', tree.id2path(b'symlink-id'))
@@ -2743,7 +2742,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.new_file('file2', preview.root, [b'content B\n'], b'file2-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual(preview_tree.kind('file2'), 'file')
-        with preview_tree.get_file('file2', b'file2-id') as f:
+        with preview_tree.get_file('file2') as f:
             self.assertEqual(f.read(), b'content B\n')
 
     def test_diff_preview_tree(self):
@@ -2839,7 +2838,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         limbo_path = preview._limbo_name(file_trans_id)
         preview_tree = preview.get_preview_tree()
         self.assertEqual(os.stat(limbo_path).st_mtime,
-                         preview_tree.get_file_mtime('file', b'file-id'))
+                         preview_tree.get_file_mtime('file'))
 
     def test_get_file_mtime_renamed(self):
         work_tree = self.make_branch_and_tree('tree')
@@ -2850,8 +2849,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         file_trans_id = preview.trans_id_tree_path('file')
         preview.adjust_path('renamed', preview.root, file_trans_id)
         preview_tree = preview.get_preview_tree()
-        preview_mtime = preview_tree.get_file_mtime('renamed', b'file-id')
-        work_mtime = work_tree.get_file_mtime('file', b'file-id')
+        preview_mtime = preview_tree.get_file_mtime('renamed')
+        work_mtime = work_tree.get_file_mtime('file')
 
     def test_get_file_size(self):
         work_tree = self.make_branch_and_tree('tree')
@@ -3305,7 +3304,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(preview.finalize)
         preview.new_file('foo', preview.root, [b'bar'], b'baz-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(False, preview_tree.is_executable('tree/foo', b'baz-id'))
         self.assertEqual(False, preview_tree.is_executable('tree/foo'))
 
     def test_commit_preview_tree(self):

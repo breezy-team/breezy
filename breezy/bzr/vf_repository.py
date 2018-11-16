@@ -480,7 +480,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
-                    file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
+                    file_obj, stat_value = tree.get_file_with_stat(change[1][1])
                     try:
                         entry.text_sha1, entry.text_size = self._add_file_to_weave(
                             file_id, file_obj, heads, nostore_sha)
@@ -495,7 +495,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         file_obj.close()
                 elif kind == 'symlink':
                     # Wants a path hint?
-                    entry.symlink_target = tree.get_symlink_target(change[1][1], file_id)
+                    entry.symlink_target = tree.get_symlink_target(change[1][1])
                     if (carry_over_possible and
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
@@ -517,7 +517,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    reference_revision = tree.get_reference_revision(change[1][1], change[0])
+                    reference_revision = tree.get_reference_revision(change[1][1])
                     entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):
@@ -2852,12 +2852,13 @@ def _install_revision(repository, rev, revision_tree, signature,
             if not tree.has_id(ie.file_id):
                 continue
             path = tree.id2path(ie.file_id)
-            parent_id = tree.get_file_revision(path, ie.file_id)
+            parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))
         revision_tree_path = revision_tree.id2path(ie.file_id)
-        lines = revision_tree.get_file(revision_tree_path, ie.file_id).readlines()
+        with revision_tree.get_file(revision_tree_path) as f:
+            lines = f.readlines()
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory

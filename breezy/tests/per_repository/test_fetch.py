@@ -85,11 +85,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # disk.
         knit3_repo = b_bzrdir.open_repository()
         rev1_tree = knit3_repo.revision_tree(rev1)
-        rev1_tree.lock_read()
-        try:
-            lines = rev1_tree.get_file_lines(u'', rev1_tree.get_root_id())
-        finally:
-            rev1_tree.unlock()
+        with rev1_tree.lock_read():
+            lines = rev1_tree.get_file_lines(u'')
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
         b_branch.pull(tree_a.branch)
@@ -103,9 +100,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
                               % b_bzrdir.transport)
         rev2 = tree_b.commit('no change')
         rev2_tree = knit3_repo.revision_tree(rev2)
-        self.assertEqual(
-            rev1,
-            rev2_tree.get_file_revision(u'', rev2_tree.get_root_id()))
+        self.assertEqual(rev1, rev2_tree.get_file_revision(u''))
 
     def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
         snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
