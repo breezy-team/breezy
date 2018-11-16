@@ -230,8 +230,8 @@ class TestRevisionBugs(TestCase):
         r = revision.Revision(
             '1', properties={
                 u'bugs': bugtracker.encode_fixes_bug_urls(
-                    ['http://example.com/bugs/1',
-                     'http://launchpad.net/bugs/1234'])})
+                    [('http://example.com/bugs/1', 'fixed'),
+                     ('http://launchpad.net/bugs/1234', 'fixed')])})
         self.assertEqual(
             [('http://example.com/bugs/1', bugtracker.FIXED),
              ('http://launchpad.net/bugs/1234', bugtracker.FIXED)],
