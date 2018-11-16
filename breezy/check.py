@@ -43,6 +43,7 @@ from .controldir import ControlDir
 from .trace import note
 from .i18n import gettext
 
+
 class Check(object):
     """Check a repository"""
 
@@ -97,12 +98,12 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     """
     try:
         base_tree, branch, repo, relpath = \
-                        ControlDir.open_containing_tree_branch_or_repository(path)
+            ControlDir.open_containing_tree_branch_or_repository(path)
     except errors.NotBranchError:
         base_tree = branch = repo = None
 
     to_unlock = []
-    needed_refs= {}
+    needed_refs = {}
     try:
         if base_tree is not None:
             # If the tree is a lightweight checkout we won't see it in
@@ -141,7 +142,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                     note(gettext("Checking repository at '%s'.")
                          % (repo.user_url,))
                 result = repo.check(None, callback_refs=needed_refs,
-                    check_repo=do_repo)
+                                    check_repo=do_repo)
                 result.report_results(verbose)
         else:
             if do_tree:

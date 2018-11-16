@@ -28,7 +28,8 @@ class TestBasisTree(TestCaseWithWorkingTree):
 
         basis_tree.lock_read()
         try:
-            self.assertEqual([], list(basis_tree.list_files(include_root=True)))
+            self.assertEqual(
+                [], list(basis_tree.list_files(include_root=True)))
         finally:
             basis_tree.unlock()
 
@@ -46,7 +47,7 @@ class TestBasisTree(TestCaseWithWorkingTree):
             # list_files() may return in either dirblock or sorted order
             # TODO: jam 20070215 Should list_files have an explicit order?
             self.assertEqual(['', 'dir', 'dir/subfile', 'file'],
-                     sorted(info[0] for info in basis_tree.list_files(True)))
+                             sorted(info[0] for info in basis_tree.list_files(True)))
         finally:
             basis_tree.unlock()
 
@@ -69,6 +70,6 @@ class TestBasisTree(TestCaseWithWorkingTree):
             # list_files() may return in either dirblock or sorted order
             # TODO: jam 20070215 Should list_files have an explicit order?
             self.assertEqual(['', 'dir', 'dir/subfile', 'file'],
-                     sorted(info[0] for info in basis_tree.list_files(True)))
+                             sorted(info[0] for info in basis_tree.list_files(True)))
         finally:
             basis_tree.unlock()

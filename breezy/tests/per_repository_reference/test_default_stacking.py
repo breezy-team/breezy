@@ -31,4 +31,3 @@ class TestDefaultStackingPolicy(TestCaseWithRepository):
         self.assertEqual('../stack-on', target.get_stacked_on_url())
         self.assertEqual(
             source._format.network_name(), target._format.network_name())
-

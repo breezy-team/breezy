@@ -95,7 +95,8 @@ class TestUncommit(tests.TestCaseWithTransport):
 
         # If this tree isn't bound, local=True raises an exception
         self.assertRaises(errors.LocalRequiresBoundBranch,
-            uncommit.uncommit, tree.branch, tree=tree, local=True)
+                          uncommit.uncommit, tree.branch, tree=tree,
+                          local=True)
 
     def test_uncommit_remove_tags(self):
         tree, history = self.make_linear_tree()
@@ -117,7 +118,8 @@ class TestUncommit(tests.TestCaseWithTransport):
         tree.merge_from_branch(copy.branch)
         tree.branch.tags.set_tag('pointsatmerged', b'merged')
         history.append(tree.commit('merge'))
-        self.assertEqual(b'merged', tree.branch.tags.lookup_tag('pointsatmerged'))
+        self.assertEqual(
+            b'merged', tree.branch.tags.lookup_tag('pointsatmerged'))
         self.assertEqual(history[2], tree.last_revision())
         self.assertEqual((3, history[2]), tree.branch.last_revision_info())
         tree.branch.tags.set_tag(u"pointsatexisting", history[1])

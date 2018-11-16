@@ -32,7 +32,7 @@ from .filters import (
 
 class ContentFilterTree(tree.Tree):
     """A virtual tree that applies content filters to an underlying tree.
-    
+
     Not every operation is supported yet.
     """
 

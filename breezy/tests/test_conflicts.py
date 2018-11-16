@@ -50,16 +50,16 @@ example_conflicts = conflicts.ConflictList(
      conflicts.DuplicateID('Unversioned existing file',
                            u'p\xe5thc', u'p\xe5thc2',
                            b'\xc3\xaedc', b'\xc3\xaedc'),
-    conflicts.DuplicateEntry('Moved existing file to',
-                             u'p\xe5thdd.moved', u'p\xe5thd',
-                             b'\xc3\xaedd', None),
-    conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
-                         None, b'\xc3\xaed2e'),
-    conflicts.UnversionedParent('Versioned directory',
-                                u'p\xe5thf', b'\xc3\xaedf'),
-    conflicts.NonDirectoryParent('Created directory',
-                                 u'p\xe5thg', b'\xc3\xaedg'),
-])
+     conflicts.DuplicateEntry('Moved existing file to',
+                              u'p\xe5thdd.moved', u'p\xe5thd',
+                              b'\xc3\xaedd', None),
+     conflicts.ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
+                          None, b'\xc3\xaed2e'),
+     conflicts.UnversionedParent('Versioned directory',
+                                 u'p\xe5thf', b'\xc3\xaedf'),
+     conflicts.NonDirectoryParent('Created directory',
+                                  u'p\xe5thg', b'\xc3\xaedg'),
+     ])
 
 
 def vary_by_conflicts():
@@ -97,7 +97,7 @@ class TestConflicts(tests.TestCaseWithTransport):
         check_select(clist(), tree_conflicts,
                      [''], ignore_misses=True, recurse=True)
 
-        foobaz  = conflicts.ContentsConflict('foo/baz')
+        foobaz = conflicts.ContentsConflict('foo/baz')
         tree_conflicts = clist([foobaz, bar])
 
         check_select(clist([bar]), clist([foobaz]),
@@ -108,14 +108,15 @@ class TestConflicts(tests.TestCaseWithTransport):
 
         check_select(clist(), tree_conflicts,
                      ['foo'], ignore_misses=True, recurse=True)
-        check_select (tree_conflicts, clist(), ['foo'], ignore_misses=True)
+        check_select(tree_conflicts, clist(), ['foo'], ignore_misses=True)
 
     def test_resolve_conflicts_recursive(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/hello'])
         tree.add(['dir', 'dir/hello'])
 
-        dirhello = conflicts.ConflictList([conflicts.TextConflict('dir/hello')])
+        dirhello = conflicts.ConflictList(
+            [conflicts.TextConflict('dir/hello')])
         tree.set_conflicts(dirhello)
 
         conflicts.resolve(tree, ['dir'], recursive=False, ignore_misses=True)
@@ -134,7 +135,7 @@ class TestPerConflict(tests.TestCase):
         self.assertContainsString(text, self.conflict.path)
         self.assertContainsString(text.lower(), "conflict")
         self.assertContainsString(repr(self.conflict),
-            self.conflict.__class__.__name__)
+                                  self.conflict.__class__.__name__)
 
     def test_stanza_roundtrip(self):
         p = self.conflict
@@ -186,7 +187,7 @@ class TestConflictList(tests.TestCase):
 # FIXME: Tests missing for DuplicateID conflict type
 class TestResolveConflicts(script.TestCaseWithTransportAndScript):
 
-    preamble = None # The setup script set by daughter classes
+    preamble = None  # The setup script set by daughter classes
 
     def setUp(self):
         super(TestResolveConflicts, self).setUp()
@@ -304,8 +305,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-                ('add', (u'', b'root-id', 'directory', ''))],
-                revision_id=b'start')
+            ('add', (u'', b'root-id', 'directory', ''))],
+            revision_id=b'start')
         # Add a minimal base content
         base_actions = self._get_actions(self._base_actions)()
         builder.build_snapshot([b'start'], base_actions, revision_id=b'base')
@@ -418,7 +419,7 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
 
     def do_create_file_in_dir(self):
         return [('add', ('dir', b'dir-id', 'directory', '')),
-            ] + self.do_create_file('dir/file')
+                ] + self.do_create_file('dir/file')
 
     def check_file_in_dir_has_content_A(self):
         self.check_file_has_content_A('dir/file')
@@ -486,7 +487,8 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         self.assertFileEqual(b'trunk content\nmore content\n', 'branch/file')
 
     def check_file_renamed_and_more_content(self):
-        self.assertFileEqual(b'trunk content\nmore content\n', 'branch/new-file')
+        self.assertFileEqual(
+            b'trunk content\nmore content\n', 'branch/new-file')
 
     def do_delete_file(self):
         return [('unversion', 'file')]
@@ -505,7 +507,8 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         return [('modify', ('dir/file', b'trunk content\nmore content\n'))]
 
     def check_file_in_dir_has_more_content(self):
-        self.assertFileEqual(b'trunk content\nmore content\n', 'branch/dir/file')
+        self.assertFileEqual(
+            b'trunk content\nmore content\n', 'branch/dir/file')
 
     def check_file_in_dir_doesnt_exist(self):
         self.assertPathDoesNotExist('branch/dir/file')
@@ -656,7 +659,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         tfile_id = self._this['file_id']
         opath = self._other['path']
         ofile_id = self._other['file_id']
-        self.assertEqual(tfile_id, ofile_id) # Sanity check
+        self.assertEqual(tfile_id, ofile_id)  # Sanity check
         self.assertEqual(tfile_id, c.file_id)
         self.assertEqual(tpath, c.path)
         self.assertEqual(opath, c.conflict_path)
@@ -733,7 +736,7 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
         tfile_id = self._this['file_id']
         opath = self._other['path']
         ofile_id = self._other['file_id']
-        self.assertEqual(tpath, opath) # Sanity check
+        self.assertEqual(tpath, opath)  # Sanity check
         self.assertEqual(tfile_id, c.file_id)
         self.assertEqual(tpath + '.moved', c.path)
         self.assertEqual(tpath, c.conflict_path)
@@ -949,7 +952,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
 
     def do_create_dir1_dir2(self):
         return [('add', ('dir1', b'dir1-id', 'directory', '')),
-                ('add', ('dir2', b'dir2-id', 'directory', '')),]
+                ('add', ('dir2', b'dir2-id', 'directory', '')), ]
 
     def do_move_dir1_into_dir2(self):
         return [('rename', ('dir1', 'dir2/dir1'))]
@@ -969,7 +972,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return [('add', ('dir1', b'dir1-id', 'directory', '')),
                 ('add', ('dir1/dir2', b'dir2-id', 'directory', '')),
                 ('add', ('dir3', b'dir3-id', 'directory', '')),
-                ('add', ('dir3/dir4', b'dir4-id', 'directory', '')),]
+                ('add', ('dir3/dir4', b'dir4-id', 'directory', '')), ]
 
     def do_move_dir1_into_dir4(self):
         return [('rename', ('dir1', 'dir3/dir4/dir1'))]
@@ -1196,7 +1199,7 @@ class TestResolveActionOption(tests.TestCase):
 
     def test_done(self):
         opts, args = self.parse(['--action', 'done'])
-        self.assertEqual({'action':'done'}, opts)
+        self.assertEqual({'action': 'done'}, opts)
 
     def test_take_this(self):
         opts, args = self.parse(['--action', 'take-this'])

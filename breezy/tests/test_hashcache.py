@@ -55,7 +55,7 @@ class TestHashCache(TestCaseInTempDir):
         hc = self.make_hashcache()
         self.build_tree_contents([('foo', b'hello')])
         self.assertEqual(hc.get_sha1('foo'),
-                          b'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
+                         b'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
         self.assertEqual(hc.miss_count, 1)
         self.assertEqual(hc.hit_count, 0)
 
@@ -126,6 +126,7 @@ class FakeHashCache(HashCache):
     This lets us examine how old or new files would be handled, without
     actually having to wait for time to pass.
     """
+
     def __init__(self):
         # set root and cache file name to none to make sure we won't touch the
         # real filesystem

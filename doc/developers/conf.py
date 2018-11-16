@@ -34,18 +34,18 @@ htmlhelp_basename = 'brz-developers'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 brz_documents = [
-  ('HACKING', 'brz-en-developer-guide', u'Breezy Developer Guide',
-   u'Breezy Developers', 'manual'),
-  ('testing', 'brz-en-testing-guide', u'Breezy Testing Guide',
-   u'Breezy Developers', 'manual'),
-  ('overview', 'brz-en-architecture-overview', u'Breezy Architecture Overview',
-   u'Breezy Developers', 'howto'),
-  ('integration', 'brz-en-integration-guide', u'Breezy Integration Guide',
-   u'Breezy Developers', 'howto'),
+    ('HACKING', 'brz-en-developer-guide', u'Breezy Developer Guide',
+     u'Breezy Developers', 'manual'),
+    ('testing', 'brz-en-testing-guide', u'Breezy Testing Guide',
+     u'Breezy Developers', 'manual'),
+    ('overview', 'brz-en-architecture-overview', u'Breezy Architecture Overview',
+     u'Breezy Developers', 'howto'),
+    ('integration', 'brz-en-integration-guide', u'Breezy Integration Guide',
+     u'Breezy Developers', 'howto'),
 ]
 
 latex_documents = [
-    (start, target+'.tex', title, author, doc_class)
+    (start, target + '.tex', title, author, doc_class)
     for start, target, title, author, doc_class in brz_documents
     ]
 
@@ -57,25 +57,25 @@ texinfo_documents = [
 # List of documents that shouldn't be included in the build.
 # Note: Maybe some of them *ought* to be linked in somewhere?
 unused_docs = [
-  'add',
-  'annotate',
-  'bundle-creation',
-  'bundle-format4',
-  'check',
-  'commit',
-  'diff',
-  'directory-fingerprints',
-  'gc',
-  'index-plain',
-  'incremental-push-pull',
-  'initial-push-pull',
-  'merge-scaling',
-  'missing',
-  'performance-roadmap-rationale',
-  'performance-use-case-analysis',
-  'planned-change-integration',
-  'planned-performance-changes',
-  'revert',
-  'status',
-  'uncommit',
+    'add',
+    'annotate',
+    'bundle-creation',
+    'bundle-format4',
+    'check',
+    'commit',
+    'diff',
+    'directory-fingerprints',
+    'gc',
+    'index-plain',
+    'incremental-push-pull',
+    'initial-push-pull',
+    'merge-scaling',
+    'missing',
+    'performance-roadmap-rationale',
+    'performance-use-case-analysis',
+    'planned-change-integration',
+    'planned-performance-changes',
+    'revert',
+    'status',
+    'uncommit',
 ]

@@ -79,7 +79,7 @@ def po_merge_hook(merger):
 
 
 install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
-    po_merge_hook, ".po file merge")
+                        po_merge_hook, ".po file merge")
 
 
 def load_tests(loader, basic_tests, pattern):
@@ -87,6 +87,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests
-

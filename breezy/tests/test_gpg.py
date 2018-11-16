@@ -196,7 +196,7 @@ kRk=
         context.op_import(expired_key)
 
     def test_verify_untrusted_but_accepted(self):
-        #untrusted by gpg but listed as acceptable_keys by user
+        # untrusted by gpg but listed as acceptable_keys by user
         self.requireFeature(features.gpg)
         self.import_keys()
 
@@ -224,7 +224,8 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("bazaar@example.com")
-        self.assertEqual((gpg.SIGNATURE_VALID, None, plain), my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_VALID, None, plain),
+                         my_gpg.verify(content))
 
     def test_verify_unacceptable_key(self):
         self.requireFeature(features.gpg)
@@ -284,7 +285,8 @@ revision-id: amy@example.com-20110527185938-hluafawphszb8dl1
 sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain), my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None,
+                          plain), my_gpg.verify(content))
 
     def test_verify_revoked_signature(self):
         self.requireFeature(features.gpg)
@@ -307,7 +309,8 @@ JFA6kUIJU2w9LU/b88Y=
         plain = b"""asdf\n"""
         my_gpg = gpg.GPGStrategy(FakeConfig())
         my_gpg.set_acceptable_keys("test@example.com")
-        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None), my_gpg.verify(content))
+        self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, None),
+                         my_gpg.verify(content))
 
     def test_verify_invalid(self):
         self.requireFeature(features.gpg)
@@ -332,7 +335,7 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertEqual((gpg.SIGNATURE_NOT_VALID, None, plain),
-                            my_gpg.verify(content))
+                         my_gpg.verify(content))
 
     def test_verify_expired_but_valid(self):
         self.requireFeature(features.gpg)
@@ -355,7 +358,7 @@ dTp8VatVVrwuvzOPDVc=
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertEqual((gpg.SIGNATURE_EXPIRED, u'4F8D1513', None),
-                            my_gpg.verify(content))
+                         my_gpg.verify(content))
 
     def test_verify_unknown_key(self):
         self.requireFeature(features.gpg)
@@ -378,7 +381,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
 """
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertEqual((gpg.SIGNATURE_KEY_MISSING, u'5D51E56F', None),
-                            my_gpg.verify(content))
+                         my_gpg.verify(content))
 
     def test_set_acceptable_keys(self):
         self.requireFeature(features.gpg)
@@ -392,7 +395,7 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
         self.requireFeature(features.gpg)
         self.import_keys()
         my_gpg = gpg.GPGStrategy(FakeConfig(
-                b'acceptable_keys=bazaar@example.com'))
+            b'acceptable_keys=bazaar@example.com'))
         my_gpg.set_acceptable_keys(None)
         self.assertEqual(my_gpg.acceptable_keys,
                          [u'B5DEED5FCB15DAE6ECEF919587681B1EE3080E45'])
@@ -401,13 +404,14 @@ sIODx4WcfJtjLG/qkRYqJ4gDHo0eMpTJSk2CWebajdm4b+JBrM1F9mgKuZFLruE=
         self.requireFeature(features.gpg)
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.notes = []
+
         def note(*args):
             self.notes.append(args[0] % args[1:])
         self.overrideAttr(trace, 'note', note)
         my_gpg.set_acceptable_keys("unknown")
         self.assertEqual(my_gpg.acceptable_keys, [])
         self.assertEqual(self.notes,
-            ['No GnuPG key results for pattern: unknown'])
+                         ['No GnuPG key results for pattern: unknown'])
 
 
 class TestDisabled(TestCase):

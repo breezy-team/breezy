@@ -138,7 +138,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
         zipstream = gzip.GzipFile(basename, 'w', fileobj=buf,
                                   mtime=root_mtime)
         for chunk in tarball_generator(
-            tree, root, subdir, force_mtime):
+                tree, root, subdir, force_mtime):
             zipstream.write(chunk)
             # Yield the data that was written so far, rinse, repeat.
             yield buf.getvalue()
@@ -160,7 +160,7 @@ def tbz_generator(tree, dest, root, subdir, force_mtime=None):
 
 
 def plain_tar_generator(tree, dest, root, subdir,
-    force_mtime=None):
+                        force_mtime=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -188,13 +188,13 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
 
     if sys.version_info[0] == 2:
         compressor = lzma.LZMACompressor(
-                options={"format": compression_format})
+            options={"format": compression_format})
     else:
         compressor = lzma.LZMACompressor(
-                format={
-                    'xz': lzma.FORMAT_XZ,
-                    'raw': lzma.FORMAT_RAW,
-                    'alone': lzma.FORMAT_ALONE,
+            format={
+                'xz': lzma.FORMAT_XZ,
+                'raw': lzma.FORMAT_RAW,
+                'alone': lzma.FORMAT_ALONE,
                 }[compression_format])
 
     for chunk in tarball_generator(

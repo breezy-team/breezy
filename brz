@@ -58,8 +58,6 @@ if os.name == "posix":
     sys._brz_default_fs_enc = "utf8"
 
 
-# instruct breezy/__init__.py to install lazy_regex
-sys._brz_lazy_regex = True
 try:
     import breezy
 except ImportError as e:

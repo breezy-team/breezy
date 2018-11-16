@@ -242,52 +242,55 @@ class cmd_fast_import(Command):
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
     takes_args = ['source', 'destination?']
     takes_options = ['verbose',
-                    Option('user-map', type=text_type,
-                        help="Path to file containing a map of user-ids.",
-                        ),
-                    Option('info', type=text_type,
-                        help="Path to file containing caching hints.",
-                        ),
-                    Option('trees',
-                        help="Update all working trees, not just trunk's.",
-                        ),
-                    Option('count', type=int,
-                        help="Import this many revisions then exit.",
-                        ),
-                    Option('checkpoint', type=int,
-                        help="Checkpoint automatically every N revisions."
-                             " The default is 10000.",
-                        ),
-                    Option('autopack', type=int,
-                        help="Pack every N checkpoints. The default is 4.",
-                        ),
-                    Option('inv-cache', type=int,
-                        help="Number of inventories to cache.",
-                        ),
-                    RegistryOption.from_kwargs('mode',
-                        'The import algorithm to use.',
-                        title='Import Algorithm',
-                        default='Use the preferred algorithm (inventory deltas).',
-                        experimental="Enable experimental features.",
-                        value_switches=True, enum_switch=False,
-                        ),
-                    Option('import-marks', type=text_type,
-                        help="Import marks from file."
-                        ),
-                    Option('export-marks', type=text_type,
-                        help="Export marks to file."
-                        ),
-                    RegistryOption('format',
-                            help='Specify a format for the created repository. See'
-                                 ' "bzr help formats" for details.',
-                            lazy_registry=('breezy.controldir', 'format_registry'),
-                            converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=False, title='Repository format'),
+                     Option('user-map', type=text_type,
+                            help="Path to file containing a map of user-ids.",
+                            ),
+                     Option('info', type=text_type,
+                            help="Path to file containing caching hints.",
+                            ),
+                     Option('trees',
+                            help="Update all working trees, not just trunk's.",
+                            ),
+                     Option('count', type=int,
+                            help="Import this many revisions then exit.",
+                            ),
+                     Option('checkpoint', type=int,
+                            help="Checkpoint automatically every N revisions."
+                            " The default is 10000.",
+                            ),
+                     Option('autopack', type=int,
+                            help="Pack every N checkpoints. The default is 4.",
+                            ),
+                     Option('inv-cache', type=int,
+                            help="Number of inventories to cache.",
+                            ),
+                     RegistryOption.from_kwargs('mode',
+                                                'The import algorithm to use.',
+                                                title='Import Algorithm',
+                                                default='Use the preferred algorithm (inventory deltas).',
+                                                experimental="Enable experimental features.",
+                                                value_switches=True, enum_switch=False,
+                                                ),
+                     Option('import-marks', type=text_type,
+                            help="Import marks from file."
+                            ),
+                     Option('export-marks', type=text_type,
+                            help="Export marks to file."
+                            ),
+                     RegistryOption('format',
+                                    help='Specify a format for the created repository. See'
+                                    ' "bzr help formats" for details.',
+                                    lazy_registry=(
+                                        'breezy.controldir', 'format_registry'),
+                                    converter=lambda name: controldir.format_registry.make_controldir(
+                                        name),
+                                    value_switches=False, title='Repository format'),
                      ]
+
     def run(self, source, destination='.', verbose=False, info=None,
-        trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
-        mode=None, import_marks=None, export_marks=None, format=None,
-        user_map=None):
+            trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
+            mode=None, import_marks=None, export_marks=None, format=None,
+            user_map=None):
         load_fastimport()
         from .processors import generic_processor
         from .helpers import (
@@ -315,8 +318,8 @@ class cmd_fast_import(Command):
             'export-marks': export_marks,
             }
         return _run(source, generic_processor.GenericProcessor,
-                bzrdir=control, params=params, verbose=verbose,
-                user_map=user_map)
+                    bzrdir=control, params=params, verbose=verbose,
+                    user_map=user_map)
 
     def _generate_info(self, source):
         from ...sixish import StringIO
@@ -445,42 +448,43 @@ class cmd_fast_export(Command):
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source?', 'destination?']
     takes_options = ['verbose', 'revision',
-                    Option('git-branch', short_name='b', type=text_type,
-                        argname='FILE',
-                        help='Name of the git branch to create (default=master).'
-                        ),
-                    Option('checkpoint', type=int, argname='N',
-                        help="Checkpoint every N revisions (default=10000)."
-                        ),
-                    Option('marks', type=text_type, argname='FILE',
-                        help="Import marks from and export marks to file."
-                        ),
-                    Option('import-marks', type=text_type, argname='FILE',
-                        help="Import marks from file."
-                        ),
-                    Option('export-marks', type=text_type, argname='FILE',
-                        help="Export marks to file."
-                        ),
-                    Option('plain',
-                        help="Exclude metadata to maximise interoperability."
-                        ),
-                    Option('rewrite-tag-names',
-                        help="Replace characters invalid in git with '_'"
-                             " (plain mode only).",
-                        ),
-                    Option('baseline',
-                        help="Export an 'absolute' baseline commit prior to"
-                             "the first relative commit",
-                        ),
-                    Option('no-tags',
-                        help="Don't export tags"
-                        ),
+                     Option('git-branch', short_name='b', type=text_type,
+                            argname='FILE',
+                            help='Name of the git branch to create (default=master).'
+                            ),
+                     Option('checkpoint', type=int, argname='N',
+                            help="Checkpoint every N revisions (default=10000)."
+                            ),
+                     Option('marks', type=text_type, argname='FILE',
+                            help="Import marks from and export marks to file."
+                            ),
+                     Option('import-marks', type=text_type, argname='FILE',
+                            help="Import marks from file."
+                            ),
+                     Option('export-marks', type=text_type, argname='FILE',
+                            help="Export marks to file."
+                            ),
+                     Option('plain',
+                            help="Exclude metadata to maximise interoperability."
+                            ),
+                     Option('rewrite-tag-names',
+                            help="Replace characters invalid in git with '_'"
+                            " (plain mode only).",
+                            ),
+                     Option('baseline',
+                            help="Export an 'absolute' baseline commit prior to"
+                            "the first relative commit",
+                            ),
+                     Option('no-tags',
+                            help="Don't export tags"
+                            ),
                      ]
     encoding_type = 'exact'
+
     def run(self, source=None, destination=None, verbose=False,
-        git_branch="master", checkpoint=10000, marks=None,
-        import_marks=None, export_marks=None, revision=None,
-        plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
+            git_branch="master", checkpoint=10000, marks=None,
+            import_marks=None, export_marks=None, revision=None,
+            plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
         load_fastimport()
         from ...branch import Branch
         from . import exporter
@@ -494,8 +498,8 @@ class cmd_fast_export(Command):
         branch = Branch.open_containing(source)[0]
         outf = exporter._get_output_stream(destination)
         exporter = exporter.BzrFastExporter(branch,
-            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'), checkpoint=checkpoint,
-            import_marks_file=import_marks, export_marks_file=export_marks,
-            revision=revision, verbose=verbose, plain_format=plain,
-            rewrite_tags=rewrite_tag_names, no_tags=no_tags, baseline=baseline)
+                                            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'), checkpoint=checkpoint,
+                                            import_marks_file=import_marks, export_marks_file=export_marks,
+                                            revision=revision, verbose=verbose, plain_format=plain,
+                                            rewrite_tags=rewrite_tag_names, no_tags=no_tags, baseline=baseline)
         return exporter.run()

@@ -20,9 +20,9 @@
 from __future__ import absolute_import
 
 from .. import (
-        errors,
-        urlutils,
-        )
+    errors,
+    urlutils,
+    )
 from . import decorator
 
 

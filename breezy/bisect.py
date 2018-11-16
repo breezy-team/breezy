@@ -138,8 +138,8 @@ class BisectLog(object):
         repo = self._branch.repository
         with repo.lock_read():
             graph = repo.get_graph()
-            rev_sequence = graph.iter_lefthand_ancestry(last_revid,
-                (_mod_revision.NULL_REVISION,))
+            rev_sequence = graph.iter_lefthand_ancestry(
+                last_revid, (_mod_revision.NULL_REVISION,))
             high_revid = None
             low_revid = None
             between_revs = []
@@ -247,9 +247,9 @@ class BisectLog(object):
         self._find_range_and_middle()
         # If we've found the "final" revision, check for a
         # merge point.
-        while ((self._middle_revid == self._high_revid
-                or self._middle_revid == self._low_revid)
-                and self.is_merge_point(self._middle_revid)):
+        while ((self._middle_revid == self._high_revid or
+                self._middle_revid == self._low_revid) and
+                self.is_merge_point(self._middle_revid)):
             for parent in self.get_parent_revids(self._middle_revid):
                 if parent == self._low_revid:
                     continue
@@ -340,7 +340,8 @@ class cmd_bisect(Command):
         bisect_log.save()
         return False
 
-    def run(self, subcommand, args_list, directory='.', revision=None, output=None):
+    def run(self, subcommand, args_list, directory='.', revision=None,
+            output=None):
         """Handle the bisect command."""
 
         log_fn = None
@@ -401,7 +402,7 @@ class cmd_bisect(Command):
         self._set_state(controldir, revspec, "yes")
 
     def no(self, controldir, revspec):
-        """Mark that a given revision does not have the state we're looking for."""
+        """Mark a given revision as wrong."""
         self._set_state(controldir, revspec, "no")
 
     def move(self, controldir, revspec):

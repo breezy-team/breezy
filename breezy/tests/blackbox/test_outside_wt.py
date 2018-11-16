@@ -63,17 +63,17 @@ class TestOutsideWT(tests.ChrootedTestCase):
         expected_error = u'brz: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir
         # -r X..Y
         out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3,
-            working_dir=tmp_dir)
+                                working_dir=tmp_dir)
         self.assertEqual('', out)
         self.assertEqual(expected_error, err)
         # -r X
         out, err = self.run_bzr('diff -r revno:2:branch2', retcode=3,
-            working_dir=tmp_dir)
+                                working_dir=tmp_dir)
         self.assertEqual('', out)
         self.assertEqual(expected_error, err)
         # -r X..
         out, err = self.run_bzr('diff -r revno:2:branch2..', retcode=3,
-            working_dir=tmp_dir)
+                                working_dir=tmp_dir)
         self.assertEqual('', out)
         self.assertEqual(expected_error, err)
         # no -r at all.

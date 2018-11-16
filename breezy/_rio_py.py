@@ -25,6 +25,8 @@ from .rio import (
     )
 
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
+
+
 def _valid_tag(tag):
     if not isinstance(tag, str):
         raise TypeError(tag)
@@ -55,11 +57,11 @@ def _read_stanza_unicode(unicode_iter):
         if line == u'\n':
             break       # end of stanza
         real_l = line
-        if line[0] == u'\t': # continues previous value
+        if line[0] == u'\t':  # continues previous value
             if tag is None:
                 raise ValueError('invalid continuation line %r' % real_l)
             accum_value.append(u'\n' + line[1:-1])
-        else: # new tag:value line
+        else:  # new tag:value line
             if tag is not None:
                 stanza.add(tag, u''.join(accum_value))
             try:
@@ -70,9 +72,9 @@ def _read_stanza_unicode(unicode_iter):
             tag = str(line[:colon_index])
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = [line[colon_index+2:-1]]
+            accum_value = [line[colon_index + 2:-1]]
 
-    if tag is not None: # add last tag-value
+    if tag is not None:  # add last tag-value
         stanza.add(tag, u''.join(accum_value))
         return stanza
     else:     # didn't see any content
