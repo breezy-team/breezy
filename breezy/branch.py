@@ -16,18 +16,12 @@
 
 from __future__ import absolute_import
 
-import sys
-
-from . import errors
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
-    cleanup,
     config as _mod_config,
     debug,
-    fetch,
     memorytree,
     repository,
     revision as _mod_revision,
@@ -37,6 +31,7 @@ from breezy import (
     urlutils,
     )
 from breezy.bzr import (
+    fetch,
     remote,
     vf_search,
     )
@@ -45,16 +40,13 @@ from breezy.i18n import gettext, ngettext
 
 from . import (
     controldir,
+    errors,
     registry,
-    )
-from .decorators import (
-    only_raises,
     )
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
 from .sixish import (
-    BytesIO,
     text_type,
     viewitems,
     )

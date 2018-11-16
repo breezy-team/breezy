@@ -56,7 +56,7 @@ strange results if there is a criss-cross merge.
 """
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info
+from ... import version_info  # noqa: F401
 from ...hooks import install_lazy_named_hook
 
 # Put most of the code in a separate module that we lazy-import to keep the

@@ -216,6 +216,34 @@ create_signatures=always
             breezy.gpg.GPGStrategy = oldstrategy
 
 
+class RevpropsRepository(tests.TestCaseWithTransport):
+
+    def test_author(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={'author': 'Joe Example <joe@example.com>'})
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
+
+    def test_authors(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={'authors': 'Joe Example <joe@example.com>'})
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
+
+    def test_multiple_authors(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        self.assertRaises(Exception, wt.commit,
+            "base", allow_pointless=True,
+            revprops={'authors': 'Joe Example <joe@example.com>\n'
+                                 'Jane Doe <jane@example.com\n>'})
+
+
 class GitRepositoryFormat(tests.TestCase):
 
     def setUp(self):

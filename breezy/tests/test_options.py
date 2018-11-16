@@ -44,16 +44,16 @@ class OptionTests(TestCase):
         # to cmd_commit, when they are meant to be about option parsing in
         # general.
         self.assertEqual(
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}),
+            ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True, 'bugs': []}),
            parse_args(cmd_commit(), ['--help']))
         self.assertEqual(
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}),
+            ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter', 'bugs': []}),
            parse_args(cmd_commit(), ['--message=biter']))
 
     def test_no_more_opts(self):
         """Terminated options"""
         self.assertEqual(
-            (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}),
+            (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': [], 'bugs': []}),
             parse_args(cmd_commit(), ['--', '-file-with-dashes']))
 
     def test_option_help(self):

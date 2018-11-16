@@ -31,7 +31,6 @@ from . import (
 
 from .sixish import (
     text_type,
-    viewvalues,
     )
 
 
@@ -89,7 +88,7 @@ class MutableTree(tree.Tree):
         Note that the command line normally calls smart_add instead,
         which can automatically recurse.
 
-        This adds the files to the inventory, so that they will be
+        This adds the files to the tree, so that they will be
         recorded by the next commit.
 
         :param files: List of paths to add, relative to the base of the tree.
@@ -343,12 +342,12 @@ class MutableTree(tree.Tree):
             interpreted relative to the process cwd, not relative to the 
             tree.*  (Add and most other tree methods use tree-relative
             paths.)
-        :param action: A reporter to be called with the inventory, parent_ie,
+        :param action: A reporter to be called with the working tree, parent_ie,
             path and kind of the path being added. It may return a file_id if
             a specific one should be used.
-        :param save: Save the inventory after completing the adds. If False
+        :param save: Save the changes after completing the adds. If False
             this provides dry-run functionality by doing the add and not saving
-            the inventory.
+            the changes.
         :return: A tuple - files_added, ignored_files. files_added is the count
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.

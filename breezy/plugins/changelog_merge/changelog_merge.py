@@ -24,7 +24,6 @@ from ... import (
     debug,
     merge,
     osutils,
-    urlutils,
     )
 from ...merge3 import Merge3
 from ...trace import mutter

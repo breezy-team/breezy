@@ -23,8 +23,6 @@ from __future__ import absolute_import
 
 # TODO: `help commands --all` should show hidden commands
 
-import sys
-
 from . import (
     commands as _mod_commands,
     errors,

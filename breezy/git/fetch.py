@@ -29,7 +29,6 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
-from dulwich.walk import Walker
 import posixpath
 import stat
 
@@ -38,7 +37,6 @@ from .. import (
     errors,
     osutils,
     trace,
-    ui,
     )
 from ..errors import (
     BzrError,
@@ -48,9 +46,6 @@ from ..bzr.inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
-    )
-from ..repository import (
-    InterRepository,
     )
 from ..revision import (
     NULL_REVISION,
@@ -76,17 +71,6 @@ from .mapping import (
 from .object_store import (
     LRUTreeCache,
     _tree_to_objects,
-    )
-from .refs import (
-    is_tag,
-    )
-from .remote import (
-    RemoteGitRepository,
-    )
-from .repository import (
-    GitRepository,
-    GitRepositoryFormat,
-    LocalGitRepository,
     )
 
 

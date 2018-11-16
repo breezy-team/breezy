@@ -27,7 +27,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    graph as _mod_graph,
     osutils,
     static_tuple,
     trace,

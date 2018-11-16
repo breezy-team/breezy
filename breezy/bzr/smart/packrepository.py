@@ -19,7 +19,6 @@ from __future__ import absolute_import
 """Server-side pack repository related request implmentations."""
 
 from .request import (
-    FailedSmartServerResponse,
     SuccessfulSmartServerResponse,
     )
 

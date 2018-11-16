@@ -324,7 +324,8 @@ class TestPropertyEncoding(TestCase):
     def test_encoding_one(self):
         self.assertEqual(
             'http://example.com/bugs/1 fixed',
-            bugtracker.encode_fixes_bug_urls(['http://example.com/bugs/1']))
+            bugtracker.encode_fixes_bug_urls(
+                [('http://example.com/bugs/1', 'fixed')]))
 
     def test_encoding_zero(self):
         self.assertEqual('', bugtracker.encode_fixes_bug_urls([]))
@@ -332,6 +333,7 @@ class TestPropertyEncoding(TestCase):
     def test_encoding_two(self):
         self.assertEqual(
             'http://example.com/bugs/1 fixed\n'
-            'http://example.com/bugs/2 fixed',
+            'http://example.com/bugs/2 related',
             bugtracker.encode_fixes_bug_urls(
-                ['http://example.com/bugs/1', 'http://example.com/bugs/2']))
+                [('http://example.com/bugs/1', 'fixed'),
+                 ('http://example.com/bugs/2', 'related')]))

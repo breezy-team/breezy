@@ -54,7 +54,7 @@ from .repository import (
 from ..plugins.fastimport import exporter as fastexporter
 
 try:
-    import fastimport
+    import fastimport  # noqa: F401
 except ImportError:
     pass
 else:

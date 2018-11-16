@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from dulwich.index import (
     commit_tree,
     )
-import os
 import stat
 
 from .. import (
@@ -44,16 +43,13 @@ from ..sixish import (
     )
 
 from dulwich.objects import (
-    S_IFGITLINK,
     Blob,
     Commit,
     )
 from dulwich.index import read_submodule_head
-from dulwich.repo import Repo
 
 
 from .mapping import (
-    entry_mode,
     object_mode,
     fix_person_identifier,
     )
@@ -209,7 +205,21 @@ class GitCommitBuilder(CommitBuilder):
         encoding = self._revprops.pop(u'git-explicit-encoding', 'utf-8')
         c.encoding = encoding.encode('ascii')
         c.committer = fix_person_identifier(self._committer.encode(encoding))
-        c.author = fix_person_identifier(self._revprops.pop('author', self._committer).encode(encoding))
+        try:
+            author = self._revprops.pop('author')
+        except KeyError:
+            try:
+                authors = self._revprops.pop('authors').splitlines()
+            except KeyError:
+                author = self._committer
+            else:
+                if len(authors) > 1:
+                    raise Exception("Unable to convert multiple authors")
+                elif len(authors) == 0:
+                    author = self._committer
+                else:
+                    author = authors[0]
+        c.author = fix_person_identifier(author.encode(encoding))
         if self._revprops:
             raise NotImplementedError(self._revprops)
         c.commit_time = int(self._timestamp)

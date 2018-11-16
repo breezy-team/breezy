@@ -101,7 +101,7 @@ def default_test_list():
     # there's nothing asserting that these labels correspond to what is
     # actually used.
     def force_known_graph(testcase):
-        from breezy.fetch import Inter1and2Helper
+        from breezy.bzr.fetch import Inter1and2Helper
         testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
     # Gather extra scenarios from the repository implementations,
     # as InterRepositories can be used by Repository implementations

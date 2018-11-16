@@ -17,7 +17,6 @@
 from __future__ import absolute_import
 
 import re
-import sys
 
 from ...lazy_import import lazy_import
 lazy_import(globals(), """

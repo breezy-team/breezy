@@ -720,6 +720,10 @@ class TestInventoryEntry(TestCase):
         dir = inventory.InventoryLink(b'123', 'hello.c', ROOT_ID)
         self.assertEqual(dir.kind_character(), '')
 
+    def test_link_kind_character(self):
+        dir = TreeReference(b'123', 'hello.c', ROOT_ID)
+        self.assertEqual(dir.kind_character(), '+')
+
     def test_dir_detect_changes(self):
         left = inventory.InventoryDirectory(b'123', 'hello.c', ROOT_ID)
         right = inventory.InventoryDirectory(b'123', 'hello.c', ROOT_ID)

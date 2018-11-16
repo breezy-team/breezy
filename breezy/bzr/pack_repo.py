@@ -21,7 +21,6 @@ import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-from itertools import izip
 import time
 
 from breezy import (
@@ -31,16 +30,13 @@ from breezy import (
     graph,
     osutils,
     transactions,
-    tsort,
     ui,
     )
 from breezy.bzr import (
-    chk_map,
     pack,
     )
 from breezy.bzr.index import (
     CombinedGraphIndex,
-    GraphIndexPrefixAdapter,
     )
 """)
 from .. import (
@@ -66,7 +62,6 @@ from ..bzr.repository import (
     )
 from ..sixish import (
     reraise,
-    text_type,
     viewitems,
     )
 from ..bzr.vf_repository import (

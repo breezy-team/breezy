@@ -96,7 +96,8 @@ class CommitTemplate(object):
                     bugids.extend(_BUG_MATCH.findall(line))
                 self.commit.revprops['bugs'] = \
                     bugtracker.encode_fixes_bug_urls(
-                        [bt.get_bug_url(bugid) for bugid in bugids])
+                        [(bt.get_bug_url(bugid), bugtracker.FIXED)
+                         for bugid in bugids])
             return self.merge_message(''.join(new_lines))
 
     def merge_message(self, new_message):

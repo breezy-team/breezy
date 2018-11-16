@@ -27,7 +27,6 @@ from dulwich.objects import (
     Blob,
     Commit,
     Tag,
-    Tree,
     parse_timezone,
     )
 from dulwich.tests.utils import (

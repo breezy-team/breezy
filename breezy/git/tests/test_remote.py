@@ -25,7 +25,6 @@ import time
 
 from ...controldir import ControlDir
 from ...errors import (
-    BzrError,
     DivergedBranches,
     NotBranchError,
     NoSuchTag,
@@ -141,6 +140,37 @@ class TestRemoteGitBranchFormat(TestCase):
         self.assertTrue(self.format.supports_tags())
 
 
+class TestRemoteGitBranch(TestCaseWithTransport):
+
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.remote_real = GitRepo.init('remote', mkdir=True)
+        self.remote_url = 'git://%s/' % os.path.abspath(self.remote_real.path)
+        self.permit_url(self.remote_url)
+
+    def test_set_last_revision_info(self):
+        c1 = self.remote_real.do_commit(
+                message=b'message 1',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/newbranch')
+        c2 = self.remote_real.do_commit(
+                message=b'message 2',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>',
+                ref=b'refs/heads/newbranch')
+
+        remote = ControlDir.open(self.remote_url)
+        newbranch = remote.open_branch('newbranch')
+        self.assertEqual(newbranch.lookup_foreign_revision_id(c2),
+                         newbranch.last_revision())
+        newbranch.set_last_revision_info(
+            1, newbranch.lookup_foreign_revision_id(c1))
+        self.assertEqual(c1, self.remote_real.refs[b'refs/heads/newbranch'])
+        self.assertEqual(newbranch.last_revision(),
+                         newbranch.lookup_foreign_revision_id(c1))
+
+
 class FetchFromRemoteTestBase(object):
 
     _test_needs_features = [ExecutableFeature('git')]
@@ -219,6 +249,38 @@ class FetchFromRemoteTestBase(object):
                 local_branch.last_revision())
         self.assertEqual(
                 {'blah': default_mapping.revision_id_foreign_to_bzr(c2)},
+                local_branch.tags.get_tag_dict())
+
+    def test_sprout_with_annotated_tag_unreferenced(self):
+        c1 = self.remote_real.do_commit(
+                message=b'message',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
+        c2 = self.remote_real.do_commit(
+                message=b'another commit',
+                committer=b'committer <committer@example.com>',
+                author=b'author <author@example.com>')
+        porcelain.tag_create(
+                self.remote_real,
+                tag=b"blah",
+                author=b'author <author@example.com>',
+                objectish=c1,
+                tag_time=int(time.time()),
+                tag_timezone=0,
+                annotated=True,
+                message=b"Annotated tag")
+
+        remote = ControlDir.open(self.remote_url)
+        self.make_controldir('local', format=self._to_format)
+        local = remote.sprout(
+                'local',
+                revision_id=default_mapping.revision_id_foreign_to_bzr(c1))
+        local_branch = local.open_branch()
+        self.assertEqual(
+                default_mapping.revision_id_foreign_to_bzr(c1),
+                local_branch.last_revision())
+        self.assertEqual(
+                {'blah': default_mapping.revision_id_foreign_to_bzr(c1)},
                 local_branch.tags.get_tag_dict())
 
 

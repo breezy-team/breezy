@@ -27,7 +27,6 @@ from .. import (
     lockable_files,
     revision as _mod_revision,
     )
-from ..decorators import only_raises
 from ..repository import (
     format_registry,
     Repository,

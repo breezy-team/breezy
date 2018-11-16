@@ -20,13 +20,9 @@
 from __future__ import absolute_import
 
 import os
-import sys
 
 from breezy.lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
-import subprocess
-
 from breezy import (
     config,
     trace,
@@ -225,7 +221,7 @@ class GPGStrategy(object):
         :return: boolean if this strategy can verify signatures
         """
         try:
-            import gpg
+            import gpg  # noqa: F401
             return True
         except ImportError as error:
             return False

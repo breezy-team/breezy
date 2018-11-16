@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 from ... import (
-    branch,
     commands,
     config,
     lazy_import,
@@ -28,7 +27,6 @@ from ... import (
     )
 lazy_import.lazy_import(globals(), """
 import stat
-import sys
 
 from breezy import (
     controldir,

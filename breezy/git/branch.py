@@ -61,7 +61,6 @@ from .config import (
     )
 from .errors import (
     NoPushSupport,
-    NoSuchRef,
     )
 from .push import (
     remote_divergence,
@@ -643,8 +642,11 @@ class LocalGitBranch(GitBranch):
     def _read_last_revision_info(self):
         last_revid = self.last_revision()
         graph = self.repository.get_graph()
-        revno = graph.find_distance_to_null(last_revid,
-            [(revision.NULL_REVISION, 0)])
+        try:
+            revno = graph.find_distance_to_null(last_revid,
+                [(revision.NULL_REVISION, 0)])
+        except errors.GhostRevisionsHaveNoRevno:
+            revno = None
         return revno, last_revid
 
     def set_last_revision_info(self, revno, revision_id):
@@ -1084,9 +1086,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         fetch_tags = c.get('branch.fetch_tags')
 
         if stop_revision is None:
-            refs = interrepo.fetch(branches=[b"HEAD"], include_tags=fetch_tags)
+            refs = interrepo.fetch(branches=[self.source.ref], include_tags=fetch_tags)
             try:
-                head = refs[b"HEAD"]
+                head = refs[self.source.ref]
             except KeyError:
                 stop_revision = revision.NULL_REVISION
             else:
