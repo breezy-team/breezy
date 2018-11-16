@@ -77,20 +77,20 @@ except ImportError:
 #
 # Default values::
 
-reader=None
-reader_name='standalone'
-parser=None
-parser_name='restructuredtext'
-writer=None
-writer_name='pseudoxml'
-settings=None
-settings_spec=None
-settings_overrides=None
-config_section=None
-enable_exit_status=1
-argv=None
-usage=default_usage
-description=default_description
+reader = None
+reader_name = 'standalone'
+parser = None
+parser_name = 'restructuredtext'
+writer = None
+writer_name = 'pseudoxml'
+settings = None
+settings_spec = None
+settings_overrides = None
+config_section = None
+enable_exit_status = 1
+argv = None
+usage = default_usage
+description = default_description
 
 # Argument values given to publish_cmdline() in rst2latex.py::
 
@@ -147,7 +147,7 @@ pub.publish(argv, usage, description, settings_spec, settings_overrides,
 rubber_argv = ["--pdf",    # use pdflatex to produce PDF
                "--short",   # Display LaTeX’s error messages one error per line.
                texpath
-              ]
+               ]
 
 # Get a TeX processing class instance and do the latex->pdf conversion::
 

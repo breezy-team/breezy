@@ -519,8 +519,8 @@ class RemoteGitDir(GitDir):
         ref = self._get_selected_ref(name, ref)
         try:
             if not nascent_ok and ref not in self.get_refs_container():
-                raise NotBranchError(self.root_transport.base,
-                        controldir=self)
+                raise NotBranchError(
+                    self.root_transport.base, controldir=self)
         except NotGitRepository:
             raise NotBranchError(self.root_transport.base,
                                  controldir=self)
@@ -841,7 +841,7 @@ class RemoteGitRepository(GitRepository):
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
         return self.controldir.fetch_pack(
-                determine_wants, graph_walker, pack_data, progress)
+            determine_wants, graph_walker, pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_data):
         return self.controldir.send_pack(get_changed_refs, generate_pack_data)

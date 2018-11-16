@@ -3063,7 +3063,7 @@ class TestMessageHandlerErrors(tests.TestCase):
             + b'\0\0\0\x02de'  # empty headers
             + b'oX' +  # a single byte part: 'X'.  ConventionalRequestHandler will
             # error at this part.
-            b'oX'  +  # and again.
+            b'oX' +  # and again.
             b'e'  # end of message
             )
 

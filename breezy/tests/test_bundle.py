@@ -595,10 +595,12 @@ class BundleTester(object):
 
         for path, status, kind, fileid, entry in base_files:
             # Check that the meta information is the same
-            self.assertEqual(base_tree.get_file_size(path),
-                    to_tree.get_file_size(to_tree.id2path(fileid)))
-            self.assertEqual(base_tree.get_file_sha1(path),
-                    to_tree.get_file_sha1(to_tree.id2path(fileid)))
+            self.assertEqual(
+                base_tree.get_file_size(path),
+                to_tree.get_file_size(to_tree.id2path(fileid)))
+            self.assertEqual(
+                base_tree.get_file_sha1(path),
+                to_tree.get_file_sha1(to_tree.id2path(fileid)))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),

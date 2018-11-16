@@ -411,7 +411,7 @@ class GitBranch(ForeignBranch):
             cs = self.repository._git.get_config_stack()
             try:
                 return cs.get((b"branch", self.name.encode('utf-8')),
-                               b"nick").decode("utf-8")
+                              b"nick").decode("utf-8")
             except KeyError:
                 pass
         return self.name or u"HEAD"

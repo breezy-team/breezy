@@ -43,28 +43,32 @@ if sys.platform == 'win32':
         else:
             return c
 else:
-    def quote (c):
+    def quote(c):
         return c
 
 cmd = 'from setuptools.command.easy_install import main; main()'
-ws  = pkg_resources.working_set
+ws = pkg_resources.working_set
 
 if is_jython:
     import subprocess
-    
-    assert subprocess.Popen([sys.executable] + ['-c', quote(cmd), '-mqNxd', 
-           quote(tmpeggs), 'zc.buildout'], 
-           env=dict(os.environ,
-               PYTHONPATH=
-               ws.find(pkg_resources.Requirement.parse('setuptools')).location
-               ),
-           ).wait() == 0
+
+    env = dict(
+        os.environ,
+        PYTHONPATH=ws.find(
+            pkg_resources.Requirement.parse('setuptools')).location
+        )
+
+    assert subprocess.Popen(
+        [sys.executable] +
+        ['-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout'],
+        env=env,).wait() == 0
 
 else:
     assert os.spawnle(
-        os.P_WAIT, sys.executable, quote (sys.executable),
-        '-c', quote (cmd), '-mqNxd', quote (tmpeggs), 'zc.buildout',
-        dict(os.environ,
+        os.P_WAIT, sys.executable, quote(sys.executable),
+        '-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout',
+        dict(
+            os.environ,
             PYTHONPATH=
             ws.find(pkg_resources.Requirement.parse('setuptools')).location
             ),

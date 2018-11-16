@@ -20,8 +20,8 @@ options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", 'webbrowser'])
 options = dict(options)
 
 if len(args) == 1:
-    print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
-           "doc/en/release-notes/brz-x.y.txt")
+    print("Usage: check-newsbugs [--launchpad][--webbrowser] "
+          "doc/en/release-notes/brz-x.y.txt")
     print("Options:")
     print("--launchpad     Print out Launchpad mail commands for closing bugs ")
     print("                that are already fixed.")

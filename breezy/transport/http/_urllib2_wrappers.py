@@ -287,8 +287,8 @@ class Response(http_client.HTTPResponse):
     if PY3:
         def __init__(self, sock, debuglevel=0, method=None, url=None):
             self.url = url
-            super(Response, self).__init__(sock, debuglevel=debuglevel,
-                    method=method, url=url)
+            super(Response, self).__init__(
+                sock, debuglevel=debuglevel, method=method, url=url)
 
     def begin(self):
         """Begin to read the response from the server.
@@ -388,8 +388,8 @@ class AbstractHTTPConnection:
                 # Warn the user (once)
                 if (self._ranges_received_whole_file is None
                         and self._response.status == 200
-                        and pending and pending > self._range_warning_thresold
-                    ):
+                        and pending
+                        and pending > self._range_warning_thresold):
                     self._ranges_received_whole_file = True
                     trace.warning(
                         'Got a 200 response when asking for multiple ranges,'
@@ -760,8 +760,8 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
                         orig_error=exc_val)
                 elif (isinstance(exc_val, socket.error) and len(exc_val.args)
                       and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
-                      # 10053 == WSAECONNABORTED
-                      # 10054 == WSAECONNRESET
+                    # 10053 == WSAECONNABORTED
+                    # 10054 == WSAECONNRESET
                     raise errors.ConnectionReset(
                         "Connection lost while sending request.")
                 else:

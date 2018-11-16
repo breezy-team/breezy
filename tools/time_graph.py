@@ -32,7 +32,7 @@ else:
 with b.lock_read():
     g = b.repository.get_graph()
     parent_map = dict(p for p in g.iter_ancestry([b.last_revision()])
-                         if p[1] is not None)
+                      if p[1] is not None)
 end = time.clock()
 
 print('Found %d nodes, loaded in %.3fs' % (len(parent_map), end - begin))

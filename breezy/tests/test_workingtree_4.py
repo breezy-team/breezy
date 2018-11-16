@@ -849,7 +849,7 @@ class TestCorruptDirstate(TestCaseWithTransport):
             tree.update_basis_by_delta, b'new-revision-id',
             [('dir', 'new-dir', b'dir-id', new_dir),
              ('dir/file', 'new-dir/new-file', b'file-id', new_file),
-            ])
+             ])
         del state
 
         # Now when we re-read the file it should not have been modified
