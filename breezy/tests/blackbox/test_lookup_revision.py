@@ -20,6 +20,7 @@
 
 from breezy import tests
 
+
 class TestLookupRevision(tests.TestCaseWithTransport):
 
     def test_lookup_revison_directory(self):

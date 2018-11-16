@@ -37,7 +37,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 'Tree format does not support references')
         else:
             self.fail('%r does not support references but should'
-                % (tree, ))
+                      % (tree, ))
 
     def make_nested_trees(self):
         tree, sub_tree = self.make_trees()
@@ -59,8 +59,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             with basis.lock_read():
                 sub_tree = tree.get_nested_tree('sub-tree')
                 self.assertEqual(
-                        sub_tree.last_revision(),
-                        tree.get_reference_revision('sub-tree'))
+                    sub_tree.last_revision(),
+                    tree.get_reference_revision('sub-tree'))
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')

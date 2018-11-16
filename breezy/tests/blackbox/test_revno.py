@@ -37,7 +37,8 @@ class TestRevno(tests.TestCaseWithTransport):
         bzr('init')
         self.assertEqual(int(bzr('revno')), 0)
 
-        with open('foo', 'wb') as f: f.write(b'foo\n')
+        with open('foo', 'wb') as f:
+            f.write(b'foo\n')
         bzr('add foo')
         bzr('commit -m foo')
         self.assertEqual(int(bzr('revno')), 1)
@@ -79,7 +80,7 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno --tree branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
-            err)
+                         err)
 
     def test_dotted_revno_tree(self):
         builder = self.make_branch_builder('branch')
@@ -189,7 +190,7 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
         revid2 = t.commit("message")
         self.reset_smart_call_log()
         out, err = self.run_bzr(['revno', '-rrevid:' + revid1.decode('utf-8'),
-            self.get_url('branch')])
+                                 self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

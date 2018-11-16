@@ -38,4 +38,3 @@ class TestCat(TestCaseWithConnectionHookedTransport):
         cmd.run(self.get_url('branch/foo'))
         self.assertEqual(1, len(self.connections))
         self.assertEqual('foo', cmd.outf.getvalue())
-

@@ -119,48 +119,48 @@ class _TreeShim(object):
                 if ie is None:
                     raise AssertionError('How is both old and new None?')
                     change = (file_id,
-                        (old_path, new_path),
-                        False,
-                        (False, False),
-                        (None, None),
-                        (None, None),
-                        (None, None),
-                        (None, None),
-                        )
+                              (old_path, new_path),
+                              False,
+                              (False, False),
+                              (None, None),
+                              (None, None),
+                              (None, None),
+                              (None, None),
+                              )
                 change = (file_id,
-                    (old_path, new_path),
-                    True,
-                    (False, True),
-                    (None, ie.parent_id),
-                    (None, ie.name),
-                    (None, ie.kind),
-                    (None, ie.executable),
-                    )
+                          (old_path, new_path),
+                          True,
+                          (False, True),
+                          (None, ie.parent_id),
+                          (None, ie.name),
+                          (None, ie.kind),
+                          (None, ie.executable),
+                          )
             else:
                 if ie is None:
                     change = (file_id,
-                        (old_path, new_path),
-                        True,
-                        (True, False),
-                        (old_ie.parent_id, None),
-                        (old_ie.name, None),
-                        (old_ie.kind, None),
-                        (old_ie.executable, None),
-                        )
+                              (old_path, new_path),
+                              True,
+                              (True, False),
+                              (old_ie.parent_id, None),
+                              (old_ie.name, None),
+                              (old_ie.kind, None),
+                              (old_ie.executable, None),
+                              )
                 else:
-                    content_modified = (ie.text_sha1 != old_ie.text_sha1
-                                        or ie.text_size != old_ie.text_size)
+                    content_modified = (ie.text_sha1 != old_ie.text_sha1 or
+                                        ie.text_size != old_ie.text_size)
                     # TODO: ie.kind != old_ie.kind
                     # TODO: symlinks changing targets, content_modified?
                     change = (file_id,
-                        (old_path, new_path),
-                        content_modified,
-                        (True, True),
-                        (old_ie.parent_id, ie.parent_id),
-                        (old_ie.name, ie.name),
-                        (old_ie.kind, ie.kind),
-                        (old_ie.executable, ie.executable),
-                        )
+                              (old_path, new_path),
+                              content_modified,
+                              (True, True),
+                              (old_ie.parent_id, ie.parent_id),
+                              (old_ie.name, ie.name),
+                              (old_ie.kind, ie.kind),
+                              (old_ie.executable, ie.executable),
+                              )
             yield change
 
 
@@ -212,7 +212,7 @@ class RevisionStore(object):
         inv.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
         inv.id_to_entry._root_node.set_maximum_size(maximum_size)
         inv.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-            None, search_key_func)
+                                                           None, search_key_func)
         inv.parent_id_basename_to_file_id._root_node.set_maximum_size(
             maximum_size)
         inv.parent_id_basename_to_file_id._root_node._key_width = 2
@@ -251,9 +251,9 @@ class RevisionStore(object):
         # new write group. We want one write group around a batch of imports
         # where the default batch size is currently 10000. IGC 20090312
         self._commit_builder = self.repo._commit_builder_class(self.repo,
-            parents, config, timestamp=revision.timestamp,
-            timezone=revision.timezone, committer=revision.committer,
-            revprops=revision.properties, revision_id=revision.revision_id)
+                                                               parents, config, timestamp=revision.timestamp,
+                                                               timezone=revision.timezone, committer=revision.committer,
+                                                               revprops=revision.properties, revision_id=revision.revision_id)
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.
@@ -266,17 +266,17 @@ class RevisionStore(object):
         # Check for correct API usage
         if self._current_rev_id is None:
             raise AssertionError("start_new_revision() must be called"
-                " before get_parents_and_revision_for_entry()")
+                                 " before get_parents_and_revision_for_entry()")
         if ie.revision != self._current_rev_id:
             raise AssertionError("start_new_revision() registered a different"
-                " revision (%s) to that in the inventory entry (%s)" %
-                (self._current_rev_id, ie.revision))
+                                 " revision (%s) to that in the inventory entry (%s)" %
+                                 (self._current_rev_id, ie.revision))
 
         # Find the heads. This code is lifted from
         # repository.CommitBuilder.record_entry_contents().
         parent_candidate_entries = ie.parent_candidates(self._rev_parent_invs)
         head_set = self._commit_builder._heads(ie.file_id,
-            list(parent_candidate_entries))
+                                               list(parent_candidate_entries))
         heads = []
         for inv in self._rev_parent_invs:
             try:
@@ -297,12 +297,12 @@ class RevisionStore(object):
         changed = False
         if len(heads) > 1:
             changed = True
-        elif (parent_entry.name != ie.name or parent_entry.kind != ie.kind or
-            parent_entry.parent_id != ie.parent_id):
+        elif (parent_entry.name != ie.name or parent_entry.kind != ie.kind
+              or parent_entry.parent_id != ie.parent_id):
             changed = True
         elif ie.kind == 'file':
-            if (parent_entry.text_sha1 != ie.text_sha1 or
-                parent_entry.executable != ie.executable):
+            if (parent_entry.text_sha1 != ie.text_sha1
+                    or parent_entry.executable != ie.executable):
                 changed = True
         elif ie.kind == 'symlink':
             if parent_entry.symlink_target != ie.symlink_target:
@@ -314,7 +314,7 @@ class RevisionStore(object):
         return tuple(heads), rev_id
 
     def load_using_delta(self, rev, basis_inv, inv_delta, signature,
-        text_provider, parents_provider, inventories_provider=None):
+                         text_provider, parents_provider, inventories_provider=None):
         """Load a revision by applying a delta to a (CHK)Inventory.
 
         :param rev: the Revision
@@ -334,19 +334,20 @@ class RevisionStore(object):
         """
         # TODO: set revision_id = rev.revision_id
         builder = self.repo._commit_builder_class(self.repo,
-            parents=rev.parent_ids, config=None, timestamp=rev.timestamp,
-            timezone=rev.timezone, committer=rev.committer,
-            revprops=rev.properties, revision_id=rev.revision_id)
+                                                  parents=rev.parent_ids, config=None, timestamp=rev.timestamp,
+                                                  timezone=rev.timezone, committer=rev.committer,
+                                                  revprops=rev.properties, revision_id=rev.revision_id)
         if self._graph is None and self._use_known_graph:
-            if (getattr(_mod_graph, 'GraphThunkIdsToKeys', None) and
-                getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None) and
-                getattr(self.repo, "get_known_graph_ancestry", None)):
+            if (getattr(_mod_graph, 'GraphThunkIdsToKeys', None)
+                and getattr(_mod_graph.GraphThunkIdsToKeys, "add_node", None)
+                    and getattr(self.repo, "get_known_graph_ancestry", None)):
                 self._graph = self.repo.get_known_graph_ancestry(
                     rev.parent_ids)
             else:
                 self._use_known_graph = False
         if self._graph is not None:
             orig_heads = builder._heads
+
             def thunked_heads(file_id, revision_ids):
                 # self._graph thinks in terms of keys, not ids, so translate
                 # them
@@ -383,7 +384,7 @@ class RevisionStore(object):
         rev.inv_sha1 = builder.inv_sha1
         config = builder._config_stack
         builder.repository.add_revision(builder._new_revision_id, rev,
-            builder.revision_tree().root_inventory)
+                                        builder.revision_tree().root_inventory)
         if self._graph is not None:
             # TODO: Use StaticTuple and .intern() for these things
             self._graph.add_node(builder._new_revision_id, rev.parent_ids)
@@ -395,7 +396,7 @@ class RevisionStore(object):
 
     def get_file_lines(self, revision_id, file_id):
         record = next(self.repo.texts.get_record_stream([(file_id, revision_id)],
-            'unordered', True))
+                                                        'unordered', True))
         if record.storage_kind == 'absent':
             raise errors.RevisionNotPresent(record.key, self.repo)
         return osutils.split_lines(record.get_bytes_as('fulltext'))

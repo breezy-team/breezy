@@ -39,9 +39,9 @@ from breezy import (
 
 
 command_option = config.Option(
-        'po_merge.command',
-        default='msgmerge -N "{other}" "{pot_file}" -C "{this}" -o "{result}"',
-        help='''\
+    'po_merge.command',
+    default='msgmerge -N "{other}" "{pot_file}" -C "{this}" -o "{result}"',
+    help='''\
 Command used to create a conflict-free .po file during merge.
 
 The following parameters are provided by the hook:
@@ -57,17 +57,17 @@ All paths are absolute.
 
 
 po_dirs_option = config.ListOption(
-        'po_merge.po_dirs', default='po,debian/po',
-        help='List of dirs containing .po files that the hook applies to.')
+    'po_merge.po_dirs', default='po,debian/po',
+    help='List of dirs containing .po files that the hook applies to.')
 
 
 po_glob_option = config.Option(
-        'po_merge.po_glob', default='*.po',
-        help='Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.')
+    'po_merge.po_glob', default='*.po',
+    help='Glob matching all ``.po`` files in one of ``po_merge.po_dirs``.')
 
 pot_glob_option = config.Option(
-        'po_merge.pot_glob', default='*.pot',
-        help='Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.')
+    'po_merge.pot_glob', default='*.pot',
+    help='Glob matching the ``.pot`` file in one of ``po_merge.po_dirs``.')
 
 
 class PoMerger(merge.PerFileMerger):
@@ -81,9 +81,9 @@ class PoMerger(merge.PerFileMerger):
         # FIXME: We use the branch config as there is no tree config
         # -- vila 2011-11-23
         self.conf = merger.this_branch.get_config_stack()
-        # Which dirs are targeted by the hook 
+        # Which dirs are targeted by the hook
         self.po_dirs = self.conf.get('po_merge.po_dirs')
-        # Which files are targeted by the hook 
+        # Which files are targeted by the hook
         self.po_glob = self.conf.get('po_merge.po_glob')
         # Which .pot file should be used
         self.pot_glob = self.conf.get('po_merge.pot_glob')

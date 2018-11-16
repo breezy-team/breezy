@@ -29,7 +29,7 @@ from . import (
 class CantReprocessAndShowBase(errors.BzrError):
 
     _fmt = ("Can't reprocess and show base, because reprocessing obscures "
-           "the relationship of conflicting lines to the base")
+            "the relationship of conflicting lines to the base")
 
 
 def intersect(ra, rb):
@@ -57,7 +57,7 @@ def intersect(ra, rb):
 def compare_range(a, astart, aend, b, bstart, bend):
     """Compare a[astart:aend] == b[bstart:bend], without slicing.
     """
-    if (aend-astart) != (bend-bstart):
+    if (aend - astart) != (bend - bstart):
         return False
     for ia, ib in zip(range(astart, aend), range(bstart, bend)):
         if a[ia] != b[ib]:
@@ -248,13 +248,11 @@ class Merge3(object):
             #   matchlen == (bend - bmatch)
             len_a = amatch - ia
             len_b = bmatch - ib
-            len_base = zmatch - iz
             # invariants:
             # assert len_a >= 0
             # assert len_b >= 0
-            # assert len_base >= 0
 
-            #print 'unmatched a=%d, b=%d' % (len_a, len_b)
+            # print 'unmatched a=%d, b=%d' % (len_a, len_b)
 
             if len_a or len_b:
                 # try to avoid actually slicing the lists
@@ -275,13 +273,15 @@ class Merge3(object):
                     elif not equal_a and not equal_b:
                         if self.is_cherrypick:
                             for node in self._refine_cherrypick_conflict(
-                                                    iz, zmatch, ia, amatch,
-                                                    ib, bmatch):
+                                    iz, zmatch, ia, amatch,
+                                    ib, bmatch):
                                 yield node
                         else:
-                            yield 'conflict', iz, zmatch, ia, amatch, ib, bmatch
+                            yield ('conflict', iz, zmatch, ia, amatch, ib,
+                                   bmatch)
                     else:
-                        raise AssertionError("can't handle a=b=base but unmatched")
+                        raise AssertionError(
+                            "can't handle a=b=base but unmatched")
 
                 ia = amatch
                 ib = bmatch
@@ -301,19 +301,20 @@ class Merge3(object):
                 ia = aend
                 ib = bend
 
-    def _refine_cherrypick_conflict(self, zstart, zend, astart, aend, bstart, bend):
+    def _refine_cherrypick_conflict(self, zstart, zend, astart, aend, bstart,
+                                    bend):
         """When cherrypicking b => a, ignore matches with b and base."""
         # Do not emit regions which match, only regions which do not match
-        matches = patiencediff.PatienceSequenceMatcher(None,
-            self.base[zstart:zend], self.b[bstart:bend]).get_matching_blocks()
+        matches = patiencediff.PatienceSequenceMatcher(
+            None, self.base[zstart:zend], self.b[bstart:bend]
+            ).get_matching_blocks()
         last_base_idx = 0
         last_b_idx = 0
         last_b_idx = 0
         yielded_a = False
         for base_idx, b_idx, match_len in matches:
-            conflict_z_len = base_idx - last_base_idx
             conflict_b_len = b_idx - last_b_idx
-            if conflict_b_len == 0: # There are no lines in b which conflict,
+            if conflict_b_len == 0:  # There are no lines in b which conflict,
                                     # so skip it
                 pass
             else:
@@ -325,7 +326,7 @@ class Merge3(object):
                     # The first conflict gets the a-range
                     yielded_a = True
                     yield ('conflict', zstart + last_base_idx, zstart +
-                    base_idx,
+                           base_idx,
                            astart, aend, bstart + last_b_idx, bstart + b_idx)
             last_base_idx = base_idx + match_len
             last_b_idx = b_idx + match_len
@@ -355,7 +356,7 @@ class Merge3(object):
             a_region = self.a[ia:amatch]
             b_region = self.b[ib:bmatch]
             matches = patiencediff.PatienceSequenceMatcher(
-                    None, a_region, b_region).get_matching_blocks()
+                None, a_region, b_region).get_matching_blocks()
             next_a = ia
             next_b = ib
             for region_ia, region_ib, region_len in matches[:-1]:
@@ -365,7 +366,7 @@ class Merge3(object):
                                            region_ib)
                 if reg is not None:
                     yield reg
-                yield 'same', region_ia, region_len+region_ia
+                yield 'same', region_ia, region_len + region_ia
                 next_a = region_ia + region_len
                 next_b = region_ib + region_len
             reg = self.mismatch_region(next_a, amatch, next_b, bmatch)
@@ -373,7 +374,7 @@ class Merge3(object):
                 yield reg
 
     @staticmethod
-    def mismatch_region(next_a, region_ia,  next_b, region_ib):
+    def mismatch_region(next_a, region_ia, next_b, region_ib):
         if next_a < region_ia or next_b < region_ib:
             return 'conflict', None, None, next_a, region_ia, next_b, region_ib
 
@@ -386,9 +387,9 @@ class Merge3(object):
 
         ia = ib = 0
         amatches = patiencediff.PatienceSequenceMatcher(
-                None, self.base, self.a).get_matching_blocks()
+            None, self.base, self.a).get_matching_blocks()
         bmatches = patiencediff.PatienceSequenceMatcher(
-                None, self.base, self.b).get_matching_blocks()
+            None, self.base, self.b).get_matching_blocks()
         len_a = len(amatches)
         len_b = len(bmatches)
 
@@ -400,7 +401,7 @@ class Merge3(object):
 
             # there is an unconflicted block at i; how long does it
             # extend?  until whichever one ends earlier.
-            i = intersect((abase, abase+alen), (bbase, bbase+blen))
+            i = intersect((abase, abase + alen), (bbase, bbase + blen))
             if i:
                 intbase = i[0]
                 intend = i[1]
@@ -441,9 +442,9 @@ class Merge3(object):
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
         am = patiencediff.PatienceSequenceMatcher(
-                None, self.base, self.a).get_matching_blocks()
+            None, self.base, self.a).get_matching_blocks()
         bm = patiencediff.PatienceSequenceMatcher(
-                None, self.base, self.b).get_matching_blocks()
+            None, self.base, self.b).get_matching_blocks()
 
         unc = []
 
@@ -477,7 +478,7 @@ def main(argv):
 
     m3 = Merge3(base, a, b)
 
-    #for sr in m3.find_sync_regions():
+    # for sr in m3.find_sync_regions():
     #    print sr
 
     # sys.stdout.writelines(m3.merge_lines(name_a=argv[1], name_b=argv[3]))

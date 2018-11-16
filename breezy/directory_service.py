@@ -85,7 +85,9 @@ class DirectoryServiceRegistry(registry.Registry):
         service, name = match
         return service().look_up(name, url)
 
+
 directories = DirectoryServiceRegistry()
+
 
 class AliasDirectory(object):
     """Directory lookup for locations associated with a branch.
@@ -96,17 +98,17 @@ class AliasDirectory(object):
 
     branch_aliases = registry.Registry()
     branch_aliases.register('parent', lambda b: b.get_parent(),
-        help="The parent of this branch.")
+                            help="The parent of this branch.")
     branch_aliases.register('submit', lambda b: b.get_submit_branch(),
-        help="The submit branch for this branch.")
+                            help="The submit branch for this branch.")
     branch_aliases.register('public', lambda b: b.get_public_branch(),
-        help="The public location of this branch.")
+                            help="The public location of this branch.")
     branch_aliases.register('bound', lambda b: b.get_bound_location(),
-        help="The branch this branch is bound to, for bound branches.")
+                            help="The branch this branch is bound to, for bound branches.")
     branch_aliases.register('push', lambda b: b.get_push_location(),
-        help="The saved location used for `brz push` with no arguments.")
+                            help="The saved location used for `brz push` with no arguments.")
     branch_aliases.register('this', lambda b: b.base,
-        help="This branch.")
+                            help="This branch.")
 
     def look_up(self, name, url):
         branch = _mod_branch.Branch.open_containing('.')[0]
@@ -164,9 +166,8 @@ class ColocatedDirectory(object):
     def look_up(self, name, url):
         dir = _mod_controldir.ControlDir.open_containing('.')[0]
         return urlutils.join_segment_parameters(dir.user_url,
-            {"branch": urlutils.escape(name)})
+                                                {"branch": urlutils.escape(name)})
 
 
 directories.register('co:', ColocatedDirectory,
                      'Easy access to colocated branches')
-

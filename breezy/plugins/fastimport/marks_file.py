@@ -32,7 +32,7 @@ def import_marks(filename):
         f = open(filename, 'r')
     except IOError:
         warning("Could not import marks file %s - not importing marks",
-            filename)
+                filename)
         return None
 
     try:
@@ -72,13 +72,13 @@ def export_marks(filename, revision_ids):
         f = open(filename, 'w')
     except IOError:
         warning("Could not open export-marks file %s - not exporting marks",
-            filename)
+                filename)
         return
 
     try:
         # Write the revision info
         for mark in revision_ids:
             f.write(':%s %s\n' % (mark.lstrip(b':').decode('utf-8'),
-                revision_ids[mark].decode('utf-8')))
+                                  revision_ids[mark].decode('utf-8')))
     finally:
         f.close()

@@ -44,12 +44,12 @@ class cmd_fix_missing_keys_for_stacking(Command):
             b = bd.open_branch(ignore_fallbacks=True)
         except (errors.NotBranchError, errors.InvalidURL):
             raise errors.BzrCommandError(
-                    "Not a branch or invalid URL: %s" % branch_url)
+                "Not a branch or invalid URL: %s" % branch_url)
         b.lock_read()
         try:
             url = b.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
-            errors.UnstackableBranchFormat):
+                errors.UnstackableBranchFormat):
             b.unlock()
             raise errors.BzrCommandError("Not stacked: %s" % branch_url)
         raw_r = b.repository.controldir.open_repository()
@@ -76,7 +76,7 @@ class cmd_fix_missing_keys_for_stacking(Command):
                 return
             assert raw_r._format.network_name() == b.repository._format.network_name()
             stream = b.repository.inventories.get_record_stream(
-                    needed, 'topological', True)
+                needed, 'topological', True)
             raw_r.start_write_group()
             try:
                 raw_r.inventories.insert_record_stream(stream)

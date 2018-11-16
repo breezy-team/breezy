@@ -58,7 +58,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         with tree.lock_read():
             files = [(path, status, kind)
                      for path, status, kind, file_id, parent_id
-                      in tree.list_files(include_root=True)]
+                     in tree.list_files(include_root=True)]
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)
         self.assertEqual([(tree, 'a', 'file')], action.adds)
@@ -66,11 +66,11 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def assertFilenameSkipped(self, filename):
         tree = self.make_branch_and_tree('tree')
         try:
-            self.build_tree(['tree/'+filename])
+            self.build_tree(['tree/' + filename])
         except errors.NoSuchFile:
             if sys.platform == 'win32':
                 raise tests.TestNotApplicable('Cannot create files named %r on'
-                    ' win32' % (filename,))
+                                              ' win32' % (filename,))
         tree.smart_add(['tree'])
         self.assertEqual(None, tree.path2id(filename))
 
@@ -118,6 +118,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         nested_wt = self.make_branch_and_tree('nested')
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -182,9 +183,11 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_add_ignored_nested_paths(self):
         """Test smart-adding a list of paths which includes ignored ones."""
         wt = self.make_branch_and_tree('.')
-        tree_shape = ("adir/", "adir/CVS/", "adir/CVS/afile", "adir/CVS/afile2")
+        tree_shape = ("adir/", "adir/CVS/",
+                      "adir/CVS/afile", "adir/CVS/afile2")
         add_paths = ("adir/CVS", "adir/CVS/afile", "adir")
-        expected_paths = ("adir", "adir/CVS", "adir/CVS/afile", "adir/CVS/afile2")
+        expected_paths = ("adir", "adir/CVS",
+                          "adir/CVS/afile", "adir/CVS/afile2")
         self.build_tree(tree_shape)
         wt.smart_add(add_paths)
         for path in expected_paths:
@@ -193,7 +196,8 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
         wt = self.make_branch_and_tree('.')
-        self.assertRaises(errors.NoSuchFile, wt.smart_add, ['non-existant-file'])
+        self.assertRaises(errors.NoSuchFile, wt.smart_add,
+                          ['non-existant-file'])
 
     def test_returns_and_ignores(self):
         """Correctly returns added/ignored files"""
@@ -201,7 +205,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         # The default ignore list includes '*.py[co]', but not CVS
         ignores._set_user_ignores(['*.py[co]'])
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
-                        'inertiatic/foo.pyc'])
+                         'inertiatic/foo.pyc'])
         added, ignored = wt.smart_add(u'.')
         if wt.has_versioned_directories():
             self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
@@ -218,7 +222,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
                        'dir1/', 'dir1/file3',
                        'dir1/subdir2/', 'dir1/subdir2/file4',
                        'dir2/', 'dir2/file5',
-                      ]
+                       ]
         not_added = ['file6', 'dir3/', 'dir3/file7', 'dir3/file8']
         self.build_tree(added_paths)
         self.build_tree(not_added)
@@ -228,10 +232,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         for path in added_paths:
             self.assertTrue(wt.is_versioned(path.rstrip('/')),
-                    'Failed to add path: %s' % (path,))
+                            'Failed to add path: %s' % (path,))
         for path in not_added:
             self.assertFalse(wt.is_versioned(path.rstrip('/')),
-                    'Accidentally added path: %s' % (path,))
+                             'Accidentally added path: %s' % (path,))
 
     def test_add_file_in_unknown_dir(self):
         # Test that parent directory addition is implicit
@@ -241,7 +245,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(['', 'dir', 'dir/subdir', 'dir/subdir/foo'],
-            [path for path, ie in tree.iter_entries_by_dir()])
+                         [path for path, ie in tree.iter_entries_by_dir()])
 
     def test_add_dir_bug_251864(self):
         """Added file turning into a dir should be detected on add dir
@@ -249,7 +253,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         Similar to bug 205636 but with automatic adding of directory contents.
         """
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["dir"]) # whoops, make a file called dir
+        self.build_tree(["dir"])  # whoops, make a file called dir
         tree.smart_add(["dir"])
         os.remove("dir")
         self.build_tree(["dir/", "dir/file"])
@@ -257,13 +261,13 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.commit("Add dir contents")
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
-            [(t[0], t[2]) for t in tree.list_files()])
+                         [(t[0], t[2]) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_add_subdir_file_bug_205636(self):
         """Added file turning into a dir should be detected on add dir/file"""
         tree = self.make_branch_and_tree(".")
-        self.build_tree(["dir"]) # whoops, make a file called dir
+        self.build_tree(["dir"])  # whoops, make a file called dir
         tree.smart_add(["dir"])
         os.remove("dir")
         self.build_tree(["dir/", "dir/file"])
@@ -271,7 +275,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.commit("Add file in dir")
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
-            [(t[0], t[2]) for t in tree.list_files()])
+                         [(t[0], t[2]) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_custom_ids(self):
@@ -293,16 +297,15 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         lines = sorted(sio.readlines())
         self.assertEqual(['added dir1 with id directory-dir1\n',
                           'added dir1/file2 with id file-dir1%file2\n',
-                          'added file1 with id file-file1\n', ]
-                          , lines)
+                          'added file1 with id file-file1\n', ], lines)
         wt.lock_read()
         self.addCleanup(wt.unlock)
         self.assertEqual([('', wt.path2id('')),
                           ('dir1', b'directory-dir1'),
                           ('file1', b'file-file1'),
                           ('dir1/file2', b'file-dir1%file2'),
-                         ], [(path, ie.file_id) for path, ie
-                                in wt.iter_entries_by_dir()])
+                          ], [(path, ie.file_id) for path, ie
+                              in wt.iter_entries_by_dir()])
 
 
 class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
@@ -329,7 +332,7 @@ class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
         self.assertEqual(([], {}), (added, ignored))
 
     def test_can_add_generated_files_explicitly(self):
-        fnames = ['file.%s' % s  for s in ('BASE', 'THIS', 'OTHER')]
+        fnames = ['file.%s' % s for s in ('BASE', 'THIS', 'OTHER')]
         t = self.make_tree_with_text_conflict()
         added, ignored = t.smart_add([t.basedir + '/%s' % f for f in fnames])
         self.assertEqual((fnames, {}), (added, ignored))
@@ -352,7 +355,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         """
         osutils.normalized_filename = osutils._accessible_normalized_filename
         if (self.workingtree_format.requires_normalized_unicode_filenames
-            and sys.platform != 'darwin'):
+                and sys.platform != 'darwin'):
             self.assertRaises(
                 errors.NoSuchFile, self.wt.smart_add, [u'a\u030a'])
         else:

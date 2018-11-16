@@ -33,19 +33,20 @@ def git_url_to_bzr_url(location, branch=None, ref=None):
     if branch is not None and ref is not None:
         raise ValueError('only specify one of branch or ref')
     url = urlutils.URL.from_string(location)
-    if url.scheme not in KNOWN_GIT_SCHEMES and not url.scheme.startswith('chroot-'):
+    if (url.scheme not in KNOWN_GIT_SCHEMES and
+            not url.scheme.startswith('chroot-')):
         try:
             (username, host, path) = parse_rsync_url(location)
         except ValueError:
             return location
         else:
             url = urlutils.URL(
-                    scheme='git+ssh',
-                    quoted_user=(urlutils.quote(username) if username else None),
-                    quoted_password=None,
-                    quoted_host=urlutils.quote(host),
-                    port=None,
-                    quoted_path=urlutils.quote(path, safe="/~"))
+                scheme='git+ssh',
+                quoted_user=(urlutils.quote(username) if username else None),
+                quoted_password=None,
+                quoted_host=urlutils.quote(host),
+                port=None,
+                quoted_path=urlutils.quote(path, safe="/~"))
         location = str(url)
     if ref == b'HEAD':
         ref = branch = None

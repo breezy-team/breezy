@@ -32,6 +32,7 @@ from . import osutils
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
 
+
 class UTextWrapper(textwrap.TextWrapper):
     """
     Extend TextWrapper for Unicode.
@@ -59,7 +60,7 @@ class UTextWrapper(textwrap.TextWrapper):
     def __init__(self, width=None, **kwargs):
         if width is None:
             width = (osutils.terminal_width() or
-                        osutils.default_terminal_width) - 1
+                     osutils.default_terminal_width) - 1
 
         ambi_width = kwargs.pop('ambiguous_width', 1)
         if ambi_width == 1:
@@ -117,11 +118,11 @@ class UTextWrapper(textwrap.TextWrapper):
         to use unicode always.
         """
         i = 0
-        L = len(chunks)-1
+        L = len(chunks) - 1
         patsearch = self.sentence_end_re.search
         while i < L:
-            if chunks[i+1] == u" " and patsearch(chunks[i]):
-                chunks[i+1] = u"  "
+            if chunks[i + 1] == u" " and patsearch(chunks[i]):
+                chunks[i + 1] = u"  "
                 i += 2
             else:
                 i += 1
@@ -222,7 +223,7 @@ class UTextWrapper(textwrap.TextWrapper):
                 if (self.max_lines is None or
                     len(lines) + 1 < self.max_lines or
                     (not chunks or
-                     self.drop_whitespace and
+                        self.drop_whitespace and
                      len(chunks) == 1 and
                      not chunks[0].strip()) and cur_len <= width):
                     # Convert current line back to a string and store it in
@@ -231,7 +232,7 @@ class UTextWrapper(textwrap.TextWrapper):
                 else:
                     while cur_line:
                         if (cur_line[-1].strip() and
-                            cur_len + self._width(self.placeholder) <= width):
+                                cur_len + self._width(self.placeholder) <= width):
                             cur_line.append(self.placeholder)
                             lines.append(indent + ''.join(cur_line))
                             break
@@ -259,7 +260,7 @@ class UTextWrapper(textwrap.TextWrapper):
                     if prev_pos < pos:
                         cjk_split_chunks.append(chunk[prev_pos:pos])
                     cjk_split_chunks.append(char)
-                    prev_pos = pos+1
+                    prev_pos = pos + 1
             if prev_pos < len(chunk):
                 cjk_split_chunks.append(chunk[prev_pos:])
         return cjk_split_chunks
@@ -269,6 +270,7 @@ class UTextWrapper(textwrap.TextWrapper):
         return textwrap.TextWrapper.wrap(self, osutils.safe_unicode(text))
 
 # -- Convenience interface ---------------------------------------------
+
 
 def wrap(text, width=None, **kwargs):
     """Wrap a single paragraph of text, returning a list of wrapped lines.
@@ -282,6 +284,7 @@ def wrap(text, width=None, **kwargs):
     """
     return UTextWrapper(width=width, **kwargs).wrap(text)
 
+
 def fill(text, width=None, **kwargs):
     """Fill a single paragraph of text, returning a new string.
 
@@ -292,4 +295,3 @@ def fill(text, width=None, **kwargs):
     available keyword args to customize wrapping behaviour.
     """
     return UTextWrapper(width=width, **kwargs).fill(text)
-

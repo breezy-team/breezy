@@ -75,9 +75,9 @@ from .object_store import (
 
 
 def import_git_blob(texts, mapping, path, name, hexshas,
-        base_bzr_tree, parent_id, revision_id,
-        parent_bzr_trees, lookup_object, modes, store_updater,
-        lookup_file_id):
+                    base_bzr_tree, parent_id, revision_id,
+                    parent_bzr_trees, lookup_object, modes, store_updater,
+                    lookup_file_id):
     """Import a git blob object into a bzr repository.
 
     :param texts: VersionedFiles to add to
@@ -151,13 +151,14 @@ def import_git_blob(texts, mapping, path, name, hexshas,
             chunks = blob.chunked
         texts.insert_record_stream([
             ChunkedContentFactory((file_id, ie.revision),
-                tuple(parent_keys), ie.text_sha1, chunks)])
+                                  tuple(parent_keys), ie.text_sha1, chunks)])
     invdelta = []
     if base_hexsha is not None:
-        old_path = decoded_path # Renames are not supported yet
+        old_path = decoded_path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
-            invdelta.extend(remove_disappeared_children(base_bzr_tree, old_path,
-                lookup_object(base_hexsha), [], lookup_object))
+            invdelta.extend(remove_disappeared_children(
+                base_bzr_tree, old_path, lookup_object(base_hexsha), [],
+                lookup_object))
     else:
         old_path = None
     invdelta.append((old_path, decoded_path, file_id, ie))
@@ -173,8 +174,9 @@ class SubmodulesRequireSubtrees(BzrError):
 
 
 def import_git_submodule(texts, mapping, path, name, hexshas,
-    base_bzr_tree, parent_id, revision_id, parent_bzr_trees, lookup_object,
-    modes, store_updater, lookup_file_id):
+                         base_bzr_tree, parent_id, revision_id,
+                         parent_bzr_trees, lookup_object,
+                         modes, store_updater, lookup_file_id):
     """Import a git submodule."""
     (base_hexsha, hexsha) = hexshas
     (base_mode, mode) = modes
@@ -185,10 +187,11 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
     if base_hexsha is not None:
-        old_path = path.decode("utf-8") # Renames are not supported yet
+        old_path = path.decode("utf-8")  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
-            invdelta.extend(remove_disappeared_children(base_bzr_tree, old_path,
-                lookup_object(base_hexsha), [], lookup_object))
+            invdelta.extend(remove_disappeared_children(
+                base_bzr_tree, old_path, lookup_object(base_hexsha), [],
+                lookup_object))
     else:
         old_path = None
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
@@ -198,8 +201,8 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     return invdelta, {}
 
 
-def remove_disappeared_children(base_bzr_tree, path, base_tree, existing_children,
-        lookup_object):
+def remove_disappeared_children(base_bzr_tree, path, base_tree,
+                                existing_children, lookup_object):
     """Generate an inventory delta for removed children.
 
     :param base_bzr_tree: Base bzr tree against which to generate the
@@ -223,21 +226,23 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree, existing_childre
         ret.append((c_path, None, file_id, None))
         if stat.S_ISDIR(mode):
             ret.extend(remove_disappeared_children(
-                base_bzr_tree, c_path, lookup_object(hexsha), [], lookup_object))
+                base_bzr_tree, c_path, lookup_object(hexsha), [],
+                lookup_object))
     return ret
 
 
 def import_git_tree(texts, mapping, path, name, hexshas,
-        base_bzr_tree, parent_id, revision_id, parent_bzr_trees,
-        lookup_object, modes, store_updater,
-        lookup_file_id, allow_submodules=False):
+                    base_bzr_tree, parent_id, revision_id, parent_bzr_trees,
+                    lookup_object, modes, store_updater,
+                    lookup_file_id, allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
     :param path: Path in the tree (str)
     :param name: Name of the tree (str)
     :param tree: A git tree object
-    :param base_bzr_tree: Base inventory against which to return inventory delta
+    :param base_bzr_tree: Base inventory against which to return inventory
+        delta
     :return: Inventory delta for this subtree
     """
     (base_hexsha, hexsha) = hexshas
@@ -256,10 +261,10 @@ def import_git_tree(texts, mapping, path, name, hexshas,
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
-        old_path = None # Newly appeared here
+        old_path = None  # Newly appeared here
     else:
         base_tree = lookup_object(base_hexsha)
-        old_path = path.decode("utf-8") # Renames aren't supported yet
+        old_path = path.decode("utf-8")  # Renames aren't supported yet
     new_path = path.decode("utf-8")
     if base_tree is None or type(base_tree) is not Tree:
         ie.revision = revision_id
@@ -282,70 +287,77 @@ def import_git_tree(texts, mapping, path, name, hexshas,
             child_base_hexsha = None
             child_base_mode = 0
         if stat.S_ISDIR(child_mode):
-            subinvdelta, grandchildmodes = import_git_tree(texts, mapping,
-                child_path, name, (child_base_hexsha, child_hexsha),
-                base_bzr_tree, file_id, revision_id, parent_bzr_trees,
-                lookup_object, (child_base_mode, child_mode), store_updater,
-                lookup_file_id, allow_submodules=allow_submodules)
-        elif S_ISGITLINK(child_mode): # submodule
+            subinvdelta, grandchildmodes = import_git_tree(
+                texts, mapping, child_path, name,
+                (child_base_hexsha, child_hexsha), base_bzr_tree, file_id,
+                revision_id, parent_bzr_trees, lookup_object,
+                (child_base_mode, child_mode), store_updater, lookup_file_id,
+                allow_submodules=allow_submodules)
+        elif S_ISGITLINK(child_mode):  # submodule
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
-            subinvdelta, grandchildmodes = import_git_submodule(texts, mapping,
-                child_path, name, (child_base_hexsha, child_hexsha),
+            subinvdelta, grandchildmodes = import_git_submodule(
+                texts, mapping, child_path, name,
+                (child_base_hexsha, child_hexsha),
                 base_bzr_tree, file_id, revision_id, parent_bzr_trees,
                 lookup_object, (child_base_mode, child_mode), store_updater,
                 lookup_file_id)
         else:
             if not mapping.is_special_file(name):
-                subinvdelta = import_git_blob(texts, mapping, child_path, name,
+                subinvdelta = import_git_blob(
+                    texts, mapping, child_path, name,
                     (child_base_hexsha, child_hexsha), base_bzr_tree, file_id,
                     revision_id, parent_bzr_trees, lookup_object,
-                    (child_base_mode, child_mode), store_updater, lookup_file_id)
+                    (child_base_mode, child_mode), store_updater,
+                    lookup_file_id)
             else:
                 subinvdelta = []
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
         if child_mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
-                        stat.S_IFLNK, DEFAULT_FILE_MODE|0o111,
-                        S_IFGITLINK):
+                              stat.S_IFLNK, DEFAULT_FILE_MODE | 0o111,
+                              S_IFGITLINK):
             child_modes[child_path] = child_mode
     # Remove any children that have disappeared
     if base_tree is not None and type(base_tree) is Tree:
-        invdelta.extend(remove_disappeared_children(base_bzr_tree, old_path,
-            base_tree, existing_children, lookup_object))
+        invdelta.extend(remove_disappeared_children(
+            base_bzr_tree, old_path, base_tree, existing_children,
+            lookup_object))
     store_updater.add_object(tree, (file_id, revision_id), path)
     return invdelta, child_modes
 
 
 def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
-    o, rev, ret_tree, parent_trees, mapping, unusual_modes, verifiers):
+                                 o, rev, ret_tree, parent_trees, mapping,
+                                 unusual_modes, verifiers):
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
         raise AssertionError("unusual modes don't match: %r != %r" % (
             unusual_modes, new_unusual_modes))
     # Verify that we can reconstruct the commit properly
     rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True,
-        verifiers)
+                                                            verifiers)
     if rec_o != o:
         raise AssertionError("Reconstructed commit differs: %r != %r" % (
             rec_o, o))
     diff = []
     new_objs = {}
-    for path, obj, ie in _tree_to_objects(ret_tree, parent_trees,
-        target_git_object_retriever._cache.idmap, unusual_modes,
-        mapping.BZR_DUMMY_FILE):
+    for path, obj, ie in _tree_to_objects(
+            ret_tree, parent_trees, target_git_object_retriever._cache.idmap,
+            unusual_modes, mapping.BZR_DUMMY_FILE):
         old_obj_id = tree_lookup_path(lookup_object, o.tree, path)[1]
         new_objs[path] = obj
         if obj.id != old_obj_id:
             diff.append((path, lookup_object(old_obj_id), obj))
     for (path, old_obj, new_obj) in diff:
-        while (old_obj.type_name == "tree" and
-               new_obj.type_name == "tree" and
-               sorted(old_obj) == sorted(new_obj)):
+        while (old_obj.type_name == "tree"
+               and new_obj.type_name == "tree"
+               and sorted(old_obj) == sorted(new_obj)):
             for name in old_obj:
                 if old_obj[name][0] != new_obj[name][0]:
-                    raise AssertionError("Modes for %s differ: %o != %o" %
+                    raise AssertionError(
+                        "Modes for %s differ: %o != %o" %
                         (path, old_obj[name][0], new_obj[name][0]))
                 if old_obj[name][1] != new_obj[name][1]:
                     # Found a differing child, delve deeper
@@ -353,8 +365,8 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                     old_obj = lookup_object(old_obj[name][1])
                     new_obj = new_objs[path]
                     break
-        raise AssertionError("objects differ for %s: %r != %r" % (path,
-            old_obj, new_obj))
+        raise AssertionError(
+            "objects differ for %s: %r != %r" % (path, old_obj, new_obj))
 
 
 def ensure_inventories_in_repo(repo, trees):
@@ -391,12 +403,12 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     tree_supplement = mapping.get_fileid_map(lookup_object, o.tree)
-    inv_delta, unusual_modes = import_git_tree(repo.texts,
-            mapping, b"", b"", (base_tree, o.tree), base_bzr_tree,
-            None, rev.revision_id, parent_trees,
-            lookup_object, (base_mode, stat.S_IFDIR), store_updater,
-            tree_supplement.lookup_file_id,
-            allow_submodules=repo._format.supports_tree_reference)
+    inv_delta, unusual_modes = import_git_tree(
+        repo.texts, mapping, b"", b"", (base_tree, o.tree), base_bzr_tree,
+        None, rev.revision_id, parent_trees, lookup_object,
+        (base_mode, stat.S_IFDIR), store_updater,
+        tree_supplement.lookup_file_id,
+        allow_submodules=repo._format.supports_tree_reference)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
@@ -408,21 +420,22 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_bzr_inventory = None
     else:
         base_bzr_inventory = base_bzr_tree.root_inventory
-    rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
-              inv_delta, rev.revision_id, rev.parent_ids,
-              base_bzr_inventory)
+    rev.inventory_sha1, inv = repo.add_inventory_by_delta(
+        basis_id, inv_delta, rev.revision_id, rev.parent_ids,
+        base_bzr_inventory)
     ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     # Check verifiers
     if verifiers and roundtrip_revid is not None:
         testament = StrictTestament3(rev, ret_tree)
-        calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
+        calculated_verifiers = {"testament3-sha1": testament.as_sha1()}
         if calculated_verifiers != verifiers:
             trace.mutter("Testament SHA1 %r for %r did not match %r.",
                          calculated_verifiers["testament3-sha1"],
                          rev.revision_id, verifiers["testament3-sha1"])
             rev.revision_id = original_revid
-            rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
-              inv_delta, rev.revision_id, rev.parent_ids, base_bzr_tree)
+            rev.inventory_sha1, inv = repo.add_inventory_by_delta(
+                basis_id, inv_delta, rev.revision_id, rev.parent_ids,
+                base_bzr_tree)
             ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     else:
         calculated_verifiers = {}
@@ -431,13 +444,14 @@ def import_git_commit(repo, mapping, head, lookup_object,
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
-        verify_commit_reconstruction(target_git_object_retriever,
-            lookup_object, o, rev, ret_tree, parent_trees, mapping,
-            unusual_modes, verifiers)
+        verify_commit_reconstruction(
+            target_git_object_retriever, lookup_object, o, rev, ret_tree,
+            parent_trees, mapping, unusual_modes, verifiers)
 
 
 def import_git_objects(repo, mapping, object_iter,
-    target_git_object_retriever, heads, pb=None, limit=None):
+                       target_git_object_retriever, heads, pb=None,
+                       limit=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Target Bazaar repository
@@ -468,10 +482,11 @@ def import_git_objects(repo, mapping, object_iter,
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-                mapping.revision_id_foreign_to_bzr)
-            if (repo.has_revision(rev.revision_id) or
-                (roundtrip_revid and repo.has_revision(roundtrip_revid))):
+            rev, roundtrip_revid, verifiers = mapping.import_commit(
+                o, mapping.revision_id_foreign_to_bzr)
+            if (repo.has_revision(rev.revision_id)
+                    or (roundtrip_revid and
+                        repo.has_revision(roundtrip_revid))):
                 continue
             graph.append((o.id, o.parents))
             heads.extend([p for p in o.parents if p not in checked])
@@ -496,21 +511,21 @@ def import_git_objects(repo, mapping, object_iter,
             repo.start_write_group()
             try:
                 for i, head in enumerate(
-                    revision_ids[offset:offset+batch_size]):
+                        revision_ids[offset:offset + batch_size]):
                     if pb is not None:
-                        pb.update("fetching revisions", offset+i,
+                        pb.update("fetching revisions", offset + i,
                                   len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
-                        target_git_object_retriever, trees_cache)
+                                      target_git_object_retriever, trees_cache)
                     last_imported = head
-            except:
+            except BaseException:
                 repo.abort_write_group()
                 raise
             else:
                 hint = repo.commit_write_group()
                 if hint is not None:
                     pack_hints.extend(hint)
-        except:
+        except BaseException:
             target_git_object_retriever.abort_write_group()
             raise
         else:
@@ -531,6 +546,3 @@ class DetermineWantsRecorder(object):
         self.remote_refs = refs
         self.wants = self.actual(refs)
         return self.wants
-
-
-

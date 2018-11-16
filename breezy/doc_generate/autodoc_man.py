@@ -46,11 +46,11 @@ def infogen(options, outfile):
     """Assembles a man page"""
     d = get_autodoc_datetime()
     params = \
-           { "brzcmd": options.brz_name,
-             "datestamp": d.strftime("%Y-%m-%d"),
-             "timestamp": d.strftime("%Y-%m-%d %H:%M:%S +0000"),
-             "version": breezy.__version__,
-             }
+        {"brzcmd": options.brz_name,
+         "datestamp": d.strftime("%Y-%m-%d"),
+         "timestamp": d.strftime("%Y-%m-%d %H:%M:%S +0000"),
+         "version": breezy.__version__,
+         }
     outfile.write(man_preamble % params)
     outfile.write(man_escape(man_head % params))
     outfile.write(man_escape(getcommand_list(params)))
@@ -74,13 +74,13 @@ def command_name_list():
     for cmdname in breezy.commands.plugin_command_names():
         cmd_object = breezy.commands.get_cmd_object(cmdname)
         if (PLUGINS_TO_DOCUMENT is None or
-            cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT):
+                cmd_object.plugin_name() in PLUGINS_TO_DOCUMENT):
             command_names.append(cmdname)
     command_names.sort()
     return command_names
 
 
-def getcommand_list (params):
+def getcommand_list(params):
     """Builds summary help for command names in manpage format"""
     brzcmd = params["brzcmd"]
     output = '.SH "COMMAND OVERVIEW"\n'
@@ -101,7 +101,7 @@ def getcommand_list (params):
 
 def getcommand_help(params):
     """Shows individual options for a brz command"""
-    output='.SH "COMMAND REFERENCE"\n'
+    output = '.SH "COMMAND REFERENCE"\n'
     formatted = {}
     for cmd_name in command_name_list():
         cmd_object = breezy.commands.get_cmd_object(cmd_name)
@@ -141,9 +141,9 @@ def format_command(params, cmd):
                     l += ', -' + short_name
                 l += (30 - len(l)) * ' ' + (help or '')
                 wrapped = textwrap.fill(l, initial_indent='',
-                    subsequent_indent=30*' ',
-                    break_long_words=False,
-                    )
+                                        subsequent_indent=30 * ' ',
+                                        break_long_words=False,
+                                        )
                 option_str += wrapped + '\n'
 
     aliases_str = ""
@@ -249,4 +249,3 @@ log10 = log --short -r -10..-1
 .UR https://www.breezy-vcs.org/
 .BR https://www.breezy-vcs.org/
 """
-

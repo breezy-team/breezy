@@ -35,7 +35,7 @@ BRZ_PLUGIN_PATH=-site:-user
 sw = $(sort $(wildcard $(1)))
 
 
-.PHONY: all clean realclean extensions pyflakes api-docs check-nodocs check
+.PHONY: all clean realclean extensions flake8 api-docs check-nodocs check
 
 all: extensions
 
@@ -89,17 +89,12 @@ check-ci: docs extensions
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 
-# Run Python style checker (apt-get install pyflakes)
+# Run Python style checker (apt-get install flake8)
 #
 # Note that at present this gives many false warnings, because it doesn't
 # know about identifiers loaded through lazy_import.
-pyflakes:
-	pyflakes breezy
-
-pyflakes-nounused:
-	# There are many of these warnings at the moment and they're not a
-	# high priority to fix
-	pyflakes breezy | grep -v ' imported but unused'
+flake8:
+	flake8
 
 clean:
 	$(PYTHON) setup.py clean

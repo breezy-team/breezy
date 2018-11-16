@@ -101,7 +101,7 @@ class Reconciler(object):
     def _reconcile_repository(self):
         self.repo = self.controldir.find_repository()
         ui.ui_factory.note(gettext('Reconciling repository %s') %
-            self.repo.user_url)
+                           self.repo.user_url)
         self.pb.update(gettext("Reconciling repository"), 0, 1)
         if self.canonicalize_chks:
             try:
@@ -155,7 +155,7 @@ class BranchReconciler(object):
                     last_revision_id, (_mod_revision.NULL_REVISION,)):
                 real_history.append(revid)
         except errors.RevisionNotPresent:
-            pass # Hit a ghost left hand parent
+            pass  # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):
             self.fixed_history = True
@@ -163,9 +163,9 @@ class BranchReconciler(object):
             # set_revision_history, as this will regenerate it again.
             # Not really worth a whole BranchReconciler class just for this,
             # though.
-            ui.ui_factory.note(gettext('Fixing last revision info {0} '\
+            ui.ui_factory.note(gettext('Fixing last revision info {0} '
                                        ' => {1}').format(
-                                       last_revno, len(real_history)))
+                last_revno, len(real_history)))
             self.branch.set_last_revision_info(len(real_history),
                                                last_revision_id)
         else:
@@ -249,8 +249,8 @@ class RepoReconciler(object):
         self._check_garbage_inventories()
         # if there are no inconsistent_parents and
         # (no garbage inventories or we are not doing a thorough check)
-        if (not self.inconsistent_parents and
-            (not self.garbage_inventories or not self.thorough)):
+        if (not self.inconsistent_parents
+                and (not self.garbage_inventories or not self.thorough)):
             ui.ui_factory.note(gettext('Inventory ok.'))
             return
         self.pb.update(gettext('Backing up inventory'), 0, 0)
@@ -268,8 +268,8 @@ class RepoReconciler(object):
         new_inventories.insert_record_stream(stream)
         # if this worked, the set of new_inventories.keys should equal
         # self.pending
-        if not (set(new_inventories.keys()) ==
-            {(revid,) for revid in self.pending}):
+        if not (set(new_inventories.keys())
+                == {(revid,) for revid in self.pending}):
             raise AssertionError()
         self.pb.update(gettext('Writing weave'))
         self.repo._activate_new_inventory()
@@ -292,7 +292,8 @@ class RepoReconciler(object):
                 bytes = record.get_bytes_as('fulltext')
                 yield FulltextContentFactory(record.key, wanted_parents, record.sha1, bytes)
             else:
-                adapted_record = AdapterFactory(record.key, wanted_parents, record)
+                adapted_record = AdapterFactory(
+                    record.key, wanted_parents, record)
                 yield adapted_record
             self._reweave_step('adding inventories')
 
@@ -419,7 +420,7 @@ class KnitReconciler(RepoReconciler):
         transaction = self.repo.get_transaction()
         versions = [key[-1] for key in self.revisions.keys()]
         mutter('Prepopulating revision text cache with %d revisions',
-                len(versions))
+               len(versions))
         vf_checker = self.repo._get_versioned_file_checker()
         bad_parents, unused_versions = vf_checker.check_file_version_parents(
             self.repo.texts, self.pb)
@@ -447,7 +448,7 @@ class KnitReconciler(RepoReconciler):
                            len(per_id_bad_parents))
             versions_with_bad_parents = per_id_bad_parents[file_id]
             id_unused_versions = set(key[-1] for key in unused_versions
-                if key[0] == file_id)
+                                     if key[0] == file_id)
             if file_id in file_id_versions:
                 file_versions = file_id_versions[file_id]
             else:
@@ -455,13 +456,13 @@ class KnitReconciler(RepoReconciler):
                 # by any revision at all.
                 file_versions = []
             self._fix_text_parent(file_id, versions_with_bad_parents,
-                 id_unused_versions, file_versions)
+                                  id_unused_versions, file_versions)
 
     def _fix_text_parent(self, file_id, versions_with_bad_parents,
-            unused_versions, all_versions):
+                         unused_versions, all_versions):
         """Fix bad versionedfile entries in a single versioned file."""
         mutter('fixing text parent: %r (%d versions)', file_id,
-                len(versions_with_bad_parents))
+               len(versions_with_bad_parents))
         mutter('(%d are unused)', len(unused_versions))
         new_file_id = b'temp:%s' % file_id
         new_parents = {}
@@ -477,13 +478,15 @@ class KnitReconciler(RepoReconciler):
             new_parents[(new_file_id, version)] = [
                 (new_file_id, parent) for parent in parents]
             needed_keys.add((file_id, version))
+
         def fix_parents(stream):
             for record in stream:
                 bytes = record.get_bytes_as('fulltext')
                 new_key = (new_file_id, record.key[-1])
                 parents = new_parents[new_key]
                 yield FulltextContentFactory(new_key, parents, record.sha1, bytes)
-        stream = self.repo.texts.get_record_stream(needed_keys, 'topological', True)
+        stream = self.repo.texts.get_record_stream(
+            needed_keys, 'topological', True)
         self.repo._remove_file_id(new_file_id)
         self.repo.texts.insert_record_stream(fix_parents(stream))
         self.repo._remove_file_id(file_id)
@@ -510,9 +513,9 @@ class PackReconciler(RepoReconciler):
     # https://bugs.launchpad.net/bzr/+bug/154173
 
     def __init__(self, repo, other=None, thorough=False,
-            canonicalize_chks=False):
+                 canonicalize_chks=False):
         super(PackReconciler, self).__init__(repo, other=other,
-            thorough=thorough)
+                                             thorough=thorough)
         self.canonicalize_chks = canonicalize_chks
 
     def _reconcile_steps(self):
@@ -533,7 +536,7 @@ class PackReconciler(RepoReconciler):
             else:
                 reconcile_meth = self.repo._reconcile_pack
             new_pack = reconcile_meth(collection, packs, ".reconcile",
-                all_revisions, self.pb)
+                                      all_revisions, self.pb)
             if new_pack is not None:
                 self._discard_and_save(packs)
         else:

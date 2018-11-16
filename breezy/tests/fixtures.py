@@ -18,7 +18,7 @@
 """Fixtures that can be used within tests.
 
 Fixtures can be created during a test as a way to separate out creation of
-objects to test.  Fixture objects can hold some state so that different 
+objects to test.  Fixture objects can hold some state so that different
 objects created during a test instance can be related.  Normally a fixture
 should live only for the duration of a single test, and its tearDown method
 should be passed to `addCleanup` on the test.
@@ -30,9 +30,9 @@ import itertools
 
 def generate_unicode_names():
     """Generate a sequence of arbitrary unique unicode names.
-    
+
     By default they are not representable in ascii.
-    
+
     >>> gen = generate_unicode_names()
     >>> n1 = next(gen)
     >>> n2 = next(gen)
@@ -60,9 +60,9 @@ def generate_unicode_encodings(universal_encoding=None):
     """Return a generator of unicode encoding names.
 
     These can be passed to Python encode/decode/etc.
-    
+
     :param universal_encoding: True/False/None tristate to say whether the
-        generated encodings either can or cannot encode all unicode 
+        generated encodings either can or cannot encode all unicode
         strings.
 
     >>> n1 = next(generate_unicode_names())
@@ -92,11 +92,11 @@ class RecordingContextManager(object):
 
     def __enter__(self):
         self._calls.append('__enter__')
-        return self # This is bound to the 'as' clause in a with statement.
+        return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._calls.append('__exit__')
-        return False # propogate exceptions.
+        return False  # propogate exceptions.
 
 
 def build_branch_with_non_ancestral_rev(branch_builder):
@@ -142,7 +142,7 @@ def make_branch_and_populated_tree(testcase):
 
 class TimeoutFixture(object):
     """Kill a test with sigalarm if it runs too long.
-    
+
     Only works on Unix at present.
     """
 

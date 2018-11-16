@@ -42,6 +42,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     def __init__(self, *args, **kw):
         super(TransportLogDecorator, self).__init__(*args, **kw)
+
         def _make_hook(hookname):
             def _hook(relpath, *args, **kw):
                 return self._log_and_call(hookname, relpath, *args, **kw)
@@ -50,21 +51,21 @@ class TransportLogDecorator(decorator.TransportDecorator):
         # instance copy_to takes list of relpaths. Also, unclear on url vs
         # filesystem path split. Needs tidying up.
         for methodname in (
-            'append_bytes',
-            'append_file',
-            'copy_to',
-            'delete',
-            'get',
-            'has',
-            'open_write_stream',
-            'mkdir',
-            'move',
-            'put_bytes', 'put_bytes_non_atomic', 'put_file put_file_non_atomic',
-            'list_dir', 'lock_read', 'lock_write',
-            'readv', 'rename', 'rmdir',
-            'stat',
-            'ulock',
-            ):
+                'append_bytes',
+                'append_file',
+                'copy_to',
+                'delete',
+                'get',
+                'has',
+                'open_write_stream',
+                'mkdir',
+                'move',
+                'put_bytes', 'put_bytes_non_atomic', 'put_file put_file_non_atomic',
+                'list_dir', 'lock_read', 'lock_write',
+                'readv', 'rename', 'rmdir',
+                'stat',
+                'ulock',
+                ):
             setattr(self, methodname, _make_hook(methodname))
 
     @classmethod
@@ -74,7 +75,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
     def iter_files_recursive(self):
         # needs special handling because it does not have a relpath parameter
         mutter("%s %s"
-            % ('iter_files_recursive', self._decorated.base))
+               % ('iter_files_recursive', self._decorated.base))
         return self._call_and_log_result('iter_files_recursive', (), {})
 
     def _log_and_call(self, methodname, relpath, *args, **kwargs):
@@ -116,7 +117,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
             val = repr(getvalue())
             result_len = len(val)
             shown_result = "%s(%s) (%d bytes)" % (result.__class__.__name__,
-                self._shorten(val), result_len)
+                                                  self._shorten(val), result_len)
         elif methodname == 'readv':
             num_hunks = len(result)
             total_bytes = sum((len(d) for o, d in result))
@@ -135,7 +136,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
                 # this is the rate of higher-level data, not the raw network
                 # speed using base-10 units (see HACKING.txt).
                 mutter("      %9.03fs %8dkB/s"
-                       % (elapsed, result_len/elapsed/1000))
+                       % (elapsed, result_len / elapsed / 1000))
             else:
                 mutter("      %9.03fs" % (elapsed))
         return return_result

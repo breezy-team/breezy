@@ -50,6 +50,7 @@ from dulwich.server import (
     UploadPackHandler,
     )
 
+
 class BzrBackend(Backend):
     """A git serve backend that can use a Bazaar repository."""
 
@@ -84,7 +85,7 @@ class BzrBackendRepo(BackendRepo):
         return self.object_store.peel_sha(self.refs[name]).id
 
     def fetch_objects(self, determine_wants, graph_walker, progress,
-        get_tagged=None):
+                      get_tagged=None):
         """Yield git objects to send to client """
         with self.object_store.lock_read():
             wants = determine_wants(self.get_refs())
@@ -92,10 +93,11 @@ class BzrBackendRepo(BackendRepo):
             if wants is None:
                 return
             if isinstance(self.object_store, BazaarObjectStore):
-                return self.object_store.generate_pack_contents(have, wants, progress,
-                        get_tagged=get_tagged, lossy=True)
+                return self.object_store.generate_pack_contents(
+                    have, wants, progress, get_tagged=get_tagged, lossy=True)
             else:
-                return self.object_store.generate_pack_contents(have, wants, progress)
+                return self.object_store.generate_pack_contents(
+                    have, wants, progress)
 
 
 class BzrTCPGitServer(TCPGitServer):
@@ -131,6 +133,7 @@ def git_http_hook(branch, method, path):
     if handler is None:
         return None
     backend = BzrBackend(branch.user_transport)
+
     def git_call(environ, start_response):
         req = HTTPGitRequest(environ, start_response, dumb=False,
                              handlers=DEFAULT_HANDLERS)

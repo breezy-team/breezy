@@ -123,13 +123,14 @@ def _parse_change_str(revstr):
 def _parse_merge_type(typestring):
     return get_merge_type(typestring)
 
+
 def get_merge_type(typestring):
     """Attempt to find the merge class/factory associated with a string."""
     from merge import merge_types
     try:
         return merge_types[typestring][0]
     except KeyError:
-        templ = '%s%%7s: %%s' % (' '*12)
+        templ = '%s%%7s: %%s' % (' ' * 12)
         lines = [templ % (f[0], f[1][1]) for f in merge_types.items()]
         type_list = '\n'.join(lines)
         msg = "No known merge type %s. Supported types are:\n%s" %\
@@ -255,7 +256,7 @@ class Option(object):
 
         :return: an iterator of (name, short_name, argname, help)
         """
-        argname =  self.argname
+        argname = self.argname
         if argname is not None:
             argname = argname.upper()
         yield self.name, self.short_name(), argname, self.help
@@ -318,8 +319,8 @@ class RegistryOption(Option):
             return self.converter(value)
 
     def __init__(self, name, help, registry=None, converter=None,
-        value_switches=False, title=None, enum_switch=True,
-        lazy_registry=None, short_name=None, short_value_switches=None):
+                 value_switches=False, title=None, enum_switch=True,
+                 lazy_registry=None, short_name=None, short_value_switches=None):
         """
         Constructor.
 
@@ -383,7 +384,7 @@ class RegistryOption(Option):
                 if not help.endswith("."):
                     help = help + "."
         return RegistryOption(name_, help, reg, title=title,
-            value_switches=value_switches, enum_switch=enum_switch)
+                              value_switches=value_switches, enum_switch=enum_switch)
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
@@ -406,11 +407,11 @@ class RegistryOption(Option):
                 else:
                     help = self.registry.get_help(key)
                 if (self.short_value_switches and
-                    key in self.short_value_switches):
+                        key in self.short_value_switches):
                     option_strings.append('-%s' %
                                           self.short_value_switches[key])
                 parser.add_option(action='callback',
-                              callback=self._optparse_value_callback(key),
+                                  callback=self._optparse_value_callback(key),
                                   help=help,
                                   *option_strings)
 
@@ -460,6 +461,7 @@ class OptionParser(optparse.OptionParser):
 
 class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):
     """Adds gettext() call to format_option()"""
+
     def __init__(self):
         optparse.IndentedHelpFormatter.__init__(self)
 
@@ -494,6 +496,7 @@ def _standard_option(name, **kwargs):
     # All standard options are implicitly 'global' ones
     Option.STD_OPTIONS[name] = Option(name, **kwargs)
     Option.OPTIONS[name] = Option.STD_OPTIONS[name]
+
 
 def _standard_list_option(name, **kwargs):
     """Register a standard option."""
@@ -571,8 +574,8 @@ _global_option('message', type=text_type,
                short_name='m',
                help='Message string.')
 _global_option('null', short_name='0',
-                 help='Use an ASCII NUL (\\0) separator rather than '
-                      'a newline.')
+               help='Use an ASCII NUL (\\0) separator rather than '
+               'a newline.')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally.')
 _global_option('remember', help='Remember the specified location as a'

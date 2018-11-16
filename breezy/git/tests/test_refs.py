@@ -58,8 +58,8 @@ class BazaarRefsContainerTests(tests.TestCaseWithTransport):
         store = BazaarObjectStore(tree.branch.repository)
         refs = BazaarRefsContainer(tree.controldir, store)
         self.assertEqual(
-                refs.as_dict(),
-                {b'HEAD': store._lookup_revision_sha1(revid)})
+            refs.as_dict(),
+            {b'HEAD': store._lookup_revision_sha1(revid)})
 
     def test_some_tag(self):
         tree = self.make_branch_and_tree('.')
@@ -68,10 +68,10 @@ class BazaarRefsContainerTests(tests.TestCaseWithTransport):
         store = BazaarObjectStore(tree.branch.repository)
         refs = BazaarRefsContainer(tree.controldir, store)
         self.assertEqual(
-                refs.as_dict(),
-                {b'HEAD': store._lookup_revision_sha1(revid),
-                 b'refs/tags/sometag': store._lookup_revision_sha1(revid),
-                 })
+            refs.as_dict(),
+            {b'HEAD': store._lookup_revision_sha1(revid),
+             b'refs/tags/sometag': store._lookup_revision_sha1(revid),
+             })
 
     def test_some_branch(self):
         tree = self.make_branch_and_tree('.')
@@ -81,7 +81,7 @@ class BazaarRefsContainerTests(tests.TestCaseWithTransport):
         store = BazaarObjectStore(tree.branch.repository)
         refs = BazaarRefsContainer(tree.controldir, store)
         self.assertEqual(
-                refs.as_dict(),
-                {b'HEAD': store._lookup_revision_sha1(revid),
-                 b'refs/heads/otherbranch': store._lookup_revision_sha1(revid),
-                 })
+            refs.as_dict(),
+            {b'HEAD': store._lookup_revision_sha1(revid),
+             b'refs/heads/otherbranch': store._lookup_revision_sha1(revid),
+             })

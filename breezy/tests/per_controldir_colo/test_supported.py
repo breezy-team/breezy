@@ -49,7 +49,8 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         try:
             bzrdir.destroy_branch("colo")
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
-            raise tests.TestNotApplicable('Format does not support destroying branch')
+            raise tests.TestNotApplicable(
+                'Format does not support destroying branch')
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch,
                           "colo")
 

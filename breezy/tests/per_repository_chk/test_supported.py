@@ -43,9 +43,9 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.start_write_group()
             try:
                 sha1, len, _ = repo.chk_bytes.add_lines((None,),
-                    None, [b"foo\n", b"bar\n"], random_id=True)
+                                                        None, [b"foo\n", b"bar\n"], random_id=True)
                 self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
-                    sha1)
+                                 sha1)
                 self.assertEqual(
                     {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                     repo.chk_bytes.keys())
@@ -81,7 +81,8 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.start_write_group()
             try:
                 # Internal node pointing at a leaf.
-                repo.chk_bytes.add_lines((None,), None, node_lines, random_id=True)
+                repo.chk_bytes.add_lines(
+                    (None,), None, node_lines, random_id=True)
             except:
                 repo.abort_write_group()
                 raise
@@ -90,7 +91,8 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.start_write_group()
             try:
                 # Leaf in a separate pack.
-                repo.chk_bytes.add_lines((None,), None, leaf_lines, random_id=True)
+                repo.chk_bytes.add_lines(
+                    (None,), None, leaf_lines, random_id=True)
             except:
                 repo.abort_write_group()
                 raise
@@ -115,9 +117,9 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         repo.start_write_group()
         try:
             sha1, len, _ = repo.chk_bytes.add_lines((None,),
-                None, [b"foo\n", b"bar\n"], random_id=True)
+                                                    None, [b"foo\n", b"bar\n"], random_id=True)
             self.assertEqual(b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
-                sha1)
+                             sha1)
             self.assertEqual(
                 {(b'sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)},
                 repo.chk_bytes.keys())
@@ -345,7 +347,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
                          ('content %s\n' % name).encode())))
             file_modifies.append(
                 ('modify', ('file-' + name,
-                    ('new content %s\n' % name).encode())))
+                            ('new content %s\n' % name).encode())))
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None))] +
             file_adds,
@@ -365,7 +367,7 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         # Now, manually insert objects for a stacked repo with only revision
         # C-id, *except* drop one changed text.
         all_texts = src_repo.texts.keys()
-        all_texts.remove((b'file-%s-id' % (b'c'*10000,), b'C-id'))
+        all_texts.remove((b'file-%s-id' % (b'c' * 10000,), b'C-id'))
         repo.lock_write()
         repo.start_write_group()
         repo.chk_bytes.insert_record_stream(
@@ -388,7 +390,3 @@ class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
         self.assertRaises(
             errors.BzrCheckError, reopened_repo.commit_write_group)
         reopened_repo.abort_write_group()
-
-
-
-

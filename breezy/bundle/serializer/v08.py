@@ -73,7 +73,7 @@ class Action(object):
 
     def write(self, to_file):
         """Write action as to a file"""
-        p_texts = [' '.join([self.name]+self.parameters)]
+        p_texts = [' '.join([self.name] + self.parameters)]
         for prop in self.properties:
             if len(prop) == 1:
                 p_texts.append(prop[0])
@@ -91,7 +91,7 @@ class Action(object):
             text_line = text_line[available:]
             to_file.write(b'\n... ')
             available = 79 - len(b'... ')
-        to_file.write(text_line+b'\n')
+        to_file.write(text_line + b'\n')
 
 
 class BundleSerializerV08(BundleSerializer):
@@ -128,12 +128,12 @@ class BundleSerializerV08(BundleSerializer):
 
     def write_bundle(self, repository, revision_id, base_revision_id, out):
         """Helper function for translating write_bundle to write"""
-        forced_bases = {revision_id:base_revision_id}
+        forced_bases = {revision_id: base_revision_id}
         if base_revision_id is NULL_REVISION:
             base_revision_id = None
         graph = repository.get_graph()
         revision_ids = graph.find_unique_ancestors(revision_id,
-            [base_revision_id])
+                                                   [base_revision_id])
         revision_ids = list(repository.get_graph().iter_topo_order(
             revision_ids))
         revision_ids.reverse()
@@ -176,7 +176,7 @@ class BundleSerializerV08(BundleSerializer):
         else:
             f.write(b':\n')
             for entry in value:
-                f.write(b'#' + (b' ' * (indent+2)))
+                f.write(b'#' + (b' ' * (indent + 2)))
                 if isinstance(entry, bytes):
                     f.write(entry)
                 else:
@@ -259,7 +259,7 @@ class BundleSerializerV08(BundleSerializer):
             properties = []
         p_texts = ['%s:%s' % v for v in properties]
         self.to_file.write(b'=== ')
-        self.to_file.write(' '.join([name]+parameters).encode('utf-8'))
+        self.to_file.write(' '.join([name] + parameters).encode('utf-8'))
         self.to_file.write(' // '.join(p_texts).encode('utf-8'))
         self.to_file.write(b'\n')
 
@@ -316,8 +316,9 @@ class BundleSerializerV08(BundleSerializer):
             action = Action('removed', [kind, path]).write(self.to_file)
 
         for path, file_id, kind in delta.added:
-            action = Action('added', [kind, path], [('file-id', file_id.decode('utf-8'))])
-            meta_modified = (kind=='file' and
+            action = Action(
+                'added', [kind, path], [('file-id', file_id.decode('utf-8'))])
+            meta_modified = (kind == 'file' and
                              new_tree.is_executable(path))
             finish_action(action, file_id, kind, meta_modified, True,
                           DEVNULL, path)
@@ -340,8 +341,7 @@ class BundleSerializerV08(BundleSerializer):
                 continue
             old_rev = old_tree.get_file_revision(old_tree.id2path(file_id))
             if new_rev != old_rev:
-                action = Action('modified', [new_tree.kind(path),
-                                             path])
+                action = Action('modified', [new_tree.kind(path), path])
                 action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)
 
@@ -350,6 +350,7 @@ class BundleReader(object):
     """This class reads in a bundle from a file, and returns
     a Bundle object, which can then be applied against a tree.
     """
+
     def __init__(self, from_file):
         """Read in the bundle from the file.
 
@@ -425,24 +426,24 @@ class BundleReader(object):
         """
         if not line.startswith(b'#'):
             raise errors.MalformedHeader('Bzr header did not start with #')
-        line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
-        if line[:indent] == ' '*indent:
+        line = line[1:-1].decode('utf-8')  # Remove the '#' and '\n'
+        if line[:indent] == ' ' * indent:
             line = line[indent:]
         if not line:
-            return None, None # Ignore blank lines
+            return None, None  # Ignore blank lines
 
         loc = line.find(': ')
         if loc != -1:
             key = line[:loc]
-            value = line[loc+2:]
+            value = line[loc + 2:]
             if not value:
-                value = self._read_many(indent=indent+2)
+                value = self._read_many(indent=indent + 2)
         elif line[-1:] == ':':
             key = line[:-1]
-            value = self._read_many(indent=indent+2)
+            value = self._read_many(indent=indent + 2)
         else:
             raise errors.MalformedHeader('While looking for key: value pairs,'
-                    ' did not find the colon %r' % (line))
+                                         ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
         #mutter('found %s: %s' % (key, value))
@@ -480,7 +481,7 @@ class BundleReader(object):
         does not start properly indented.
         """
         values = []
-        start = b'#' + (b' '*indent)
+        start = b'#' + (b' ' * indent)
 
         if self._next_line is None or not self._next_line.startswith(start):
             return values
@@ -508,14 +509,14 @@ class BundleReader(object):
             if first:
                 if not line.startswith(b'==='):
                     raise errors.MalformedPatches('The first line of all patches'
-                        ' should be a bzr meta line "==="'
-                        ': %r' % line)
+                                                  ' should be a bzr meta line "==="'
+                                                  ': %r' % line)
                 action = line[4:-1].decode('utf-8')
             elif line.startswith(b'... '):
                 action += line[len(b'... '):-1].decode('utf-8')
 
             if (self._next_line is not None and
-                self._next_line.startswith(b'===')):
+                    self._next_line.startswith(b'===')):
                 return action, lines, True
             elif self._next_line is None or self._next_line.startswith(b'#'):
                 return action, lines, False
@@ -552,6 +553,7 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 next(self._next())
                 break
+
 
 class BundleInfo08(BundleInfo):
 

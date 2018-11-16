@@ -30,6 +30,7 @@ from .trace import note
 from .workingtree import WorkingTree
 from .i18n import gettext
 
+
 def is_detritus(subp):
     """Return True if the supplied path is detritus, False otherwise"""
     return subp.endswith('.THIS') or subp.endswith('.BASE') or\
@@ -56,7 +57,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
     tree = WorkingTree.open_containing(directory)[0]
     with tree.lock_read():
         deletables = list(iter_deletables(tree, unknown=unknown,
-            ignored=ignored, detritus=detritus))
+                                          ignored=ignored, detritus=detritus))
         deletables = _filter_out_nested_controldirs(deletables)
         if len(deletables) == 0:
             note(gettext('Nothing to delete.'))
@@ -120,7 +121,7 @@ def delete_items(deletables, dry_run=False):
                         raise e
                     ui.ui_factory.show_warning(gettext(
                         'unable to remove "{0}": {1}.').format(
-                                                    path, e.strerror))
+                        path, e.strerror))
         else:
             note('  ' + subp)
     if not has_deleted:

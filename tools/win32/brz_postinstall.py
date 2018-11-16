@@ -49,7 +49,7 @@ OPTIONS:
 """ % os.path.basename(sys.argv[0])
 
 # Windows version
-_major,_minor,_build,_platform,_text = sys.getwindowsversion()
+_major, _minor, _build, _platform, _text = sys.getwindowsversion()
 # from MSDN:
 # dwPlatformId
 #   The operating system platform.
@@ -93,7 +93,7 @@ def main():
     hkey_str = {_winreg.HKEY_LOCAL_MACHINE: 'HKEY_LOCAL_MACHINE',
                 _winreg.HKEY_CURRENT_USER: 'HKEY_CURRENT_USER',
                 _winreg.HKEY_CLASSES_ROOT: 'HKEY_CLASSES_ROOT',
-               }
+                }
 
     dry_run = False
     silent = False
@@ -115,7 +115,7 @@ def main():
                                     "add-shell-menu",
                                     "delete-shell-menu",
                                     "check-mfc71",
-                                   ])
+                                    ])
 
         for o, a in opts:
             if o in ("-h", "--help"):
@@ -191,7 +191,7 @@ def main():
         keys = ((_winreg.HKEY_LOCAL_MACHINE, (r'System\CurrentControlSet\Control'
                                               r'\Session Manager\Environment')),
                 (_winreg.HKEY_CURRENT_USER, r'Environment'),
-               )
+                )
 
         hkey = None
         for key, subkey in keys:
@@ -340,7 +340,7 @@ def main():
                          "where Brz installed.\n"
                          "For detailed instructions see:\n"
                          "http://wiki.bazaar.canonical.com/BzrOnPureWindows"
-                        ),
+                         ),
                         "Warning",
                         MB_OK | MB_ICONEXCLAMATION)
 

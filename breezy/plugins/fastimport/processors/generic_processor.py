@@ -98,7 +98,7 @@ class GenericProcessor(processor.ImportProcessor):
 
     * count - only import this many commits then exit. If not set
       or negative, all commits are imported.
-    
+
     * checkpoint - automatically checkpoint every n commits over and
       above any checkpoints contained in the import stream.
       The default is 10000.
@@ -128,7 +128,7 @@ class GenericProcessor(processor.ImportProcessor):
         ]
 
     def __init__(self, bzrdir, params=None, verbose=False, outf=None,
-            prune_empty_dirs=True):
+                 prune_empty_dirs=True):
         processor.ImportProcessor.__init__(self, params, verbose)
         self.prune_empty_dirs = prune_empty_dirs
         self.controldir = bzrdir
@@ -147,14 +147,15 @@ class GenericProcessor(processor.ImportProcessor):
         self._load_info_and_params()
         if self.total_commits:
             self.note("Starting import of %d commits ..." %
-                (self.total_commits,))
+                      (self.total_commits,))
         else:
             self.note("Starting import ...")
         self.cache_mgr = cache_manager.CacheManager(self.info, self.verbose,
-            self.inventory_cache_size)
+                                                    self.inventory_cache_size)
 
         if self.params.get("import-marks") is not None:
-            mark_info = marks_file.import_marks(self.params.get("import-marks"))
+            mark_info = marks_file.import_marks(
+                self.params.get("import-marks"))
             if mark_info is not None:
                 self.cache_mgr.marks = mark_info
             self.skip_total = False
@@ -164,7 +165,7 @@ class GenericProcessor(processor.ImportProcessor):
             self.skip_total = self._init_id_map()
             if self.skip_total:
                 self.note("Found %d commits already loaded - "
-                    "skipping over these ...", self.skip_total)
+                          "skipping over these ...", self.skip_total)
         self._revision_count = 0
 
         # mapping of tag name to revision_id
@@ -178,6 +179,7 @@ class GenericProcessor(processor.ImportProcessor):
         if isinstance(self.repo, KnitPackRepository):
             self._original_max_pack_count = \
                 self.repo._pack_collection._max_pack_count
+
             def _max_pack_count_for_import(total_revisions):
                 return total_revisions + 1
             self.repo._pack_collection._max_pack_count = \
@@ -226,12 +228,12 @@ class GenericProcessor(processor.ImportProcessor):
 
         # Decide how often (# of commits) to automatically checkpoint
         self.checkpoint_every = int(self.params.get('checkpoint',
-            _DEFAULT_AUTO_CHECKPOINT))
+                                                    _DEFAULT_AUTO_CHECKPOINT))
 
         # Decide how often (# of checkpoints) to automatically pack
         self.checkpoint_count = 0
         self.autopack_every = int(self.params.get('autopack',
-            _DEFAULT_AUTO_PACK))
+                                                  _DEFAULT_AUTO_PACK))
 
         # Decide how big to make the inventory cache
         cache_size = int(self.params.get('inv-cache', -1))
@@ -255,8 +257,8 @@ class GenericProcessor(processor.ImportProcessor):
             self.max_commits = None
         if self.info is not None:
             self.total_commits = int(self.info['Command counts']['commit'])
-            if (self.max_commits is not None and
-                self.total_commits > self.max_commits):
+            if (self.max_commits is not None
+                    and self.total_commits > self.max_commits):
                 self.total_commits = self.max_commits
         else:
             self.total_commits = self.max_commits
@@ -306,7 +308,7 @@ class GenericProcessor(processor.ImportProcessor):
 
         if self.params.get("export-marks") is not None:
             marks_file.export_marks(self.params.get("export-marks"),
-                self.cache_mgr.marks)
+                                    self.cache_mgr.marks)
 
         if self.cache_mgr.reftracker.last_ref == None:
             """Nothing to refresh"""
@@ -315,9 +317,9 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the branches
         self.note("Updating branch information ...")
         updater = branch_updater.BranchUpdater(self.repo, self.branch,
-            self.cache_mgr, invert_dictset(
-                self.cache_mgr.reftracker.heads),
-            self.cache_mgr.reftracker.last_ref, self.tags)
+                                               self.cache_mgr, invert_dictset(
+                                                   self.cache_mgr.reftracker.heads),
+                                               self.cache_mgr.reftracker.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
 
@@ -325,7 +327,7 @@ class GenericProcessor(processor.ImportProcessor):
         if branches_lost:
             if not self.repo.is_shared():
                 self.warning("Cannot import multiple branches into "
-                    "a standalone branch")
+                             "a standalone branch")
             self.warning("Not creating branches for these head revisions:")
             for lost_info in branches_lost:
                 head_revision = lost_info[1]
@@ -370,7 +372,7 @@ class GenericProcessor(processor.ImportProcessor):
         if remind_about_update:
             # This message is explicitly not timestamped.
             note("To refresh the working tree for other branches, "
-                "use 'bzr update' inside that branch.")
+                 "use 'bzr update' inside that branch.")
 
     def _update_working_trees(self, trees):
         if self.verbose:
@@ -434,10 +436,10 @@ class GenericProcessor(processor.ImportProcessor):
         bc = self._branch_count
         wtc = self._tree_count
         self.note("Imported %d %s, updating %d %s and %d %s in %s",
-            rc, helpers.single_plural(rc, "revision", "revisions"),
-            bc, helpers.single_plural(bc, "branch", "branches"),
-            wtc, helpers.single_plural(wtc, "tree", "trees"),
-            time_required)
+                  rc, helpers.single_plural(rc, "revision", "revisions"),
+                  bc, helpers.single_plural(bc, "branch", "branches"),
+                  wtc, helpers.single_plural(wtc, "tree", "trees"),
+                  time_required)
 
     def _init_id_map(self):
         """Load the id-map and check it matches the repository.
@@ -503,8 +505,8 @@ class GenericProcessor(processor.ImportProcessor):
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
-            self.rev_store, verbose=self.verbose,
-            prune_empty_dirs=self.prune_empty_dirs)
+                                              self.rev_store, verbose=self.verbose,
+                                              prune_empty_dirs=self.prune_empty_dirs)
         try:
             handler.process()
         except:
@@ -519,13 +521,13 @@ class GenericProcessor(processor.ImportProcessor):
             self._set_tag(tag_name, cmd.id)
 
         # Check if we should finish up or automatically checkpoint
-        if (self.max_commits is not None and
-            self._revision_count >= self.max_commits):
+        if (self.max_commits is not None
+                and self._revision_count >= self.max_commits):
             self.note("Stopping after reaching requested count of commits")
             self.finished = True
         elif self._revision_count % self.checkpoint_every == 0:
             self.note("%d commits - automatic checkpoint triggered",
-                self._revision_count)
+                      self._revision_count)
             self.checkpoint_handler(None)
 
     def report_progress(self, details=''):
@@ -541,7 +543,8 @@ class GenericProcessor(processor.ImportProcessor):
                 rate_str = "at %.0f/minute " % rate
             else:
                 rate_str = "at %.1f/minute " % rate
-            self.note("%s commits processed %s%s" % (counts, rate_str, details))
+            self.note("%s commits processed %s%s" %
+                      (counts, rate_str, details))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
@@ -558,7 +561,7 @@ class GenericProcessor(processor.ImportProcessor):
                 self._set_tag(tag_name, cmd.from_)
             elif self.verbose:
                 self.warning("ignoring reset refs/tags/%s - no from clause"
-                    % tag_name)
+                             % tag_name)
             return
 
         if cmd.from_ is not None:
