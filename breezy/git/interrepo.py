@@ -415,16 +415,20 @@ class InterFromGitRepository(InterRepository):
         wants = set(wants)
 
         def determine_wants(refs):
-            potential = set(wants)
+            unpeel_lookup = {}
+            for k, v in viewitems(refs):
+                if k.endswith(ANNOTATED_TAG_SUFFIX):
+                    unpeel_lookup[v] = refs[k[:-len(ANNOTATED_TAG_SUFFIX)]]
+            potential = set([unpeel_lookup.get(w, w) for w in wants])
             if include_tags:
-                for k, unpeeled in viewitems(refs):
+                for k, sha in viewitems(refs):
                     if k.endswith(ANNOTATED_TAG_SUFFIX):
                         continue
                     if not is_tag(k):
                         continue
-                    if unpeeled == ZERO_SHA:
+                    if sha == ZERO_SHA:
                         continue
-                    potential.add(unpeeled)
+                    potential.add(sha)
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
@@ -488,22 +492,6 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 continue
             potential.add(self.source.controldir.get_peeled(k) or v)
         return list(potential - self._target_has_shas(potential))
-
-    def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                for k, unpeeled in viewitems(refs):
-                    if not is_tag(k):
-                        continue
-                    if unpeeled == ZERO_SHA:
-                        continue
-                    potential.add(
-                        self.source.controldir.get_peeled(k) or unpeeled)
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
 
     def _warn_slow(self):
         if not config.GlobalConfig().suppress_warning('slow_intervcs_push'):

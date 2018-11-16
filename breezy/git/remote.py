@@ -940,7 +940,9 @@ class RemoteGitBranch(GitBranch):
 
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""
-        destination.generate_revision_history(self.last_revision())
+        if revision_id is None:
+            revision_id = self.last_revision()
+        destination.generate_revision_history(revision_id)
 
     def _get_parent_location(self):
         return None
