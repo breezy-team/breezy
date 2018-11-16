@@ -721,9 +721,13 @@ class TreeTransformBase(object):
     def _duplicate_ids(self):
         """Each inventory id may only be used once"""
         conflicts = []
+        try:
+            all_ids = self._tree.all_file_ids()
+        except errors.UnsupportedOperation:
+            # it's okay for non-file-id trees to raise UnsupportedOperation.
+            return []
         removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
                                 self._removed_id))
-        all_ids = self._tree.all_file_ids()
         active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in viewitems(self._new_id):
             if file_id in active_tree_ids:
@@ -2063,7 +2067,17 @@ class _PreviewTree(inventorytree.InventoryTree):
         return tree_ids
 
     def all_versioned_paths(self):
-        return {self.id2path(fid) for fid in self.all_file_ids()}
+        tree_paths = set(self._transform._tree.all_versioned_paths())
+
+        tree_paths.difference_update(
+            self._transform.trans_id_tree_path(t)
+            for t in self._transform._removed_id)
+
+        tree_paths.update(
+            self._final_paths._determine_path(t)
+            for t in self._transform._new_id)
+
+        return tree_paths
 
     def _has_id(self, file_id, fallback_check):
         if file_id in self._transform._r_new_id:

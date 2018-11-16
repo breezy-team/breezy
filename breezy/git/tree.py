@@ -316,7 +316,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._fileid_map.lookup_file_id(osutils.safe_unicode(path))
 
     def all_file_ids(self):
-        return {self.path2id(path) for path in self.all_versioned_paths()}
+        raise errors.UnsupportedOperation(self.all_file_ids, self)
 
     def all_versioned_paths(self):
         ret = {u''}

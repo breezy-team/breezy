@@ -1058,9 +1058,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'])
         os.unlink('tree/a')
-        self.assertEqual(
-                {'a', 'b', ''},
-                set(tree.all_versioned_paths()))
+        try:
+            self.assertEqual(
+                    {'a', 'b', ''},
+                    set(tree.all_versioned_paths()))
+        except errors.UnsupportedOperation:
+            raise TestNotApplicable('tree does not support all_file_ids')
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)
