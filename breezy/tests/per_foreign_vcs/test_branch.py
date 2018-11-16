@@ -48,11 +48,11 @@ class ForeignBranchFactory(object):
 
 class ForeignBranchTests(TestCaseWithTransport):
     """Basic tests for foreign branch implementations.
-    
+
     These tests mainly make sure that the implementation covers the required 
     bits of the API and returns reasonable values. 
     """
-    branch_factory = None # Set to an instance of ForeignBranchFactory by scenario
+    branch_factory = None  # Set to an instance of ForeignBranchFactory by scenario
 
     def make_empty_branch(self):
         return self.branch_factory.make_empty_branch(self.get_transport())
@@ -76,14 +76,14 @@ class ForeignBranchTests(TestCaseWithTransport):
 
     def test_get_parent(self):
         """Test that getting the parent location works, and returns None."""
-        # TODO: Allow this to be non-None when foreign branches add support 
+        # TODO: Allow this to be non-None when foreign branches add support
         #       for storing this URL.
         branch = self.make_branch()
         self.assertIs(None, branch.get_parent())
 
     def test_get_push_location(self):
         """Test that getting the push location works, and returns None."""
-        # TODO: Allow this to be non-None when foreign branches add support 
+        # TODO: Allow this to be non-None when foreign branches add support
         #       for storing this URL.
         branch = self.make_branch()
         self.assertIs(None, branch.get_push_location())
@@ -114,7 +114,7 @@ class ForeignBranchTests(TestCaseWithTransport):
         should raise UnstackableBranchFormat at the moment.
         """
         branch = self.make_branch()
-        self.assertRaises(UnstackableBranchFormat, 
+        self.assertRaises(UnstackableBranchFormat,
                           branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):
@@ -131,16 +131,17 @@ class ForeignBranchTests(TestCaseWithTransport):
 class ForeignBranchFormatTests(TestCaseWithTransport):
     """Basic tests for foreign branch format objects."""
 
-    branch_format = None # Set to a BranchFormat instance by adapter
+    branch_format = None  # Set to a BranchFormat instance by adapter
 
     def test_initialize(self):
         """Test this format is not initializable.
-        
+
         Remote branches may be initializable on their own, but none currently
         support living in .bzr/branch.
         """
         bzrdir = self.make_controldir('dir')
-        self.assertRaises(IncompatibleFormat, self.branch_format.initialize, bzrdir)
+        self.assertRaises(IncompatibleFormat,
+                          self.branch_format.initialize, bzrdir)
 
     def test_get_format_description_type(self):
         self.assertIsInstance(self.branch_format.get_format_description(), str)

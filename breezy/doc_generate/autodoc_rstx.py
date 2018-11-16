@@ -41,11 +41,11 @@ def infogen(options, outfile):
     t = time.time()
     tt = time.gmtime(t)
     params = \
-           { "brzcmd": options.brz_name,
-             "datestamp": time.strftime("%Y-%m-%d", tt),
-             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000", tt),
-             "version": breezy.__version__,
-             }
+        {"brzcmd": options.brz_name,
+         "datestamp": time.strftime("%Y-%m-%d", tt),
+         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000", tt),
+         "version": breezy.__version__,
+         }
     nominated_filename = getattr(options, 'filename', None)
     if nominated_filename is None:
         topic_dir = None
@@ -63,17 +63,17 @@ def _get_body(params, topic_dir):
     registry = breezy.help_topics.topic_registry
     result = []
     result.append(_get_section(registry, SECT_CONCEPT, "Concepts",
-        output_dir=topic_dir))
+                               output_dir=topic_dir))
     result.append(_get_section(registry, SECT_LIST, "Lists",
-        output_dir=topic_dir))
+                               output_dir=topic_dir))
     result.append(_get_commands_section(registry, output_dir=topic_dir))
     return "\n".join(result)
 
 
 def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
-        output_dir=None):
+                 output_dir=None):
     """Build the manual part from topics matching that section.
-    
+
     If output_dir is not None, topics are dumped into text files there
     during processing, as well as being included in the return result.
     """
@@ -101,7 +101,7 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
 
 
 def _get_commands_section(registry, title="Commands", hdg_level1="#",
-        hdg_level2="=", output_dir=None):
+                          hdg_level2="=", output_dir=None):
     """Build the commands reference section of the manual."""
     file_per_topic = output_dir is not None
     lines = [title, hdg_level1 * len(title), ""]

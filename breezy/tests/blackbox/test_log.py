@@ -61,7 +61,7 @@ class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
     def make_merged_branch(self, path='.', format=None):
         tree = self.make_linear_branch(path, format)
         tree2 = tree.controldir.sprout('tree2',
-            revision_id=tree.branch.get_rev_id(1)).open_workingtree()
+                                       revision_id=tree.branch.get_rev_id(1)).open_workingtree()
         tree2.commit(message='tree2 message2')
         tree2.commit(message='tree2 message3')
         tree.merge_from_branch(tree2.branch)
@@ -74,6 +74,7 @@ class TestLogWithLogCatcher(TestLog):
     def setUp(self):
         super(TestLogWithLogCatcher, self).setUp()
         # Capture log formatter creations
+
         class MyLogFormatter(test_log.LogCatcher):
 
             def __new__(klass, *args, **kwargs):
@@ -103,11 +104,11 @@ class TestLogWithLogCatcher(TestLog):
                          [r.revno for r in self.get_captured_revisions()])
 
     def assertLogRevnosAndDepths(self, args, expected_revnos_and_depths,
-                                working_dir='.'):
+                                 working_dir='.'):
         self.run_bzr(['log'] + args, working_dir=working_dir)
         self.assertEqual(expected_revnos_and_depths,
                          [(r.revno, r.merge_depth)
-                           for r in self.get_captured_revisions()])
+                          for r in self.get_captured_revisions()])
 
 
 class TestLogRevSpecs(TestLogWithLogCatcher):
@@ -368,13 +369,13 @@ class TestLogErrors(TestLog):
         self.make_minimal_branch()
         self.run_bzr_error(["brz: ERROR: Requested revision: '123.123' "
                             "does not exist in branch:"],
-                           ['log',  '-r123.123'])
+                           ['log', '-r123.123'])
 
     def test_log_change_nonexistent_revno(self):
         self.make_minimal_branch()
         self.run_bzr_error(["brz: ERROR: Requested revision: '1234' "
                             "does not exist in branch:"],
-                           ['log',  '-c1234'])
+                           ['log', '-c1234'])
 
     def test_log_change_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
@@ -444,6 +445,7 @@ class TestLogErrors(TestLog):
                            ['log', '--exclude-common-ancestry',
                             '-r1.1.1..1.1.1'])
 
+
 class TestLogTags(TestLog):
 
     def test_log_with_tags(self):
@@ -465,7 +467,8 @@ class TestLogTags(TestLog):
         branch1_tree = self.make_linear_branch('branch1',
                                                format='dirstate-tags')
         branch1 = branch1_tree.branch
-        branch2_tree = branch1_tree.controldir.sprout('branch2').open_workingtree()
+        branch2_tree = branch1_tree.controldir.sprout(
+            'branch2').open_workingtree()
         branch1_tree.commit(message='foobar', allow_pointless=True)
         branch1.tags.set_tag('tag1', branch1.last_revision())
         # tags don't propagate if we don't merge
@@ -559,7 +562,7 @@ class TestLogMerges(TestLogWithLogCatcher):
         self.assertEqual([('2', 0), ('1.1.2', 1), ('1.2.1', 2), ('1.1.1', 1),
                           ('1', 0)],
                          [(r.revno, r.merge_depth)
-                            for r in self.get_captured_revisions()])
+                          for r in self.get_captured_revisions()])
 
     def test_force_merge_revisions_off(self):
         self.assertLogRevnos(['-n1'], ['2', '1'], working_dir='level0')
@@ -588,16 +591,16 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def test_merges_partial_range(self):
         self.assertLogRevnosAndDepths(
-                ['-n0', '-r1.1.1..1.1.2'],
-                [('1.1.2', 0), ('1.2.1', 1), ('1.1.1', 0)],
-                working_dir='level0')
+            ['-n0', '-r1.1.1..1.1.2'],
+            [('1.1.2', 0), ('1.2.1', 1), ('1.1.1', 0)],
+            working_dir='level0')
 
     def test_merges_partial_range_ignore_before_lower_bound(self):
         """Dont show revisions before the lower bound's merged revs"""
         self.assertLogRevnosAndDepths(
-                ['-n0', '-r1.1.2..2'],
-                [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
-                working_dir='level0')
+            ['-n0', '-r1.1.2..2'],
+            [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
+            working_dir='level0')
 
     def test_omit_merges_with_sidelines(self):
         self.assertLogRevnos(['--omit-merges', '-n0'], ['1.2.1', '1.1.1', '1'],
@@ -670,14 +673,14 @@ class TestLogDiff(TestLogWithLogCatcher):
 """
 
     def assertLogRevnosAndDiff(self, args, expected,
-                            working_dir='.'):
+                               working_dir='.'):
         self.run_bzr(['log', '-p'] + args, working_dir=working_dir)
         expected_revnos_and_depths = [
             (revno, depth) for revno, depth, diff in expected]
         # Check the revnos and depths first to make debugging easier
         self.assertEqual(expected_revnos_and_depths,
                          [(r.revno, r.merge_depth)
-                           for r in self.get_captured_revisions()])
+                          for r in self.get_captured_revisions()])
         # Now check the diffs, adding the revno  in case of failure
         fmt = 'In revno %s\n%s'
         for expected_rev, actual_rev in zip(expected,
@@ -692,10 +695,9 @@ class TestLogDiff(TestLogWithLogCatcher):
             ['-n0'],
             [('2', 0, self._diff_file2_revno2()),
              ('1.1.1', 1, self._diff_file2_revno1_1_1()),
-             ('1', 0, self._diff_file1_revno1()
-              + self._diff_file2_revno1())],
+             ('1', 0, self._diff_file1_revno1() +
+              self._diff_file2_revno1())],
             working_dir='level0')
-
 
     def test_log_diff_file1(self):
         self.assertLogRevnosAndDiff(['-n0', 'file1'],
@@ -742,9 +744,9 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         'utf-8',
         'latin-1',
         'iso-8859-1',
-        'cp437', # Common windows encoding
-        'cp1251', # Russian windows encoding
-        'cp1258', # Common windows encoding
+        'cp437',  # Common windows encoding
+        'cp1251',  # Russian windows encoding
+        'cp1258',  # Common windows encoding
     ]
     # Encodings which cannot encode mu
     bad_encodings = [
@@ -768,7 +770,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
         brz = self.run_bzr
         if fail:
             self.assertRaises(UnicodeEncodeError,
-                self._mu.encode, encoding)
+                              self._mu.encode, encoding)
             encoded_msg = self._message.encode(encoding, 'replace')
         else:
             encoded_msg = self._message.encode(encoding)
@@ -1008,7 +1010,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
         self.assertEqual("brz: ERROR: Further revision history missing.\n",
-                stderr)
+                         stderr)
 
     def test_log_range_open_end(self):
         self.assertLogRevnos(["-r1.."], ["2", "1"])
@@ -1021,9 +1023,11 @@ class TestLogMatch(TestLogWithLogCatcher):
         self.build_tree(
             ['/hello.txt', '/goodbye.txt'])
         tree.add('hello.txt')
-        tree.commit(message='message1', committer='committer1', authors=['author1'])
+        tree.commit(message='message1', committer='committer1',
+                    authors=['author1'])
         tree.add('goodbye.txt')
-        tree.commit(message='message2', committer='committer2', authors=['author2'])
+        tree.commit(message='message2', committer='committer2',
+                    authors=['author2'])
 
     def test_message(self):
         self.prepare_tree()
@@ -1034,14 +1038,14 @@ class TestLogMatch(TestLogWithLogCatcher):
         self.assertLogRevnos(["--match-message", "message1"], ["1"])
         self.assertLogRevnos(["--match-message", "message2"], ["2"])
         self.assertLogRevnos(["--match-message", "message"], ["2", "1"])
-        self.assertLogRevnos(["--match-message", "message1", 
+        self.assertLogRevnos(["--match-message", "message1",
                               "--match-message", "message2"], ["2", "1"])
         self.assertLogRevnos(["--message", "message1"], ["1"])
         self.assertLogRevnos(["--message", "message2"], ["2"])
         self.assertLogRevnos(["--message", "message"], ["2", "1"])
-        self.assertLogRevnos(["--match-message", "message1", 
+        self.assertLogRevnos(["--match-message", "message1",
                               "--message", "message2"], ["2", "1"])
-        self.assertLogRevnos(["--message", "message1", 
+        self.assertLogRevnos(["--message", "message1",
                               "--match-message", "message2"], ["2", "1"])
 
     def test_committer(self):
@@ -1049,12 +1053,12 @@ class TestLogMatch(TestLogWithLogCatcher):
         self.assertLogRevnos(["-m", "committer1"], ["1"])
         self.assertLogRevnos(["-m", "committer2"], ["2"])
         self.assertLogRevnos(["-m", "committer"], ["2", "1"])
-        self.assertLogRevnos(["-m", "committer1", "-m", "committer2"], 
+        self.assertLogRevnos(["-m", "committer1", "-m", "committer2"],
                              ["2", "1"])
         self.assertLogRevnos(["--match-committer", "committer1"], ["1"])
         self.assertLogRevnos(["--match-committer", "committer2"], ["2"])
         self.assertLogRevnos(["--match-committer", "committer"], ["2", "1"])
-        self.assertLogRevnos(["--match-committer", "committer1", 
+        self.assertLogRevnos(["--match-committer", "committer1",
                               "--match-committer", "committer2"], ["2", "1"])
 
     def test_author(self):
@@ -1062,12 +1066,12 @@ class TestLogMatch(TestLogWithLogCatcher):
         self.assertLogRevnos(["-m", "author1"], ["1"])
         self.assertLogRevnos(["-m", "author2"], ["2"])
         self.assertLogRevnos(["-m", "author"], ["2", "1"])
-        self.assertLogRevnos(["-m", "author1", "-m", "author2"], 
+        self.assertLogRevnos(["-m", "author1", "-m", "author2"],
                              ["2", "1"])
         self.assertLogRevnos(["--match-author", "author1"], ["1"])
         self.assertLogRevnos(["--match-author", "author2"], ["2"])
         self.assertLogRevnos(["--match-author", "author"], ["2", "1"])
-        self.assertLogRevnos(["--match-author", "author1", 
+        self.assertLogRevnos(["--match-author", "author1",
                               "--match-author", "author2"], ["2", "1"])
 
 

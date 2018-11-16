@@ -43,7 +43,7 @@ class RevisionTree(tree.Tree):
 
     def supports_tree_reference(self):
         return getattr(self._repository._format, "supports_tree_reference",
-            False)
+                       False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -61,17 +61,17 @@ class RevisionTree(tree.Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    def get_file_revision(self, path, file_id=None):
+    def get_file_revision(self, path):
         """Return the revision id in which a file was last changed."""
         raise NotImplementedError(self.get_file_revision)
 
-    def get_file_text(self, path, file_id=None):
+    def get_file_text(self, path):
         for (identifier, content) in self.iter_files_bytes([(path, None)]):
             ret = b"".join(content)
         return ret
 
-    def get_file(self, path, file_id=None):
-        return BytesIO(self.get_file_text(path, file_id))
+    def get_file(self, path):
+        return BytesIO(self.get_file_text(path))
 
     def is_locked(self):
         return self._repository.is_locked()
@@ -91,5 +91,5 @@ class RevisionTree(tree.Tree):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
             self._rules_searcher = super(RevisionTree,
-                self)._get_rules_searcher(default_searcher)
+                                         self)._get_rules_searcher(default_searcher)
         return self._rules_searcher

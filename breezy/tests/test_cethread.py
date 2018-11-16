@@ -45,6 +45,7 @@ class TestCatchingExceptionThread(tests.TestCase):
 
     def test_join_around_exception(self):
         resume = threading.Event()
+
         class MyException(Exception):
             pass
 
@@ -64,6 +65,7 @@ class TestCatchingExceptionThread(tests.TestCase):
     def test_sync_event(self):
         control = threading.Event()
         in_thread = threading.Event()
+
         class MyException(Exception):
             pass
 
@@ -74,7 +76,7 @@ class TestCatchingExceptionThread(tests.TestCase):
             raise MyException()
 
         tt = cethread.CatchingExceptionThread(target=raise_my_exception,
-                                            sync_event=in_thread)
+                                              sync_event=in_thread)
         tt.start()
         tt.join(timeout=0)
         self.assertIs(None, tt.exception)

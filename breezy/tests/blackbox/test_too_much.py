@@ -59,16 +59,20 @@ class TestCommands(TestCaseWithTransport):
     def test_revert(self):
         self.run_bzr('init')
 
-        with open('hello', 'wt') as f: f.write('foo')
+        with open('hello', 'wt') as f:
+            f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup hello')
 
-        with open('goodbye', 'wt') as f: f.write('baz')
+        with open('goodbye', 'wt') as f:
+            f.write('baz')
         self.run_bzr('add goodbye')
         self.run_bzr('commit -m setup goodbye')
 
-        with open('hello', 'wt') as f: f.write('bar')
-        with open('goodbye', 'wt') as f: f.write('qux')
+        with open('hello', 'wt') as f:
+            f.write('bar')
+        with open('goodbye', 'wt') as f:
+            f.write('qux')
         self.run_bzr('revert hello')
         self.check_file_contents('hello', b'foo')
         self.check_file_contents('goodbye', b'qux')
@@ -96,7 +100,8 @@ class TestCommands(TestCaseWithTransport):
         else:
             self.log("skipping revert symlink tests")
 
-        with open('hello', 'wt') as f: f.write('xyz')
+        with open('hello', 'wt') as f:
+            f.write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', b'foo')
@@ -108,10 +113,12 @@ class TestCommands(TestCaseWithTransport):
 
     def example_branch(test):
         test.run_bzr('init')
-        with open('hello', 'wt') as f: f.write('foo')
+        with open('hello', 'wt') as f:
+            f.write('foo')
         test.run_bzr('add hello')
         test.run_bzr('commit -m setup hello')
-        with open('goodbye', 'wt') as f: f.write('baz')
+        with open('goodbye', 'wt') as f:
+            f.write('baz')
         test.run_bzr('add goodbye')
         test.run_bzr('commit -m setup goodbye')
 
@@ -126,7 +133,8 @@ class TestCommands(TestCaseWithTransport):
         os.chdir('..')
         self.run_bzr('branch a b')
         os.chdir('b')
-        with open('b', 'wb') as f: f.write(b'else\n')
+        with open('b', 'wb') as f:
+            f.write(b'else\n')
         self.run_bzr('add b')
         self.run_bzr(['commit', '-m', 'added b'])
 
@@ -194,22 +202,28 @@ class TestCommands(TestCaseWithTransport):
         """Create a conflicted tree"""
         os.mkdir('base')
         os.chdir('base')
-        with open('hello', 'wb') as f: f.write(b"hi world")
-        with open('answer', 'wb') as f: f.write(b"42")
+        with open('hello', 'wb') as f:
+            f.write(b"hi world")
+        with open('answer', 'wb') as f:
+            f.write(b"42")
         self.run_bzr('init')
         self.run_bzr('add')
         self.run_bzr('commit -m base')
         self.run_bzr('branch . ../other')
         self.run_bzr('branch . ../this')
         os.chdir('../other')
-        with open('hello', 'wb') as f: f.write(b"Hello.")
-        with open('answer', 'wb') as f: f.write(b"Is anyone there?")
+        with open('hello', 'wb') as f:
+            f.write(b"Hello.")
+        with open('answer', 'wb') as f:
+            f.write(b"Is anyone there?")
         self.run_bzr('commit -m other')
         os.chdir('../this')
-        with open('hello', 'wb') as f: f.write(b"Hello, world")
+        with open('hello', 'wb') as f:
+            f.write(b"Hello, world")
         self.run_bzr('mv answer question')
-        with open('question', 'wb') as f: f.write(b"What do you get when you multiply six"
-                                   b"times nine?")
+        with open('question', 'wb') as f:
+            f.write(b"What do you get when you multiply six"
+                    b"times nine?")
         self.run_bzr('commit -m this')
 
     def test_status(self):
@@ -226,7 +240,6 @@ class TestCommands(TestCaseWithTransport):
         os.chdir('../branch3')
         self.run_bzr('merge ../branch2')
         message = self.run_bzr('status')[0]
-
 
     def test_conflicts(self):
         """Handling of merge conflicts"""
@@ -248,10 +261,10 @@ class TestCommands(TestCaseWithTransport):
         self.assertTrue('hi world' not in conflict_text)
         result = self.run_bzr('conflicts')[0]
         self.assertEqual(result, "Text conflict in hello\nText conflict in"
-                                  " question\n")
+                         " question\n")
         result = self.run_bzr('status')[0]
         self.assertTrue("conflicts:\n  Text conflict in hello\n"
-                     "  Text conflict in question\n" in result, result)
+                        "  Text conflict in question\n" in result, result)
         self.run_bzr('resolve hello')
         result = self.run_bzr('conflicts')[0]
         self.assertEqual(result, "Text conflict in question\n")
@@ -421,7 +434,8 @@ class OldTests(TestCaseWithTransport):
         self.assertTrue("this is my new commit\n  and" in log_out)
         self.assertTrue("rename nested" not in log_out)
         self.assertTrue('revision-id' not in log_out)
-        self.assertTrue('revision-id' in self.run_bzr('log --show-ids -m commit')[0])
+        self.assertTrue(
+            'revision-id' in self.run_bzr('log --show-ids -m commit')[0])
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
@@ -434,7 +448,8 @@ class OldTests(TestCaseWithTransport):
 
         progress("file with spaces in name")
         mkdir('sub directory')
-        with open('sub directory/file with spaces ', 'wt') as f: f.write('see how this works\n')
+        with open('sub directory/file with spaces ', 'wt') as f:
+            f.write('see how this works\n')
         self.run_bzr('add .')
         self.run_bzr('diff', retcode=1)
         self.run_bzr('commit -m add-spaces')
@@ -506,42 +521,42 @@ class OldTests(TestCaseWithTransport):
 
             self.run_bzr('export -r 1 exp1.tmp')
             chdir("exp1.tmp")
-            self.assertEqual(listdir_sorted("."), [ "link1" ])
+            self.assertEqual(listdir_sorted("."), ["link1"])
             self.assertEqual(os.readlink("link1"), "NOWHERE1")
             chdir("..")
 
             self.run_bzr('export -r 2 exp2.tmp')
             chdir("exp2.tmp")
-            self.assertEqual(listdir_sorted("."), [ "d1", "link1" ])
+            self.assertEqual(listdir_sorted("."), ["d1", "link1"])
             chdir("..")
 
             self.run_bzr('export -r 3 exp3.tmp')
             chdir("exp3.tmp")
-            self.assertEqual(listdir_sorted("."), [ "d2", "link2" ])
-            self.assertEqual(listdir_sorted("d2"), [ "link1", "link3" ])
+            self.assertEqual(listdir_sorted("."), ["d2", "link2"])
+            self.assertEqual(listdir_sorted("d2"), ["link1", "link3"])
             self.assertEqual(os.readlink("d2/link1"), "NOWHERE1")
             self.assertEqual(os.readlink("link2"), "NOWHERE2")
             chdir("..")
 
             self.run_bzr('export -r 4 exp4.tmp')
             chdir("exp4.tmp")
-            self.assertEqual(listdir_sorted("."), [ "d2", "link2" ])
+            self.assertEqual(listdir_sorted("."), ["d2", "link2"])
             self.assertEqual(os.readlink("d2/link1"), "TARGET 1")
             self.assertEqual(os.readlink("link2"), "TARGET 2")
-            self.assertEqual(listdir_sorted("d2"), [ "link1", "link3" ])
+            self.assertEqual(listdir_sorted("d2"), ["link1", "link3"])
             chdir("..")
 
             self.run_bzr('export -r 5 exp5.tmp')
             chdir("exp5.tmp")
-            self.assertEqual(listdir_sorted("."), [ "d2", "link2" ])
+            self.assertEqual(listdir_sorted("."), ["d2", "link2"])
             self.assertTrue(os.path.islink("link2"))
-            self.assertTrue(listdir_sorted("d2")== [ "link3" ])
+            self.assertTrue(listdir_sorted("d2") == ["link3"])
             chdir("..")
 
             self.run_bzr('export -r 8 exp6.tmp')
             chdir("exp6.tmp")
-            self.assertEqual(listdir_sorted("."), [ "d1", "d2", "link2"])
-            self.assertEqual(listdir_sorted("d1"), [ "link3new" ])
+            self.assertEqual(listdir_sorted("."), ["d1", "d2", "link2"])
+            self.assertEqual(listdir_sorted("d1"), ["link3new"])
             self.assertEqual(listdir_sorted("d2"), [])
             self.assertEqual(os.readlink("d1/link3new"), "NOWHERE3")
             chdir("..")
@@ -586,7 +601,8 @@ class RemoteTests(object):
         os.mkdir('my-branch')
         os.chdir('my-branch')
         self.run_bzr('init')
-        with open('hello', 'wt') as f: f.write('foo')
+        with open('hello', 'wt') as f:
+            f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup')
 

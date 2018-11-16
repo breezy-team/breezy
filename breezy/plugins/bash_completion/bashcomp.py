@@ -60,7 +60,7 @@ class BashCodeGen(object):
 shopt -s progcomp
 %(function)s
 complete -F %(function_name)s -o default brz
-"""     % {
+""" % {
             "function_name": self.function_name,
             "function": self.function(),
             "brz_version": self.brz_version(),
@@ -157,7 +157,7 @@ complete -F %(function_name)s -o default brz
 
 	return 0
 }
-"""     % {
+""" % {
             "cmds": self.command_names(),
             "function_name": self.function_name,
             "cases": self.command_cases(),
@@ -303,7 +303,7 @@ class DataCollector(object):
             self.selected_plugins = None
         else:
             self.selected_plugins = {x.replace('-', '_')
-                                         for x in selected_plugins}
+                                     for x in selected_plugins}
 
     def collect(self):
         self.global_options()
@@ -337,7 +337,7 @@ class DataCollector(object):
         plugin_name = cmd.plugin_name()
         if plugin_name is not None:
             if (self.selected_plugins is not None and
-                plugin not in self.selected_plugins):
+                    plugin not in self.selected_plugins):
                 return None
             plugin_data = self.data.plugins.get(plugin_name)
             if plugin_data is None:
@@ -352,10 +352,10 @@ class DataCollector(object):
         # ones while maintaining the actual command name unchanged.
         cmd_data.aliases.extend(cmd.aliases)
         cmd_data.aliases.extend(sorted([useralias
-            for cmdalias in cmd_data.aliases
-            if cmdalias in self.user_aliases
-            for useralias in self.user_aliases[cmdalias]
-            if useralias not in cmd_data.aliases]))
+                                        for cmdalias in cmd_data.aliases
+                                        if cmdalias in self.user_aliases
+                                        for useralias in self.user_aliases[cmdalias]
+                                        if useralias not in cmd_data.aliases]))
 
         opts = cmd.options()
         for optname, opt in sorted(opts.items()):
@@ -363,7 +363,7 @@ class DataCollector(object):
 
         if 'help' == name or 'help' in cmd.aliases:
             cmd_data.fixed_words = ('($cmds %s)' %
-                " ".join(sorted(help_topics.topic_registry.keys())))
+                                    " ".join(sorted(help_topics.topic_registry.keys())))
 
         return cmd_data
 
@@ -394,9 +394,10 @@ class DataCollector(object):
 
     def wrap_parser(self, optswitches, parser):
         orig_add_option_group = parser.add_option_group
+
         def tweaked_add_option_group(*opts, **attrs):
             return self.wrap_container(optswitches,
-                orig_add_option_group(*opts, **attrs))
+                                       orig_add_option_group(*opts, **attrs))
         parser.add_option_group = tweaked_add_option_group
         return self.wrap_container(optswitches, parser)
 
@@ -404,7 +405,8 @@ class DataCollector(object):
 def bash_completion_function(out, function_name="_brz", function_only=False,
                              debug=False,
                              no_plugins=False, selected_plugins=None):
-    dc = DataCollector(no_plugins=no_plugins, selected_plugins=selected_plugins)
+    dc = DataCollector(no_plugins=no_plugins,
+                       selected_plugins=selected_plugins)
     data = dc.collect()
     cg = BashCodeGen(data, function_name=function_name, debug=debug)
     if function_only:
@@ -427,15 +429,15 @@ class cmd_bash_completion(commands.Command):
 
     takes_options = [
         option.Option("function-name", short_name="f", type=text_type, argname="name",
-               help="Name of the generated function (default: _brz)"),
+                      help="Name of the generated function (default: _brz)"),
         option.Option("function-only", short_name="o", type=None,
-               help="Generate only the shell function, don't enable it"),
+                      help="Generate only the shell function, don't enable it"),
         option.Option("debug", type=None, hidden=True,
-               help="Enable shell code useful for debugging"),
+                      help="Enable shell code useful for debugging"),
         option.ListOption("plugin", type=text_type, argname="name",
-                # param_name="selected_plugins", # doesn't work, bug #387117
-                help="Enable completions for the selected plugin"
-                + " (default: all plugins)"),
+                          # param_name="selected_plugins", # doesn't work, bug #387117
+                          help="Enable completions for the selected plugin"
+                          + " (default: all plugins)"),
         ]
 
     def run(self, **kwargs):

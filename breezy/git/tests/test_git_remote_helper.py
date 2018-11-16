@@ -62,7 +62,8 @@ class FetchTests(TestCaseWithTransport):
 
     def setUp(self):
         super(FetchTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git').controldir
+        self.local_dir = self.make_branch_and_tree(
+            'local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
         self.remote_dir = self.remote_tree.controldir
         self.shortname = 'bzr'
@@ -93,18 +94,20 @@ class RemoteHelperTests(TestCaseWithTransport):
 
     def setUp(self):
         super(RemoteHelperTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git').controldir
+        self.local_dir = self.make_branch_and_tree(
+            'local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
         self.remote_dir = self.remote_tree.controldir
         self.shortname = 'bzr'
-        self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
+        self.helper = RemoteHelper(
+            self.local_dir, self.shortname, self.remote_dir)
 
     def test_capabilities(self):
         f = BytesIO()
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(capabs in (base+b"\n", base+b"import\n\n"), capabs)
+        self.assertTrue(capabs in (base + b"\n", base + b"import\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()
@@ -123,7 +126,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.build_tree_contents([("remote/afile", b"somecontent")])
         self.remote_tree.add(["afile"])
         self.remote_tree.commit(b"A commit message", timestamp=1330445983,
-            timezone=0, committer=b'Somebody <jrandom@example.com>')
+                                timezone=0, committer=b'Somebody <jrandom@example.com>')
         f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEqual(

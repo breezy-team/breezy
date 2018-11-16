@@ -39,5 +39,3 @@ class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
         with repository.lock_write():
             repository._pack_collection.autopack()
         return SuccessfulSmartServerResponse((b'ok',))
-
-

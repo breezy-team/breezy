@@ -113,8 +113,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
         super(VersionedFileCommitBuilder, self).__init__(repository,
-            parents, config_stack, timestamp, timezone, committer, revprops,
-            revision_id, lossy)
+                                                         parents, config_stack, timestamp, timezone, committer, revprops,
+                                                         revision_id, lossy)
         try:
             basis_id = self.parents[0]
         except IndexError:
@@ -148,14 +148,15 @@ class VersionedFileCommitBuilder(CommitBuilder):
             return
         if not self.repository._format.supports_chks:
             raise errors.BzrError("Cannot commit directly to a stacked branch"
-                " in pre-2a formats. See "
-                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+                                  " in pre-2a formats. See "
+                                  "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         # This is a stacked repo, we need to make sure we have the parent
         # inventories for the parents.
         parent_keys = [(p,) for p in self.parents]
-        parent_map = self.repository.inventories._index.get_parent_map(parent_keys)
+        parent_map = self.repository.inventories._index.get_parent_map(
+            parent_keys)
         missing_parent_keys = {pk for pk in parent_keys
-                                       if pk not in parent_map}
+                               if pk not in parent_map}
         fallback_repos = list(reversed(self.repository._fallback_repositories))
         missing_keys = [('inventories', pk[0])
                         for pk in missing_parent_keys]
@@ -176,13 +177,13 @@ class VersionedFileCommitBuilder(CommitBuilder):
         """
         self._validate_unicode_text(message, 'commit message')
         rev = _mod_revision.Revision(
-                       timestamp=self._timestamp,
-                       timezone=self._timezone,
-                       committer=self._committer,
-                       message=message,
-                       inventory_sha1=self.inv_sha1,
-                       revision_id=self._new_revision_id,
-                       properties=self._revprops)
+            timestamp=self._timestamp,
+            timezone=self._timezone,
+            committer=self._committer,
+            message=message,
+            inventory_sha1=self.inv_sha1,
+            revision_id=self._new_revision_id,
+            properties=self._revprops)
         rev.parent_ids = self.parents
         if self._config_stack.get('create_signatures') == _mod_config.SIGN_ALWAYS:
             testament = Testament(rev, self.revision_tree())
@@ -213,7 +214,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             self._new_inventory = self.repository.get_inventory(
                 self._new_revision_id)
         return inventorytree.InventoryRevisionTree(self.repository,
-            self._new_inventory, self._new_revision_id)
+                                                   self._new_inventory, self._new_revision_id)
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
@@ -242,7 +243,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         if len(self.parents) == 0:
             raise errors.RootMissing()
         entry = entry_factory['directory'](tree.path2id(''), '',
-            None)
+                                           None)
         entry.revision = self._new_revision_id
         self._basis_delta.append(('', '', entry.file_id, entry))
 
@@ -280,7 +281,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         return self._basis_delta
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes,
-        _entry_factory=entry_factory):
+                            _entry_factory=entry_factory):
         """Record a new tree via iter_changes.
 
         :param tree: The tree to obtain text contents from for changed objects.
@@ -297,7 +298,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             tree._observed_sha1.
         """
         # Create an inventory delta based on deltas between all the parents and
-        # deltas between all the parent inventories. We use inventory delta's 
+        # deltas between all the parent inventories. We use inventory delta's
         # between the inventory objects because iter_changes masks
         # last-changed-field only changes.
         # Working data:
@@ -322,7 +323,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         ghost_basis = True
                     revtrees.append(self.repository.revision_tree(
                         _mod_revision.NULL_REVISION))
-        # The basis inventory from a repository 
+        # The basis inventory from a repository
         if revtrees:
             basis_tree = revtrees[0]
         else:
@@ -349,20 +350,22 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             parent_entries[change[2]] = {
                                 # basis parent
                                 basis_entry.revision: basis_entry,
-                                # this parent 
+                                # this parent
                                 change[3].revision: change[3],
                                 }
                         else:
                             merged_ids[change[2]] = [change[3].revision]
-                            parent_entries[change[2]] = {change[3].revision:change[3]}
+                            parent_entries[change[2]] = {
+                                change[3].revision: change[3]}
                     else:
                         merged_ids[change[2]].append(change[3].revision)
-                        parent_entries[change[2]][change[3].revision] = change[3]
+                        parent_entries[change[2]
+                                       ][change[3].revision] = change[3]
         else:
             merged_ids = {}
         # Setup the changes from the tree:
         # changes maps file_id -> (change, [parent revision_ids])
-        changes= {}
+        changes = {}
         for change in iter_changes:
             # This probably looks up in basis_inv way to much.
             if change[1][0] is not None:
@@ -370,7 +373,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             else:
                 head_candidate = []
             changes[change[0]] = change, merged_ids.get(change[0],
-                head_candidate)
+                                                        head_candidate)
         unchanged_merged = set(merged_ids) - set(changes)
         # Extend the changes dict with synthetic changes to record merges of
         # texts.
@@ -395,22 +398,22 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 pass
             else:
                 change = (file_id,
-                    (basis_inv.id2path(file_id), tree.id2path(file_id)),
-                    False, (True, True),
-                    (basis_entry.parent_id, basis_entry.parent_id),
-                    (basis_entry.name, basis_entry.name),
-                    (basis_entry.kind, basis_entry.kind),
-                    (basis_entry.executable, basis_entry.executable))
+                          (basis_inv.id2path(file_id), tree.id2path(file_id)),
+                          False, (True, True),
+                          (basis_entry.parent_id, basis_entry.parent_id),
+                          (basis_entry.name, basis_entry.name),
+                          (basis_entry.kind, basis_entry.kind),
+                          (basis_entry.executable, basis_entry.executable))
                 changes[file_id] = (change, merged_ids[file_id])
         # changes contains tuples with the change and a set of inventory
         # candidates for the file.
         # inv delta is:
         # old_path, new_path, file_id, new_inventory_entry
-        seen_root = False # Is the root in the basis delta?
+        seen_root = False  # Is the root in the basis delta?
         inv_delta = self._basis_delta
         modified_rev = self._new_revision_id
         for change, head_candidates in viewvalues(changes):
-            if change[3][1]: # versioned in target.
+            if change[3][1]:  # versioned in target.
                 # Several things may be happening here:
                 # We may have a fork in the per-file graph
                 #  - record a change with the content from tree
@@ -421,7 +424,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 kind = change[6][1]
                 file_id = change[0]
                 entry = _entry_factory[kind](file_id, change[5][1],
-                    change[4][1])
+                                             change[4][1])
                 head_set = self._heads(change[0], set(head_candidates))
                 heads = []
                 # Preserve ordering.
@@ -448,9 +451,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # we need to check the content against the source of the
                         # merge to determine if it was changed after the merge
                         # or carried over.
-                        if (parent_entry.kind != entry.kind or
-                            parent_entry.parent_id != entry.parent_id or
-                            parent_entry.name != entry.name):
+                        if (parent_entry.kind != entry.kind
+                            or parent_entry.parent_id != entry.parent_id
+                                or parent_entry.name != entry.name):
                             # Metadata common to all entries has changed
                             # against per-file parent
                             carry_over_possible = False
@@ -473,14 +476,14 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         entry.executable = True
                     else:
                         entry.executable = False
-                    if (carry_over_possible and
-                        parent_entry.executable == entry.executable):
+                    if (carry_over_possible
+                            and parent_entry.executable == entry.executable):
                             # Check the file length, content hash after reading
                             # the file.
-                            nostore_sha = parent_entry.text_sha1
+                        nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
-                    file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
+                    file_obj, stat_value = tree.get_file_with_stat(change[1][1])
                     try:
                         entry.text_sha1, entry.text_size = self._add_file_to_weave(
                             file_id, file_obj, heads, nostore_sha)
@@ -495,12 +498,15 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         file_obj.close()
                 elif kind == 'symlink':
                     # Wants a path hint?
-                    entry.symlink_target = tree.get_symlink_target(change[1][1], file_id)
+                    entry.symlink_target = tree.get_symlink_target(
+                        change[1][1])
                     if (carry_over_possible and
-                        parent_entry.symlink_target == entry.symlink_target):
+                            parent_entry.symlink_target ==
+                            entry.symlink_target):
                         carried_over = True
                     else:
-                        self._add_file_to_weave(change[0], BytesIO(), heads, None)
+                        self._add_file_to_weave(
+                            change[0], BytesIO(), heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
@@ -508,22 +514,26 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
                         if change[1][1] != '' or self.repository.supports_rich_root():
-                            self._add_file_to_weave(change[0], BytesIO(), heads, None)
+                            self._add_file_to_weave(
+                                change[0], BytesIO(), heads, None)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
                         # ever see this code path in practice: tree's don't
                         # permit references when the repo doesn't support tree
                         # references.
-                        raise errors.UnsupportedOperation(tree.add_reference,
-                            self.repository)
-                    reference_revision = tree.get_reference_revision(change[1][1], change[0])
+                        raise errors.UnsupportedOperation(
+                            tree.add_reference, self.repository)
+                    reference_revision = tree.get_reference_revision(
+                            change[1][1])
                     entry.reference_revision = reference_revision
-                    if (carry_over_possible and
-                        parent_entry.reference_revision == reference_revision):
+                    if (carry_over_possible
+                            and parent_entry.reference_revision ==
+                                reference_revision):
                         carried_over = True
                     else:
-                        self._add_file_to_weave(change[0], BytesIO(), heads, None)
+                        self._add_file_to_weave(
+                            change[0], BytesIO(), heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
@@ -538,8 +548,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 seen_root = True
         # The initial commit adds a root directory, but this in itself is not
         # a worthwhile commit.
-        if ((len(inv_delta) > 0 and basis_revision_id != _mod_revision.NULL_REVISION) or
-            (len(inv_delta) > 1 and basis_revision_id == _mod_revision.NULL_REVISION)):
+        if ((len(inv_delta) > 0 and basis_revision_id != _mod_revision.NULL_REVISION)
+                or (len(inv_delta) > 1 and basis_revision_id == _mod_revision.NULL_REVISION)):
             # This should perhaps be guarded by a check that the basis we
             # commit against is the basis for the commit and if not do a delta
             # against the basis.
@@ -672,7 +682,7 @@ class VersionedFileRepository(Repository):
         """
         inv_lines = self._serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
-            inv_lines, check_content=False)
+                                         inv_lines, check_content=False)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
                                parents, basis_inv=None, propagate_caches=False):
@@ -719,11 +729,11 @@ class VersionedFileRepository(Repository):
                     basis_inv)
 
     def _inventory_add_lines(self, revision_id, parents, lines,
-        check_content=True):
+                             check_content=True):
         """Store lines in inv_vf and return the sha1 of the inventory."""
         parents = [(parent,) for parent in parents]
         result = self.inventories.add_lines((revision_id,), parents, lines,
-            check_content=check_content)[0]
+                                            check_content=check_content)[0]
         self.inventories._access.flush()
         return result
 
@@ -760,7 +770,7 @@ class VersionedFileRepository(Repository):
 
     def _check_inventories(self, checker):
         """Check the inventories found from the revision scan.
-        
+
         This is responsible for verifying the sha1 of inventories and
         creating a pending_keys set that covers data referenced by inventories.
         """
@@ -770,7 +780,7 @@ class VersionedFileRepository(Repository):
     def _do_check_inventories(self, checker, bar):
         """Helper for _check_inventories."""
         revno = 0
-        keys = {'chk_bytes':set(), 'inventories':set(), 'texts':set()}
+        keys = {'chk_bytes': set(), 'inventories': set(), 'texts': set()}
         kinds = ['chk_bytes', 'texts']
         count = len(checker.pending_keys)
         bar.update(gettext("inventories"), 0, 2)
@@ -794,21 +804,22 @@ class VersionedFileRepository(Repository):
                         'Missing inventory {%s}' % (record.key,))
                 else:
                     last_object = self._check_record('inventories', record,
-                        checker, last_object,
-                        current_keys[('inventories',) + record.key])
+                                                     checker, last_object,
+                                                     current_keys[('inventories',) + record.key])
             del keys['inventories']
         else:
             return
         bar.update(gettext("texts"), 1)
-        while (checker.pending_keys or keys['chk_bytes']
-            or keys['texts']):
+        while (checker.pending_keys or keys['chk_bytes'] or
+               keys['texts']):
             # Something to check.
             current_keys = checker.pending_keys
             checker.pending_keys = {}
             # Accumulate current checks.
             for key in current_keys:
                 if key[0] not in kinds:
-                    checker._report_items.append('unknown key type %r' % (key,))
+                    checker._report_items.append(
+                        'unknown key type %r' % (key,))
                 keys[key[0]].add(key[1:])
             # Check the outermost kind only - inventories || chk_bytes || texts
             for kind in kinds:
@@ -820,7 +831,7 @@ class VersionedFileRepository(Repository):
                                 'Missing %s {%s}' % (kind, record.key,))
                         else:
                             last_object = self._check_record(kind, record,
-                                checker, last_object, current_keys[(kind,) + record.key])
+                                                             checker, last_object, current_keys[(kind,) + record.key])
                     keys[kind] = set()
                     break
 
@@ -829,7 +840,7 @@ class VersionedFileRepository(Repository):
         if kind == 'inventories':
             rev_id = record.key[0]
             inv = self._deserialise_inventory(rev_id,
-                record.get_bytes_as('fulltext'))
+                                              record.get_bytes_as('fulltext'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
                 for old_path, path, file_id, ie in delta:
@@ -891,7 +902,7 @@ class VersionedFileRepository(Repository):
         # getting file texts, inventories and revisions, then
         # this construct will accept instances of those things.
         super(VersionedFileRepository, self).__init__(_format, a_controldir,
-            control_files)
+                                                      control_files)
         self._transport = control_files._transport
         self.base = self._transport.base
         # for tests
@@ -899,13 +910,13 @@ class VersionedFileRepository(Repository):
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = True
         # An InventoryEntry cache, used during deserialization
-        self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
+        self._inventory_entry_cache = fifo_cache.FIFOCache(10 * 1024)
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+              fetch_spec=None):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None and fetch_spec is None, then all content is
@@ -935,27 +946,28 @@ class VersionedFileRepository(Repository):
         # fast path same-url fetch operations
         # TODO: lift out to somewhere common with RemoteRepository
         # <https://bugs.launchpad.net/bzr/+bug/401646>
-        if (self.has_same_location(source)
-            and fetch_spec is None
-            and self._has_same_fallbacks(source)):
+        if (self.has_same_location(source) and
+            fetch_spec is None and
+                self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
-            if (revision_id is not None and
-                not _mod_revision.is_null(revision_id)):
+            if (revision_id is not None
+                    and not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        if (fetch_spec is not None and
-            not getattr(inter, "supports_fetch_spec", False)):
+        if (fetch_spec is not None
+                and not getattr(inter, "supports_fetch_spec", False)):
             raise errors.UnsupportedOperation(
                 "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
-            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+                           find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
         with self.lock_read():
-            result = super(VersionedFileRepository, self).gather_stats(revid, committers)
+            result = super(VersionedFileRepository,
+                           self).gather_stats(revid, committers)
             # now gather global repository information
             # XXX: This is available for many repos regardless of listability.
             if self.user_transport.listable():
@@ -984,11 +996,11 @@ class VersionedFileRepository(Repository):
         """
         if self._fallback_repositories and not self._format.supports_chks:
             raise errors.BzrError("Cannot commit directly to a stacked branch"
-                " in pre-2a formats. See "
-                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+                                  " in pre-2a formats. See "
+                                  "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config_stack,
-            timestamp, timezone, committer, revprops, revision_id,
-            lossy)
+                                            timestamp, timezone, committer, revprops, revision_id,
+                                            lossy)
         self.start_write_group()
         return result
 
@@ -1086,7 +1098,8 @@ class VersionedFileRepository(Repository):
         with self.lock_read():
             for rev_id in revision_ids:
                 if not rev_id or not isinstance(rev_id, bytes):
-                    raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
+                    raise errors.InvalidRevisionId(
+                        revision_id=rev_id, branch=self)
             keys = [(key,) for key in revision_ids]
             stream = self.revisions.get_record_stream(keys, 'unordered', True)
             for record in stream:
@@ -1106,7 +1119,7 @@ class VersionedFileRepository(Repository):
         """
         with self.lock_write():
             self.signatures.add_lines((revision_id,), (),
-                osutils.split_lines(signature))
+                                      osutils.split_lines(signature))
 
     def find_text_key_references(self):
         """Find the text key references within the repository.
@@ -1143,7 +1156,7 @@ class VersionedFileRepository(Repository):
                     yield line, revid
 
     def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
-        revision_keys):
+                                                revision_keys):
         """Helper routine for fileids_altered_by_revision_ids.
 
         This performs the translation of xml lines to revision ids.
@@ -1227,7 +1240,7 @@ class VersionedFileRepository(Repository):
             yield text_keys[record.key], record.get_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
-        ancestors=None):
+                                 ancestors=None):
         """Generate a new text key index for the repository.
 
         This is an expensive function that will take considerable time to run.
@@ -1244,7 +1257,7 @@ class VersionedFileRepository(Repository):
             text_key_references = self.find_text_key_references()
         with ui.ui_factory.nested_progress_bar() as pb:
             return self._do_generate_text_key_index(ancestors,
-                text_key_references, pb)
+                                                    text_key_references, pb)
 
     def _do_generate_text_key_index(self, ancestors, text_key_references, pb):
         """Helper for _generate_text_key_index to avoid deep nesting."""
@@ -1273,19 +1286,21 @@ class VersionedFileRepository(Repository):
         # could gauge this by looking at available real memory etc, but this is
         # always a tricky proposition.
         inventory_cache = lru_cache.LRUCache(10)
-        batch_size = 10 # should be ~150MB on a 55K path tree
+        batch_size = 10  # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) // batch_size + 1
         processed_texts = 0
-        pb.update(gettext("Calculating text parents"), processed_texts, text_count)
+        pb.update(gettext("Calculating text parents"),
+                  processed_texts, text_count)
         for offset in range(batch_count):
-            to_query = revision_order[offset * batch_size:(offset + 1) *
-                batch_size]
+            to_query = revision_order[offset * batch_size:(offset + 1)
+                                      * batch_size]
             if not to_query:
                 break
             for revision_id in to_query:
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
-                    pb.update(gettext("Calculating text parents"), processed_texts)
+                    pb.update(gettext("Calculating text parents"),
+                              processed_texts)
                     processed_texts += 1
                     candidate_parents = []
                     for parent_id in parent_ids:
@@ -1305,7 +1320,8 @@ class VersionedFileRepository(Repository):
                             try:
                                 inv = inventory_cache[parent_id]
                             except KeyError:
-                                inv = self.revision_tree(parent_id).root_inventory
+                                inv = self.revision_tree(
+                                    parent_id).root_inventory
                                 inventory_cache[parent_id] = inv
                             try:
                                 parent_entry = inv.get_entry(text_key[0])
@@ -1321,7 +1337,7 @@ class VersionedFileRepository(Repository):
                                 text_key_cache[parent_text_key])
                     parent_heads = text_graph.heads(candidate_parents)
                     new_parents = list(parent_heads)
-                    new_parents.sort(key=lambda x:candidate_parents.index(x))
+                    new_parents.sort(key=lambda x: candidate_parents.index(x))
                     if new_parents == []:
                         new_parents = [NULL_REVISION]
                     text_index[text_key] = new_parents
@@ -1400,8 +1416,8 @@ class VersionedFileRepository(Repository):
             buffering if necessary).
         :return: An iterator of inventories.
         """
-        if ((None in revision_ids)
-            or (_mod_revision.NULL_REVISION in revision_ids)):
+        if ((None in revision_ids) or
+                (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
         for inv, revid in self._iter_inventories(revision_ids, ordering):
             if inv is None:
@@ -1460,8 +1476,8 @@ class VersionedFileRepository(Repository):
         :param xml: A serialised inventory.
         """
         result = self._serializer.read_inventory_from_string(xml, revision_id,
-                    entry_cache=self._inventory_entry_cache,
-                    return_from_cache=self._safe_to_return_from_cache)
+                                                             entry_cache=self._inventory_entry_cache,
+                                                             return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))
@@ -1489,7 +1505,7 @@ class VersionedFileRepository(Repository):
         # so we don't need to read it in twice.
         if revision_id == _mod_revision.NULL_REVISION:
             return inventorytree.InventoryRevisionTree(self,
-                Inventory(root_id=None), _mod_revision.NULL_REVISION)
+                                                       Inventory(root_id=None), _mod_revision.NULL_REVISION)
         else:
             with self.lock_read():
                 inv = self.get_inventory(revision_id)
@@ -1530,11 +1546,11 @@ class VersionedFileRepository(Repository):
         # currently easier.
         if specific_fileids is None:
             trees = dict((t.get_revision_id(), t) for
-                t in self.revision_trees(required_trees))
+                         t in self.revision_trees(required_trees))
         else:
             trees = dict((t.get_revision_id(), t) for
-                t in self._filtered_revision_trees(required_trees,
-                specific_fileids))
+                         t in self._filtered_revision_trees(required_trees,
+                                                            specific_fileids))
 
         # Calculate the deltas
         for revision in revisions:
@@ -1577,7 +1593,7 @@ class VersionedFileRepository(Repository):
                 self.revisions.get_parent_map(query_keys)):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
-                    for (parent_revid,) in parent_keys])
+                                             for (parent_revid,) in parent_keys])
             else:
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
@@ -1588,7 +1604,8 @@ class VersionedFileRepository(Repository):
         st = static_tuple.StaticTuple
         revision_keys = [st(r_id).intern() for r_id in revision_ids]
         with self.lock_read():
-            known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+            known_graph = self.revisions.get_known_graph_ancestry(
+                revision_keys)
             return graph.GraphThunkIdsToKeys(known_graph)
 
     def get_file_graph(self):
@@ -1604,13 +1621,13 @@ class VersionedFileRepository(Repository):
         start_keys = result_set.difference(included_keys)
         exclude_keys = result_parents.difference(result_set)
         result = vf_search.SearchResult(start_keys, exclude_keys,
-            len(result_set), result_set)
+                                        len(result_set), result_set)
         return result
 
     def _get_versioned_file_checker(self, text_key_references=None,
-        ancestors=None):
+                                    ancestors=None):
         """Return an object suitable for checking versioned files.
-        
+
         :param text_key_references: if non-None, an already built
             dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
@@ -1621,7 +1638,7 @@ class VersionedFileRepository(Repository):
             available.
         """
         return _VersionedFileChecker(self,
-            text_key_references=text_key_references, ancestors=ancestors)
+                                     text_key_references=text_key_references, ancestors=ancestors)
 
     def has_signature_for_revision_id(self, revision_id):
         """Query for a revision signature for revision_id in the repository."""
@@ -1636,7 +1653,7 @@ class VersionedFileRepository(Repository):
         """Return the text for a signature."""
         with self.lock_read():
             stream = self.signatures.get_record_stream([(revision_id,)],
-                'unordered', True)
+                                                       'unordered', True)
             record = next(stream)
             if record.storage_kind == 'absent':
                 raise errors.NoSuchRevision(self, revision_id)
@@ -1667,11 +1684,11 @@ class VersionedFileRepository(Repository):
                 pass
             parent_map = vf.get_parent_map([(revid,)])
             parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[(revid,)])
+                                               parent_map[(revid,)])
             parents_according_to_revision = tuple(revision.parent_ids)
             if parents_according_to_index != parents_according_to_revision:
                 yield (revid, parents_according_to_index,
-                    parents_according_to_revision)
+                       parents_according_to_revision)
 
     def _check_for_inconsistent_revision_parents(self):
         inconsistencies = list(self._find_inconsistent_revision_parents())
@@ -1694,11 +1711,11 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
 
     def __init__(self, _format, a_controldir, control_files):
         super(MetaDirVersionedFileRepository, self).__init__(_format, a_controldir,
-            control_files)
+                                                             control_files)
 
 
 class MetaDirVersionedFileRepositoryFormat(RepositoryFormatMetaDir,
-        VersionedFileRepositoryFormat):
+                                           VersionedFileRepositoryFormat):
     """Base class for repository formats using versioned files in metadirs."""
 
 
@@ -1723,7 +1740,7 @@ class StreamSink(object):
         """
         stream = source.get_stream_for_missing_keys(missing_keys)
         return self.insert_stream_without_locking(stream,
-            self.target_repo._format)
+                                                  self.target_repo._format)
 
     def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.
@@ -1743,7 +1760,7 @@ class StreamSink(object):
             try:
                 # locked_insert_stream performs a commit|suspend.
                 missing_keys = self.insert_stream_without_locking(stream,
-                                    src_format, is_resume)
+                                                                  src_format, is_resume)
                 if missing_keys:
                     # suspend the write group and tell the caller what we is
                     # missing. We know we can suspend or else we would not have
@@ -1754,8 +1771,8 @@ class StreamSink(object):
                 hint = self.target_repo.commit_write_group()
                 to_serializer = self.target_repo._format._serializer
                 src_serializer = src_format._serializer
-                if (to_serializer != src_serializer and
-                    self.target_repo._format.pack_compresses):
+                if (to_serializer != src_serializer
+                        and self.target_repo._format.pack_compresses):
                     self.target_repo.pack(hint=hint)
                 return [], set()
             except:
@@ -1800,7 +1817,7 @@ class StreamSink(object):
                 # Not a pack repository
                 pass
             else:
-                new_pack.set_write_cache_size(1024*1024)
+                new_pack.set_write_cache_size(1024 * 1024)
         for substream_type, substream in stream:
             if 'stream' in debug.debug_flags:
                 mutter('inserting substream: %s', substream_type)
@@ -1828,7 +1845,7 @@ class StreamSink(object):
                     self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(substream,
-                        src_serializer)
+                                                       src_serializer)
             elif substream_type == 'signatures':
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
@@ -1843,12 +1860,12 @@ class StreamSink(object):
             check_for_missing_texts=is_resume)
         try:
             for prefix, versioned_file in (
-                ('texts', self.target_repo.texts),
-                ('inventories', self.target_repo.inventories),
-                ('revisions', self.target_repo.revisions),
-                ('signatures', self.target_repo.signatures),
-                ('chk_bytes', self.target_repo.chk_bytes),
-                ):
+                    ('texts', self.target_repo.texts),
+                    ('inventories', self.target_repo.inventories),
+                    ('revisions', self.target_repo.revisions),
+                    ('signatures', self.target_repo.signatures),
+                    ('chk_bytes', self.target_repo.chk_bytes),
+                    ):
                 if versioned_file is None:
                     continue
                 # TODO: key is often going to be a StaticTuple object
@@ -1859,7 +1876,7 @@ class StreamSink(object):
                 #       object, so instead we could have:
                 #       StaticTuple(prefix) + key here...
                 missing_keys.update((prefix,) + key for key in
-                    versioned_file.get_missing_compression_parent_keys())
+                                    versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:
             # cannot even attempt suspending, and missing would have failed
             # during stream insertion.
@@ -1886,7 +1903,7 @@ class StreamSink(object):
                 basis_id, inv_delta, revision_id, parents)
 
     def _extract_and_insert_inventories(self, substream, serializer,
-            parse_delta=None):
+                                        parse_delta=None):
         """Generate a new inventory versionedfile in target, converting data.
 
         The inventory is retrieved from the source, (deserializing it), and
@@ -1936,8 +1953,8 @@ class StreamSource(object):
         """
         src_serializer = self.from_repository._format._serializer
         target_serializer = self.to_format._serializer
-        return (self.to_format._fetch_uses_deltas and
-            src_serializer == target_serializer)
+        return (self.to_format._fetch_uses_deltas
+                and src_serializer == target_serializer)
 
     def _fetch_revision_texts(self, revs):
         # fetch signatures first and then the revision texts
@@ -1983,7 +2000,7 @@ class StreamSource(object):
             if knit_kind == "file":
                 # Accumulate file texts
                 text_keys.extend([(file_id, revision) for revision in
-                    revisions])
+                                  revisions])
             elif knit_kind == "inventory":
                 # Now copy the file texts.
                 from_texts = self.from_repository.texts
@@ -2036,9 +2053,9 @@ class StreamSource(object):
         for substream_kind, keys in viewitems(keys):
             vf = getattr(self.from_repository, substream_kind)
             if vf is None and keys:
-                    raise AssertionError(
-                        "cannot fill in keys for a versioned file we don't"
-                        " have: %s needs %s" % (substream_kind, keys))
+                raise AssertionError(
+                    "cannot fill in keys for a versioned file we don't"
+                    " have: %s needs %s" % (substream_kind, keys))
             if not keys:
                 # No need to stream something we don't have
                 continue
@@ -2061,7 +2078,7 @@ class StreamSource(object):
             # ensure that ghosts don't introduce missing data for future
             # fetches.
             stream = versionedfile.filter_absent(vf.get_record_stream(keys,
-                self.to_format._fetch_order, True))
+                                                                      self.to_format._fetch_order, True))
             yield substream_kind, stream
 
     def inventory_fetch_order(self):
@@ -2071,32 +2088,32 @@ class StreamSource(object):
             return self.to_format._fetch_order
 
     def _rich_root_upgrade(self):
-        return (not self.from_repository._format.rich_root_data and
-            self.to_format.rich_root_data)
+        return (not self.from_repository._format.rich_root_data
+                and self.to_format.rich_root_data)
 
     def _get_inventory_stream(self, revision_ids, missing=False):
         from_format = self.from_repository._format
-        if (from_format.supports_chks and self.to_format.supports_chks and
-            from_format.network_name() == self.to_format.network_name()):
+        if (from_format.supports_chks and self.to_format.supports_chks
+                and from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
         elif 'forceinvdeltas' in debug.debug_flags:
             return self._get_convertable_inventory_stream(revision_ids,
-                    delta_versus_null=missing)
+                                                          delta_versus_null=missing)
         elif from_format.network_name() == self.to_format.network_name():
             # Same format.
             return self._get_simple_inventory_stream(revision_ids,
-                    missing=missing)
-        elif (not from_format.supports_chks and not self.to_format.supports_chks
-                and from_format._serializer == self.to_format._serializer):
+                                                     missing=missing)
+        elif (not from_format.supports_chks and not self.to_format.supports_chks and
+                from_format._serializer == self.to_format._serializer):
             # Essentially the same format.
             return self._get_simple_inventory_stream(revision_ids,
-                    missing=missing)
+                                                     missing=missing)
         else:
             # Any time we switch serializations, we want to use an
             # inventory-delta based approach.
             return self._get_convertable_inventory_stream(revision_ids,
-                    delta_versus_null=missing)
+                                                          delta_versus_null=missing)
 
     def _get_simple_inventory_stream(self, revision_ids, missing=False):
         # NB: This currently reopens the inventory weave in source;
@@ -2120,8 +2137,8 @@ class StreamSource(object):
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
         yield ('inventory-deltas',
-           self._stream_invs_as_deltas(revision_ids,
-                                       delta_versus_null=delta_versus_null))
+               self._stream_invs_as_deltas(revision_ids,
+                                           delta_versus_null=delta_versus_null))
 
     def _stream_invs_as_deltas(self, revision_ids, delta_versus_null=False):
         """Return a stream of inventory-deltas for the given rev ids.
@@ -2171,8 +2188,8 @@ class StreamSource(object):
                         if parent_inv is None:
                             parent_inv = from_repo.get_inventory(parent_id)
                     candidate_delta = inv._make_delta(parent_inv)
-                    if (delta is None or
-                        len(delta) > len(candidate_delta)):
+                    if (delta is None
+                            or len(delta) > len(candidate_delta)):
                         delta = candidate_delta
                         basis_id = parent_id
             if delta is None:
@@ -2239,7 +2256,8 @@ class _VersionedFileChecker(object):
         text_keys = self.repository.texts.keys()
         unused_keys = frozenset(text_keys) - set(self.text_index)
         for num, key in enumerate(self.text_index):
-            progress_bar.update(gettext('checking text graph'), num, n_versions)
+            progress_bar.update(
+                gettext('checking text graph'), num, n_versions)
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]
@@ -2258,7 +2276,7 @@ class InterVersionedFileRepository(InterRepository):
     supports_fetch_spec = True
 
     def fetch(self, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+              fetch_spec=None):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
@@ -2268,21 +2286,22 @@ class InterVersionedFileRepository(InterRepository):
         :return: None.
         """
         if self.target._format.experimental:
-            ui.ui_factory.show_user_warning('experimental_format_fetch',
+            ui.ui_factory.show_user_warning(
+                'experimental_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
         from breezy.bzr.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
-            ui.ui_factory.show_user_warning('cross_format_fetch',
-                from_format=self.source._format,
+            ui.ui_factory.show_user_warning(
+                'cross_format_fetch', from_format=self.source._format,
                 to_format=self.target._format)
         with self.lock_write():
             f = RepoFetcher(to_repository=self.target,
-                                   from_repository=self.source,
-                                   last_revision=revision_id,
-                                   fetch_spec=fetch_spec,
-                                   find_ghosts=find_ghosts)
+                            from_repository=self.source,
+                            last_revision=revision_id,
+                            fetch_spec=fetch_spec,
+                            find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         """Walk out from revision_ids in source to revisions target has.
@@ -2340,11 +2359,11 @@ class InterVersionedFileRepository(InterRepository):
                 break
         (started_keys, excludes, included_keys) = searcher.get_state()
         return vf_search.SearchResult(started_keys, excludes,
-            len(included_keys), included_keys)
+                                      len(included_keys), included_keys)
 
     def search_missing_revision_ids(self,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
+                                    find_ghosts=True, revision_ids=None, if_present_ids=None,
+                                    limit=None):
         """Return the revision ids that source has that target does not.
 
         :param revision_ids: return revision ids included by these
@@ -2361,9 +2380,9 @@ class InterVersionedFileRepository(InterRepository):
         with self.lock_read():
             # stop searching at found target revisions.
             if not find_ghosts and (revision_ids is not None or if_present_ids is
-                    not None):
+                                    not None):
                 result = self._walk_to_common_revisions(revision_ids,
-                        if_present_ids=if_present_ids)
+                                                        if_present_ids=if_present_ids)
                 if limit is None:
                     return result
                 result_set = result.get_keys()
@@ -2404,8 +2423,8 @@ class InterVersionedFileRepository(InterRepository):
             found_ids = all_wanted_ids.intersection(present_revs)
             source_ids = [rev_id for (rev_id, parents) in
                           graph.iter_ancestry(found_ids)
-                          if rev_id != _mod_revision.NULL_REVISION
-                          and parents is not None]
+                          if rev_id != _mod_revision.NULL_REVISION and
+                          parents is not None]
         else:
             source_ids = self.source.all_revision_ids()
         return set(source_ids)
@@ -2417,8 +2436,8 @@ class InterVersionedFileRepository(InterRepository):
     @classmethod
     def is_compatible(cls, source, target):
         # The default implementation is compatible with everything
-        return (source._format.supports_full_versioned_files and
-                target._format.supports_full_versioned_files)
+        return (source._format.supports_full_versioned_files
+                and target._format.supports_full_versioned_files)
 
 
 class InterDifferingSerializer(InterVersionedFileRepository):
@@ -2440,8 +2459,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             return False
         if source.supports_rich_root() and not target.supports_rich_root():
             return False
-        if (source._format.supports_tree_reference
-            and not target._format.supports_tree_reference):
+        if (source._format.supports_tree_reference and
+                not target._format.supports_tree_reference):
             return False
         if target._fallback_repositories and target._format.supports_chks:
             # IDS doesn't know how to copy CHKs for the parent inventories it
@@ -2567,7 +2586,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                                                            possible_trees)
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
-                current_revision_id, revision.parent_ids))
+                                   current_revision_id, revision.parent_ids))
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
                     tree.get_root_id()
@@ -2646,7 +2665,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                     # ghosts, so just use the last converted tree.
                     possible_trees.append((basis_id, cache[basis_id]))
                 basis_id, delta = self._get_delta_for_revision(parent_tree,
-                    parents_parents, possible_trees)
+                                                               parents_parents, possible_trees)
                 self.target.add_inventory_by_delta(
                     basis_id, delta, current_revision_id, parents_parents)
         # insert signatures and revisions
@@ -2655,7 +2674,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                 signature = self.source.get_signature_text(
                     revision.revision_id)
                 self.target.add_signature_text(revision.revision_id,
-                    signature)
+                                               signature)
             except errors.NoSuchRevision:
                 pass
             self.target.add_revision(revision.revision_id, revision)
@@ -2673,7 +2692,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         batch_size = 100
         cache = lru_cache.LRUCache(100)
         cache[basis_id] = basis_tree
-        del basis_tree # We don't want to hang on to it here
+        del basis_tree  # We don't want to hang on to it here
         hints = []
         a_graph = None
 
@@ -2682,7 +2701,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             try:
                 pb.update(gettext('Transferring revisions'), offset,
                           len(revision_ids))
-                batch = revision_ids[offset:offset+batch_size]
+                batch = revision_ids[offset:offset + batch_size]
                 basis_id = self._fetch_batch(batch, basis_id, cache)
             except:
                 self.source._safe_to_return_from_cache = False
@@ -2698,7 +2717,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                   len(revision_ids))
 
     def fetch(self, revision_id=None, find_ghosts=False,
-            fetch_spec=None):
+              fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             revision_ids = fetch_spec.get_keys()
@@ -2706,10 +2725,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
             revision_ids = None
         if self.source._format.experimental:
             ui.ui_factory.show_user_warning('experimental_format_fetch',
-                from_format=self.source._format,
-                to_format=self.target._format)
-        if (not self.source.supports_rich_root()
-            and self.target.supports_rich_root()):
+                                            from_format=self.source._format,
+                                            to_format=self.target._format)
+        if (not self.source.supports_rich_root() and
+                self.target.supports_rich_root()):
             self._converting_to_rich_root = True
             self._revision_id_to_root_id = {}
         else:
@@ -2717,8 +2736,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
             ui.ui_factory.show_user_warning('cross_format_fetch',
-                from_format=self.source._format,
-                to_format=self.target._format)
+                                            from_format=self.source._format,
+                                            to_format=self.target._format)
         with self.lock_write():
             if revision_ids is None:
                 if revision_id:
@@ -2726,8 +2745,8 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                 else:
                     search_revision_ids = None
                 revision_ids = self.target.search_missing_revision_ids(self.source,
-                    revision_ids=search_revision_ids,
-                    find_ghosts=find_ghosts).get_keys()
+                                                                       revision_ids=search_revision_ids,
+                                                                       find_ghosts=find_ghosts).get_keys()
             if not revision_ids:
                 return 0, 0
             revision_ids = tsort.topo_sort(
@@ -2783,9 +2802,9 @@ class InterSameDataRepository(InterVersionedFileRepository):
     @staticmethod
     def is_compatible(source, target):
         return (
-            InterRepository._same_model(source, target) and
-            source._format.supports_full_versioned_files and
-            target._format.supports_full_versioned_files)
+            InterRepository._same_model(source, target)
+            and source._format.supports_full_versioned_files
+            and target._format.supports_full_versioned_files)
 
 
 InterRepository.register_optimiser(InterVersionedFileRepository)
@@ -2804,9 +2823,10 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
         inventory_cache = lru_cache.LRUCache(10)
         for n, (revision, revision_tree, signature) in enumerate(iterable):
             _install_revision(repository, revision, revision_tree, signature,
-                inventory_cache)
+                              inventory_cache)
             if pb is not None:
-                pb.update(gettext('Transferring revisions'), n + 1, num_revisions)
+                pb.update(gettext('Transferring revisions'),
+                          n + 1, num_revisions)
     except:
         repository.abort_write_group()
         raise
@@ -2815,7 +2835,7 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
 
 
 def _install_revision(repository, rev, revision_tree, signature,
-    inventory_cache):
+                      inventory_cache):
     """Install all revision data into a repository."""
     present_parents = []
     parent_trees = {}
@@ -2825,7 +2845,7 @@ def _install_revision(repository, rev, revision_tree, signature,
             parent_trees[p_id] = repository.revision_tree(p_id)
         else:
             parent_trees[p_id] = repository.revision_tree(
-                                     _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
 
     # FIXME: Support nested trees
     inv = revision_tree.root_inventory
@@ -2852,12 +2872,13 @@ def _install_revision(repository, rev, revision_tree, signature,
             if not tree.has_id(ie.file_id):
                 continue
             path = tree.id2path(ie.file_id)
-            parent_id = tree.get_file_revision(path, ie.file_id)
+            parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))
         revision_tree_path = revision_tree.id2path(ie.file_id)
-        lines = revision_tree.get_file(revision_tree_path, ie.file_id).readlines()
+        with revision_tree.get_file(revision_tree_path) as f:
+            lines = f.readlines()
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory
@@ -2871,7 +2892,7 @@ def _install_revision(repository, rev, revision_tree, signature,
             else:
                 delta = inv._make_delta(basis_inv)
                 repository.add_inventory_by_delta(rev.parent_ids[0], delta,
-                    rev.revision_id, present_parents)
+                                                  rev.revision_id, present_parents)
         else:
             repository.add_inventory(rev.revision_id, inv, present_parents)
     except errors.RevisionAlreadyPresent:

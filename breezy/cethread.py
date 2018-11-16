@@ -44,7 +44,7 @@ class CatchingExceptionThread(threading.Thread):
         super(CatchingExceptionThread, self).__init__(*args, **kwargs)
         self.set_sync_event(sync_event)
         self.exception = None
-        self.ignored_exceptions = None # see set_ignored_exceptions
+        self.ignored_exceptions = None  # see set_ignored_exceptions
         self.lock = threading.Lock()
 
     def set_sync_event(self, event):
@@ -85,11 +85,11 @@ class CatchingExceptionThread(threading.Thread):
         """
         cur = self.sync_event
         self.lock.acquire()
-        try: # Always release the lock
+        try:  # Always release the lock
             try:
                 self.set_sync_event(new)
                 # From now on, any exception will be synced with the new event
-            except:
+            except BaseException:
                 # Unlucky, we couldn't set the new sync event, try restoring a
                 # safe state
                 self.set_sync_event(cur)
@@ -105,7 +105,7 @@ class CatchingExceptionThread(threading.Thread):
         """Declare which exceptions will be ignored.
 
         :param ignored: Can be either:
-        
+
            - None: all exceptions will be raised,
            - an exception class: the instances of this class will be ignored,
            - a tuple of exception classes: the instances of any class of the
@@ -126,12 +126,11 @@ class CatchingExceptionThread(threading.Thread):
         try:
             try:
                 super(CatchingExceptionThread, self).run()
-            except:
+            except BaseException:
                 self.exception = sys.exc_info()
         finally:
             # Make sure the calling thread is released
             self.sync_event.set()
-
 
     def join(self, timeout=None):
         """Overrides Thread.join to raise any exception caught.
@@ -142,9 +141,9 @@ class CatchingExceptionThread(threading.Thread):
         super(CatchingExceptionThread, self).join(timeout)
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
-            self.exception = None # The exception should be raised only once
+            self.exception = None  # The exception should be raised only once
             if (self.ignored_exceptions is None
-                or not self.ignored_exceptions(exc_value)):
+                    or not self.ignored_exceptions(exc_value)):
                 # Raise non ignored exceptions
                 reraise(exc_class, exc_value, exc_tb)
 

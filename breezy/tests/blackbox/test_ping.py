@@ -35,10 +35,10 @@ class TestSmartServerPing(tests.TestCaseWithTransport):
         self.assertLength(1, self.hpss_connections)
         if PY3:
             self.assertEqual(out,
-                "Response: (b'ok', b'2')\n"
-                "Headers: {'Software version': '%s'}\n" % (breezy.version_string,))
+                             "Response: (b'ok', b'2')\n"
+                             "Headers: {'Software version': '%s'}\n" % (breezy.version_string,))
         else:
             self.assertEqual(out,
-                "Response: ('ok', '2')\n"
-                "Headers: {u'Software version': u'%s'}\n" % (breezy.version_string,))
+                             "Response: ('ok', '2')\n"
+                             "Headers: {u'Software version': u'%s'}\n" % (breezy.version_string,))
         self.assertEqual(err, "")

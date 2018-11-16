@@ -92,6 +92,7 @@ def _get_auth_user(auth=None):
     username = auth.get_user('ssh', '.launchpad.net')
     return username
 
+
 def _set_auth_user(username, auth=None):
     if auth is None:
         auth = AuthenticationConfig()

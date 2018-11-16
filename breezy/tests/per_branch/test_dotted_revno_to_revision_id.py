@@ -28,7 +28,8 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
         the_branch = tree.branch
         the_branch.lock_read()
         self.addCleanup(the_branch.unlock)
-        self.assertEqual(b'null:', the_branch.dotted_revno_to_revision_id((0,)))
+        self.assertEqual(
+            b'null:', the_branch.dotted_revno_to_revision_id((0,)))
         self.assertEqual(revmap['1'],
                          the_branch.dotted_revno_to_revision_id((1, )))
         self.assertEqual(revmap['2'],

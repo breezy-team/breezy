@@ -69,7 +69,7 @@ class TestCaching(TestCaseWithBranch):
         branch.get_revision_id_to_revno_map()
         branch.get_revision_id_to_revno_map()
         branch.get_revision_id_to_revno_map()
-        self.assertEqual(['_gen_revno_map']*3, calls)
+        self.assertEqual(['_gen_revno_map'] * 3, calls)
 
     def test_locked(self):
         """Repeated calls will only call _gen_revno_map once.
@@ -99,6 +99,6 @@ class TestCaching(TestCaseWithBranch):
                              branch.get_revision_id_to_revno_map())
             self.assertEqual({revmap['1']: (1, ), revmap['2']: (2, )},
                              branch.get_revision_id_to_revno_map())
-            self.assertEqual(['_gen_revno_map']*2, calls)
+            self.assertEqual(['_gen_revno_map'] * 2, calls)
         finally:
             branch.unlock()

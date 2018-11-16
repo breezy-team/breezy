@@ -43,25 +43,25 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                   ('nomail.txt', b'nomail\n')])
         wt.add(['hello.txt'])
         self.revision_id_1 = wt.commit('add hello',
-                              committer='test@user',
-                              timestamp=1165960000.00, timezone=0)
+                                       committer='test@user',
+                                       timestamp=1165960000.00, timezone=0)
         wt.add(['nomail.txt'])
         self.revision_id_2 = wt.commit('add nomail',
-                              committer='no mail',
-                              timestamp=1165970000.00, timezone=0)
+                                       committer='no mail',
+                                       timestamp=1165970000.00, timezone=0)
         self.build_tree_contents([('hello.txt', b'my helicopter\n'
                                                 b'your helicopter\n')])
         self.revision_id_3 = wt.commit('mod hello',
-                              committer='user@test',
-                              timestamp=1166040000.00, timezone=0)
+                                       committer='user@test',
+                                       timestamp=1166040000.00, timezone=0)
         self.build_tree_contents([('hello.txt', b'my helicopter\n'
                                                 b'your helicopter\n'
                                                 b'all of\n'
                                                 b'our helicopters\n'
-                                  )])
+                                   )])
         self.revision_id_4 = wt.commit('mod hello',
-                              committer='user@test',
-                              timestamp=1166050000.00, timezone=0)
+                                       committer='user@test',
+                                       timestamp=1166050000.00, timezone=0)
 
     def test_help_annotate(self):
         """Annotate command exists"""
@@ -109,11 +109,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
 %*s | all of
 %*s | our helicopters
 ''' % (max_len, self.revision_id_1.decode('utf-8'),
-       max_len, self.revision_id_3.decode('utf-8'),
-       max_len, self.revision_id_4.decode('utf-8'),
-       max_len, '',
-      )
-, out)
+            max_len, self.revision_id_3.decode('utf-8'),
+            max_len, self.revision_id_4.decode('utf-8'),
+            max_len, '',
+       ), out)
 
     def test_no_mail(self):
         out, err = self.run_bzr('annotate nomail.txt')
@@ -192,7 +191,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         self.overrideEnv('BRZ_EMAIL', None)
         # Also, make sure that it's not inferred from mailname.
         self.overrideAttr(config, '_auto_user_id',
-            lambda: (None, None))
+                          lambda: (None, None))
         tree = self._setup_edited_file()
         out, err = self.run_bzr('annotate file')
         self.assertEqual(
@@ -321,7 +320,7 @@ class TestSmartServerAnnotate(tests.TestCaseWithTransport):
         wt.commit('commit', committer='test@user')
         self.reset_smart_call_log()
         out, err = self.run_bzr(['annotate', "-d", self.get_url('branch'),
-            "hello.txt"])
+                                 "hello.txt"])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

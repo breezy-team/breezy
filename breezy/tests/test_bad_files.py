@@ -65,33 +65,33 @@ class TestBadFiles(TestCaseWithTransport):
         self.build_tree(['six'])
 
         verify_status(self, wt,
-                          ['unknown:\n',
-                           '  a-fifo\n',
-                           '  six\n'
-                           ])
+                      ['unknown:\n',
+                       '  a-fifo\n',
+                       '  six\n'
+                       ])
 
         # We should raise an error if we are adding a bogus file
         self.assertRaises(errors.BadFileKindError, wt.smart_add, ['a-fifo'])
 
         # And the list of files shouldn't have been modified
         verify_status(self, wt,
-                          ['unknown:\n',
-                           '  a-fifo\n',
-                           '  six\n'
-                           ])
+                      ['unknown:\n',
+                       '  a-fifo\n',
+                       '  six\n'
+                       ])
 
         # Make sure smart_add can handle having a bogus
         # file in the way
         wt.smart_add([])
         verify_status(self, wt,
-                          ['added:\n',
-                           '  six\n',
-                           'unknown:\n',
-                           '  a-fifo\n',
-                           ])
+                      ['added:\n',
+                       '  six\n',
+                       'unknown:\n',
+                       '  a-fifo\n',
+                       ])
         wt.commit("Commit four", rev_id=b"a@u-0-3")
 
         verify_status(self, wt,
-                          ['unknown:\n',
-                           '  a-fifo\n',
-                           ])
+                      ['unknown:\n',
+                       '  a-fifo\n',
+                       ])

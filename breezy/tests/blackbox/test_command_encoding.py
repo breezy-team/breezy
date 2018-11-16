@@ -58,8 +58,8 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
             self.assertEqual(b'foo', bzr('echo-exact foo'))
             # Exact should fail to decode the string
             self.assertRaises(UnicodeEncodeError,
-                bzr,
-                ['echo-exact', u'foo\xb5'])
+                              bzr,
+                              ['echo-exact', u'foo\xb5'])
             # Previously a non-ascii bytestring was also tested, as 'exact'
             # outputs bytes untouched, but needed buggy argv parsing to work
         finally:
@@ -90,8 +90,8 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
             self.assertEqual(b'foo', bzr('echo-strict foo'))
             # ascii can't encode \xb5
             self.assertRaises(UnicodeEncodeError,
-                bzr,
-                ['echo-strict', u'foo\xb5'])
+                              bzr,
+                              ['echo-strict', u'foo\xb5'])
         finally:
             plugin_cmds.remove('echo-strict')
 
@@ -120,5 +120,3 @@ class TestCommandEncoding(TestCaseWithMemoryTransport):
             self.assertEqual(b'foo?', bzr(['echo-replace', u'foo\xb5']))
         finally:
             plugin_cmds.remove('echo-replace')
-
-
