@@ -16,6 +16,8 @@
 
 """Tests for the python and pyrex extensions of groupcompress"""
 
+import sys
+
 from .. import (
     tests,
     )
@@ -272,6 +274,13 @@ class TestDeltaIndex(tests.TestCase):
     def test_repr(self):
         di = self._gc_module.DeltaIndex(b'test text\n')
         self.assertEqual('DeltaIndex(1, 10)', repr(di))
+
+    def test_sizeof(self):
+        di = self._gc_module.DeltaIndex()
+        # Exact value will depend on platform but should include sources
+        # source_info is a pointer and two longs so at least 12 bytes
+        lower_bound = di._max_num_sources * 12
+        self.assertGreater(sys.getsizeof(di), lower_bound)
 
     def test__dump_no_index(self):
         di = self._gc_module.DeltaIndex()
