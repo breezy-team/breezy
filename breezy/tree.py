@@ -97,7 +97,7 @@ class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
     def kind_character(self):
-        return '/'
+        return '+'
 
 
 class Tree(object):
