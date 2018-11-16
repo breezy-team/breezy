@@ -453,20 +453,24 @@ class GitBranch(ForeignBranch):
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
     def _get_push_origin(self, cs):
+        """Get the name for the push origin.
+
+        The exact behaviour is documented in the git-config(1) manpage.
+        """
         try:
-            return cs.get((b'remote', self.name.encode('utf-8')), b'pushRemote')
+            return cs.get((b'branch', self.name.encode('utf-8')), b'pushRemote')
         except KeyError:
             try:
-                return cs.get((b'remote', ), b'remote')
+                return cs.get((b'branch', ), b'remote')
             except KeyError:
                 try:
-                    return cs.get((b'remote', self.name.encode('utf-8')), b'remote')
+                    return cs.get((b'branch', self.name.encode('utf-8')), b'remote')
                 except KeyError:
                     return b'origin'
 
     def _get_origin(self, cs):
         try:
-            return cs.get((b'remote', self.name.encode('utf-8')), b'remote')
+            return cs.get((b'branch', self.name.encode('utf-8')), b'remote')
         except KeyError:
             return b'origin'
 
@@ -487,7 +491,7 @@ class GitBranch(ForeignBranch):
             return None
 
         try:
-            ref = cs.get((b"remote", remote), b"merge")
+            ref = cs.get((b"branch", remote), b"merge")
         except KeyError:
             ref = self.ref
 
@@ -511,12 +515,12 @@ class GitBranch(ForeignBranch):
         location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", remote), b"url", location)
         if branch:
-            cs.set((b"remote", remote), b"merge", branch_name_to_ref(branch))
+            cs.set((b"branch", remote), b"merge", branch_name_to_ref(branch))
         elif ref:
-            cs.set((b"remote", remote), b"merge", ref)
+            cs.set((b"branch", remote), b"merge", ref)
         else:
             # TODO(jelmer): Maybe unset rather than setting to HEAD?
-            cs.set((b"remote", remote), b"merge", b'HEAD')
+            cs.set((b"branch", remote), b"merge", b'HEAD')
         self._write_git_config(cs)
 
     def break_lock(self):
