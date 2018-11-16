@@ -393,7 +393,7 @@ paramiko = ModuleAvailableFeature('paramiko')
 pywintypes = ModuleAvailableFeature('pywintypes')
 subunit = ModuleAvailableFeature('subunit')
 testtools = ModuleAvailableFeature('testtools')
-flake8 = ModuleAvailableFeature('flake8')
+flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
 compiled_patiencediff_feature = ModuleAvailableFeature(
     'breezy._patiencediff_c')
