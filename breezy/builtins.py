@@ -3544,42 +3544,42 @@ class cmd_commit(Command):
                short_name='m',
                help="Description of the new revision."),
         'verbose',
-         Option('unchanged',
-                help='Commit even if nothing has changed.'),
-         Option('file', type=text_type,
-                short_name='F',
-                argname='msgfile',
-                help='Take commit message from this file.'),
-         Option('strict',
-                help="Refuse to commit if there are unknown "
-                "files in the working tree."),
-         Option('commit-time', type=text_type,
-                help="Manually set a commit time using commit date "
-                "format, e.g. '2009-10-10 08:00:00 +0100'."),
-         ListOption(
-             'bugs', type=text_type,
-             help="Link to a related bug. (see \"brz help bugs\")."),
-         ListOption(
-             'fixes', type=text_type,
-             help="Mark a bug as being fixed by this revision "
-                  "(see \"brz help bugs\")."),
-         ListOption(
-             'author', type=text_type,
-             help="Set the author's name, if it's different "
-                  "from the committer."),
-         Option('local',
-                help="Perform a local commit in a bound "
-                     "branch.  Local commits are not pushed to "
-                     "the master branch until a normal commit "
-                     "is performed."
-                ),
-         Option('show-diff', short_name='p',
-                help='When no message is supplied, show the diff along'
-                ' with the status summary in the message editor.'),
-         Option('lossy',
-                help='When committing to a foreign version control '
-                'system do not push data that can not be natively '
-                'represented.'), ]
+        Option('unchanged',
+               help='Commit even if nothing has changed.'),
+        Option('file', type=text_type,
+               short_name='F',
+               argname='msgfile',
+               help='Take commit message from this file.'),
+        Option('strict',
+               help="Refuse to commit if there are unknown "
+               "files in the working tree."),
+        Option('commit-time', type=text_type,
+               help="Manually set a commit time using commit date "
+               "format, e.g. '2009-10-10 08:00:00 +0100'."),
+        ListOption(
+            'bugs', type=text_type,
+            help="Link to a related bug. (see \"brz help bugs\")."),
+        ListOption(
+            'fixes', type=text_type,
+            help="Mark a bug as being fixed by this revision "
+                 "(see \"brz help bugs\")."),
+        ListOption(
+            'author', type=text_type,
+            help="Set the author's name, if it's different "
+                 "from the committer."),
+        Option('local',
+               help="Perform a local commit in a bound "
+                    "branch.  Local commits are not pushed to "
+                    "the master branch until a normal commit "
+                    "is performed."
+               ),
+        Option('show-diff', short_name='p',
+               help='When no message is supplied, show the diff along'
+               ' with the status summary in the message editor.'),
+        Option('lossy',
+               help='When committing to a foreign version control '
+               'system do not push data that can not be natively '
+               'represented.'), ]
     aliases = ['ci', 'checkin']
 
     def _iter_bug_urls(self, bugs, branch, status):
@@ -6337,14 +6337,14 @@ class cmd_switch(Command):
                     gettext('cannot create branch without source branch'))
             to_location = lookup_new_sibling_branch(
                 control_dir, to_location,
-                 possible_transports=possible_transports)
+                possible_transports=possible_transports)
             if revision is not None:
                 revision = revision.as_revision_id(branch)
             to_branch = branch.controldir.sprout(
                 to_location,
-                 possible_transports=possible_transports,
-                 revision_id=revision,
-                 source_branch=branch).open_branch()
+                possible_transports=possible_transports,
+                revision_id=revision,
+                source_branch=branch).open_branch()
         else:
             try:
                 to_branch = Branch.open(to_location,

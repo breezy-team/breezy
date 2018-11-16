@@ -4276,12 +4276,9 @@ def test_suite(keep_only=None, starting_with=None):
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
             for start in starting_with:
-                if (
-                        # Either the module name starts with the specified string
-                        name.startswith(start)
-                    or                     # or it may contain tests starting with the specified string
-                        start.startswith(name)
-                        ):
+                # Either the module name starts with the specified string
+                # or it may contain tests starting with the specified string
+                if name.startswith(start) or start.startswith(name):
                     return True
             return False
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)

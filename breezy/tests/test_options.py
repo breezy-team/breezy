@@ -46,11 +46,11 @@ class OptionTests(TestCase):
         self.assertEqual(
             ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True,
                   'bugs': []}),
-           parse_args(cmd_commit(), ['--help']))
+            parse_args(cmd_commit(), ['--help']))
         self.assertEqual(
             ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter',
                   'bugs': []}),
-           parse_args(cmd_commit(), ['--message=biter']))
+            parse_args(cmd_commit(), ['--message=biter']))
 
     def test_no_more_opts(self):
         """Terminated options"""
