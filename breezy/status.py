@@ -27,7 +27,6 @@ from . import (
     revision as _mod_revision,
     )
 from . import errors as errors
-from .sixish import text_type
 from .trace import mutter, warning
 from .workingtree import ShelvingUnsupported
 

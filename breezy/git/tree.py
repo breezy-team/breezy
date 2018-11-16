@@ -48,7 +48,6 @@ from .. import (
     controldir as _mod_controldir,
     delta,
     errors,
-    lock,
     mutabletree,
     osutils,
     revisiontree,

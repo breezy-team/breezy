@@ -152,7 +152,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                                     ' for more information.'))
         except errors.NoRoundtrippingSupport as e:
             raise errors.BzrCommandError(gettext("It is not possible to losslessly "
-                "push to %s. You may want to use dpush instead.") % 
+                "push to %s. You may want to use --lossy.") % 
                     e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
             # we have a controldir but no branch or repository

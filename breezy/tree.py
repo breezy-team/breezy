@@ -19,8 +19,6 @@
 
 from __future__ import absolute_import
 
-import os
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
@@ -97,7 +95,7 @@ class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
     def kind_character(self):
-        return '/'
+        return '+'
 
 
 class Tree(object):

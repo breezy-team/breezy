@@ -22,7 +22,6 @@ try:
 except ImportError:  # python < 3
     from xmlrpclib import Fault
 
-from ... import errors
 from .lp_registration import (
     InvalidURL,
     InvalidLaunchpadInstance,

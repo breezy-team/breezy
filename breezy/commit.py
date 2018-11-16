@@ -54,7 +54,6 @@ from . import (
     debug,
     errors,
     trace,
-    tree,
     ui,
     )
 from .branch import Branch
@@ -67,7 +66,6 @@ from .errors import (BzrError,
 from .osutils import (get_user_encoding,
                       is_inside_any,
                       minimum_path_selection,
-                      splitpath,
                       )
 from .trace import mutter, note, is_quiet
 from .urlutils import unescape_for_display

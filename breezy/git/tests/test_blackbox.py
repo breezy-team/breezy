@@ -25,9 +25,6 @@ from dulwich.repo import (
 
 import os
 
-from ... import (
-    version_info as breezy_version,
-    )
 from ...controldir import (
     ControlDir,
     )

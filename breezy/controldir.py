@@ -49,9 +49,6 @@ from . import (
     errors,
     registry,
     )
-from .sixish import (
-    viewitems,
-    )
 
 
 class MustHaveWorkingTree(errors.BzrError):

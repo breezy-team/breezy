@@ -899,7 +899,7 @@ class TestPushForeign(tests.TestCaseWithTransport):
         output, error = self.run_bzr("push -d dc dp", retcode=3)
         self.assertEqual("", output)
         self.assertEqual(error, "brz: ERROR: It is not possible to losslessly"
-            " push to dummy. You may want to use dpush instead.\n")
+            " push to dummy. You may want to use --lossy.\n")
 
 
 class TestPushOutput(script.TestCaseWithTransportAndScript):

@@ -145,16 +145,14 @@ from __future__ import absolute_import
 # remote files...
 
 
-import breezy
 from ... import (
     commands,
     config,
     hooks,
     )
 
-from ...hooks import install_lazy_named_hook
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 
 def register_option(key, member):

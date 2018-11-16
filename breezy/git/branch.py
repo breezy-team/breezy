@@ -61,7 +61,6 @@ from .config import (
     )
 from .errors import (
     NoPushSupport,
-    NoSuchRef,
     )
 from .push import (
     remote_divergence,
@@ -135,10 +134,14 @@ class GitTags(tag.BasicTags):
                 pass
             elif overwrite or not ref_name in target_repo._git.refs:
                 target_repo._git.refs[ref_name] = unpeeled or peeled
-                updates[tag_name] = self.repository.lookup_foreign_revision_id(peeled)
-            else:
-                source_revid = self.repository.lookup_foreign_revision_id(peeled)
                 try:
+                    updates[tag_name] = self.repository.lookup_foreign_revision_id(peeled)
+                except KeyError:
+                    trace.warning('%s does not point to a valid object',
+                                  tag_name)
+            else:
+                try:
+                    source_revid = self.repository.lookup_foreign_revision_id(peeled)
                     target_revid = target_repo.lookup_foreign_revision_id(
                             target_repo._git.refs[ref_name])
                 except KeyError:
@@ -637,8 +640,11 @@ class LocalGitBranch(GitBranch):
     def _read_last_revision_info(self):
         last_revid = self.last_revision()
         graph = self.repository.get_graph()
-        revno = graph.find_distance_to_null(last_revid,
-            [(revision.NULL_REVISION, 0)])
+        try:
+            revno = graph.find_distance_to_null(last_revid,
+                [(revision.NULL_REVISION, 0)])
+        except errors.GhostRevisionsHaveNoRevno:
+            revno = None
         return revno, last_revid
 
     def set_last_revision_info(self, revno, revision_id):
@@ -1078,9 +1084,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         fetch_tags = c.get('branch.fetch_tags')
 
         if stop_revision is None:
-            refs = interrepo.fetch(branches=[b"HEAD"], include_tags=fetch_tags)
+            refs = interrepo.fetch(branches=[self.source.ref], include_tags=fetch_tags)
             try:
-                head = refs[b"HEAD"]
+                head = refs[self.source.ref]
             except KeyError:
                 stop_revision = revision.NULL_REVISION
             else:

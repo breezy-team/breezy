@@ -21,7 +21,6 @@ from __future__ import absolute_import
 import errno
 from io import (
     BytesIO,
-    StringIO,
     )
 import os
 import re

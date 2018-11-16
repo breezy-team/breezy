@@ -27,9 +27,7 @@ from breezy.tests import TestCaseWithTransport
 class TestReference(TestCaseWithTransport):
 
     def get_default_format(self):
-        format = controldir.format_registry.make_controldir('1.9')
-        format.set_branch_format(_mod_bzrbranch.BzrBranchFormat8())
-        return format
+        return controldir.format_registry.make_controldir('development-subtree')
 
     def test_no_args_lists(self):
         branch = self.make_branch('branch')
@@ -87,3 +85,13 @@ class TestReference(TestCaseWithTransport):
         out, err = self.run_bzr('reference file http://example.org',
                                 working_dir='tree', retcode=3)
         self.assertEqual('brz: ERROR: file is not versioned.\n', err)
+
+    def test_missing_file_forced(self):
+        tree = self.make_branch_and_tree('tree')
+        out, err = self.run_bzr(
+                'reference --force-unversioned file http://example.org',
+                working_dir='tree')
+        location, file_id = tree.branch.get_reference_info('file')
+        self.assertEqual('http://example.org', location)
+        self.assertEqual('', out)
+        self.assertEqual('', err)

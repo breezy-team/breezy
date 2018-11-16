@@ -18,12 +18,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Support in "bzr send" for git-am style patches."""
+"""Support in "brz send" for git-am style patches."""
 
 from __future__ import absolute_import
 
 import time
-from .. import __version__ as bzr_version
+from .. import __version__ as brz_version
 from .. import (
     branch as _mod_branch,
     diff as _mod_diff,
@@ -34,9 +34,6 @@ from .. import (
 
 from ..merge_directive import BaseMergeDirective
 
-from . import (
-    version_info as bzr_git_version_info,
-    )
 from .mapping import (
     object_mode,
     )
@@ -53,8 +50,8 @@ from dulwich.objects import (
     )
 
 
-version_tail = "bzr %s, bzr-git %d.%d.%d, dulwich %d.%d.%d" % (
-    (bzr_version, ) + bzr_git_version_info[:3] + dulwich_version[:3])
+version_tail = "Breezy %s, dulwich %d.%d.%d" % (
+    (brz_version, ) + dulwich_version[:3])
 
 
 class GitDiffTree(_mod_diff.DiffTree):

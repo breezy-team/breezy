@@ -52,12 +52,9 @@ from breezy import (
     cache_utf8,
     conflicts as _mod_conflicts,
     globbing,
-    graph as _mod_graph,
     ignores,
     revision as _mod_revision,
-    revisiontree,
     rio as _mod_rio,
-    transport,
     )
 from breezy.bzr import (
     inventory,
@@ -70,7 +67,7 @@ from .. import (
     errors,
     osutils,
     )
-from ..lock import _RelockDebugMixin, LogicalLockResult
+from ..lock import LogicalLockResult
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
 from ..sixish import (
     BytesIO,
@@ -79,7 +76,6 @@ from ..sixish import (
 from ..trace import mutter, note
 from ..tree import (
     get_canonical_path,
-    FileTimestampUnavailable,
     TreeDirectory,
     TreeFile,
     TreeLink,

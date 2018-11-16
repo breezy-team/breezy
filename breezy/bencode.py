@@ -24,4 +24,4 @@ try:
     from ._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from .util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached
+    from .util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached  # noqa: F401

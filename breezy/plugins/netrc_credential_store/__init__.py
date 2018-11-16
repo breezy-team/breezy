@@ -19,7 +19,7 @@ from __future__ import absolute_import
 __doc__ = """Use ~/.netrc as a credential store for authentication.conf."""
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     config,

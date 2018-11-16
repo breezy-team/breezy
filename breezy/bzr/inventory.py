@@ -49,7 +49,6 @@ from .. import (
     )
 from ..sixish import (
     bytesintern,
-    PY3,
     text_type,
     viewitems,
     viewvalues,
@@ -630,6 +629,10 @@ class TreeReference(InventoryEntry):
         if self.reference_revision != previous_ie.reference_revision:
             compatible = False
         return compatible
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return '+'
 
 
 class CommonInventory(object):

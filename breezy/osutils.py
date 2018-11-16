@@ -191,6 +191,7 @@ def quotefn(f):
 
 _directory_kind = 'directory'
 
+
 def get_umask():
     """Return the current umask"""
     # Assume that people aren't messing with the umask while running
@@ -483,6 +484,7 @@ splitext = os.path.splitext
 lstat = os.lstat
 fstat = os.fstat
 
+
 def wrap_stat(st):
     return st
 
@@ -617,12 +619,14 @@ def isfile(f):
     except OSError:
         return False
 
+
 def islink(f):
     """True if f is a symlink."""
     try:
         return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
+
 
 def is_inside(dir, fname):
     """True if fname is inside dir.

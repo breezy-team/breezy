@@ -26,7 +26,6 @@ import itertools
 from breezy import (
     config as _mod_config,
     debug,
-    fetch as _mod_fetch,
     fifo_cache,
     gpg,
     graph,
@@ -38,6 +37,7 @@ from breezy import (
     ui,
     )
 from breezy.bzr import (
+    fetch as _mod_fetch,
     check,
     inventory_delta,
     inventorytree,
@@ -58,7 +58,6 @@ from ..decorators import (
     )
 from .inventory import (
     Inventory,
-    InventoryDirectory,
     ROOT_ID,
     entry_factory,
     )
@@ -2272,7 +2271,7 @@ class InterVersionedFileRepository(InterRepository):
             ui.ui_factory.show_user_warning('experimental_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
-        from breezy.fetch import RepoFetcher
+        from breezy.bzr.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
             ui.ui_factory.show_user_warning('cross_format_fetch',

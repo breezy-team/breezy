@@ -772,7 +772,6 @@ class IndexBzrGitCache(BzrGitCache):
     def __init__(self, transport=None):
         mapper = versionedfile.ConstantMapper("trees")
         shamap = IndexGitShaMap(transport.clone('index'))
-        from .transportgit import TransportObjectStore
         super(IndexBzrGitCache, self).__init__(shamap, IndexCacheUpdater)
 
 

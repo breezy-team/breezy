@@ -95,7 +95,6 @@ from breezy import (
     debug,
     directory_service,
     lazy_regex,
-    library_state,
     lock,
     lockdir,
     mergetools,
@@ -2775,16 +2774,6 @@ option_registry.register(
 option_registry.register(
     Option('default_format', default='2a',
            help='Format used when creating branches.'))
-option_registry.register(
-    Option('dpush_strict', default=None,
-           from_unicode=bool_from_store,
-           help='''\
-The default value for ``dpush --strict``.
-
-If present, defines the ``--strict`` option default value for checking
-uncommitted changes before pushing into a different VCS without any
-custom bzr metadata.
-'''))
 option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))

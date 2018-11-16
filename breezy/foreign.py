@@ -22,20 +22,14 @@ from __future__ import absolute_import
 from .branch import (
     Branch,
     )
-from .commands import Command, Option
 from .repository import Repository
 from .revision import Revision
-from .sixish import (
-    text_type,
-    )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,
     registry,
-    transform,
     )
-from breezy.i18n import gettext
 """)
 
 class VcsMapping(object):
@@ -171,7 +165,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param foreign_vcs: ForeignVCS instance
         :param help: Description of the foreign VCS
         """
-        if b":" in key or b"-" in key:
+        if ":" in key or "-" in key:
             raise ValueError("vcs name can not contain : or -")
         registry.Registry.register(self, key, foreign_vcs, help)
 
@@ -185,7 +179,7 @@ class ForeignVcsRegistry(registry.Registry):
         if b":" not in revid or b"-" not in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
-            foreign_vcs = self.get(revid.split(b"-")[0])
+            foreign_vcs = self.get(revid.split(b"-")[0].decode('ascii'))
         except KeyError:
             raise errors.InvalidRevisionId(revid, None)
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
