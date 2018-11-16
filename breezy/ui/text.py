@@ -304,7 +304,7 @@ class TextUIFactory(UIFactory):
         pb_type = config.GlobalStack().get('progress_bar')
         if pb_type == 'none':  # Explicit requirement
             return NullProgressView()
-        if (pb_type == 'text'  # or # Explicit requirement
+        if (pb_type == 'text' or # Explicit requirement
                 progress._supports_progress(self.stderr)):  # Guess
             return TextProgressView(self.stderr)
         # No explicit requirement and no successful guess
