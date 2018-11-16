@@ -29,7 +29,7 @@ class TestMkdir(TestCaseWithWorkingTree):
         t.lock_write()
         self.addCleanup(t.unlock)
         file_id = t.mkdir('path')
-        self.assertEqual('directory', t.kind('path', file_id))
+        self.assertEqual('directory', t.kind('path'))
 
     def test_mkdir_with_id(self):
         t = self.make_branch_and_tree('t1')
@@ -42,4 +42,4 @@ class TestMkdir(TestCaseWithWorkingTree):
         else:
             file_id = t.mkdir('path', b'my-id')
             self.assertEqual(b'my-id', file_id)
-            self.assertEqual('directory', t.kind('path', file_id))
+            self.assertEqual('directory', t.kind('path'))

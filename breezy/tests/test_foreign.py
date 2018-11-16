@@ -194,9 +194,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
             for revid in todo:
                 rev = self.source.repository.get_revision(revid)
                 tree = self.source.repository.revision_tree(revid)
-
-                def get_file_with_stat(path, file_id=None):
-                    return (tree.get_file(path, file_id), None)
+                def get_file_with_stat(path):
+                    return (tree.get_file(path), None)
                 tree.get_file_with_stat = get_file_with_stat
                 new_revid = self.target.mapping.revision_id_foreign_to_bzr(
                     (b'%d' % rev.timestamp, str(rev.timezone).encode('ascii'),
@@ -397,7 +396,7 @@ class ForeignVcsRegistryTests(tests.TestCase):
     def test_parse_revision_id(self):
         reg = foreign.ForeignVcsRegistry()
         vcs = DummyForeignVcs()
-        reg.register(b"dummy", vcs, "Dummy VCS")
+        reg.register("dummy", vcs, "Dummy VCS")
         self.assertEqual((
             (b"some", b"foreign", b"revid"), DummyForeignVcsMapping(vcs)),
             reg.parse_revision_id(b"dummy-v1:some-foreign-revid"))

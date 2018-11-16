@@ -505,6 +505,13 @@ class RemoteGitDir(GitDir):
     def open_repository(self):
         return RemoteGitRepository(self)
 
+    def get_branch_reference(self, name=None):
+        ref = branch_name_to_ref(name)
+        val = self.get_refs_container().read_ref(ref)
+        if val.startswith(SYMREF):
+            return val[len(SYMREF):]
+        return None
+
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False, ref=None, possible_transports=None,
                     nascent_ok=False):

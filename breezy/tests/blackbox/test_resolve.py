@@ -177,7 +177,7 @@ class TestResolveAuto(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/file',
                                    b'<<<<<<<\na\n=======\n>>>>>>>\n')])
         tree.add('file', b'file_id')
-        self.assertEqual(tree.kind('file', b'file_id'), 'file')
+        self.assertEqual(tree.kind('file'), 'file')
         file_conflict = conflicts.TextConflict('file', file_id=b'file_id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]

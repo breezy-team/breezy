@@ -17,11 +17,11 @@
 
 """A custom importer and regex compiler which logs time spent."""
 
-import sys
-import time
-
+from __future__ import absolute_import
 
 import re
+import sys
+import time
 
 
 _parent_stack = []
@@ -62,9 +62,9 @@ def stack_finish(this, cost):
 def log_stack_info(out_file, sorted=True, hide_fast=True):
     # Find all of the roots with import = 0
     out_file.write(
-        '%5s %5s %-40s @ %s:%s\n' % ('cum', 'inline', 'name', 'file', 'line'))
-    todo = [(value[-1], key) for key, value in _info.iteritems()
-            if value[0] == 0]
+        '%5s %5s %-40s @ %s:%s\n'
+        % ('cum', 'local', 'name', 'file', 'line'))
+    todo = [(value[-1], key) for key, value in _info.items() if value[0] == 0]
 
     if sorted:
         todo.sort()
@@ -102,12 +102,13 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
+def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
     """Wrap around standard importer to log import time"""
     # normally there are 4, but if this is called as __import__ eg by
     # /usr/lib/python2.6/email/__init__.py then there may be only one
     # parameter
-    # level is only passed by python2.6
+    # level has different default between Python 2 and 3, but codebase
+    # uses `from __future__ import absolute_import` so can just use 0.
 
     if globals is None:
         # can't determine the scope name afaics; we could peek up the stack to
@@ -122,10 +123,6 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
         else:
             # Trim out paths before breezy
             loc = scope_name.find('breezy')
-            if loc != -1:
-                scope_name = scope_name[loc:]
-            # For stdlib, trim out early paths
-            loc = scope_name.find('python2.4')
             if loc != -1:
                 scope_name = scope_name[loc:]
 

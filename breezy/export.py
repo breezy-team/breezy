@@ -197,7 +197,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                symlink_target = tree.get_symlink_target(tp, file_id)
+                symlink_target = tree.get_symlink_target(tp)
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
@@ -215,14 +215,14 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666
-        if tree.is_executable(treepath, file_id):
+        if tree.is_executable(treepath):
             mode = 0o777
         with os.fdopen(os.open(fullpath, flags, mode), 'wb') as out:
             out.writelines(chunks)
         if force_mtime is not None:
             mtime = force_mtime
         else:
-            mtime = tree.get_file_mtime(treepath, file_id)
+            mtime = tree.get_file_mtime(treepath)
         os.utime(fullpath, (mtime, mtime))
 
         yield

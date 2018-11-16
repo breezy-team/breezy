@@ -284,7 +284,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         ptree = creator.shelf_transform.get_preview_tree()
         self.assertEqual(
             link_target,
-            ptree.get_symlink_target(ptree.id2path(b'foo-id'), b'foo-id'))
+            ptree.get_symlink_target(ptree.id2path(b'foo-id')))
 
     def test_shelve_symlink_creation(self):
         self._test_shelve_symlink_creation('foo', 'bar')

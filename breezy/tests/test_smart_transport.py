@@ -3061,10 +3061,10 @@ class TestMessageHandlerErrors(tests.TestCase):
         invalid_request = (
             protocol.MESSAGE_VERSION_THREE  # protocol version marker
             + b'\0\0\0\x02de'  # empty headers
-            + b'oX'  # + # a single byte part: 'X'.  ConventionalRequestHandler will
+            + b'oX' +  # a single byte part: 'X'.  ConventionalRequestHandler will
             # error at this part.
-            b'oX'  # + # and again.
-            b'e  # '  # end of message
+            b'oX'  +  # and again.
+            b'e'  # end of message
             )
 
         to_server = BytesIO(invalid_request)
@@ -3415,8 +3415,8 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
         encoder.send_response(response)
         expected_response = (
             b'bzr message 3 (bzr 1.6)\n'  # protocol marker
-            b'\x00\x00\x00\x02de'  # + # headers dict (empty)
-            interrupted_body_stream)
+            b'\x00\x00\x00\x02de'  # headers dict (empty)
+            + interrupted_body_stream)
         self.assertEqual(expected_response, out_stream.getvalue())
 
 

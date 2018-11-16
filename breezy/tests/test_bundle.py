@@ -63,11 +63,8 @@ def get_text(vf, key):
 
 def get_inventory_text(repo, revision_id):
     """Get the fulltext for the inventory at revision id"""
-    repo.lock_read()
-    try:
+    with repo.lock_read():
         return get_text(repo.inventories, (revision_id,))
-    finally:
-        repo.unlock()
 
 
 class MockTree(object):
@@ -92,7 +89,7 @@ class MockTree(object):
     def all_versioned_paths(self):
         return set(self.paths.values())
 
-    def is_executable(self, path, file_id):
+    def is_executable(self, path):
         # Not all the files are executable.
         return False
 
@@ -101,6 +98,9 @@ class MockTree(object):
             return self.root
         else:
             return self.make_entry(file_id, self.paths[file_id])
+
+    def get_entry_by_path(self, path):
+        return self[self.path2id(path)]
 
     def parent_id(self, file_id):
         parent_dir = os.path.dirname(self.paths[file_id])
@@ -112,10 +112,8 @@ class MockTree(object):
         for path, file_id in self.ids.items():
             yield path, self[file_id]
 
-    def kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        if file_id in self.contents:
+    def kind(self, path):
+        if path in self.contents:
             kind = 'file'
         else:
             kind = 'directory'
@@ -127,9 +125,9 @@ class MockTree(object):
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         name = os.path.basename(path)
-        kind = self.kind(path, file_id)
+        kind = self.kind(path)
         parent_id = self.parent_id(file_id)
-        text_sha_1, text_size = self.contents_stats(path, file_id)
+        text_sha_1, text_size = self.contents_stats(path)
         if kind == 'directory':
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
@@ -152,7 +150,7 @@ class MockTree(object):
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         self.add_dir(file_id, path)
-        self.contents[file_id] = contents
+        self.contents[path] = contents
 
     def path2id(self, path):
         return self.ids.get(path)
@@ -163,37 +161,29 @@ class MockTree(object):
     def has_id(self, file_id):
         return self.id2path(file_id) is not None
 
-    def get_file(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
+    def get_file(self, path):
         result = BytesIO()
         try:
-            result.write(self.contents[file_id])
+            result.write(self.contents[path])
         except KeyError:
             raise errors.NoSuchFile(path)
         result.seek(0, 0)
         return result
 
-    def get_file_revision(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        return self.inventory[file_id].revision
+    def get_file_revision(self, path):
+        return self.inventory.get_entry_by_path(path).revision
 
-    def get_file_size(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        return self.inventory[file_id].text_size
+    def get_file_size(self, path):
+        return self.inventory.get_entry_by_path(path).text_size
 
     def get_file_sha1(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        return self.inventory[file_id].text_sha1
+        return self.inventory.get_entry_by_path(path).text_sha1
 
-    def contents_stats(self, path, file_id):
-        if file_id not in self.contents:
+    def contents_stats(self, path):
+        if path not in self.contents:
             return None, None
-        text_sha1 = osutils.sha_file(self.get_file(path, file_id))
-        return text_sha1, len(self.contents[file_id])
+        text_sha1 = osutils.sha_file(self.get_file(path))
+        return text_sha1, len(self.contents[path])
 
 
 class BTreeTester(tests.TestCase):
@@ -205,7 +195,7 @@ class BTreeTester(tests.TestCase):
         mtree.add_dir(b"b", "grandparent/parent")
         mtree.add_file(b"c", "grandparent/parent/file", b"Hello\n")
         mtree.add_dir(b"d", "grandparent/alt_parent")
-        return BundleTree(mtree, ''), mtree
+        return BundleTree(mtree, b''), mtree
 
     def test_renames(self):
         """Ensure that file renames have the proper effect on children"""
@@ -605,10 +595,10 @@ class BundleTester(object):
 
         for path, status, kind, fileid, entry in base_files:
             # Check that the meta information is the same
-            self.assertEqual(base_tree.get_file_size(path, fileid),
-                             to_tree.get_file_size(to_tree.id2path(fileid)))
-            self.assertEqual(base_tree.get_file_sha1(path, fileid),
-                             to_tree.get_file_sha1(to_tree.id2path(fileid)))
+            self.assertEqual(base_tree.get_file_size(path),
+                    to_tree.get_file_size(to_tree.id2path(fileid)))
+            self.assertEqual(base_tree.get_file_sha1(path),
+                    to_tree.get_file_sha1(to_tree.id2path(fileid)))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),
@@ -979,7 +969,7 @@ class BundleTester(object):
         self.tree1.commit('message', rev_id=b'revid1')
         bundle = self.get_valid_bundle(b'null:', b'revid1')
         tree = self.get_bundle_tree(bundle, b'revid1')
-        root_revision = tree.get_file_revision(u'', tree.get_root_id())
+        root_revision = tree.get_file_revision(u'')
         self.assertEqual(b'revid1', root_revision)
 
     def test_install_revisions(self):

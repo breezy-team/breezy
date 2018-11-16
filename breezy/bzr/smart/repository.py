@@ -1382,6 +1382,5 @@ class SmartServerRepositoryAnnotateFileRevision(SmartServerRepositoryRequest):
         tree = repository.revision_tree(revision_id)
         with tree.lock_read():
             body = bencode.bencode(list(tree.annotate_iter(
-                tree_path.decode('utf-8'), file_id, default_revision)))
-            return SuccessfulSmartServerResponse((b'ok',),
-                                                 body=body)
+                tree_path.decode('utf-8'), default_revision)))
+            return SuccessfulSmartServerResponse((b'ok',), body=body)

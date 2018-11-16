@@ -325,7 +325,7 @@ class Shelver(object):
             target_lines = work_tree_lines
         else:
             path = self.target_tree.id2path(file_id)
-            target_lines = self.target_tree.get_file_lines(path, file_id)
+            target_lines = self.target_tree.get_file_lines(path)
         textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)

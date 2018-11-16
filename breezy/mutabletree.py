@@ -289,7 +289,7 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
-    def _observed_sha1(self, file_id, path, sha_and_stat):
+    def _observed_sha1(self, path, sha_and_stat):
         """Tell the tree we have observed a paths sha1.
 
         The intent of this function is to allow trees that have a hashcache to
@@ -299,7 +299,6 @@ class MutableTree(tree.Tree):
 
         The default implementation does nothing.
 
-        :param file_id: The file id
         :param path: The file path
         :param sha_and_stat: The sha 1 and stat result observed.
         :return: None

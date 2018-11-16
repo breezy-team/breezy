@@ -729,7 +729,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.get_tree_with_cachable_file_foo()
         expected_sha1 = osutils.sha_file_by_name('foo')
         statvalue = os.lstat("foo")
-        tree._observed_sha1(b"foo-id", "foo", (expected_sha1, statvalue))
+        tree._observed_sha1("foo", (expected_sha1, statvalue))
         entry = tree._get_entry(path="foo")
         entry_state = entry[1][0]
         self.assertEqual(expected_sha1, entry_state[1])
@@ -752,8 +752,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             current_sha1 = tree._get_entry(path="foo")[1][0][1]
         with tree.lock_write():
             tree._observed_sha1(
-                b"foo-id", "foo",
-                (osutils.sha_file_by_name('foo'), os.lstat("foo")))
+                "foo", (osutils.sha_file_by_name('foo'), os.lstat("foo")))
             # Must not have changed
             self.assertEqual(current_sha1,
                              tree._get_entry(path="foo")[1][0][1])

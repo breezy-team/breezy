@@ -61,8 +61,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertIs(None, null_tree.get_root_id())
 
     def test_get_file_revision_root(self):
-        self.assertEqual(self.rev_id,
-                         self.rev_tree.get_file_revision(u'', self.rev_tree.get_root_id()))
+        self.assertEqual(self.rev_id, self.rev_tree.get_file_revision(u''))
 
     def test_get_file_revision(self):
         self.build_tree_contents([('a', b'initial')])

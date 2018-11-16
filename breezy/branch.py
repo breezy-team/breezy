@@ -1392,6 +1392,8 @@ class Branch(controldir.ControlComponent):
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:
+            policy = checkout.determine_repository_policy()
+            policy.acquire_repository()
             checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             # pull up to the specified revision_id to set the initial
@@ -1406,9 +1408,8 @@ class Branch(controldir.ControlComponent):
         with basis_tree.lock_read():
             for path, file_id in basis_tree.iter_references():
                 reference_parent = self.reference_parent(path, file_id)
-                reference_parent.create_checkout(
-                    tree.abspath(path),
-                    basis_tree.get_reference_revision(path, file_id),
+                reference_parent.create_checkout(tree.abspath(path),
+                    basis_tree.get_reference_revision(path),
                     lightweight)
         return tree
 
