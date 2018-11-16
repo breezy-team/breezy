@@ -317,7 +317,7 @@ class UIFactory(object):
             template = self._user_warning_templates[warning_id]
         except KeyError:
             fail = "brz warning: %r, %r" % (warning_id, message_args)
-            warnings.warn("no template for warning: "emplate for warning: " +
+            warnings.warn("no template for warning: "
                           + fail)   # so tests will fail etc
             return text_type(fail)
         try:
