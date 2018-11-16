@@ -492,8 +492,8 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(24, self.hpss_calls)
-        self.assertLength(4, self.hpss_connections)
+        self.assertLength(21, self.hpss_calls)
+        self.assertLength(3, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
 
