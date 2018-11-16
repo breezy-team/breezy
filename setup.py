@@ -374,7 +374,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
                  for rid, (_, f) in enumerate(icos)]
     ico_map = dict(map_items)
     # Create a new resource type of 'ICON_MAP', and use ID=1
-    other_resources = [ ("ICON_MAP", 1, pickle.dumps(ico_map))]
+    other_resources = [("ICON_MAP", 1, pickle.dumps(ico_map))]
 
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
@@ -500,7 +500,7 @@ if 'bdist_wininst' in sys.argv:
         return docs
 
     # python's distutils-based win32 installer
-    ARGS = {'scripts': [ 'brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
+    ARGS = {'scripts': ['brz', 'tools/win32/brz-win32-bdist-postinstall.py'],
             'ext_modules': ext_modules,
             # help pages
             'data_files': find_docs(),

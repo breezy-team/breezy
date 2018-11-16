@@ -242,7 +242,7 @@ class PatienceSequenceMatcher_py(difflib.SequenceMatcher):
         # Matches now has individual line pairs of
         # line A matches line B, at the given offsets
         self.matching_blocks = _collapse_sequences(matches)
-        self.matching_blocks.append( (len(self.a), len(self.b), 0) )
+        self.matching_blocks.append((len(self.a), len(self.b), 0))
         if PatienceSequenceMatcher_py._do_check_consistency:
             if __debug__:
                 _check_consistency(self.matching_blocks)
