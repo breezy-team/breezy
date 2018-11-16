@@ -75,16 +75,17 @@ META_INFO = {
 # that are part of BREEZY here.
 BREEZY = {}
 
-PKG_DATA = {# install files from selftest suite
-            'package_data': {'breezy': ['doc/api/*.txt',
-                                        'tests/test_patches_data/*',
-                                        'help_topics/en/*.txt',
-                                        'tests/ssl_certs/ca.crt',
-                                        'tests/ssl_certs/server_without_pass.key',
-                                        'tests/ssl_certs/server_with_pass.key',
-                                        'tests/ssl_certs/server.crt',
-                                        ]},
-           }
+PKG_DATA = {
+    # install files from selftest suite
+    'package_data': {'breezy': ['doc/api/*.txt',
+                                'tests/test_patches_data/*',
+                                'help_topics/en/*.txt',
+                                'tests/ssl_certs/ca.crt',
+                                'tests/ssl_certs/server_without_pass.key',
+                                'tests/ssl_certs/server_with_pass.key',
+                                'tests/ssl_certs/server.crt',
+                                ]},
+    }
 I18N_FILES = []
 for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
     langfile = filepath[len("breezy/locale/"):]
@@ -170,8 +171,8 @@ class bzr_build(build):
     """
 
     sub_commands = build.sub_commands + [
-            ('build_mo', lambda _: True),
-            ]
+        ('build_mo', lambda _: True),
+        ]
 
     def run(self):
         build.run(self)

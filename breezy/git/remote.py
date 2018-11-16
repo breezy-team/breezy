@@ -834,7 +834,7 @@ class RemoteGitRepository(GitRepository):
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
         return self.controldir.fetch_pack(
-                determine_wants, graph_walker, pack_data, progress)
+            determine_wants, graph_walker, pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_data):
         return self.controldir.send_pack(get_changed_refs, generate_pack_data)

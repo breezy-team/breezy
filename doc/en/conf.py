@@ -22,18 +22,18 @@ brz_locale = 'en'
 
 # Translations & supporting helper function
 brz_titles = {
-        u'Table of Contents (%s)': None,
-        u'Breezy User Guide': None,
-        u'Breezy User Reference': None,
-        u'Breezy Release Notes': None,
-        u'Breezy Upgrade Guide': None,
-        u"Breezy System Administrator's Guide": None,
-        u'Breezy in five minutes': None,
-        u'Breezy Tutorial': None,
-        u'Using Breezy With Launchpad': None,
-        u'Centralized Workflow Tutorial': None,
-        u"What's New in Breezy 2.1?": None,
-        }
+    u'Table of Contents (%s)': None,
+    u'Breezy User Guide': None,
+    u'Breezy User Reference': None,
+    u'Breezy Release Notes': None,
+    u'Breezy Upgrade Guide': None,
+    u"Breezy System Administrator's Guide": None,
+    u'Breezy in five minutes': None,
+    u'Breezy Tutorial': None,
+    u'Using Breezy With Launchpad': None,
+    u'Centralized Workflow Tutorial': None,
+    u"What's New in Breezy 2.1?": None,
+    }
 def brz_title(s):
     return brz_titles.get(s) or s
 
