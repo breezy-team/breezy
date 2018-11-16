@@ -22,7 +22,6 @@ from . import (
     controldir,
     commit,
     errors,
-    memorytree,
     revision,
     )
 from .sixish import (
@@ -51,7 +50,7 @@ class BranchBuilder(object):
     ...     revision_id=b'rev-id')
     'rev-id'
     >>> builder.build_snapshot([b'rev-id'],
-    ...     [('modify', (b'f-id', b'new-content\n'))],
+    ...     [('modify', ('filename', b'new-content\n'))],
     ...     revision_id=b'rev2-id')
     'rev2-id'
     >>> builder.finish_series()
@@ -110,12 +109,13 @@ class BranchBuilder(object):
             else:
                 base_id = parent_ids[0]
             if base_id != self._branch.last_revision():
-                self._move_branch_pointer(base_id,
-                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                self._move_branch_pointer(
+                    base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost)
         tree = self._branch.create_memorytree()
         with tree.lock_write():
             if parent_ids is not None:
-                tree.set_parent_ids(parent_ids,
+                tree.set_parent_ids(
+                    parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             tree.add('')
             return self._do_commit(tree, **commit_kwargs)
@@ -125,11 +125,10 @@ class BranchBuilder(object):
         if message is None and message_callback is None:
             message = u'commit %d' % (self._branch.revno() + 1,)
         return tree.commit(message, message_callback=message_callback,
-            reporter=reporter,
-            **kwargs)
+                           reporter=reporter, **kwargs)
 
     def _move_branch_pointer(self, new_revision_id,
-        allow_leftmost_as_ghost=False):
+                             allow_leftmost_as_ghost=False):
         """Point self._branch to a different revision id."""
         with self._branch.lock_write():
             # We don't seem to have a simple set_last_revision(), so we
@@ -137,8 +136,8 @@ class BranchBuilder(object):
             cur_revno, cur_revision_id = self._branch.last_revision_info()
             try:
                 g = self._branch.repository.get_graph()
-                new_revno = g.find_distance_to_null(new_revision_id,
-                    [(cur_revision_id, cur_revno)])
+                new_revno = g.find_distance_to_null(
+                    new_revision_id, [(cur_revision_id, cur_revno)])
                 self._branch.set_last_revision_info(new_revno, new_revision_id)
             except errors.GhostRevisionsHaveNoRevno:
                 if not allow_leftmost_as_ghost:
@@ -175,8 +174,8 @@ class BranchBuilder(object):
         self._tree = None
 
     def build_snapshot(self, parent_ids, actions, message=None, timestamp=None,
-            allow_leftmost_as_ghost=False, committer=None, timezone=None,
-            message_callback=None, revision_id=None):
+                       allow_leftmost_as_ghost=False, committer=None,
+                       timezone=None, message_callback=None, revision_id=None):
         """Build a commit, shaped in a specific way.
 
         Most of the actions are self-explanatory.  'flush' is special action to
@@ -211,8 +210,8 @@ class BranchBuilder(object):
             else:
                 base_id = parent_ids[0]
             if base_id != self._branch.last_revision():
-                self._move_branch_pointer(base_id,
-                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                self._move_branch_pointer(
+                    base_id, allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
         if self._tree is not None:
             tree = self._tree
@@ -220,7 +219,8 @@ class BranchBuilder(object):
             tree = self._branch.create_memorytree()
         with tree.lock_write():
             if parent_ids is not None:
-                tree.set_parent_ids(parent_ids,
+                tree.set_parent_ids(
+                    parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             # Unfortunately, MemoryTree.add(directory) just creates an
             # inventory entry. And the only public function to create a
@@ -252,15 +252,17 @@ class BranchBuilder(object):
                 else:
                     raise ValueError('Unknown build action: "%s"' % (action,))
             self._flush_pending(tree, pending)
-            return self._do_commit(tree, message=message, rev_id=revision_id,
+            return self._do_commit(
+                tree, message=message, rev_id=revision_id,
                 timestamp=timestamp, timezone=timezone, committer=committer,
                 message_callback=message_callback)
 
     def _flush_pending(self, tree, pending):
-        """Flush the pending actions in 'pending', i.e. apply them to 'tree'."""
+        """Flush the pending actions in 'pending', i.e. apply them to tree."""
         for path, file_id in pending.to_add_directories:
             if path == '':
-                if tree.has_filename(path) and path in pending.to_unversion_paths:
+                if tree.has_filename(path) \
+                        and path in pending.to_unversion_paths:
                     # We're overwriting this path, no need to unversion
                     pending.to_unversion_paths.discard(path)
                 # Special case, because the path already exists
@@ -271,7 +273,8 @@ class BranchBuilder(object):
             tree.rename_one(from_relpath, to_relpath)
         if pending.to_unversion_paths:
             tree.unversion(pending.to_unversion_paths)
-        tree.add(pending.to_add_files, pending.to_add_file_ids, pending.to_add_kinds)
+        tree.add(pending.to_add_files, pending.to_add_file_ids,
+                 pending.to_add_kinds)
         for path, content in viewitems(pending.new_contents):
             tree.put_file_bytes_non_atomic(path, content)
 
@@ -295,4 +298,3 @@ class _PendingActions(object):
         self.new_contents = {}
         self.to_unversion_paths = set()
         self.to_rename = []
-

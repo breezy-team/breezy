@@ -49,7 +49,7 @@ class TestStrace(tests.TestCaseWithTransport):
         # strace itself is fixed (bug #103133), we can get rid of the
         # restriction.
         active = threading.activeCount()
-        if active > 1: # There is always the main thread at least
+        if active > 1:  # There is always the main thread at least
             self.knownFailure(
                 '%d active threads, bug #103133 needs to be fixed.' % active)
 
@@ -68,12 +68,13 @@ class TestStrace(tests.TestCaseWithTransport):
         self._check_threads()
 
         output = []
+
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
         self.strace_detailed_or_skip(
             function, ["a", "b"], {"c": "c"},
             follow_children=False)
-        self.assertEqual([("a", ("b",), {"c":"c"})], output)
+        self.assertEqual([("a", ("b",), {"c": "c"})], output)
 
     def test_strace_callable_result(self):
         self._check_threads()
@@ -81,7 +82,7 @@ class TestStrace(tests.TestCaseWithTransport):
         def function():
             return "foo"
         result, strace_result = self.strace_detailed_or_skip(function, [], {},
-                                                follow_children=False)
+                                                             follow_children=False)
         self.assertEqual("foo", result)
         self.assertIsInstance(strace_result, StraceResult)
 
@@ -92,5 +93,5 @@ class TestStrace(tests.TestCaseWithTransport):
         def function():
             self.build_tree(['myfile'])
         unused, result = self.strace_detailed_or_skip(function, [], {},
-                                         follow_children=False)
+                                                      follow_children=False)
         self.assertContainsRe(result.raw_log, 'myfile')

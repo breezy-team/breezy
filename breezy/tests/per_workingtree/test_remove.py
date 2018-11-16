@@ -19,6 +19,7 @@
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 from breezy import ignores, osutils
 
+
 class TestRemove(TestCaseWithWorkingTree):
     """Tests WorkingTree.remove"""
 
@@ -111,7 +112,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(TestRemove.files)
 
         for f in TestRemove.rfiles:
-            tree.rename_one(f, f+'x')
+            tree.rename_one(f, f + 'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
         self.assertPathExists(rfilesx)
 
@@ -124,7 +125,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(TestRemove.files)
 
         for f in TestRemove.rfiles:
-            tree.rename_one(f, f+'x')
+            tree.rename_one(f, f + 'x')
         rfilesx = ['bx/cx', 'bx', 'ax', 'dx']
         self.build_tree_contents([('ax', b'changed and renamed!'),
                                   ('bx/cx', b'changed and renamed!')])
@@ -134,9 +135,9 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertNotInWorkingTree(rfilesx)
         self.assertPathExists(['bx.~1~/cx.~1~', 'bx.~1~', 'ax.~1~'])
         if tree.supports_rename_tracking():
-            self.assertPathDoesNotExist('dx.~1~') # unchanged file
+            self.assertPathDoesNotExist('dx.~1~')  # unchanged file
         else:
-            self.assertPathExists('dx.~1~') # renamed, so appears changed
+            self.assertPathExists('dx.~1~')  # renamed, so appears changed
         tree._validate()
 
     def test_force_remove_changed_files(self):
@@ -240,7 +241,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_committed_tree(files)
 
         other_files = ['b/unknown_file', 'b/sub_directory/',
-            'b/sub_directory/with_file', 'b/sub_directory/sub_directory/']
+                       'b/sub_directory/with_file', 'b/sub_directory/sub_directory/']
         self.build_tree(other_files)
 
         self.assertInWorkingTree(files)
@@ -276,7 +277,8 @@ class TestRemove(TestCaseWithWorkingTree):
     def test_remove_directory_with_changed_emigrated_file(self):
         # As per bug #129880
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('somedir/',), (b'somedir/file', b'contents')])
+        self.build_tree_contents(
+            [('somedir/',), (b'somedir/file', b'contents')])
         tree.add(['somedir', 'somedir/file'])
         tree.commit(message="first")
         self.build_tree_contents([('somedir/file', b'changed')])

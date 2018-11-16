@@ -126,10 +126,10 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
         return result
 
     def repository_text_keys(self):
-        return {(b'a-file-id', b'rev1a'):[NULL_REVISION]}
+        return {(b'a-file-id', b'rev1a'): [NULL_REVISION]}
 
     def versioned_repository_text_keys(self):
-        return {(b'TREE_ROOT', b'rev1a'):[NULL_REVISION]}
+        return {(b'TREE_ROOT', b'rev1a'): [NULL_REVISION]}
 
 
 class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
@@ -146,8 +146,8 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     def populated_parents(self):
         return (
             ((), b'rev1a'),
-            ((), b'rev1b'), # Will be gc'd
-            ((b'rev1a', b'rev1b'), b'rev2')) # Will have parents trimmed
+            ((), b'rev1b'),  # Will be gc'd
+            ((b'rev1a', b'rev1b'), b'rev2'))  # Will have parents trimmed
 
     def corrected_parents(self):
         return (
@@ -191,12 +191,12 @@ class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
         return result
 
     def repository_text_keys(self):
-        return {(b'a-file-id', b'rev1a'):[NULL_REVISION],
-                (b'a-file-id', b'rev2'):[(b'a-file-id', b'rev1a')]}
+        return {(b'a-file-id', b'rev1a'): [NULL_REVISION],
+                (b'a-file-id', b'rev2'): [(b'a-file-id', b'rev1a')]}
 
     def versioned_repository_text_keys(self):
-        return {(b'TREE_ROOT', b'rev1a'):[NULL_REVISION],
-                (b'TREE_ROOT', b'rev2'):[(b'TREE_ROOT', b'rev1a')]}
+        return {(b'TREE_ROOT', b'rev1a'): [NULL_REVISION],
+                (b'TREE_ROOT', b'rev2'): [(b'TREE_ROOT', b'rev1a')]}
 
 
 class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
@@ -257,12 +257,12 @@ class FileParentHasInaccessibleInventoryScenario(BrokenRepoScenario):
         return result
 
     def repository_text_keys(self):
-        return {(b'a-file-id', b'rev2'):[NULL_REVISION],
-                (b'a-file-id', b'rev3'):[NULL_REVISION]}
+        return {(b'a-file-id', b'rev2'): [NULL_REVISION],
+                (b'a-file-id', b'rev3'): [NULL_REVISION]}
 
     def versioned_repository_text_keys(self):
-        return {(b'TREE_ROOT', b'rev2'):[NULL_REVISION],
-                (b'TREE_ROOT', b'rev3'):[NULL_REVISION]}
+        return {(b'TREE_ROOT', b'rev2'): [NULL_REVISION],
+                (b'TREE_ROOT', b'rev3'): [NULL_REVISION]}
 
 
 class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
@@ -402,10 +402,10 @@ class FileParentsNotReferencedByAnyInventoryScenario(BrokenRepoScenario):
 
     def repository_text_keys(self):
         return {(b'a-file-id', b'rev1a'): [NULL_REVISION],
-                 (b'a-file-id', b'rev2c'): [(b'a-file-id', b'rev1a')],
-                 (b'a-file-id', b'rev3'): [(b'a-file-id', b'rev1a')],
-                 (b'a-file-id', b'rev4'): [(b'a-file-id', b'rev1a')],
-                 (b'a-file-id', b'rev5'): [(b'a-file-id', b'rev2c')]}
+                (b'a-file-id', b'rev2c'): [(b'a-file-id', b'rev1a')],
+                (b'a-file-id', b'rev3'): [(b'a-file-id', b'rev1a')],
+                (b'a-file-id', b'rev4'): [(b'a-file-id', b'rev1a')],
+                (b'a-file-id', b'rev5'): [(b'a-file-id', b'rev2c')]}
 
     def versioned_repository_text_keys(self):
         return {(b'TREE_ROOT', b'rev1a'): [NULL_REVISION],
@@ -462,8 +462,8 @@ class UnreferencedFileParentsFromNoOpMergeScenario(BrokenRepoScenario):
         # make rev1b: A well-formed revision, containing 'a-file'
         # rev1b of a-file has the exact same contents as rev1a.
         file_contents = next(
-                repo.texts.get_record_stream([(b'a-file-id', b'rev1a')],
-                    "unordered", False)).get_bytes_as('fulltext')
+            repo.texts.get_record_stream([(b'a-file-id', b'rev1a')],
+                                         "unordered", False)).get_bytes_as('fulltext')
         inv = self.make_one_file_inventory(
             repo, b'rev1b', [], root_revision=b'rev1b',
             file_contents=file_contents)
@@ -749,7 +749,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
 
     def repository_text_keys(self):
         return {(b'a-file-id', b'broken-revision-1-2'):
-                    [(b'a-file-id', b'parent-1'), (b'a-file-id', b'parent-2')],
+                [(b'a-file-id', b'parent-1'), (b'a-file-id', b'parent-2')],
                 (b'a-file-id', b'broken-revision-2-1'):
                     [(b'a-file-id', b'parent-2'), (b'a-file-id', b'parent-1')],
                 (b'a-file-id', b'parent-1'): [NULL_REVISION],
@@ -757,7 +757,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
 
     def versioned_repository_text_keys(self):
         return {(b'TREE_ROOT', b'broken-revision-1-2'):
-                    [(b'TREE_ROOT', b'parent-1'), (b'TREE_ROOT', b'parent-2')],
+                [(b'TREE_ROOT', b'parent-1'), (b'TREE_ROOT', b'parent-2')],
                 (b'TREE_ROOT', b'broken-revision-2-1'):
                     [(b'TREE_ROOT', b'parent-2'), (b'TREE_ROOT', b'parent-1')],
                 (b'TREE_ROOT', b'parent-1'): [NULL_REVISION],
@@ -819,8 +819,8 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             repo.texts.add_lines((root_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = Revision(revision_id, committer='jrandom@example.com',
-            timestamp=0, inventory_sha1='', timezone=0, message='foo',
-            parent_ids=parent_ids)
+                            timestamp=0, inventory_sha1='', timezone=0, message='foo',
+                            parent_ids=parent_ids)
         repo.add_revision(revision_id, revision, inv)
 
     def make_one_file_inventory(self, repo, revision, parents,
@@ -858,13 +858,13 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         inv.add(entry)
         if make_file_version:
             repo.texts.add_lines((file_id, revision),
-                [(file_id, parent) for parent in parents], [file_contents])
+                                 [(file_id, parent) for parent in parents], [file_contents])
         return inv
 
     def require_repo_suffers_text_parent_corruption(self, repo):
         if not repo._reconcile_fixes_text_parents:
             raise TestNotApplicable(
-                    "Format does not support text parent reconciliation")
+                "Format does not support text parent reconciliation")
 
     def file_parents(self, repo, revision_id):
         key = (b'a-file-id', revision_id)
@@ -873,7 +873,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def assertFileVersionAbsent(self, repo, revision_id):
         self.assertEqual({},
-            repo.texts.get_parent_map([(b'a-file-id', revision_id)]))
+                         repo.texts.get_parent_map([(b'a-file-id', revision_id)]))
 
     def assertParentsMatch(self, expected_parents_for_versions, repo,
                            when_description):
@@ -883,9 +883,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             else:
                 found_parents = self.file_parents(repo, version)
                 self.assertEqual(expected_parents, found_parents,
-                    "%s reconcile %s has parents %s, should have %s."
-                    % (when_description, version, found_parents,
-                       expected_parents))
+                                 "%s reconcile %s has parents %s, should have %s."
+                                 % (when_description, version, found_parents,
+                                    expected_parents))
 
     def prepare_test_repository(self):
         """Prepare a repository to test with from the test scenario.
@@ -915,13 +915,13 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo, scenario = self.prepare_test_repository()
         with repo.lock_read():
             self.assertParentsMatch(scenario.populated_parents(), repo,
-                b'before')
+                                    b'before')
             vf_shas = self.shas_for_versions_of_file(
                 repo, scenario.all_versions_after_reconcile())
         result = repo.reconcile(thorough=True)
         with repo.lock_read():
             self.assertParentsMatch(scenario.corrected_parents(), repo,
-                b'after')
+                                    b'after')
             # The contents of the versions in the versionedfile should be the
             # same after the reconcile.
             self.assertEqual(
@@ -938,10 +938,10 @@ class TestFileParentReconciliation(TestCaseWithRepository):
             # compression pointers in principle.
             for file_version in scenario.corrected_fulltexts():
                 key = (b'a-file-id', file_version)
-                self.assertEqual({key:()}, repo.texts.get_parent_map([key]))
+                self.assertEqual({key: ()}, repo.texts.get_parent_map([key]))
                 self.assertIsInstance(
                     next(repo.texts.get_record_stream([key], 'unordered',
-                        True)).get_bytes_as('fulltext'),
+                                                      True)).get_bytes_as('fulltext'),
                     bytes)
 
     def test_check_behaviour(self):
@@ -959,7 +959,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertEqual(scenario.repository_text_key_references(),
-            repo.find_text_key_references())
+                         repo.find_text_key_references())
 
     def test__generate_text_key_index(self):
         """Test that the generated text key index has all entries."""
@@ -967,4 +967,4 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertEqual(scenario.repository_text_key_index(),
-            repo._generate_text_key_index())
+                         repo._generate_text_key_index())

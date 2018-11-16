@@ -50,7 +50,6 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 from __future__ import absolute_import
 
 from .. import (
-    errors,
     ui,
     )
 from ..branch import Branch
@@ -199,11 +198,11 @@ class VersionedFileCheck(Check):
         note(gettext('%6d file-ids'), len(self.checked_weaves))
         if verbose:
             note(gettext('%6d unreferenced text versions'),
-                len(self.unreferenced_versions))
+                 len(self.unreferenced_versions))
         if verbose and len(self.unreferenced_versions):
-                for file_id, revision_id in self.unreferenced_versions:
-                    note(gettext('unreferenced version: {{{0}}} in {1}').format(
-                        revision_id.decode('utf-8'), file_id.decode('utf-8')))
+            for file_id, revision_id in self.unreferenced_versions:
+                note(gettext('unreferenced version: {{{0}}} in {1}').format(
+                    revision_id.decode('utf-8'), file_id.decode('utf-8')))
         if self.missing_inventory_sha_cnt:
             note(gettext('%6d revisions are missing inventory_sha1'),
                  self.missing_inventory_sha_cnt)
@@ -225,12 +224,13 @@ class VersionedFileCheck(Check):
                     for linker in linkers:
                         note('       * %s', linker.decode('utf-8'))
         if len(self.inconsistent_parents):
-            note(gettext('%6d inconsistent parents'), len(self.inconsistent_parents))
+            note(gettext('%6d inconsistent parents'),
+                 len(self.inconsistent_parents))
             if verbose:
                 for info in self.inconsistent_parents:
                     revision_id, file_id, found_parents, correct_parents = info
                     note(gettext('      * {0} version {1} has parents ({2}) '
-                         'but should have ({3})').format(
+                                 'but should have ({3})').format(
                          file_id.decode('utf-8'), revision_id.decode('utf-8'),
                          ', '.join(p.decode('utf-8') for p in found_parents),
                          ', '.join(p.decode('utf-8') for p in correct_parents)))
@@ -270,10 +270,10 @@ class VersionedFileCheck(Check):
         for parent in rev.parent_ids:
             if not parent in self.planned_revisions:
                 self.ghosts.add(parent)
-        
+
         self.ancestors[rev_id] = tuple(rev.parent_ids) or (NULL_REVISION,)
         self.add_pending_item(rev_id, ('inventories', rev_id), 'inventory',
-            rev.inventory_sha1)
+                              rev.inventory_sha1)
         self.checked_rev_cnt += 1
 
     def add_pending_item(self, referer, key, kind, sha1):
@@ -288,7 +288,7 @@ class VersionedFileCheck(Check):
         if existing:
             if sha1 != existing[1]:
                 self._report_items.append(gettext('Multiple expected sha1s for {0}. {{{1}}}'
-                    ' expects {{{2}}}, {{{3}}} expects {{{4}}}').format(
+                                                  ' expects {{{2}}}, {{{3}}} expects {{{4}}}').format(
                     key, referer, sha1, existing[1], existing[0]))
         else:
             self.pending_keys[key] = (kind, sha1, referer)
@@ -331,6 +331,3 @@ class VersionedFileCheck(Check):
         self.text_key_references.setdefault(key, False)
         if entry.revision == inv.revision_id:
             self.text_key_references[key] = True
-
-
-

@@ -47,7 +47,6 @@ from breezy.tests.per_interrepository.test_interrepository import (
     )
 
 
-
 class TestInterRepository(TestCaseWithInterRepository):
 
     def disable_commit_write_group_paranoia(self, repo):
@@ -62,6 +61,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.build_tree(['a/foo'])
         tree_a.add('foo')
         rev1 = tree_a.commit('rev1')
+
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, rev1)
@@ -116,7 +116,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             # 'FOO' changed in 'OLD'. OLD will not have that file at all.
             source.texts.insert_record_stream([
                 versionedfile.FulltextContentFactory((b'foo', revid), (), None,
-                b'contents')])
+                                                     b'contents')])
             basis = source.revision_tree(revid)
             parent_id = basis.path2id('')
             entry = inventory.make_entry('file', 'foo-path', parent_id, b'foo')
@@ -142,8 +142,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
         self.assertEqual(b'contents',
-            next(to_repo.texts.get_record_stream([(b'foo', revid)],
-            'unordered', True)).get_bytes_as('fulltext'))
+                         next(to_repo.texts.get_record_stream([(b'foo', revid)],
+                                                              'unordered', True)).get_bytes_as('fulltext'))
 
     def test_fetch_from_stacked_smart(self):
         self.setup_smart_server_with_call_log()
@@ -270,7 +270,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertTrue(unstacked_repo.has_revision(merge))
         expected_texts = {(file_id, merge)}
         if stacked_branch.repository.texts.get_parent_map([(root_id,
-            merge)]):
+                                                            merge)]):
             # If a (root-id,merge) text exists, it should be in the stacked
             # repo.
             expected_texts.add((root_id, merge))
@@ -335,7 +335,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertTrue(unstacked_repo.has_revision(third))
         expected_texts = {(file_id, third)}
         if stacked_branch.repository.texts.get_parent_map([(root_id,
-            third)]):
+                                                            third)]):
             # If a (root-id,third) text exists, it should be in the stacked
             # repo.
             expected_texts.add((root_id, third))
@@ -424,7 +424,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertTrue(new_unstacked_repo.has_revision(b'merge'))
         expected_texts = {(b'file-id', b'merge')}
         if new_stacked_branch.repository.texts.get_parent_map([(b'root-id',
-            b'merge')]):
+                                                                b'merge')]):
             # If a (root-id,merge) text exists, it should be in the stacked
             # repo.
             expected_texts.add((b'root-id', b'merge'))
@@ -485,7 +485,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.fetch, repo_a, revision_id=b'XXX')
+                          repo_b.fetch, repo_a, revision_id=b'XXX')
 
     def test_fetch_same_location_trivial_works(self):
         repo_a = self.make_repository('.')
@@ -539,12 +539,14 @@ class TestInterRepository(TestCaseWithInterRepository):
             check_repo_format_for_funky_id_on_win32(from_repo)
         self.build_tree(['tree/filename'])
         if not from_tree.supports_setting_file_ids():
-            raise TestNotApplicable('from tree format can not create custom file ids')
+            raise TestNotApplicable(
+                'from tree format can not create custom file ids')
         from_tree.add('filename', b'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
         try:
-            to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
+            to_repo.fetch(from_tree.branch.repository,
+                          from_tree.get_parent_ids()[0])
         except errors.NoRoundtrippingSupport:
             raise TestNotApplicable('roundtripping not supported')
 
@@ -576,7 +578,7 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         if (not from_tree.supports_tree_reference() or
             not from_tree.branch.repository._format.supports_tree_reference or
-            not to_repo._format.supports_tree_reference):
+                not to_repo._format.supports_tree_reference):
             raise TestNotApplicable("Need subtree support.")
         if not to_repo._format.supports_full_versioned_files:
             raise TestNotApplicable('Need full versioned files support.')
@@ -592,5 +594,5 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         # revid tree_rev.
         file_id = from_tree.path2id('subtree')
         with to_repo.lock_read():
-            self.assertEqual({(file_id, tree_rev):()},
-                to_repo.texts.get_parent_map([(file_id, tree_rev)]))
+            self.assertEqual({(file_id, tree_rev): ()},
+                             to_repo.texts.get_parent_map([(file_id, tree_rev)]))

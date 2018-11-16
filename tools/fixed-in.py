@@ -97,7 +97,7 @@ class NewsParser(object):
                         authors = par[end:]
                     else:
                         # (authors/bugs)
-                         authors = par[:start]
+                        authors = par[:start]
                     for bug_match in bugs:
                         bug_number = bug_match.group(0)
                         yield (bug_number, authors,

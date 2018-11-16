@@ -94,15 +94,15 @@ class Annotator(object):
             needed_keys = set()
             next_parent_map.update(self._vf.get_parent_map(parent_lookup))
             for key, parent_keys in viewitems(next_parent_map):
-                if parent_keys is None: # No graph versionedfile
+                if parent_keys is None:  # No graph versionedfile
                     parent_keys = ()
                     next_parent_map[key] = ()
                 self._update_needed_children(key, parent_keys)
                 needed_keys.update([key for key in parent_keys
-                                         if key not in parent_map])
+                                    if key not in parent_map])
             parent_map.update(next_parent_map)
-            # _heads_provider does some graph caching, so it is only valid while
-            # self._parent_map hasn't changed
+            # _heads_provider does some graph caching, so it is only valid
+            # while self._parent_map hasn't changed
             self._heads_provider = None
         return vf_keys_needed, ann_keys_needed
 
@@ -118,7 +118,7 @@ class Annotator(object):
         keys, ann_keys = self._get_needed_keys(key)
         if pb is not None:
             pb.update('getting stream', 0, len(keys))
-        stream  = self._vf.get_record_stream(keys, 'topological', True)
+        stream = self._vf.get_record_stream(keys, 'topological', True)
         for idx, record in enumerate(stream):
             if pb is not None:
                 pb.update('extracting', 0, len(keys))
@@ -148,8 +148,8 @@ class Annotator(object):
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
-        matcher = patiencediff.PatienceSequenceMatcher(None,
-            parent_lines, text)
+        matcher = patiencediff.PatienceSequenceMatcher(
+            None, parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
@@ -157,7 +157,7 @@ class Annotator(object):
         """Reannotate this text relative to its first parent."""
         (parent_annotations,
          matching_blocks) = self._get_parent_annotations_and_matches(
-                                key, lines, parent_key)
+             key, lines, parent_key)
 
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For all matching regions we copy across the parent annotations
@@ -169,7 +169,7 @@ class Annotator(object):
         """Reannotate this text relative to a second (or more) parent."""
         (parent_annotations,
          matching_blocks) = self._get_parent_annotations_and_matches(
-                                key, lines, parent_key)
+             key, lines, parent_key)
 
         last_ann = None
         last_parent = None
@@ -262,7 +262,8 @@ class Annotator(object):
             lines the text of "key" as a list of lines
         """
         with ui.ui_factory.nested_progress_bar() as pb:
-            for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
+            for text_key, text, num_lines in self._get_needed_texts(
+                    key, pb=pb):
                 self._annotate_one(text_key, text, num_lines)
         try:
             annotations = self._annotations_cache[key]
@@ -306,7 +307,8 @@ class Annotator(object):
             else:
                 the_heads = heads(annotation)
                 if len(the_heads) == 1:
-                    for head in the_heads: break # get the item out of the set
+                    for head in the_heads:
+                        break  # get the item out of the set
                 else:
                     head = self._resolve_annotation_tie(the_heads, line,
                                                         custom_tiebreaker)

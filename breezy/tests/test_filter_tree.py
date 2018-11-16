@@ -35,6 +35,7 @@ class TestFilterTree(tests.TestCaseWithTransport):
     def make_tree(self):
         self.underlying_tree = fixtures.make_branch_and_populated_tree(
             self)
+
         def stack_callback(path):
             return _stack_1
         self.filter_tree = filter_tree.ContentFilterTree(

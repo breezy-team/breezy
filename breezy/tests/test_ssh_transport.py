@@ -57,7 +57,7 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         self.assertRaises(UnknownSSH,
-            manager.get_vendor, {"BRZ_SSH": "vendor"})
+                          manager.get_vendor, {"BRZ_SSH": "vendor"})
         vendor = object()
         manager.register_vendor("vendor", vendor)
         self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
@@ -207,7 +207,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertRaises(
             StrangeHostname,
             vendor._get_vendor_specific_argv,
-                "user", "-oProxyCommand=host", 100, command=["bzr"])
+            "user", "-oProxyCommand=host", 100, command=["bzr"])
 
     def test_sshcorp_command_arguments(self):
         vendor = SSHCorpSubprocessVendor()
@@ -236,7 +236,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertRaises(
             StrangeHostname,
             vendor._get_vendor_specific_argv,
-                "user", "-oProxyCommand=host", 100, command=["bzr"])
+            "user", "-oProxyCommand=host", 100, command=["bzr"])
 
     def test_lsh_command_arguments(self):
         vendor = LSHSubprocessVendor()
@@ -265,7 +265,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertRaises(
             StrangeHostname,
             vendor._get_vendor_specific_argv,
-                "user", "-oProxyCommand=host", 100, command=["bzr"])
+            "user", "-oProxyCommand=host", 100, command=["bzr"])
 
     def test_plink_command_arguments(self):
         vendor = PLinkSubprocessVendor()

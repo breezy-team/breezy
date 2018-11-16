@@ -249,13 +249,13 @@ class SmartServerResponse(object):
     def __eq__(self, other):
         if other is None:
             return False
-        return (other.args == self.args and
-                other.body == self.body and
-                other.body_stream is self.body_stream)
+        return (other.args == self.args
+                and other.body == self.body
+                and other.body_stream is self.body_stream)
 
     def __repr__(self):
         return "<%s args=%r body=%r>" % (self.__class__.__name__,
-            self.args, self.body)
+                                         self.args, self.body)
 
 
 class FailedSmartServerResponse(SmartServerResponse):
@@ -292,7 +292,7 @@ class SmartServerRequestHandler(object):
     # and allow it to be streamed into the server.
 
     def __init__(self, backing_transport, commands, root_client_path,
-        jail_root=None):
+                 jail_root=None):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
@@ -427,7 +427,7 @@ def _translate_error(err):
         return (b'DirectoryNotEmpty', err.path.encode('utf-8'))
     elif isinstance(err, errors.IncompatibleRepositories):
         return (b'IncompatibleRepositories', str(err.source), str(err.target),
-            str(err.details))
+                str(err.details))
     elif isinstance(err, errors.ShortReadvError):
         return (b'ShortReadvError', err.path.encode('utf-8'),
                 str(err.offset).encode('ascii'),
@@ -437,7 +437,7 @@ def _translate_error(err):
         return (b'RevisionNotPresent', err.revision_id, err.file_id)
     elif isinstance(err, errors.UnstackableRepositoryFormat):
         return ((b'UnstackableRepositoryFormat',
-            str(err.format).encode('utf-8'), err.url.encode('utf-8')))
+                 str(err.format).encode('utf-8'), err.url.encode('utf-8')))
     elif isinstance(err, _mod_branch.UnstackableBranchFormat):
         return (b'UnstackableBranchFormat', str(err.format).encode('utf-8'),
                 err.url.encode('utf-8'))
@@ -481,7 +481,8 @@ def _translate_error(err):
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
     return (b'error',
-            trace._qualified_exception_name(err.__class__, True).encode('utf-8'),
+            trace._qualified_exception_name(
+                err.__class__, True).encode('utf-8'),
             str(err).encode('utf-8'))
 
 
