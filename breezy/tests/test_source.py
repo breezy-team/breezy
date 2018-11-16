@@ -325,11 +325,6 @@ class TestSource(TestSourceHelper):
             self.fail('\n\n'.join(problems))
 
     def test_flake8(self):
-        # Disable lazy_regex, since flake8 uses sre_compile which can't handle
-        # lazy_regex compile objects.
-        from .. import lazy_regex
-        lazy_regex.reset_compile()
-        self.addCleanup(lazy_regex.install_lazy_compile)
         self.requireFeature(features.flake8)
         # Older versions of flake8 don't support the 'paths'
         # variable
