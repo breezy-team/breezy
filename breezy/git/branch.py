@@ -718,9 +718,6 @@ class LocalGitBranch(GitBranch):
         """See Branch.set_push_location."""
         self.get_config().set_user_option('push_location', location,
                                           store=config.STORE_LOCATION)
-        # cs = self.repository._git.get_config_stack()
-        # remote = self._get_push_origin(cs)
-        # self._write_git_config(cs)
 
     def supports_tags(self):
         return True
