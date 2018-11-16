@@ -120,14 +120,11 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
 
 
 def compile_pattern(pattern, flags=0):
-    patternc = None
     try:
-        # use python's re.compile as we need to catch re.error in case of bad pattern
-        lazy_regex.reset_compile()
-        patternc = re.compile(pattern, flags)
+        return re.compile(pattern, flags)
     except re.error as e:
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
-    return patternc
+    return None
 
 
 def is_fixed_string(s):
