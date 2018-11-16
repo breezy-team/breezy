@@ -898,8 +898,10 @@ class TestPushForeign(tests.TestCaseWithTransport):
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("push -d dc dp", retcode=3)
         self.assertEqual("", output)
-        self.assertEqual(error, "brz: ERROR: It is not possible to losslessly"
-                         " push to dummy. You may want to use dpush instead.\n")
+        self.assertEqual(
+            error,
+            "brz: ERROR: It is not possible to losslessly"
+            " push to dummy. You may want to use --lossy.\n")
 
 
 class TestPushOutput(script.TestCaseWithTransportAndScript):

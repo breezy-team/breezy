@@ -397,7 +397,7 @@ class ForeignVcsRegistryTests(tests.TestCase):
     def test_parse_revision_id(self):
         reg = foreign.ForeignVcsRegistry()
         vcs = DummyForeignVcs()
-        reg.register(b"dummy", vcs, "Dummy VCS")
+        reg.register("dummy", vcs, "Dummy VCS")
         self.assertEqual((
             (b"some", b"foreign", b"revid"), DummyForeignVcsMapping(vcs)),
             reg.parse_revision_id(b"dummy-v1:some-foreign-revid"))
