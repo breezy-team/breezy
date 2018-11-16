@@ -67,6 +67,11 @@ External Compatibility Breaks
    has been renamed to ``transform.orphan_policy``.
    (Jelmer Vernooĳ)
 
+ * One-letter shortcuts for Ubuntu releases are no
+   longer supported after 'ubuntu:'. Bazaar's mapping for
+   one-letter distroseries had not been updated since natty.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 

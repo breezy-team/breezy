@@ -48,16 +48,6 @@ from .account import get_lp_login
 transport.register_urlparse_netloc_protocol('bzr+ssh')
 transport.register_urlparse_netloc_protocol('lp')
 
-_ubuntu_series_shortcuts = {
-    'n': 'natty',
-    'm': 'maverick',
-    'l': 'lucid',
-    'k': 'karmic',
-    'j': 'jaunty',
-    'h': 'hardy',
-    'd': 'dapper',
-    }
-
 
 class LaunchpadDirectory(object):
 
@@ -118,11 +108,9 @@ class LaunchpadDirectory(object):
         if scheme in ('ubuntu', 'debianlp'):
             if scheme == 'ubuntu':
                 distro = 'ubuntu'
-                distro_series = _ubuntu_series_shortcuts
             elif scheme == 'debianlp':
                 distro = 'debian'
                 # No shortcuts for Debian distroseries.
-                distro_series = {}
             else:
                 raise AssertionError('scheme should be ubuntu: or debianlp:')
             # Split the path.  It's either going to be 'project' or
@@ -142,8 +130,6 @@ class LaunchpadDirectory(object):
                 # There are either 0 or > 2 path parts, neither of which is
                 # supported for these schemes.
                 raise InvalidURL('Bad path: %s' % url)
-            # Expand any series shortcuts, but keep unknown series.
-            series = distro_series.get(series, series)
             # Hack the url and let the following do the final resolution.
             url = lp_url_template % dict(
                 distro=distro,
