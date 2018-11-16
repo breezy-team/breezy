@@ -516,8 +516,8 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         tree.commit("Dull commit", rev_id=b"dull")
         revision_tree = tree.branch.repository.revision_tree(b'dull')
         with revision_tree.lock_read():
-            self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-                u'')
+            self.assertRaises(
+                errors.NoSuchFile, revision_tree.get_file_lines, u'')
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)

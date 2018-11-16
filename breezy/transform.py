@@ -2008,8 +2008,8 @@ class _PreviewTree(inventorytree.InventoryTree):
 
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         parent_keys = [
-                (file_id, t.get_file_revision(t.id2path(file_id)))
-                for t in self._iter_parent_trees()]
+            (file_id, t.get_file_revision(t.id2path(file_id)))
+            for t in self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
                      self.get_file_lines(path))
         repo = self._get_repository()
@@ -2731,7 +2731,7 @@ def _content_match(tree, entry, tree_path, file_id, kind, target_path):
         return True
     if entry.kind == "file":
         with open(target_path, 'rb') as f1, \
-                 tree.get_file(tree_path) as f2:
+                tree.get_file(tree_path) as f2:
             if osutils.compare_files(f1, f2):
                 return True
     elif entry.kind == "symlink":

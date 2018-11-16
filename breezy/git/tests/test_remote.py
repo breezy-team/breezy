@@ -288,7 +288,7 @@ class FetchFromRemoteTestBase(object):
             local_branch.tags.get_tag_dict())
 
 
-class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase ,TestCaseWithTransport):
+class FetchFromRemoteToBzrTests(FetchFromRemoteTestBase, TestCaseWithTransport):
 
     _to_format = '2a'
 
@@ -557,8 +557,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
 
     def test_get_branch_nick(self):
         c1 = self.remote_real.do_commit(
-                message=b'message',
-                committer=b'committer <committer@example.com>',
-                author=b'author <author@example.com>')
+            message=b'message',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>')
         remote = ControlDir.open(self.remote_url)
         self.assertEqual('master', remote.open_branch().nick)

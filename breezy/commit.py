@@ -678,7 +678,7 @@ class Commit(object):
             iter_changes = filter_excluded(iter_changes, self.exclude)
         iter_changes = self._filter_iter_changes(iter_changes)
         for file_id, path, fs_hash in self.builder.record_iter_changes(
-            self.work_tree, self.basis_revid, iter_changes):
+                self.work_tree, self.basis_revid, iter_changes):
             self.work_tree._observed_sha1(path, fs_hash)
 
     def _filter_iter_changes(self, iter_changes):

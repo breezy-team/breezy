@@ -727,11 +727,11 @@ class InterTree(InterObject):
                 changed_content = True
         elif source_kind == 'symlink':
             if (self.source.get_symlink_target(source_path) !=
-                self.target.get_symlink_target(target_path)):
+                    self.target.get_symlink_target(target_path)):
                 changed_content = True
         elif source_kind == 'tree-reference':
             if (self.source.get_reference_revision(source_path)
-                != self.target.get_reference_revision(target_path)):
+                    != self.target.get_reference_revision(target_path)):
                     changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
