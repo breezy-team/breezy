@@ -23,7 +23,6 @@
 
 from __future__ import absolute_import
 
-import breezy.bzr.bzrdir
 from ..commands import (
     Command,
     display_command,
