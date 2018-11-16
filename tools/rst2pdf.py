@@ -147,7 +147,7 @@ pub.publish(argv, usage, description, settings_spec, settings_overrides,
 rubber_argv = ["--pdf",    # use pdflatex to produce PDF
                "--short",   # Display LaTeX’s error messages one error per line.
                texpath
-              ]
+               ]
 
 # Get a TeX processing class instance and do the latex->pdf conversion::
 

@@ -83,7 +83,7 @@ PKG_DATA = {# install files from selftest suite
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
                                         'tests/ssl_certs/server.crt',
-                                       ]},
+                                        ]},
            }
 I18N_FILES = []
 for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
@@ -503,7 +503,7 @@ if 'bdist_wininst' in sys.argv:
             'data_files': find_docs(),
             # for building cython extensions
             'cmdclass': command_classes,
-           }
+            }
 
     ARGS.update(META_INFO)
     ARGS.update(BREEZY)
@@ -568,7 +568,7 @@ elif 'py2exe' in sys.argv:
                                      copyright = "(c) Canonical Ltd, 2005-2010",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
-                                    )
+                                     )
     gui_target = copy.copy(target)
     gui_target.dest_base = "bzrw"
 
@@ -714,8 +714,8 @@ elif 'py2exe' in sys.argv:
                                "optimize": 2,
                                "custom_boot_script":
                                         "tools/win32/py2exe_boot_common.py",
-                              },
-                   }
+                               },
+                    }
 
     # We want the libaray.zip to have optimize = 2, but the exe to have
     # optimize = 1, so that .py files that get compilied at run time
@@ -756,7 +756,7 @@ else:
             'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
-           }
+            }
 
     ARGS.update(META_INFO)
     ARGS.update(BREEZY)

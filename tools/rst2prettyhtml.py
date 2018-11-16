@@ -29,17 +29,14 @@ def kidified_rest(rest_file, template_name):
     # prevent docutils from autoclosing the StringIO
     xhtml_file.close = lambda: None
     xhtml = publish_file(rest_file, writer_name='html', destination=xhtml_file,
-                         settings_overrides={"doctitle_xform": 0} 
-    
-    )
+                         settings_overrides={"doctitle_xform": 0})
     xhtml_file.seek(0)
     xml = HTMLTreeBuilder.parse(xhtml_file)
     head = xml.find('head')
     body = xml.find('body')
     assert head is not None
     assert body is not None
-    template=kid.Template(file=template_name, 
-                          head=head, body=body)
+    template=kid.Template(file=template_name, head=head, body=body)
     return (template.serialize(output="html"))
 
 

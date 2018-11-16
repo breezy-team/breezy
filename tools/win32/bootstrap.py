@@ -51,10 +51,11 @@ ws  = pkg_resources.working_set
 
 if is_jython:
     import subprocess
-    
-    assert subprocess.Popen([sys.executable] + ['-c', quote(cmd), '-mqNxd', 
-           quote(tmpeggs), 'zc.buildout'], 
-           env=dict(os.environ,
+
+    assert subprocess.Popen([sys.executable] + ['-c', quote(cmd), '-mqNxd',
+           quote(tmpeggs), 'zc.buildout'],
+           env=dict(
+               os.environ,
                PYTHONPATH=
                ws.find(pkg_resources.Requirement.parse('setuptools')).location
                ),
@@ -64,7 +65,8 @@ else:
     assert os.spawnle(
         os.P_WAIT, sys.executable, quote (sys.executable),
         '-c', quote (cmd), '-mqNxd', quote (tmpeggs), 'zc.buildout',
-        dict(os.environ,
+        dict(
+            os.environ,
             PYTHONPATH=
             ws.find(pkg_resources.Requirement.parse('setuptools')).location
             ),
