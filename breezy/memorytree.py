@@ -144,8 +144,8 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.has_filename()."""
         return self._file_transport.has(filename)
 
-    def is_executable(self, path, file_id=None):
-        return self._inventory[file_id].executable
+    def is_executable(self, path):
+        return self._inventory.get_entry_by_path(path).executable
 
     def kind(self, path, file_id=None):
         if file_id is None:
@@ -230,7 +230,7 @@ class MemoryTree(MutableInventoryTree):
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
                 self._file_transport.put_file(path,
-                    self._basis_tree.get_file(path, entry.file_id))
+                    self._basis_tree.get_file(path))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 

@@ -65,7 +65,6 @@ from breezy import (
     controldir,
     diff,
     foreign,
-    repository as _mod_repository,
     revision as _mod_revision,
     tsort,
     )
@@ -74,7 +73,6 @@ from breezy.i18n import gettext, ngettext
 
 from . import (
     errors,
-    lazy_regex,
     registry,
     revisionspec,
     )
@@ -2131,7 +2129,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
 def _get_kind_for_file_id(tree, path, file_id):
     """Return the kind of a file-id or None if it doesn't exist."""
     if file_id is not None:
-        return tree.kind(path, file_id)
+        return tree.kind(path)
     else:
         return None
 
@@ -2140,16 +2138,21 @@ properties_handler_registry = registry.Registry()
 
 # Use the properties handlers to print out bug information if available
 def _bugs_properties_handler(revision):
+    ret = {}
     if 'bugs' in revision.properties:
         bug_lines = revision.properties['bugs'].split('\n')
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-
+        related_bug_urls = [row[0] for row in bug_rows if
+                            len(row) > 1 and row[1] == 'related']
         if fixed_bug_urls:
-            return {ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls)):\
-                    ' '.join(fixed_bug_urls)}
-    return {}
+            ret[ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls))] = (
+                ' '.join(fixed_bug_urls))
+        if related_bug_urls:
+            ret[ngettext('related bug', 'related bugs', len(related_bug_urls))] = (
+                ' '.join(related_bug_urls))
+    return ret
 
 properties_handler_registry.register('bugs_properties_handler',
                                      _bugs_properties_handler)

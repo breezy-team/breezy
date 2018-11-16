@@ -24,7 +24,6 @@ import os
 import sys
 
 from dulwich.errors import (
-    NotGitRepository,
     NoIndexPresent,
     )
 from dulwich.file import (
@@ -56,7 +55,6 @@ from dulwich.repo import (
     CONTROLDIR,
     INDEX_FILENAME,
     OBJECTDIR,
-    REFSDIR,
     SYMREF,
     check_ref_format,
     read_packed_refs_with_peeled,
@@ -69,15 +67,10 @@ from .. import (
     transport as _mod_transport,
     urlutils,
     )
-from ..sixish import (
-    PY3,
-    text_type,
-    )
 from ..errors import (
     AlreadyControlDirError,
     FileExists,
     LockBroken,
-    LockError,
     LockContention,
     NotLocalUrl,
     NoSuchFile,

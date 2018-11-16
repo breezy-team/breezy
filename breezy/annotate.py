@@ -38,7 +38,6 @@ from breezy import (
     )
 """)
 from . import (
-    errors,
     osutils,
     )
 from .config import (
@@ -54,7 +53,7 @@ from .revision import (
 
 
 def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
-    show_ids=False, branch=None, file_id=None):
+                       show_ids=False, branch=None):
     """Annotate file_id in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
@@ -66,7 +65,6 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         reasonable text width.
     :param full: XXXX Not sure what this does.
     :param show_ids: Show revision ids in the annotation output.
-    :param file_id: The file_id to annotate (must match file path)
     :param branch: Branch to use for revision revno lookups
     """
     if branch is None:
@@ -76,7 +74,7 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
 
     encoding = osutils.get_terminal_encoding()
     # Handle the show_ids case
-    annotations = list(tree.annotate_iter(path, file_id))
+    annotations = list(tree.annotate_iter(path))
     if show_ids:
         return _show_id_annotations(annotations, to_file, full, encoding)
 
@@ -109,11 +107,10 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
     :param full: XXXX Not sure what this does.
     """
     if len(annotation) == 0:
-        max_origin_len = max_revno_len = max_revid_len = 0
+        max_origin_len = max_revno_len = 0
     else:
         max_origin_len = max(len(x[1]) for x in annotation)
         max_revno_len = max(len(x[0]) for x in annotation)
-        max_revid_len = max(len(x[3]) for x in annotation)
     if not verbose:
         max_revno_len = min(max_revno_len, 12)
     max_revno_len = max(max_revno_len, 3)
@@ -126,7 +123,7 @@ def _print_annotations(annotation, verbose, to_file, full, encoding):
                                        max_origin_len, author, date_str)
         else:
             if len(revno_str) > max_revno_len:
-                revno_str = revno_str[:max_revno_len-1] + '>'
+                revno_str = revno_str[:max_revno_len - 1] + '>'
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
         if anno.lstrip() == "" and full:
             anno = prevanno
@@ -290,7 +287,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
     for i, j, n in matching_blocks:
         for line in new_lines[new_cur:j]:
             lines.append((new_revision_id, line))
-        lines.extend(parent_lines[i:i+n])
+        lines.extend(parent_lines[i:i + n])
         new_cur = j + n
     return lines
 
@@ -301,6 +298,7 @@ def _get_matching_blocks(old, new):
 
 
 _break_annotation_tie = None
+
 
 def _old_break_annotation_tie(annotated_lines):
     """Chose an attribution between several possible ones.
@@ -412,7 +410,7 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
     # be the bulk of the lines, and they will need no further processing.
     lines = []
     lines_extend = lines.extend
-    last_right_idx = 0 # The line just after the last match from the right side
+    last_right_idx = 0  # The line just after the last match from the right side
     last_left_idx = 0
     matching_left_and_right = _get_matching_blocks(right_parent_lines,
                                                    annotated_lines)
@@ -443,4 +441,4 @@ try:
     from breezy._annotator_pyx import Annotator
 except ImportError as e:
     osutils.failed_to_load_extension(e)
-    from breezy._annotator_py import Annotator
+    from breezy._annotator_py import Annotator  # noqa: F401

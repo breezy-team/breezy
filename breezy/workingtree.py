@@ -42,7 +42,6 @@ import shutil
 import stat
 
 from breezy import (
-    branch,
     conflicts as _mod_conflicts,
     controldir,
     errors,
@@ -52,7 +51,6 @@ from breezy import (
     revision as _mod_revision,
     transform,
     transport,
-    ui,
     views,
     )
 """)
@@ -62,9 +60,6 @@ from . import (
     )
 from .i18n import gettext
 from . import mutabletree
-from .sixish import (
-    text_type,
-    )
 from .trace import mutter, note
 
 
@@ -81,8 +76,7 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
-class WorkingTree(mutabletree.MutableTree,
-    controldir.ControlComponent):
+class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     """Working copy tree.
 
     :ivar basedir: The root of the tree on disk. This is a unicode path object
@@ -1289,7 +1283,7 @@ class WorkingTree(mutabletree.MutableTree,
             for conflict in self.conflicts():
                 path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(path, conflict.file_id) != 'file'):
+                    self.kind(path) != 'file'):
                     un_resolved.append(conflict)
                     continue
                 with open(self.abspath(path), 'rb') as my_file:

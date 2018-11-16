@@ -125,10 +125,8 @@ class ShelfCreator(object):
                 if kind[0] != kind [1]:
                     yield ('change kind', file_id, kind[0], kind[1], paths[0])
                 elif kind[0] == 'symlink':
-                    t_target = self.target_tree.get_symlink_target(
-                            paths[0], file_id)
-                    w_target = self.work_tree.get_symlink_target(
-                            paths[1], file_id)
+                    t_target = self.target_tree.get_symlink_target(paths[0])
+                    w_target = self.work_tree.get_symlink_target(paths[1])
                     yield ('modify target', file_id, paths[0], t_target,
                             w_target)
                 elif changed:
@@ -181,13 +179,13 @@ class ShelfCreator(object):
             to shelving.
         """
         new_path = self.target_tree.id2path(file_id)
-        new_target = self.target_tree.get_symlink_target(new_path, file_id)
+        new_target = self.target_tree.get_symlink_target(new_path)
         w_trans_id = self.work_transform.trans_id_file_id(file_id)
         self.work_transform.delete_contents(w_trans_id)
         self.work_transform.create_symlink(new_target, w_trans_id)
 
         old_path = self.work_tree.id2path(file_id)
-        old_target = self.work_tree.get_symlink_target(old_path, file_id)
+        old_target = self.work_tree.get_symlink_target(old_path)
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         self.shelf_transform.delete_contents(s_trans_id)
         self.shelf_transform.create_symlink(old_target, s_trans_id)
@@ -277,9 +275,9 @@ class ShelfCreator(object):
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
         target_path = self.target_tree.id2path(file_id)
-        target_lines = self.target_tree.get_file_lines(target_path, file_id)
+        target_lines = self.target_tree.get_file_lines(target_path)
         work_path = self.work_tree.id2path(file_id)
-        work_lines = self.work_tree.get_file_lines(work_path, file_id)
+        work_lines = self.work_tree.get_file_lines(work_path)
         return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):

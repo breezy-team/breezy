@@ -46,7 +46,6 @@ from ..sixish import (
     map,
     range,
     viewitems,
-    viewkeys,
     viewvalues,
     )
 

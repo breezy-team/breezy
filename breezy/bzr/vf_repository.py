@@ -26,7 +26,6 @@ import itertools
 from breezy import (
     config as _mod_config,
     debug,
-    fetch as _mod_fetch,
     fifo_cache,
     gpg,
     graph,
@@ -38,6 +37,7 @@ from breezy import (
     ui,
     )
 from breezy.bzr import (
+    fetch as _mod_fetch,
     check,
     inventory_delta,
     inventorytree,
@@ -58,7 +58,6 @@ from ..decorators import (
     )
 from .inventory import (
     Inventory,
-    InventoryDirectory,
     ROOT_ID,
     entry_factory,
     )
@@ -481,7 +480,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
-                    file_obj, stat_value = tree.get_file_with_stat(change[1][1], file_id)
+                    file_obj, stat_value = tree.get_file_with_stat(change[1][1])
                     try:
                         entry.text_sha1, entry.text_size = self._add_file_to_weave(
                             file_id, file_obj, heads, nostore_sha)
@@ -496,7 +495,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         file_obj.close()
                 elif kind == 'symlink':
                     # Wants a path hint?
-                    entry.symlink_target = tree.get_symlink_target(change[1][1], file_id)
+                    entry.symlink_target = tree.get_symlink_target(change[1][1])
                     if (carry_over_possible and
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
@@ -518,7 +517,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    reference_revision = tree.get_reference_revision(change[1][1], change[0])
+                    reference_revision = tree.get_reference_revision(change[1][1])
                     entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):
@@ -2272,7 +2271,7 @@ class InterVersionedFileRepository(InterRepository):
             ui.ui_factory.show_user_warning('experimental_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
-        from breezy.fetch import RepoFetcher
+        from breezy.bzr.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
             ui.ui_factory.show_user_warning('cross_format_fetch',
@@ -2853,12 +2852,13 @@ def _install_revision(repository, rev, revision_tree, signature,
             if not tree.has_id(ie.file_id):
                 continue
             path = tree.id2path(ie.file_id)
-            parent_id = tree.get_file_revision(path, ie.file_id)
+            parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))
         revision_tree_path = revision_tree.id2path(ie.file_id)
-        lines = revision_tree.get_file(revision_tree_path, ie.file_id).readlines()
+        with revision_tree.get_file(revision_tree_path) as f:
+            lines = f.readlines()
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory

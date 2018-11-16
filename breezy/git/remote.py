@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from io import BytesIO
+import gzip
 import re
 
 from .. import (
@@ -44,7 +44,6 @@ from ..errors import (
     NoSuchTag,
     NotBranchError,
     NotLocalUrl,
-    NoWorkingTree,
     PermissionDenied,
     UninitializableFormat,
     )
@@ -71,7 +70,6 @@ from .branch import (
 from .dir import (
     GitControlDirFormat,
     GitDir,
-    BareLocalGitControlDirFormat,
     )
 from .errors import (
     GitSmartRemoteNotSupported,
@@ -100,6 +98,7 @@ import dulwich
 import dulwich.client
 from dulwich.errors import (
     GitProtocolError,
+    HangupException,
     )
 from dulwich.pack import (
     Pack,
@@ -116,7 +115,6 @@ from dulwich.repo import (
 import os
 import select
 import tempfile
-import urllib
 
 try:
     import urllib.parse as urlparse
@@ -390,37 +388,46 @@ class RemoteGitDir(GitDir):
     def _gitrepository_class(self):
         return RemoteGitRepository
 
-    def archive(self, format, committish, write_data, progress=None, write_error=None,
-                subdirs=None, prefix=None):
-        if format not in ('tar', 'zip'):
-            raise errors.NoSuchExportFormat(format)
+    def archive(self, format, committish, write_data, progress=None,
+                write_error=None, subdirs=None, prefix=None):
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
+        def progress_wrapper(message):
+            if message.startswith(b"fatal: Unknown archive format \'"):
+                format = message.strip()[len(b"fatal: Unknown archive format '"):-1]
+                raise errors.NoSuchExportFormat(format.decode('ascii'))
+            return progress(message)
         try:
-            self._client.archive(self._client_path, committish,
-                write_data, progress, write_error, format=format,
-                subdirs=subdirs, prefix=prefix)
+            self._client.archive(
+                self._client_path, committish, write_data, progress_wrapper,
+                write_error,
+                format=(format.encode('ascii') if format else None),
+                subdirs=subdirs,
+                prefix=(prefix.encode('utf-8') if prefix else None))
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+    def fetch_pack(self, determine_wants, graph_walker, pack_data,
+                   progress=None):
         if progress is None:
             pb = ui.ui_factory.nested_progress_bar()
             progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
         try:
-            result = self._client.fetch_pack(self._client_path, determine_wants,
-                graph_walker, pack_data, progress)
+            result = self._client.fetch_pack(
+                self._client_path, determine_wants, graph_walker, pack_data,
+                progress)
             if result.refs is None:
                 result.refs = {}
-            self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
+            self._refs = remote_refs_dict_to_container(
+                result.refs, result.symrefs)
             return result
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
@@ -434,13 +441,15 @@ class RemoteGitDir(GitDir):
             progress = DefaultProgressReporter(pb).progress
         else:
             pb = None
+
         def get_changed_refs_wrapper(refs):
             # TODO(jelmer): This drops symref information
             self._refs = remote_refs_dict_to_container(refs)
             return get_changed_refs(refs)
         try:
-            return self._client.send_pack(self._client_path,
-                    get_changed_refs_wrapper, generate_pack_data, progress)
+            return self._client.send_pack(
+                self._client_path, get_changed_refs_wrapper,
+                generate_pack_data, progress)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
         finally:
@@ -490,12 +499,23 @@ class RemoteGitDir(GitDir):
     def open_repository(self):
         return RemoteGitRepository(self)
 
+    def get_branch_reference(self, name=None):
+        ref = branch_name_to_ref(name)
+        val = self.get_refs_container().read_ref(ref)
+        if val.startswith(SYMREF):
+            return val[len(SYMREF):]
+        return None
+
     def open_branch(self, name=None, unsupported=False,
             ignore_fallbacks=False, ref=None, possible_transports=None,
             nascent_ok=False):
         repo = self.open_repository()
         ref = self._get_selected_ref(name, ref)
-        if not nascent_ok and ref not in self.get_refs_container():
+        try:
+            if not nascent_ok and ref not in self.get_refs_container():
+                raise NotBranchError(self.root_transport.base,
+                        controldir=self)
+        except NotGitRepository:
             raise NotBranchError(self.root_transport.base,
                     controldir=self)
         ref_chain, unused_sha = self.get_refs_container().follow(ref)
@@ -548,7 +568,11 @@ class RemoteGitDir(GitDir):
                 if lossy:
                     new_sha = source_store._lookup_revision_sha1(revision_id)
                 else:
-                    new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+                    try:
+                        new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+                    except errors.NoSuchRevision:
+                        raise errors.NoRoundtrippingSupport(
+                            source, self.open_branch(name=name, nascent_ok=True))
                 if not overwrite:
                     if remote_divergence(ret.get(refname), new_sha, source_store):
                         raise DivergedBranches(
@@ -680,6 +704,9 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
                 self.content_type = response.getheader("Content-Type")
                 self.redirect_location = response.geturl()
 
+            def readlines(self):
+                return self._response.readlines()
+
             def close(self):
                 self._response.close()
 
@@ -777,6 +804,15 @@ class GitRemoteRevisionTree(RevisionTree):
         f.seek(0)
         return osutils.file_iterator(f)
 
+    def is_versioned(self, path, file_id=None):
+        raise GitSmartRemoteNotSupported(self.is_versioned, self)
+
+    def has_filename(self, path):
+        raise GitSmartRemoteNotSupported(self.has_filename, self)
+
+    def get_file_text(self, path, file_id=None):
+        raise GitSmartRemoteNotSupported(self.get_file_text, self)
+
 
 class RemoteGitRepository(GitRepository):
 
@@ -792,8 +828,8 @@ class RemoteGitRepository(GitRepository):
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
-        return self.controldir.fetch_pack(determine_wants, graph_walker,
-                                          pack_data, progress)
+        return self.controldir.fetch_pack(
+                determine_wants, graph_walker, pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_data):
         return self.controldir.send_pack(get_changed_refs, generate_pack_data)
@@ -896,7 +932,9 @@ class RemoteGitBranch(GitBranch):
 
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""
-        destination.generate_revision_history(self.last_revision())
+        if revision_id is None:
+            revision_id = self.last_revision()
+        destination.generate_revision_history(revision_id)
 
     def _get_parent_location(self):
         return None
@@ -926,6 +964,19 @@ class RemoteGitBranch(GitBranch):
             if not isinstance(tag_name, text_type):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
+
+    def set_last_revision_info(self, revno, revid):
+        self.generate_revision_history(revid)
+
+    def generate_revision_history(self, revision_id, last_rev=None,
+                                  other_branch=None):
+        sha = self.lookup_bzr_revision_id(revision_id)[0]
+        def get_changed_refs(old_refs):
+            return {self.ref: sha}
+        def generate_pack_data(have, want, ofs_delta=False):
+            return pack_objects_to_data([])
+        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        self._sha = sha
 
 
 def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):

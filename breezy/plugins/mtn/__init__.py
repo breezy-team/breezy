@@ -21,7 +21,7 @@ Currently only tells the user that Monotone is not supported.
 
 from __future__ import absolute_import
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     controldir,

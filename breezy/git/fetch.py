@@ -29,7 +29,6 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
-from dulwich.walk import Walker
 import posixpath
 import stat
 
@@ -38,7 +37,6 @@ from .. import (
     errors,
     osutils,
     trace,
-    ui,
     )
 from ..errors import (
     BzrError,
@@ -48,9 +46,6 @@ from ..bzr.inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
-    )
-from ..repository import (
-    InterRepository,
     )
 from ..revision import (
     NULL_REVISION,
@@ -76,17 +71,6 @@ from .mapping import (
 from .object_store import (
     LRUTreeCache,
     _tree_to_objects,
-    )
-from .refs import (
-    is_tag,
-    )
-from .remote import (
-    RemoteGitRepository,
-    )
-from .repository import (
-    GitRepository,
-    GitRepositoryFormat,
-    LocalGitRepository,
     )
 
 
@@ -145,15 +129,15 @@ def import_git_blob(texts, mapping, path, name, hexshas,
             ppath = ptree.id2path(file_id)
         except errors.NoSuchId:
             continue
-        pkind = ptree.kind(ppath, file_id)
+        pkind = ptree.kind(ppath)
         if (pkind == ie.kind and
-            ((pkind == "symlink" and ptree.get_symlink_target(ppath, file_id) == ie.symlink_target) or
-             (pkind == "file" and ptree.get_file_sha1(ppath, file_id) == ie.text_sha1 and
-                ptree.is_executable(ppath, file_id) == ie.executable))):
+            ((pkind == "symlink" and ptree.get_symlink_target(ppath) == ie.symlink_target) or
+             (pkind == "file" and ptree.get_file_sha1(ppath) == ie.text_sha1 and
+                ptree.is_executable(ppath) == ie.executable))):
             # found a revision in one of the parents to use
-            ie.revision = ptree.get_file_revision(ppath, file_id)
+            ie.revision = ptree.get_file_revision(ppath)
             break
-        parent_key = (file_id, ptree.get_file_revision(ppath, file_id))
+        parent_key = (file_id, ptree.get_file_revision(ppath))
         if not parent_key in parent_keys:
             parent_keys.append(parent_key)
     if ie.revision is None:

@@ -37,7 +37,6 @@ from .. import (
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
-    static_tuple,
     testament as _mod_testament,
     urlutils,
     )

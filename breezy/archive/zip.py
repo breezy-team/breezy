@@ -56,15 +56,14 @@ def zip_archive_generator(tree, dest, root, subdir=None,
         with closing(zipfile.ZipFile(buf, "w", compression)) as zipf, \
              tree.lock_read():
             for dp, tp, ie in _export_iter_entries(tree, subdir):
-                file_id = getattr(ie, 'file_id', None)
-                mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
+                mutter("  export {%s} kind %s to %s", tp, ie.kind, dest)
 
                 # zipfile.ZipFile switches all paths to forward
                 # slashes anyway, so just stick with that.
                 if force_mtime is not None:
                     mtime = force_mtime
                 else:
-                    mtime = tree.get_file_mtime(tp, file_id)
+                    mtime = tree.get_file_mtime(tp)
                 date_time = time.localtime(mtime)[:6]
                 filename = osutils.pathjoin(root, dp)
                 if ie.kind == "file":
@@ -73,7 +72,7 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                                 date_time=date_time)
                     zinfo.compress_type = compression
                     zinfo.external_attr = _FILE_ATTR
-                    content = tree.get_file_text(tp, file_id)
+                    content = tree.get_file_text(tp)
                     zipf.writestr(zinfo, content)
                 elif ie.kind in ("directory", "tree-reference"):
                     # Directories must contain a trailing slash, to indicate
@@ -91,7 +90,7 @@ def zip_archive_generator(tree, dest, root, subdir=None,
                                 date_time=date_time)
                     zinfo.compress_type = compression
                     zinfo.external_attr = _FILE_ATTR
-                    zipf.writestr(zinfo, tree.get_symlink_target(tp, file_id))
+                    zipf.writestr(zinfo, tree.get_symlink_target(tp))
         # Urgh, headers are written last since they include e.g. file size.
         # So we have to buffer it all :(
         buf.seek(0)

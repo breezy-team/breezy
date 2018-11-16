@@ -47,7 +47,7 @@ from ... import (
     lazy_regex,
     # Since we are a built-in plugin we share the breezy version
     trace,
-    version_info,
+    version_info,  # noqa: F401
     )
 from ...commands import (
     plugin_cmds,

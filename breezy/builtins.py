@@ -54,7 +54,6 @@ from breezy import (
     symbol_versioning,
     timestamp,
     transport,
-    tree as _mod_tree,
     ui,
     urlutils,
     views,
@@ -84,7 +83,6 @@ from .revisionspec import (
     RevisionInfo,
     )
 from .sixish import (
-    BytesIO,
     PY3,
     text_type,
     viewitems,
@@ -129,7 +127,7 @@ def _is_colocated(control_dir, possible_transports=None):
         return (False, this_url)
     else:
         try:
-            wt = control_dir.open_workingtree()
+            control_dir.open_workingtree()
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             return (False, this_url)
         else:
@@ -204,7 +202,6 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     :param control_dir: Control directory for which to look up the siblings
     :return: Iterator over tuples with branch name and branch object
     """
-    seen_urls = set()
     try:
         reference = control_dir.get_branch_reference()
     except errors.NotBranchError:
@@ -274,7 +271,7 @@ def _get_one_revision(command_name, revisions):
 
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
     """Get a revision tree. Not suitable for commands that change the tree.
-    
+
     Specifically, the basis tree in dirstate trees is coupled to the dirstate
     and doing a commit/uncommit/pull will at best fail due to changing the
     basis revision data.
@@ -498,7 +495,7 @@ class cmd_remove_tree(Command):
 
     def run(self, location_list, force=False):
         if not location_list:
-            location_list=['.']
+            location_list = ['.']
 
         for location in location_list:
             d = controldir.ControlDir.open(location)
@@ -553,7 +550,7 @@ class cmd_repair_workingtree(Command):
             try:
                 tree.check_state()
             except errors.BzrError:
-                pass # There seems to be a real error here, so we'll reset
+                pass  # There seems to be a real error here, so we'll reset
             else:
                 # Refuse
                 raise errors.BzrCommandError(gettext(
@@ -566,7 +563,7 @@ class cmd_repair_workingtree(Command):
             revision_ids = [r.as_revision_id(tree.branch) for r in revision]
         try:
             tree.reset_state(revision_ids)
-        except errors.BzrError as e:
+        except errors.BzrError:
             if revision_ids is None:
                 extra = (gettext(', the header appears corrupt, try passing -r -1'
                          ' to set the state to the last commit'))
@@ -615,7 +612,7 @@ class cmd_revno(Command):
                 revid = b.last_revision()
         try:
             revno_t = b.revision_id_to_dotted_revno(revid)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
             revno_t = ('???',)
         revno = ".".join(str(n) for n in revno_t)
         self.cleanup_now()
@@ -715,10 +712,10 @@ class cmd_add(Command):
     branches that will be merged later (without showing the two different
     adds as a conflict). It is also useful when merging another project
     into a subdirectory of this one.
-    
+
     Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
-    
+
     In recursive mode, files larger than the configuration option 
     add.maximum_file_size will be skipped. Named items are never skipped due
     to file size.
@@ -917,7 +914,6 @@ class cmd_cp(Command):
     encoding_type = 'replace'
 
     def run(self, names_list):
-        import shutil
         if names_list is None:
             names_list = []
         if len(names_list) < 2:
@@ -1520,7 +1516,12 @@ class cmd_branch(Command):
                 branch.get_stacked_on_url())
         except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat) as e:
-            note(ngettext('Branched %d revision.', 'Branched %d revisions.', branch.revno()) % branch.revno())
+            revno = branch.revno()
+            if revno is not None:
+                note(ngettext('Branched %d revision.', 'Branched %d revisions.',
+                     branch.revno()) % revno)
+            else:
+                note(gettext('Created new branch.'))
         if bind:
             # Bind to the parent
             parent_branch = Branch.open(from_location)
@@ -2440,7 +2441,6 @@ class cmd_added(Command):
         self.add_cleanup(wt.lock_read().unlock)
         basis = wt.basis_tree()
         self.add_cleanup(basis.lock_read().unlock)
-        root_id = wt.get_root_id()
         for path in wt.all_versioned_paths():
             if basis.has_filename(path):
                 continue
@@ -2461,6 +2461,7 @@ class cmd_root(Command):
     directory."""
 
     takes_args = ['filename?']
+
     @display_command
     def run(self, filename=None):
         """Print the branch root."""
@@ -2922,6 +2923,7 @@ def _revision_range_to_revid_range(revision_range):
         rev_id2 = revision_range[1].rev_id
     return rev_id1, rev_id2
 
+
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
     if long:
@@ -2972,7 +2974,8 @@ class cmd_ls(Command):
             Option('ignored', short_name='i',
                 help='Print ignored files.'),
             Option('kind', short_name='k',
-                   help='List entries of a particular kind: file, directory, symlink.',
+                   help=('List entries of a particular kind: file, '
+                         'directory, symlink, tree-reference.'),
                    type=text_type),
             'null',
             'show-ids',
@@ -3108,12 +3111,12 @@ class cmd_ignore(Command):
     Patterns prefixed with '!' are exceptions to ignore patterns and take
     precedence over regular ignores.  Such exceptions are used to specify
     files that should be versioned which would otherwise be ignored.
-    
+
     Patterns prefixed with '!!' act as regular ignore patterns, but have
     precedence over the '!' exception patterns.
 
-    :Notes: 
-        
+    :Notes:
+
     * Ignore patterns containing shell wildcards must be quoted from
       the shell on Unix.
 
@@ -3148,10 +3151,10 @@ class cmd_ignore(Command):
         Ignore everything but the "debian" toplevel directory::
 
             brz ignore "RE:(?!debian/).*"
-        
+
         Ignore everything except the "local" toplevel directory,
         but always ignore autosave files ending in ~, even under local/::
-        
+
             brz ignore "*"
             brz ignore "!./local"
             brz ignore "!!*~"
@@ -3308,6 +3311,7 @@ class cmd_export(Command):
                help='Export the working tree contents rather than that of the '
                     'last revision.'),
         ]
+
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
         root=None, filters=False, per_file_timestamps=False, uncommitted=False,
         directory=u'.'):
@@ -3423,9 +3427,9 @@ class cmd_cat(Command):
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(rev_tree,
                 rev_tree._content_filter_stack)
-            fileobj = filter_tree.get_file(relpath, actual_file_id)
+            fileobj = filter_tree.get_file(relpath)
         else:
-            fileobj = rev_tree.get_file(relpath, actual_file_id)
+            fileobj = rev_tree.get_file(relpath)
         shutil.copyfileobj(fileobj, self.outf)
         self.cleanup_now()
 
@@ -3433,6 +3437,7 @@ class cmd_cat(Command):
 class cmd_local_time_offset(Command):
     __doc__ = """Show the offset in seconds from GMT to local time."""
     hidden = True
+
     @display_command
     def run(self):
         self.outf.write("%s\n" % osutils.local_time_offset())
@@ -3458,13 +3463,13 @@ class cmd_commit(Command):
       If selected files are specified, only changes to those files are
       committed.  If a directory is specified then the directory and
       everything within it is committed.
-  
+
       When excludes are given, they take precedence over selected files.
       For example, to commit only changes within foo, but not changes
       within foo/bar::
-  
+
         brz commit foo -x foo/bar
-  
+
       A selective commit after a merge is not yet supported.
 
     :Custom authors:
@@ -3475,7 +3480,7 @@ class cmd_commit(Command):
       "John Doe <jdoe@example.com>". If there is more than one author of
       the change you can specify the option multiple times, once for each
       author.
-  
+
     :Checks:
 
       A common mistake is to forget to add a new file or directory before
@@ -3517,6 +3522,8 @@ class cmd_commit(Command):
              Option('commit-time', type=text_type,
                     help="Manually set a commit time using commit date "
                     "format, e.g. '2009-10-10 08:00:00 +0100'."),
+             ListOption('bugs', type=text_type,
+                    help="Link to a related bug. (see \"brz help bugs\")."),
              ListOption('fixes', type=text_type,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"brz help bugs\")."),
@@ -3539,11 +3546,11 @@ class cmd_commit(Command):
              ]
     aliases = ['ci', 'checkin']
 
-    def _iter_bug_fix_urls(self, fixes, branch):
-        default_bugtracker  = None
+    def _iter_bug_urls(self, bugs, branch, status):
+        default_bugtracker = None
         # Configure the properties for bug fixing attributes.
-        for fixed_bug in fixes:
-            tokens = fixed_bug.split(':')
+        for bug in bugs:
+            tokens = bug.split(':')
             if len(tokens) == 1:
                 if default_bugtracker is None:
                     branch_config = branch.get_config_stack()
@@ -3555,29 +3562,30 @@ class cmd_commit(Command):
                         "'tracker:id' or specify a default bug tracker "
                         "using the `bugtracker` option.\nSee "
                         "\"brz help bugs\" for more information on this "
-                        "feature. Commit refused.") % fixed_bug)
+                        "feature. Commit refused.") % bug)
                 tag = default_bugtracker
                 bug_id = tokens[0]
             elif len(tokens) != 2:
                 raise errors.BzrCommandError(gettext(
                     "Invalid bug %s. Must be in the form of 'tracker:id'. "
                     "See \"brz help bugs\" for more information on this "
-                    "feature.\nCommit refused.") % fixed_bug)
+                    "feature.\nCommit refused.") % bug)
             else:
                 tag, bug_id = tokens
             try:
-                yield bugtracker.get_bug_url(tag, branch, bug_id)
+                yield bugtracker.get_bug_url(tag, branch, bug_id), status
             except bugtracker.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(gettext(
-                    'Unrecognized bug %s. Commit refused.') % fixed_bug)
+                    'Unrecognized bug %s. Commit refused.') % bug)
             except bugtracker.MalformedBugIdentifier as e:
                 raise errors.BzrCommandError(gettext(
                     u"%s\nCommit refused.") % (e,))
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
-            unchanged=False, strict=False, local=False, fixes=None,
+            unchanged=False, strict=False, local=False, fixes=None, bugs=None,
             author=None, show_diff=False, exclude=None, commit_time=None,
             lossy=False):
+        import itertools
         from .commit import (
             PointlessCommit,
             )
@@ -3611,8 +3619,12 @@ class cmd_commit(Command):
 
         if fixes is None:
             fixes = []
+        if bugs is None:
+            bugs = []
         bug_property = bugtracker.encode_fixes_bug_urls(
-            self._iter_bug_fix_urls(fixes, tree.branch))
+            itertools.chain(
+                self._iter_bug_urls(bugs, tree.branch, bugtracker.RELATED),
+                self._iter_bug_urls(fixes, tree.branch, bugtracker.FIXED)))
         if bug_property:
             properties[u'bugs'] = bug_property
 
@@ -3916,6 +3928,7 @@ class cmd_nick(Command):
     _see_also = ['info']
     takes_args = ['nickname?']
     takes_options = ['directory']
+
     def run(self, nickname=None, directory=u'.'):
         branch = Branch.open_containing(directory)[0]
         if nickname is None:
@@ -4163,7 +4176,7 @@ class cmd_selftest(Command):
                     "to use --subunit."))
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunnerv1
             # On Windows, disable automatic conversion of '\n' to '\r\n' in
-            # stdout, which would corrupt the subunit stream. 
+            # stdout, which would corrupt the subunit stream.
             # FIXME: This has been fixed in subunit trunk (>0.0.5) so the
             # following code can be deleted when it's sufficiently deployed
             # -- vila/mgz 20100514
@@ -4403,14 +4416,15 @@ class cmd_merge(Command):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
-        if directory is None: directory = u'.'
+        if directory is None:
+            directory = u'.'
         possible_transports = []
         merger = None
         allow_pending = True
         verified = 'inapplicable'
 
         tree = WorkingTree.open_containing(directory)[0]
-        if tree.branch.revno() == 0:
+        if tree.branch.last_revision() == _mod_revision.NULL_REVISION:
             raise errors.BzrCommandError(gettext('Merging into empty branches not currently supported, '
                                          'https://bugs.launchpad.net/bzr/+bug/308562'))
 
@@ -4899,7 +4913,7 @@ class cmd_missing(Command):
     To filter on a range of revisions, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
-            
+
     :Exit values:
         1 - some missing revisions
         0 - no missing revisions
@@ -4962,6 +4976,7 @@ class cmd_missing(Command):
             include_merged=None, revision=None, my_revision=None,
             directory=u'.'):
         from breezy.missing import find_unmerged, iter_log_revisions
+
         def message(s):
             if not is_quiet():
                 self.outf.write(s)
@@ -5220,10 +5235,10 @@ class cmd_annotate(Command):
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, relpath, self.outf, long, all,
-                show_ids=show_ids, file_id=file_id)
+                               show_ids=show_ids)
         else:
             annotate_file_tree(tree, relpath, self.outf, long, all,
-                show_ids=show_ids, branch=branch, file_id=file_id)
+                               show_ids=show_ids, branch=branch)
 
 
 class cmd_re_sign(Command):
@@ -5633,11 +5648,10 @@ class cmd_split(Command):
 
     def run(self, tree):
         containing_tree, subdir = WorkingTree.open_containing(tree)
-        sub_id = containing_tree.path2id(subdir)
-        if sub_id is None:
+        if not containing_tree.is_versioned(subdir):
             raise errors.NotVersionedError(subdir)
         try:
-            containing_tree.extract(subdir, sub_id)
+            containing_tree.extract(subdir)
         except errors.RootNotRich:
             raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 
@@ -5758,12 +5772,12 @@ class cmd_send(Command):
       branch.
 
     `brz send` creates a compact data set that, when applied using brz
-    merge, has the same effect as merging from the source branch.  
-    
+    merge, has the same effect as merging from the source branch.
+
     By default the merge directive is self-contained and can be applied to any
     branch containing submit_branch in its ancestory without needing access to
     the source branch.
-    
+
     If --no-bundle is specified, then Bazaar doesn't send the contents of the
     revisions, but only a structured request to merge from the
     public_location.  In that case the public_branch is needed and it must be
@@ -5795,22 +5809,15 @@ class cmd_send(Command):
     If the preferred client can't be found (or used), your editor will be used.
 
     To use a specific mail program, set the mail_client configuration option.
-    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
-    Mail.app), "mutt", and "thunderbird"; generic options are "default",
-    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
-    supported clients.
+    Supported values for specific clients are "claws", "evolution", "kmail",
+    "mail.app" (MacOS X's Mail.app), "mutt", and "thunderbird"; generic options
+    are "default", "editor", "emacsclient", "mapi", and "xdg-email".  Plugins
+    may also add supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
     option in the branch itself or the child_submit_to configuration option
     in the submit branch.
-
-    Two formats are currently supported: "4" uses revision bundle format 4 and
-    merge directive format 2.  It is significantly faster and smaller than
-    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
-    default.  "0.9" uses revision bundle format 0.9 and merge directive
-    format 1.  It is compatible with Bazaar 0.12 - 0.18.
 
     The merge directives created by brz send may be applied using brz merge or
     brz pull by specifying a file containing a merge directive as the location.
@@ -5892,12 +5899,6 @@ class cmd_bundle_revisions(cmd_send):
     branch is used in the merge instructions.  This means that a local mirror
     can be used as your actual submit branch, once you have set public_branch
     for that mirror.
-
-    Two formats are currently supported: "4" uses revision bundle format 4 and
-    merge directive format 2.  It is significantly faster and smaller than
-    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
-    default.  "0.9" uses revision bundle format 0.9 and merge directive
-    format 1.  It is compatible with Bazaar 0.12 - 0.18.
     """
 
     takes_options = [
@@ -6074,7 +6075,6 @@ class cmd_tags(Command):
             self.outf.write('%-20s %s\n' % (tag, revspec))
 
     def _tags_for_range(self, branch, revision):
-        range_valid = True
         rev1, rev2 = _get_revision_range(revision, branch, self.name())
         revid1, revid2 = rev1.rev_id, rev2.rev_id
         # _get_revision_range will always set revid2 if it's not specified.
@@ -6276,8 +6276,11 @@ class cmd_switch(Command):
                     gettext('cannot create branch without source branch'))
             to_location = lookup_new_sibling_branch(control_dir, to_location,
                  possible_transports=possible_transports)
+            if revision is not None:
+                revision = revision.as_revision_id(branch)
             to_branch = branch.controldir.sprout(to_location,
                  possible_transports=possible_transports,
+                 revision_id=revision,
                  source_branch=branch).open_branch()
         else:
             try:
@@ -6286,8 +6289,8 @@ class cmd_switch(Command):
             except errors.NotBranchError:
                 to_branch = open_sibling_branch(control_dir, to_location,
                     possible_transports=possible_transports)
-        if revision is not None:
-            revision = revision.as_revision_id(to_branch)
+            if revision is not None:
+                revision = revision.as_revision_id(to_branch)
         try:
             switch.switch(control_dir, to_branch, force, revision_id=revision,
                           store_uncommitted=store)
@@ -6544,11 +6547,11 @@ class cmd_shelve(Command):
 
         change_editor = PROGRAM @new_path @old_path
 
-    where @new_path is replaced with the path of the new version of the 
-    file and @old_path is replaced with the path of the old version of 
-    the file.  The PROGRAM should save the new file with the desired 
+    where @new_path is replaced with the path of the new version of the
+    file and @old_path is replaced with the path of the old version of
+    the file.  The PROGRAM should save the new file with the desired
     contents of the file in the working tree.
-        
+
     """
 
     takes_args = ['file*']
@@ -6660,6 +6663,7 @@ class cmd_clean_tree(Command):
                      Option('dry-run', help='Show files to delete instead of'
                             ' deleting them.'),
                      Option('force', help='Do not prompt before deleting.')]
+
     def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
             force=False, directory=u'.'):
         from .clean_tree import clean_tree
@@ -6682,8 +6686,12 @@ class cmd_reference(Command):
     hidden = True
 
     takes_args = ['path?', 'location?']
+    takes_options = [
+        Option('force-unversioned',
+               help='Set reference even if path is not versioned.'),
+        ]
 
-    def run(self, path=None, location=None):
+    def run(self, path=None, location=None, force_unversioned=False):
         branchdir = '.'
         if path is not None:
             branchdir = path
@@ -6697,7 +6705,7 @@ class cmd_reference(Command):
             info = viewitems(branch._get_all_reference_info())
             self._display_reference_info(tree, branch, info)
         else:
-            if not tree.is_versioned(path):
+            if not tree.is_versioned(path) and not force_unversioned:
                 raise errors.NotVersionedError(path)
             if location is None:
                 info = [(path, branch.get_reference_info(path))]

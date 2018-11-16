@@ -19,7 +19,6 @@
 from __future__ import absolute_import
 
 from ... import (
-    branch,
     commands,
     config,
     lazy_import,
@@ -28,7 +27,6 @@ from ... import (
     )
 lazy_import.lazy_import(globals(), """
 import stat
-import sys
 
 from breezy import (
     controldir,
@@ -175,15 +173,15 @@ class BzrUploader(object):
                     dir = os.path.dirname(dir)
         return ignored
 
-    def upload_file(self, old_relpath, new_relpath, id, mode=None):
+    def upload_file(self, old_relpath, new_relpath, mode=None):
         if mode is None:
-            if self.tree.is_executable(new_relpath, id):
+            if self.tree.is_executable(new_relpath):
                 mode = 0o775
             else:
                 mode = 0o664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % old_relpath)
-        self._up_put_bytes(old_relpath, self.tree.get_file_text(new_relpath, id), mode)
+        self._up_put_bytes(old_relpath, self.tree.get_file_text(new_relpath), mode)
 
     def _force_clear(self, relpath):
         try:
@@ -202,14 +200,14 @@ class BzrUploader(object):
         except errors.PathError:
             pass
 
-    def upload_file_robustly(self, relpath, id, mode=None):
+    def upload_file_robustly(self, relpath, mode=None):
         """Upload a file, clearing the way on the remote side.
 
         When doing a full upload, it may happen that a directory exists where
         we want to put our file.
         """
         self._force_clear(relpath)
-        self.upload_file(relpath, relpath, id, mode)
+        self.upload_file(relpath, relpath, mode)
 
     def upload_symlink(self, relpath, target):
         self.to_transport.symlink(target, relpath)
@@ -326,7 +324,7 @@ class BzrUploader(object):
                         self.outf.write('Ignoring %s\n' % relpath)
                     continue
                 if ie.kind == 'file':
-                    self.upload_file_robustly(relpath, ie.file_id)
+                    self.upload_file_robustly(relpath)
                 elif ie.kind == 'symlink':
                     try:
                         self.upload_symlink_robustly(relpath, ie.symlink_target)
@@ -388,7 +386,7 @@ class BzrUploader(object):
                 if content_change:
                     # We update the old_path content because renames and
                     # deletions are differed.
-                    self.upload_file(old_path, new_path, id)
+                    self.upload_file(old_path, new_path)
                 self.rename_remote(old_path, new_path)
             self.finish_renames()
             self.finish_deletions()
@@ -406,7 +404,7 @@ class BzrUploader(object):
                     raise NotImplementedError
 
                 if new_kind == 'file':
-                    self.upload_file(path, path, id)
+                    self.upload_file(path, path)
                 elif new_kind == 'symlink':
                     target = self.tree.get_symlink_target(path)
                     self.upload_symlink(path, target)
@@ -421,7 +419,7 @@ class BzrUploader(object):
                         self.outf.write('Ignoring %s\n' % path)
                     continue
                 if kind == 'file':
-                    self.upload_file(path, path, id)
+                    self.upload_file(path, path)
                 elif kind == 'directory':
                     self.make_remote_dir(path)
                 elif kind == 'symlink':
@@ -443,7 +441,7 @@ class BzrUploader(object):
                         self.outf.write('Ignoring %s\n' % path)
                     continue
                 if kind == 'file':
-                    self.upload_file(path, path, id)
+                    self.upload_file(path, path)
                 elif kind == 'symlink':
                     target = self.tree.get_symlink_target(path)
                     self.upload_symlink(path, target)

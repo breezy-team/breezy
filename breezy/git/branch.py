@@ -61,7 +61,6 @@ from .config import (
     )
 from .errors import (
     NoPushSupport,
-    NoSuchRef,
     )
 from .push import (
     remote_divergence,
@@ -138,10 +137,15 @@ class GitTags(tag.BasicTags):
                 pass
             elif overwrite or not ref_name in target_repo._git.refs:
                 target_repo._git.refs[ref_name] = unpeeled or peeled
-                updates[tag_name] = self.repository.lookup_foreign_revision_id(peeled)
-            else:
-                source_revid = self.repository.lookup_foreign_revision_id(peeled)
                 try:
+                    updates[tag_name] = self.repository.lookup_foreign_revision_id(peeled)
+                except KeyError:
+                    trace.warning('%s does not point to a valid object',
+                                  ref_name)
+                    continue
+            else:
+                try:
+                    source_revid = self.repository.lookup_foreign_revision_id(peeled)
                     target_revid = target_repo.lookup_foreign_revision_id(
                             target_repo._git.refs[ref_name])
                 except KeyError:
@@ -304,7 +308,7 @@ class GitBranchFormat(branch.BranchFormat):
         raise NotImplementedError(self.initialize)
 
     def get_reference(self, controldir, name=None):
-        return controldir.get_branch_reference(name)
+        return controldir.get_branch_reference(name=name)
 
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
@@ -394,11 +398,12 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
-        cs = self.repository._git.get_config_stack()
-        try:
-            return cs.get((b"branch", self.name.encode('utf-8')), b"nick").decode("utf-8")
-        except KeyError:
-            pass
+        if getattr(self.repository, '_git', None):
+            cs = self.repository._git.get_config_stack()
+            try:
+                return cs.get((b"branch", self.name.encode('utf-8')), b"nick").decode("utf-8")
+            except KeyError:
+                pass
         return self.name or u"HEAD"
 
     def _set_nick(self, nick):
@@ -663,8 +668,11 @@ class LocalGitBranch(GitBranch):
     def _read_last_revision_info(self):
         last_revid = self.last_revision()
         graph = self.repository.get_graph()
-        revno = graph.find_distance_to_null(last_revid,
-            [(revision.NULL_REVISION, 0)])
+        try:
+            revno = graph.find_distance_to_null(last_revid,
+                [(revision.NULL_REVISION, 0)])
+        except errors.GhostRevisionsHaveNoRevno:
+            revno = None
         return revno, last_revid
 
     def set_last_revision_info(self, revno, revision_id):
@@ -908,7 +916,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
               _override_hook_target, _hook_master):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = GitBranchPullResult()
         result.source_branch = self.source
@@ -993,7 +1001,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
     def _basic_push(self, overwrite, stop_revision):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = branch.BranchPushResult()
         result.source_branch = self.source
@@ -1083,7 +1091,7 @@ class InterGitLocalGitBranch(InterGitBranch):
     def _basic_push(self, overwrite=False, stop_revision=None):
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
         result = GitBranchPushResult()
         result.source_branch = self.source
@@ -1110,9 +1118,9 @@ class InterGitLocalGitBranch(InterGitBranch):
         fetch_tags = c.get('branch.fetch_tags')
 
         if stop_revision is None:
-            refs = interrepo.fetch(branches=[b"HEAD"], include_tags=fetch_tags)
+            refs = interrepo.fetch(branches=[self.source.ref], include_tags=fetch_tags)
             try:
-                head = refs[b"HEAD"]
+                head = refs[self.source.ref]
             except KeyError:
                 stop_revision = revision.NULL_REVISION
             else:
@@ -1128,7 +1136,7 @@ class InterGitLocalGitBranch(InterGitBranch):
             raise errors.LocalRequiresBoundBranch()
         if overwrite is True:
             overwrite = set(["history", "tags"])
-        else:
+        elif not overwrite:
             overwrite = set()
 
         result = GitPullResult()

@@ -427,7 +427,7 @@ if have_pywin32 and sys.platform == 'win32':
 
 
 if have_ctypes_win32:
-    from ctypes.wintypes import DWORD, LPCSTR, LPCWSTR
+    from ctypes.wintypes import DWORD, LPWSTR
     LPSECURITY_ATTRIBUTES = ctypes.c_void_p # used as NULL no need to declare
     HANDLE = ctypes.c_int # rather than unsigned as in ctypes.wintypes
     _function_name = "CreateFileW"

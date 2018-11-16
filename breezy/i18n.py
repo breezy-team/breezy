@@ -28,8 +28,6 @@ import gettext as _gettext
 import os
 import sys
 
-from .sixish import text_type
-
 
 _translations = None
 

@@ -67,7 +67,7 @@ class _ChooseUI(object):
         """
         is_tty = self.ui.raw_stdin.isatty()
         if (os.environ.get('BRZ_TEXTUI_INPUT') != 'line-based' and
-                self.ui.raw_stdin == sys.stdin and is_tty):
+                self.ui.raw_stdin == getattr(sys.stdin, 'buffer', sys.stdin) and is_tty):
             self.line_based = False
             self.echo_back = True
         else:
@@ -332,6 +332,7 @@ class TextUIFactory(UIFactory):
         self.clear_term()
         self.stdout.flush()
         self.stderr.write(prompt)
+        self.stderr.flush()
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.

@@ -76,6 +76,5 @@ class TestMergeDirective(TestCaseWithRepository):
         chk_map.clear_cache()
         directive.install_revisions(target_branch.repository)
         rt = target_branch.repository.revision_tree(b'B')
-        rt.lock_read()
-        self.assertEqualDiff(b'new content\n', rt.get_file_text('f', b'f-id'))
-        rt.unlock()
+        with rt.lock_read():
+            self.assertEqualDiff(b'new content\n', rt.get_file_text('f'))

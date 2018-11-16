@@ -178,13 +178,6 @@ class TestFileContent(TestCaseWithTree):
             self.assertEqual([b'foobar\n'], lines)
         finally:
             file_without_path.close()
-        # Test lookup with path works
-        file_with_path = tree.get_file('a', a_id)
-        try:
-            lines = file_with_path.readlines()
-            self.assertEqual([b'foobar\n'], lines)
-        finally:
-            file_with_path.close()
 
     def test_get_file_context_manager(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -201,8 +194,6 @@ class TestFileContent(TestCaseWithTree):
         a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        # test read by file-id
-        self.assertEqual(b'foobar\n', tree.get_file_text('a', a_id))
         # test read by path
         self.assertEqual(b'foobar\n', tree.get_file_text('a'))
 
@@ -212,8 +203,6 @@ class TestFileContent(TestCaseWithTree):
         a_id = tree.path2id('a')
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        # test read by file-id
-        self.assertEqual([b'foobar\n'], tree.get_file_lines('a', a_id))
         # test read by path
         self.assertEqual([b'foobar\n'], tree.get_file_lines('a'))
 
@@ -279,11 +268,9 @@ class TestIterChildEntries(TestCaseWithTree):
         self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d/', 'a/d/e', 'f/', 'f/g'])
         work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
         tree = self._convert_tree(work_tree)
-        output = [e.name for e in
-            tree.iter_child_entries('', tree.get_root_id())]
+        output = [e.name for e in tree.iter_child_entries('')]
         self.assertEqual({'a', 'f'}, set(output))
-        output = [e.name for e in
-            tree.iter_child_entries('a', tree.path2id('a'))]
+        output = [e.name for e in tree.iter_child_entries('a')]
         self.assertEqual({'b', 'd'}, set(output))
 
     def test_does_not_exist(self):

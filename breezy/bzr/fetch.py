@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 import operator
 
-from .lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     tsort,
@@ -36,16 +36,16 @@ from breezy.bzr import (
     vf_search,
     )
 """)
-from . import (
+from .. import (
     errors,
     ui,
     )
-from .i18n import gettext
-from .revision import NULL_REVISION
-from .sixish import (
+from ..i18n import gettext
+from ..revision import NULL_REVISION
+from ..sixish import (
     viewvalues,
     )
-from .trace import mutter
+from ..trace import mutter
 
 
 class RepoFetcher(object):
@@ -211,7 +211,7 @@ class Inter1and2Helper(object):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.get_root_id()
-            revision_id = tree.get_file_revision(u'', root_id)
+            revision_id = tree.get_file_revision(u'')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set(viewvalues(parent_map))
@@ -317,7 +317,7 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id), root_id))
+                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id)))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

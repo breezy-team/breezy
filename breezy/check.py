@@ -38,16 +38,9 @@ from __future__ import absolute_import
 
 from . import (
     errors,
-    ui,
     )
-from .branch import Branch
 from .controldir import ControlDir
-from .revision import NULL_REVISION
-from .sixish import (
-    viewitems,
-    )
 from .trace import note
-from .workingtree import WorkingTree
 from .i18n import gettext
 
 class Check(object):

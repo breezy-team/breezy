@@ -18,9 +18,6 @@
 
 from __future__ import absolute_import
 
-from dulwich.errors import (
-    NotTreeError,
-    )
 from dulwich.object_store import (
     tree_lookup_path,
     )
@@ -30,8 +27,6 @@ from ..graph import Graph
 from ..revision import (
     NULL_REVISION,
     )
-
-from .filegraph import GitFileLastChangeScanner
 
 
 class GitFulltextContentFactory(object):

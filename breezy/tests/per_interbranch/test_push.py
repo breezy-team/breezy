@@ -179,6 +179,30 @@ class TestPush(TestCaseWithInterBranch):
             raise tests.TestNotApplicable(
                 'push between branches of same format')
 
+    def test_between_colocated(self):
+        """Pushing from one colocated branch to another doesn't change the active branch."""
+        source = self.make_from_branch_and_tree('source')
+        target = self.make_to_branch('target')
+
+        self.build_tree(['source/a'])
+        source.add(['a'])
+        revid1 = source.commit('a')
+
+        self.build_tree(['source/b'])
+        source.add(['b'])
+        revid2 = source.commit('b')
+
+        source_colo = source.controldir.create_branch('colo')
+        source_colo.generate_revision_history(revid1)
+        try:
+            source_colo.push(target)
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'push between branches of different format')
+        self.assertEqual(source_colo.last_revision(), revid1)
+        self.assertEqual(source.last_revision(), revid2)
+        self.assertEqual(target.last_revision(), revid1)
+
     def test_push_within_repository(self):
         """Push from one branch to another inside the same repository."""
         try:

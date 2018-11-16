@@ -38,7 +38,6 @@ from warnings import warn
 
 import breezy
 
-from .sixish import PY3
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 

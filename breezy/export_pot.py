@@ -38,7 +38,6 @@ from . import (
     help_topics,
     option,
     plugin as _mod_plugin,
-    help,
     )
 from .sixish import PY3
 from .trace import (
