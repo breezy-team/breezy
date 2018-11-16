@@ -3576,7 +3576,7 @@ class cmd_commit(Command):
                     help='When committing to a foreign version control '
                     'system do not push data that can not be natively '
                     'represented.'),
-        ]
+                    ]
     aliases = ['ci', 'checkin']
 
     def _iter_bug_urls(self, bugs, branch, status):
