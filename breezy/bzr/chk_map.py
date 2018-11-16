@@ -737,7 +737,7 @@ class LeafNode(Node):
             # entry lines
             prefix_len = len(self._common_serialised_prefix)
             bytes_for_items = (self._raw_size - (prefix_len * self._len))
-        return (9  # 'chkleaf:\n' +
+        return (9 +  # 'chkleaf:\n' +
                 len(str(self._maximum_size)) + 1 +
                 len(str(self._key_width)) + 1 +
                 len(str(self._len)) + 1 +

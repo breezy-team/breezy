@@ -108,9 +108,9 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
     result._maximum_size = maximum_size
     result._key = key
     result._key_width = width
-    result._raw_size = (sum(map(len, lines[5:]))  # the length of the suffix +
-                        (length) * (len(prefix))
-                        + (len(line s) - 5))
+    result._raw_size = (sum(map(len, lines[5:]))  # the length of the suffix
+                        + (length) * (len(prefix))
+                        + (len(lines) - 5))
     if not items:
         result._search_prefix = None
         result._common_serialised_prefix = None

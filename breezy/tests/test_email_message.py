@@ -147,7 +147,7 @@ class TestEmailMessage(tests.TestCase):
     def test_multiple_destinations(self):
         to_addresses = ['to1@to.com', 'to2@to.com', 'to3@to.com']
         msg = EmailMessage('from@from.com', to_addresses, 'subject')
-        self.assertContainsRe(msg.as_string(), 'To: 'ing(), 'To: ' +
+        self.assertContainsRe(msg.as_string(), 'To: '
                               + ', '.join(to_addresses))  # re.M can't be passed, so no ^$
 
     def test_retrieving_headers(self):
