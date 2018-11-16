@@ -53,7 +53,7 @@ from .revision import (
 
 
 def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
-                       show_ids=False, branch=None, file_id=None):
+                       show_ids=False, branch=None):
     """Annotate file_id in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
@@ -65,7 +65,6 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         reasonable text width.
     :param full: XXXX Not sure what this does.
     :param show_ids: Show revision ids in the annotation output.
-    :param file_id: The file_id to annotate (must match file path)
     :param branch: Branch to use for revision revno lookups
     """
     if branch is None:
@@ -75,7 +74,7 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
 
     encoding = osutils.get_terminal_encoding()
     # Handle the show_ids case
-    annotations = list(tree.annotate_iter(path, file_id))
+    annotations = list(tree.annotate_iter(path))
     if show_ids:
         return _show_id_annotations(annotations, to_file, full, encoding)
 

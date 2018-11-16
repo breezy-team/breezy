@@ -678,8 +678,8 @@ class Commit(object):
             iter_changes = filter_excluded(iter_changes, self.exclude)
         iter_changes = self._filter_iter_changes(iter_changes)
         for file_id, path, fs_hash in self.builder.record_iter_changes(
-                self.work_tree, self.basis_revid, iter_changes):
-            self.work_tree._observed_sha1(file_id, path, fs_hash)
+            self.work_tree, self.basis_revid, iter_changes):
+            self.work_tree._observed_sha1(path, fs_hash)
 
     def _filter_iter_changes(self, iter_changes):
         """Process iter_changes.
@@ -713,7 +713,7 @@ class Commit(object):
                 versioned = False
             elif kind == 'tree-reference':
                 if self.recursive == 'down':
-                    self._commit_nested_tree(change[0], change[1][1])
+                    self._commit_nested_tree(change[1][1])
             if change[3][0] or change[3][1]:
                 yield change
                 if report_changes:
@@ -744,9 +744,9 @@ class Commit(object):
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
-    def _commit_nested_tree(self, file_id, path):
+    def _commit_nested_tree(self, path):
         "Commit a nested tree."
-        sub_tree = self.work_tree.get_nested_tree(path, file_id)
+        sub_tree = self.work_tree.get_nested_tree(path)
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,
         # but when both are bound to a different repository,
@@ -768,7 +768,7 @@ class Commit(object):
                                    strict=self.strict, verbose=self.verbose,
                                    local=self.local, reporter=self.reporter)
         except PointlessCommit:
-            return self.work_tree.get_reference_revision(path, file_id)
+            return self.work_tree.get_reference_revision(path)
 
     def _set_progress_stage(self, name, counter=False):
         """Set the progress stage and emit an update to the progress bar."""

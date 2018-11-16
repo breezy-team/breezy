@@ -529,7 +529,7 @@ class TestMerge(TestCaseWithTransport):
         source.add('foo', b'foo-id')
         source.commit('Add foo')
         target = source.controldir.sprout('target').open_workingtree()
-        subtree = target.extract('foo', b'foo-id')
+        subtree = target.extract('foo')
         subtree.commit('Delete root')
         self.build_tree(['source/bar'])
         source.add('bar', b'bar-id')

@@ -182,7 +182,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(second_revision)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        root_revision = rev_tree.get_file_revision(u'', rev_tree.get_root_id())
+        root_revision = rev_tree.get_file_revision(u'')
         rich_root = (root_revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
@@ -290,23 +290,16 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev1 = wt.commit('lala!', allow_pointless=True)
         root_id = wt.path2id('')
         tree = wt.branch.repository.revision_tree(rev1)
-        tree.lock_read()
-        try:
-            self.assertEqual(rev1,
-                             tree.get_file_revision(u'', tree.get_root_id()))
+        with tree.lock_read():
+            self.assertEqual(rev1, tree.get_file_revision(u''))
             expected = inventory.InventoryDirectory(root_id, '', None)
             expected.revision = rev1
             self.assertEqual([('', 'V', 'directory', root_id, expected)],
                              list(tree.list_files(include_root=True)))
-        finally:
-            tree.unlock()
         self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
         tree = wt.branch.repository.revision_tree(_mod_revision.NULL_REVISION)
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertEqual([], list(tree.list_files(include_root=True)))
-        finally:
-            tree.unlock()
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
@@ -485,7 +478,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         root_id = rev_tree.get_root_id()
-        self.assertEqual(revid, rev_tree.get_file_revision(u'', root_id))
+        self.assertEqual(revid, rev_tree.get_file_revision(u''))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
@@ -973,7 +966,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         revtree = branch.repository.revision_tree(rev1)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        contents = revtree.get_file_text(revtree.id2path(FOO_ID), FOO_ID)
+        contents = revtree.get_file_text('foo')
         self.assertEqual(contents, b'contents of repo/foo\n')
 
     def test_create_bundle(self):

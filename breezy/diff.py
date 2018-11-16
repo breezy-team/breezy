@@ -480,7 +480,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
     try:
-        mtime = tree.get_file_mtime(path, file_id)
+        mtime = tree.get_file_mtime(path)
     except FileTimestampUnavailable:
         mtime = 0
     return timestamp.format_patch_date(mtime)
@@ -601,13 +601,13 @@ class DiffSymlink(DiffPath):
         if 'symlink' not in (old_kind, new_kind):
             return self.CANNOT_DIFF
         if old_kind == 'symlink':
-            old_target = self.old_tree.get_symlink_target(old_path, file_id)
+            old_target = self.old_tree.get_symlink_target(old_path)
         elif old_kind is None:
             old_target = None
         else:
             return self.CANNOT_DIFF
         if new_kind == 'symlink':
-            new_target = self.new_tree.get_symlink_target(new_path, file_id)
+            new_target = self.new_tree.get_symlink_target(new_path)
         elif new_kind is None:
             new_target = None
         else:
@@ -694,7 +694,7 @@ class DiffText(DiffPath):
         def _get_text(tree, file_id, path):
             if file_id is None:
                 return []
-            return tree.get_file_lines(path, file_id)
+            return tree.get_file_lines(path)
         try:
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
@@ -819,14 +819,14 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(relpath, file_id)
+        source = tree.get_file(relpath)
         try:
             with open(full_path, 'wb') as target:
                 osutils.pumpfile(source, target)
         finally:
             source.close()
         try:
-            mtime = tree.get_file_mtime(relpath, file_id)
+            mtime = tree.get_file_mtime(relpath)
         except FileTimestampUnavailable:
             pass
         else:
@@ -1044,11 +1044,11 @@ class DiffTree(object):
         if old_path is None:
             old_kind = None
         else:
-            old_kind = self.old_tree.kind(old_path, file_id)
+            old_kind = self.old_tree.kind(old_path)
         if new_path is None:
             new_kind = None
         else:
-            new_kind = self.new_tree.kind(new_path, file_id)
+            new_kind = self.new_tree.kind(new_path)
         self._diff(old_path, new_path, old_kind, new_kind, file_id=file_id)
 
     def _diff(self, old_path, new_path, old_kind, new_kind, file_id):

@@ -478,7 +478,7 @@ class BzrDir(controldir.ControlDir):
                 target = urlutils.join(url, urlutils.escape(path))
                 sublocation = source_branch.reference_parent(path, file_id)
                 sublocation.controldir.sprout(
-                    target, basis.get_reference_revision(path, file_id),
+                    target, basis.get_reference_revision(path),
                     force_new_repo=force_new_repo, recurse=recurse,
                     stacked=stacked)
         return result

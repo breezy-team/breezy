@@ -42,7 +42,9 @@ class _TreeShim(object):
         self._basis_inv = basis_inv
         self._inv_delta = inv_delta
         self._new_info_by_id = dict([(file_id, (new_path, ie))
-                                     for _, new_path, file_id, ie in inv_delta])
+                                    for _, new_path, file_id, ie in inv_delta])
+        self._new_info_by_path = {new_path: ie
+                                  for _, new_path, file_id, ie in inv_delta}
 
     def id2path(self, file_id):
         if file_id in self._new_info_by_id:
@@ -58,19 +60,18 @@ class _TreeShim(object):
         # need more than just root, is to defer to basis_inv.path2id() and then
         # check if the file_id is in our _new_info_by_id dict. And in that
         # case, return _new_info_by_id[file_id][0]
-        if path != '':
-            raise NotImplementedError(_TreeShim.path2id)
-        # TODO: Handle root renames?
-        return self._basis_inv.root.file_id
+        try:
+            return self._new_info_by_path[path].file_id
+        except KeyError:
+            return self._basis_inv.path2id(path)
 
-    def get_file_with_stat(self, path, file_id=None):
-        content = self.get_file_text(path, file_id)
+    def get_file_with_stat(self, path):
+        content = self.get_file_text(path)
         sio = BytesIO(content)
         return sio, None
 
-    def get_file_text(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
+    def get_file_text(self, path):
+        file_id = self.path2id(path)
         try:
             return self._content_provider(file_id)
         except KeyError:
@@ -82,15 +83,16 @@ class _TreeShim(object):
                                                         'unordered', True)
             return next(stream).get_bytes_as('fulltext')
 
-    def get_symlink_target(self, path, file_id=None):
-        if file_id is None:
+    def get_symlink_target(self, path):
+        try:
+            ie = self._new_info_by_path[path]
+        except KeyError:
             file_id = self.path2id(path)
-        if file_id in self._new_info_by_id:
-            ie = self._new_info_by_id[file_id][1]
+            return self._basis_inv.get_entry(file_id).symlink_target
+        else:
             return ie.symlink_target
-        return self._basis_inv.get_entry(file_id).symlink_target
 
-    def get_reference_revision(self, path, file_id=None):
+    def get_reference_revision(self, path):
         raise NotImplementedError(_TreeShim.get_reference_revision)
 
     def _delta_to_iter_changes(self):
@@ -224,13 +226,13 @@ class RevisionStore(object):
         """Get the text stored for a file in a given revision."""
         revtree = self.repo.revision_tree(revision_id)
         path = revtree.id2path(file_id)
-        return revtree.get_file_text(path, file_id)
+        return revtree.get_file_text(path)
 
     def get_file_lines(self, revision_id, file_id):
         """Get the lines stored for a file in a given revision."""
         revtree = self.repo.revision_tree(revision_id)
         path = revtree.id2path(file_id)
-        return osutils.split_lines(revtree.get_file_text(path, file_id))
+        return osutils.split_lines(revtree.get_file_text(path))
 
     def start_new_revision(self, revision, parents, parent_invs):
         """Init the metadata needed for get_parents_and_revision_for_entry().

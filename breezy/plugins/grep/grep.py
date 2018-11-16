@@ -444,7 +444,7 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_id = tree.get_file_revision(tree_path, fid)
+                cache_id = tree.get_file_revision(tree_path)
                 if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,

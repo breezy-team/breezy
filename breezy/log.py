@@ -2143,7 +2143,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
 def _get_kind_for_file_id(tree, path, file_id):
     """Return the kind of a file-id or None if it doesn't exist."""
     if file_id is not None:
-        return tree.kind(path, file_id)
+        return tree.kind(path)
     else:
         return None
 
