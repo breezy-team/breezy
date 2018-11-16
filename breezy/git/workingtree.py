@@ -418,6 +418,8 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         ignored = {}
         user_dirs = []
         def call_action(filepath, kind):
+            if filepath == '':
+                return
             if action is not None:
                 parent_path = posixpath.dirname(filepath)
                 parent_id = self.path2id(parent_path)
@@ -487,7 +489,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                             continue
                         if subp in conflicts_related:
                             continue
-                        call_action(filepath, kind)
+                        call_action(subp, kind)
                         if save:
                             self._index_add_entry(subp, kind)
                         added.append(subp)

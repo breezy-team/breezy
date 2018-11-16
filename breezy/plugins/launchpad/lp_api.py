@@ -281,7 +281,7 @@ class LaunchpadBranch(object):
                                self.lp.bzr_identity)
                     return
                 graph = self.bzr.repository.get_graph()
-                if not graph.is_ancestor(self.lp.last_scanned_id,
+                if not graph.is_ancestor(osutils.safe_utf8(self.lp.last_scanned_id),
                                          self.bzr.last_revision()):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
                 trace.note(gettext('Pushing to %s') % self.lp.bzr_identity)

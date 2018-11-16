@@ -67,6 +67,11 @@ External Compatibility Breaks
    has been renamed to ``transform.orphan_policy``.
    (Jelmer Vernooĳ)
 
+ * One-letter shortcuts for Ubuntu releases are no
+   longer supported after 'ubuntu:'. Bazaar's mapping for
+   one-letter distroseries had not been updated since natty.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -170,6 +175,9 @@ Bug Fixes
   on platforms that support it. (Jelmer Vernooij, #81844)
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
+
+* Report correct path in output of ``brz add``.
+  (Brian de Alwis, Jelmer Vernooĳ, #1799482)
 
 Documentation
 *************

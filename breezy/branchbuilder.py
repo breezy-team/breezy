@@ -50,7 +50,7 @@ class BranchBuilder(object):
     ...     revision_id=b'rev-id')
     'rev-id'
     >>> builder.build_snapshot([b'rev-id'],
-    ...     [('modify', (b'f-id', b'new-content\n'))],
+    ...     [('modify', ('filename', b'new-content\n'))],
     ...     revision_id=b'rev2-id')
     'rev2-id'
     >>> builder.finish_series()
