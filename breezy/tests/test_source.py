@@ -329,20 +329,18 @@ class TestSource(TestSourceHelper):
         # lazy_regex compile objects.
         from .. import lazy_regex
         lazy_regex.reset_compile()
-        try:
-            self.requireFeature(features.flake8)
-            # Older versions of flake8 don't support the 'paths'
-            # variable
-            new_path = list(sys.path)
-            new_path.insert(
-                0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
-            self.overrideAttr(sys, 'path', new_path)
-            from flake8.api import legacy as flake8
-            style_guide = flake8.get_style_guide(config=u'setup.cfg', jobs="1")
-            report = style_guide.check_files(list(self.get_source_files()))
-            self.assertEqual([], report.get_statistics(''))
-        finally:
-            lazy_regex.install_lazy_compile()
+        self.addCleanup(lazy_regex.install_lazy_compile)
+        self.requireFeature(features.flake8)
+        # Older versions of flake8 don't support the 'paths'
+        # variable
+        new_path = list(sys.path)
+        new_path.insert(
+            0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
+        self.overrideAttr(sys, 'path', new_path)
+        from flake8.api import legacy as flake8
+        style_guide = flake8.get_style_guide(config=u'setup.cfg', jobs="1")
+        report = style_guide.check_files(list(self.get_source_files()))
+        self.assertEqual([], report.get_statistics(''))
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""
