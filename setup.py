@@ -488,7 +488,7 @@ if 'bdist_wininst' in sys.argv:
             r = []
             for f in files:
                 if (os.path.splitext(f)[1] in ('.html','.css','.png','.pdf')
-                    or f == 'quick-start-summary.svg'):
+                        or f == 'quick-start-summary.svg'):
                     r.append(os.path.join(root, f))
             if r:
                 relative = root[4:]
