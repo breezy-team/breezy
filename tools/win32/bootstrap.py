@@ -43,7 +43,7 @@ if sys.platform == 'win32':
         else:
             return c
 else:
-    def quote (c):
+    def quote(c):
         return c
 
 cmd = 'from setuptools.command.easy_install import main; main()'
@@ -65,8 +65,8 @@ if is_jython:
 
 else:
     assert os.spawnle(
-        os.P_WAIT, sys.executable, quote (sys.executable),
-        '-c', quote (cmd), '-mqNxd', quote (tmpeggs), 'zc.buildout',
+        os.P_WAIT, sys.executable, quote(sys.executable),
+        '-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout',
         dict(
             os.environ,
             PYTHONPATH=
