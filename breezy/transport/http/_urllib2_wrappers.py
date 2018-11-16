@@ -388,8 +388,8 @@ class AbstractHTTPConnection:
                 # Warn the user (once)
                 if (self._ranges_received_whole_file is None
                         and self._response.status == 200
-                        and pending and pending > self._range_warning_thresold
-                    ):
+                        and pending
+                        and pending > self._range_warning_thresold):
                     self._ranges_received_whole_file = True
                     trace.warning(
                         'Got a 200 response when asking for multiple ranges,'

@@ -1537,7 +1537,7 @@ class cmd_branch(Command):
             note(gettext('Created new stacked branch referring to %s.') %
                  branch.get_stacked_on_url())
         except (errors.NotStacked, _mod_branch.UnstackableBranchFormat,
-            errors.UnstackableRepositoryFormat) as e:
+                errors.UnstackableRepositoryFormat) as e:
             revno = branch.revno()
             if revno is not None:
                 note(ngettext('Branched %d revision.',
