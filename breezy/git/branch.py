@@ -612,6 +612,8 @@ class LocalGitBranch(GitBranch):
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:
+            policy = checkout.determine_repository_policy()
+            policy.acquire_repository()
             checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             checkout_branch.pull(self, stop_revision=revision_id)

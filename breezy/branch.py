@@ -1392,6 +1392,8 @@ class Branch(controldir.ControlComponent):
         if lightweight:
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:
+            policy = checkout.determine_repository_policy()
+            policy.acquire_repository()
             checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             # pull up to the specified revision_id to set the initial
