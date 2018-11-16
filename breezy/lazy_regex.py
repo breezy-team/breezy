@@ -18,7 +18,7 @@
 
 This module defines a class which creates proxy objects for regex
 compilation.  This allows overriding re.compile() to return lazily compiled
-objects.  
+objects.
 
 We do this rather than just providing a new interface so that it will also
 be used by existing Python modules that create regexs.
