@@ -80,8 +80,8 @@ Congratulation! Brz successfully installed.
         batch_path = os.path.join(scripts_dir, "brz.bat")
         with open(batch_path, "w") as f:
             f.write(batch_str)
-        file_created(batch_path)        # registering manually created files for
-                                        # auto-deinstallation procedure
+        # registering manually created files for auto-deinstallation procedure
+        file_created(batch_path)
         ##
         # inform user where batch launcher is.
         print("Created:", batch_path)
