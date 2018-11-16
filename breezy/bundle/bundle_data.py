@@ -628,7 +628,7 @@ class BundleTree(Tree):
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
             base_id != self.base_tree.get_root_id()):
-            old_path = self.old_path(path)
+            old_path = self.base_tree.id2path(base_id)
             patch_original = self.base_tree.get_file(old_path)
         else:
             patch_original = None
