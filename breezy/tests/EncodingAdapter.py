@@ -75,59 +75,59 @@ _shalom = u'\u05e9\u05dc\u05d5\u05dd'
 
 
 encoding_scenarios = [
-        # Permutation 1 of utf-8
-        ('utf-8,1', {
-            'info': {
-                'committer': _erik,
-                'message': _yellow_horse,
-                'filename': _shrimp_sandwich,
-                'directory': _nihonjin,
-                },
-            'encoding': 'utf-8',
-            }),
-        # Permutation 2 of utf-8
-        ('utf-8,2', {
-            'info': {
-                'committer': _alexander,
-                'message': u'Testing ' + _mu,
-                'filename': _shalom,
-                'directory': _juju,
-                },
-            'encoding': 'utf-8',
-            }),
-        ('iso-8859-1', {
-            'info': {
-                'committer': _erik,
-                'message': u'Testing ' + _mu,
-                'filename': _juju_alt,
-                'directory': _shrimp_sandwich,
-                },
-            'encoding': 'iso-8859-1',
-            }),
-        ('iso-8859-2', {
-            'info': {
-                'committer': _someone,
-                'message': _yellow_horse,
-                'filename': _yellow,
-                'directory': _something,
-                },
-            'encoding': 'iso-8859-2',
-            }),
-        ('cp1251', {
-            'info': {
-                'committer': _alexander,
-                'message': u'Testing ' + _mu,
-                'filename': _russian_test,
-                'directory': _russian_test + 'dir',
-                },
-            'encoding': 'cp1251',
-            }),
-# The iso-8859-1 tests run on a default windows cp437 installation
-# and it takes a long time to run an extra permutation of the tests
-# But just in case we want to add this back in:
-#        ('cp437', {'committer':_erik
-#                  , 'message':u'Testing ' + _mu
-#                  , 'filename':'file_' + _omega
-#                  , 'directory':_epsilon + '_dir',
-#            'encoding': 'cp437'}),
+    # Permutation 1 of utf-8
+    ('utf-8,1', {
+        'info': {
+            'committer': _erik,
+            'message': _yellow_horse,
+            'filename': _shrimp_sandwich,
+            'directory': _nihonjin,
+            },
+        'encoding': 'utf-8',
+        }),
+    # Permutation 2 of utf-8
+    ('utf-8,2', {
+        'info': {
+            'committer': _alexander,
+            'message': u'Testing ' + _mu,
+            'filename': _shalom,
+            'directory': _juju,
+            },
+        'encoding': 'utf-8',
+        }),
+    ('iso-8859-1', {
+        'info': {
+            'committer': _erik,
+            'message': u'Testing ' + _mu,
+            'filename': _juju_alt,
+            'directory': _shrimp_sandwich,
+            },
+        'encoding': 'iso-8859-1',
+        }),
+    ('iso-8859-2', {
+        'info': {
+            'committer': _someone,
+            'message': _yellow_horse,
+            'filename': _yellow,
+            'directory': _something,
+            },
+        'encoding': 'iso-8859-2',
+        }),
+    ('cp1251', {
+        'info': {
+            'committer': _alexander,
+            'message': u'Testing ' + _mu,
+            'filename': _russian_test,
+            'directory': _russian_test + 'dir',
+            },
+        'encoding': 'cp1251',
+        }),
+    # The iso-8859-1 tests run on a default windows cp437 installation
+    # and it takes a long time to run an extra permutation of the tests
+    # But just in case we want to add this back in:
+    #        ('cp437', {'committer':_erik
+    #                  , 'message':u'Testing ' + _mu
+    #                  , 'filename':'file_' + _omega
+    #                  , 'directory':_epsilon + '_dir',
+    #            'encoding': 'cp437'}),
     ]

@@ -43,6 +43,7 @@ from .sixish import (
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
 
+
 class RioWriter(object):
 
     def __init__(self, to_file):
@@ -62,6 +63,7 @@ class RioReader(object):
     to_file can be anything that can be enumerated as a sequence of
     lines (with newlines.)
     """
+
     def __init__(self, from_file):
         self._from_file = from_file
 
@@ -348,8 +350,9 @@ def to_patch_lines(stanza, max_width=72):
 
 def _patch_stanza_iter(line_iter):
     map = {b'\\\\': b'\\',
-           b'\\r' : b'\r',
+           b'\\r': b'\r',
            b'\\\n': b''}
+
     def mapget(match):
         return map[match.group(0)]
 
@@ -397,7 +400,7 @@ try:
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     from ._rio_py import (
-       _read_stanza_utf8,
-       _read_stanza_unicode,
-       _valid_tag,
-       )
+        _read_stanza_utf8,
+        _read_stanza_unicode,
+        _valid_tag,
+        )

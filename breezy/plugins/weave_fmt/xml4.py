@@ -63,7 +63,6 @@ class _Serializer_v4(XMLSerializer):
 
         return e
 
-
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
         """Construct from XML Element
@@ -81,11 +80,10 @@ class _Serializer_v4(XMLSerializer):
             inv.add(ie)
         return inv
 
-
     def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
-        ## original format inventories don't have a parent_id for
-        ## nodes in the root directory, but it's cleaner to use one
-        ## internally.
+        # original format inventories don't have a parent_id for
+        # nodes in the root directory, but it's cleaner to use one
+        # internally.
         parent_id = elt.get('parent_id')
         parent_id = (parent_id.encode('ascii') if parent_id else ROOT_ID)
 
@@ -119,15 +117,14 @@ class _Serializer_v4(XMLSerializer):
 
         return ie
 
-
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
         root = Element('revision',
-                       committer = rev.committer,
-                       timestamp = '%.9f' % rev.timestamp,
-                       revision_id = rev.revision_id,
-                       inventory_id = rev.inventory_id,
-                       inventory_sha1 = rev.inventory_sha1,
+                       committer=rev.committer,
+                       timestamp='%.9f' % rev.timestamp,
+                       revision_id=rev.revision_id,
+                       inventory_id=rev.inventory_id,
+                       inventory_sha1=rev.inventory_sha1,
                        )
         if rev.timezone:
             root.set('timezone', str(rev.timezone))
@@ -148,7 +145,6 @@ class _Serializer_v4(XMLSerializer):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
-
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
 
@@ -156,11 +152,11 @@ class _Serializer_v4(XMLSerializer):
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError("unexpected tag in revision file: %r" % elt)
 
-        rev = Revision(committer = elt.get('committer'),
-                       timestamp = float(elt.get('timestamp')),
-                       revision_id = elt.get('revision_id'),
-                       inventory_id = elt.get('inventory_id'),
-                       inventory_sha1 = elt.get('inventory_sha1')
+        rev = Revision(committer=elt.get('committer'),
+                       timestamp=float(elt.get('timestamp')),
+                       revision_id=elt.get('revision_id'),
+                       inventory_id=elt.get('inventory_id'),
+                       inventory_sha1=elt.get('inventory_sha1')
                        )
 
         precursor = elt.get('precursor')
@@ -184,12 +180,9 @@ class _Serializer_v4(XMLSerializer):
         v = elt.get('timezone')
         rev.timezone = v and int(v)
 
-        rev.message = elt.findtext('message') # text of <message>
+        rev.message = elt.findtext('message')  # text of <message>
         return rev
-
-
 
 
 """singleton instance"""
 serializer_v4 = _Serializer_v4()
-

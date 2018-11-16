@@ -51,7 +51,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.build_tree(['tree/file'])
         tree.add('file')
         self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
-                            'reconfigure --branch tree')
+                           'reconfigure --branch tree')
         self.run_bzr('reconfigure --force --branch tree')
 
     def test_lightweight_checkout_to_checkout(self):
@@ -81,17 +81,17 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.run_bzr('reconfigure --use-shared', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
         self.assertNotEqual(tree.controldir.root_transport.base,
-            tree.branch.repository.controldir.root_transport.base)
+                            tree.branch.repository.controldir.root_transport.base)
 
     def test_use_shared_to_standalone(self):
         repo = self.make_repository('repo', shared=True)
         branch = controldir.ControlDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.controldir.root_transport.base,
-            branch.repository.controldir.root_transport.base)
+                            branch.repository.controldir.root_transport.base)
         self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
         self.assertEqual(tree.controldir.root_transport.base,
-            tree.branch.repository.controldir.root_transport.base)
+                         tree.branch.repository.controldir.root_transport.base)
 
     def test_make_with_trees(self):
         repo = self.make_repository('repo', shared=True)
@@ -103,7 +103,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         repo = self.make_repository('repo', shared=True)
         repo.set_make_working_trees(True)
         self.run_bzr_error([" already creates working trees"],
-                            'reconfigure --with-trees repo')
+                           'reconfigure --with-trees repo')
 
     def test_make_without_trees(self):
         repo = self.make_repository('repo', shared=True)
@@ -115,7 +115,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         repo = self.make_repository('repo', shared=True)
         repo.set_make_working_trees(False)
         self.run_bzr_error([" already doesn't create working trees"],
-                            'reconfigure --with-no-trees repo')
+                           'reconfigure --with-no-trees repo')
 
     def test_make_with_trees_nonshared_repo(self):
         branch = self.make_branch('branch')
@@ -130,7 +130,7 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         self.build_tree(['repo/branch/foo'])
         tree.add('foo')
         self.run_bzr('reconfigure --with-no-trees --force',
-            working_dir='repo/branch')
+                     working_dir='repo/branch')
         self.assertPathExists('repo/branch/foo')
         tree = workingtree.WorkingTree.open('repo/branch')
 
@@ -138,19 +138,19 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         repo = self.make_repository('repo', shared=True, format=format)
         branch = controldir.ControlDir.create_branch_convenience('repo/tree')
         self.assertNotEqual(branch.controldir.root_transport.base,
-            branch.repository.controldir.root_transport.base)
+                            branch.repository.controldir.root_transport.base)
         tree = workingtree.WorkingTree.open('repo/tree')
-        self.build_tree_contents([('repo/tree/file', b'foo\n')]);
+        self.build_tree_contents([('repo/tree/file', b'foo\n')])
         tree.add(['file'])
         tree.commit('added file')
         self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
         tree = workingtree.WorkingTree.open('repo/tree')
-        self.build_tree_contents([('repo/tree/file', b'bar\n')]);
+        self.build_tree_contents([('repo/tree/file', b'bar\n')])
         self.check_file_contents('repo/tree/file', b'bar\n')
         self.run_bzr('revert', working_dir='repo/tree')
         self.check_file_contents('repo/tree/file', b'foo\n')
         self.assertEqual(tree.controldir.root_transport.base,
-            tree.branch.repository.controldir.root_transport.base)
+                         tree.branch.repository.controldir.root_transport.base)
 
     def test_shared_knit_to_standalone(self):
         self.test_shared_format_to_standalone('knit')
@@ -165,12 +165,12 @@ class TestReconfigure(TestCaseWithTransportAndScript):
         branch = self.make_branch('branch', format=format)
         checkout = branch.create_checkout('checkout', lightweight=True)
         tree = workingtree.WorkingTree.open('checkout')
-        self.build_tree_contents([('checkout/file', b'foo\n')]);
+        self.build_tree_contents([('checkout/file', b'foo\n')])
         tree.add(['file'])
         tree.commit('added file')
         self.run_bzr('reconfigure --tree', working_dir='checkout')
         tree = workingtree.WorkingTree.open('checkout')
-        self.build_tree_contents([('checkout/file', b'bar\n')]);
+        self.build_tree_contents([('checkout/file', b'bar\n')])
         self.check_file_contents('checkout/file', b'bar\n')
         self.run_bzr('revert', working_dir='checkout')
         self.check_file_contents('checkout/file', b'foo\n')
@@ -243,7 +243,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         out, err = self.run_bzr('reconfigure --stacked-on b1 b2')
         self.assertContainsRe(out, '^.*/b2/ is now stacked on ../b1\n$')
         self.assertEqual('', err)
-        # can also give the absolute URL of the branch, and it gets stored 
+        # can also give the absolute URL of the branch, and it gets stored
         # as a relative path if possible
         out, err = self.run_bzr('reconfigure --stacked-on %s b2'
                                 % (self.get_url('b1'),))
@@ -260,7 +260,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
         # Now turn it off again
         out, err = self.run_bzr('reconfigure --unstacked b2')
         self.assertContainsRe(out,
-            '^.*/b2/ is now not stacked\n$')
+                              '^.*/b2/ is now not stacked\n$')
         self.assertEqual('', err)
         # Refresh the branch as 'reconfigure' modified it
         branch_2 = branch_2.controldir.open_branch()

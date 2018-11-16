@@ -33,9 +33,17 @@ from .. import (
     revision as _mod_revision,
     )
 
-is_tag = lambda x: x.startswith(LOCAL_TAG_PREFIX)
-is_head = lambda x: x.startswith(LOCAL_BRANCH_PREFIX)
-is_peeled = lambda x: x.endswith(ANNOTATED_TAG_SUFFIX)
+
+def is_tag(x):
+    return x.startswith(LOCAL_TAG_PREFIX)
+
+
+def is_head(x):
+    return x.startswith(LOCAL_BRANCH_PREFIX)
+
+
+def is_peeled(x):
+    return x.endswith(ANNOTATED_TAG_SUFFIX)
 
 
 def gather_peeled(refs):
@@ -44,7 +52,7 @@ def gather_peeled(refs):
         if is_peeled(k):
             continue
         try:
-            peeled = refs[k+ANNOTATED_TAG_SUFFIX]
+            peeled = refs[k + ANNOTATED_TAG_SUFFIX]
             unpeeled = v
         except KeyError:
             peeled = v
@@ -108,7 +116,7 @@ class BazaarRefsContainer(RefsContainer):
 
     def set_symbolic_ref(self, name, other):
         if name == b"HEAD":
-            pass # FIXME: Switch default branch
+            pass  # FIXME: Switch default branch
         else:
             raise NotImplementedError(
                 "Symbolic references not supported for anything other than "
@@ -169,7 +177,7 @@ class BazaarRefsContainer(RefsContainer):
         try:
             branch_name = ref_to_branch_name(ref)
         except ValueError:
-            return # FIXME: Cope with tags!
+            return  # FIXME: Cope with tags!
         self.dir.destroy_branch(branch_name)
 
     def __setitem__(self, ref, sha):
