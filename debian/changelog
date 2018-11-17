@@ -1,6 +1,8 @@
 breezy (3.0.0~bzr7183-2) UNRELEASED; urgency=medium
 
   * Bump minimum version of dulwich to 0.19.7.
+  * Add note about python version to python{,3}-breezy.tests long
+    description.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 17:12:32 +0000
 
