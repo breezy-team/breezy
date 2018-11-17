@@ -178,11 +178,11 @@ class cmd_grep(Command):
             raise errors.BzrCommandError('Valid values for --color are '
                                          '"always", "never" or "auto".')
 
-        if levels == None:
+        if levels is None:
             levels = 1
 
         print_revno = False
-        if revision != None or levels == 0:
+        if revision is not None or levels == 0:
             # print revision numbers as we may be showing multiple revisions
             print_revno = True
 

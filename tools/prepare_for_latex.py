@@ -26,6 +26,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import print_function
+
 import os
 import re
 import shutil
@@ -35,8 +37,8 @@ from subprocess import call
 
 verbose = False
 
-IMAGE_DIRECTIVE_PATTERN = re.compile(ur'^..\s+image::\s+(.*)\s+$')
-DIRECTIVE_ELEMENT_PATTERN = re.compile(ur'^\s+:[^:]+:\s+')
+IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\`\s+$')
+DIRECTIVE_ELEMENT_PATTERN = re.compile(u'^\\s+:[^:]+:\\s+')
 
 class Converter(object):
     def __init__(self, srcdir, destdir):

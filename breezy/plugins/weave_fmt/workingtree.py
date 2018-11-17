@@ -234,7 +234,7 @@ class WorkingTree2(PreDirStateWorkingTree):
                                 text = False
                         except errors.NoSuchFile:
                             text = False
-                        if text == False:
+                        if text is False:
                             break
                 ctype = {True: 'text conflict',
                          False: 'contents conflict'}[text]

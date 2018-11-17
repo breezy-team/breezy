@@ -247,7 +247,7 @@ class EmailSender(object):
             msg.add_inline_attachment(diff, self.diff_filename())
 
         # Add revision_mail_headers to the headers
-        if header != None:
+        if header is None:
             for k, v in header.items():
                 msg[k] = v
 

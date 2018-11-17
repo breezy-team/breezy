@@ -341,7 +341,7 @@ def _filter_nonexistent(orig_paths, old_tree, new_tree):
     s = old_tree.filter_unversioned_files(orig_paths)
     s = new_tree.filter_unversioned_files(s)
     nonexistent = [path for path in s if not new_tree.has_filename(path)]
-    remaining = [path for path in orig_paths if not path in nonexistent]
+    remaining = [path for path in orig_paths if path not in nonexistent]
     # Sorting the 'remaining' list doesn't have much effect in
     # practice, since the various status output sections will sort
     # their groups individually.  But for consistency of this

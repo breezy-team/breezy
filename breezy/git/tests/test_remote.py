@@ -144,6 +144,8 @@ class TestRemoteGitBranchFormat(TestCase):
 
 class TestRemoteGitBranch(TestCaseWithTransport):
 
+    _test_needs_features = [ExecutableFeature('git')]
+
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.remote_real = GitRepo.init('remote', mkdir=True)
