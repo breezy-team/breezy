@@ -1,16 +1,11 @@
-breezy (3.0.0~bzr7183-2) UNRELEASED; urgency=medium
-
-  * 01_selftest_package: refresh.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 01:39:27 +0000
-
-breezy (3.0.0~bzr7183-1) unstable; urgency=medium
+breezy (3.0.0~bzr7183-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
   * Add patch 03_crc_asul to fix test failures on 32-bit platforms.
     Closes: #908984
   * Drop patch 04_spurious_test_failure: fixed upstream.
   * Drop patch 15_executable: fixed upstream.
+  * 01_selftest_package: refresh.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 01:38:01 +0000
 
