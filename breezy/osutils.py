@@ -1035,12 +1035,18 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
-    # split on either delimiter because people might use either on
-    # Windows
-    if isinstance(p, bytes):
-        ps = re.split(b'[\\\\/]', p)
+    if os.path.sep == '\\':
+        # split on either delimiter because people might use either on
+        # Windows
+        if isinstance(p, bytes):
+            ps = re.split(b'[\\\\/]', p)
+        else:
+            ps = re.split(r'[\\/]', p)
     else:
-        ps = re.split(r'[\\/]', p)
+        if isinstance(p, bytes):
+            ps = p.split(b'/')
+        else:
+            ps = p.split('/')
 
     rps = []
     for f in ps:
