@@ -434,3 +434,19 @@ def encode_fixes_bug_urls(bug_urls):
             raise InvalidBugUrl(url)
         lines.append('%s %s' % (url, tag))
     return '\n'.join(lines)
+
+
+def decode_bug_urls(bug_text):
+    """Decode a bug property text.
+
+    :param bug_text: Contents of a bugs property
+    :return: iterator over (url, status) tuples
+    """
+    for line in bug_text.splitlines():
+        try:
+            url, status = line.split(None, 2)
+        except ValueError:
+            raise InvalidLineInBugsProperty(line)
+        if status not in ALLOWED_BUG_STATUSES:
+            raise InvalidBugStatus(status)
+        yield url, status
