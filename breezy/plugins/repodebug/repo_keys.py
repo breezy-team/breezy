@@ -37,4 +37,3 @@ class cmd_repo_keys(Command):
             vf = getattr(repo, versioned_file)
             for key in sorted(vf.keys()):
                 self.outf.write(repr(key) + '\n')
-

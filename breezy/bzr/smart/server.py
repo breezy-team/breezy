@@ -102,7 +102,7 @@ class SmartTCPServer(object):
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
         addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
-            socket.SOCK_STREAM, 0, socket.AI_PASSIVE)[0]
+                                   socket.SOCK_STREAM, 0, socket.AI_PASSIVE)[0]
 
         (family, socktype, proto, canonname, sockaddr) = addrs
 
@@ -110,7 +110,7 @@ class SmartTCPServer(object):
         # SO_REUSERADDR has a different meaning on Windows
         if sys.platform != 'win32':
             self._server_socket.setsockopt(socket.SOL_SOCKET,
-                socket.SO_REUSEADDR, 1)
+                                           socket.SO_REUSEADDR, 1)
         try:
             self._server_socket.bind(sockaddr)
         except self._socket_error as message:
@@ -288,8 +288,9 @@ class SmartTCPServer(object):
     def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()
         self._server_thread = threading.Thread(None,
-                self.serve, args=(thread_name_suffix,),
-                name='server-' + self.get_url())
+                                               self.serve, args=(
+                                                   thread_name_suffix,),
+                                               name='server-' + self.get_url())
         self._server_thread.setDaemon(True)
         self._server_thread.start()
         self._started.wait()
@@ -331,34 +332,35 @@ class SmartServerHooks(Hooks):
         """
         Hooks.__init__(self, "breezy.bzr.smart.server", "SmartTCPServer.hooks")
         self.add_hook('server_started',
-            "Called by the bzr server when it starts serving a directory. "
-            "server_started is called with (backing urls, public url), "
-            "where backing_url is a list of URLs giving the "
-            "server-specific directory locations, and public_url is the "
-            "public URL for the directory being served.", (0, 16))
+                      "Called by the bzr server when it starts serving a directory. "
+                      "server_started is called with (backing urls, public url), "
+                      "where backing_url is a list of URLs giving the "
+                      "server-specific directory locations, and public_url is the "
+                      "public URL for the directory being served.", (0, 16))
         self.add_hook('server_started_ex',
-            "Called by the bzr server when it starts serving a directory. "
-            "server_started is called with (backing_urls, server_obj).",
-            (1, 17))
+                      "Called by the bzr server when it starts serving a directory. "
+                      "server_started is called with (backing_urls, server_obj).",
+                      (1, 17))
         self.add_hook('server_stopped',
-            "Called by the bzr server when it stops serving a directory. "
-            "server_stopped is called with the same parameters as the "
-            "server_started hook: (backing_urls, public_url).", (0, 16))
+                      "Called by the bzr server when it stops serving a directory. "
+                      "server_stopped is called with the same parameters as the "
+                      "server_started hook: (backing_urls, public_url).", (0, 16))
         self.add_hook('server_exception',
-            "Called by the bzr server when an exception occurs. "
-            "server_exception is called with the sys.exc_info() tuple "
-            "return true for the hook if the exception has been handled, "
-            "in which case the server will exit normally.", (2, 4))
+                      "Called by the bzr server when an exception occurs. "
+                      "server_exception is called with the sys.exc_info() tuple "
+                      "return true for the hook if the exception has been handled, "
+                      "in which case the server will exit normally.", (2, 4))
+
 
 SmartTCPServer.hooks = SmartServerHooks()
 
 
 def _local_path_for_transport(transport):
     """Return a local path for transport, if reasonably possible.
-    
+
     This function works even if transport's url has a "readonly+" prefix,
     unlike local_path_from_url.
-    
+
     This essentially recovers the --directory argument the user passed to "bzr
     serve" from the transport passed to serve_bzr.
     """
@@ -420,14 +422,16 @@ class BzrServerFactory(object):
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.start_server()
         self.cleanups.append(chroot_server.stop_server)
-        transport = _mod_transport.get_transport_from_url(chroot_server.get_url())
+        transport = _mod_transport.get_transport_from_url(
+            chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.start_server()
             self.cleanups.append(expand_userdirs.stop_server)
-            transport = _mod_transport.get_transport_from_url(expand_userdirs.get_url())
+            transport = _mod_transport.get_transport_from_url(
+                expand_userdirs.get_url())
         self.transport = transport
 
     def _get_stdin_stdout(self):
@@ -452,7 +456,8 @@ class BzrServerFactory(object):
             smart_server = SmartTCPServer(self.transport,
                                           client_timeout=timeout)
             smart_server.start_server(host, port)
-            trace.note(gettext('listening on port: %s'), str(smart_server.port))
+            trace.note(gettext('listening on port: %s'),
+                       str(smart_server.port))
         self.smart_server = smart_server
 
     def _change_globals(self):
@@ -463,6 +468,7 @@ class BzrServerFactory(object):
         # progress over stderr to smart server clients!
         old_factory = ui.ui_factory
         old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+
         def restore_default_ui_factory_and_lockdir_timeout():
             ui.ui_factory = old_factory
             lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
@@ -470,6 +476,7 @@ class BzrServerFactory(object):
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
         orig = signals.install_sighup_handler()
+
         def restore_signals():
             signals.restore_sighup_handler(orig)
         self.cleanups.append(restore_signals)

@@ -20,7 +20,6 @@ from __future__ import absolute_import
 from operator import itemgetter
 
 from ... import errors, osutils, transport
-from ...bzr import bzrdir
 from ...trace import show_error, note
 
 from .helpers import (
@@ -89,7 +88,8 @@ class BranchUpdater(object):
         # already put the 'trunk' first, do it now.
         git_to_bzr_map = {}
         for ref_name in ref_names:
-            git_to_bzr_map[ref_name] = self.cache_mgr.branch_mapper.git_to_bzr(ref_name)
+            git_to_bzr_map[ref_name] = self.cache_mgr.branch_mapper.git_to_bzr(
+                ref_name)
         if ref_names and self.branch is None:
             trunk = self.select_trunk(ref_names)
             git_bzr_items = [(trunk, git_to_bzr_map[trunk])]
@@ -103,6 +103,7 @@ class BranchUpdater(object):
             # Using the Bazaar name, get a directory under the current one
             repo_base = self.repo.controldir.transport.base
             return osutils.pathjoin(repo_base, "..", name)
+
         def dir_sister_branch(name):
             # Using the Bazaar name, get a sister directory to the branch
             return osutils.pathjoin(self.branch.base, "..", name)
@@ -113,8 +114,8 @@ class BranchUpdater(object):
 
         # Create/track missing branches
         can_create_branches = (
-                self.repo.is_shared() or
-                self.repo.controldir._format.colocated_branches)
+            self.repo.is_shared() or
+            self.repo.controldir._format.colocated_branches)
         for ref_name, name in git_bzr_items:
             tip = self.heads_by_ref[ref_name][0]
             if can_create_branches:
@@ -124,7 +125,7 @@ class BranchUpdater(object):
                     continue
                 except errors.BzrError as ex:
                     show_error("ERROR: failed to create branch %s: %s",
-                        name, ex)
+                               name, ex)
             lost_head = self.cache_mgr.lookup_committish(tip)
             lost_info = (name, lost_head)
             lost_heads.append(lost_info)
@@ -157,7 +158,6 @@ class BranchUpdater(object):
             except errors.NotBranchError as ex:
                 return self.repo.controldir.create_branch(name)
 
-
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information.
 
@@ -176,7 +176,8 @@ class BranchUpdater(object):
         my_tags = {}
         if self.tags:
             graph = self.repo.get_graph()
-            ancestry = [r for (r, ps) in graph.iter_ancestry([last_rev_id]) if ps is not None]
+            ancestry = [r for (r, ps) in graph.iter_ancestry(
+                [last_rev_id]) if ps is not None]
             for tag, rev in self.tags.items():
                 if rev in ancestry:
                     my_tags[tag] = rev
@@ -186,6 +187,6 @@ class BranchUpdater(object):
         if changed:
             tagno = len(my_tags)
             note("\t branch %s now has %d %s and %d %s", br.nick,
-                revno, single_plural(revno, "revision", "revisions"),
-                tagno, single_plural(tagno, "tag", "tags"))
+                 revno, single_plural(revno, "revision", "revisions"),
+                 tagno, single_plural(tagno, "tag", "tags"))
         return changed

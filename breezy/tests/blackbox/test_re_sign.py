@@ -55,7 +55,7 @@ class ReSign(tests.TestCaseInTempDir):
             repo.get_signature_text(revision_id))
 
     def test_resign(self):
-        #Test re signing of data.
+        # Test re signing of data.
         wt = self.setup_tree()
         repo = wt.branch.repository
 

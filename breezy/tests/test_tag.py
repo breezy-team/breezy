@@ -81,9 +81,9 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch = self.make_branch_supporting_tags('new')
         # just to make sure this test is valid
         self.assertFalse(old_branch.supports_tags(),
-            "%s is expected to not support tags but does" % old_branch)
+                         "%s is expected to not support tags but does" % old_branch)
         self.assertTrue(new_branch.supports_tags(),
-            "%s is expected to support tags but does not" % new_branch)
+                        "%s is expected to support tags but does not" % new_branch)
         # there are no tags in the old one, and we can merge from it into the
         # new one
         old_branch.tags.merge_to(new_branch.tags)
@@ -95,7 +95,7 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch.tags.set_tag(u'\u2040tag', b'revid')
         old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
-            new_branch.tags.merge_to, old_branch.tags)
+                          new_branch.tags.merge_to, old_branch.tags)
 
     def test_merge_to(self):
         a = self.make_branch_supporting_tags('a')
@@ -137,7 +137,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         # deleting a tag updates the master too
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
-            master.tags.lookup_tag, 'foo')
+                          master.tags.lookup_tag, 'foo')
 
     def test_tag_copied_by_initial_checkout(self):
         # https://bugs.launchpad.net/bzr/+bug/93860
@@ -145,7 +145,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         master.tags.set_tag('foo', b'rev-1')
         co_tree = master.create_checkout('checkout')
         self.assertEqual(b'rev-1',
-            co_tree.branch.tags.lookup_tag('foo'))
+                         co_tree.branch.tags.lookup_tag('foo'))
 
     def test_update_updates_tags(self):
         # https://bugs.launchpad.net/bzr/+bug/93856
@@ -170,9 +170,9 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         # and deletion of tags should also propagate
         master.tags.delete_tag('foo')
         self.knownFailure("tag deletion does not propagate: "
-            "https://bugs.launchpad.net/bzr/+bug/138802")
+                          "https://bugs.launchpad.net/bzr/+bug/138802")
         self.assertRaises(errors.NoSuchTag,
-            child.tags.lookup_tag, 'foo')
+                          child.tags.lookup_tag, 'foo')
 
 
 class DisabledTagsTests(TestCaseWithTransport):
@@ -187,6 +187,3 @@ class DisabledTagsTests(TestCaseWithTransport):
 
     def test_get_reverse_tag_dict(self):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
-
-
-

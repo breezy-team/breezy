@@ -38,7 +38,6 @@ from warnings import warn
 
 import breezy
 
-from .sixish import PY3
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 
@@ -72,9 +71,9 @@ def deprecation_string(a_callable, deprecation_version):
     """Generate an automatic deprecation string for a_callable.
 
     :param a_callable: The callable to substitute into deprecation_version.
-    :param deprecation_version: A deprecation format warning string. This should
-        have a single %s operator in it. a_callable will be turned into a nice
-        python symbol and then substituted into deprecation_version.
+    :param deprecation_version: A deprecation format warning string. This
+        should have a single %s operator in it. a_callable will be turned into
+        a nice python symbol and then substituted into deprecation_version.
     """
     if getattr(a_callable, '__self__', None) is not None:
         symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
@@ -100,7 +99,7 @@ def deprecated_function(deprecation_version):
             from . import trace
             trace.mutter_callsite(4, "Deprecated function called")
             warn(deprecation_string(callable, deprecation_version),
-                DeprecationWarning, stacklevel=2)
+                 DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
         _populate_decorated(callable, deprecation_version, "function",
                             decorated_function)
@@ -136,7 +135,8 @@ def deprecated_method(deprecation_version):
                                        callable.__name__
                                        )
             trace.mutter_callsite(4, "Deprecated method called")
-            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
+            warn(deprecation_version %
+                 symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",
                             decorated_method)
@@ -160,7 +160,7 @@ def deprecated_passed(parameter_value):
     # def __init__(self, bad, other)
     # def __init__(self, **kwargs)
     # RBC 20060116
-    return not parameter_value is DEPRECATED_PARAMETER
+    return parameter_value is not DEPRECATED_PARAMETER
 
 
 def _decorate_docstring(callable, deprecation_version, label,
@@ -172,11 +172,9 @@ def _decorate_docstring(callable, deprecation_version, label,
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
-        decorated_callable.__doc__ = (callable.__doc__
-                                    + "\n"
-                                    + "\n"
-                                    + deprecation_version % ("This " + label)
-                                    + "\n")
+        decorated_callable.__doc__ = (
+            callable.__doc__ + "\n" + "\n" +
+            deprecation_version % ("This " + label) + "\n")
     else:
         spaces = len(docstring_lines[-1])
         new_doc = callable.__doc__
@@ -215,11 +213,11 @@ class DeprecatedDict(dict):
     is_deprecated = True
 
     def __init__(self,
-        deprecation_version,
-        variable_name,
-        initial_value,
-        advice,
-        ):
+                 deprecation_version,
+                 variable_name,
+                 initial_value,
+                 advice,
+                 ):
         """Create a dict that warns when read or modified.
 
         :param deprecation_version: string for the warning format to raise,

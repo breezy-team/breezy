@@ -49,8 +49,7 @@ def create_bundle_file(test_case):
     wt.commit('new project', rev_id=b'commit-1')
 
     out = BytesIO()
-    rev_ids = write_bundle(wt.branch.repository,
-                           wt.get_parent_ids()[0], b'null:', out)
+    write_bundle(wt.branch.repository, wt.get_parent_ids()[0], b'null:', out)
     out.seek(0)
     return out, wt
 
@@ -69,7 +68,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
         # into possible_transports first).
         self.possible_transports = [self.get_transport(self.bundle_name)]
         self.overrideEnv('BRZ_NO_SMART_VFS', None)
-        wt = self.create_test_bundle()
+        self.create_test_bundle()
 
     def read_mergeable_from_url(self, url):
         return breezy.mergeable.read_mergeable_from_url(
@@ -109,5 +108,5 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
             raise tests.TestSkipped(
                 'Need a ConnectedTransport to test transport reuse')
         url = text_type(self.get_url(self.bundle_name))
-        info = self.read_mergeable_from_url(url)
+        self.read_mergeable_from_url(url)
         self.assertEqual(1, len(self.possible_transports))

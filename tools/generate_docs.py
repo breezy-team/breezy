@@ -89,7 +89,7 @@ Available OUTPUT_FORMAT:
         if outfilename == "-":
             outfile = sys.stdout
         else:
-            outfile = open(outfilename,"w")
+            outfile = open(outfilename, "w")
         if options.show_filename and (outfilename != "-"):
             sys.stdout.write(outfilename)
             sys.stdout.write('\n')
@@ -102,7 +102,7 @@ def print_extended_help(option, opt, value, parser):
     Prints out the examples stored in the docstring. 
 
     """
-    sys.stdout.write(__doc__ % {"prog":sys.argv[0]})
+    sys.stdout.write(__doc__ % {"prog": sys.argv[0]})
     sys.stdout.write('\n')
     sys.exit(0)
 

@@ -63,15 +63,16 @@ class cmd_bundle_info(Command):
         else:
             if verbose:
                 raise errors.BzrCommandError(gettext(
-                            '--verbose requires a merge directive'))
+                    '--verbose requires a merge directive'))
         reader_method = getattr(bundle_info, 'get_bundle_reader', None)
         if reader_method is None:
-            raise errors.BzrCommandError(gettext('Bundle format not supported'))
+            raise errors.BzrCommandError(
+                gettext('Bundle format not supported'))
 
         by_kind = {}
         file_ids = set()
         for bytes, parents, repo_kind, revision_id, file_id\
-            in reader_method().iter_records():
+                in reader_method().iter_records():
             by_kind.setdefault(repo_kind, []).append(
                 (bytes, parents, repo_kind, revision_id, file_id))
             if file_id is not None:
@@ -93,9 +94,9 @@ class cmd_bundle_info(Command):
 
         self.outf.write(gettext('Revisions\n'))
         self.outf.write((gettext('nicks: %s\n')
-            % ', '.join(sorted(nicks))).encode(term_encoding, 'replace'))
+                         % ', '.join(sorted(nicks))).encode(term_encoding, 'replace'))
         self.outf.write((gettext('committers: \n%s\n') %
-        '\n'.join(sorted(committers)).encode(term_encoding, 'replace')))
+                         '\n'.join(sorted(committers)).encode(term_encoding, 'replace')))
         if verbose:
             self.outf.write('\n')
             bundle_file.seek(0)

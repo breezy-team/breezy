@@ -147,8 +147,8 @@ class SSHVendorManager(object):
     def _get_vendor_from_path(self, path):
         """Return the vendor or None using the program at the given path"""
         version = self._get_ssh_version_string([path, '-V'])
-        return self._get_vendor_by_version_string(version, 
-            os.path.splitext(os.path.basename(path))[0])
+        return self._get_vendor_by_version_string(version,
+                                                  os.path.splitext(os.path.basename(path))[0])
 
     def get_vendor(self, environment=None):
         """Find out what version of SSH is on the system.
@@ -168,6 +168,7 @@ class SSHVendorManager(object):
                         raise errors.SSHVendorNotFound()
             self._cached_ssh_vendor = vendor
         return self._cached_ssh_vendor
+
 
 _ssh_vendor_manager = SSHVendorManager()
 _get_ssh_vendor = _ssh_vendor_manager.get_vendor
@@ -267,6 +268,7 @@ class LoopbackVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e)
         return SFTPClient(SocketAsChannelAdapter(sock))
 
+
 register_ssh_vendor('loopback', LoopbackVendor())
 
 
@@ -301,7 +303,7 @@ class ParamikoVendor(SSHVendor):
             trace.warning('Adding %s host key for %s: %s'
                           % (keytype, host, server_key_hex))
             add = getattr(BRZ_HOSTKEYS, 'add', None)
-            if add is not None: # paramiko >= 1.X.X
+            if add is not None:  # paramiko >= 1.X.X
                 BRZ_HOSTKEYS.add(host, keytype, server_key)
             else:
                 BRZ_HOSTKEYS.setdefault(host, {})[keytype] = server_key
@@ -337,6 +339,7 @@ class ParamikoVendor(SSHVendor):
         except paramiko.SSHException as e:
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
+
 
 _ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
@@ -431,6 +434,7 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
             args.extend(['--', host] + command)
         return args
 
+
 register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
 
 
@@ -452,6 +456,7 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         else:
             args.extend([host] + command)
         return args
+
 
 register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
 
@@ -475,6 +480,7 @@ class LSHSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
 
+
 register_ssh_vendor('lsh', LSHSubprocessVendor())
 
 
@@ -496,6 +502,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
         else:
             args.extend([host] + command)
         return args
+
 
 register_ssh_vendor('plink', PLinkSubprocessVendor())
 
@@ -551,10 +558,10 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # requires something other than a single password, but we currently don't
     # support that.
     if ('password' not in supported_auth_types and
-        'keyboard-interactive' not in supported_auth_types):
+            'keyboard-interactive' not in supported_auth_types):
         raise errors.ConnectionError('Unable to authenticate to SSH host as'
-            '\n  %s@%s\nsupported auth types: %s'
-            % (username, host, supported_auth_types))
+                                     '\n  %s@%s\nsupported auth types: %s'
+                                     % (username, host, supported_auth_types))
 
     if password:
         try:
@@ -635,7 +642,8 @@ def save_host_keys():
             f.write('# SSH host keys collected by bzr\n')
             for hostname, keys in BRZ_HOSTKEYS.items():
                 for keytype, key in keys.items():
-                    f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
+                    f.write('%s %s %s\n' %
+                            (hostname, keytype, key.get_base64()))
     except IOError as e:
         trace.mutter('failed to save bzr host keys: ' + str(e))
 
@@ -665,8 +673,10 @@ def os_specific_subprocess_params():
                 'close_fds': True,
                 }
 
+
 import weakref
 _subproc_weakrefs = set()
+
 
 def _close_ssh_proc(proc, sock):
     """Carefully close stdin/stdout and reap the SSH process.
@@ -728,6 +738,7 @@ class SSHSubprocessConnection(SSHConnection):
         self._sock = sock
         # Add a weakref to proc that will attempt to do the same as self.close
         # to avoid leaving processes lingering indefinitely.
+
         def terminate(ref):
             _subproc_weakrefs.remove(ref)
             _close_ssh_proc(proc, sock)
@@ -766,5 +777,3 @@ class _ParamikoSSHConnection(SSHConnection):
 
     def close(self):
         return self.channel.close()
-
-

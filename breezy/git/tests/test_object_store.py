@@ -67,14 +67,14 @@ class ExpectedShaTests(TestCase):
 
     def test_hex(self):
         _check_expected_sha(
-                self.obj.sha().hexdigest().encode('ascii'), self.obj)
+            self.obj.sha().hexdigest().encode('ascii'), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            b"0" * 40, self.obj)
+                          b"0" * 40, self.obj)
 
     def test_binary(self):
         _check_expected_sha(self.obj.sha().digest(), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha,
-            b"x" * 20, self.obj)
+                          b"x" * 20, self.obj)
 
 
 class FindMissingBzrRevidsTests(TestCase):
@@ -89,20 +89,20 @@ class FindMissingBzrRevidsTests(TestCase):
 
     def test_up_to_date(self):
         self.assertEqual(set(),
-                self._find_missing({"a": ["b"]}, ["a"], ["a"]))
+                         self._find_missing({"a": ["b"]}, ["a"], ["a"]))
 
     def test_one_missing(self):
         self.assertEqual(set(["a"]),
-                self._find_missing({"a": ["b"]}, ["a"], ["b"]))
+                         self._find_missing({"a": ["b"]}, ["a"], ["b"]))
 
     def test_two_missing(self):
         self.assertEqual(set(["a", "b"]),
-                self._find_missing({"a": ["b"], "b": ["c"]}, ["a"], ["c"]))
+                         self._find_missing({"a": ["b"], "b": ["c"]}, ["a"], ["c"]))
 
     def test_two_missing_history(self):
         self.assertEqual(set(["a", "b"]),
-                self._find_missing({"a": ["b"], "b": ["c"], "c": ["d"]},
-                    ["a"], ["c"]))
+                         self._find_missing({"a": ["b"], "b": ["c"], "c": ["d"]},
+                                            ["a"], ["c"]))
 
 
 class LRUTreeCacheTests(TestCaseWithTransport):
@@ -116,23 +116,24 @@ class LRUTreeCacheTests(TestCaseWithTransport):
 
     def test_get_not_present(self):
         self.assertRaises(NoSuchRevision, self.cache.revision_tree,
-                "unknown")
+                          "unknown")
 
     def test_revision_trees(self):
         self.assertRaises(NoSuchRevision, self.cache.revision_trees,
-                ["unknown", "la"])
+                          ["unknown", "la"])
 
     def test_iter_revision_trees(self):
         self.assertRaises(NoSuchRevision, self.cache.iter_revision_trees,
-                ["unknown", "la"])
+                          ["unknown", "la"])
 
     def test_get(self):
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
         revid = bb.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-             ])
+                                  [('add', ('', None, 'directory', None)),
+                                   ('add', ('foo', b'foo-id',
+                                            'file', b'a\nb\nc\nd\ne\n')),
+                                   ])
         bb.finish_series()
         tree = self.cache.revision_tree(revid)
         self.assertEqual(revid, tree.get_revision_id())
@@ -156,9 +157,9 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
         bb.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-             ])
+                          [('add', ('', None, 'directory', None)),
+                           ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
+                           ])
         bb.finish_series()
         # read locks cache
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
@@ -175,9 +176,9 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
         bb.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-             ])
+                          [('add', ('', None, 'directory', None)),
+                           ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
+                           ])
         bb.finish_series()
         # read locks cache
         self.assertRaises(KeyError, self.store.get_raw, b.id)
@@ -194,9 +195,9 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
         bb.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-             ])
+                          [('add', ('', None, 'directory', None)),
+                           ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
+                           ])
         bb.finish_series()
         # read locks cache
         self.assertFalse(b.id in self.store)
@@ -237,26 +238,26 @@ class DirectoryToTreeTests(TestCase):
     def test_empty_dir(self):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
-                allow_empty=False)
+                              allow_empty=False)
         self.assertEqual(None, t)
 
     def test_empty_dir_dummy_files(self):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, ".mydummy",
-                allow_empty=False)
+                              allow_empty=False)
         self.assertTrue(".mydummy" in t)
 
     def test_empty_root(self):
         child_ie = InventoryDirectory(b'bar', 'bar', b'bar')
         t = directory_to_tree('', [child_ie], lambda p, x: None, {}, None,
-                allow_empty=True)
+                              allow_empty=True)
         self.assertEqual(Tree(), t)
 
     def test_with_file(self):
         child_ie = InventoryFile(b'bar', 'bar', b'bar')
         b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie], lambda p, x: b.id, {}, None,
-                allow_empty=False)
+                               allow_empty=False)
         t2 = Tree()
         t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)
@@ -266,8 +267,8 @@ class DirectoryToTreeTests(TestCase):
         git_file_ie = InventoryFile(b'gitid', '.git', b'bar')
         b = Blob.from_string(b"bla")
         t1 = directory_to_tree('', [child_ie, git_file_ie],
-                lambda p, x: b.id, {}, None,
-                allow_empty=False)
+                               lambda p, x: b.id, {}, None,
+                               allow_empty=False)
         t2 = Tree()
         t2.add(b"bar", 0o100644, b.id)
         self.assertEqual(t1, t2)

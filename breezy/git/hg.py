@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import urllib
 
+
 def format_hg_metadata(renames, branch, extra):
     """Construct a tail with hg-git metadata.
 
@@ -42,7 +43,8 @@ def format_hg_metadata(renames, branch, extra):
                    'hg-git'):
             continue
         else:
-            extra_message += "extra : " + key + " : " +  urllib.quote(value) + "\n"
+            extra_message += "extra : " + key + \
+                " : " + urllib.quote(value) + "\n"
 
     if extra_message:
         return "\n--HG--\n" + extra_message

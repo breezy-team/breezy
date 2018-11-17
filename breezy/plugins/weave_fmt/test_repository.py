@@ -95,8 +95,6 @@ class TestFormat6(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-
-
 class TestFormat7(TestCaseWithTransport):
 
     def test_attribute__fetch_order(self):
@@ -265,7 +263,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository --format=weave a")
         self.assertEqual(out,
-"""Standalone tree (format: weave)
+                         """Standalone tree (format: weave)
 Location:
   branch root: a
 """)

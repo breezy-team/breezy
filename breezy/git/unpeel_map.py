@@ -46,7 +46,8 @@ class UnpeelMap(object):
     def load(self, f):
         firstline = f.readline()
         if firstline != b"unpeel map version 1\n":
-            raise AssertionError("invalid format for unpeel map: %r" % firstline)
+            raise AssertionError(
+                "invalid format for unpeel map: %r" % firstline)
         for l in f.readlines():
             (k, v) = l.split(b":", 1)
             k = k.strip()

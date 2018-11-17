@@ -27,7 +27,6 @@ from dulwich.objects import (
     Blob,
     Commit,
     Tag,
-    Tree,
     parse_timezone,
     )
 from dulwich.tests.utils import (
@@ -50,14 +49,14 @@ class TestRevidConversionV1(tests.TestCase):
         self.assertEqual(b"git-v1:"
                          b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
                          BzrGitMappingv1().revision_id_foreign_to_bzr(
-                            b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+                             b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
 
     def test_simple_bzr_to_git_revision_id(self):
         self.assertEqual((b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356",
-                         BzrGitMappingv1()),
+                          BzrGitMappingv1()),
                          BzrGitMappingv1().revision_id_bzr_to_foreign(
-                            b"git-v1:"
-                            b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+            b"git-v1:"
+            b"c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
 
     def test_is_control_file(self):
         mapping = BzrGitMappingv1()
@@ -110,7 +109,7 @@ class TestImportCommit(tests.TestCase):
         c.author = b"Author"
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-            mapping.revision_id_foreign_to_bzr)
+                                                                mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Some message", rev.message)
@@ -135,7 +134,7 @@ class TestImportCommit(tests.TestCase):
         c.encoding = b"iso8859-1"
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-            mapping.revision_id_foreign_to_bzr)
+                                                                mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
@@ -154,7 +153,7 @@ class TestImportCommit(tests.TestCase):
         c.author = u"Authér".encode("latin1")
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-            mapping.revision_id_foreign_to_bzr)
+                                                                mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
@@ -173,7 +172,7 @@ class TestImportCommit(tests.TestCase):
         c.author = u"Authér".encode("utf-8")
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-            mapping.revision_id_foreign_to_bzr)
+                                                                mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
@@ -193,7 +192,7 @@ class TestImportCommit(tests.TestCase):
         c._extra.append((b"iamextra", b"foo"))
         mapping = BzrGitMappingv1()
         self.assertRaises(UnknownCommitExtra, mapping.import_commit, c,
-            mapping.revision_id_foreign_to_bzr)
+                          mapping.revision_id_foreign_to_bzr)
 
     def test_mergetag(self):
         c = Commit()
@@ -206,15 +205,17 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = b"Author"
         tag = make_object(Tag,
-                tagger=b'Jelmer Vernooij <jelmer@samba.org>',
-                name=b'0.1', message=None,
-                object=(Blob, b'd80c186a03f423a81b39df39dc87fd269736ca86'),
-                tag_time=423423423, tag_timezone=0)
+                          tagger=b'Jelmer Vernooij <jelmer@samba.org>',
+                          name=b'0.1', message=None,
+                          object=(
+                              Blob, b'd80c186a03f423a81b39df39dc87fd269736ca86'),
+                          tag_time=423423423, tag_timezone=0)
         c.mergetag = [tag]
         mapping = BzrGitMappingv1()
         rev, roundtrip_revid, verifiers = mapping.import_commit(
-                c, mapping.revision_id_foreign_to_bzr)
-        self.assertEqual(rev.properties[u'git-mergetag-0'], tag.as_raw_string())
+            c, mapping.revision_id_foreign_to_bzr)
+        self.assertEqual(
+            rev.properties[u'git-mergetag-0'], tag.as_raw_string())
 
 
 class RoundtripRevisionsFromBazaar(tests.TestCase):
@@ -227,13 +228,13 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
 
     def assertRoundtripRevision(self, orig_rev):
         commit = self.mapping.export_commit(orig_rev, b"mysha",
-            self._lookup_parent, True, b"testamentsha")
+                                            self._lookup_parent, True, b"testamentsha")
         rev, roundtrip_revid, verifiers = self.mapping.import_commit(
             commit, self.mapping.revision_id_foreign_to_bzr)
         self.assertEqual(rev.revision_id,
-            self.mapping.revision_id_foreign_to_bzr(commit.id))
+                         self.mapping.revision_id_foreign_to_bzr(commit.id))
         if self.mapping.roundtripping:
-            self.assertEqual({"testament3-sha1": b"testamentsha"} , verifiers)
+            self.assertEqual({"testament3-sha1": b"testamentsha"}, verifiers)
             self.assertEqual(orig_rev.revision_id, roundtrip_revid)
             self.assertEqual(orig_rev.properties, rev.properties)
             self.assertEqual(orig_rev.committer, rev.committer)
@@ -245,7 +246,8 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
             self.assertEqual({}, verifiers)
 
     def test_simple_commit(self):
-        r = Revision(self.mapping.revision_id_foreign_to_bzr(b"edf99e6c56495c620f20d5dacff9859ff7119261"))
+        r = Revision(self.mapping.revision_id_foreign_to_bzr(
+            b"edf99e6c56495c620f20d5dacff9859ff7119261"))
         r.message = "MyCommitMessage"
         r.parent_ids = []
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
@@ -301,7 +303,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         rev, roundtrip_revid, verifiers = self.mapping.import_commit(
             commit1, self.mapping.revision_id_foreign_to_bzr)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
-            True, None)
+                                             True, None)
         self.assertEqual(commit1.committer, commit2.committer)
         self.assertEqual(commit1.commit_time, commit2.commit_time)
         self.assertEqual(commit1.commit_timezone, commit2.commit_timezone)
@@ -385,10 +387,11 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c.author_timezone = 60 * 2
         c.author = b"Author <author>"
         tag = make_object(Tag,
-                tagger=b'Jelmer Vernooij <jelmer@samba.org>',
-                name=b'0.1', message=None,
-                object=(Blob, b'd80c186a03f423a81b39df39dc87fd269736ca86'),
-                tag_time=423423423, tag_timezone=0)
+                          tagger=b'Jelmer Vernooij <jelmer@samba.org>',
+                          name=b'0.1', message=None,
+                          object=(
+                              Blob, b'd80c186a03f423a81b39df39dc87fd269736ca86'),
+                          tag_time=423423423, tag_timezone=0)
         c.mergetag = [tag]
         self.assertRoundtripCommit(c)
 
@@ -407,4 +410,4 @@ class FixPersonIdentifierTests(tests.TestCase):
         self.assertEqual(b"person <bar@blah.nl>",
                          fix_person_identifier(b"person<bar@blah.nl>"))
         self.assertRaises(ValueError,
-                         fix_person_identifier, b"person >bar@blah.nl<")
+                          fix_person_identifier, b"person >bar@blah.nl<")

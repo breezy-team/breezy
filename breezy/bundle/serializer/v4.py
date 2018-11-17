@@ -48,7 +48,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
 
     def __init__(self, repo, inventory_keys):
         super(_MPDiffInventoryGenerator, self).__init__(repo.inventories,
-            inventory_keys)
+                                                        inventory_keys)
         self.repo = repo
         self.sha1s = {}
 
@@ -139,7 +139,7 @@ class BundleWriter(object):
         metadata = {b'parents': parents,
                     b'storage_kind': b'mpdiff'}
         self._add_record(bytes, {b'parents': parents,
-            b'storage_kind': b'fulltext'}, repo_kind, revision_id, None)
+                                 b'storage_kind': b'fulltext'}, repo_kind, revision_id, None)
 
     def add_info_record(self, kwargs):
         """Add an info record to the bundle
@@ -154,7 +154,7 @@ class BundleWriter(object):
     def encode_name(content_kind, revision_id, file_id=None):
         """Encode semantic ids as a container name"""
         if content_kind not in ('revision', 'file', 'inventory', 'signature',
-                'info'):
+                                'info'):
             raise ValueError(content_kind)
         if content_kind == 'file':
             if file_id is None:
@@ -333,7 +333,7 @@ class BundleWriteOperation(object):
         """Write bundle records for all revisions of all files"""
         text_keys = []
         altered_fileids = self.repository.fileids_altered_by_revision_ids(
-                self.revision_ids)
+            self.revision_ids)
         for file_id, revision_ids in viewitems(altered_fileids):
             for revision_id in revision_ids:
                 text_keys.append((file_id, revision_id))
@@ -343,7 +343,7 @@ class BundleWriteOperation(object):
         """Write bundle records for all revisions and signatures"""
         inv_vf = self.repository.inventories
         topological_order = [key[-1] for key in multiparent.topo_iter_keys(
-                                inv_vf, self.revision_keys)]
+            inv_vf, self.revision_keys)]
         revision_order = topological_order
         if self.target is not None and self.target in self.revision_ids:
             # Make sure the target revision is always the last entry
@@ -389,11 +389,11 @@ class BundleWriteOperation(object):
             parents = parent_map.get(revision_id, None)
             revision_text = revision_to_bytes(revision)
             self.bundle.add_fulltext_record(revision_text, parents,
-                                       'revision', revision_id)
+                                            'revision', revision_id)
             try:
                 self.bundle.add_fulltext_record(
                     self.repository.get_signature_text(
-                    revision_id), parents, 'signature', revision_id)
+                        revision_id), parents, 'signature', revision_id)
             except errors.NoSuchRevision:
                 pass
 
@@ -434,6 +434,7 @@ class BundleWriteOperation(object):
 class BundleInfoV4(object):
 
     """Provide (most of) the BundleInfo interface"""
+
     def __init__(self, fileobj, serializer):
         self._fileobj = fileobj
         self._serializer = serializer
@@ -478,7 +479,7 @@ class BundleInfoV4(object):
             self.__real_revisions = []
             bundle_reader = self.get_bundle_reader()
             for bytes, metadata, repo_kind, revision_id, file_id in \
-                bundle_reader.iter_records():
+                    bundle_reader.iter_records():
                 if repo_kind == 'info':
                     serializer =\
                         self._serializer.get_source_serializer(metadata)
@@ -536,24 +537,25 @@ class RevisionInstaller(object):
         added_inv = set()
         target_revision = None
         for bytes, metadata, repo_kind, revision_id, file_id in\
-            self._container.iter_records():
+                self._container.iter_records():
             if repo_kind == 'info':
                 if self._info is not None:
                     raise AssertionError()
                 self._handle_info(metadata)
             if (pending_file_records and
-                (repo_kind, file_id) != ('file', current_file)):
+                    (repo_kind, file_id) != ('file', current_file)):
                 # Flush the data for a single file - prevents memory
                 # spiking due to buffering all files in memory.
                 self._install_mp_records_keys(self._repository.texts,
-                    pending_file_records)
+                                              pending_file_records)
                 current_file = None
                 del pending_file_records[:]
             if len(pending_inventory_records) > 0 and repo_kind != 'inventory':
                 self._install_inventory_records(pending_inventory_records)
                 pending_inventory_records = []
             if repo_kind == 'inventory':
-                pending_inventory_records.append(((revision_id,), metadata, bytes))
+                pending_inventory_records.append(
+                    ((revision_id,), metadata, bytes))
             if repo_kind == 'revision':
                 target_revision = revision_id
                 self._install_revision(revision_id, metadata, bytes)
@@ -561,8 +563,10 @@ class RevisionInstaller(object):
                 self._install_signature(revision_id, metadata, bytes)
             if repo_kind == 'file':
                 current_file = file_id
-                pending_file_records.append(((file_id, revision_id), metadata, bytes))
-        self._install_mp_records_keys(self._repository.texts, pending_file_records)
+                pending_file_records.append(
+                    ((file_id, revision_id), metadata, bytes))
+        self._install_mp_records_keys(
+            self._repository.texts, pending_file_records)
         return target_revision
 
     def _handle_info(self, info):
@@ -570,7 +574,7 @@ class RevisionInstaller(object):
         self._info = info
         self._source_serializer = self._serializer.get_source_serializer(info)
         if (info[b'supports_rich_root'] == 0 and
-            self._repository.supports_rich_root()):
+                self._repository.supports_rich_root()):
             self.update_root = True
         else:
             self.update_root = False
@@ -619,7 +623,7 @@ class RevisionInstaller(object):
             # installed yet.)
             parent_keys = [(r,) for r in remaining_parent_ids]
             present_parent_map = self._repository.inventories.get_parent_map(
-                                        parent_keys)
+                parent_keys)
             present_parent_ids = []
             ghosts = set()
             for p_id in remaining_parent_ids:
@@ -629,7 +633,7 @@ class RevisionInstaller(object):
                     ghosts.add(p_id)
             to_string = self._source_serializer.write_inventory_to_string
             for parent_inv in self._repository.iter_inventories(
-                                    present_parent_ids):
+                    present_parent_ids):
                 p_text = to_string(parent_inv)
                 inventory_cache[parent_inv.revision_id] = parent_inv
                 cached_parent_texts[parent_inv.revision_id] = p_text
@@ -637,19 +641,19 @@ class RevisionInstaller(object):
 
         parent_texts = [cached_parent_texts[parent_id]
                         for parent_id in parent_ids
-                         if parent_id not in ghosts]
+                        if parent_id not in ghosts]
         return parent_texts
 
     def _install_inventory_records(self, records):
         if (self._info[b'serializer'] == self._repository._serializer.format_num
-            and self._repository._serializer.support_altered_by_hack):
+                and self._repository._serializer.support_altered_by_hack):
             return self._install_mp_records_keys(self._repository.inventories,
-                records)
+                                                 records)
         # Use a 10MB text cache, since these are string xml inventories. Note
         # that 10MB is fairly small for large projects (a single inventory can
         # be >5MB). Another possibility is to cache 10-20 inventory texts
         # instead
-        inventory_text_cache = lru_cache.LRUSizeCache(10*1024*1024)
+        inventory_text_cache = lru_cache.LRUSizeCache(10 * 1024 * 1024)
         # Also cache the in-memory representation. This allows us to create
         # inventory deltas to apply rather than calling add_inventory from
         # scratch each time.
@@ -670,7 +674,7 @@ class RevisionInstaller(object):
                 # it would have to cast to a list of lines, which we get back
                 # as lines and then cast back to a string.
                 target_lines = multiparent.MultiParent.from_patch(bytes
-                            ).to_lines(p_texts)
+                                                                  ).to_lines(p_texts)
                 inv_text = b''.join(target_lines)
                 del target_lines
                 sha1 = osutils.sha_string(inv_text)
@@ -691,7 +695,7 @@ class RevisionInstaller(object):
                     else:
                         delta = target_inv._make_delta(parent_inv)
                         self._repository.add_inventory_by_delta(parent_ids[0],
-                            delta, revision_id, parent_ids)
+                                                                delta, revision_id, parent_ids)
                 except errors.UnsupportedInventoryKind:
                     raise errors.IncompatibleRevision(repr(self._repository))
                 inventory_cache[revision_id] = target_inv
@@ -701,7 +705,7 @@ class RevisionInstaller(object):
         if self.update_root:
             text_key = (target_inv.root.file_id, revision_id)
             parent_keys = [(target_inv.root.file_id, parent) for
-                parent in parent_ids]
+                           parent in parent_ids]
             self._repository.texts.add_lines(text_key, parent_keys, [])
         elif not self._repository.supports_rich_root():
             if target_inv.root.revision != revision_id:

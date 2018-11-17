@@ -42,8 +42,8 @@ of converting bug IDs into URLs.
 """
 
 
-_bugs_help = \
-"""When making a commit, metadata about bugs fixed by that change can be
+_bugs_help = """\
+When making a commit, metadata about bugs fixed by that change can be
 recorded by using the ``--fixes`` option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
 (The only ``status`` value currently supported is ``fixed.``)
@@ -216,8 +216,8 @@ class TrackerRegistry(registry.Registry):
             tracker = tracker_type.get(abbreviated_bugtracker_name, branch)
             if tracker is not None:
                 return tracker
-        raise UnknownBugTrackerAbbreviation(abbreviated_bugtracker_name,
-                branch)
+        raise UnknownBugTrackerAbbreviation(
+            abbreviated_bugtracker_name, branch)
 
     def help_topic(self, topic):
         return _bugs_help
@@ -316,7 +316,7 @@ class ProjectIntegerBugTracker(IntegerBugTracker):
         if '{project}' not in self._base_url:
             raise InvalidBugTrackerURL(self._abbreviation, self._base_url)
         return self._base_url.replace(
-                '{project}', project).replace('{id}', str(bug_id))
+            '{project}', project).replace('{id}', str(bug_id))
 
 
 tracker_registry.register(
@@ -327,9 +327,9 @@ tracker_registry.register(
     'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
 
 
-tracker_registry.register('gnome',
-    UniqueIntegerBugTracker('gnome',
-                            'http://bugzilla.gnome.org/show_bug.cgi?id='))
+tracker_registry.register(
+    'gnome', UniqueIntegerBugTracker(
+        'gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
 tracker_registry.register(
@@ -377,6 +377,7 @@ class URLParametrizedIntegerBugTracker(IntegerBugTracker,
     'squid' or 'apache').
     """
 
+
 tracker_registry.register(
     'trac', URLParametrizedIntegerBugTracker('trac', 'ticket/'))
 
@@ -406,16 +407,17 @@ tracker_registry.register('generic', GenericBugTracker())
 
 
 FIXED = 'fixed'
+RELATED = 'related'
 
-ALLOWED_BUG_STATUSES = {FIXED}
+ALLOWED_BUG_STATUSES = {FIXED, RELATED}
 
 
 def encode_fixes_bug_urls(bug_urls):
     """Get the revision property value for a commit that fixes bugs.
 
-    :param bug_urls: An iterable of escaped URLs to bugs. These normally
+    :param bug_urls: An iterable of (escaped URL, tag) tuples. These normally
         come from `get_bug_url`.
     :return: A string that will be set as the 'bugs' property of a revision
         as part of a commit.
     """
-    return '\n'.join(('%s %s' % (url, FIXED)) for url in bug_urls)
+    return '\n'.join(('%s %s' % (url, tag)) for (url, tag) in bug_urls)
