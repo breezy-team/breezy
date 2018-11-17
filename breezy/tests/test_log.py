@@ -1411,13 +1411,13 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
 
         self.assertContainsRe(
             logfile.getvalue(),
-            'brz: ERROR: breezy.bugtracker.InvalidLineInBugsProperty: '
-            'Invalid line in bugs property: \'test://bua g/id fixed\'')
+            b'brz: ERROR: breezy.bugtracker.InvalidLineInBugsProperty: '
+            b'Invalid line in bugs property: \'test://bua g/id fixed\'')
 
         text = logfile.getvalue()
         self.assertEqualDiff(
-            text[text.index('-' * 60):],
-            """\
+            text[text.index(b'-' * 60):],
+            b"""\
 ------------------------------------------------------------
 revno: 1
 committer: Joe Foo <joe@foo.com>
@@ -1481,14 +1481,14 @@ message:
         lines = logfile.getvalue().splitlines()
 
         self.assertEqual(
-            lines[0], '    1 Joe Foo\t2005-11-22')
+            lines[0], b'    1 Joe Foo\t2005-11-22')
 
         self.assertEqual(
             lines[1],
-            'brz: ERROR: breezy.bugtracker.InvalidBugStatus: Invalid '
-            'bug status: \'invalid_value\'')
+            b'brz: ERROR: breezy.bugtracker.InvalidBugStatus: Invalid '
+            b'bug status: \'invalid_value\'')
 
-        self.assertEqual(lines[-2], "      simple log message")
+        self.assertEqual(lines[-2], b"      simple log message")
 
     def test_bugs_handler_present(self):
         self.properties_handler_registry.get('bugs_properties_handler')
