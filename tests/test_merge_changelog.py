@@ -283,7 +283,8 @@ pseudo-prog (ss-0) unstable; urgency=low
             possible_error=True)
         if not handled:
             # Can't assert on the exact message as it depends on the locale
-            self.assertContainsRe(self.logged_warnings.getvalue(),
+            self.assertContainsRe(
+                self.logged_warnings.getvalue(),
                 "dpkg-mergechangelogs: .*ss-0( is not a valid version)?")
 
     def test_invalid_version_non_ascii(self):
@@ -333,18 +334,20 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         self.addCleanup(tree.unlock)
 
         class FakeMerger(object):
+
             def __init__(self, this_tree):
                 self.this_tree = this_tree
+
             def get_lines(self, tree, path, file_id):
-                return tree.get_file_lines(path, file_id)
+                return tree.get_file_lines(path)
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
-        params = params_cls(merger, b'c-id', ('debian/changelog',
-            'debian/changelog', 'debian/changelog'), None, 'file', 'file',
-            'this')
+        params = params_cls(
+            merger, b'c-id',
+            ('debian/changelog', 'debian/changelog', 'debian/changelog'),
+            None, 'file', 'file', 'this')
         return params, merger
-
 
     def test_changelog_merge_hook_successful(self):
         params, merger = self.make_params()

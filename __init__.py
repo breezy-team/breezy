@@ -134,8 +134,8 @@ def debian_changelog_commit_message(commit, start_message):
     if commit.specific_files and cl_path not in commit.specific_files:
         return start_message
     changes = []
-    for change in commit.work_tree.iter_changes(commit.work_tree.basis_tree(),
-            specific_files=[cl_path]):
+    for change in commit.work_tree.iter_changes(
+            commit.work_tree.basis_tree(), specific_files=[cl_path]):
         # Content not changed
         if not change[2]:
             return start_message
@@ -146,17 +146,17 @@ def debian_changelog_commit_message(commit, start_message):
         if change[6][0] != 'file' or change[6][1] != 'file':
             return start_message
         old_text = commit.work_tree.basis_tree().get_file(
-                change[1][0], file_id=change[0]).readlines()
-        new_text = commit.work_tree.get_file(
-                change[1][1], file_id=change[0]).readlines()
+            change[1][0]).readlines()
+        new_text = commit.work_tree.get_file(change[1][1]).readlines()
         import difflib
         sequencematcher = difflib.SequenceMatcher
-        for group in sequencematcher(None, old_text,
-                new_text).get_grouped_opcodes(0):
+        for group in sequencematcher(
+                None, old_text, new_text).get_grouped_opcodes(0):
             j1, j2 = group[0][3], group[-1][4]
             for line in new_text[j1:j2]:
                 if line.startswith(b"  "):
-                    # Debian Policy Manual states that debian/changelog must be UTF-8
+                    # Debian Policy Manual states that debian/changelog must be
+                    # UTF-8
                     changes.append(line.decode('utf-8'))
     if not changes:
         return start_message
@@ -196,18 +196,19 @@ def changelog_merge_hook_factory(merger):
 def debian_tag_name(branch, revid):
     from .config import BUILD_TYPE_MERGE
     from .errors import MissingChangelogError
-    from .import_dsc import (DistributionBranch,
-        DistributionBranchSet)
+    from .import_dsc import (
+        DistributionBranch, DistributionBranchSet)
     from .util import debuild_config, find_changelog
     t = branch.repository.revision_tree(revid)
     config = debuild_config(t, False)
     try:
-        (changelog, top_level) = find_changelog(t, config.build_type == BUILD_TYPE_MERGE)
+        (changelog, top_level) = find_changelog(
+            t, config.build_type == BUILD_TYPE_MERGE)
     except MissingChangelogError:
         # Not a debian package
         return None
     if changelog.distributions == 'UNRELEASED':
-        # The changelog still targets 'UNRELEASED', so apparently hasn't been 
+        # The changelog still targets 'UNRELEASED', so apparently hasn't been
         # uploaded. XXX: Give a warning of some sort here?
         return None
     db = DistributionBranch(branch, None)
@@ -242,10 +243,11 @@ def pre_merge_quilt(merger):
         return
 
     if (not merger.other_tree.is_versioned("debian/patches/series") and
-        not merger.this_tree.is_versioned("debian/patches/series") and
-        not merger.working_tree.is_versioned("debian/patches/series")):
+            not merger.this_tree.is_versioned("debian/patches/series") and
+            not merger.working_tree.is_versioned("debian/patches/series")):
         return
 
+    from . import util
     from ... import trace
     this_source_format = util.tree_get_source_format(merger.this_tree)
     if this_source_format != util.FORMAT_3_0_QUILT:
@@ -260,8 +262,8 @@ def pre_merge_quilt(merger):
         return
 
     if (not merger.other_tree.is_versioned(".pc/applied-patches") and
-        not merger.this_tree.is_versioned(".pc/applied-patches") and
-        not merger.working_tree.is_versioned(".pc/applied-patches")):
+            not merger.this_tree.is_versioned(".pc/applied-patches") and
+            not merger.working_tree.is_versioned(".pc/applied-patches")):
         return
 
     from .errors import QuiltUnapplyError
@@ -273,16 +275,16 @@ def pre_merge_quilt(merger):
     if merger._old_quilt_series:
         quilt_pop_all(working_dir=merger.working_tree.basedir)
     try:
-        merger.this_tree, this_dir = tree_unapply_patches(merger.this_tree,
-            merger.this_branch, force=True)
+        merger.this_tree, this_dir = tree_unapply_patches(
+            merger.this_tree, merger.this_branch, force=True)
     except QuiltError as e:
         raise QuiltUnapplyError("this", e.stderr)
     else:
         if this_dir is not None:
             merger._quilt_tempdirs.append(this_dir)
     try:
-        merger.base_tree, base_dir = tree_unapply_patches(merger.base_tree,
-            merger.this_branch, force=True)
+        merger.base_tree, base_dir = tree_unapply_patches(
+            merger.base_tree, merger.this_branch, force=True)
     except QuiltError as e:
         raise QuiltUnapplyError("base", e.stderr)
     else:
@@ -292,8 +294,8 @@ def pre_merge_quilt(merger):
     if other_branch is None:
         other_branch = merger.this_branch
     try:
-        merger.other_tree, other_dir = tree_unapply_patches(merger.other_tree,
-            other_branch, force=True)
+        merger.other_tree, other_dir = tree_unapply_patches(
+            merger.other_tree, other_branch, force=True)
     except QuiltError as e:
         raise QuiltUnapplyError("other", e.stderr)
     else:
@@ -338,7 +340,7 @@ def pre_merge_fix_ancestry(merger):
     if getattr(merger, "other_branch", None) is None:
         return
     if (not merger.this_tree.is_versioned("debian/changelog") or
-        not merger.other_tree.is_versioned("debian/changelog")):
+            not merger.other_tree.is_versioned("debian/changelog")):
         return
     this_config = debuild_config(merger.this_tree, merger.this_tree)
     other_config = debuild_config(merger.other_tree, merger.other_tree)
@@ -347,20 +349,23 @@ def pre_merge_fix_ancestry(merger):
         from ... import trace
         from .errors import PackageVersionNotPresent
         try:
-            fix_ancestry_as_needed(merger.this_tree, merger.other_branch,
+            fix_ancestry_as_needed(
+                merger.this_tree, merger.other_branch,
                 source_revid=merger.other_tree.get_revision_id())
         except PackageVersionNotPresent as e:
             trace.warning(
-                gettext("Not attempting to fix packaging branch ancestry, missing pristine tar "
-                "data for version %s."), e.version)
+                gettext(
+                    "Not attempting to fix packaging branch ancestry, "
+                    "missing pristine tar data for version %s."),
+                e.version)
 
 
 from ...hooks import install_lazy_named_hook
 install_lazy_named_hook(
     "breezy.msgeditor", "hooks", "commit_message_template",
-        debian_changelog_commit_message,
-        "Use changes documented in debian/changelog to suggest "
-        "the commit message")
+    debian_changelog_commit_message,
+    "Use changes documented in debian/changelog to suggest "
+    "the commit message")
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'merge_file_content', changelog_merge_hook_factory,
@@ -368,7 +373,7 @@ install_lazy_named_hook(
 install_lazy_named_hook(
     "breezy.branch", "Branch.hooks",
     "automatic_tag_name", debian_tag_name,
-     "Automatically determine tag names from Debian version")
+    "Automatically determine tag names from Debian version")
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'pre_merge', pre_merge,

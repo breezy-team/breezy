@@ -5,6 +5,7 @@ breezy-debian (2.8.21) UNRELEASED; urgency=medium
     branch support.
   * brz dep3-patch: Use git commit ids when generating patches from Git
     repositories.
+  * Fix compatibility with newer versions of brz.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 02 Nov 2018 03:00:37 +0000
 
