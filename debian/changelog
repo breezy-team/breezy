@@ -6,6 +6,7 @@ breezy (3.0.0~bzr7183-1) UNRELEASED; urgency=medium
   * Drop patch 04_spurious_test_failure: fixed upstream.
   * Drop patch 15_executable: fixed upstream.
   * 01_selftest_package: refresh.
+  * Add 15_git_feature: add missing feature requirement.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 01:38:01 +0000
 

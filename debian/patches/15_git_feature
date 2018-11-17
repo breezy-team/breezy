@@ -1,0 +1,13 @@
+=== modified file 'breezy/git/tests/test_remote.py'
+--- old/breezy/git/tests/test_remote.py	2018-11-16 18:40:46 +0000
++++ new/breezy/git/tests/test_remote.py	2018-11-17 02:15:01 +0000
+@@ -144,6 +144,8 @@
+ 
+ class TestRemoteGitBranch(TestCaseWithTransport):
+ 
++    _test_needs_features = [ExecutableFeature('git')]
++
+     def setUp(self):
+         TestCaseWithTransport.setUp(self)
+         self.remote_real = GitRepo.init('remote', mkdir=True)
+
