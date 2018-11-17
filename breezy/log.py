@@ -75,6 +75,7 @@ from . import (
     errors,
     registry,
     revisionspec,
+    trace,
     )
 from .osutils import (
     format_date,
@@ -1522,7 +1523,11 @@ class LogFormatter(object):
         """
         lines = self._foreign_info_properties(revision)
         for key, handler in properties_handler_registry.iteritems():
-            lines.extend(self._format_properties(handler(revision)))
+            try:
+                lines.extend(self._format_properties(handler(revision)))
+            except BaseException:
+                trace.log_exception_quietly()
+                trace.print_exception(sys.exc_info(), self.to_file)
         return lines
 
     def _foreign_info_properties(self, rev):

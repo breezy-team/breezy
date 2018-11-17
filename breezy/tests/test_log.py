@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import re
 
 from .. import (
     branchbuilder,
@@ -728,7 +729,9 @@ message:
         log.properties_handler_registry.register(
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
-        self.assertRaises(Exception, log.show_log, wt.branch, formatter,)
+        log.show_log(wt.branch, formatter)
+        self.assertContainsRe(
+            sio.getvalue(), b'''brz: ERROR: Exception: a test error''')
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
@@ -1395,6 +1398,35 @@ class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
                                  'test://bug/2 fixed'})
         return tree
 
+    def test_bug_broken(self):
+        tree = self.make_branch_and_tree(u'.')
+        self.build_tree(['a', 'b'])
+        tree.add('a')
+        self.wt_commit(tree, 'simple log message', rev_id=b'a1',
+                       revprops={u'bugs': 'test://bua g/id fixed'})
+
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.LongLogFormatter(to_file=logfile)
+        log.show_log(tree.branch, formatter)
+
+        self.assertContainsRe(
+            logfile.getvalue(),
+            'brz: ERROR: breezy.bugtracker.InvalidLineInBugsProperty: '
+            'Invalid line in bugs property: \'test://bua g/id fixed\'')
+
+        text = logfile.getvalue()
+        self.assertEqualDiff(
+            text[text.index('-' * 60):],
+            """\
+------------------------------------------------------------
+revno: 1
+committer: Joe Foo <joe@foo.com>
+branch nick: work
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  simple log message
+""")
+
     def test_long_bugs(self):
         tree = self.make_commits_with_bugs()
         self.assertFormatterResult(b"""\
@@ -1441,12 +1473,22 @@ message:
         self.build_tree(['foo'])
         self.wt_commit(tree, 'simple log message', rev_id=b'a1',
                        revprops={u'bugs': 'test://bug/id invalid_value'})
-        self.assertFormatterResult(b"""\
-    1 Joe Foo\t2005-11-22
-      simple log message
 
-""",
-                                   tree.branch, log.ShortLogFormatter)
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile)
+        log.show_log(tree.branch, formatter)
+
+        lines = logfile.getvalue().splitlines()
+
+        self.assertEqual(
+            lines[0], '    1 Joe Foo\t2005-11-22')
+
+        self.assertEqual(
+            lines[1],
+            'brz: ERROR: breezy.bugtracker.InvalidBugStatus: Invalid '
+            'bug status: \'invalid_value\'')
+
+        self.assertEqual(lines[-2], "      simple log message")
 
     def test_bugs_handler_present(self):
         self.properties_handler_registry.get('bugs_properties_handler')
