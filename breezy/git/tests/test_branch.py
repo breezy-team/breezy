@@ -32,6 +32,7 @@ from dulwich.repo import (
 import os
 
 from ... import (
+    errors,
     revision,
     urlutils,
     )
@@ -275,13 +276,14 @@ class BranchTests(tests.TestCaseInTempDir):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
         wt = Branch.open(path).create_checkout('co')
         self.build_tree_contents([('co/foobar', b'blah')])
-        self.assertRaises(errors.NoRoundtrippingSupport, wt.commit,
+        self.assertRaises(
+            errors.NoRoundtrippingSupport, wt.commit,
             'commit from bound branch.')
         revid = wt.commit('commit from bound branch.', lossy=True)
         self.assertEqual(revid, wt.branch.last_revision())
         self.assertEqual(
-                revid,
-                wt.branch.get_master_branch().last_revision())
+            revid,
+            wt.branch.get_master_branch().last_revision())
 
 
 class ForeignTestsBranchFactory(object):
