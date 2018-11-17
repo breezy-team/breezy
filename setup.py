@@ -743,7 +743,7 @@ elif 'py2exe' in sys.argv:
 else:
     # ad-hoc for easy_install
     DATA_FILES = []
-    if not 'bdist_egg' in sys.argv:
+    if 'bdist_egg' not in sys.argv:
         # generate and install brz.1 only with plain install, not the
         # easy_install one
         DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]

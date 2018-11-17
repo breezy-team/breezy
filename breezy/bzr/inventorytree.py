@@ -197,7 +197,7 @@ class InventoryTree(Tree):
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
-                    if not inventory is self.root_inventory:  # for now
+                    if inventory is not self.root_inventory:  # for now
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
@@ -917,9 +917,9 @@ class InterCHKRevisionTree(InterTree):
             changed_file_ids = set(changed_file_ids)
             for relpath, entry in self.target.root_inventory.iter_entries():
                 if (specific_file_ids is not None and
-                        not entry.file_id in specific_file_ids):
+                        entry.file_id not in specific_file_ids):
                     continue
-                if not entry.file_id in changed_file_ids:
+                if entry.file_id not in changed_file_ids:
                     yield (entry.file_id,
                            (relpath, relpath),  # Not renamed
                            False,  # Not modified

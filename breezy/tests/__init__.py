@@ -4544,7 +4544,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.
-        if test_id != None:
+        if test_id is not None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
         # Ugly, but the last thing we want here is fail, so bear with it.
