@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7183-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7183-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Add patch 03_crc_asul to fix test failures on 32-bit platforms.
@@ -8,7 +8,7 @@ breezy (3.0.0~bzr7183-1) UNRELEASED; urgency=medium
   * 01_selftest_package: refresh.
   * Add 15_git_feature: add missing feature requirement.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 02:16:01 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 10:47:34 +0000
 
 breezy (3.0.0~bzr7141-4) unstable; urgency=medium
 
