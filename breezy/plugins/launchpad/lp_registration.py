@@ -22,7 +22,7 @@ import socket
 try:
     from urllib.parse import urlsplit, urlunsplit
 except ImportError:
-    from urlparse import urlsplit, urlunsplit
+    from urlparse import urlsplit, urlunsplit  # noqa: F401
 import urllib
 try:
     from xmlrpc.client import (
@@ -42,7 +42,6 @@ except ImportError:  # python < 3
         )
 
 from ... import (
-    config,
     errors,
     urlutils,
     __version__ as _breezy_version,
@@ -129,7 +128,6 @@ class LaunchpadService(object):
     registrant_email = None
     registrant_password = None
 
-
     def __init__(self, transport=None, lp_instance=None):
         """Construct a new service talking to the launchpad rpc server"""
         self._lp_instance = lp_instance
@@ -137,7 +135,7 @@ class LaunchpadService(object):
             uri_type = urlutils.parse_url(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
             transport.user_agent = 'Breezy/%s (xmlrpc/%s)' \
-                    % (_breezy_version, xmlrpc_version)
+                % (_breezy_version, xmlrpc_version)
         self.transport = transport
 
     @property
@@ -184,13 +182,13 @@ class LaunchpadService(object):
                 # e.headers['location'] tells where to go and e.errcode==301; should
                 # probably log something and retry on the new url.
                 raise NotImplementedError("should resend request to %s, but this isn't implemented"
-                        % e.headers.get('Location', 'NO-LOCATION-PRESENT'))
+                                          % e.headers.get('Location', 'NO-LOCATION-PRESENT'))
             else:
                 # we don't want to print the original message because its
                 # str representation includes the plaintext password.
                 # TODO: print more headers to help in tracking down failures
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
-                        % (self.service_url, e.errcode, e.errmsg))
+                                      % (self.service_url, e.errcode, e.errmsg))
         except socket.gaierror as e:
             raise errors.ConnectionError(
                 "Could not resolve '%s'" % self.domain,

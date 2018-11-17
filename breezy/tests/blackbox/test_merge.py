@@ -64,15 +64,15 @@ class TestMerge(tests.TestCaseWithTransport):
         """
         builder = self.make_branch_builder('branch')
         builder.build_snapshot(None,
-            [('add', ('', b'root-id', 'directory', None)),
-             ('add', ('fname', b'f-id', 'file', b'a\nb\nc\n'))],
-            revision_id=b'rev1')
+                               [('add', ('', b'root-id', 'directory', None)),
+                                ('add', ('fname', b'f-id', 'file', b'a\nb\nc\n'))],
+                               revision_id=b'rev1')
         builder.build_snapshot([b'rev1'],
-            [('modify', ('fname', b'a\nB\nD\n'))],
-            revision_id=b'rev2other')
+                               [('modify', ('fname', b'a\nB\nD\n'))],
+                               revision_id=b'rev2other')
         other = builder.get_branch().controldir.sprout('other').open_branch()
         builder.build_snapshot([b'rev1'],
-            [('modify', ('fname', b'a\nB\nC\n'))], revision_id=b'rev2this')
+                               [('modify', ('fname', b'a\nB\nC\n'))], revision_id=b'rev2this')
         tree = builder.get_branch().create_checkout('tree', lightweight=True)
         return tree, other
 
@@ -123,14 +123,14 @@ class TestMerge(tests.TestCaseWithTransport):
                                 working_dir='a')
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
-                    %(ancestor, b.revno()), working_dir='a')
+                     % (ancestor, b.revno()), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
-                          [a.branch.last_revision(), b.last_revision()])
+                         [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('a/goodbye', b'quux')
         a_tree.revert(backups=False)
-        self.run_bzr('merge -r revno:%d:../b'%b.revno(), working_dir='a')
+        self.run_bzr('merge -r revno:%d:../b' % b.revno(), working_dir='a')
         self.assertEqual(a.get_parent_ids(),
-                          [a.branch.last_revision(), b.last_revision()])
+                         [a.branch.last_revision(), b.last_revision()])
         a_tip = a.commit('merged')
         self.run_bzr('merge ../b -r last:1', working_dir='a')
         self.assertEqual([a_tip], a.get_parent_ids())
@@ -266,7 +266,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # test merge for failure without parent set
         out = self.run_bzr('merge', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                ('', 'brz: ERROR: No location specified or remembered\n'))
+                         ('', 'brz: ERROR: No location specified or remembered\n'))
 
         # test uncommitted changes
         self.build_tree(['branch_b/d'])
@@ -283,7 +283,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # re-open branch as external run_brz modified it
         branch_b = branch_b.controldir.open_branch()
         self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
-                          osutils.abspath(parent))
+                         osutils.abspath(parent))
         # test implicit --remember when committing new file
         self.build_tree(['branch_b/e'])
         tree_b.add('e')
@@ -302,7 +302,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # re-open branch as external run_brz modified it
         branch_b = branch_b.controldir.open_branch()
         self.assertEqual(osutils.abspath(branch_b.get_submit_branch()),
-                          osutils.abspath(branch_c.controldir.root_transport.base))
+                         osutils.abspath(branch_c.controldir.root_transport.base))
         # re-open tree as external run_brz modified it
         tree_b = branch_b.controldir.open_workingtree()
         tree_b.commit('merge branch_c')
@@ -327,13 +327,14 @@ class TestMerge(tests.TestCaseWithTransport):
         testament_b = Testament.from_revision(tree_b.branch.repository,
                                               tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
-                         testament_b.as_text())
+                             testament_b.as_text())
         tree_a.set_conflicts(conflicts.ConflictList())
         tree_a.commit('message')
         # it is legal to attempt to merge an already-merged bundle
         err = self.run_bzr('merge ../bundle', working_dir='branch_a')[1]
         # but it does nothing
-        self.assertFalse(tree_a.changes_from(tree_a.basis_tree()).has_changed())
+        self.assertFalse(tree_a.changes_from(
+            tree_a.basis_tree()).has_changed())
         self.assertEqual('Nothing to do.\n', err)
 
     def test_merge_uncommitted(self):
@@ -398,7 +399,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.pullable_branch()
         (out, err) = self.run_bzr('merge --pull --preview -d a b')
         self.assertThat(out, matchers.DocTestMatches(
-"""=== modified file 'file'
+            """=== modified file 'file'
 --- file\t...
 +++ file\t...
 @@ -1,1 +1,1 @@
@@ -521,11 +522,12 @@ class TestMerge(tests.TestCaseWithTransport):
         # make source branch
         source = self.make_branch_and_tree('source')
         for f in ('a', 'b', 'c', 'd'):
-            self.build_tree(['source/'+f])
+            self.build_tree(['source/' + f])
             source.add(f)
-            source.commit('added '+f, rev_id=b'rev_'+f.encode('ascii'))
+            source.commit('added ' + f, rev_id=b'rev_' + f.encode('ascii'))
         # target branch
-        target = source.controldir.sprout('target', b'rev_a').open_workingtree()
+        target = source.controldir.sprout(
+            'target', b'rev_a').open_workingtree()
         self.assertDirectoryContent('target', ['.bzr', 'a'])
         # pick 1 revision
         self.run_bzr('merge -d target -r revid:rev_b..revid:rev_c source')
@@ -562,7 +564,8 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertContainsRe(err,
                               'Merging from remembered parent location .*a\\/')
         with tree_c.branch.lock_write():
-            tree_c.branch.set_submit_branch(tree_b.controldir.root_transport.base)
+            tree_c.branch.set_submit_branch(
+                tree_b.controldir.root_transport.base)
         out, err = self.run_bzr(['merge', '-d', 'c'])
         self.assertContainsRe(err,
                               'Merging from remembered submit location .*b\\/')
@@ -732,6 +735,7 @@ $ brz merge -d target source
 2>brz: ERROR: Merging into empty branches not currently supported, https://bugs.launchpad.net/bzr/+bug/308562
 """)
 
+
 class TestMergeForce(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -749,7 +753,6 @@ class TestMergeForce(tests.TestCaseWithTransport):
         self.tree_a.commit('empty change to allow merge to run')
         # Second merge on top of the uncommitted one
         self.run_bzr(['merge', '../a', '--force'], working_dir='b')
-
 
     def test_merge_with_uncommitted_changes(self):
         self.run_bzr_error(['Working tree .* has uncommitted changes'],

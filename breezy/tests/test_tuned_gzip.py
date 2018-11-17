@@ -19,7 +19,6 @@
 
 import gzip
 from io import BytesIO
-import zlib
 
 from .. import (
     tuned_gzip,
@@ -45,9 +44,9 @@ class TestToGzip(tests.TestCase):
         self.assertToGzip([b'some\n', b'strings\n', b'to\n', b'process\n'])
 
     def test_large_chunks(self):
-        self.assertToGzip([b'a large string\n'*1024])
-        self.assertToGzip([b'a large string\n']*1024)
+        self.assertToGzip([b'a large string\n' * 1024])
+        self.assertToGzip([b'a large string\n'] * 1024)
 
     def test_enormous_chunks(self):
-        self.assertToGzip([b'a large string\n'*1024*256])
-        self.assertToGzip([b'a large string\n']*1024*256)
+        self.assertToGzip([b'a large string\n' * 1024 * 256])
+        self.assertToGzip([b'a large string\n'] * 1024 * 256)

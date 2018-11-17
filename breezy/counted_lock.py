@@ -40,7 +40,7 @@ class CountedLock(object):
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__,
-            self._real_lock)
+                           self._real_lock)
 
     def break_lock(self):
         self._real_lock.break_lock()

@@ -33,4 +33,3 @@ class TestInitRepository(transport_util.TestCaseWithConnectionHookedTransport):
         cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url())
         self.assertEqual(1, len(self.connections))
-

@@ -62,7 +62,6 @@ class TestGetNamedObject(tests.TestCase):
             AttributeError, get_named_object, 'sys', 'NO_SUCH_ATTR')
 
 
-
 class TestCalcParent_name(tests.TestCase):
     """Tests for calc_parent_name."""
 
@@ -85,4 +84,3 @@ class TestCalcParent_name(tests.TestCase):
         err = self.assertRaises(AssertionError, calc_parent_name, 'mod_name')
         self.assertEqual(
             "No parent object for top-level module 'mod_name'", err.args[0])
-

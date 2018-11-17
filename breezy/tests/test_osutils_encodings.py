@@ -172,8 +172,8 @@ class TestTerminalEncoding(TestCase):
 
         # check stderr
         self.assertEqual('brz: warning: unknown terminal encoding cp-unknown.\n'
-                          '  Using encoding latin-1 instead.\n',
-                          sys.stderr.getvalue())
+                         '  Using encoding latin-1 instead.\n',
+                         sys.stderr.getvalue())
 
 
 class TestUserEncoding(TestCase):
@@ -195,8 +195,8 @@ class TestUserEncoding(TestCase):
     def test_get_user_encoding(self):
         self._encoding = 'user_encoding'
         fake_codec.add('user_encoding')
-        self.assertEqual('iso8859-1', # fake_codec maps to latin-1
-                          osutils.get_user_encoding())
+        self.assertEqual('iso8859-1',  # fake_codec maps to latin-1
+                         osutils.get_user_encoding())
         self.assertEqual('', sys.stderr.getvalue())
 
     def test_user_cp0(self):

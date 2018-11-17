@@ -22,21 +22,16 @@ from __future__ import absolute_import
 from .branch import (
     Branch,
     )
-from .commands import Command, Option
 from .repository import Repository
 from .revision import Revision
-from .sixish import (
-    text_type,
-    )
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,
     registry,
-    transform,
     )
-from breezy.i18n import gettext
 """)
+
 
 class VcsMapping(object):
     """Describes the mapping between the semantics of Bazaar and a foreign VCS.
@@ -115,7 +110,7 @@ class ForeignRevision(Revision):
     """
 
     def __init__(self, foreign_revid, mapping, *args, **kwargs):
-        if not "inventory_sha1" in kwargs:
+        if "inventory_sha1" not in kwargs:
             kwargs["inventory_sha1"] = b""
         super(ForeignRevision, self).__init__(*args, **kwargs)
         self.foreign_revid = foreign_revid
@@ -144,7 +139,7 @@ class ForeignVcs(object):
         :param foreign_revid: Foreign revision id.
         :return: Dictionary mapping string keys to string values.
         """
-        return { }
+        return {}
 
     def serialize_foreign_revid(self, foreign_revid):
         """Serialize a foreign revision id for this VCS.
@@ -171,7 +166,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param foreign_vcs: ForeignVCS instance
         :param help: Description of the foreign VCS
         """
-        if b":" in key or b"-" in key:
+        if ":" in key or "-" in key:
             raise ValueError("vcs name can not contain : or -")
         registry.Registry.register(self, key, foreign_vcs, help)
 
@@ -185,7 +180,7 @@ class ForeignVcsRegistry(registry.Registry):
         if b":" not in revid or b"-" not in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
-            foreign_vcs = self.get(revid.split(b"-")[0])
+            foreign_vcs = self.get(revid.split(b"-")[0].decode('ascii'))
         except KeyError:
             raise errors.InvalidRevisionId(revid, None)
         return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
@@ -235,4 +230,3 @@ class ForeignBranch(Branch):
     def __init__(self, mapping):
         self.mapping = mapping
         super(ForeignBranch, self).__init__()
-

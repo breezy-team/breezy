@@ -51,7 +51,7 @@ class TestVersion(TestCase):
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertEqualDiff(out.splitlines()[0],
-            "Breezy (brz) %s" % breezy.__version__)
+                             "Breezy (brz) %s" % breezy.__version__)
         self.assertContainsRe(out, r"(?m)^  Python interpreter:")
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  breezy:")
@@ -115,7 +115,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist([default_log, brz_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
+        self.assertContainsRe(
+            out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
         self.assertPathDoesNotExist(default_log)
         self.assertPathExists(brz_log)
 
@@ -131,7 +132,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.assertPathDoesNotExist(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
-        self.assertContainsRe(out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
+        self.assertContainsRe(
+            out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
         self.assertPathDoesNotExist(default_log)
 
     def test_unicode_brz_log(self):
@@ -142,7 +144,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         except UnicodeEncodeError:
             self.skipTest(
                 "Test string %r unrepresentable in user encoding %s" % (
-                uni_val, enc))
+                    uni_val, enc))
         self.overrideEnv('BRZ_HOME', self.test_base_dir)
         brz_log = os.path.join(self.test_base_dir, uni_val)
         if PY3:

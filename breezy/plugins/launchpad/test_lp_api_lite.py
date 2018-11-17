@@ -128,7 +128,7 @@ class TestLatestPublication(tests.TestCase):
                           'ws.size': '1',
                           'distro_series': '/ubuntu/natty',
                           'pocket': 'Release',
-                         }, latest_pub._query_params())
+                          }, latest_pub._query_params())
 
     def test__query_params_no_series(self):
         latest_pub = self.make_latest_publication(series=None)
@@ -138,7 +138,7 @@ class TestLatestPublication(tests.TestCase):
                           'status': 'Published',
                           'ws.size': '1',
                           'pocket': 'Release',
-                         }, latest_pub._query_params())
+                          }, latest_pub._query_params())
 
     def test__query_params_pocket(self):
         latest_pub = self.make_latest_publication(series='natty-proposed')
@@ -149,7 +149,7 @@ class TestLatestPublication(tests.TestCase):
                           'ws.size': '1',
                           'distro_series': '/ubuntu/natty',
                           'pocket': 'Proposed',
-                         }, latest_pub._query_params())
+                          }, latest_pub._query_params())
 
     def test__query_URL(self):
         latest_pub = self.make_latest_publication()
@@ -296,7 +296,7 @@ class TestIsUpToDate(tests.TestCase):
 
     def assertBranchInfo(self, url, archive, series, project):
         self.assertEqual((archive, series, project),
-            launchpad._get_package_branch_info(url))
+                         launchpad._get_package_branch_info(url))
 
     def test_package_branch_regex(self):
         self.assertPackageBranchRe(
@@ -405,7 +405,7 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
         """
         orig_log_len = len(self.get_log())
         lp_api_lite.report_freshness(self.branch, verbosity,
-            StubLatestPublication(latest_version))
+                                     StubLatestPublication(latest_version))
         new_content = self.get_log()[orig_log_len:]
         # Strip out lines that have LatestPublication.get_* because those are
         # timing related lines. While interesting to log for now, they aren't
@@ -413,27 +413,27 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
         new_content = new_content.split('\n')
         for i in range(2):
             if (len(new_content) > 0
-                and 'LatestPublication.get_' in new_content[0]):
+                    and 'LatestPublication.get_' in new_content[0]):
                 new_content = new_content[1:]
         new_content = '\n'.join(new_content)
         self.assertThat(new_content,
-            DocTestMatches(content,
-                doctest.ELLIPSIS | doctest.REPORT_UDIFF))
+                        DocTestMatches(content,
+                                       doctest.ELLIPSIS | doctest.REPORT_UDIFF))
 
     def test_verbosity_off_skips_check(self):
         # We force _get_package_branch_info so that we know it would otherwise
         # try to connect to launcphad
         self.overrideAttr(launchpad, '_get_package_branch_info',
-            lambda x: ('ubuntu', 'natty', 'bzr'))
+                          lambda x: ('ubuntu', 'natty', 'bzr'))
         self.overrideAttr(lp_api_lite, 'LatestPublication',
-            lambda *args: self.fail('Tried to query launchpad'))
+                          lambda *args: self.fail('Tried to query launchpad'))
         c = self.branch.get_config_stack()
         c.set('launchpad.packaging_verbosity', 'off')
         orig_log_len = len(self.get_log())
         launchpad._check_is_up_to_date(self.branch)
         new_content = self.get_log()[orig_log_len:]
         self.assertContainsRe(new_content,
-            'not checking memory.*/tip/ because verbosity is turned off')
+                              'not checking memory.*/tip/ because verbosity is turned off')
 
     def test_verbosity_off(self):
         latest_pub = StubLatestPublication('1.0-1ubuntu2')
@@ -443,9 +443,9 @@ class TestReportFreshness(tests.TestCaseWithMemoryTransport):
     def test_verbosity_all_out_of_date_smoke(self):
         self.branch.tags.set_tag('1.0-1ubuntu1', b'A')
         self.assertFreshnessReports('all', '1.0-1ubuntu2',
-             '    INFO  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
-             'Packaging branch version: 1.0-1ubuntu1\n'
-             'Packaging branch status: OUT-OF-DATE\n')
+                                    '    INFO  Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
+                                    'Packaging branch version: 1.0-1ubuntu1\n'
+                                    'Packaging branch status: OUT-OF-DATE\n')
 
 
 class Test_GetNewestVersions(tests.TestCaseWithMemoryTransport):
@@ -463,7 +463,7 @@ class Test_GetNewestVersions(tests.TestCaseWithMemoryTransport):
             self.branch.tags.set_tag(latest_branch_version, b'A')
         latest_pub = StubLatestPublication(pub_version)
         self.assertEqual((pub_version, latest_branch_version),
-            lp_api_lite._get_newest_versions(self.branch, latest_pub))
+                         lp_api_lite._get_newest_versions(self.branch, latest_pub))
 
     def test_no_tags(self):
         self.assertLatestVersions(None, '1.0-1ubuntu2')
@@ -481,10 +481,11 @@ class Test_GetNewestVersions(tests.TestCaseWithMemoryTransport):
 class Test_ReportFreshness(tests.TestCase):
 
     def assertReportedFreshness(self, verbosity, latest_ver, branch_latest_ver,
-                               content, place='Ubuntu Natty'):
+                                content, place='Ubuntu Natty'):
         """Assert that lp_api_lite.report_freshness reports the given content.
         """
         reported = []
+
         def report_func(value):
             reported.append(value)
 
@@ -492,61 +493,61 @@ class Test_ReportFreshness(tests.TestCase):
                                       verbosity, report_func)
         new_content = '\n'.join(reported)
         self.assertThat(new_content,
-            DocTestMatches(content,
-                doctest.ELLIPSIS | doctest.REPORT_UDIFF))
+                        DocTestMatches(content,
+                                       doctest.ELLIPSIS | doctest.REPORT_UDIFF))
 
     def test_verbosity_minimal_no_tags(self):
         self.assertReportedFreshness('minimal', '1.0-1ubuntu2', None,
-            'Branch is OUT-OF-DATE, Ubuntu Natty has 1.0-1ubuntu2\n')
+                                     'Branch is OUT-OF-DATE, Ubuntu Natty has 1.0-1ubuntu2\n')
 
     def test_verbosity_minimal_out_of_date(self):
         self.assertReportedFreshness('minimal', '1.0-1ubuntu2', '1.0-1ubuntu1',
-            '1.0-1ubuntu1 is OUT-OF-DATE,'
-            ' Ubuntu Natty has 1.0-1ubuntu2\n')
+                                     '1.0-1ubuntu1 is OUT-OF-DATE,'
+                                     ' Ubuntu Natty has 1.0-1ubuntu2\n')
 
     def test_verbosity_minimal_up_to_date(self):
         self.assertReportedFreshness('minimal', '1.0-1ubuntu2', '1.0-1ubuntu2',
-             '')
+                                     '')
 
     def test_verbosity_minimal_missing(self):
         self.assertReportedFreshness('minimal', None, None,
-             '')
+                                     '')
 
     def test_verbosity_short_out_of_date(self):
         self.assertReportedFreshness('short', '1.0-1ubuntu2', '1.0-1ubuntu1',
-            '1.0-1ubuntu1 is OUT-OF-DATE,'
-            ' Ubuntu Natty has 1.0-1ubuntu2\n')
+                                     '1.0-1ubuntu1 is OUT-OF-DATE,'
+                                     ' Ubuntu Natty has 1.0-1ubuntu2\n')
 
     def test_verbosity_short_up_to_date(self):
         self.assertReportedFreshness('short', '1.0-1ubuntu2', '1.0-1ubuntu2',
-             '1.0-1ubuntu2 is CURRENT in Ubuntu Natty')
+                                     '1.0-1ubuntu2 is CURRENT in Ubuntu Natty')
 
     def test_verbosity_short_missing(self):
         self.assertReportedFreshness('short', None, None,
-             'Ubuntu Natty is MISSING a version')
+                                     'Ubuntu Natty is MISSING a version')
 
     def test_verbosity_all_no_tags(self):
         self.assertReportedFreshness('all', '1.0-1ubuntu2', None,
-             'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
-             'Packaging branch version: None\n'
-             'Packaging branch status: OUT-OF-DATE\n')
+                                     'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
+                                     'Packaging branch version: None\n'
+                                     'Packaging branch status: OUT-OF-DATE\n')
 
     def test_verbosity_all_out_of_date(self):
         self.assertReportedFreshness('all', '1.0-1ubuntu2', '1.0-1ubuntu1',
-             'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
-             'Packaging branch version: 1.0-1ubuntu1\n'
-             'Packaging branch status: OUT-OF-DATE\n')
+                                     'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
+                                     'Packaging branch version: 1.0-1ubuntu1\n'
+                                     'Packaging branch status: OUT-OF-DATE\n')
 
     def test_verbosity_all_up_to_date(self):
         self.assertReportedFreshness('all', '1.0-1ubuntu2', '1.0-1ubuntu2',
-             'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
-             'Packaging branch status: CURRENT\n')
+                                     'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
+                                     'Packaging branch status: CURRENT\n')
 
     def test_verbosity_all_missing(self):
         self.assertReportedFreshness('all', None, None,
-             'Most recent Ubuntu Natty version: MISSING\n')
+                                     'Most recent Ubuntu Natty version: MISSING\n')
 
     def test_verbosity_None_is_all(self):
         self.assertReportedFreshness(None, '1.0-1ubuntu2', '1.0-1ubuntu2',
-             'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
-             'Packaging branch status: CURRENT\n')
+                                     'Most recent Ubuntu Natty version: 1.0-1ubuntu2\n'
+                                     'Packaging branch status: CURRENT\n')

@@ -63,8 +63,10 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self, "breezy.merge_directive", "BaseMergeDirective.hooks")
-        self.add_hook('merge_request_body',
+        hooks.Hooks.__init__(self, "breezy.merge_directive",
+                             "BaseMergeDirective.hooks")
+        self.add_hook(
+            'merge_request_body',
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
             " than one callback is registered, the output of one callback is"
@@ -74,10 +76,10 @@ class MergeDirectiveHooks(hooks.Hooks):
 class BaseMergeDirective(object):
     """A request to perform a merge into a branch.
 
-    This is the base class that all merge directive implementations 
+    This is the base class that all merge directive implementations
     should derive from.
 
-    :cvar multiple_output_files: Whether or not this merge directive 
+    :cvar multiple_output_files: Whether or not this merge directive
         stores a set of revisions in more than one file
     """
 
@@ -158,8 +160,8 @@ class BaseMergeDirective(object):
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
-                 target_branch, patch_type='bundle',
-                 local_target_branch=None, public_branch=None, message=None):
+                     target_branch, patch_type='bundle',
+                     local_target_branch=None, public_branch=None, message=None):
         """Generate a merge directive from various objects
 
         :param repository: The repository containing the revision
@@ -202,7 +204,7 @@ class BaseMergeDirective(object):
                                                 submit_revision_id)
             type_handler = {'bundle': klass._generate_bundle,
                             'diff': klass._generate_diff,
-                            None: lambda x, y, z: None }
+                            None: lambda x, y, z: None}
             patch = type_handler[patch_type](repository, revision_id,
                                              ancestor_id)
 
@@ -213,7 +215,7 @@ class BaseMergeDirective(object):
                                                    revision_id)
 
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
-            patch, patch_type, public_branch, message)
+                     patch, patch_type, public_branch, message)
 
     def get_disk_name(self, branch):
         """Generate a suitable basename for storing this directive on disk
@@ -276,7 +278,7 @@ class BaseMergeDirective(object):
         else:
             body = b''.join(self.to_lines())
         message = email_message.EmailMessage(mail_from, mail_to, subject,
-            body)
+                                             body)
         return message
 
     def install_revisions(self, target_repo):
@@ -302,8 +304,8 @@ class BaseMergeDirective(object):
                                            info.real_revisions)
                     for revision in info.real_revisions:
                         for parent_id in revision.parent_ids:
-                            if (parent_id not in bundle_revisions and
-                                not target_repo.has_revision(parent_id)):
+                            if (parent_id not in bundle_revisions
+                                    and not target_repo.has_revision(parent_id)):
                                 missing_revisions.append(parent_id)
                     # reverse missing revisions to try to get heads first
                     unique_missing = []
@@ -348,7 +350,7 @@ class BaseMergeDirective(object):
         elif len(self.hooks['merge_request_body']) > 0:
             trace.warning('Cannot run merge_request_body hooks because mail'
                           ' client %s does not support message bodies.',
-                        mail_client.__class__.__name__)
+                          mail_client.__class__.__name__)
         mail_client.compose_merge_request(to, subject,
                                           b''.join(self.to_lines()),
                                           basename, body)
@@ -390,7 +392,7 @@ class MergeDirective(BaseMergeDirective):
         :param message: The message to use when committing this merge
         """
         BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
-            timezone, target_branch, patch, source_branch, message)
+                                    timezone, target_branch, patch, source_branch, message)
         if patch_type not in (None, 'diff', 'bundle'):
             raise ValueError(patch_type)
         if patch_type != 'bundle' and source_branch is None:
@@ -491,7 +493,7 @@ class MergeDirective2(BaseMergeDirective):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
         BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
-            timezone, target_branch, patch, source_branch, message)
+                                    timezone, target_branch, patch, source_branch, message)
         self.bundle = bundle
         self.base_revision_id = base_revision_id
 
@@ -568,9 +570,9 @@ class MergeDirective2(BaseMergeDirective):
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
-                 target_branch, include_patch=True, include_bundle=True,
-                 local_target_branch=None, public_branch=None, message=None,
-                 base_revision_id=None):
+                     target_branch, include_patch=True, include_bundle=True,
+                     local_target_branch=None, public_branch=None, message=None,
+                     base_revision_id=None):
         """Generate a merge directive from various objects
 
         :param repository: The repository containing the revision
@@ -600,7 +602,7 @@ class MergeDirective2(BaseMergeDirective):
             if revision_id == b'null:':
                 t_revision_id = None
             t = testament.StrictTestament3.from_revision(repository,
-                t_revision_id)
+                                                         t_revision_id)
             if local_target_branch is None:
                 submit_branch = _mod_branch.Branch.open(target_branch)
             else:
@@ -626,7 +628,7 @@ class MergeDirective2(BaseMergeDirective):
 
             if include_bundle:
                 bundle = base64.b64encode(klass._generate_bundle(repository, revision_id,
-                    ancestor_id))
+                                                                 ancestor_id))
             else:
                 bundle = None
 
@@ -635,7 +637,7 @@ class MergeDirective2(BaseMergeDirective):
                 public_branch_obj.lock_read()
                 locked.append(public_branch_obj)
                 if not public_branch_obj.repository.has_revision(
-                    revision_id):
+                        revision_id):
                     raise errors.PublicBranchOutOfDate(public_branch,
                                                        revision_id)
             testament_sha1 = t.as_sha1()
@@ -643,8 +645,8 @@ class MergeDirective2(BaseMergeDirective):
             for entry in reversed(locked):
                 entry.unlock()
         return klass(revision_id, testament_sha1, time, timezone,
-            target_branch, patch, public_branch, message, bundle,
-            base_revision_id)
+                     target_branch, patch, public_branch, message, bundle,
+                     base_revision_id)
 
     def _verify_patch(self, repository):
         calculated_patch = self._generate_diff(repository, self.revision_id,

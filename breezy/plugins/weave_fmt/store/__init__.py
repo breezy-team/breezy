@@ -40,6 +40,7 @@ from ....trace import mutter
 ######################################################################
 # stores
 
+
 class StoreError(Exception):
     pass
 
@@ -67,7 +68,8 @@ class Store(object):
 
     def add(self, f, fileid):
         """Add a file object f to the store accessible from the given fileid"""
-        raise NotImplementedError('Children of Store must define their method of adding entries.')
+        raise NotImplementedError(
+            'Children of Store must define their method of adding entries.')
 
     def has_id(self, fileid, suffix=None):
         """Return True or false for the presence of fileid in the store.

@@ -18,10 +18,11 @@
 
 from __future__ import absolute_import
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_grep", [], "breezy.plugins.grep.cmds")
+
 
 def test_suite():
     from ...tests import TestUtil
@@ -33,6 +34,5 @@ def test_suite():
         ]
 
     suite.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return suite
-

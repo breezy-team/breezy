@@ -52,7 +52,7 @@ default login anonymous password joe@home
         osutils.chmod_if_possible(netrc_path, 0o600)
 
     def _get_netrc_cs(self):
-        return  config.credential_store_registry.get_credential_store('netrc')
+        return config.credential_store_registry.get_credential_store('netrc')
 
     def test_not_matching_user(self):
         cs = self._get_netrc_cs()

@@ -36,7 +36,7 @@ from breezy.transport import memory
 
 
 def make_scenarios(transport_server, transport_readonly_server,
-    formats, vfs_transport_factory=None, name_suffix=''):
+                   formats, vfs_transport_factory=None, name_suffix=''):
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of (branch_format, bzrdir_format).
@@ -46,14 +46,14 @@ def make_scenarios(transport_server, transport_readonly_server,
         # some branches don't have separate format objects.
         # so we have a conditional here to handle them.
         scenario_name = getattr(branch_format, '__name__',
-            branch_format.__class__.__name__)
+                                branch_format.__class__.__name__)
         scenario_name += name_suffix
         scenario = (scenario_name, {
             "transport_server": transport_server,
             "transport_readonly_server": transport_readonly_server,
             "bzrdir_format": bzrdir_format,
             "branch_format": branch_format,
-                })
+            })
         result.append(scenario)
     return result
 
@@ -118,7 +118,7 @@ def branch_scenarios():
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingcontroldir) for format in
-         format_registry._get_all()]
+                    format_registry._get_all()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,

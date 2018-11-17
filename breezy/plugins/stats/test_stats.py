@@ -21,7 +21,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
         jano = ('Jano', 'jano@example.com')
         vinco = ('Vinco', 'vinco@example.com')
         ferok = ('Ferko', 'fero@example.com')
-        self.assertEqual({fero: fero, jano: jano, vinco:vinco, ferok: fero},
+        self.assertEqual({fero: fero, jano: jano, vinco: vinco, ferok: fero},
                          committers)
 
     def test_empty_email(self):
@@ -33,7 +33,7 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
                                                         [b'1', b'2', b'3'])
         self.assertEqual({('Fero', ''): ('Fero', ''),
                           ('Jano', ''): ('Jano', ''),
-                         }, committers)
+                          }, committers)
 
     def test_different_case(self):
         wt = self.make_branch_and_tree('.')
@@ -44,8 +44,9 @@ class TestGetRevisionsAndCommitters(TestCaseWithTransport):
                                                         [b'1', b'2', b'3'])
         self.assertEqual({('Fero', ''): ('Fero', ''),
                           ('FERO', ''): ('Fero', ''),
-                         }, committers)
-        self.assertEquals([b'1', b'2', b'3'], sorted([r.revision_id for r in revs]))
+                          }, committers)
+        self.assertEquals([b'1', b'2', b'3'], sorted(
+            [r.revision_id for r in revs]))
 
 
 class TestCollapseByPerson(TestCase):
@@ -75,7 +76,8 @@ class TestCollapseByPerson(TestCase):
         committers = {foo: foo, bar: foo}
         info = collapse_by_person(revisions, committers)
         self.assertEquals(3, info[0][0])
-        self.assertEquals({'foo@example.com': 1, 'bar@example.com': 2}, info[0][2])
+        self.assertEquals(
+            {'foo@example.com': 1, 'bar@example.com': 2}, info[0][2])
         self.assertEquals({'Foo': 3}, info[0][3])
 
     def test_different_name(self):
@@ -103,5 +105,6 @@ class TestCollapseByPerson(TestCase):
         committers = {foo: foo, FOO: foo}
         info = collapse_by_person(revisions, committers)
         self.assertEquals(3, info[0][0])
-        self.assertEquals({'foo@example.com': 2, 'bar@example.com': 1}, info[0][2])
+        self.assertEquals(
+            {'foo@example.com': 2, 'bar@example.com': 1}, info[0][2])
         self.assertEquals({'Foo': 2, 'FOO': 1}, info[0][3])

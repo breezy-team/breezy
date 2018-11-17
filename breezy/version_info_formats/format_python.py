@@ -58,7 +58,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
                 'branch_nick': self._branch.nick,
                 'clean': None,
                 'date': None
-        }
+                }
         revisions = []
 
         revision_id = self._get_revision_id()
@@ -106,6 +106,3 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
             to_file.write('file_revisions = {}\n\n')
 
         to_file.write(_py_version_footer)
-
-
-
