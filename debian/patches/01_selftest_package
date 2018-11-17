@@ -3,14 +3,15 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not upstream, Debian-specific
 
 === modified file 'breezy/builtins.py'
---- old/breezy/builtins.py	2018-04-06 23:45:25 +0000
-+++ new/breezy/builtins.py	2018-04-06 23:48:13 +0000
-@@ -4209,7 +4209,7 @@
+--- old/breezy/builtins.py	2018-11-17 01:32:54 +0000
++++ new/breezy/builtins.py	2018-11-17 01:39:01 +0000
+@@ -4200,7 +4200,8 @@
              from . import tests
          except ImportError:
              raise errors.BzrCommandError("tests not available. Install the "
--                "breezy tests to run the breezy testsuite.")
-+                "python-breezy.tests package to run the breezy testsuite.")
+-                                         "breezy tests to run the breezy testsuite.")
++                                         "python-breezy.tests package to run "
++                                         "the breezy testsuite.")
  
          if testspecs_list is not None:
              pattern = '|'.join(testspecs_list)

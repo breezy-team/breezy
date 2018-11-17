@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7183-2) UNRELEASED; urgency=medium
+
+  * 01_selftest_package: refresh.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 01:39:27 +0000
+
 breezy (3.0.0~bzr7183-1) unstable; urgency=medium
 
   * New upstream snapshot.
