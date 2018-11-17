@@ -102,7 +102,7 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i])) & 0xFFFFFFFFUL
         # Hex(val) order
         sprintf(c_out, '%08lX', crc_val)
         c_out = c_out + 8
