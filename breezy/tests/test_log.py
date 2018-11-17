@@ -731,7 +731,7 @@ message:
             trivial_custom_prop_handler)
         log.show_log(wt.branch, formatter)
         self.assertContainsRe(
-            sio.getvalue(), b'''brz: ERROR: Exception: a test error''')
+            sio.getvalue(), b'brz: ERROR: Exception: a test error')
 
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
@@ -751,7 +751,7 @@ message:
 
         revision = wt.branch.repository.get_revision(wt.branch.last_revision())
         formatter.show_properties(revision, '')
-        self.assertEqualDiff(b'''custom_prop_name: test_value\n''',
+        self.assertEqualDiff(b'custom_prop_name: test_value\n',
                              sio.getvalue())
 
     def test_show_ids(self):

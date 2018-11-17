@@ -1525,7 +1525,7 @@ class LogFormatter(object):
         for key, handler in properties_handler_registry.iteritems():
             try:
                 lines.extend(self._format_properties(handler(revision)))
-            except BaseException:
+            except Exception:
                 trace.log_exception_quietly()
                 trace.print_exception(sys.exc_info(), self.to_file)
         return lines
