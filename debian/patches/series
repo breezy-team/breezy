@@ -1,4 +1,5 @@
 01_selftest_package
 03_spurious_test_failure
+03_crc_asul
 04_spurious_test_failure
 15_executable
