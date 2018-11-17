@@ -239,7 +239,7 @@ def main():
                     _winreg.SetValueEx(hkey, 'Path', 0, type_, path_u)
                     _winreg.FlushKey(hkey)
 
-        if hkey not is None:
+        if hkey is not None:
             _winreg.CloseKey(hkey)
 
     if (add_path or delete_path) and winver == 'Windows 98':
