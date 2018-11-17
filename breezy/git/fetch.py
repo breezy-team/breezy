@@ -138,7 +138,7 @@ def import_git_blob(texts, mapping, path, name, hexshas,
             ie.revision = ptree.get_file_revision(ppath)
             break
         parent_key = (file_id, ptree.get_file_revision(ppath))
-        if not parent_key in parent_keys:
+        if parent_key not in parent_keys:
             parent_keys.append(parent_key)
     if ie.revision is None:
         # Need to store a new revision

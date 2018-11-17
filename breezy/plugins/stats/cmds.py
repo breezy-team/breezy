@@ -311,7 +311,7 @@ def gather_class_stats(repository, revs):
             for delta in repository.get_deltas_for_revisions(revs):
                 pb.update("classifying commits", i, len(revs))
                 for c in classify_delta(delta):
-                    if not c in ret:
+                    if c not in ret:
                         ret[c] = 0
                     ret[c] += 1
                     total += 1
@@ -365,7 +365,7 @@ def find_credits(repository, revid):
                     continue
                 for c in set(classify_delta(delta)):
                     for author in rev.get_apparent_authors():
-                        if not author in ret[c]:
+                        if author not in ret[c]:
                             ret[c][author] = 0
                         ret[c][author] += 1
 

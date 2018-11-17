@@ -215,7 +215,7 @@ class TransportStore(Store):
         self._check_fileid(fileid)
         if suffixes:
             for suffix in suffixes:
-                if not suffix in self._suffixes:
+                if suffix not in self._suffixes:
                     raise ValueError("Unregistered suffix %r" % suffix)
                 self._check_fileid(suffix.encode('utf-8'))
         else:

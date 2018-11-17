@@ -79,7 +79,7 @@ def deprecation_string(a_callable, deprecation_version):
         symbol = "%s.%s.%s" % (a_callable.__self__.__class__.__module__,
                                a_callable.__self__.__class__.__name__,
                                a_callable.__name__)
-    elif getattr(a_callable, '__qualname__', None) is not None and not '<' in a_callable.__qualname__:
+    elif getattr(a_callable, '__qualname__', None) is not None and '<' not in a_callable.__qualname__:
         symbol = "%s.%s" % (a_callable.__module__,
                             a_callable.__qualname__)
     else:
