@@ -2268,7 +2268,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             unused.append(decompressor.unused_data)
         unused = b""
         while True:
-            while not b"\n" in unused:
+            while b"\n" not in unused:
                 try:
                     unused += next(byte_stream)
                 except StopIteration:

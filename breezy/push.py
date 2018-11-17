@@ -162,7 +162,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                                                  " control directory, but not a branch or repository. This"
                                                  " is an unsupported configuration. Please move the target"
                                                  " directory out of the way and try again.") % location)
-        if push_result.workingtree_updated == False:
+        if push_result.workingtree_updated is False:
             warning("This transport does not update the working "
                     "tree of: %s. See 'brz help working-trees' for "
                     "more information." % push_result.target_branch.base)

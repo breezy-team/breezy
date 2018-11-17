@@ -310,7 +310,7 @@ class GenericProcessor(processor.ImportProcessor):
             marks_file.export_marks(self.params.get("export-marks"),
                                     self.cache_mgr.marks)
 
-        if self.cache_mgr.reftracker.last_ref == None:
+        if self.cache_mgr.reftracker.last_ref is None:
             """Nothing to refresh"""
             return
 

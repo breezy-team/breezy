@@ -147,15 +147,8 @@ class Revision(object):
         """Iterate over the bugs associated with this revision."""
         bug_property = self.properties.get('bugs', None)
         if bug_property is None:
-            return
-        for line in bug_property.splitlines():
-            try:
-                url, status = line.split(None, 2)
-            except ValueError:
-                raise bugtracker.InvalidLineInBugsProperty(line)
-            if status not in bugtracker.ALLOWED_BUG_STATUSES:
-                raise bugtracker.InvalidBugStatus(status)
-            yield url, status
+            return iter([])
+        return bugtracker.decode_bug_urls(bug_property)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):

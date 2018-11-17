@@ -67,6 +67,11 @@ External Compatibility Breaks
    has been renamed to ``transform.orphan_policy``.
    (Jelmer Vernooĳ)
 
+ * Backslash (\) is no longer accepted as a path separator
+   on platforms where it is not the default path separator,
+   e.g. POSIX systems. This is so that filenames with backslashes
+   in their name can be added explicitly. (#176263, #165151)
+
  * One-letter shortcuts for Ubuntu releases are no
    longer supported after 'ubuntu:'. Bazaar's mapping for
    one-letter distroseries had not been updated since natty.
@@ -175,6 +180,10 @@ Bug Fixes
   on platforms that support it. (Jelmer Vernooij, #81844)
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
+
+* Support adding/removing filenames that consist of just
+  backslashes in where backslash is not the path separator.
+  (Jelmer Vernooĳ, #176263, #165151)
 
 * Report correct path in output of ``brz add``.
   (Brian de Alwis, Jelmer Vernooĳ, #1799482)

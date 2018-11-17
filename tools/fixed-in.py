@@ -54,13 +54,13 @@ class NewsParser(object):
         date_re = re.compile(':%s: (NOT RELEASED YET|\d{4}-\d{2}-\d{2})'
                              % (self.release,))
         match = date_re.match(self.lrs)
-        if  match is not None:
+        if match is not None:
             self.date = match.group(1)
             return True
         # The old fashion way
         released_re = re.compile(':Released:\s+(\d{4}-\d{2}-\d{2})')
         match = released_re.match(self.lrs)
-        if  match is not None:
+        if match is not None:
             self.date = match.group(1)
             return True
         return False

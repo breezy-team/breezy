@@ -1077,8 +1077,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.unlink('tree/a')
         try:
             self.assertEqual(
-                    {'a', 'b', ''},
-                    set(tree.all_versioned_paths()))
+                {'a', 'b', ''},
+                set(tree.all_versioned_paths()))
         except errors.UnsupportedOperation:
             raise TestNotApplicable('tree does not support all_file_ids')
 
