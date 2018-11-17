@@ -5,6 +5,7 @@ breezy (3.0.0~bzr7190-1) UNRELEASED; urgency=medium
     description.
   * debian/copyright: Remove duplicate paragraph for tools/brz_access.
   * New upstream snapshot.
+  * Drop patch 03_crc_asul and 15_git_feature: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 19:28:48 +0000
 
