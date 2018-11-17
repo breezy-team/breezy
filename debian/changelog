@@ -1,6 +1,6 @@
 breezy (3.0.0~bzr7190-1) UNRELEASED; urgency=medium
 
-  * Bump minimum version of dulwich to 0.19.7.
+  * Bump minimum version of dulwich to 0.19.8.
   * Add note about python version to python{,3}-breezy.tests long
     description.
   * debian/copyright: Remove duplicate paragraph for tools/brz_access.
