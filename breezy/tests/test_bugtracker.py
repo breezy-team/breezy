@@ -342,3 +342,9 @@ class TestPropertyEncoding(TestCase):
             bugtracker.encode_fixes_bug_urls(
                 [('http://example.com/bugs/1', 'fixed'),
                  ('http://example.com/bugs/2', 'related')]))
+
+    def test_encoding_with_space(self):
+        self.assertRaises(
+            bugtracker.InvalidBugUrl,
+            bugtracker.encode_fixes_bug_urls,
+                [('http://example.com/bugs/ 1', 'fixed')])
