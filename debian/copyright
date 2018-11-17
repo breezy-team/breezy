@@ -53,10 +53,6 @@ Files: contrib/brz_access
 Copyright: 2007 Balint Aradi
 License: GPL-2+
 
-Files: contrib/brz_access
-Copyright: 2005 Luke Gorrie <luke@member.fsf.org>
-License: GPL-2+
-
 Files: breezy/plugins/fastimport/*
 Copyright:
   2008-2011 Canonical Ltd
