@@ -41,7 +41,7 @@ from cpython.dict cimport (
     PyDict_SetItem,
     )
 from cpython.int cimport (
-    PyInt_AS_LONG,
+    PyInt_AsUnsignedLongMask,
     )
 from cpython.object cimport (
     PyObject,
@@ -102,7 +102,7 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AS_LONG(crc32(key[i])) & <unsigned long>0xFFFFFFFF
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08lX', crc_val)
         c_out = c_out + 8
@@ -127,7 +127,7 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AS_LONG(crc32(key[i]))
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
         c_out[1] = (crc_val >> 16) & 0xFF
