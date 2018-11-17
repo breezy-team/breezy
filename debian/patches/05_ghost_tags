@@ -1,0 +1,43 @@
+Description: Fix test with ghost revisions.
+Origin: commit, revision id: jelmer@jelmer.uk-20181117205040-v3jevr3vkhfw5at3
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2018-11-17
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20181117205040-v3jevr3vkhfw5at3
+
+=== modified file 'breezy/tests/per_branch/test_pull.py'
+--- old/breezy/tests/per_branch/test_pull.py	2018-11-16 12:52:18 +0000
++++ new/breezy/tests/per_branch/test_pull.py	2018-11-17 20:50:40 +0000
+@@ -173,9 +173,9 @@
+         tree_a.branch.tags.set_tag('tag1', rev1)
+ 
+         tree_b = tree_a.controldir.sprout('tree_b').open_workingtree()
+-        rev2a = tree_a.commit('message 2a')
+-        tree_b.branch.tags.set_tag('tag1', rev2a)
+         rev2b = tree_b.commit('message 2b')
++        tree_b.branch.tags.set_tag('tag1', rev2b)
++        rev1b = tree_a.commit('message 1b')
+         tree_a.branch.get_config_stack().set('branch.fetch_tags', True)
+         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+         self.assertRaises(errors.DivergedBranches,
+@@ -183,7 +183,9 @@
+                           overwrite=set(), stop_revision=rev2b)
+         # It should not have updated the branch tip, but it should have fetched
+         # the revision if the repository supports "invisible" revisions
+-        self.assertEqual(rev2a, tree_a.branch.last_revision())
++        self.assertEqual(rev1b, tree_a.branch.last_revision())
++        # It also should not have updated the tags
++        self.assertEqual(tree_a.branch.tags.get_tag_dict(), {'tag1': rev1})
+         if tree_a.branch.repository._format.supports_unreferenced_revisions:
+             self.assertTrue(tree_a.branch.repository.has_revision(rev2b))
+         tree_a.branch.pull(tree_b.branch, overwrite=set(['history']),
+@@ -194,7 +196,7 @@
+         self.assertEqual(rev1, tree_a.branch.tags.lookup_tag('tag1'))
+         tree_a.branch.pull(tree_b.branch, overwrite=set(['history', 'tags']),
+                            stop_revision=rev2b)
+-        self.assertEqual(rev2a, tree_a.branch.tags.lookup_tag('tag1'))
++        self.assertEqual(rev2b, tree_a.branch.tags.lookup_tag('tag1'))
+ 
+     def test_pull_merges_and_fetches_tags(self):
+         """Tags are updated by br.pull(source), and revisions named in those
+
