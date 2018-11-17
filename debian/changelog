@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7190-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7190-1) unstable; urgency=medium
 
   * Bump minimum version of dulwich to 0.19.8.
   * Add note about python version to python{,3}-breezy.tests long
@@ -7,7 +7,7 @@ breezy (3.0.0~bzr7190-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
   * Drop patch 03_crc_asul and 15_git_feature: applied upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 19:28:48 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 19:39:10 +0000
 
 breezy (3.0.0~bzr7183-1) unstable; urgency=medium
 
