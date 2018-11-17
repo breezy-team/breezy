@@ -109,7 +109,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
         tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                  kinds=['directory', 'file'])
+                 kinds=['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo', b'barshoom')
         self.assertEqual(b'barshoom', tree.get_file('foo').read())
         tree.unlock()

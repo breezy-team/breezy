@@ -29,7 +29,6 @@ from .. import (
     trace,
     transactions,
     ui,
-    version_info as breezy_version,
     )
 from ..decorators import only_raises
 from ..foreign import (
@@ -106,7 +105,8 @@ class GitCheck(check.Check):
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
             callback_refs = {}
-        with self.repository.lock_read(), ui.ui_factory.nested_progress_bar() as self.progress:
+        with self.repository.lock_read(), \
+                ui.ui_factory.nested_progress_bar() as self.progress:
             shas = set(self.repository._git.object_store)
             self.object_count = len(shas)
             # TODO(jelmer): Check more things
@@ -132,6 +132,7 @@ class GitCheck(check.Check):
 
 
 _optimisers_loaded = False
+
 
 def lazy_load_optimisers():
     global _optimisers_loaded
@@ -159,7 +160,7 @@ class GitRepository(ForeignRepository):
     def __init__(self, gitdir):
         self._transport = gitdir.root_transport
         super(GitRepository, self).__init__(GitRepositoryFormat(),
-            gitdir, control_files=None)
+                                            gitdir, control_files=None)
         self.base = gitdir.root_transport.base
         lazy_load_optimisers()
         self._lock_mode = None
@@ -167,7 +168,7 @@ class GitRepository(ForeignRepository):
 
     def add_fallback_repository(self, basis_url):
         raise errors.UnstackableRepositoryFormat(self._format,
-            self.control_transport.base)
+                                                 self.control_transport.base)
 
     def is_shared(self):
         return False
@@ -288,9 +289,9 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
-        builder = GitCommitBuilder(self, parents, config,
-                timestamp, timezone, committer, revprops, revision_id,
-                lossy)
+        builder = GitCommitBuilder(
+            self, parents, config, timestamp, timezone, committer, revprops,
+            revision_id, lossy)
         self.start_write_group()
         return builder
 
@@ -355,7 +356,8 @@ class LocalGitRepository(GitRepository):
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super(LocalGitRepository, self).gather_stats(revid, committers)
+        result = super(LocalGitRepository, self).gather_stats(
+            revid, committers)
         revs = []
         for sha in self._git.object_store:
             o = self._git.object_store[sha]
@@ -370,8 +372,8 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-                mapping.revision_id_foreign_to_bzr)
+            rev, roundtrip_revid, verifiers = mapping.import_commit(
+                o, mapping.revision_id_foreign_to_bzr)
             yield o.id, rev.revision_id, roundtrip_revid
 
     def all_revision_ids(self):
@@ -409,7 +411,8 @@ class LocalGitRepository(GitRepository):
     def get_parent_map(self, revids, no_alternates=False):
         parent_map = {}
         for revision_id in revids:
-            parents = self._get_parents(revision_id, no_alternates=no_alternates)
+            parents = self._get_parents(
+                revision_id, no_alternates=no_alternates)
             if revision_id == _mod_revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
@@ -475,8 +478,8 @@ class LocalGitRepository(GitRepository):
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
-        rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
-            mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            commit, mapping.revision_id_foreign_to_bzr)
         # FIXME: check testament before doing this?
         if roundtrip_revid:
             return roundtrip_revid
@@ -517,7 +520,8 @@ class LocalGitRepository(GitRepository):
             without_sig = Commit.from_string(commit.as_raw_string())
             without_sig.gpgsig = None
 
-            (result, key, plain_text) = gpg_strategy.verify(without_sig.as_raw_string(), commit.gpgsig)
+            (result, key, plain_text) = gpg_strategy.verify(
+                without_sig.as_raw_string(), commit.gpgsig)
             return (result, key)
 
     def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
@@ -529,7 +533,8 @@ class LocalGitRepository(GitRepository):
             details
         """
         try:
-            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
+            (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(
+                bzr_revid)
         except errors.InvalidRevisionId:
             if mapping is None:
                 mapping = self.get_mapping()
@@ -541,7 +546,8 @@ class LocalGitRepository(GitRepository):
                 # FIXME: Hitting this a lot will be very inefficient...
                 pb = ui.ui_factory.nested_progress_bar()
                 try:
-                    for i, (git_sha, revid, roundtrip_revid) in enumerate(self._iter_revision_ids()):
+                    for i, (git_sha, revid, roundtrip_revid) in enumerate(
+                            self._iter_revision_ids()):
                         if not roundtrip_revid:
                             continue
                         pb.update("resolving revision id", i)
@@ -624,7 +630,7 @@ class LocalGitRepository(GitRepository):
             required_trees.update(revision.parent_ids[:1])
 
         trees = dict((t.get_revision_id(), t) for
-            t in self.revision_trees(required_trees))
+                     t in self.revision_trees(required_trees))
 
         # Calculate the deltas
         for revision in revisions:
@@ -634,18 +640,20 @@ class LocalGitRepository(GitRepository):
                 old_tree = trees[revision.parent_ids[0]]
             new_tree = trees[revision.revision_id]
             if specific_fileids is not None:
-                specific_files = [new_tree.id2path(fid) for fid in specific_fileids]
+                specific_files = [new_tree.id2path(
+                    fid) for fid in specific_fileids]
             else:
                 specific_files = None
-            yield new_tree.changes_from(old_tree, specific_files=specific_files)
+            yield new_tree.changes_from(
+                old_tree, specific_files=specific_files)
 
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
-        progress=None, limit=None):
+                      progress=None, limit=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress,
-            limit=limit)
+                                       limit=limit)
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):
@@ -700,7 +708,10 @@ def get_extra_interrepo_test_combinations():
     from ..bzr.groupcompress_repo import RepositoryFormat2a
     from . import interrepo
     return [
-            (interrepo.InterLocalGitNonGitRepository, GitRepositoryFormat(), RepositoryFormat2a()),
-            (interrepo.InterLocalGitLocalGitRepository, GitRepositoryFormat(), GitRepositoryFormat()),
-            (interrepo.InterToLocalGitRepository, RepositoryFormat2a(), GitRepositoryFormat()),
+        (interrepo.InterLocalGitNonGitRepository,
+         GitRepositoryFormat(), RepositoryFormat2a()),
+        (interrepo.InterLocalGitLocalGitRepository,
+         GitRepositoryFormat(), GitRepositoryFormat()),
+        (interrepo.InterToLocalGitRepository,
+         RepositoryFormat2a(), GitRepositoryFormat()),
         ]

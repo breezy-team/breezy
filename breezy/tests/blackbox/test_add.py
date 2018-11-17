@@ -56,11 +56,11 @@ class TestAdd(tests.TestCaseWithTransport):
                           'adding dir',
                           'adding dir/sub.txt',
                           'adding top.txt'],
-                          results)
+                         results)
         out = self.run_bzr('add -v')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEqual(['ignored CVS matching "CVS"'],
-                          results)
+                         results)
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
@@ -134,7 +134,7 @@ class TestAdd(tests.TestCaseWithTransport):
         # subdirectory
         self.run_bzr('add', working_dir='src')
         self.assertEqual('README\n',
-                          self.run_bzr('unknowns', working_dir='src')[0])
+                         self.run_bzr('unknowns', working_dir='src')[0])
         # reopen to see the new changes
         t = t.controldir.open_workingtree('src')
         versioned = [path for path, entry in t.iter_entries_by_dir()]

@@ -27,12 +27,12 @@ from breezy.tests import (
 from breezy.workingtree import WorkingTree
 from breezy import osutils
 
-_id=b'-id'
-a='a'
-b='b/'
-c='b/c'
-d='d/'
-files=(a, b, c, d)
+_id = b'-id'
+a = 'a'
+b = 'b/'
+c = 'b/c'
+d = 'd/'
+files = (a, b, c, d)
 
 
 class TestRemove(TestCaseWithTransport):
@@ -43,7 +43,7 @@ class TestRemove(TestCaseWithTransport):
         try:
             self.build_tree(paths)
             for path in paths:
-                file_id=path.replace('/', '_').encode('utf-8') + _id
+                file_id = path.replace('/', '_').encode('utf-8') + _id
                 tree.add(path, file_id)
         finally:
             tree.unlock()
@@ -51,7 +51,7 @@ class TestRemove(TestCaseWithTransport):
 
     def assertFilesDeleted(self, files):
         for f in files:
-            id=f.encode('utf-8')+_id
+            id = f.encode('utf-8') + _id
             self.assertNotInWorkingTree(f)
             self.assertPathDoesNotExist(f)
 
@@ -66,12 +66,13 @@ class TestRemove(TestCaseWithTransport):
 
     def run_bzr_remove_changed_files(self, files_to_remove, working_dir=None):
         self.run_bzr(['remove'] + list(files_to_remove),
-           working_dir=working_dir)
+                     working_dir=working_dir)
 
     def test_remove_new_no_files_specified(self):
         tree = self.make_branch_and_tree('.')
         self.run_bzr_error(["brz: ERROR: No matching files."], 'remove --new')
-        self.run_bzr_error(["brz: ERROR: No matching files."], 'remove --new .')
+        self.run_bzr_error(
+            ["brz: ERROR: No matching files."], 'remove --new .')
 
     def test_remove_no_files_specified(self):
         tree = self._make_tree_and_add(['foo'])
@@ -218,7 +219,7 @@ class TestRemove(TestCaseWithTransport):
     def test_remove_deleted_files(self):
         tree = self._make_tree_and_add(files)
         self.run_bzr("commit -m 'added files'")
-        my_files=[f for f in files]
+        my_files = [f for f in files]
         my_files.sort(reverse=True)
         for f in my_files:
             osutils.delete_any(f)
@@ -241,7 +242,7 @@ class TestRemove(TestCaseWithTransport):
         self.run_bzr("commit -m 'added files'")
         self.run_bzr('remove a b b/c d',
                      error_regexes=["deleted a", "deleted b", "deleted b/c",
-                     "deleted d"])
+                                    "deleted d"])
         self.assertFilesDeleted(files)
 
     def test_remove_keep_files(self):
@@ -249,7 +250,7 @@ class TestRemove(TestCaseWithTransport):
         self.run_bzr("commit -m 'added files'")
         self.run_bzr('remove --keep a b b/c d',
                      error_regexes=["removed a", "removed b", "removed b/c",
-                     "removed d"])
+                                    "removed d"])
         self.assertFilesUnversioned(files)
 
     def test_remove_with_new(self):

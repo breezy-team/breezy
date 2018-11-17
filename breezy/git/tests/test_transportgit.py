@@ -24,7 +24,10 @@ from dulwich.tests.utils import make_object
 
 from ...tests import TestCaseWithTransport
 
-from ..transportgit import TransportObjectStore
+from ..transportgit import (
+    TransportObjectStore,
+    TransportRefsContainer,
+    )
 
 
 class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):
@@ -36,6 +39,19 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
     def tearDown(self):
         PackBasedObjectStoreTests.tearDown(self)
         TestCaseWithTransport.tearDown(self)
+
+    def test_prefers_pack_listdir(self):
+        self.store.add_object(make_object(Blob, data=b"data"))
+        self.assertEqual(0, len(self.store.packs))
+        self.store.pack_loose_objects()
+        self.assertEqual(1, len(self.store.packs))
+        packname = list(self.store.packs)[0].name()
+        self.assertEqual({'pack-%s.pack' % packname.decode('ascii'), 'pack-%s.idx' % packname.decode('ascii')},
+                         set(self.store._pack_names()))
+        self.store.transport.put_bytes_non_atomic('info/packs',
+                                                  b'P foo-pack.pack\n')
+        self.assertEqual({'pack-%s.pack' % packname.decode('ascii'), 'pack-%s.idx' % packname.decode('ascii')},
+                         set(self.store._pack_names()))
 
     def test_remembers_packs(self):
         self.store.add_object(make_object(Blob, data=b"data"))
@@ -55,9 +71,19 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
 
 # FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
 
-# class TransportRefContainerTests(RefsContainerTests, TestCaseWithTransport):
-#
-#    def setUp(self):
-#        TestCaseWithTransport.setUp(self)
-#        self._refs = TransportRefsContainer(self.get_transport())
+class TransportRefContainerTests(TestCaseWithTransport):
 
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self._refs = TransportRefsContainer(self.get_transport())
+
+    def test_packed_refs_missing(self):
+        self.assertEqual({}, self._refs.get_packed_refs())
+
+    def test_packed_refs(self):
+        self.get_transport().put_bytes_non_atomic('packed-refs',
+                                                  b'# pack-refs with: peeled fully-peeled sorted \n'
+                                                  b'2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee refs/heads/master')
+        self.assertEqual(
+            {b'refs/heads/master': b'2001b954f1ec392f84f7cec2f2f96a76ed6ba4ee'},
+            self._refs.get_packed_refs())

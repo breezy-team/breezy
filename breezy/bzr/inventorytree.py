@@ -73,7 +73,7 @@ class InventoryTree(Tree):
         return self._inventory
 
     root_inventory = property(_get_root_inventory,
-        doc="Root inventory of this tree")
+                              doc="Root inventory of this tree")
 
     def _unpack_file_id(self, file_id):
         """Find the inventory and inventory file id for a tree file id.
@@ -83,12 +83,13 @@ class InventoryTree(Tree):
         """
         if isinstance(file_id, tuple):
             if len(file_id) != 1:
-                raise ValueError("nested trees not yet supported: %r" % file_id)
+                raise ValueError(
+                    "nested trees not yet supported: %r" % file_id)
             file_id = file_id[0]
         return self.root_inventory, file_id
 
     def find_related_paths_across_trees(self, paths, trees=[],
-            require_versioned=True):
+                                        require_versioned=True):
         """Find related paths in tree corresponding to specified filenames in any
         of `lookup_trees`.
 
@@ -104,9 +105,9 @@ class InventoryTree(Tree):
             in `tree`
         """
         if paths is None:
-            return None;
+            return None
         file_ids = self.paths2ids(
-                paths, trees, require_versioned=require_versioned)
+            paths, trees, require_versioned=require_versioned)
         ret = set()
         for file_id in file_ids:
             try:
@@ -196,7 +197,7 @@ class InventoryTree(Tree):
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
-                    if not inventory is self.root_inventory: # for now
+                    if inventory is not self.root_inventory:  # for now
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
@@ -217,14 +218,14 @@ class InventoryTree(Tree):
         from . import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(
-                self.id2path(file_id), file_id, vf, b'this:')
+            self.id2path(file_id), file_id, vf, b'this:')
         last_revision_b = other._get_file_revision(
-                other.id2path(file_id), file_id, vf, b'other:')
+            other.id2path(file_id), file_id, vf, b'other:')
         if base is None:
             last_revision_base = None
         else:
             last_revision_base = base._get_file_revision(
-                    base.id2path(file_id), file_id, vf, b'base:')
+                base.id2path(file_id), file_id, vf, b'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
     def plan_file_merge(self, file_id, other, base=None):
@@ -257,14 +258,15 @@ class InventoryTree(Tree):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, t.get_file_revision(path, file_id)) for t in
+            parent_keys = [
+                (file_id, t.get_file_revision(path)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file_lines(path, file_id))
+                         self.get_file_lines(path))
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = self.get_file_revision(path, file_id)
+            last_revision = self.get_file_revision(path)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
@@ -287,7 +289,7 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
     if not filenames:
         return None
     specified_path_ids = _find_ids_across_trees(filenames, trees,
-        require_versioned)
+                                                require_versioned)
     return _find_children_across_trees(specified_path_ids, trees)
 
 
@@ -339,7 +341,7 @@ def _find_children_across_trees(specified_ids, trees):
                 except errors.NoSuchId:
                     continue
                 try:
-                    for child in tree.iter_child_entries(path, file_id):
+                    for child in tree.iter_child_entries(path):
                         if child.file_id not in interesting_ids:
                             new_pending.add(child.file_id)
                 except errors.NotADirectory:
@@ -474,7 +476,7 @@ class _SmartAddHelper(object):
         inv_path = self.tree._fix_case_of_inventory_path(inv_path)
         try:
             return next(self.tree.iter_entries_by_dir(
-                    specific_files=[inv_path]))[1]
+                specific_files=[inv_path]))[1]
         except StopIteration:
             return None
 
@@ -490,7 +492,7 @@ class _SmartAddHelper(object):
         this_ie = _mod_inventory.InventoryDirectory(
             this_ie.file_id, this_ie.name, this_ie.parent_id)
         self._invdelta[inv_path] = (inv_path, inv_path, this_ie.file_id,
-            this_ie)
+                                    this_ie)
         return this_ie
 
     def _add_one_and_parent(self, parent_ie, path, kind, inv_path):
@@ -519,8 +521,8 @@ class _SmartAddHelper(object):
             # there are a limited number of dirs we can be nested under, it should
             # generally find it very fast and not recurse after that.
             parent_ie = self._add_one_and_parent(None,
-                dirname, 'directory', 
-                inv_dirname)
+                                                 dirname, 'directory',
+                                                 inv_dirname)
         # if the parent exists, but isn't a directory, we have to do the
         # kind change now -- really the inventory shouldn't pretend to know
         # the kind of wt files, but it does.
@@ -530,7 +532,7 @@ class _SmartAddHelper(object):
             parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
         file_id = self.action(self.tree, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(kind, basename, parent_ie.file_id,
-            file_id=file_id)
+                                          file_id=file_id)
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
         self.added.append(inv_path)
         return entry
@@ -594,7 +596,8 @@ class _SmartAddHelper(object):
             inv_path, _ = osutils.normalized_filename(filepath)
             this_ie = self._get_ie(inv_path)
             if this_ie is None:
-                this_ie = self._add_one_and_parent(None, filepath, kind, inv_path)
+                this_ie = self._add_one_and_parent(
+                    None, filepath, kind, inv_path)
             if kind == 'directory':
                 # schedule the dir for scanning
                 user_dirs[filepath] = (inv_path, this_ie)
@@ -622,7 +625,7 @@ class _SmartAddHelper(object):
                 kind = this_ie.kind
 
             # allow AddAction to skip this file
-            if self.action.skip_file(self.tree,  abspath,  kind,  stat_value):
+            if self.action.skip_file(self.tree, abspath, kind, stat_value):
                 continue
             if not _mod_inventory.InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",
@@ -665,7 +668,7 @@ class _SmartAddHelper(object):
                 trace.warning("skipping nested tree %r", abspath)
             else:
                 this_ie = self._add_one_and_parent(parent_ie, directory, kind,
-                    inv_path)
+                                                   inv_path)
 
             if kind == 'directory' and not sub_tree:
                 if this_ie.kind != 'directory':
@@ -698,9 +701,11 @@ class _SmartAddHelper(object):
                         # outer loop we would ignore user files.
                         ignore_glob = self.tree.is_ignored(subp)
                         if ignore_glob is not None:
-                            self.ignored.setdefault(ignore_glob, []).append(subp)
+                            self.ignored.setdefault(
+                                ignore_glob, []).append(subp)
                         else:
-                            things_to_add.append((subp, sub_invp, None, this_ie))
+                            things_to_add.append(
+                                (subp, sub_invp, None, this_ie))
 
 
 class InventoryRevisionTree(RevisionTree, InventoryTree):
@@ -709,27 +714,27 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         RevisionTree.__init__(self, repository, revision_id)
         self._inventory = inv
 
-    def get_file_mtime(self, path, file_id=None):
+    def get_file_mtime(self, path):
         ie = self._path2ie(path)
         try:
             revision = self._repository.get_revision(ie.revision)
         except errors.NoSuchRevision:
-            raise FileTimestampUnavailable(self.id2path(file_id))
+            raise FileTimestampUnavailable(path)
         return revision.timestamp
 
-    def get_file_size(self, path, file_id=None):
+    def get_file_size(self, path):
         return self._path2ie(path).text_size
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         ie = self._path2ie(path)
         if ie.kind == "file":
             return ie.text_sha1
         return None
 
-    def get_file_revision(self, path, file_id=None):
+    def get_file_revision(self, path):
         return self._path2ie(path).revision
 
-    def is_executable(self, path, file_id=None):
+    def is_executable(self, path):
         ie = self._path2ie(path)
         if ie.kind != "file":
             return False
@@ -755,18 +760,18 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 
-    def get_symlink_target(self, path, file_id=None):
+    def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
         return self._path2ie(path).symlink_target
 
-    def get_reference_revision(self, path, file_id=None):
+    def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision
 
     def get_root_id(self):
         if self.root_inventory.root:
             return self.root_inventory.root.file_id
 
-    def kind(self, path, file_id=None):
+    def kind(self, path):
         return self._path2ie(path).kind
 
     def path_content_summary(self, path):
@@ -808,8 +813,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             for name, child in entry.sorted_children():
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None,
-                    child.file_id, child.kind
-                    ))
+                                 child.file_id, child.kind
+                                 ))
             yield (currentdir[0], entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
@@ -828,12 +833,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         except errors.RevisionNotPresent as e:
             raise errors.NoSuchFile(e.file_id)
 
-    def annotate_iter(self, path, file_id=None,
-                      default_revision=revision.CURRENT_REVISION):
+    def annotate_iter(self, path, default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        if file_id is None:
-            file_id = self.path2id(path)
-        text_key = (file_id, self.get_file_revision(path, file_id))
+        file_id = self.path2id(path)
+        text_key = (file_id, self.get_file_revision(path))
         annotator = self._repository.texts.get_annotator()
         annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]
@@ -857,8 +860,8 @@ class InterCHKRevisionTree(InterTree):
 
     @staticmethod
     def is_compatible(source, target):
-        if (isinstance(source, RevisionTree)
-            and isinstance(target, RevisionTree)):
+        if (isinstance(source, RevisionTree) and
+                isinstance(target, RevisionTree)):
             try:
                 # Only CHK inventories have id_to_entry attribute
                 source.root_inventory.id_to_entry
@@ -873,7 +876,7 @@ class InterCHKRevisionTree(InterTree):
                      require_versioned=True, want_unversioned=False):
         lookup_trees = [self.source]
         if extra_trees:
-             lookup_trees.extend(extra_trees)
+            lookup_trees.extend(extra_trees)
         # The ids of items we need to examine to insure delta consistency.
         precise_file_ids = set()
         discarded_changes = {}
@@ -881,7 +884,7 @@ class InterCHKRevisionTree(InterTree):
             specific_file_ids = []
         else:
             specific_file_ids = self.target.paths2ids(specific_files,
-                lookup_trees, require_versioned=require_versioned)
+                                                      lookup_trees, require_versioned=require_versioned)
         # FIXME: It should be possible to delegate include_unchanged handling
         # to CHKInventory.iter_changes and do a better job there -- vila
         # 20090304
@@ -903,7 +906,7 @@ class InterCHKRevisionTree(InterTree):
             changed_file_ids.add(result[0])
         if specific_file_ids is not None:
             for result in self._handle_precise_ids(precise_file_ids,
-                changed_file_ids, discarded_changes=discarded_changes):
+                                                   changed_file_ids, discarded_changes=discarded_changes):
                 yield result
         if include_unchanged:
             # CHKMap avoid being O(tree), so we go to O(tree) only if
@@ -913,14 +916,14 @@ class InterCHKRevisionTree(InterTree):
             # FIXME: Support nested trees
             changed_file_ids = set(changed_file_ids)
             for relpath, entry in self.target.root_inventory.iter_entries():
-                if (specific_file_ids is not None
-                    and not entry.file_id in specific_file_ids):
+                if (specific_file_ids is not None and
+                        entry.file_id not in specific_file_ids):
                     continue
-                if not entry.file_id in changed_file_ids:
+                if entry.file_id not in changed_file_ids:
                     yield (entry.file_id,
-                           (relpath, relpath), # Not renamed
-                           False, # Not modified
-                           (True, True), # Still  versioned
+                           (relpath, relpath),  # Not renamed
+                           False,  # Not modified
+                           (True, True),  # Still  versioned
                            (entry.parent_id, entry.parent_id),
                            (entry.name, entry.name),
                            (entry.kind, entry.kind),

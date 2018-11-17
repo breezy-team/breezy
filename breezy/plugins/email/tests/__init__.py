@@ -17,6 +17,7 @@
 
 from unittest import TestLoader, TestSuite
 
+
 def test_suite():
     result = TestSuite()
     from . import testemail
@@ -24,4 +25,3 @@ def test_suite():
     loader = TestLoader()
     result.addTests(loader.loadTestsFromModule(testemail))
     return result
-

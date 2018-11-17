@@ -118,7 +118,6 @@ class TestOSLock(tests.TestCaseInTempDir):
         finally:
             w_lock.unlock()
 
-
     def test_temporary_write_lock(self):
         r_lock = self.read_lock('a-lock-file')
         try:

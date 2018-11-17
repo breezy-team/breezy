@@ -40,6 +40,7 @@ TestCaseInTempDir = tests.TestCaseInTempDir
 TestCaseWithTransport = tests.TestCaseWithTransport
 TestCaseWithMemoryTransport = tests.TestCaseWithMemoryTransport
 
+
 class _DulwichFeature(Feature):
 
     def _probe(self):
@@ -85,7 +86,7 @@ class GitBranchBuilder(object):
         self._counter += 1
         from fastimport.commands import BlobCommand
         blob = BlobCommand(b'%d' % self._counter, content)
-        self._write(bytes(blob)+b"\n")
+        self._write(bytes(blob) + b"\n")
         return self._counter
 
     def set_symlink(self, path, content):
@@ -93,7 +94,7 @@ class GitBranchBuilder(object):
         mark = self._create_blob(self._encode_path(content))
         mode = b'120000'
         self.commit_info.append(b'M %s :%d %s\n'
-                % (mode, mark, self._encode_path(path)))
+                                % (mode, mark, self._encode_path(path)))
 
     def set_file(self, path, content, executable):
         """Create or update content at a given path."""

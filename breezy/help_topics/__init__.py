@@ -47,9 +47,9 @@ from breezy import (
 # Section identifiers (map topics to the right place in the manual)
 SECT_COMMAND = "command"
 SECT_CONCEPT = "concept"
-SECT_HIDDEN =  "hidden"
-SECT_LIST    = "list"
-SECT_PLUGIN  = "plugin"
+SECT_HIDDEN = "hidden"
+SECT_LIST = "list"
+SECT_PLUGIN = "plugin"
 
 
 class HelpTopicRegistry(registry.Registry):
@@ -121,7 +121,7 @@ class HelpTopicRegistry(registry.Registry):
 topic_registry = HelpTopicRegistry()
 
 
-#----------------------------------------------------
+# ----------------------------------------------------
 
 def _help_on_topics(dummy):
     """Write out the help for topics to outfile"""
@@ -152,7 +152,7 @@ def _help_on_revisionspec(name):
 
     out = []
     out.append(
-"""Revision Identifiers
+        """Revision Identifiers
 
 A revision identifier refers to a specific state of a branch's history.  It
 can be expressed in several ways.  It can begin with a keyword to
@@ -183,7 +183,8 @@ The keywords used as revision selection methods are the following:
 """)
     details = []
     details.append("\nIn addition, plugins can provide other keywords.")
-    details.append("\nA detailed description of each keyword is given below.\n")
+    details.append(
+        "\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
@@ -215,11 +216,11 @@ def _help_on_transport(name):
     import textwrap
 
     def add_string(proto, help, maxl, prefix_width=20):
-       help_lines = textwrap.wrap(help, maxl - prefix_width,
-            break_long_words=False)
-       line_with_indent = '\n' + ' ' * prefix_width
-       help_text = line_with_indent.join(help_lines)
-       return "%-20s%s\n" % (proto, help_text)
+        help_lines = textwrap.wrap(help, maxl - prefix_width,
+                                   break_long_words=False)
+        line_with_indent = '\n' + ' ' * prefix_width
+        help_text = line_with_indent.join(help_lines)
+        return "%-20s%s\n" % (proto, help_text)
 
     def key_func(a):
         return a[:a.rfind("://")]
@@ -237,10 +238,9 @@ def _help_on_transport(name):
         else:
             decl.append(add_string(proto, shorthelp, 79))
 
-
     out = "URL Identifiers\n\n" + \
-            "Supported URL prefixes::\n\n  " + \
-            '  '.join(protl)
+        "Supported URL prefixes::\n\n  " + \
+        '  '.join(protl)
 
     if len(decl):
         out += "\nSupported modifiers::\n\n  " + \
@@ -273,7 +273,7 @@ See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
 
 
 _basic_help = \
-"""Breezy %s -- a free distributed version-control tool
+    """Breezy %s -- a free distributed version-control tool
 https://www.breezy-vcs.org/
 
 Basic commands:
@@ -301,7 +301,7 @@ Basic commands:
 
 
 _global_options = \
-"""Global Options
+    """Global Options
 
 These options may be used with any command, and may appear in front of any
 command.  (e.g. ``brz --profile help``).
@@ -336,7 +336,7 @@ development.  See :doc:`debug-flags-help`.
 """
 
 _standard_options = \
-"""Standard Options
+    """Standard Options
 
 Standard options are legal for all commands.
 
@@ -349,7 +349,7 @@ Unlike global options, standard options can be used in aliases.
 
 
 _checkouts = \
-"""Checkouts
+    """Checkouts
 
 Checkouts are source trees that are connected to a branch, so that when
 you commit in the source tree, the commit goes into that branch.  They
@@ -433,7 +433,7 @@ Related commands::
 """
 
 _repositories = \
-"""Repositories
+    """Repositories
 
 Repositories in Breezy are where committed information is stored. There is
 a repository associated with every branch.
@@ -476,7 +476,7 @@ Related commands::
 
 
 _working_trees = \
-"""Working Trees
+    """Working Trees
 
 A working tree is the contents of a branch placed on disk so that you can
 see the files and edit them. The working tree is where you make changes to a
@@ -518,7 +518,7 @@ Useful commands::
 
 
 _branches = \
-"""Branches
+    """Branches
 
 A branch consists of the state of a project, including all of its
 history. All branches have a repository associated (which is where the
@@ -542,7 +542,7 @@ Related commands::
 
 
 _standalone_trees = \
-"""Standalone Trees
+    """Standalone Trees
 
 A standalone tree is a working tree with an associated repository. It
 is an independently usable branch, with no dependencies on any other.
@@ -556,7 +556,7 @@ Related Commands::
 
 
 _status_flags = \
-"""Status Flags
+    """Status Flags
 
 Status flags are used to summarise changes to the working tree in a concise
 manner.  They are in the form::
@@ -607,14 +607,17 @@ known_env_variables = [
     ("BRZ_CONCURRENCY", "Number of processes that can be run concurrently (selftest)"),
     ("BRZ_PROGRESS_BAR", "Override the progress display. Values are 'none' or 'text'."),
     ("BRZ_PDB", "Control whether to launch a debugger on error."),
-    ("BRZ_SIGQUIT_PDB", "Control whether SIGQUIT behaves normally or invokes a breakin debugger."),
-    ("BRZ_TEXTUI_INPUT", "Force console input mode for prompts to line-based (instead of char-based)."),
+    ("BRZ_SIGQUIT_PDB",
+     "Control whether SIGQUIT behaves normally or invokes a breakin debugger."),
+    ("BRZ_TEXTUI_INPUT",
+     "Force console input mode for prompts to line-based (instead of char-based)."),
     ]
+
 
 def _env_variables(topic):
     import textwrap
     ret = ["Environment Variables\n\n"
-        "See brz help configuration for more details.\n\n"]
+           "See brz help configuration for more details.\n\n"]
     max_key_len = max([len(k[0]) for k in known_env_variables])
     desc_len = (80 - max_key_len - 2)
     ret.append("=" * max_key_len + " " + "=" * desc_len + "\n")
@@ -626,8 +629,9 @@ def _env_variables(topic):
     ret += "=" * max_key_len + " " + "=" * desc_len + "\n"
     return "".join(ret)
 
+
 _files = \
-r"""Files
+    r"""Files
 
 :On Unix:   ~/.config/breezy/breezy.conf
 :On Windows: C:\\Documents and Settings\\username\\Application Data\\Breezy\\2.0\\breezy.conf
@@ -648,7 +652,7 @@ A typical config file might look something like::
 """
 
 _criss_cross = \
-"""Criss-Cross
+    """Criss-Cross
 
 A criss-cross in the branch history can cause the default merge technique
 to emit more conflicts than would normally be expected.
@@ -700,7 +704,7 @@ useful, you can "push --overwrite" or "pull --overwrite" instead.
 
 
 _storage_formats = \
-"""Storage Formats
+    """Storage Formats
 
 To ensure that older clients do not access data incorrectly,
 Breezy's policy is to introduce a new storage format whenever
@@ -736,40 +740,50 @@ topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
 topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
+
+
 def get_current_formats_topic(topic):
     from breezy import controldir
     return "Current Storage Formats\n\n" + \
         controldir.format_registry.help_topic(topic)
+
+
 def get_other_formats_topic(topic):
     from breezy import controldir
     return "Other Storage Formats\n\n" + \
         controldir.format_registry.help_topic(topic)
+
+
 topic_registry.register('current-formats', get_current_formats_topic,
-    'Current storage formats')
+                        'Current storage formats')
 topic_registry.register('other-formats', get_other_formats_topic,
-    'Experimental and deprecated storage formats')
+                        'Experimental and deprecated storage formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
-                    'Options that control how Breezy runs')
+                        'Options that control how Breezy runs')
 topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
 topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
+
+
 def get_bugs_topic(topic):
     from breezy import bugtracker
-    return ("Bug Tracker Settings\n\n" +
-        bugtracker.tracker_registry.help_topic(topic))
+    return ("Bug Tracker Settings\n\n"
+            + bugtracker.tracker_registry.help_topic(topic))
+
+
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
 topic_registry.register_lazy('hooks', 'breezy.hooks', 'hooks_help_text',
-                        'Points at which custom processing can be added')
+                             'Points at which custom processing can be added')
 topic_registry.register_lazy('location-alias', 'breezy.directory_service',
-                        'AliasDirectory.help_text',
-                        'Aliases for remembered locations')
+                             'AliasDirectory.help_text',
+                             'Aliases for remembered locations')
 
 # Load some of the help topics from files. Note that topics which reproduce API
 # details will tend to skew (quickly usually!) so please seek other solutions
@@ -935,5 +949,3 @@ class ConfigOptionHelpIndex(object):
             return [config.option_registry.get(topic)]
         else:
             return []
-
-

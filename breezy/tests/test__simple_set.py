@@ -83,7 +83,7 @@ class _NoImplementCompare(_Hashable):
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 compiled_simpleset_feature = features.ModuleAvailableFeature(
-                                'breezy._simple_set_pyx')
+    'breezy._simple_set_pyx')
 
 
 class TestSimpleSet(tests.TestCase):
@@ -107,12 +107,11 @@ class TestSimpleSet(tests.TestCase):
         # I'm not sure why the offset is 3, but I've check that in the caller,
         # an offset of 1 works, which is expected. Not sure why assertRefcount
         # is incrementing/decrementing 2 times
-        self.assertEqual(count, sys.getrefcount(obj)-3)
+        self.assertEqual(count, sys.getrefcount(obj) - 3)
 
     def test_initial(self):
         obj = self.module.SimpleSet()
         self.assertEqual(0, len(obj))
-        st = ('foo', 'bar')
         self.assertFillState(0, 0, 0x3ff, obj)
 
     def test__lookup(self):
@@ -121,7 +120,7 @@ class TestSimpleSet(tests.TestCase):
         obj = self.module.SimpleSet()
         self.assertLookup(643, '<null>', obj, _Hashable(643))
         self.assertLookup(643, '<null>', obj, _Hashable(643 + 1024))
-        self.assertLookup(643, '<null>', obj, _Hashable(643 + 50*1024))
+        self.assertLookup(643, '<null>', obj, _Hashable(643 + 50 * 1024))
 
     def test__lookup_collision(self):
         obj = self.module.SimpleSet()
@@ -141,11 +140,11 @@ class TestSimpleSet(tests.TestCase):
         obj.add(k2)
         self.assertLookup(643, k1, obj, k1)
         self.assertLookup(644, k2, obj, k2)
-        obj._py_resize(2047) # resized to 2048
+        obj._py_resize(2047)  # resized to 2048
         self.assertEqual(2048, obj.mask + 1)
         self.assertLookup(643, k1, obj, k1)
-        self.assertLookup(643+1024, k2, obj, k2)
-        obj._py_resize(1023) # resized back to 1024
+        self.assertLookup(643 + 1024, k2, obj, k2)
+        obj._py_resize(1023)  # resized back to 1024
         self.assertEqual(1024, obj.mask + 1)
         self.assertLookup(643, k1, obj, k1)
         self.assertLookup(644, k2, obj, k2)
@@ -155,8 +154,8 @@ class TestSimpleSet(tests.TestCase):
 
         h1 = 643
         h2 = 643 + 1024
-        h3 = 643 + 1024*50
-        h4 = 643 + 1024*25
+        h3 = 643 + 1024 * 50
+        h4 = 643 + 1024 * 25
         h5 = 644
         h6 = 644 + 1024
 
@@ -237,8 +236,8 @@ class TestSimpleSet(tests.TestCase):
         # doesn't add anything, so the counters shouldn't be adjusted
         self.assertIs(k1, obj.add(k2))
         self.assertFillState(1, 1, 0x3ff, obj)
-        self.assertRefcount(2, k1) # not changed
-        self.assertRefcount(1, k2) # not incremented
+        self.assertRefcount(2, k1)  # not changed
+        self.assertRefcount(1, k2)  # not incremented
         self.assertIs(k1, obj[k1])
         self.assertIs(k1, obj[k2])
         self.assertRefcount(2, k1)
@@ -339,12 +338,13 @@ class TestSimpleSet(tests.TestCase):
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()
-        chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
+        chars = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                 'abcdefghijklmnopqrstuvwxyz1234567890')
         for i in chars:
             for j in chars:
                 k = (i, j)
                 obj.add(k)
-        num = len(chars)*len(chars)
+        num = len(chars) * len(chars)
         self.assertFillState(num, num, 0x1fff, obj)
         # Now delete all of the entries and it should shrink again
         for i in chars:

@@ -101,10 +101,10 @@ class TestImport(TestCaseInTempDir):
         try:
             os.mkdir('project-0.1')
             if subdir:
-                prefix='project-0.1/'
+                prefix = 'project-0.1/'
                 archive_file.add('project-0.1')
             else:
-                prefix=''
+                prefix = ''
                 os.chdir('project-0.1')
             os.mkdir(prefix + 'junk')
             archive_file.add(prefix + 'junk')
@@ -131,10 +131,10 @@ class TestImport(TestCaseInTempDir):
         os.mkdir('project-0.2')
         try:
             if subdir:
-                prefix='project-0.2/'
+                prefix = 'project-0.2/'
                 archive_file.add('project-0.2')
             else:
-                prefix=''
+                prefix = ''
                 os.chdir('project-0.2')
 
             os.mkdir(prefix + 'junk')
@@ -285,7 +285,7 @@ class TestWithStuff(TestCaseWithTransport):
         b = self.make_repository('foo')
         null_tree = b.revision_tree(_mod_revision.NULL_REVISION)
         tt = transform.TransformPreview(null_tree)
-        root = tt.new_directory('', transform.ROOT_PARENT, b'tree-root')
+        tt.new_directory('', transform.ROOT_PARENT, b'tree-root')
         tt.fixup_new_roots()
         self.addCleanup(tt.finalize)
         return tt
@@ -293,10 +293,8 @@ class TestWithStuff(TestCaseWithTransport):
     def test_nonascii_paths(self):
         self.requireFeature(UnicodeFilenameFeature)
         tt = self.get_empty_tt()
-        encoded_file = tt.new_file(
-            u'\u1234file', tt.root, [b'contents'], b'new-file')
-        encoded_file = tt.new_file(
-            'other', tt.root, [b'contents'], b'other-file')
+        tt.new_file(u'\u1234file', tt.root, [b'contents'], b'new-file')
+        tt.new_file('other', tt.root, [b'contents'], b'other-file')
         tarfile = self.transform_to_tar(tt)
         tarfile.seek(0)
         tree = self.make_branch_and_tree('bar')

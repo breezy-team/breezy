@@ -33,7 +33,7 @@ class TestCleanRepository(TestCaseWithRepository):
         builder = branch.get_commit_builder([], branch.get_config_stack())
         list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
             (b'TREE_ROOT', (None, ''), True, (False, True), (None, None),
-            (None, ''), (None, 'directory'), (None, False))]))
+             (None, ''), (None, 'directory'), (None, False))]))
         builder.finish_inventory()
         rev_id = builder.commit('first post')
         result = branch.repository.check(None, check_repo=True)

@@ -53,7 +53,7 @@ class ZLibEstimator(object):
         # So far we've read X uncompressed bytes, and written Y compressed
         # bytes. We should have a decent estimate of the final compression.
         self._estimated_compression = (float(self._uncompressed_size_added)
-            / self._compressed_size_added)
+                                       / self._compressed_size_added)
 
     def full(self):
         """Have we reached the target size?"""

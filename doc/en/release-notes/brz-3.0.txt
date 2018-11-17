@@ -72,6 +72,11 @@ External Compatibility Breaks
    e.g. POSIX systems. This is so that filenames with backslashes
    in their name can be added explicitly. (#176263, #165151)
 
+ * One-letter shortcuts for Ubuntu releases are no
+   longer supported after 'ubuntu:'. Bazaar's mapping for
+   one-letter distroseries had not been updated since natty.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -180,6 +185,9 @@ Bug Fixes
   backslashes in where backslash is not the path separator.
   (Jelmer Vernooĳ, #176263, #165151)
 
+* Report correct path in output of ``brz add``.
+  (Brian de Alwis, Jelmer Vernooĳ, #1799482)
+
 Documentation
 *************
 
@@ -282,6 +290,8 @@ Internals
 
 Testing
 *******
+
+ * Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)
 
  * A test isolation issue in ``breezy.tests.test_ui`` was fixed,
    which caused ``output_encoding = iso-8859-1`` to be added to the

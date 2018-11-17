@@ -83,8 +83,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
         a_contents = tree.get_file_text('a')
         tree.rename_one('a', 'foo')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('foo', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('foo', 'a')])
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'foo')
 
@@ -97,8 +97,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
         a_contents = tree.get_file_text('a')
         tree.rename_one('a', 'b/foo')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
         self.assertPathDoesNotExist('tree/a')
         self.assertFileEqual(a_contents, 'tree/b/foo')
 
@@ -108,13 +108,13 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(['a', 'b', 'b/c'])
         tree.commit('initial')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'b/c')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'b/c')])
         a_contents = tree.get_file_text('a')
         tree.rename_one('a', 'b/d')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/c', 'b/c'), ('b/d', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/c', 'b/c'), ('b/d', 'a')])
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/d')
 
@@ -126,8 +126,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
         c_contents = tree.get_file_text('b/c')
         tree.rename_one('b/c', 'd')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/'), ('d', 'b/c')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/'), ('d', 'b/c')])
         self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'd')
 
@@ -140,8 +140,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertRaises(errors.RenameFailedFilesExist,
                           tree.rename_one, 'a', 'b/a')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'c')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'c')])
 
     def test_rename_one_onto_existing(self):
         tree = self.make_branch_and_tree('.')
@@ -178,15 +178,15 @@ class TestRenameOne(TestCaseWithWorkingTree):
         os.rename('a', 'b/foo')
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/')])
 
         # We don't need after=True as long as source is missing and target
         # exists.
         tree.rename_one('a', 'b/foo')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
 
     def test_rename_one_after_with_after(self):
         tree = self.make_branch_and_tree('.')
@@ -197,15 +197,15 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
         if tree.has_versioned_directories():
             self.assertPathRelations(tree.basis_tree(), tree,
-                    [('', ''), ('a', 'a'), ('b/', 'b/')])
+                                     [('', ''), ('a', 'a'), ('b/', 'b/')])
         else:
             self.assertPathRelations(tree.basis_tree(), tree,
-                    [('', ''), ('a', 'a')])
+                                     [('', ''), ('a', 'a')])
 
         # Passing after=True should work as well
         tree.rename_one('a', 'b/foo', after=True)
         self.assertPathRelations(tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
+                                 [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
 
     def test_rename_one_after_dest_versioned(self):
         tree = self.make_branch_and_tree('.')
@@ -216,11 +216,11 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(['b'])
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b', None)])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b', None)])
 
         e = self.assertRaises(
-                errors.BzrMoveFailedError, tree.rename_one, 'a', 'b')
+            errors.BzrMoveFailedError, tree.rename_one, 'a', 'b')
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_versioned(self):
@@ -232,12 +232,12 @@ class TestRenameOne(TestCaseWithWorkingTree):
         os.unlink('a')
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b', 'b')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b', 'b')])
 
         e = self.assertRaises(
-                errors.BzrMoveFailedError,
-                tree.rename_one, 'a', 'b', after=True)
+            errors.BzrMoveFailedError,
+            tree.rename_one, 'a', 'b', after=True)
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
 
     def test_rename_one_after_with_after_dest_added(self):
@@ -250,12 +250,12 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(['b'])
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b', None)])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b', None)])
         tree.rename_one('a', 'b', after=True)
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b', 'a')])
 
     def test_rename_one_after_source_removed(self):
         """Rename even if the source was already unversioned."""
@@ -267,15 +267,15 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.remove(['a'])
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/')])
 
         # We don't need after=True as long as source is missing and target
         # exists.
         tree.rename_one('a', 'b/foo')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
 
     def test_rename_one_after_no_target(self):
         tree = self.make_branch_and_tree('.')
@@ -288,8 +288,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.rename_one, 'a', 'b/foo', after=True)
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/')])
 
     def test_rename_one_after_source_and_dest(self):
         tree = self.make_branch_and_tree('.')
@@ -305,20 +305,20 @@ class TestRenameOne(TestCaseWithWorkingTree):
             foo_text = foo_file.read()
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/')])
         self.assertRaises(errors.RenameFailedFilesExist,
                           tree.rename_one, 'a', 'b/foo', after=False)
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/')])
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(foo_text, 'b/foo')
         # But you can pass after=True
         tree.rename_one('a', 'b/foo', after=True)
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/foo', 'a')])
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(foo_text, 'b/foo')
@@ -331,10 +331,10 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
         tree.rename_one('a', 'e/f')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('e/', 'e/'), ('e/f/', 'a/'),
-                 ('e/f/b', 'a/b'), ('e/f/c/', 'a/c/'),
-                 ('e/f/c/d', 'a/c/d')])
+            tree.basis_tree(), tree,
+            [('', ''), ('e/', 'e/'), ('e/f/', 'a/'),
+             ('e/f/b', 'a/b'), ('e/f/c/', 'a/c/'),
+             ('e/f/c/d', 'a/c/d')])
 
     def test_rename_one_moved(self):
         """Moving a moved entry works as expected."""
@@ -346,13 +346,13 @@ class TestRenameOne(TestCaseWithWorkingTree):
 
         tree.rename_one('a/b', 'c/foo')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a/', 'a/'), ('c/', 'c/'), ('c/foo', 'a/b')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a/', 'a/'), ('c/', 'c/'), ('c/foo', 'a/b')])
 
         tree.rename_one('c/foo', 'bar')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a/', 'a/'), ('bar', 'a/b'), ('c/', 'c/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a/', 'a/'), ('bar', 'a/b'), ('c/', 'c/')])
 
     def test_rename_to_denormalised_fails(self):
         if osutils.normalizes_filenames():
@@ -361,8 +361,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(['a'])
         tree.add(['a'])
         self.assertRaises(
-                (errors.InvalidNormalization, UnicodeEncodeError),
-                tree.rename_one, 'a', u'ba\u030arry')
+            (errors.InvalidNormalization, UnicodeEncodeError),
+            tree.rename_one, 'a', u'ba\u030arry')
 
     def test_rename_unversioned_non_ascii(self):
         """Check error when renaming an unversioned non-ascii file"""
@@ -370,7 +370,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         e = self.assertRaises(errors.BzrRenameFailedError,
-            tree.rename_one, u"\xA7", "b")
+                              tree.rename_one, u"\xA7", "b")
         self.assertIsInstance(e.extra, errors.NotVersionedError)
         self.assertEqual(e.extra.path, u"\xA7")
 
@@ -382,7 +382,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(["a"])
         if tree.has_versioned_directories():
             e = self.assertRaises(errors.BzrMoveFailedError,
-                tree.rename_one, "a", u"\xA7/a")
+                                  tree.rename_one, "a", u"\xA7/a")
             self.assertIsInstance(e.extra, errors.NotVersionedError)
             self.assertEqual(e.extra.path, u"\xA7")
         else:
@@ -395,7 +395,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(["a", u"\xA7"])
         tree.add(["a", u"\xA7"])
         e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.rename_one, "a", u"\xA7")
+                              tree.rename_one, "a", u"\xA7")
         self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
         self.assertEqual(e.extra.path, u"\xA7")
 
@@ -406,6 +406,6 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(["a"])
         tree.add(["a"])
         e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.rename_one, "a", u"\xA7", after=True)
+                              tree.rename_one, "a", u"\xA7", after=True)
         self.assertIsInstance(e.extra, errors.NoSuchFile)
         self.assertEqual(e.extra.path, u"\xA7")

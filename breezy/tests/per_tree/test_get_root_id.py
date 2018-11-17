@@ -46,4 +46,3 @@ class TestGetRootID(TestCaseWithTree):
         tree = self.make_tree_with_fixed_root_id()
         with tree.lock_read():
             self.assertEqual(b'custom-tree-root-id', tree.get_root_id())
-
