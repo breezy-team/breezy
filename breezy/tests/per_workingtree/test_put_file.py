@@ -36,4 +36,3 @@ class TestPutFileBytesNonAtomic(TestCaseWithWorkingTree):
         t.put_file_bytes_non_atomic('foo', b'barshoom')
         with t.get_file('foo') as f:
             self.assertEqual(b'barshoom', f.read())
-

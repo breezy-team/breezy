@@ -35,7 +35,7 @@ from six import (
     viewitems,
     viewkeys,
     viewvalues,
-)
+    )  # noqa: F401
 
 
 # The io module exists in Python 2.7 but lacks optimisation. Most uses are not
@@ -46,10 +46,10 @@ if PY3:
     StringIO = _io.StringIO
     from builtins import range, map, zip
 else:
-    from cStringIO import StringIO as BytesIO
-    from StringIO import StringIO
-    from future_builtins import zip, map
-    range = xrange
+    from cStringIO import StringIO as BytesIO  # noqa: F401
+    from StringIO import StringIO  # noqa: F401
+    from future_builtins import zip, map  # noqa: F401
+    range = xrange  # noqa: F821
 
 
 # GZ 2017-06-10: Work out if interning bits of inventory is behaviour we want

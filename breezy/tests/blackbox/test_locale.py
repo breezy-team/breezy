@@ -54,8 +54,8 @@ class TestLocale(tests.TestCaseWithTransport):
             # C is not necessarily the default locale, so set both LANG and
             # LC_ALL explicitly because LC_ALL is preferred on (some?) Linux
             # systems but only LANG is respected on Windows.
-            env_changes={'LANG': 'C', 'LC_ALL': 'C', 'LC_CTYPE':None,
-                         'LANGUAGE':None})
+            env_changes={'LANG': 'C', 'LC_ALL': 'C', 'LC_CTYPE': None,
+                         'LANGUAGE': None})
         self.assertEqual(b'', err)
         self.assertEqualDiff(b"""\
 ------------------------------------------------------------
@@ -70,8 +70,8 @@ message:
     def test_log_BOGUS(self):
         out, err = self.run_log_quiet_long(
             ['tree'],
-            env_changes={'LANG':'BOGUS', 'LC_ALL':None, 'LC_CTYPE':None,
-                         'LANGUAGE':None})
+            env_changes={'LANG': 'BOGUS', 'LC_ALL': None, 'LC_CTYPE': None,
+                         'LANGUAGE': None})
         self.assertStartsWith(err, b'brz: warning: unsupported locale setting')
         self.assertEqualDiff(b"""\
 ------------------------------------------------------------

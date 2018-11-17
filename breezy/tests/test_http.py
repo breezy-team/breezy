@@ -87,8 +87,8 @@ def vary_by_http_client_implementation():
 def vary_by_http_protocol_version():
     """Test on http/1.0 and 1.1"""
     return [
-        ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
-        ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
+        ('HTTP/1.0', dict(_protocol_version='HTTP/1.0')),
+        ('HTTP/1.1', dict(_protocol_version='HTTP/1.1')),
         ]
 
 
@@ -125,7 +125,7 @@ def vary_by_http_proxy_auth_scheme():
 def vary_by_http_activity():
     activity_scenarios = [
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
-                            _transport=HttpTransport,)),
+                             _transport=HttpTransport,)),
         ]
     if features.HTTPSServerFeature.available():
         # FIXME: Until we have a better way to handle self-signed certificates
@@ -135,6 +135,7 @@ def vary_by_http_activity():
         from . import (
             ssl_certs,
             )
+
         class HTTPS_transport(HttpTransport):
 
             def __init__(self, base, _from_transport=None):
@@ -226,7 +227,7 @@ class TestAuthHeader(tests.TestCase):
     def parse_header(self, header, auth_handler_class=None):
         if auth_handler_class is None:
             auth_handler_class = _urllib2_wrappers.AbstractAuthHandler
-        self.auth_handler =  auth_handler_class()
+        self.auth_handler = auth_handler_class()
         return self.auth_handler._parse_auth_header(header)
 
     def test_empty_header(self):
@@ -275,16 +276,19 @@ class TestHTTPRangeParsing(tests.TestCase):
     def setUp(self):
         super(TestHTTPRangeParsing, self).setUp()
         # We focus on range  parsing here and ignore everything else
+
         class RequestHandler(http_server.TestingHTTPRequestHandler):
             def setup(self): pass
+
             def handle(self): pass
+
             def finish(self): pass
 
         self.req_handler = RequestHandler(None, None, None)
 
     def assertRanges(self, ranges, header, file_size):
         self.assertEqual(ranges,
-                          self.req_handler._parse_ranges(header, file_size))
+                         self.req_handler._parse_ranges(header, file_size))
 
     def test_simple_range(self):
         self.assertRanges([(0, 2)], 'bytes=0-2', 12)
@@ -428,14 +432,14 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertEqual(t.has('foo/bar'), True)
         self.assertEqual(len(server.logs), 1)
         self.assertContainsRe(server.logs[0],
-            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "Breezy/')
+                              r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "Breezy/')
 
     def test_http_has_not_found(self):
         server = self.get_readonly_server()
         t = self.get_readonly_transport()
         self.assertEqual(t.has('not-found'), False)
         self.assertContainsRe(server.logs[1],
-            r'"HEAD /not-found HTTP/1.." 404 - "-" "Breezy/')
+                              r'"HEAD /not-found HTTP/1.." 404 - "-" "Breezy/')
 
     def test_http_get(self):
         server = self.get_readonly_server()
@@ -493,7 +497,8 @@ class TestPost(tests.TestCase):
         code, response = http_transport._post(b'abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith(b'POST /.bzr/smart HTTP/1.'))
-        self.assertTrue(b'content-length: 19\r' in server.received_bytes.lower())
+        self.assertTrue(
+            b'content-length: 19\r' in server.received_bytes.lower())
         self.assertTrue(b'content-type: application/octet-stream\r'
                         in server.received_bytes.lower())
         # The transport should not be assuming that the server can accept
@@ -507,7 +512,7 @@ class TestRangeHeader(tests.TestCase):
     """Test range_header method"""
 
     def check_header(self, value, ranges=[], tail=0):
-        offsets = [ (start, end - start + 1) for start, end in ranges]
+        offsets = [(start, end - start + 1) for start, end in ranges]
         coalesce = transport.Transport._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
         range_header = http.HttpTransport._range_header
@@ -877,7 +882,7 @@ class TestNoRangeRequestServer(TestRangeRequestServer):
 
 
 class MultipleRangeWithoutContentLengthRequestHandler(
-    http_server.TestingHTTPRequestHandler):
+        http_server.TestingHTTPRequestHandler):
     """Reply to multiple range requests without content length header."""
 
     def get_multiple_ranges(self, file, file_size, ranges):
@@ -907,7 +912,7 @@ class TestMultipleRangeWithoutContentLengthServer(TestRangeRequestServer):
 
 
 class TruncatedMultipleRangeRequestHandler(
-    http_server.TestingHTTPRequestHandler):
+        http_server.TestingHTTPRequestHandler):
     """Reply to multiple range requests truncating the last ones.
 
     This server generates responses whose Content-Length describes all the
@@ -932,8 +937,8 @@ class TruncatedMultipleRangeRequestHandler(
                 'Content-type', 'application/octet-stream')
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
-            content_length += len('\r\n') # end headers
-            content_length += end - start # + 1
+            content_length += len('\r\n')  # end headers
+            content_length += end - start  # + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
         self.end_headers()
@@ -985,7 +990,7 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
 
 
 class TruncatedBeforeBoundaryRequestHandler(
-    http_server.TestingHTTPRequestHandler):
+        http_server.TestingHTTPRequestHandler):
     """Truncation before a boundary, like in bug 198646"""
 
     _truncated_ranges = 1
@@ -1005,8 +1010,8 @@ class TruncatedBeforeBoundaryRequestHandler(
                 'Content-type', 'application/octet-stream')
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
-            content_length += len('\r\n') # end headers
-            content_length += end - start # + 1
+            content_length += len('\r\n')  # end headers
+            content_length += end - start  # + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
         self.end_headers()
@@ -1133,7 +1138,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def assertEvaluateProxyBypass(self, expected, host, no_proxy):
         handler = _urllib2_wrappers.ProxyHandler()
         self.assertEqual(expected,
-                          handler.evaluate_proxy_bypass(host, no_proxy))
+                         handler.evaluate_proxy_bypass(host, no_proxy))
 
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
@@ -1267,7 +1272,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def _file_contents(self, relpath, ranges):
         t = self.get_readonly_transport()
-        offsets = [ (start, end - start + 1) for start, end in ranges]
+        offsets = [(start, end - start + 1) for start, end in ranges]
         coalesce = t._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
         code, data = t._get(relpath, coalesced)
@@ -1293,11 +1298,11 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
     def test_syntactically_invalid_range_header(self):
         self.assertListRaises(errors.InvalidHttpRange,
-                          self._file_contents, 'a', [(4, 3)])
+                              self._file_contents, 'a', [(4, 3)])
 
     def test_semantically_invalid_range_header(self):
         self.assertListRaises(errors.InvalidHttpRange,
-                          self._file_contents, 'a', [(42, 128)])
+                              self._file_contents, 'a', [(42, 128)])
 
 
 class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1312,15 +1317,15 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         super(TestHTTPRedirections, self).setUp()
         self.build_tree_contents([('a', b'0123456789'),
                                   ('bundle',
-                                  b'# Bazaar revision bundle v0.9\n#\n')
+                                   b'# Bazaar revision bundle v0.9\n#\n')
                                   ],)
 
     def test_redirected(self):
         self.assertRaises(errors.RedirectRequested,
                           self.get_old_transport().get, 'a')
         self.assertEqual(
-                b'0123456789',
-                self.get_new_transport().get('a').read())
+            b'0123456789',
+            self.get_new_transport().get('a').read())
 
 
 class RedirectedRequest(_urllib2_wrappers.Request):
@@ -1352,11 +1357,13 @@ def cleanup_http_redirection_connections(test):
             sock.close()
         except socket.error:
             pass
+
     def connect(connection):
         test.http_connect_orig(connection)
         test.addCleanup(socket_disconnect, connection.sock)
     test.http_connect_orig = test.overrideAttr(
         _urllib2_wrappers.HTTPConnection, 'connect', connect)
+
     def connect(connection):
         test.https_connect_orig(connection)
         test.addCleanup(socket_disconnect, connection.sock)
@@ -1401,7 +1408,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = \
-            [('(.*)', r'%s/1\1' % (new_prefix), 301),]
+            [('(.*)', r'%s/1\1' % (new_prefix), 301), ]
         self.assertEqual(b'redirected once', t._perform(req).read())
 
     def test_five_redirections(self):
@@ -1431,7 +1438,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
-        self.build_tree_contents([('a', b'0123456789'),],)
+        self.build_tree_contents([('a', b'0123456789'), ],)
         cleanup_http_redirection_connections(self)
 
         self.old_transport = self.get_old_transport()
@@ -1445,7 +1452,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
         # We use None for redirected so that we fail if redirected
         self.assertEqual(b'0123456789',
                          transport.do_catching_redirections(
-                self.get_a, t, None).read())
+                             self.get_a, t, None).read())
 
     def test_one_redirection(self):
         self.redirections = 0
@@ -1457,7 +1464,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
         self.assertEqual(b'0123456789',
                          transport.do_catching_redirections(
-                self.get_a, self.old_transport, redirected).read())
+                             self.get_a, self.old_transport, redirected).read())
         self.assertEqual(1, self.redirections)
 
     def test_redirection_loop(self):
@@ -1515,7 +1522,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         super(TestAuth, self).setUp()
         self.server = self.get_readonly_server()
         self.build_tree_contents([('a', b'contents of a\n'),
-                                  ('b', b'contents of b\n'),])
+                                  ('b', b'contents of b\n'), ])
 
     def create_transport_readonly_server(self):
         server = self._auth_server(protocol_version=self._protocol_version)
@@ -1622,11 +1629,11 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def _expected_username_prompt(self, scheme):
         return (self._username_prompt_prefix
                 + "%s %s:%d, Realm: '%s' username: " % (scheme.upper(),
-                                 self.server.host, self.server.port,
-                                 self.server.auth_realm))
+                                                        self.server.host, self.server.port,
+                                                        self.server.auth_realm))
 
     def test_no_prompt_for_password_when_using_auth_config(self):
-        user =' joe'
+        user = ' joe'
         password = 'foo'
         stdin_content = 'bar\n'  # Not the right password
         self.server.add_user(user, password)
@@ -1684,6 +1691,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         t = self.get_user_transport(user, password)
         # Capture the debug calls to mutter
         self.mutters = []
+
         def mutter(*args):
             lines = args[0] % args[1:]
             # Some calls output multiple lines, just split them now since we
@@ -1819,10 +1827,10 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         httpd = self.http_server.server
 
         socket = SampleSocket(
-            b'POST /.bzr/smart %s \r\n' % self._protocol_version.encode('ascii')
+            b'POST /.bzr/smart %s \r\n' % self._protocol_version.encode('ascii') +
             # HTTP/1.1 posts must have a Content-Length (but it doesn't hurt
             # for 1.0)
-            + b'Content-Length: 6\r\n'
+            b'Content-Length: 6\r\n'
             b'\r\n'
             b'hello\n')
         # Beware: the ('localhost', 80) below is the
@@ -1835,8 +1843,8 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
                                                          httpd)
         response = socket.writefile.getvalue()
         self.assertStartsWith(
-                response,
-                b'%s 200 ' % self._protocol_version.encode('ascii'))
+            response,
+            b'%s 200 ' % self._protocol_version.encode('ascii'))
         # This includes the end of the HTTP headers, and all the body.
         expected_end_of_response = b'\r\n\r\nok\x012\n'
         self.assertEndsWith(response, expected_end_of_response)
@@ -1893,7 +1901,7 @@ class Test_redirected_to(tests.TestCase):
                              'http://foo.example.com/foo/subdir')
         self.assertIsInstance(r, type(t))
         self.assertEqual('http://foo.example.com/foo/subdir/',
-            r.external_url())
+                         r.external_url())
 
     def test_redirected_to_same_host_sibling_protocol(self):
         t = self._transport('http://www.example.com/foo')
@@ -1901,7 +1909,7 @@ class Test_redirected_to(tests.TestCase):
                              'https://www.example.com/foo')
         self.assertIsInstance(r, type(t))
         self.assertEqual('https://www.example.com/foo/',
-            r.external_url())
+                         r.external_url())
 
     def test_redirected_to_same_host_different_protocol(self):
         t = self._transport('http://www.example.com/foo')
@@ -1989,6 +1997,7 @@ class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
 
 if features.HTTPSServerFeature.available():
     from . import https_server
+
     class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
         pass
 
@@ -2004,7 +2013,8 @@ class TestActivityMixin(object):
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
         self.addCleanup(self.server.stop_server)
-        _activities = {} # Don't close over self and create a cycle
+        _activities = {}  # Don't close over self and create a cycle
+
         def report_activity(t, bytes, direction):
             count = _activities.get(direction, 0)
             count += bytes
@@ -2189,7 +2199,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = [
-            ('(.*)', r'%s/1\1' % (new_prefix), 301),]
+            ('(.*)', r'%s/1\1' % (new_prefix), 301), ]
         self.old_transport = self.get_old_transport()
         self.new_server.add_user('joe', 'foo')
         cleanup_http_redirection_connections(self)
@@ -2214,7 +2224,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         self.assertEqual(b'redirected once',
                          transport.do_catching_redirections(
-                self.get_a, self.old_transport, redirected).read())
+                             self.get_a, self.old_transport, redirected).read())
         self.assertEqual(1, self.redirections)
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
@@ -2229,10 +2239,9 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = [
-            ('(.*)', r'%s/1\1' % (new_prefix), 301),]
+            ('(.*)', r'%s/1\1' % (new_prefix), 301), ]
         self.assertEqual(b'redirected once', t._perform(req).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
         self.assertEqual('', ui.ui_factory.stdout.getvalue())
-

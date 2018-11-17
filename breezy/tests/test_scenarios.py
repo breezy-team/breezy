@@ -75,7 +75,7 @@ class TestTestScenarios(TestCase):
             vary_named_attribute('two'),
             )
         self.assertEqual(
-            2*2,
+            2 * 2,
             len(s),
             s)
 
@@ -94,14 +94,14 @@ class TestTestScenarios(TestCase):
         """Tests with no scenarios attribute aren't multiplied"""
         suite = TestLoader().suiteClass()
         multiply_tests_by_their_scenarios(self,
-            suite)
+                                          suite)
         self.assertLength(1, list(iter_suite_tests(suite)))
 
 
 class PretendVaryingTest(TestCase):
-    
+
     scenarios = multiply_scenarios(
-        vary_named_attribute('value'), 
+        vary_named_attribute('value'),
         vary_named_attribute('other'),
         )
 

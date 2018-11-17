@@ -96,4 +96,3 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
         # can we lock it now ?
         master.lock_write()
         master.unlock()
-

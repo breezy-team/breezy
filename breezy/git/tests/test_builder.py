@@ -115,9 +115,9 @@ class TestGitBranchBuilder(tests.TestCase):
 
         builder.set_file(u'f\xb5/bar', b'contents\nbar\n', False)
         self.assertEqual(b'2', builder.commit(b'Joe Foo <joe@foo.com>',
-                                           u'committing f\xb5/bar',
-                                           timestamp=1194586400,
-                                           timezone=b'+0100'))
+                                              u'committing f\xb5/bar',
+                                              timestamp=1194586400,
+                                              timezone=b'+0100'))
         self.assertEqualDiff(b'blob\nmark :1\ndata 13\ncontents\nbar\n\n'
                              b'commit refs/heads/master\n'
                              b'mark :2\n'
@@ -257,4 +257,4 @@ class TestGitBranchBuilderReal(tests.TestCaseInTempDir):
         mapping = builder.finish()
         self.assertEqual({b'1': b'44411e8e9202177dd19b6599d7a7991059fa3cb4',
                           b'2': b'b0b62e674f67306fddcf72fa888c3b56df100d64',
-                         }, mapping)
+                          }, mapping)

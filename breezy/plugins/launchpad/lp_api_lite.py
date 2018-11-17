@@ -107,7 +107,7 @@ class LatestPublication(object):
                   # We only need the latest one, the results seem to be properly
                   # most-recent-debian-version sorted
                   'ws.size': '1',
-        }
+                  }
         if self._series is not None:
             params['distro_series'] = '/%s/%s' % (self._archive, self._series)
         if self._pocket is not None:
@@ -253,8 +253,8 @@ def _report_freshness(latest_ver, branch_latest_ver, place, verbosity,
             report_func('%s is CURRENT in %s' % (latest_ver, place))
         else:
             report_func('Most recent %s version: %s\n'
-                       'Packaging branch status: CURRENT'
-                       % (place, latest_ver))
+                        'Packaging branch status: CURRENT'
+                        % (place, latest_ver))
     else:
         if verbosity in ('minimal', 'short'):
             if branch_latest_ver is None:

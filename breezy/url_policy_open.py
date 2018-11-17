@@ -184,7 +184,7 @@ class BranchOpener(object):
     checked against a policy object.
 
     The policy object is expected to have the following methods:
-    * check_one_url 
+    * check_one_url
     * should_follow_references
     * transform_fallback_location
     """
@@ -248,8 +248,8 @@ class BranchOpener(object):
     def transform_fallback_locationHook(cls, branch, url):
         """Installed as the 'transform_fallback_location' Branch hook.
 
-        This method calls `transform_fallback_location` on the policy object and
-        either returns the url it provides or passes it back to
+        This method calls `transform_fallback_location` on the policy object
+        and either returns the url it provides or passes it back to
         check_and_follow_branch_reference.
         """
         try:
@@ -287,8 +287,8 @@ class BranchOpener(object):
     def open(self, url):
         """Open the Bazaar branch at url, first checking it.
 
-        What is acceptable means is defined by the policy's `follow_reference` and
-        `check_one_url` methods.
+        What is acceptable means is defined by the policy's `follow_reference`
+        and `check_one_url` methods.
         """
         if not isinstance(url, str):
             raise TypeError

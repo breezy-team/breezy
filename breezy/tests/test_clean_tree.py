@@ -110,7 +110,7 @@ class TestCleanTree(TestCaseInTempDir):
                     # be shown to the user.
                     function = os.listdir
                 onerror(function=function,
-                    path=path, excinfo=excinfo)
+                        path=path, excinfo=excinfo)
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
         self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
@@ -121,13 +121,12 @@ class TestCleanTree(TestCaseInTempDir):
         self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])
         clean_tree('.', unknown=True, no_prompt=True)
         self.assertContainsRe(stderr.getvalue(),
-            'bzr: warning: unable to remove.*0foo')
+                              'bzr: warning: unable to remove.*0foo')
         self.assertContainsRe(stderr.getvalue(),
-            'bzr: warning: unable to remove.*subdir0')
+                              'bzr: warning: unable to remove.*subdir0')
 
         # Ensure that error other than EACCES during os.remove are
         # not turned into warnings.
         self.build_tree(['subdir1/'])
         self.assertRaises(OSError, clean_tree, '.',
-            unknown=True, no_prompt=True)
-
+                          unknown=True, no_prompt=True)

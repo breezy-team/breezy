@@ -101,8 +101,8 @@ class ReadOnlyTransaction(object):
             # _clean_objects
             # _clean_queue
             # 1 missing ?
-            if (sys.getrefcount(self._clean_queue[offset]) <= 7 and
-                not self._clean_queue[offset] in self._precious_objects):
+            if (sys.getrefcount(self._clean_queue[offset]) <= 7
+                    and not self._clean_queue[offset] in self._precious_objects):
                 removed = self._clean_queue[offset]
                 self._clean_objects.remove(removed)
                 del self._clean_queue[offset]
