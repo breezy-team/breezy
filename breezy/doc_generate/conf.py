@@ -113,15 +113,15 @@ html_theme_options = {
     # * blue: darkblue, mediumblue, darkslateblue, cornflowerblue, royalblue,
     #   midnightblue
     # * gray: dimgray, slategray, lightslategray
-    'sidebarbgcolor': "cornflowerblue",
-    'sidebarlinkcolor': "midnightblue",
-    'relbarbgcolor': "darkblue",
-    'footerbgcolor': "lightslategray",
+    #'sidebarbgcolor': "cornflowerblue",
+    #'sidebarlinkcolor': "midnightblue",
+    #'relbarbgcolor': "darkblue",
+    #'footerbgcolor': "lightslategray",
 
     # Text, heading and code colouring
-    'codebgcolor': "lightyellow",
-    'codetextcolor': "firebrick",
-    'linkcolor': "mediumblue",
+    #'codebgcolor': "lightyellow",
+    #'codetextcolor': "firebrick",
+    #'linkcolor': "mediumblue",
     }
 
 # Add any paths that contain custom themes here, relative to this directory.

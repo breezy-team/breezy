@@ -118,14 +118,11 @@ tags:
 
 ### Documentation ###
 
-# Default to plain documentation for maximum backwards compatibility.
-# (Post 2.0, the defaults will most likely be Sphinx-style instead.)
+docs: docs-sphinx
 
-docs: docs-plain
+clean-docs: clean-sphinx
 
-clean-docs: clean-plain
-
-html-docs: html-plain
+html-docs: html-sphinx
 
 
 ### Man-page Documentation ###
@@ -214,130 +211,6 @@ DOC_WEBSITE_BUILD = build_doc_website
 doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
-
-
-### Plain Documentation ###
-
-# While Sphinx is the preferred tool for building documentation, we still
-# support our "plain" html documentation so that Sphinx is not a hard
-# dependency for packagers on older platforms.
-
-rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
-
-# translate txt docs to html
-derived_txt_files = \
-	doc/en/release-notes/NEWS.txt
-txt_all = \
-	doc/en/tutorials/tutorial.txt \
-	doc/en/tutorials/using_breezy_with_launchpad.txt \
-	doc/en/tutorials/centralized_workflow.txt \
-	$(call sw,doc/*/mini-tutorial/index.txt) \
-	$(call sw,doc/*/user-guide/index-plain.txt) \
-	doc/en/admin-guide/index-plain.txt \
-	$(call sw,doc/es/guia-usario/*.txt) \
-	$(derived_txt_files) \
-	doc/en/upgrade-guide/index.txt \
-	doc/index.txt \
-	$(call sw,doc/index.*.txt)
-txt_nohtml = \
-	doc/en/user-guide/index.txt \
-	doc/en/admin-guide/index.txt
-txt_files = $(filter-out $(txt_nohtml), $(txt_all))
-htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
-
-non_txt_files = \
-       doc/default.css \
-       $(call sw,doc/*/brz-en-quick-reference.svg) \
-       $(call sw,doc/*/brz-en-quick-reference.png) \
-       $(call sw,doc/*/brz-en-quick-reference.pdf) \
-       $(call sw,doc/*/bzr-es-quick-reference.svg) \
-       $(call sw,doc/*/bzr-es-quick-reference.png) \
-       $(call sw,doc/*/bzr-es-quick-reference.pdf) \
-       $(call sw,doc/*/bzr-ru-quick-reference.svg) \
-       $(call sw,doc/*/bzr-ru-quick-reference.png) \
-       $(call sw,doc/*/bzr-ru-quick-reference.pdf) \
-       $(call sw,doc/*/user-guide/images/*.png)
-
-# doc/developers/*.txt files that should *not* be individually
-# converted to HTML
-dev_txt_nohtml = \
-	doc/developers/add.txt \
-	doc/developers/annotate.txt \
-	doc/developers/bundle-creation.txt \
-	doc/developers/commit.txt \
-	doc/developers/diff.txt \
-	doc/developers/directory-fingerprints.txt \
-	doc/developers/gc.txt \
-	doc/developers/implementation-notes.txt \
-	doc/developers/incremental-push-pull.txt \
-	doc/developers/index.txt \
-	doc/developers/initial-push-pull.txt \
-	doc/developers/merge-scaling.txt \
-	doc/developers/miscellaneous-notes.txt \
-	doc/developers/missing.txt \
-	doc/developers/performance-roadmap-rationale.txt \
-	doc/developers/performance-use-case-analysis.txt \
-	doc/developers/planned-change-integration.txt \
-	doc/developers/planned-performance-changes.txt \
-	doc/developers/plans.txt \
-	doc/developers/process.txt \
-	doc/developers/revert.txt \
-	doc/developers/specifications.txt \
-	doc/developers/status.txt \
-	doc/developers/uncommit.txt
-
-dev_txt_all = $(call sw,$(addsuffix /*.txt, doc/developers))
-dev_txt_files = $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
-dev_htm_files = $(patsubst %.txt, %.html, $(dev_txt_files)) 
-
-doc/en/user-guide/index-plain.html: $(call sw,$(addsuffix /*.txt, doc/en/user-guide))
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
-
-#doc/es/user-guide/index.html: $(call sw,$(addsuffix /*.txt, doc/es/user-guide))
-#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-#
-#doc/ru/user-guide/index.html: $(call sw,$(addsuffix /*.txt, doc/ru/user-guide))
-#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-#
-doc/en/admin-guide/index-plain.html: $(call sw,$(addsuffix /*.txt, doc/en/admin-guide))
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
-
-doc/developers/%.html: doc/developers/%.txt
-	$(rst2html) --stylesheet=../default.css $< $@
-
-doc/index.html: doc/index.txt
-	$(rst2html) --stylesheet=default.css $< $@
-
-doc/index.%.html: doc/index.%.txt
-	$(rst2html) --stylesheet=default.css $< $@
-
-%.html: %.txt
-	$(rst2html) --stylesheet=../../default.css $< "$@"
-
-doc/en/release-notes/NEWS.txt: $(NEWS_FILES) tools/generate_release_notes.py
-	$(PYTHON) tools/generate_release_notes.py "$@" $(NEWS_FILES)
-
-upgrade_guide_dependencies =  $(call sw,$(addsuffix /*.txt, doc/en/upgrade-guide))
-
-doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-
-derived_web_docs = $(htm_files) $(dev_htm_files) 
-WEB_DOCS = $(derived_web_docs) $(non_txt_files)
-ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
-
-# the main target to build all the docs
-docs-plain: $(ALL_DOCS)
-
-# produce a tree containing just the final docs, ready for uploading to the web
-HTMLDIR = html_docs
-html-plain: docs-plain
-	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
-
-# clean produced docs
-clean-plain:
-	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
-	    $(HTMLDIR) $(derived_txt_files)
 
 
 ### Miscellaneous Documentation Targets ###
