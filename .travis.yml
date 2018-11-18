@@ -22,7 +22,7 @@ script:
 install:
   - sudo apt install python-all-dev python3-all-dev subunit
   - travis_retry pip install -U setuptools
-  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE sphinx sphinx_epytext
 
 after_success:
   - codecov
