@@ -396,7 +396,7 @@ Test coverage
 =============
 
 All code should be exercised by the test suite.  See the `Bazaar Testing
-Guide <http://doc.bazaar.canonical.com/developers/testing.html>`_ for detailed
+Guide <http://www.breezy-vcs.org/developers/testing.html>`_ for detailed
 information about writing tests.
 
 

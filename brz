@@ -47,7 +47,8 @@ if os.name == "posix":
     try:
         locale.setlocale(locale.LC_ALL, '')
     except locale.Error as e:
-        sys.stderr.write('brz: warning: %s\n'
+        sys.stderr.write(
+            'brz: warning: %s\n'
             '  bzr could not set the application locale.\n'
             '  Although this should be no problem for bzr itself, it might\n'
             '  cause problems with some plugins. To investigate the issue,\n'
@@ -61,7 +62,8 @@ if os.name == "posix":
 try:
     import breezy
 except ImportError as e:
-    sys.stderr.write("brz: ERROR: "
+    sys.stderr.write(
+        "brz: ERROR: "
         "Couldn't import breezy and dependencies.\n"
         "Please check the directory containing breezy is on your PYTHONPATH.\n"
         "\n")
@@ -73,10 +75,10 @@ if breezy.version_info[:3] != _script_version:
         "This may indicate an installation problem.\n"
         "breezy is version %s from %s\n"
         "brz is version %s from %s\n" % (
-        breezy._format_version_tuple(breezy.version_info),
-        breezy.__path__[0],
-        breezy._format_version_tuple(_script_version),
-        __file__))
+            breezy._format_version_tuple(breezy.version_info),
+            breezy.__path__[0],
+            breezy._format_version_tuple(_script_version),
+            __file__))
 
 
 import breezy.breakin

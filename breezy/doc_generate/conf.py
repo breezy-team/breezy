@@ -21,7 +21,13 @@ from __future__ import absolute_import
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.ifconfig', ]
+extensions = [
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx_epytext',
+    # 'sphinxcontrib.napoleon', # TODO: for Google docstrings
+    ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -216,3 +222,7 @@ latex_documents = []
 
 # Authors of the documents
 brz_team = u'Breezy Developers'
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+}

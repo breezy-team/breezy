@@ -11,7 +11,7 @@ Overall developer documentation
 * `Architectural Overview <overview.html>`_ |--| describes some of the
   most important classes and concepts.
 
-* `bzrlib API reference <http://people.canonical.com/~mwh/bzrlibapi/>`_
+* `breezy API reference <https://www.breezy-vcs.org/developers/api/>`_
   (external link)
   |--| automatically generated API reference information
 
@@ -77,7 +77,7 @@ Plans
 Specifications
 ==============
 
-* `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
+* `API versioning <api-versioning.html>`_ |--| breezy API versioning.
 
 * `Apport error reporting <apport.html>`_ |--| Capture data to report
   bugs.
@@ -93,7 +93,8 @@ Specifications
 * `Groupcompress <groupcompress-design.html>`_ |--| Notes on the compression
   technology used in CHK repositories.
 
-* `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
+* `Indices <indices.html>`_ |--| The index facilities available within
+  breezy.
 
 * `Inventories <inventory.html>`_ |--| Tree shape abstraction.
 
@@ -108,7 +109,7 @@ Specifications
 * `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
   for repositories (a layer above the container format).
 
-* `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
+* `Integration Guide <integration.html>`_ |--| A guide to integrate breezy into
   any python application.
 
 * `Breezy and case-insensitive file systems <case-insensitive-file-systems.html>`_
