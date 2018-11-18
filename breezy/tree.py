@@ -290,7 +290,7 @@ class Tree(object):
         :param path: A relative path within the tree.
         :return: A tuple containing kind, size, exec, sha1-or-link.
             Kind is always present (see tree.kind()).
-            size is present if kind is file and the size of the 
+            size is present if kind is file and the size of the
                 canonical form can be cheaply determined, None otherwise.
             exec is None unless kind is file and the platform supports the 'x'
                 bit.

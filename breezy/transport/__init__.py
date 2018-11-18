@@ -265,7 +265,7 @@ class FileStream(object):
     def fdatasync(self):
         """Force data out to physical disk if possible.
 
-        :raises TransportNotPossible: If this transport has no way to 
+        :raises TransportNotPossible: If this transport has no way to
             flush to disk.
         """
         raise errors.TransportNotPossible(

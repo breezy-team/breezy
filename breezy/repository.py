@@ -1144,7 +1144,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param callback_refs: A dict of check-refs to resolve and callback
             the check/_check method on the items listed as wanting the ref.
             see breezy.check.
-        :param check_repo: If False do not check the repository contents, just 
+        :param check_repo: If False do not check the repository contents, just
             calculate the data callback_refs requires and call them back.
         """
         return self._check(revision_ids=revision_ids, callback_refs=callback_refs,

@@ -604,7 +604,7 @@ class TreeTransformBase(object):
 
         :param name: The basename of the file.
 
-        :param target_id: The directory trans_id where the backup should 
+        :param target_id: The directory trans_id where the backup should
             be placed.
         """
         known_children = self.by_parent().get(target_id, [])

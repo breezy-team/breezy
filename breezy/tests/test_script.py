@@ -44,8 +44,8 @@ class TestSyntax(tests.TestCase):
     def test_trim_blank_lines(self):
         """Blank lines are respected, but trimmed at the start and end.
 
-        Python triple-quoted syntax is going to give stubby/empty blank lines 
-        right at the start and the end.  These are cut off so that callers don't 
+        Python triple-quoted syntax is going to give stubby/empty blank lines
+        right at the start and the end.  These are cut off so that callers don't
         need special syntax to avoid them.
 
         However we do want to be able to match commands that emit blank lines.
@@ -186,7 +186,7 @@ class TestExecution(script.TestCaseWithTransportAndScript):
             """)
 
     def test_null_output_matches_option(self):
-        """If you want null output to be a wild card, you can pass 
+        """If you want null output to be a wild card, you can pass
         null_output_matches_anything to run_script"""
         self.run_script(
             """
@@ -630,7 +630,7 @@ class TestShelve(script.TestCaseWithTransportAndScript):
         # We intentionally provide no input here to test EOF
         self.run_script("""
             $ brz shelve -m 'shelve bar'
-            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): 
+            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit):
             2>No changes to shelve.
             """,
                         null_output_matches_anything=True)
