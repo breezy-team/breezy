@@ -1,9 +1,9 @@
 ============================
-Bazaar Main Document Catalog
+Breezy Main Document Catalog
 ============================
 
-The latest version of these documents are available from Bazaar's
-documentation site, <http://doc.bazaar.canonical.com/>, and more documentation
+The latest version of these documents are available from Breezy's
+documentation site, <http://doc.breezy.canonical.com/>, and more documentation
 may be linked from <http://wiki.bazaar.canonical.com/Documentation>.
 
 Core Documentation
@@ -19,17 +19,17 @@ Core Documentation
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 
-* `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_
+* `3.0 Upgrade Guide <en/upgrade-guide/index.html>`_
 
 
 Tutorials
 =========
 
-* `Bazaar in five minutes <en/mini-tutorial/index.html>`_
+* `Breezy in five minutes <en/mini-tutorial/index.html>`_
 
 * `A longer tutorial <en/tutorials/tutorial.html>`_
 
-* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_
+* `Using Breezy with Launchpad <en/tutorials/using_breezy_with_launchpad.html>`_
 
 * `Centralized workflow <en/tutorials/centralized_workflow.html>`_
 
@@ -38,7 +38,7 @@ Developer Documentation
 =======================
 
 * `Developer Document Catalog <developers/index-plain.html>`_ |--| for developers
-  of Bazaar and plugins
+  of Breezy and plugins
 
 Web links
 =========
@@ -52,14 +52,6 @@ Web links
 * `Glossary <http://wiki.bazaar.canonical.com/BzrGlossary>`_
 
 * `Frequently Asked Questions <http://wiki.bazaar.canonical.com/FAQ>`_
-
-
-Other Languages
-===============
-
-* `Spanish Documentation <index.es.html>`_
-* `Russian Documentation <index.ru.html>`_ |--| документация на русском
-* `Japanese Documentation <index.ja.html>`_ |--| 日本語のドキュメント
 
 .. |--| unicode:: U+2014
 
