@@ -59,7 +59,8 @@ class TestSourceStream(tests.TestCase):
         self.assertIsNot(b"bla", stream.read())
 
 
-fast_export_baseline_data = """commit refs/heads/master
+fast_export_baseline_data = """reset refs/heads/master
+commit refs/heads/master
 mark :1
 committer
 data 15
@@ -107,17 +108,15 @@ class TestFastExport(ExternalBase):
         tree.commit("pointless")
         data = self.run_bzr("fast-export br")[0]
         self.assertTrue(data.startswith(
-            'commit refs/heads/master\nmark :1\ncommitter'))
+            'commit refs/heads/master\nreset refs/heads/master\n'
+            'mark :1\ncommitter'), data)
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br br.fi")[0]
         self.assertEquals("", data)
-        try:
-            self.assertPathExists("br.fi")
-        except AttributeError:  # bzr < 2.4
-            self.failUnlessExists("br.fi")
+        self.assertPathExists("br.fi")
 
     def test_tag_rewriting(self):
         tree = self.make_branch_and_tree("br")

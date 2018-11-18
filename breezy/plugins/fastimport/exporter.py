@@ -333,6 +333,7 @@ class BzrFastExporter(object):
         self.revid_to_mark[revid] = mark
         file_cmds = self._get_filecommands(
             breezy.revision.NULL_REVISION, revid)
+        self.print_cmd(commands.ResetCommand(ref, None))
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
     def emit_commit(self, revid, ref):
@@ -355,15 +356,14 @@ class BzrFastExporter(object):
         ncommits = len(self.revid_to_mark)
         nparents = len(revobj.parent_ids)
         if nparents == 0:
-            if ncommits:
-                # This is a parentless commit but it's not the first one
-                # output. We need to create a new temporary branch for it
-                # otherwise git-fast-import will assume the previous commit
-                # was this one's parent
-                ref = self._next_tmp_ref()
             parent = breezy.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
+
+        # For parentless commits we need to issue reset command first, otherwise
+        # git-fast-import will assume previous commit was this one's parent
+        if nparents == 0:
+            self.print_cmd(commands.ResetCommand(ref, None))
 
         # Print the commit
         mark = ncommits + 1
@@ -640,13 +640,3 @@ class BzrFastExporter(object):
                                      'valid in git.', git_ref)
                         continue
                 self.print_cmd(commands.ResetCommand(git_ref, b":%d" % mark))
-
-    def _next_tmp_ref(self):
-        """Return a unique branch name. The name will start with "tmp"."""
-        prefix = 'tmp'
-        if prefix not in self.branch_names:
-            self.branch_names[prefix] = 0
-        else:
-            self.branch_names[prefix] += 1
-            prefix = '%s.%d' % (prefix, self.branch_names[prefix])
-        return 'refs/heads/%s' % prefix
