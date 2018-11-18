@@ -215,7 +215,7 @@ not interrupt people who are working on other parts of the code.  Because
 we have a checkout, any commits made in the ``~/work/sigil/doodle-fixes/``
 will also show up on ``centralhost``. [#nestedbranches]_ It is also
 possible to have two developers collaborate on one of these branches, just
-like they would have collaborated on the ``dev`` branch. [#cbranch]_
+like they would have collaborated on the ``dev`` branch.
 
 .. [#nestedbranches] It may look odd to have a branch in a subdirectory of
    another branch. This is just fine, and you can think of it as a
@@ -267,8 +267,7 @@ location. This can be done with::
                brz+ssh://centralhost/srv/brz/sigil/user-b
 
 This gives each developer their own branch to work on. And, they can
-easily create a new feature branch for themselves with just [#cbranch]_
-::
+easily create a new feature branch for themselves::
 
   % brz branch brz+ssh://centralhost/srv/brz/sigil/user-a \
                brz+ssh://centralhost/srv/brz/sigil/user-a/feature
