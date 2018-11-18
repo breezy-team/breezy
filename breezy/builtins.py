@@ -3433,10 +3433,6 @@ class cmd_cat(Command):
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
         self.add_cleanup(rev_tree.lock_read().unlock)
 
-        # TODO: Split out this code to something that generically finds the
-        # best id for a path across one or more trees; it's like
-        # find_ids_across_trees but restricted to find just one. -- mbp
-        # 20110705.
         if name_from_revision:
             # Try in revision if requested
             if not rev_tree.is_versioned(relpath):
