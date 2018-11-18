@@ -153,8 +153,8 @@ docs-sphinx: html-sphinx
 
 # Clean out generated documentation
 clean-sphinx:
-	cd doc/en && make clean
-	cd doc/developers && make clean
+	$(MAKE) -C doc/en clean
+	$(MAKE) -C doc/developers clean
 
 SPHINX_DEPENDENCIES = \
         doc/en/release-notes/index.txt \
@@ -178,8 +178,8 @@ doc/%/make.bat: doc/en/make.bat
 
 # Build the html docs using Sphinx.
 html-sphinx: $(SPHINX_DEPENDENCIES)
-	cd doc/en && make html
-	cd doc/developers && make html
+	$(MAKE) -C doc/en html
+	$(MAKE) -C doc/developers api html
 
 # Build the PDF docs using Sphinx. This requires numerous LaTeX
 # packages. See http://sphinx.pocoo.org/builders.html for details.
@@ -187,23 +187,23 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 # they require additional packages to be installed (to handle
 # Russian hyphenation rules, etc.)
 pdf-sphinx: $(SPHINX_DEPENDENCIES)
-	cd doc/en && make latex
-	cd doc/developers && make latex
-	cd doc/en/_build/latex && make all-pdf
-	cd doc/developers/_build/latex && make all-pdf
+	$(MAKE) -C doc/en latex
+	$(MAKE) -C doc/developers latex
+	$(MAKE) -C doc/en/_build/latex all-pdf
+	$(MAKE) -C doc/developers/_build/latex all-pdf
 
 # Build the CHM (Windows Help) docs using Sphinx.
 # Note: HtmlHelp Workshop needs to be used on the generated hhp files
 # to generate the final chm files.
 chm-sphinx: $(SPHINX_DEPENDENCIES)
-	cd doc/en && make htmlhelp
-	cd doc/developers && make htmlhelp
+	$(MAKE) -C doc/en htmlhelp
+	$(MAKE) -C doc/developers htmlhelp
 
 
 # Build the texinfo files using Sphinx.
 texinfo-sphinx: $(SPHINX_DEPENDENCIES)
-	cd doc/en && make texinfo
-	cd doc/developers && make texinfo
+	$(MAKE) -C doc/en texinfo
+	$(MAKE) -C doc/developers texinfo
 
 ### Documentation Website ###
 
