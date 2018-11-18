@@ -1418,9 +1418,9 @@ class Merge3Merger(object):
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
         base_path, other_path, this_path = paths
-        base_lines = self.get_lines(self.base_tree, base_path, file_id)
-        other_lines = self.get_lines(self.other_tree, other_path, file_id)
-        this_lines = self.get_lines(self.this_tree, this_path, file_id)
+        base_lines = self.get_lines(self.base_tree, base_path)
+        other_lines = self.get_lines(self.other_tree, other_path)
+        this_lines = self.get_lines(self.this_tree, this_path)
         m3 = merge3.Merge3(base_lines, this_lines, other_lines,
                            is_cherrypick=self.cherrypick)
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"

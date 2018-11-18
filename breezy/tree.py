@@ -1352,25 +1352,22 @@ def get_canonical_path(tree, path, normalize):
     :return: The canonical path
     """
     # go walkin...
-    cur_id = tree.get_root_id()
     cur_path = ''
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
         lelt = normalize(elt)
         new_path = None
         try:
-            for child in tree.iter_child_entries(cur_path, cur_id):
+            for child in tree.iter_child_entries(cur_path):
                 try:
                     if child.name == elt:
                         # if we found an exact match, we can stop now; if
                         # we found an approximate match we need to keep
                         # searching because there might be an exact match
                         # later.
-                        cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                         break
                     elif normalize(child.name) == lelt:
-                        cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                 except errors.NoSuchId:
                     # before a change is committed we can see this error...
