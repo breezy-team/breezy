@@ -4,7 +4,7 @@ Breezy Main Document Catalog
 
 The latest version of these documents are available from Breezy's
 documentation site, <http://doc.breezy.canonical.com/>, and more documentation
-may be linked from <http://wiki.bazaar.canonical.com/Documentation>.
+may be linked from <https://www.breezy-vcs.org/doc/>.
 
 Core Documentation
 ==================
@@ -51,7 +51,7 @@ Web links
 
 * `Glossary <http://wiki.bazaar.canonical.com/BzrGlossary>`_
 
-* `Frequently Asked Questions <http://wiki.bazaar.canonical.com/FAQ>`_
+* `Frequently Asked Questions <https://answers.launchpad.net/brz/+faqs>`_
 
 .. |--| unicode:: U+2014
 
