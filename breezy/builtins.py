@@ -54,6 +54,7 @@ from breezy import (
     symbol_versioning,
     timestamp,
     transport,
+    tree as _mod_tree,
     ui,
     urlutils,
     views,
@@ -3432,38 +3433,41 @@ class cmd_cat(Command):
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
         self.add_cleanup(rev_tree.lock_read().unlock)
 
-        old_file_id = rev_tree.path2id(relpath)
-
         # TODO: Split out this code to something that generically finds the
         # best id for a path across one or more trees; it's like
         # find_ids_across_trees but restricted to find just one. -- mbp
         # 20110705.
         if name_from_revision:
             # Try in revision if requested
-            if old_file_id is None:
+            if not rev_tree.is_versioned(relpath):
                 raise errors.BzrCommandError(gettext(
                     "{0!r} is not present in revision {1}").format(
                         filename, rev_tree.get_revision_id()))
-            else:
-                actual_file_id = old_file_id
+            rev_tree_path = relpath
         else:
-            cur_file_id = tree.path2id(relpath)
-            if cur_file_id is not None and rev_tree.has_id(cur_file_id):
-                actual_file_id = cur_file_id
-            elif old_file_id is not None:
-                actual_file_id = old_file_id
-            else:
-                raise errors.BzrCommandError(gettext(
-                    "{0!r} is not present in revision {1}").format(
-                        filename, rev_tree.get_revision_id()))
-        relpath = rev_tree.id2path(actual_file_id)
+            try:
+                rev_tree_path = _mod_tree.find_previous_path(
+                    tree, rev_tree, relpath)
+            except errors.NoSuchFile:
+                rev_tree_path = None
+
+            if rev_tree_path is None:
+                # Path didn't exist in working tree
+                if not rev_tree.is_versioned(relpath):
+                    raise errors.BzrCommandError(gettext(
+                        "{0!r} is not present in revision {1}").format(
+                            filename, rev_tree.get_revision_id()))
+                else:
+                    # Fall back to the same path in the basis tree, if present.
+                    rev_tree_path = relpath
+
         if filtered:
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(
                 rev_tree, rev_tree._content_filter_stack)
-            fileobj = filter_tree.get_file(relpath)
+            fileobj = filter_tree.get_file(rev_tree_path)
         else:
-            fileobj = rev_tree.get_file(relpath)
+            fileobj = rev_tree.get_file(rev_tree_path)
         shutil.copyfileobj(fileobj, self.outf)
         self.cleanup_now()
 
