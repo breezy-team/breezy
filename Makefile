@@ -105,12 +105,6 @@ realclean: clean
 	rm -f breezy/*_pyx.c breezy/bzr/*_pyx.c
 	rm -f breezy/_simple_set_pyx.h breezy/_simple_set_pyx_api.h
 
-# Build API documentation
-docfiles = brz breezy
-api-docs:
-	mkdir -p api/html
-	pydoctor --make-html --docformat='restructuredtext' --html-output=api/html $(docfiles)
-
 # build tags for emacs and vim
 TAGS:
 	ctags -R -e breezy
