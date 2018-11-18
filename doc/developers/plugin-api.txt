@@ -31,7 +31,7 @@ Structure of a plugin
 =====================
 
 Plugins are Python modules under ``breezy.plugins``. They can be installed
-either into the PYTHONPATH in that location, or in ~/.bazaar/plugins.
+either into the PYTHONPATH in that location, or in ~/.config/breezy/plugins.
 
 Plugins should have a setup.py.
 
@@ -45,7 +45,7 @@ Plugin metadata before installation
 Plugins can export a summary of what they provide, and what versions of breezy
 they are compatible with. This allows tools to be written to work with plugins,
 such as to generate a directory of plugins, or install them via a
-symlink/checkout to ~/.bazaar/plugins.
+symlink/checkout to ~/.config/breezy/plugins.
 
 This interface allows Breezy to interrogate a plugin without actually loading
 it. This is useful because loading a plugin may have side effects such
