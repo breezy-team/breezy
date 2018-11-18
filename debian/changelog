@@ -1,9 +1,8 @@
-breezy (3.0.0~bzr7190-2) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7192-1) UNRELEASED; urgency=medium
 
-  * Add patch 05_ghost_tags: avoid creating ghost tags (breaks tests
-    with newer versions of Dulwich).
+  * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 17 Nov 2018 20:54:10 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 18 Nov 2018 00:39:26 +0000
 
 breezy (3.0.0~bzr7190-1) unstable; urgency=medium
 
