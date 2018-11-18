@@ -173,7 +173,7 @@ class HashCache(object):
             if self._filter_provider is None:
                 filters = []
             else:
-                filters = self._filter_provider(path=path, file_id=None)
+                filters = self._filter_provider(path=path)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             target = osutils.readlink(abspath)

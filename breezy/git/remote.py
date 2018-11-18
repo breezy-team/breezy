@@ -816,13 +816,13 @@ class GitRemoteRevisionTree(RevisionTree):
         f.seek(0)
         return osutils.file_iterator(f)
 
-    def is_versioned(self, path, file_id=None):
+    def is_versioned(self, path):
         raise GitSmartRemoteNotSupported(self.is_versioned, self)
 
     def has_filename(self, path):
         raise GitSmartRemoteNotSupported(self.has_filename, self)
 
-    def get_file_text(self, path, file_id=None):
+    def get_file_text(self, path):
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
 
 

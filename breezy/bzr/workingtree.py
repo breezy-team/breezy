@@ -1458,7 +1458,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # indeed dirty.  - RBC 20060907
                 self._write_inventory(self._inventory)
 
-    def stored_kind(self, path, file_id=None):
+    def stored_kind(self, path):
         """See Tree.stored_kind"""
         return self._path2ie(path).kind
 

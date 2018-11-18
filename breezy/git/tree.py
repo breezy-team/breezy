@@ -461,7 +461,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         file_id = self._fileid_map.lookup_file_id(path)
         return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
 
-    def iter_child_entries(self, path, file_id=None):
+    def iter_child_entries(self, path):
         (store, mode, tree_sha) = self._lookup_path(path)
 
         if mode is not None and not stat.S_ISDIR(mode):

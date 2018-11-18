@@ -207,7 +207,7 @@ class InventoryTree(Tree):
             return self.root_inventory.iter_entries_by_dir(
                 specific_file_ids=inventory_file_ids)
 
-    def iter_child_entries(self, path, file_id=None):
+    def iter_child_entries(self, path):
         with self.lock_read():
             ie = self._path2ie(path)
             if ie.kind != 'directory':
