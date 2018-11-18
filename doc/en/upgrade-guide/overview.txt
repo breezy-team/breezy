@@ -4,7 +4,7 @@ Overview
 High level upgrade process
 --------------------------
 
-In broad terms, there are 3 steps involved in upgrading to Bazaar 2.x:
+In broad terms, there are 3 steps involved in upgrading a new format:
 
 1. Upgrade the core software
 
@@ -12,70 +12,65 @@ In broad terms, there are 3 steps involved in upgrading to Bazaar 2.x:
 
 3. Migrate data to the new default format.
 
-Bazaar 2.x supports branches in earlier formats so the third step is
-strictly not required. However, the new default format in Bazaar 2.x
-is more space efficient, faster on large projects and provides a range
-of new features, so it is recommended that most projects migrate to it
-at a convenient time.
+Breezy supports branches in earlier formats so the third step is strictly not
+required. However, when new default formats are introduced, they are more
+space efficient, faster on large projects and/or provide new features. So it
+is recommended that most projects migrate to it at a convenient time.
 
-For most users, upgrading to 2.x and migrating to the new format is
-straight forward. For projects with a large community of developers
-though, things become more complex. In these cases, careful planning
-and good communications become essential. This document provides
-general advice which aims to assist in this regard. If in doubt,
-please contact us on our mailing list or IRC channel with any
-questions or concerns you have.
+For most users, upgrading and migrating to the new format is straight
+forward. For projects with a large community of developers though, things
+become more complex. In these cases, careful planning and good communications
+become essential. This document provides general advice which aims to assist
+in this regard. If in doubt, please contact us on our mailing list or IRC
+channel with any questions or concerns you have.
 
 
 Upgrading the core software
 ---------------------------
 
-The steps required to upgrade the core software vary from operating
-system to operating system. There is nothing special about upgrading
-from Bazaar 1.x to Bazaar 2.0 compared to upgrading from Bazaar 1.x
-to Bazaar 1.y. In either case, a brief outline of the steps is given
-below.
+The steps required to upgrade the core software vary from operating system to
+operating system.  A brief outline of the steps is given below.
 
-To upgrade Bazaar on Linux:
+To upgrade Breezy on Ubuntu:
 
-1. Ensure your package manager is configured with the required
-   software sources, e.g. the official release PPA for Ubuntu:
-   https://launchpad.net/~bzr/+archive
+1. Ensure your package manager is configured with the required software
+   sources, e.g. the official stable release PPA for Ubuntu:
+   https://launchpad.net/~brz/+archive
 
 2. Use your package manager to upgrade to the latest version.
 
-To upgrade Bazaar on Windows:
+To upgrade Breezy on Windows:
 
 1. Uninstall the existing version using Add/Remove Programs.
 
 2. Install the new version using the relevant installer.
 
-To upgrade Bazaar on OS X (via the installer):
+To upgrade Breezy on OS X (via the installer):
 
 1. Install the new version using the relevant installer.
 
-To upgrade Bazaar on OS X (via MacPorts):
+To upgrade Breezy on OS X (via MacPorts):
 
 1. Refresh the package metadata using **sudo port selfupdate**
 
-2. Upgrade to the latest version using **sudo port upgrade bzr**
+2. Upgrade to the latest version using **sudo port upgrade brz**
 
 For further information on installing and upgrading, see
-http://bazaar-vcs.org/Download.
+http://wiki.bazaar.canonical.com/Download.
 
 
 Upgrading required plugins
 --------------------------
 
-Many plugins are not dependent on a particular Bazaar version so
+Many plugins are not dependent on a particular Breezy version so
 upgrading them is optional. Other plugins, notably bzrtools and
-bzr-svn, are more tightly associated with Bazaar's APIs so these
+bzr-svn, are more tightly associated with Breezy's APIs so these
 typically need to be upgraded in lockstep with the core software.
 
-For Windows and OS X users, bzrtools and bzr-svn are typically
-included in the installer so no special steps are required to upgrade
-these. For Linux and UNIX users, bztrools, bzr-svn and many other
-popular plugins can be installed and upgraded using your
+For Windows and OS X users, bzrtools and bzr-svn are typically included in
+the installer so no special steps are required to upgrade these. For
+Ubuntu and other GNU/Linux or Unix systems users, bztrools, bzr-svn and
+many other popular plugins can be installed and upgraded using your
 platform's package manager, e.g. Synaptic on Ubuntu.
 
 

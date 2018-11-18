@@ -50,8 +50,8 @@ Embedding user and passwords in the command line is a security
 hazard (see `bug #34685
 <https://launchpad.net/products/bzr/+bug/34685>`_).
 
-Storing passwords in ``~/.bazaar/bazaar.conf`` or ``~/.bazaar/locations.conf``
-is also a security risk.
+Storing passwords in ``~/.config/breezy/breezy.conf`` or
+``~/.config/breezy/locations.conf`` is also a security risk.
 
 Typing user and passwords is error-prone and boring.
 
@@ -61,12 +61,12 @@ needed, could improve the bzr user experience.
 This specification describes a way to provide user and passwords to bzr while
 storing them in a relatively safe way.
 
-Note that ssh servers can be configured to use keys instead of (``user``,
+Note that SSH servers can be configured to use keys instead of (``user``,
 ``password``) and, when used with appropriate agents, provide the same kind of
-comfort this specification aims to provide for all other schemes. Since ssh
+comfort this specification aims to provide for all other schemes. Since SSH 
 agents provide a safer way to secure the passwords, this specification is
 restricted to providing ``user`` but does not provide ``password`` when used
-for ssh.
+for SSH.
 
 Authentication definitions
 --------------------------
@@ -77,8 +77,8 @@ bzr:
 1. user and password
 
 ``FTP`` and ``SFTP`` needs a (``user``, ``password``) to authenticate against a
-``host`` (SFTP can use ssh keys too, but we don't talk about that in this
-specification as ssh agents provide a better solution).
+``host`` (SFTP can use SSH keys too, but we don't talk about that in this
+specification as SSH agents provide a better solution).
 
 2. user, realm and password
 
@@ -115,8 +115,8 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
   * ``path``: can be empty (FTP or SFTP will never use it),
 
-  * ``user``: can be empty (``bzr`` will defaults to python's
-    ``getpass.get_user()`` for FTP, SFTP and ssh),
+  * ``user``: can be empty (``bzr`` will defaults to Python's
+    ``getpass.get_user()`` for FTP, SFTP and SSH),
 
   * ``password``: can be empty (for security reasons, a user may use the
     definitions without storing the passwords but want to be prompted ; or the
@@ -158,7 +158,7 @@ future versions.
 
 Encoding passwords in ``base64``, while weak, provides protection against
 accidental reading (if an administrator have to look into the file, he will not
-see the passwords in clear).(Not implemented yet).
+see the passwords in clear).
 
 This specification intends to ease the authentication providing, not to secure
 it in the best possible way.
@@ -179,9 +179,10 @@ encodings [#password_encoding]_.
 File format
 -----------
 
-Even if ``~/.bazaar/bazaar.conf`` and ``~/.bazaar/locations.conf`` seems to
-provide most of the needed infrastructure, we choose to use a dedicated file
-for the authentication info ``~/.bazaar/authentication.conf`` for the following
+Even if ``~/.config/breezy/breezy.conf`` and
+``~/.config/breezy/locations.conf`` seems to provide most of the needed
+infrastructure, we choose to use a dedicated file
+for the authentication info ``~/.config/breezy/authentication.conf`` for the following
 reasons:
 
   * allow the user to protect the content of one file only, relaxing security
@@ -192,8 +193,8 @@ reasons:
     generally servers. The same authentification definition can even be used
     for several schemes for servers providing those schemes.
 
-``~/.bazaar/authentication.conf`` will use the same file format as
-``~/.bazaar/bazaar.conf``.
+``~/.config/breezy//authentication.conf`` will use the same file format as
+``~/.config/breezy/breezy.conf``.
 
 Each section describes an authentication definition.
 
@@ -266,6 +267,7 @@ The use cases described below use the file format defined above.
         scheme=https
         host=home.net
         user=joe
+        # Obtain the base64 encoded password by running 'echo -n "secret-pass" | base64'
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
         verify_certificates=no # Still searching a free certificate provider
@@ -303,7 +305,7 @@ The use cases described below use the file format defined above.
   * source hosting provider declaring sub-domains for each project::
 
         [sfnet domain]
-        # we use sftp, but ssh is the scheme used for authentication
+        # we use SFTP, but SSH is the scheme used for authentication
         scheme=ssh
         # The leading '.' ensures that 'sf.net' alone doesn't match
         host=.sf.net
@@ -323,13 +325,13 @@ different ways:
 
 2. ``user`` given in the URL.
 
-  Get a password from ``~/.bazaar/authentication.conf`` or prompt
+  Get a password from ``~/.config/breezy/authentication.conf`` or prompt
   for one if none is found.
 
 3. No ``user`` given in the URL (and no ``password``).
 
-  Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
-  found. Continue as 2. (Not implemented yet)
+  Get a user from ``~/.config/breezy/authentication.conf`` or prompt for one if
+  none is found. Continue as 2. (Not implemented yet)
 
 Note: A user will be queried only if the server requires it for ``HTTP`` or
 ``HTTPS``, other protocols always require a user.
@@ -347,7 +349,7 @@ Implementation constraints
 * No assumptions should be made about the clients of this service
   (i.e. Transport is the primary target but plugins must be able to use it as
   well, the definitions used: (``scheme, host, [port,] path``) are general
-  enough to described credentials for ``svn`` servers or LaunchPad xmlrpc
+  enough to described credentials for ``svn`` servers or LaunchPad XML-RPC
   calls).
 
 * Policies regarding default users may be taken into account by the
@@ -361,7 +363,7 @@ Implementation constraints
   a password.
 
 * As this specification proposes a matching between some credentials
-  definitions and real urls, the implementation provides an optional UI
+  definitions and real URLs, the implementation provides an optional UI
   feedback about which credential definition is used. Using ``-Dauth`` will
   output some traces in the ``.bzr.log`` file metionning the sections
   used. This allows the user to validate his definitions.
@@ -392,7 +394,7 @@ Questions and Answers
     * plugins can be written and registered to handle the associated
       ``password_encoding``.
 
-  * Could it be possible to encode the whole authentication file with a ssh key
+  * Could it be possible to encode the whole authentication file with an SSH key
     ?
 
     * yes and if the user configure a ssh-agent it will not be queried for

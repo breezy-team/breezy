@@ -1,0 +1,226 @@
+Authentication Settings
+=======================
+
+
+Intent
+------
+
+Many different authentication policies can be described in the
+``authentication.conf`` file but a particular user should need only a few
+definitions to cover his needs without having to specify a user and a password
+for every branch he uses.
+
+The definitions found in this file are used to find the credentials to use for
+a given url. The same credentials can generally be used for as many branches as
+possible by grouping their declaration around the remote servers that need
+them. It's even possible to declare credentials that will be used by different
+servers.
+
+The intent is to make this file as small as possible to minimize maintenance.
+
+Once the relevant credentials are declared in this file you may use branch urls
+without embedding passwords (security hazard) or even users (enabling sharing
+of your urls with others).
+
+Instead of using::
+
+  brz branch sftp://joe:secret@host.com/path/to/my/branch
+
+you simply use::
+
+  brz branch sftp://host.com/path/to/my/branch
+
+provided you have created the following ``authentication.conf`` file::
+
+  [myprojects]
+  scheme=sftp
+  host=host.com
+  user=joe
+  password=secret
+  
+
+Authentication definitions
+--------------------------
+
+There are two kinds of authentication used by the various schemes supported by
+brz:
+
+1. user and password
+
+``FTP`` needs a (``user``, ``password``) to authenticate against a ``host``
+``SFTP`` can use either a password or a host key to authenticate. However,
+ssh agents are a better, more secure solution. So we have chosen to not provide
+our own less secure method.
+
+2. user, realm and password
+
+``HTTP`` and ``HTTPS`` needs a (``user, realm, password``) to authenticate
+against a host. But, by using ``.htaccess`` files, for example, it is possible
+to define several (``user, realm, password``) for a given ``host``. So what is
+really needed is (``user``, ``password``, ``host``, ``path``). The ``realm`` is
+not taken into account in the definitions, but will displayed if brz prompts
+you for a password.
+
+``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
+specifying the appropriate port.
+
+To take all schemes into account, the password will be deduced from a set of
+authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
+``password``).
+
+  * ``scheme``: can be empty (meaning the rest of the definition can be used
+    for any scheme), ``SFTP`` and ``bzr+ssh`` should not be used here, ``ssh``
+    should be used instead since this is the real scheme regarding
+    authentication,
+
+  * ``host``: can be empty (to act as a default for any host),
+
+  * ``port`` can be empty (useful when an host provides several servers for the
+    same scheme), only numerical values are allowed, this should be used only
+    when the server uses a port different than the scheme standard port,
+
+  * ``path``: can be empty (FTP or SFTP will never user it),
+
+  * ``user``: can be empty (``bzr`` will default to python's
+    ``getpass.get_user()``),
+
+  * ``password``: can be empty if you prefer to always be prompted for your
+    password.
+
+Multiple definitions can be provided and, for a given URL, brz will select a
+(``user`` [, ``password``]) based on the following rules :
+
+ 1. the first match wins,
+
+ 2. empty fields match everything,
+
+ 3. ``scheme`` matches even if decorators are used in the requested URL,
+
+ 4. ``host`` matches exactly or act as a domain if it starts with '.'
+    (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf.net``
+    will not match ``bzr.sf.net``).
+
+ 5. ``port`` matches if included in the requested URL (exact matches only)
+
+ 6. ``path`` matches if included in the requested URL (and by rule #2 above,
+    empty paths will match any provided path).
+
+
+
+File format
+-----------
+
+The general rules for :doc:`configuration files <configuration-help>`
+apply except for the variable policies.
+
+Each section describes an authentication definition.
+
+The section name is an arbitrary string, only the ``DEFAULT`` value is reserved
+and should appear as the *last* section.
+
+Each section should define:
+
+* ``user``: the login to be used,
+
+Each section could define:
+
+* ``host``: the remote server,
+
+* ``port``: the port the server is listening,
+
+* ``path``: the branch location,
+
+* ``password``: the password.
+
+
+Examples
+--------
+
+
+Personal projects hosted outside
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All connections are done with the same ``user`` (the remote one for which the
+default brz one is not appropriate) and the password is always prompted with
+some exceptions::
+
+        # Pet projects on hobby.net
+        [hobby]
+        host=r.hobby.net
+        user=jim
+        password=obvious1234
+        
+        # Home server
+        [home]
+        scheme=https
+        host=home.net
+        user=joe
+        password=1essobV10us
+        
+        [DEFAULT]
+        # Our local user is barbaz, on all remote sites we're known as foobar
+        user=foobar
+
+
+Source hosting provider
+~~~~~~~~~~~~~~~~~~~~~~~
+
+In the shp.net (fictitious) domain, each project has its own site::
+
+        [shpnet domain]
+        # we use sftp, but ssh is the scheme used for authentication
+        scheme=ssh
+        # The leading '.' ensures that 'shp.net' alone doesn't match
+        host=.shp.net
+        user=joe
+        # brz doesn't support supplying a password for sftp,
+        # consider using an ssh agent if you don't want to supply
+        # a password interactively. (pageant, ssh-agent, etc)
+
+HTTPS, SFTP servers and their proxy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+At company.com, the server hosting release and integration branches is behind a
+proxy, and the two branches use different authentication policies::
+
+        [reference code]
+        scheme=https
+        host=dev.company.com
+        path=/dev
+        user=user1
+        password=pass1
+
+        # development branches on dev server
+        [dev]
+        scheme=ssh # bzr+ssh and sftp are available here
+        host=dev.company.com
+        path=/dev/integration
+        user=user2
+        
+        # proxy
+        [proxy]
+        scheme=http
+        host=proxy.company.com
+        port=3128
+        user=proxyuser1
+        password=proxypass1
+
+
+Planned enhancements
+--------------------
+
+The following are not yet implemented but planned as parts of a work in
+progress:
+
+* add a  ``password_encoding`` field allowing:
+
+  - storing the passwords in various obfuscating encodings (base64 for one),
+
+  - delegate password storage to plugins (.netrc for example).
+
+* update the credentials when the user is prompted for user or password,
+
+* add a ``verify_certificates`` field for ``HTTPS``.
+
+The ``password_encoding`` and ``verify_certificates`` fields are recognized but
+ignored in the actual implementation.

@@ -1,0 +1,108 @@
+Installing Breezy
+=================
+
+GNU/Linux
+---------
+
+Breezy packages are available for most popular GNU/Linux distributions
+including Ubuntu, Debian, Red Hat and Gentoo.
+See http://wiki.bazaar.canonical.com/Download for the latest instructions.
+
+Windows
+-------
+
+For Windows users, an installer is available that includes
+the core Breezy package together with necessary pre-requisites
+and some useful plug-ins.
+See http://wiki.bazaar.canonical.com/Download for the latest instructions.
+
+Note: If you are running Cygwin on Windows, a Breezy for Cygwin package
+is available and ought to be used instead of the Windows version.
+
+Other operating systems
+-----------------------
+
+Beyond Linux and Windows, Breezy packages are available for a large
+range of other operating systems include Mac OS X, FreeBSD and Solaris.
+See http://wiki.bazaar.canonical.com/Download for the latest instructions.
+
+
+Installing from scratch
+-----------------------
+
+If you wish to install Breezy from scratch rather than using a
+pre-built package, the steps are:
+
+  1. If it is not installed already, install Python 2.6 or later.
+
+  2. Download the ``bazaar-xxx.tar.gz`` file (where xxx is the version
+     number) from http://wiki.bazaar.canonical.com/Download or from Launchpad
+     (https://launchpad.net/~brz/).
+
+  3. Unpack the archive using tar, WinZip or equivalent.
+
+  4. Put the created directory on your PATH.
+
+To test the installation, try running the **brz** command like this::
+
+  brz version
+
+This will display the version of Breezy you have installed. If this
+doesn't work, please contact us via email or IRC so we can help you
+get things working.
+
+
+Installing into site-wide locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instead of adding the directory to your PATH, you can install brz into the
+system locations using::
+
+  python setup.py install
+
+If you do not have a compiler, or do not have the python development tools
+installed, brz supplies a (slower) pure-python implementation of all
+extensions. You can install without compiling extensions with::
+
+  python setup.py install build_ext --allow-python-fallback
+
+
+
+Running the development version
+-------------------------------
+
+You may wish to always be using the very latest development version of
+Breezy. Note that this is not recommended for
+the majority of users as there is an increased risk of bugs. On the other
+hand, the development version is remarkably solid (thanks to the processes
+we follow) and running it makes it easier for you to send us changes for
+bugs and improvements. It also helps us by having more people testing
+the latest software.
+
+Here are the steps to follow:
+
+  1. Install Breezy using one of the methods given above.
+
+  2. Get a copy of the development version like this::
+
+       brz branch lp:brz
+
+  3. Put the created directory on your PATH.
+
+Advanced users may also wish to build the optional C extensions for greater
+speed. This can be done using ``make`` and requires ``pyrex`` and a C compiler.
+Please contact us on email or IRC if you need assistance with this.
+
+
+Running multiple versions
+-------------------------
+
+It's easy to have multiple versions of Breezy installed and to switch
+between them. To do this,
+simply provide the full pathname to the **brz** command you wish to run.
+The relevant libraries will be automatically detected and used. Of course,
+if you do not provide a pathname, then the **brz** used will be the one
+found on your system path as normal.
+
+Note that this capability is particularly useful if you wish to run
+(or test) both the latest released version and the development version say.

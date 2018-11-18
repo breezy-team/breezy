@@ -9,13 +9,13 @@ operating-system will have the same characteristics.
 For example, the FAT32 file-system is most commonly found on Windows operating
 systems, and has the characteristics usually associated with a Windows
 file-system.  However, USB devices means FAT32 file-systems are often used
-with Linux, so the current operating system doesn't necessarily reflect the
+with GNU/Linux systems, so the current operating system doesn't necessarily reflect the
 capabilities of the file-system.
 
 Bazaar supports 3 kinds of file-systems, each to different degrees.
 
 * Case-sensitive file-systems: This is the file-system generally used on
-  Linux - 2 files can differ only by case, and the exact case must be used
+  GNU/Linux: 2 files can differ only by case, and the exact case must be used
   when opening a file.
 
 * Case-insensitive, case-preserving (cicp) file-systems: This is the
@@ -32,7 +32,7 @@ As can be implied by the above descriptions, only the first two are considered
 relevant to a modern Bazaar.
 
 For more details, including use cases, please see
-http://bazaar-vcs.org/CasePreservingWorkingTreeUseCases
+http://wiki.bazaar.canonical.com/CasePreservingWorkingTreeUseCases
 
 Handling these file-systems
 ---------------------------
@@ -66,7 +66,7 @@ The rules for such fixups turn out to be quite simple:
   accidentally creating 2 inventory items that differ only by case.
 
 * If an argument results in the creation of a *new* filename (eg, a move
-  destination), the argument will be used as specified.  Bzr will create
+  destination), the argument will be used as specified.  Breezy will create
   a file and inventory item that exactly matches the case specified (although
   as above, care must be taken to avoid creating two inventory items that
   differ only by case.)
@@ -84,7 +84,7 @@ boil down to the following new API functions:
   of the result to match any existing items.
 
 * Tree.get_canonical_inventory_path - somewhat like Tree.get_symlink_target(),
-  Tree.get_file_by_path() etc; returns a name with the case adjusted to match
+  Tree.get_file() etc; returns a name with the case adjusted to match
   existing inventory items.
 
 * osutils.canonical_relpaths() and Tree.get_canonical_inventory_paths() - like

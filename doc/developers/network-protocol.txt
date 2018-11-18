@@ -11,7 +11,7 @@ Network Protocol
 Overview
 ========
 
-The smart protocol provides a way to send a requests and corresponding
+The smart protocol provides a way to send requests and corresponding
 responses to communicate with a remote bzr process.
 
 Layering
@@ -70,7 +70,7 @@ Sketch::
           machine until the request can be satisfied,
           sends structured data to the protocol.
 
-Request handlers are registered in the `bzrlib.smart.request` module.
+Request handlers are registered in the `breezy.smart.request` module.
 
 
 Client-side
@@ -103,7 +103,7 @@ Sketch::
 The domain logic is in `bzrlib.remote`: `RemoteBzrDir`, `RemoteBranch`,
 and so on.
 
-There is also an plain file-level transport that calls remote methods to
+There is also a plain file-level transport that calls remote methods to
 manipulate files on the server in `bzrlib.transport.remote`.
 
 Protocol description
@@ -317,7 +317,7 @@ this version are 8-bit clean.)
 
   (Discussion) We're discussing having the byte segments be not just a
   method for sending a stream across the network, but actually having them
-  be preserved in the rpc from end to end.  This may be useful when
+  be preserved in the RPC from end to end.  This may be useful when
   there's an iterator on one side feeding in to an iterator on the other,
   if it avoids doing chunking and byte-counting at two levels, and if
   those iterators are a natural place to get good granularity.  Also, for
@@ -369,8 +369,8 @@ Early error returns
   sent.
 
   This relies on the client being able to read back from the server while
-  it's writing.  This is technically difficult for http but feasible over
-  a socket or ssh.
+  it's writing.  This is technically difficult for HTTP but feasible over
+  a socket or SSH.
 
   We'd need a clean way to pass this back to the request method, even
   though it's presumably in the middle of doing its body iterator.
@@ -400,8 +400,8 @@ Full-duplex operation
   happening out of order, or mixed requests happening at the same time.
 
   Wonder how our network performance would have turned out now if we'd
-  done full-duplex from the start, and ignored hpss over http.  We have
-  pretty good (readonly) http support just over dumb http, and that may be
+  done full-duplex from the start, and ignored hpss over HTTP.  We have
+  pretty good (read-only) HTTP support just over dumb HTTP, and that may be
   better for many users.
 
 
@@ -422,9 +422,9 @@ Paths are passed across the network.  The client needs to see a namespace
 that includes any repository that might need to be referenced, and the
 client needs to know about a root directory beyond which it cannot ascend.
 
-Servers run over ssh will typically want to be able to access any path the
+Servers run over SSH will typically want to be able to access any path the
 user can access.  Public servers on the other hand (which might be over
-http, ssh or tcp) will typically want to restrict access to only a
+HTTP, SSH or TCP) will typically want to restrict access to only a
 particular directory and its children, so will want to do a software
 virtual root at that level.  In other words they'll want to rewrite
 incoming paths to be under that level (and prevent escaping using ../

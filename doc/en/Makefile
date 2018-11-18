@@ -112,3 +112,10 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) _build/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in _build/doctest/output.txt."
+
+texinfo:
+	$(make_output_dirs)
+	$(SPHINXBUILD) -b texinfo $(ALLSPHINXOPTS) _build/texinfo
+        # Now build the info files using the Makefile provided by Sphinx
+	$(MAKE) -C _build/texinfo
+

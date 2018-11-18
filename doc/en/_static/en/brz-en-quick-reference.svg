@@ -1,0 +1,1598 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1052.3622"
+   height="744.09448"
+   id="svg2766"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   version="1.0"
+   sodipodi:docbase="/home/ian/brz/repo.packs/brz.quick-start-tweaks/doc/en/quick-reference"
+   sodipodi:docname="quick-start-summary.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   inkscape:export-filename="/home/iacobs/work/pers/brz-quickref.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300">
+  <defs
+     id="defs2768">
+    <linearGradient
+       id="linearGradient3382">
+      <stop
+         style="stop-color:#2753b0;stop-opacity:1;"
+         offset="0"
+         id="stop3384" />
+      <stop
+         style="stop-color:#cecece;stop-opacity:1;"
+         offset="1"
+         id="stop3386" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5465"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5473"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5603"
+       gradientUnits="userSpaceOnUse"
+       x1="150.39197"
+       y1="104.09448"
+       x2="151.10625"
+       y2="155.92776"
+       gradientTransform="translate(0,26)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5605"
+       gradientUnits="userSpaceOnUse"
+       x1="165.19594"
+       y1="104.09448"
+       x2="165.19594"
+       y2="156.84296"
+       gradientTransform="translate(0,26)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient8641"
+       x1="852.71942"
+       y1="104.09448"
+       x2="852.71942"
+       y2="153.842"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient8649"
+       x1="852.71942"
+       y1="104.09448"
+       x2="852.71942"
+       y2="153.842"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient8696"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient8704"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient13456"
+       gradientUnits="userSpaceOnUse"
+       x1="401.62418"
+       y1="104.09448"
+       x2="402.0069"
+       y2="152.69125" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient13458"
+       gradientUnits="userSpaceOnUse"
+       x1="401.62418"
+       y1="104.09448"
+       x2="402.0069"
+       y2="152.69125" />
+    <linearGradient
+       gradientTransform="matrix(1.027169,0,0,1,118.6039,77.1455)"
+       gradientUnits="userSpaceOnUse"
+       y2="0"
+       x2="372.24512"
+       y1="69.037941"
+       x1="372.24512"
+       id="linearGradient2200"
+       xlink:href="#linearGradient5444"
+       inkscape:collect="always" />
+    <linearGradient
+       id="linearGradient5444">
+      <stop
+         style="stop-color:#729fcf;stop-opacity:1;"
+         offset="0"
+         id="stop5446" />
+      <stop
+         id="stop4547"
+         offset="0.5"
+         style="stop-color:#3465a4;stop-opacity:1;" />
+      <stop
+         style="stop-color:#204ab7;stop-opacity:1;"
+         offset="1"
+         id="stop5448" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5444"
+       id="linearGradient3338"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.027169,0,0,1,417.31189,-41.4259)"
+       x1="372.24512"
+       y1="69.037941"
+       x2="372.24512"
+       y2="0" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2645"
+       gradientUnits="userSpaceOnUse"
+       x1="625.15149"
+       y1="104.09448"
+       x2="625.15149"
+       y2="154.2104" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2647"
+       gradientUnits="userSpaceOnUse"
+       x1="625.15149"
+       y1="104.09448"
+       x2="625.15149"
+       y2="154.2104" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.70710678"
+     inkscape:cx="800.64614"
+     inkscape:cy="357.97261"
+     inkscape:document-units="px"
+     inkscape:current-layer="g3488"
+     width="1052.3622px"
+     height="744.09449px"
+     inkscape:showpageshadow="false"
+     showgrid="false"
+     inkscape:window-width="1280"
+     inkscape:window-height="752"
+     inkscape:window-x="0"
+     inkscape:window-y="25" />
+  <metadata
+     id="metadata2771">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/GPL/2.0/" />
+        <dc:title>Bazaar-NG quick reference</dc:title>
+        <dc:date>2007-07-23</dc:date>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Sabin Iacob</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:language>en</dc:language>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>brz</rdf:li>
+            <rdf:li>bazaar</rdf:li>
+            <rdf:li>reference</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/GPL/2.0/">
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Reproduction" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Distribution" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/Notice" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/DerivativeWorks" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/ShareAlike" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/SourceCode" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="opacity:1;fill:none;fill-opacity:0;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect2983"
+       width="1052.1749"
+       height="744"
+       x="0"
+       y="0.094482422"
+       ry="0" />
+    <g
+       id="g3762">
+      <g
+         id="g8706">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect2190"
+           width="228.60797"
+           height="216.41451"
+           x="50.891964"
+           y="144.31995"
+           ry="8.1168776" />
+        <path
+           style="fill:url(#linearGradient5603);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient5605);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 59.296663,130.59448 C 54.644771,130.59448 50.891959,134.22213 50.891959,138.71888 L 50.891959,167.43551 C 50.891959,162.93876 54.644771,159.31111 59.296663,159.31111 L 271.12755,159.31111 C 275.77946,159.31111 279.49993,162.93876 279.49993,167.43551 L 279.49993,138.71888 C 279.49993,134.22213 275.77946,130.59448 271.12755,130.59448 L 59.296663,130.59448 z "
+           id="rect3430" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="108.32876"
+           y="150.97269"
+           id="text3164"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3166"
+             x="108.32876"
+             y="150.97269">Initialization</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-2.2095387)"
+         id="g3209">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="63.794312"
+           y="193.07361"
+           id="text2167"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="63.794312"
+             y="193.07361"
+             id="tspan2171">brz init myproject</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="179.83536"
+           id="text3168"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3170"
+             x="58.209351"
+             y="179.83536">New project</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.1449276)"
+         id="g3215">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="226.45848"
+           id="text2175"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan2177"
+             x="64.448624"
+             y="226.45848">cd myproject</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="237.53181"
+             id="tspan2179">brz init</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="248.60515"
+             id="tspan2181">brz add .</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="259.67848"
+             id="tspan2183" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.174194"
+           y="213.22023"
+           id="text3172"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3174"
+             x="58.174194"
+             y="213.22023">Existing project</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,5.3457864e-2)"
+         id="g3224">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="277.48495"
+           id="text2185"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan2187"
+             x="64.448624"
+             y="277.48495">brz branch myproject newproject</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="266.6666"
+           id="text3176"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3178"
+             x="58.209351"
+             y="266.6666">New branch</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,1.1181147)"
+         id="g3230">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="308.44989"
+           id="text3404"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3406"
+             x="64.448624"
+             y="308.44989">brz checkout srcproject myproject</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="297.63153"
+           id="text3408"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3410"
+             x="58.209351"
+             y="297.63153">New checkout</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,2.1828937)"
+         id="g3236">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="341.88864"
+           id="text3414"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan3424"
+             sodipodi:role="line"
+             x="64.448624"
+             y="341.88864">brz checkout --lightweight \</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="352.96197"
+             id="tspan2780"> srcproject myproject</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="328.59634"
+           id="text3418"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan3422"
+             sodipodi:role="line"
+             x="58.209351"
+             y="328.59634">New &quot;lightweight&quot; checkout</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3798">
+      <g
+         transform="translate(0,26)"
+         id="g10801">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect3658"
+           width="188.26918"
+           height="135.69968"
+           x="317.78247"
+           y="119.55301"
+           ry="9.6352606" />
+        <path
+           style="fill:url(#linearGradient13456);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient13458);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 327.43269,104.59448 C 322.09476,104.59448 317.77644,108.88155 317.77644,114.21948 L 317.77644,144.21948 C 317.77644,138.88155 322.09476,134.59448 327.43269,134.59448 L 496.43269,134.59448 C 501.77063,134.59448 506.05769,138.88155 506.05769,144.21948 L 506.05769,114.21948 C 506.05769,108.88155 501.77063,104.59448 496.43269,104.59448 L 327.43269,104.59448 z "
+           id="rect3648" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="333.44049"
+           y="124.94995"
+           id="text3563"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3565"
+             x="333.44049"
+             y="124.94995">File Manipulation</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.9729054)"
+         id="g3243">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="332.47345"
+           y="191.36041"
+           id="text3610"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="332.47345"
+             y="191.36041"
+             id="tspan3612">brz add foo.py</tspan><tspan
+             id="tspan3618"
+             sodipodi:role="line"
+             x="332.47345"
+             y="202.43375">brz add bar/</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="326.88849"
+           y="179.59872"
+           id="text3614"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3616"
+             x="326.88849"
+             y="179.59872">Add/&quot;version&quot; files</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-0.9323495)"
+         id="g3250">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="331.78732"
+           y="233.11641"
+           id="text3622"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="331.78732"
+             y="233.11641"
+             id="tspan3624">brz remove --keep foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="326.20236"
+           y="221.35472"
+           id="text3626"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3628"
+             x="326.20236"
+             y="221.35472">Remove/&quot;unversion&quot; files</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,0.1322158)"
+         id="g3256">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="331.81714"
+           y="264.08142"
+           id="text3632"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="331.81714"
+             y="264.08142"
+             id="tspan3634">brz remove --no-backup foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="326.23218"
+           y="253.26308"
+           id="text3636"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3638"
+             x="326.23218"
+             y="253.26308">Remove and delete files</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3524">
+      <g
+         id="g8747">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect3780"
+           width="229.94412"
+           height="319.25848"
+           x="49.444439"
+           y="394.427"
+           ry="9.9539938" />
+        <path
+           style="fill:url(#linearGradient5465);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient5473);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 57.795026,380.59448 C 53.111409,380.59448 49.333004,384.22215 49.333004,388.71892 L 49.333004,417.43572 C 49.333004,412.93894 53.111409,409.31127 57.795026,409.31127 L 271.07052,409.31127 C 275.75416,409.31127 279.5,412.93894 279.5,417.43572 L 279.5,388.71892 C 279.5,384.22215 275.75416,380.59448 271.07052,380.59448 L 57.795026,380.59448 z "
+           id="path3784" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="111.15869"
+           y="400.96985"
+           id="text3786"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3788"
+             x="111.15869"
+             y="400.96985">Information</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,0.4441055)"
+         id="g3281">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.69976"
+           y="441.34354"
+           id="text3234"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="62.69976"
+             y="441.34354"
+             id="tspan3236">brz status</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="57.114799"
+           y="428.10529"
+           id="text3238"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3240"
+             x="57.114799"
+             y="428.10529">Working tree status</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,1.4958392)"
+         id="g3287">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.721241"
+           y="472.84393"
+           id="text3244"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="62.721241"
+             y="472.84393"
+             id="tspan3250">brz log</tspan><tspan
+             id="tspan3294"
+             sodipodi:role="line"
+             x="62.721241"
+             y="483.91727">brz log foo.py</tspan><tspan
+             sodipodi:role="line"
+             x="62.721241"
+             y="494.9906"
+             id="tspan3252" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="56.446827"
+           y="459.55164"
+           id="text3254"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3256"
+             x="56.446827"
+             y="459.55164">Revision log</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,2.6343158)"
+         id="g3295">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="63.354061"
+           y="517.29712"
+           id="text3260"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3262"
+             x="63.354061"
+             y="517.29712">brz diff</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="57.114803"
+           y="504.05884"
+           id="text3264"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3266"
+             x="57.114803"
+             y="504.05884">Working tree changes</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,5.8149666)"
+         id="g3314">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.744678"
+           y="625.09357"
+           id="text3298"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3300"
+             x="62.744678"
+             y="625.09357">brz missing</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="56.505421"
+           y="611.85535"
+           id="text3302"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3304"
+             x="56.505421"
+             y="611.85535">Missing revisions</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,7.9315687)"
+         id="g3326">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.756401"
+           y="687.57349"
+           id="text3308"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3310"
+             x="62.756401"
+             y="687.57349">brz cat -r3 foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="56.517143"
+           y="674.33521"
+           id="text3312"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan3326"
+             sodipodi:role="line"
+             x="56.517143"
+             y="674.33521">Contents of foo.py at revision 3</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,6.8799266)"
+         id="g3320">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.686089"
+           y="656.12701"
+           id="text3318"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3320"
+             x="62.686089"
+             y="656.12701">brz info</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="56.446831"
+           y="645.30865"
+           id="text3322"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3324"
+             x="56.446831"
+             y="645.30865">Branch information:</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,3.685897)"
+         id="g3301">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.879452"
+           y="548.74365"
+           id="text3330"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3332"
+             x="62.879452"
+             y="548.74365">brz diff foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="56.640194"
+           y="535.50537"
+           id="text3334"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3336"
+             x="56.640194"
+             y="535.50537">foo.py changes</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,4.7504623)"
+         id="g3307">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="62.000679"
+           y="591.70862"
+           id="text3699"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3701"
+             x="62.000679"
+             y="591.70862">brz diff -r1..3 foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="55.761421"
+           y="568.89032"
+           id="text3703"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3705"
+             x="55.761421"
+             y="568.89032">foo.py changes between </tspan><tspan
+             id="tspan3707"
+             sodipodi:role="line"
+             x="55.761421"
+             y="580.89032">revisions 1 and 3</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3821">
+      <g
+         transform="translate(0,26)"
+         id="g10830">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect4132"
+           width="188.26918"
+           height="135.69968"
+           x="544.34027"
+           y="119.55301"
+           ry="9.6352606" />
+        <path
+           style="fill:url(#linearGradient2645);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient2647);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 553.99046,104.59448 C 548.65253,104.59448 544.33421,108.88155 544.33421,114.21948 L 544.33421,144.21948 C 544.33421,138.88155 548.65253,134.59448 553.99046,134.59448 L 722.99046,134.59448 C 728.3284,134.59448 732.61546,138.88155 732.61546,144.21948 L 732.61546,114.21948 C 732.61546,108.88155 728.3284,104.59448 722.99046,104.59448 L 553.99046,104.59448 z "
+           id="path4130" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="569.3811"
+           y="124.94995"
+           id="text4134"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4136"
+             x="569.3811"
+             y="124.94995">Version Control</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-2.4445851)"
+         id="g3262">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="559.03162"
+           y="190.88873"
+           id="text4140"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="559.03162"
+             y="190.88873"
+             id="tspan4142">brz commit foo.py -m &quot;foo&quot;</tspan><tspan
+             id="tspan4144"
+             sodipodi:role="line"
+             x="559.03162"
+             y="201.96207">brz commit -m &quot;the rest&quot;</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="553.44666"
+           y="180.0704"
+           id="text4146"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4148"
+             x="553.44666"
+             y="180.0704">Commit</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-2.6967609)"
+         id="g3269">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="558.37482"
+           y="232.2924"
+           id="text4152"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="558.37482"
+             y="232.2924"
+             id="tspan4154">brz uncommit</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="552.78986"
+           y="221.47408"
+           id="text4156"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4158"
+             x="552.78986"
+             y="221.47408">Undo last commit</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.6451646)"
+         id="g3275">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="558.37488"
+           y="263.73889"
+           id="text4162"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="558.37488"
+             y="263.73889"
+             id="tspan4164">brz revert</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="552.78992"
+           y="250.50064"
+           id="text4166"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4168"
+             x="552.78992"
+             y="250.50064">Revert changes</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3844">
+      <g
+         transform="translate(0,26)"
+         id="g10882">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect4232"
+           width="228.60797"
+           height="216.41451"
+           x="770.89197"
+           y="118.31993"
+           ry="8.1168776" />
+        <path
+           style="fill:url(#linearGradient8641);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient8649);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 779.29669,104.59448 C 774.6448,104.59448 770.89199,108.22213 770.89199,112.71887 L 770.89199,141.4355 C 770.89199,136.93875 774.6448,133.3111 779.29669,133.3111 L 991.12758,133.3111 C 995.77949,133.3111 999.5,136.93875 999.5,141.4355 L 999.5,112.71887 C 999.5,108.22213 995.77949,104.59448 991.12758,104.59448 L 779.29669,104.59448 z "
+           id="path4234" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="847.87567"
+           y="124.97269"
+           id="text4236"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4238"
+             x="847.87567"
+             y="124.97269">Merging</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.0888417)"
+         id="g3392">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="783.75751"
+           y="191.95291"
+           id="text4242"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="783.75751"
+             y="191.95291"
+             id="tspan4244">cd myproject</tspan><tspan
+             sodipodi:role="line"
+             x="783.75751"
+             y="203.02624"
+             id="tspan4296">brz merge ../myproject-foo</tspan><tspan
+             sodipodi:role="line"
+             x="783.75751"
+             y="214.09958"
+             id="tspan4298">brz commit</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.17255"
+           y="178.71466"
+           id="text4246"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4248"
+             x="778.17255"
+             y="178.71466">Merge two branches</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,0.1095133)"
+         id="g3384">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="784.44696"
+           y="245.39931"
+           id="text4252"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4254"
+             x="784.44696"
+             y="245.39931">cd myproject-foo</tspan><tspan
+             sodipodi:role="line"
+             x="784.44696"
+             y="256.47264"
+             id="tspan4258">brz pull ../myproject</tspan><tspan
+             sodipodi:role="line"
+             x="784.44696"
+             y="267.54597"
+             id="tspan4260" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.17255"
+           y="232.16106"
+           id="text4262"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4264"
+             x="778.17255"
+             y="232.16106">Pull changes from myproject</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,1.2474884)"
+         id="g3378">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="784.4118"
+           y="289.69043"
+           id="text4268"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4270"
+             x="784.4118"
+             y="289.69043">brz update</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.17255"
+           y="276.5459"
+           id="text4272"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4274"
+             x="778.17255"
+             y="276.5459">Update a checkout</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,2.3122978)"
+         id="g3372">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="785.45477"
+           y="320.70923"
+           id="text4278"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4280"
+             x="785.45477"
+             y="320.70923">brz resolve</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="779.21552"
+           y="309.83685"
+           id="text4282"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4284"
+             x="779.21552"
+             y="309.83685">Auto-detect resolved conflicts</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,3.3643062)"
+         id="g3366">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="784.65204"
+           y="352.20935"
+           id="text4288"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan4290"
+             sodipodi:role="line"
+             x="784.65204"
+             y="352.20935">brz resolve foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.41278"
+           y="338.91705"
+           id="text4292"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan4294"
+             sodipodi:role="line"
+             x="778.41278"
+             y="338.91705">Specify resolved conflict</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3488">
+      <g
+         transform="translate(0,16.01004)"
+         id="g10924">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect4531"
+           width="229.94412"
+           height="319.25848"
+           x="771.12964"
+           y="378.41696"
+           ry="9.9539938" />
+        <path
+           style="fill:url(#linearGradient8704);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient8696);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 779.48025,364.58444 C 774.79663,364.58444 771.01822,368.21211 771.01822,372.70888 L 771.01822,401.42568 C 771.01822,396.9289 774.79663,393.30123 779.48025,393.30123 L 992.75574,393.30123 C 997.43938,393.30123 1001.1852,396.9289 1001.1852,401.42568 L 1001.1852,372.70888 C 1001.1852,368.21211 997.43938,364.58444 992.75574,364.58444 L 779.48025,364.58444 z "
+           id="path4533" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="838.59387"
+           y="384.95981"
+           id="text4535"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4537"
+             x="838.59387"
+             y="384.95981">Publishing</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.7634544)"
+         id="g3354">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="781.75745"
+           y="475.58072"
+           id="text4616"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="781.75745"
+             y="475.58072"
+             id="tspan4618">brz push sftp://host/myproject-fo1</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.17249"
+           y="462.34244"
+           id="text4620"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4622"
+             x="776.17249"
+             y="462.34244">Push revisions remotely</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.1779953)"
+         id="g3360">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="782.38519"
+           y="440.54575"
+           id="text4457"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="782.38519"
+             y="440.54575"
+             id="tspan4459">brz push ../myproject-fo1</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.80023"
+           y="429.72739"
+           id="text4461"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4463"
+             x="776.80023"
+             y="429.72739">Push revisions</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,0.3362061)"
+         id="g3346">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="782.40674"
+           y="505.56467"
+           id="text4467"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan8805"
+             sodipodi:role="line"
+             x="782.40674"
+             y="505.56467">brz send</tspan><tspan
+             sodipodi:role="line"
+             x="782.40674"
+             y="516.638"
+             id="tspan4473" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.13232"
+           y="494.69229"
+           id="text4475"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan4608"
+             sodipodi:role="line"
+             x="776.13232"
+             y="494.69229">Email a merge directive</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,31.004958)"
+         id="g3339">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="783.03955"
+           y="562.4187"
+           id="text4481"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4483"
+             x="783.03955"
+             y="562.4187">brz export ../myproject-dist/</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.80029"
+           y="537.18048"
+           id="text4485"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4487"
+             x="776.80029"
+             y="537.18048">Export current revision as a </tspan><tspan
+             id="tspan4610"
+             sodipodi:role="line"
+             x="776.80029"
+             y="549.18048">directory</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,33.600285)"
+         id="g3332">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="782.565"
+           y="605.85291"
+           id="text4521"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4523"
+             x="782.565"
+             y="605.85291">brz export ../myproject-dist.zip</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.32574"
+           y="583.03461"
+           id="text4525"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4527"
+             x="776.32574"
+             y="583.03461">Export current revision as an</tspan><tspan
+             id="tspan4612"
+             sodipodi:role="line"
+             x="776.32574"
+             y="595.03461">archive</tspan></text>
+      </g>
+      <g
+         transform="translate(-1.4135726,38.47762)"
+         id="g2446">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="782.40674"
+           y="505.56467"
+           id="text2448"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan2450"
+             sodipodi:role="line"
+             x="782.40674"
+             y="505.56467">brz send -o ../base.patch</tspan><tspan
+             sodipodi:role="line"
+             x="782.40674"
+             y="516.638"
+             id="tspan2452" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="776.13232"
+           y="494.69229"
+           id="text2454"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan2456"
+             sodipodi:role="line"
+             x="776.13232"
+             y="494.69229">Create a merge directive</tspan></text>
+      </g>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="144.32812"
+       y="64.254639"
+       id="text2774"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2776"
+         x="144.32812"
+         y="64.254639">Bazaar </tspan></text>
+    <g
+       style="display:inline"
+       id="g3653"
+       transform="matrix(0.6461515,0,0,0.6526216,160.93614,144.01237)"
+       inkscape:export-filename="/home/matt/Projects/Ubuntu/Bazaar Website/brz icon 64.png"
+       inkscape:export-xdpi="45.012665"
+       inkscape:export-ydpi="45.012665">
+      <path
+         id="path2749"
+         d="M -143.51431,-75.4275 C -158.48768,-90.57687 -171.17625,-103.66019 -171.7111,-104.50153 C -174.63909,-109.10738 -172.34363,-112.16647 -143.7155,-141.81059 C -119.96256,-166.4065 -114.08422,-171.84722 -111.26302,-171.84722 C -108.45655,-171.84722 -102.57922,-166.49332 -79.566158,-142.97326 C -59.704508,-122.67403 -51.314608,-113.24681 -51.314608,-111.22876 C -51.314608,-107.03298 -109.21126,-47.88319 -113.31814,-47.88319 C -115.49463,-47.88319 -123.57621,-55.25503 -143.51431,-75.4275 z "
+         style="opacity:1;fill:#fce94f;fill-opacity:1;stroke:#fce94f;stroke-width:4;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;display:inline" />
+      <path
+         id="path2721"
+         d="M -118.75152,-74.850683 C -119.22012,-75.319283 -119.60352,-85.958443 -119.60352,-98.493313 L -119.60352,-121.28395 L -124.85215,-121.28395 C -131.2088,-121.28395 -131.22918,-121.19503 -121.27316,-136.90004 C -116.77235,-143.99978 -113.38241,-148.09169 -112.19584,-147.85705 C -110.34853,-147.49175 -95.321883,-124.90849 -95.321883,-122.4975 C -95.321883,-121.83004 -97.640303,-121.28395 -100.47393,-121.28395 C -103.84689,-121.28395 -105.87693,-120.6299 -106.35276,-119.38989 C -107.55959,-116.24495 -103.45251,-106.32746 -97.296233,-97.520823 C -90.988133,-88.497013 -90.461803,-86.665103 -93.461883,-84.175253 C -95.128693,-82.791933 -96.185063,-83.268713 -100.25177,-87.239733 C -102.90055,-89.826193 -105.46285,-91.547323 -105.94572,-91.064423 C -106.42862,-90.581523 -106.8237,-86.544203 -106.8237,-82.092573 L -106.8237,-73.998703 L -112.36162,-73.998703 C -115.40746,-73.998703 -118.28294,-74.382103 -118.75152,-74.850683 z "
+         style="opacity:1;fill:#c4a000;fill-opacity:1;stroke:#c4a000;display:inline" />
+      <path
+         id="path2727"
+         d="M -120.75152,-76.85072 C -121.22012,-77.31932 -121.60352,-87.95848 -121.60352,-100.49335 L -121.60352,-123.28399 L -126.85215,-123.28399 C -133.2088,-123.28399 -133.22918,-123.19507 -123.27316,-138.90007 C -118.77235,-145.99981 -115.38241,-150.09172 -114.19584,-149.85708 C -112.34853,-149.49178 -97.321888,-126.90852 -97.321888,-124.49754 C -97.321888,-123.83008 -99.640308,-123.28399 -102.47393,-123.28399 C -105.84689,-123.28399 -107.87693,-122.62994 -108.35276,-121.38993 C -109.55959,-118.24499 -105.45251,-108.3275 -99.296238,-99.52086 C -92.988138,-90.49705 -92.461808,-88.66514 -95.461888,-86.17529 C -97.128698,-84.79197 -98.185068,-85.26875 -102.25177,-89.23977 C -104.90055,-91.82623 -107.46285,-93.54736 -107.94572,-93.06446 C -108.42862,-92.58156 -108.8237,-88.54424 -108.8237,-84.09261 L -108.8237,-75.99874 L -114.36162,-75.99874 C -117.40746,-75.99874 -120.28294,-76.38214 -120.75152,-76.85072 z "
+         style="opacity:1;fill:#555753;fill-opacity:1;stroke:#2e3436;stroke-opacity:1;display:inline" />
+      <path
+         d="M -143.51431,-75.4275 C -158.48768,-90.57687 -171.17625,-103.66019 -171.7111,-104.50153 C -174.63909,-109.10738 -172.34363,-112.16647 -143.7155,-141.81059 C -119.96256,-166.4065 -114.08422,-171.84722 -111.26302,-171.84722 C -108.45655,-171.84722 -102.57922,-166.49332 -79.566162,-142.97326 C -59.704512,-122.67403 -51.314612,-113.24681 -51.314612,-111.22876 C -51.314612,-107.03298 -109.21126,-47.88319 -113.31814,-47.88319 C -115.49463,-47.88319 -123.57621,-55.25503 -143.51431,-75.4275 z M -82.734602,-78.80831 C -63.284082,-98.78654 -53.870592,-109.3496 -53.870592,-111.19708 C -53.870592,-114.35673 -108.28764,-170.68595 -111.26979,-170.61328 C -113.31427,-170.56346 -167.39892,-115.6112 -169.81635,-111.12752 C -171.82156,-107.40842 -170.53236,-105.76188 -145.24612,-79.74648 C -117.66227,-51.36719 -115.36413,-49.16116 -113.38369,-49.16116 C -112.40192,-49.16116 -98.609822,-62.50237 -82.734602,-78.80831 z "
+         style="opacity:1;fill:#555753;fill-opacity:1;stroke:#2e3436;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;display:inline"
+         id="path2736" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="146.57143"
+       y="97.808769"
+       id="text3409"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3411"
+         x="146.57143"
+         y="97.808769">Quick Reference Card</tspan></text>
+    <g
+       id="g12314"
+       transform="translate(17.946423,1.7472534)"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text8833"
+         y="527.43823"
+         x="297.99408"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#333333;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;font-family:Bitstream Vera Sans"
+           y="527.43823"
+           x="297.99408"
+           id="tspan8835"
+           sodipodi:role="line">Supported URL Prefixes</tspan></text>
+      <g
+         id="g12288"
+         style="fill:#333333;fill-opacity:1">
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="299.33002"
+           y="547.94214"
+           id="text8837"
+           sodipodi:linespacing="150%"><tspan
+             sodipodi:role="line"
+             id="tspan8841"
+             x="299.33002"
+             y="547.94214">aftp://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8843"
+             x="299.33002"
+             y="565.94214">brz://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="583.94214"
+             id="tspan10799">brz+ssh://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8847"
+             x="299.33002"
+             y="601.94214">file:// </tspan><tspan
+             sodipodi:role="line"
+             id="tspan8849"
+             x="299.33002"
+             y="619.94214">ftp:// </tspan><tspan
+             sodipodi:role="line"
+             id="tspan8851"
+             x="299.33002"
+             y="637.94214">http://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8853"
+             x="299.33002"
+             y="655.94214">https://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="673.94214"
+             id="tspan10797" /><tspan
+             sodipodi:role="line"
+             id="tspan8855"
+             x="299.33002"
+             y="691.94214">sftp://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8857"
+             x="299.33002"
+             y="709.94214" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="379.22845"
+           y="547.94214"
+           id="text12260"
+           sodipodi:linespacing="150%"><tspan
+             sodipodi:role="line"
+             id="tspan12262"
+             x="379.22845"
+             y="547.94214">Access using active FTP.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="565.94214"
+             id="tspan12264">Fast access using the Bazaar smart server.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="583.94214"
+             id="tspan12270">Fast access using the Bazaar smart server over SSH.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="601.94214"
+             id="tspan12286">Access using the standard filesystem (default)</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="619.94214"
+             id="tspan12272">Access using passive FTP.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="637.94214"
+             id="tspan12274">Read-only access of branches exported on the web.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="655.94214"
+             id="tspan12276">Read-only access of branches exported on the web </tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="673.94214"
+             id="tspan12278">using SSL.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="691.94214"
+             id="tspan12280">Access using SFTP (most SSH servers provide SFTP).</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="709.94214"
+             id="tspan12282" /></text>
+      </g>
+    </g>
+    <g
+       id="g13619"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text4624"
+         y="320.09448"
+         x="316.78033"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#333333;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;font-family:Bitstream Vera Sans"
+           y="320.09448"
+           x="316.78033"
+           id="tspan4626"
+           sodipodi:role="line">Concepts</tspan></text>
+      <text
+         sodipodi:linespacing="150%"
+         id="text12146"
+         y="341.21167"
+         x="447.92319"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="341.21167"
+           x="447.92319"
+           id="tspan12148"
+           sodipodi:role="line">line of development for a project</tspan><tspan
+           id="tspan12150"
+           y="359.21167"
+           x="447.92319"
+           sodipodi:role="line">version controlled directory </tspan><tspan
+           id="tspan12152"
+           y="377.21167"
+           x="447.92319"
+           sodipodi:role="line">store for Bazaar revisions</tspan><tspan
+           id="tspan12154"
+           y="395.21167"
+           x="447.92319"
+           sodipodi:role="line">version of the source code committed to the </tspan><tspan
+           id="tspan12156"
+           y="413.21167"
+           x="447.92319"
+           sodipodi:role="line">repository</tspan><tspan
+           id="tspan12158"
+           y="431.21167"
+           x="447.92319"
+           sodipodi:role="line">named revision</tspan><tspan
+           id="tspan12160"
+           y="449.21167"
+           x="447.92319"
+           sodipodi:role="line">branches having a common ancestor</tspan><tspan
+           id="tspan12164"
+           y="467.21167"
+           x="447.92319"
+           sodipodi:role="line">the operation of applying to a branch all the </tspan><tspan
+           y="485.21167"
+           x="447.92319"
+           sodipodi:role="line"
+           id="tspan3886">changes introduced by another one</tspan></text>
+      <text
+         sodipodi:linespacing="150%"
+         id="text12400"
+         y="341.21167"
+         x="317.27643"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="341.21167"
+           x="317.27643"
+           id="tspan12402"
+           sodipodi:role="line">Branch:</tspan><tspan
+           id="tspan12404"
+           y="359.21167"
+           x="317.27643"
+           sodipodi:role="line">Working tree:</tspan><tspan
+           id="tspan12406"
+           y="377.21167"
+           x="317.27643"
+           sodipodi:role="line">Repository:</tspan><tspan
+           id="tspan12408"
+           y="395.21167"
+           x="317.27643"
+           sodipodi:role="line">Revision:</tspan><tspan
+           id="tspan12410"
+           y="413.21167"
+           x="317.27643"
+           sodipodi:role="line" /><tspan
+           id="tspan12412"
+           y="431.21167"
+           x="317.27643"
+           sodipodi:role="line">Tag:</tspan><tspan
+           id="tspan12414"
+           y="449.21167"
+           x="317.27643"
+           sodipodi:role="line">Related branches:</tspan><tspan
+           id="tspan12416"
+           y="467.21167"
+           x="317.27643"
+           sodipodi:role="line">Merge:</tspan><tspan
+           id="tspan12418"
+           y="485.21167"
+           x="317.27643"
+           sodipodi:role="line"> </tspan></text>
+    </g>
+    <g
+       id="g6327"
+       transform="translate(6.5601196,0)"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text6294"
+         y="50.289795"
+         x="775.77582"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="50.289795"
+           x="775.77582"
+           id="tspan6296"
+           sodipodi:role="line">More Information</tspan></text>
+      <g
+         id="g6320"
+         style="fill:#333333;fill-opacity:1">
+        <text
+           xml:space="preserve"
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="787.72699"
+           y="76.095581"
+           id="text6298"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan6300"
+             x="787.72699"
+             y="76.095581">brz help</tspan></text>
+        <a
+           id="a6316"
+           style="fill:#333333;fill-opacity:1"
+           xlink:href="https://www.breezy-vcs.org/">
+          <text
+             sodipodi:linespacing="100%"
+             id="text6302"
+             y="97.901367"
+             x="787.79535"
+             style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+             xml:space="preserve"><tspan
+               y="97.901367"
+               x="787.79535"
+               id="tspan6304"
+               sodipodi:role="line">https://www.breezy-vcs.org/</tspan></text>
+        </a>
+      </g>
+    </g>
+  </g>
+</svg>

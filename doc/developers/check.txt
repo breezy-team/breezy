@@ -10,7 +10,7 @@ Check has multiple responsibilities:
 
 * Ensure that the data as recorded on disk is accessible intact and unaltered.
 * Ensure that a branch/repository/tree/whatever is ready for upgrade.
-* Look for and report on recorded-data issues where previous bzr's, or changing
+* Look for and report on recorded-data issues where previous Breezy's, or changing
   situations have lead so some form of inconsistency.
 * Report sufficient information for a user to either fix the issue themselves
   or report a bug that will hopefully be sufficiently detailed we can fix based
@@ -35,7 +35,7 @@ Branch
 Things that can go wrong:
 * Tag or tip revision ids may be missing from the repo.
 * The revno tip cache may be wrong.
-* Various urls could be problematic (not inaccessible, just invalid)
+* Various URLS could be problematic (not inaccessible, just invalid)
 * Stacked-on branch could be inaccessible.
 
 Tree

@@ -1,0 +1,69 @@
+Initial push / pull
+===================
+
+Optimal case
+------------
+(a motivating example of ultimate performance)
+Assume there is a file with exactly the right data in compressed form.  This
+may be a tarred branch, a bundle, or a blob format.  Performance in this case
+scales with the size of the file.
+
+Disk case
+---------
+Assume current repo format.  Attempt to achieve parity with ``cp -r``.  Read
+each file only 1 time.
+
+- read knit graph for revisions
+- write filtered copy of revision knit O(d+a)
+- write filtered copy of knit index O(d)
+- Open knit index for inventory
+- Write a filtered copy of inventory knit and simultaneously not all referenced
+  file-ids O(b+d)
+- Write filtered copy of inventory knit index O(d)
+- For each referenced file-id:
+
+  - Open knit index for each file knit O(e)
+  - If acceptable threshold of irrelevant data hard-link O(f)
+  - Otherwise write filtered copy of text knit and simultaneously write
+    the fulltext to tree transform O(h)
+
+- Write format markers O(1)
+
+:a: size of aggregate revision metadata
+:b: size of inventory changes for all revisions
+:c: size of text changes for all files and all revisions (e * g)
+:d: number of relevant revisions
+:e: number of relevant versioned files
+:f: size of the particular versioned file knit index
+:g: size of the filtered versioned file knit
+:h: size of the versioned file fulltext
+:i: size of the largest file fulltext
+
+Smart Network Case
+------------------
+
+Phase 1
+~~~~~~~
+Push: ask if there is a repository, and if not, what formats are okay
+Pull: Nothing
+
+Phase 2
+~~~~~~~
+Push: send initial push command, streaming data in acceptable format, following
+disk case strategy
+Pull: receive initial pull command, specifying format
+
+Pull client complexity: O(a), memory cost O(1)
+Push client complexity: procesing and memory cost same as disk case
+
+Dumb Network Case
+-----------------
+Pull: same as disk case, but request all file knit indices at once and request
+al file knits at once.
+Push: same as disk case, but write all files at once.
+
+Wants
+-----
+- Read partial graph
+- Read multiple segments of multiple files on HTTP and SFTP
+- Write multiple files over SFTP

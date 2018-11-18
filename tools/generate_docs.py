@@ -16,9 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""%(prog)s - generate information from built-in bzr help
+"""%(prog)s - generate information from built-in brz help
 
-%(prog)s creates a file with information on bzr in one of
+%(prog)s creates a file with information on brz in one of
 several different output formats:
 
     man              man page
@@ -27,8 +27,8 @@ several different output formats:
 
 Examples: 
 
-    python2.4 generated-docs.py man
-    python2.4 generated-docs.py bash_completion
+    python generated-docs.py man
+    python generated-docs.py bash_completion
 
 Run "%(prog)s --help" for the option reference.
 """
@@ -38,7 +38,12 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from bzrlib import commands, doc_generate
+import breezy
+from breezy import (
+    commands,
+    doc_generate,
+    )
+
 
 def main(argv):
     parser = OptionParser(usage="""%prog [options] OUTPUT_FORMAT
@@ -56,9 +61,9 @@ Available OUTPUT_FORMAT:
     parser.add_option("-o", "--output", dest="filename", metavar="FILE",
                       help="write output to FILE")
 
-    parser.add_option("-b", "--bzr-name",
-                      dest="bzr_name", default="bzr", metavar="EXEC_NAME",
-                      help="name of bzr executable")
+    parser.add_option("-b", "--brz-name",
+                      dest="brz_name", default="brz", metavar="EXEC_NAME",
+                      help="name of brz executable")
 
     parser.add_option("-e", "--examples",
                       action="callback", callback=print_extended_help,
@@ -71,26 +76,25 @@ Available OUTPUT_FORMAT:
         parser.print_help()
         sys.exit(1)
 
-    commands.install_bzr_command_hooks()
+    with breezy.initialize():
+        # Import breezy.bzr for format registration, see <http://pad.lv/956860>
+        from breezy import bzr as _
+        commands.install_bzr_command_hooks()
+        infogen_type = args[1]
+        infogen_mod = doc_generate.get_module(infogen_type)
+        if options.filename:
+            outfilename = options.filename
+        else:
+            outfilename = infogen_mod.get_filename(options)
+        if outfilename == "-":
+            outfile = sys.stdout
+        else:
+            outfile = open(outfilename, "w")
+        if options.show_filename and (outfilename != "-"):
+            sys.stdout.write(outfilename)
+            sys.stdout.write('\n')
+        infogen_mod.infogen(options, outfile)
 
-    infogen_type = args[1]
-    infogen_mod = doc_generate.get_module(infogen_type)
-
-    if options.filename:
-        outfilename = options.filename
-    else:
-        outfilename = infogen_mod.get_filename(options)
-
-    if outfilename == "-":
-        outfile = sys.stdout
-    else:
-        outfile = open(outfilename,"w")
-
-    if options.show_filename and (outfilename != "-"):
-        sys.stdout.write(outfilename)
-        sys.stdout.write('\n')
-    
-    infogen_mod.infogen(options, outfile)
 
 def print_extended_help(option, opt, value, parser):
     """ Program help examples
@@ -98,7 +102,7 @@ def print_extended_help(option, opt, value, parser):
     Prints out the examples stored in the docstring. 
 
     """
-    sys.stdout.write(__doc__ % {"prog":sys.argv[0]})
+    sys.stdout.write(__doc__ % {"prog": sys.argv[0]})
     sys.stdout.write('\n')
     sys.exit(0)
 

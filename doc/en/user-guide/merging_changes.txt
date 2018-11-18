@@ -16,28 +16,29 @@ The merge command
 To incorporate changes from another branch, use the ``merge`` command.
 Its syntax is::
 
-  bzr merge [URL]
+  brz merge [URL]
 
 If no URL is given, a default is used, initially the branch this branch
 originated from.
 For example, if Bill made a branch from Mary's work, he can merge her
 subsequent changes by simply typing this::
 
-  bzr merge
+  brz merge
 
 On the other hand, Mary might want to merge into her branch the work Bill
 has done in his. In this case, she needs to explicitly give the URL the
 first time, e.g.::
 
-  bzr merge sftp://mary@bill-laptop/cool-repo/cool-trunk
+  brz merge bzr+ssh://mary@bill-laptop/cool-repo/cool-trunk
 
-This sets the default merge branch if one is not already set. To change the
-default after it is set, use the ``--remember`` option.
+This sets the default merge branch if one is not already set.  Use
+``--no-remember`` to avoid setting it. To change the default after it is set,
+use the ``--remember`` option.
 
 How does merging work?
 ----------------------
 
-A variety of algorithms exist for merging changes. Bazaar's
+A variety of algorithms exist for merging changes. Breezy's
 default algorithm is a variation of *3-way merging* which
 works as follows. Given an ancestor A and two branches B and C,
 the following table provides the rules used.
@@ -61,10 +62,10 @@ Recording a merge
 After any conflicts are resolved, the merge needs to be committed.
 For example::
 
-  bzr commit -m "Merged Mary's changes"
+  brz commit -m "Merged Mary's changes"
 
 Even if there are no conflicts, an explicit commit is still required.
-Unlike some other tools, this is considered a feature in Bazaar.
+Unlike some other tools, this is considered a feature in Breezy.
 A clean merge is not necessarily a good merge so making the commit
 a separate explicit step allows you to run your test suite first to
 verify all is good. If problems are found, you should correct them
@@ -73,15 +74,15 @@ before committing the merge or throw the merge away using ``revert``.
 Merge tracking
 --------------
 
-One of the most important features of Bazaar is distributed,
+One of the most important features of Breezy is distributed,
 high quality *merge tracking*.
-In other words, Bazaar remembers what has been merged already and
+In other words, Breezy remembers what has been merged already and
 uses that information to intelligently choose the best ancestor for
 a merge, minimizing the number and size of conflicts.
 
 If you are a refugee from many other VCS tools, it can be really
 hard to "unlearn" the *please-let-me-avoid-merging-at-any-cost* habit.
-Bazaar lets you safely merge as often as you like with other people.
+Breezy lets you safely merge as often as you like with other people.
 By working in a peer-to-peer manner when it makes sense to do so, you
 also avoid using a central branch as an "integration swamp", keeping
 its quality higher. When the change you're collaborating on is

@@ -171,7 +171,7 @@ Reporting problems
 
 If you need any help or encounter any problems, please contact the developers
 via the usual ways, i.e. chat to us on IRC or send a message to our mailing
-list. See http://bazaar-vcs.org/BzrSupport for contact details.
+list. See http://wiki.bazaar.canonical.com/BzrSupport for contact details.
 
 
 Technical notes
@@ -200,17 +200,17 @@ How to create a new development format
    ``development`` and ``development-subtree`` formats to point to the
    new class you are creating.
 3. Add a new development format (and tests!). Repository formats are in
-   ``bzrlib.repofmt``. You probably want to reproduce the current
-   development format from ``bzrlib.repofmt.pack_repo`` with just new
+   ``breezy.repofmt``. You probably want to reproduce the current
+   development format from ``breezy.repofmt.pack_repo`` with just new
    disk format strings, ``_get_matching_bzrdir`` and help.
 4. Register your development format with the various registries. At the
    moment you need to update:
 
-    1. ``bzrlib/bzrdir.py`` to register the WT/Branch/Repository
+    1. ``breezy/bzrdir.py`` to register the WT/Branch/Repository
        collection.
 
-    2. ``bzrlib/workingtree.py``, ``bzrlib/branch.py``,
-       ``bzrlib/repository.py``, each one maintains a direct list of
+    2. ``breezy/workingtree.py``, ``breezy/branch.py``,
+       ``breezy/repository.py``, each one maintains a direct list of
        their respective formats.
 
     3. For repositories, you also need to update the InterKnit1and2
@@ -218,11 +218,11 @@ How to create a new development format
        non-rich-root repositories.
 
     4. For repositories based on KnitPackRepository, you need to update
-       ``bzrlib/tests/test_pack_repository.py`` to add the class to the
+       ``breezy/tests/test_pack_repository.py`` to add the class to the
        tested permutations.
 
 5. Alter any other things that do class based tests. The easiest way
-   to find these is a grep for Development in bzrlib - and please
+   to find these is a grep for Development in breezy - and please
    refactor as you find these to reduce the relevance this step has,
    as it should not need to exist.
 6. Now subclass/create from scratch/whatever the live object code you

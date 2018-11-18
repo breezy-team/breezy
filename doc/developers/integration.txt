@@ -1,9 +1,9 @@
 =======================
-Integrating with Bazaar
+Integrating with Breezy
 =======================
 
 This document provides some general observations on integrating with
-Bazaar and some recipes for typical tasks.  It is intended to be useful to
+Breezy and some recipes for typical tasks.  It is intended to be useful to
 someone developing either a plugin or some other piece of software that
 integrates with bzr.  If you want to know about a topic that's not covered
 here, just ask us.
@@ -11,11 +11,41 @@ here, just ask us.
 
 
 
-Starting with bzrlib
+Starting with breezy
 ====================
 
-Before doing anything else with bzrlib, you should run `bzrlib.initialize`
-which sets up some global state.  
+Within bzr
+----------
+
+When using breezy within the ``bzr`` program (for instance as a bzr
+plugin), breezy's global state is already available for use.
+
+From outside bzr
+----------------
+
+To use breezy outside of ``bzr`` some global state needs to be setup.
+breezy needs ways to handle user input, passwords, a place to emit
+progress bars, logging setup appropriately for your program. The easiest
+way to set all this up in the same fashion ``bzr`` does is to call
+``breezy.initialize``. 
+
+This returns a context manager within which breezy functions will work
+correctly. See the pydoc for ``breezy.initialize`` for more information. 
+(You can get away without entering the context manager, because the setup
+work happens directly from ``initialize``.)
+
+In Python 2.4 the ``with`` keyword is not supported and
+so you need to use the context manager manually::
+
+  # This sets up your ~/.bzr.log, ui factory and so on and so forth. It is
+  # not safe to use as a doctest.
+  library_state = breezy.initialize()
+  library_state.__enter__()
+  try:
+      pass
+      # do stuff here
+  finally:
+      library_state.__exit__(None, None, None)
 
 
 Running bzr commands
@@ -23,27 +53,27 @@ Running bzr commands
 
 To run command-line commands in-process::
 
-  from bzrlib.commands import get_command
+  from breezy.commands import get_command
   
   cmd = get_command('version')
   cmd.run([])
   
 This will send output through the current UIFactory; you can redirect this
-elsewhere through the parameters to `bzrlib.initialize`.
+elsewhere through the parameters to `breezy.initialize`.
 
 
 Manipulating the Working Tree
 =============================
-Most objects in Bazaar are in files, named after the class they contain.
+Most objects in Breezy are in files, named after the class they contain.
 To manipulate the Working Tree we need a valid WorkingTree object, which
 is loaded from the workingtree.py file, eg::
 
-  from bzrlib import workingtree
+  from breezy import workingtree
   wt = workingtree.WorkingTree.open('/home/jebw/bzrtest')
 
 
 This gives us a WorkingTree object, which has various methods spread over
-itself, and its parent classes MutableTree and Tree - its worth having a
+itself, and its parent classes MutableTree and Tree - it's worth having a
 look through these three files (workingtree.py, mutabletree.py and tree.py)
 to see which methods are available.
 
@@ -56,7 +86,7 @@ somewhat harder to work with.  See the API documentation for more details.
 
 ``changes_from`` creates a Delta object showing changes::
 
-  from bzrlib import delta
+  from breezy import delta
   changes = wt.changes_from(wt.basis_tree())
 
 This gives us a Delta object, which has several lists of files for each type of
@@ -156,15 +186,15 @@ Generating a Log for a File
 Generating a log is, in itself, simple.  Grab a branch (see below) and pass
 it to show_log together with a log formatter, eg::
 
-  from bzrlib import log
-  from bzrlib import branch
+  from breezy import log
+  from breezy import branch
 
   b = branch.Branch.open('/path/to/bazaar/branch')
   lf = log.LongLogFormatter(to_file=sys.stdout)
   log.show_log(b, lf)
 
 
-Three log formatters are included with bzrlib: LongLogFormatter,
+Three log formatters are included with breezy: LongLogFormatter,
 ShortLogFormatter and LineLogFormatter.  These provide long, short and
 single-line log output formats. It's also possible to write your own in
 very little code.
@@ -209,7 +239,7 @@ Working with branches
 
 To work with a branch you need a branch object, created from your branch::
 
-  from bzrlib import branch
+  from breezy import branch
 
   b = branch.Branch.open('/home/jebw/bzrtest')
 
@@ -219,17 +249,17 @@ Branching from an existing branch
 
 To branch you create a branch object representing the branch you are
 branching from, and supply a path/url to the new branch location.
-The following code clones the bzr.dev branch (the latest copy of the Bazaar
+The following code clones the bzr.dev branch (the latest copy of the Breezy
 source code) - be warned it has to download 60meg so takes a while to run
 with no feedback::
 
-  from bzrlib import branch
+  from breezy import branch
 
   b = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
-  nb = b.bzrdir.sprout('/tmp/newBzrBranch').open_branch()
+  nb = b.controldir.sprout('/tmp/newBzrBranch').open_branch()
 
 
-This provides no feedback, since Bazaar automatically uses the 'silent' UI.
+This provides no feedback, since Breezy automatically uses the 'silent' UI.
 
 
 Pushing and pulling branches
@@ -238,7 +268,7 @@ Pushing and pulling branches
 To push a branch you need to open the source and destination branches, then
 just call push with the other branch as a parameter::
 
-  from bzrlib import branch
+  from breezy import branch
 
   b1 = branch.Branch.open('file:///home/user/mybranch')
   b2 = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
@@ -262,7 +292,7 @@ Checkout from an existing branch
 
 This performs a Lightweight checkout from an existing Branch::
 
-  from bzrlib import bzrdir
+  from breezy import bzrdir
 
   accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch('http:URL')
   source.create_checkout('/tmp/newBzrCheckout', None, True, accelerator_tree)

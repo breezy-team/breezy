@@ -7,7 +7,7 @@ Getting the last revision number
 If you only need the last revision number in your build scripts, you can
 use the ``revno`` command to get that value like this::
 
-  $ bzr revno
+  $ brz revno
   3104
 
 
@@ -17,17 +17,17 @@ Getting more version information
 The ``version-info`` command can be used to output more information
 about the latest version like this::
 
-  $ bzr version-info
+  $ brz version-info
   revision-id: pqm@pqm.ubuntu.com-20071211175118-s94sizduj201hrs5
   date: 2007-12-11 17:51:18 +0000
   build-date: 2007-12-13 13:14:51 +1000
   revno: 3104
-  branch-nick: bzr.dev
+  branch-nick: brz.dev
 
 You can easily filter that output using operating system tools or
-scripts. For example (on Linux/Unix)::
+scripts. For example::
 
-  $ bzr version-info | grep ^date
+  $ brz version-info | grep ^date
   date: 2007-12-11 17:51:18 +0000
 
 The ``--all`` option will actually dump version information about
@@ -45,7 +45,7 @@ If using a Makefile to build your project, you can generate the version
 information file as simply as::
 
   library/_version.py:
-        bzr version-info --format python > library/_version.py
+        brz version-info --format python > library/_version.py
 
 This generates a file which contains 3 dictionaries:
 
@@ -70,14 +70,14 @@ This generates a file which contains 3 dictionaries:
 Getting version info in other formats
 -------------------------------------
 
-Bazaar supports a template-based method for getting version information in
+Breezy supports a template-based method for getting version information in
 arbitrary formats.  The ``--custom`` option to ``version-info`` can be
 used by providing a ``--template`` argument that contains variables that
 will be expanded based on the status of the working tree.  For example, to
 generate a C header file with a formatted string containing the current
 revision number::
 
- bzr version-info --custom \
+ brz version-info --custom \
       --template="#define VERSION_INFO \"Project 1.2.3 (r{revno})\"\n" \
       > version_info.h
 
@@ -85,9 +85,9 @@ where the ``{revno}`` will be replaced by the revision number of the
 working tree.  (If the example above doesn't work on your OS, try
 entering the command all on one line.) For more information on the
 variables that can be used in templates, see `Version Info`_ in the
-Bazaar User Reference.
+Breezy User Reference.
 
-.. _Version Info: ../user-reference/bzr_man.html#version-info
+.. _Version Info: ../user-reference/index.html#version-info
 
 Predefined formats for dumping version information in specific languages
 are currently in development. Please contact us on the mailing list about
@@ -100,7 +100,7 @@ Most information about the contents of the project can be cheaply
 determined by just reading the revision entry. However, it can be useful
 to know if the working tree was completely up-to-date when it was
 packaged, or if there was a local modification. By supplying either
-``--all`` or ``--check-clean``, ``bzr`` will inspect the working tree, and
+``--all`` or ``--check-clean``, ``brz`` will inspect the working tree, and
 set the ``clean`` flag in ``version_info``, as well as set entries in
 ``file_revisions`` as ``modified`` where appropriate.
 

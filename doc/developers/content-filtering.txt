@@ -37,7 +37,7 @@ Filters are fed a sequence of byte chunks (so that they don't have to
 hold the whole file in memory).  There is no guarantee that the chunks
 will be aligned with line endings.  Write filters are passed a context
 object through which they can obtain some information about eg which
-file they're working on.  (See ``bzrlib.filters`` docstring.)
+file they're working on.  (See ``breezy.filters`` docstring.)
 
 These are at the moment strictly *content* filters: they can't make
 changes to the tree like changing the execute bit, file types, or
@@ -46,7 +46,7 @@ adding/removing entries.
 Conventions
 ***********
 
-bzrlib interfaces that aren't explicitly specified to deal with the
+breezy interfaces that aren't explicitly specified to deal with the
 convenient form should return the canonical form.  Whenever we have the
 SHA1 hash of a file, it's the hash of the canonical form.
 
@@ -59,7 +59,7 @@ hash and size of the canonical form, and the packed stat fingerprint for
 which that cache is valid.  This implies that the stored size will
 in general be different to the size in the packed stat.  (However, it
 may not always do this correctly - see
-<https://bugs.edge.launchpad.net/bzr/+bug/418439>.)
+<https://bugs.launchpad.net/bzr/+bug/418439>.)
 
 The dirstate is given a SHA1Provider instance by its tree.  This class
 can calculate the (canonical) hash and size given a filename.  This
@@ -136,12 +136,12 @@ Future ideas and open issues
 See also
 ********
 
-* http://bazaar-vcs.org/LineEndings
+* http://wiki.bazaar.canonical.com/LineEndings
 
-* http://bazaar-vcs.org/LineEndings/Roadmap
+* http://wiki.bazaar.canonical.com/LineEndings/Roadmap
 
 * `Developer Documentation <index.html>`_
 
-* ``bzrlib.filters``
+* ``breezy.filters``
 
 .. vim: ft=rst tw=72

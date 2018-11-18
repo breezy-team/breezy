@@ -1,0 +1,159 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.7.1
+#########
+
+:2.7.1: NOT RELEASED YET
+
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+None.
+
+
+Bug Fixes
+*********
+
+* Complete monkey-patching of re.finditer or LazyRegexps leak.
+  (Vincent Ladeuil, #1644003, #1657238)
+
+* Cope with paramiko making argument to SFTPFile.prefetch() mandatory.
+  (Jelmer Vernooij, #1579093)
+
+Documentation
+*************
+
+* Clarify pypi uploads for releases. (Vincent Ladeuil, #1542903)
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+None.
+
+Changed Behaviour
+*****************
+
+None.
+
+Testing
+*******
+
+* Recent versions of pycurl started being stricter about the proxy url,
+  using 'http+pycurl:' is not allowed anymore and should just be 'http:'
+  (Vincent Ladeuil, #1645017).
+
+
+bzr 2.7.0
+#########
+
+:2.7.0: 2016-02-01
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+* bzrlib.patches.parse_patches can optionally return a list of 'dirty'
+  patch headers (prefixed with '===').
+  (Kit Randel, #1400567)
+
+Bug Fixes
+*********
+
+* 'acceptable_keys' from 'bazaar.conf' is now properly handled.
+  (Vincent Ladeuil, #1249732)
+
+* Option names are now checked to be valid identifiers (including embedded
+  dots or hyphens). Also ignore invalid references (i.e. using invalid
+  option names) while expanding option values. (Vincent Ladeuil, #1235099)
+
+* Fix pyrex version checking to be more robust.
+  (Andrew Starr-Bochicchio, #1030521 )
+
+* Forbid more operations for ReadonlyTransportDecorator so no more write
+  methods can be used my mistake.  (Vincent Ladeuil, #150196)
+
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+* Make all transport put_bytes() raises TypeError instead of AssertionError
+  or UnicodeEncodeError when given unicode strings rather than bytes.
+  (Vincent Ladeuil, #106898)
+
+* Use ssl.match_hostname from the python ssl module and stop carrying a
+  specific version that has become obsolete. (Vincent Ladeuil, #1538480)
+
+Changed Behaviour
+*****************
+
+* Also honor $XDG_CONFIG_HOME specification on Mac OS X platform.
+  (Fabien Meghazi)
+
+Testing
+*******
+
+* Fix gpgme test failure starting on wily. (Vincent Ladeuil)
+     
+* Fix racy http tests (TestBadStatusServer is so simple, it exposes a race
+  in python 2.7.9. This happens only when both the http server and client
+  are run in the same process.). Only tests are affected.
+  (Vincent Ladeuil, #1451448)
+     
+* Fix warnings on stderr caused by the atexit handler triggering for the
+  wrong reason: the 'config' command should explicitly save the changes when
+  modifying or removing an option and not rely on the atexit
+  handler. (Vincent Ladeuil, #1331999)
+
+* Handle (minor) incompatible change in python 2.7.6 leading to test
+  failures. Only tests are affected. (Vincent Ladeuil, #1303879)
+
+* Remove wrong assumption about how TCP server and client interact when run
+  inside the same process. (Vincent Ladeuil, #1269886).
+
+* Rename assertWarns in bt.test_config so it doesn't clash with the
+  assertWarns introduced in recent python (Vincent Ladeuil, #1514210)
+    
+* Restrict access to '.netrc' in tests or recent python (2.7.5-8) will
+  complain. (Vincent Ladeuil, #1233413)
+
+* Skip windows-only tests that start failing with python 2.7.9, there is no
+  way to fix them without testing on windows itself.
+  (Vincent Ladeuil, #1451448)
+     
+* Take python 2.7.6 late (better than never) bugfix in ntpath.py into
+  account. Only tests are affected (Vincent Ladeuil, #1303879).

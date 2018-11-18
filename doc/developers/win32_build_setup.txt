@@ -22,7 +22,7 @@ Install Packages
 1) Download cygwin's setup.exe from http://www.cygwin.com
    At present the current version is 1.5.25-15. This is used primarily to
    install the build scripts and gcc-mingw. Note that we explicitly *don't*
-   install cygwin's python or bzr package. As we are only interested in
+   install cygwin's python or Breezy package. As we are only interested in
    running the native version of bzr. For information on running the cygwin
    port of bzr, look elsewhere.
 
@@ -129,7 +129,7 @@ Install Packages
 
    If you do this, you'll probably also want to install a shortcut to
    ``pageant.exe`` in Start / Programs / Startup so that it always starts when
-   you log in (though you still have to manually add your ssh keys.)
+   you log in (though you still have to manually add your SSH keys.)
 
    Note that on the Amazon EC2 machine, I'm having problems with temp files
    being created without the permission for the current user to actually read

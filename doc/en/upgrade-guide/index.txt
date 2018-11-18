@@ -1,6 +1,6 @@
-########################
-Bazaar 2.0 Upgrade Guide
-########################
+####################
+Breezy Upgrade Guide
+####################
 
 .. Please mark sections in included files as following:
 ..   level 1 ========
@@ -11,3 +11,5 @@ Bazaar 2.0 Upgrade Guide
 .. include:: overview.txt
 .. include:: data_migration.txt
 .. include:: tips_and_tricks.txt
+.. include:: licence.txt
+

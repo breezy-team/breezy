@@ -1,10 +1,10 @@
 ============================
-Bazaar Main Document Catalog
+Breezy Main Document Catalog
 ============================
 
-The latest version of these documents are available from Bazaar's
-documentation site, <http://doc.bazaar.canonical.com/>, and more documentation
-may be linked from <http://bazaar-vcs.org/Documentation>.
+The latest version of these documents are available from Breezy's
+documentation site, <http://doc.breezy.canonical.com/>, and more documentation
+may be linked from <http://wiki.bazaar.canonical.com/Documentation>.
 
 Core Documentation
 ==================
@@ -19,17 +19,17 @@ Core Documentation
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 
-* `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_
+* `3.0 Upgrade Guide <en/upgrade-guide/index.html>`_
 
 
 Tutorials
 =========
 
-* `Bazaar in five minutes <en/mini-tutorial/index.html>`_
+* `Breezy in five minutes <en/mini-tutorial/index.html>`_
 
 * `A longer tutorial <en/tutorials/tutorial.html>`_
 
-* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_
+* `Using Breezy with Launchpad <en/tutorials/using_breezy_with_launchpad.html>`_
 
 * `Centralized workflow <en/tutorials/centralized_workflow.html>`_
 
@@ -38,28 +38,20 @@ Developer Documentation
 =======================
 
 * `Developer Document Catalog <developers/index-plain.html>`_ |--| for developers
-  of Bazaar and plugins
+  of Breezy and plugins
 
 Web links
 =========
 
-* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_
+* `Switching Guides <http://wiki.bazaar.canonical.com/BzrSwitching>`_
   |--| for users moving from another VCS tool
 
-* `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
+* `Migration Guide <http://wiki.bazaar.canonical.com/BzrMigration>`_
   |--| for teams migrating history from another VCS tool
 
-* `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
+* `Glossary <http://wiki.bazaar.canonical.com/BzrGlossary>`_
 
-* `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
-
-
-Other Languages
-===============
-
-* `Spanish Documentation <index.es.html>`_
-* `Russian Documentation <index.ru.html>`_ |--| документация на русском
-* `Japanese Documentation <index.ja.html>`_ |--| 日本語のドキュメント
+* `Frequently Asked Questions <http://wiki.bazaar.canonical.com/FAQ>`_
 
 .. |--| unicode:: U+2014
 

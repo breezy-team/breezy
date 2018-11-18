@@ -4,18 +4,18 @@ Entering commands
 User interfaces
 ---------------
 
-There are numerous user interfaces available for Bazaar.
-The core package provides a command line tool called **bzr** and
+There are numerous user interfaces available for Breezy.
+The core package provides a command line tool called **brz** and
 graphical user interfaces (GUIs) are available as plug-ins.
 
-Using bzr
+Using brz
 ---------
 
 The syntax is::
 
-  bzr [global-options] command [options and arguments]
+  brz [global-options] command [options and arguments]
 
-Global options affect how Bazaar operates and can appear either
+Global options affect how Breezy operates and can appear either
 before or after ``command``. Command specific options must appear
 after the command but may be given either before, during or after any
 command-specific arguments.

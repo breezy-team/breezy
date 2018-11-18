@@ -1,5 +1,5 @@
 ###################################
-Bazaar System Administrator's Guide
+Breezy System Administrator's Guide
 ###################################
 
 .. Please mark sections in included files as following:
@@ -21,3 +21,4 @@ Bazaar System Administrator's Guide
 .. include:: backup.txt
 .. include:: upgrade.txt
 .. include:: advanced.txt
+.. include:: licence.txt

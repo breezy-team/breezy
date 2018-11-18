@@ -1,5 +1,5 @@
 #################
-Bazaar User Guide
+Breezy User Guide
 #################
 
 .. Please mark sections in included files as following:
@@ -15,9 +15,9 @@ Introduction
 .. toctree::
    :maxdepth: 1
 
-   introducing_bazaar
+   introducing_breezy
    core_concepts
-   bazaar_workflows
+   breezy_workflows
 
 
 Getting started
@@ -26,10 +26,10 @@ Getting started
 .. toctree::
    :maxdepth: 1
 
-   installing_bazaar
+   installing_breezy
    entering_commands
    getting_help
-   configuring_bazaar
+   configuring_breezy
    using_aliases
    plugins
    zen
@@ -97,12 +97,14 @@ Miscellaneous topics
 
    part2_intro
    adv_merging
+   switch_store
    shelving_changes
    filtered_views
    stacked
    server
    hooks
    version_info
+   gpg_signatures
 
 
 A brief tour of some popular plugins
@@ -111,11 +113,11 @@ A brief tour of some popular plugins
 .. toctree::
    :maxdepth: 1
 
-   bzrtools_plugin
+   brztools_plugin
    svn_plugin
 
 
-Integrating Bazaar into your environment
+Integrating Breezy into your environment
 ########################################
 
 .. toctree::
@@ -137,5 +139,6 @@ Appendices
    setting_up_email
    http_smart_server
    writing_a_plugin
+   licence
 
 .. |--| unicode:: U+2014

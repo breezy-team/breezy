@@ -1,5 +1,5 @@
 =========================
-Bazaar Windows EC2 Server
+Breezy Windows EC2 Server
 =========================
 
 We have an Amazon EC2 virtual machine called Desolation_ for
@@ -10,7 +10,7 @@ March.
 
 See also:
 
-* `Bazaar Developer Documentation Catalog <index.html>`_.
+* `Breezy Developer Documentation Catalog <index.html>`_.
 
 
 .. _Desolation: http://en.wikipedia.org/wiki/Desolation_Island
@@ -31,7 +31,7 @@ Goals
 * We keep snapshot of the OS and tool chain so that we can roll back if
   we need to.
 
-* bzr branches and similar information are kept on stable storage that
+* branches and similar information are kept on stable storage that
   survives rollbacks of the OS state, and that can be backed up.
 
 Later on we may try automated Windows testing in a similar setup.
@@ -74,7 +74,7 @@ Windows machine, even though you can't use it to log in later.
 password from Amazon, and ``ec2-add-keypair`` creates a named keypair at
 Amazon and returns the private path. One keypair is all that is needed.
 This is distinct from the account identifier - likely due to the different
-toolchains in use (the keypairs are used for unix ssh keys, and I (Robert)
+toolchains in use (the keypairs are used for unix SSH keys, and I (Robert)
 suspect a rather unix friendly core at Amazon).
 Once a custom image is made with a saved password, you can skip using
 ``ec2-get-password`` (which is only needed for Windows anyway).
@@ -92,7 +92,7 @@ Procedures
 Preparation
 -----------
 
-* Be in the bzr core team.  If you are interested in helping with
+* Be in the brz core team.  If you are interested in helping with
   Windows packaging, testing or development just ask.
 
 * Install the
@@ -125,9 +125,9 @@ Preparation
 * Install the rdesktop client, to actually access the machine.
 
 * Possibly read some of the `EC2 documentation`_ for background.
-
-.. _`bug 330930`: https://bugs.edge.launchpad.net/ubuntu/+bug/330930
-.. _`Amazon EC2 API tools`:
+   
+.. _`bug 330930`: https://bugs.launchpad.net/ubuntu/+bug/330930 
+.. _`Amazon EC2 API tools`: 
      http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&categoryID=88
 .. _`EC2 documentation`: http://aws.amazon.com/
 .. _`ami-bdfe19d4`:

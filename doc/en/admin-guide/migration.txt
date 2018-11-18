@@ -3,7 +3,7 @@ Migration
 
 Migrating between version control systems can be a complicated process, and
 Bazaar has extensive documentation on the process at 
-http://doc.bazaar-vcs.org/migration/en and we won't attempt to repeat that
+http://doc.bazaar.canonical.com/migration/en and we won't attempt to repeat that
 here.  We will try to give a few motivating examples for conversion from
 Mercurial and Subversion.
 
@@ -47,7 +47,7 @@ Subversion is particularly important for any *new* version control system.
 Bazaar's `svn`_ plugin provides tools for interaction with Subversion
 projects.  In fact, Bazaar can be used transparently with projects stored in
 Subversion, but that is beyond the scope of this document.  (See
-http://doc.bazaar-vcs.org/en/migration/foreign/bzr-on-svn-projects.html for
+http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html for
 more on that subject.)  What is relevant here is the ``svn-import`` command
 provided by that plugin.  This can import an entire subversion repository
 including tags and branches, particularly if they are stored in Subversion's

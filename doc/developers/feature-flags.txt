@@ -1,0 +1,150 @@
+Format feature flags
+====================
+
+.. contents::
+
+Rationale
+---------
+
+In the past when new features were added that required a change to the
+on-disk format, Bazaar has introduced a new format (in other words,
+a different string in .bzr/branch-format, .bzr/branch/format,
+.bzr/repository/format or .bzr/checkout/format). The main reason for this
+was that it made old versions of Bazaar give a sensible error message
+when they encountered on-disk data that they could not understand.
+
+There are also several disadvantages to such an approach:
+
+ * Once upgraded, a newer version of Bazaar is required to access the data
+   (it is often possible to downgrade the format later on)
+
+ * Upgrading requires an explicit action by the user. It could be
+   done automatically, but then accessing a repository with a newer version
+   of Bazaar might accidentally render it inaccessible by older.
+
+Not all format changes should necessarily render the data inaccessible
+to older versions of Bazaar.
+
+There are also various plugins that store extra metadata in the Bazaar
+version control directory. They currently have no way of indicating that
+e.g. writing to the repository requires a particular plugin to be installed
+(so the metadata can be kept up to date, for example).
+
+Proposed approach
+-----------------
+
+To allow for more granular changes to the format, this spec proposes
+to add feature flags to the Bazaar formats, indicating
+what kind of data is present in that repository. Each feature has
+a name and some sort of indicator that tells the bzr client its
+"necessity" - optional, required, ...
+
+bzr clients would be able to open data with features that are
+set as "optional" but that they do not support. If there are features
+that aren't supported which are marked "required" in the repository they
+would refuse to open the repository.
+
+Various kinds of metadata, e.g. ones that are generated from the
+repository itself and can be discarded without losing data (caches)
+would fall in the optional category.
+
+Feature necessity
+-----------------
+
+The initial implementation will feature the following two possible
+settings for feature ``necessity``. Any format necessity that can't
+be understood should be interpreted as "required", and an appropriate
+warning printed.
+
+ - optional: the feature is present, but writing/reading of the
+      repository/branch/checkout is possible without support for the
+      feature. Useful for things like caches (e.g. bzr-search index,
+      annotate cache)
+ - required: read and write access is only possible if the feature
+      is supported. Useful for things like nested trees.
+
+In the future, we might add more values for necessity. Older
+versions of bzr treat unknown necessities as "required". Some likely
+candidates for new necessities that might be added in the future:
+
+ - read-optional: read access is possible if the feature is not supported,
+      but write access requires it
+ - client-read-optional: directly writing to the object requires
+      the feature, but reading or writing through an intermediary (such as
+      a HPSS server) doesn't.
+
+Format changes
+--------------
+
+The feature information would be included in the appropriate ``format`` file
+(``.bzr/branch-format``, ``.bzr/branch/format``, ``.bzr/repository/format`` or
+``.bzr/checkout/format``). This file currently always contains a single
+line with the format name. Older versions of bzr read the full file.
+
+By using the other lines for feature information it is possible to add feature
+flags in a backwards compatible manner; older clients will simply fail to open
+repositories with feature flags set, giving a unknown format error.
+
+The other advantage of doing this is that we don't need any additional
+roundtrips when opening a remote format. An example .bzr/repository/format
+file could then look like this::
+
+  Bazaar repository format 2a (needs bzr 1.16 or later)
+  optional git
+  optional search
+  optional tiplog
+  required nested-trees
+
+In other words, this is a "2a" bzr format which also stores a cache of
+Git Tree/Commit objects, a bzr-search index, and a reflog. It also contains
+revisions with nested trees.
+
+API Changes
+-----------
+
+Class methods will be added to ``BzrFormat`` to allow registering
+and unregistering the presence of particular features.
+
+ * BzrFormat.register_feature(name)
+ * BzrFormat.unregister_feature(name)
+
+The namespace for features is global. It is assumed
+that the plugin that provides the feature X provides that feature
+in all objects that it is relevant for. For example, if a plugin
+provides the ``nested-trees`` feature, it is assumed to support
+that in both working trees and repositories. If this is not the case,
+it should use a different feature name for the working tree support
+and the repository support.
+
+BzrFormat is inherited by ``BranchFormatMetaDir``, ``BzrDirFormat``,
+``RepositoryFormatMetaDir`` and ``WorkingTreeFormatMetaDir``.
+
+Upon opening, BzrFormat will be responsible for checking that the
+required features are present.  lock_write will raise an exception
+when there is an unsupported mandatory feature required for write access.
+
+Methods will also be added to BzrFormat to allow plugins, etc,
+to check whether a feature is present and adding new features:
+
+ * BzrFormat.features.set(name, necessity)
+ * BzrFormat.features.get(name) -> necessity
+
+Enabling features
+-----------------
+
+Features are enabled through the ``update_feature_flags`` method on
+``Repository``, ``Branch``, ``WorkingTree`` and ``BzrDir``.
+
+These methods are called by whatever needs to enable features.
+When they do that is up to them - e.g. bzr-search would enable its
+feature when ``bzr index`` is first run.
+
+See also
+--------
+
+Mercurial has a similar feature, using its `.hg/requires`_ file.
+
+.. _.hg/requires: http://mercurial.selenic.com/wiki/RequiresFile
+
+..
+   vim: ft=rst tw=74 ai

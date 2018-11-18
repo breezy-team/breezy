@@ -1,22 +1,21 @@
 *********************
-Bazaar Release Cycles
+Breezy Release Cycles
 *********************
 
-:status: Current policy, as of 2009-08.
-:blueprint: <https://blueprints.launchpad.net/bzr/+spec/6m-cycle>
+:status: Current policy, as of 2017-11.
 
 
 Our users want easy access to bug fixes without other changes to the
 core product. They also want a Just Works experience across the full
-Bazaar ecosystem. To deliver the first and enable the second, we're
+Breezy ecosystem. To deliver the first and enable the second, we're
 adopting some standard process patterns: a 6 monthly release cycle and a
-stable branch. These changes will also have other benefits, including
+stable series. These changes will also have other benefits, including
 better availability of bug fixes in OS distributions, more freedom to
 remove old code, and less work for in packaging.
 
 See also:
 
-* `Bazaar Developer Document Catalog <index.html>`_
+* `Breezy Developer Document Catalog <index.html>`_
 
 * `Releasing Bazaar <releasing.html>`_ -- the process for actually making
   a release or release candidate.
@@ -25,11 +24,11 @@ See also:
 The Process
 ************
 
-Bazaar will make a major release every six months, which will be supported
-at least until the time of the next major release.  During this support
-period, we'll make incremental releases which fix bugs, but which do not
-change network or disk formats or command syntax, and which do not require
-updates to plugins.
+Breezy will make a major release every six months, which will be supported at
+least until the time of the next major release and generally 18 months after
+the first final release in a series.  During this support period, we'll make
+incremental releases which fix bugs, but which do not change network or disk
+formats or command syntax, and which do not require updates to plugins.
 
 We will also run a development series, which will become the next major
 release.  We'll make a beta release from this every four weeks.  The
@@ -75,15 +74,6 @@ appropriate to the accumulation of changes, perhaps monthly, perhaps more
 often if there are serious bugs, perhaps much less often if no new changes
 have landed.
 
-We will then make a release candidate for the next major release, and at
-this point create a release branch for it.  We will iterate release
-candidates at approximately weekly intervals until there are no bugs
-blocking the final major release.
-
-Compared to the current process this has approximately the same amount of
-release-related work, because the extra releases from the stable branch
-are "paid for" by not doing RCs for the development series.
-
 We will synchronize our major releases with Ubuntu, so that they come out
 in sufficient time for some testing and margin of error before Ubuntu's
 upstream freeze.
@@ -118,32 +108,40 @@ Terminology
 -----------
 
 Major releases (2.0.0 or 2.1.0)
+
     The big ones, every six months, intended to ship in distributions and
     to be used by stability-oriented users.
 
 Release candidate (2.0.0rc1)
-    A preview of a major release, made one or a few weeks beforehand at
-    the time the release branch is created.  There should be few if any
-    changes from the rc to the stable release.  We should avoid the
-    confusing phrasing "release candidate 2.0.0rc1 is released"; instead
-    use "available."
+
+    A preview of a major release, made one or a few weeks beforehand at the
+    time the release branch is created.  There should be few if any changes
+    from the rc to the stable release.  We should avoid the confusing phrasing
+    "release candidate 2.0.0rc1 is released"; instead use "available."
+    Starting with the 2.3 series we don't plan on making release candidates
+    anymore.
 
 Bugfix releases (2.0.1)
+
     Based on the previous major release or bugfix; contains only bugfixes
     and perhaps documentation or translation corrections.
 
 Stable series
+
     A major release and its descendant bugfix releases.
 
 Stable release
+
     Either a major release or a bugfix release.
 
 Beta release (3.0.0beta1)
+
     Made from trunk every month, except for the month there's a major
     release.  Stable and suitable for users who want the latest code and
     can live with some changes from month to month.
 
 Development series
+
     The development releases leading up to a stable release.
 
 Bug Work
@@ -183,8 +181,8 @@ Plugins
 Plugins that want to cooperate with this should make a series and a branch
 that matches each bzr stable series, and follow similar rules in making
 releases from their stable branch.  We'd expect that plugins will make a
-release between the last development release of a series and the major
-release candidate.
+release between the first beta release of a series and the final major
+release.
 
 Within a stable series, anything that breaks any known plugin is
 considered an API break and will be avoided.  Before
@@ -194,18 +192,18 @@ plugins.
 Within a development series, the focus is on helping plugin authors keep
 up to date by giving clear error messages when an interface is removed.
 We will no longer focus on letting old plugin code work with new versions
-of bzrlib, which is an elusive target in Python.
+of breezy, which is an elusive target in Python.
 
 This may mean that in cases where today a plugin would keep running but
 give warnings, it will now fail altogether with an error.
 
-In return we expect more freedom to change and cleanup bzrlib code without
+In return we expect more freedom to change and cleanup breezy code without
 needing to keep old code around, or write extra compatibility shims, or
 have review turnarounds related to compatibility.  Some changes, such as
 removing module-global variables, that are hard to do now, will be
 possible to do safely.
 
-Discussion of plugins here includes programs that import and use bzrlib
+Discussion of plugins here includes programs that import and use breezy
 but that aren't technically plugins.  The same approach, though the
 technical considerations are different, should apply to other extensions
 such as programs that use bzr through the shell interface.
@@ -252,7 +250,7 @@ release and development release.
 
 This can be handled in various ways either at the OS packaging or the
 Python level.  We don't propose to directly address it in the upstream
-source.  (For example, we will not change the bzrlib library name from one
+source.  (For example, we will not change the breezy library name from one
 release to the next.)
 
 The issue already exists with people who may want to use for example the
@@ -274,11 +272,10 @@ also choose to offer the beta releases as an alternative package.
 Packaging
 ---------
 
-At present we have three upstream-maintained PPAs containing Ubuntu
-packages of Bazaar: ``~bzr-nightly-ppa``, ``~bzr-beta-ppa`` (rcs and
-releases) and ``~bzr`` (ie stable).  We will keep these PPAs, and reorient
-beta to contain the monthly beta releases, and the stable PPA to contain
-stable releases, their release candidates, and bugfixes to those releases.
+At present we have three upstream-maintained PPAs containing Ubuntu packages
+of Bazaar: ``bzr/daily`` (snapshots), ``bzr-beta-ppa/ppa`` (beta releases) and
+``bzr/ppa`` (ie stable).  Beta contains the monthly beta releases, and the
+stable PPA contains stable releases and bugfixes to those releases.
 
 Some platforms with relatively less active packagers may choose to ship
 only the stable releases.  This is probably better than having them only

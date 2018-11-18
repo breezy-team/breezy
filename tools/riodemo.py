@@ -18,6 +18,7 @@ def write_revision(writer, revision):
         s.add(prop_name, prop_value)
     writer.write_stanza(s)
 
+
 def write_inventory(writer, inventory):
     s = Stanza(inventory_version=7)
     writer.write_stanza(s)
@@ -32,7 +33,7 @@ def write_inventory(writer, inventory):
             attr_val = getattr(ie, attr, None)
             if attr == 'executable' and attr_val == 0:
                 continue
-            if attr == 'parent_id' and attr_val == 'TREE_ROOT':
+            if attr == 'parent_id' and attr_val == b'TREE_ROOT':
                 continue
             if attr_val is not None:
                 s.add(attr, attr_val)
@@ -41,7 +42,7 @@ def write_inventory(writer, inventory):
 
 def read_inventory(inv_file):
     """Read inventory object from rio formatted inventory file"""
-    from bzrlib.inventory import Inventory, InventoryFile
+    from breezy.bzr.inventory import Inventory, InventoryFile
     s = read_stanza(inv_file)
     assert s['inventory_version'] == 7
     inv = Inventory()

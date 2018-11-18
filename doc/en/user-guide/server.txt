@@ -1,7 +1,7 @@
 Running a smart server
 ======================
 
-Bazaar does not require a specialised server because it operates over HTTP, FTP
+Breezy does not require a specialised server because it operates over HTTP, FTP
 or SFTP.  There is an optional smart server that can be invoked over SSH, from
 inetd, or in a dedicated mode.
 
@@ -9,13 +9,13 @@ Dumb servers
 ------------
 
 We describe HTTP, FTP, SFTP and HTTP-WebDAV as "dumb" servers because they do
-not offer any assistance to Bazaar.  If you make a Bazaar repository available
-over any of these protocols, Bazaar will allow you to read it remotely.  Just
-enter the URL to the branch in the Bazaar command you are running.::
+not offer any assistance to Breezy.  If you make a Breezy repository available
+over any of these protocols, Breezy will allow you to read it remotely.  Just
+enter the URL to the branch in the Breezy command you are running.::
 
-    bzr log http://bazaar-vcs.org/bzr/bzr.dev
+    brz log http://bazaar.launchpad.net/~brz-pqm/brz/brz.dev
 
-Bazaar supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
+Breezy supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
 
 High-performance smart server
 -----------------------------
@@ -28,7 +28,7 @@ tune performance.
 To maintain the highest security possible, the current
 smart server provides read-only access by default.  To
 enable read-write access, run it with ``--allow-writes``. When using
-the SSH access method, bzr automatically runs with the
+the SSH access method, brz automatically runs with the
 ``--allow-writes`` option.
 
 The alternative ways of configuring a smart server are explained below.
@@ -36,19 +36,19 @@ The alternative ways of configuring a smart server are explained below.
 SSH
 ~~~
 
-Using Bazaar over SSH requires no special configuration on the server; so long
-as Bazaar is installed on the server you can use ``bzr+ssh`` URLs, e.g.::
+Using Breezy over SSH requires no special configuration on the server; so long
+as Breezy is installed on the server you can use ``bzr+ssh`` URLs, e.g.::
 
-    bzr log bzr+ssh://host/path/to/branch
+    brz log bzr+ssh://host/path/to/branch
 
-If `bzr` is not installed system-wide on the server you may need to explicitly
-tell the local `bzr` where to find the remote `bzr`::
+If `brz` is not installed system-wide on the server you may need to explicitly
+tell the local `brz` where to find the remote `brz`::
 
-    BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/path/to/branch
+    BZR_REMOTE_PATH=~/bin/brz brz log bzr+ssh://host/path/to/branch
 
-The ``BZR_REMOTE_PATH`` environment variable adjusts how `bzr` will be
-invoked on the remote system.  By default, just `bzr` will be invoked,
-which requires the `bzr` executable to be on the default search path.  You can
+The ``BZR_REMOTE_PATH`` environment variable adjusts how `brz` will be
+invoked on the remote system.  By default, just `brz` will be invoked,
+which requires the `brz` executable to be on the default search path.  You can
 also set this permanently per-location in ``locations.conf``.
 
 Like SFTP, paths starting with ``~`` are relative to your home directory, e.g.
@@ -58,21 +58,21 @@ Like SFTP, paths starting with ``~`` are relative to your home directory, e.g.
 inetd
 ~~~~~
 
-This example shows how to run `bzr` with a dedicated user `bzruser`
-for a shared repository in ``/srv/bzr/repo`` which has a branch at
-``/srv/bzr/repo/branchname``.
+This example shows how to run `brz` with a dedicated user `brzuser`
+for a shared repository in ``/srv/brz/repo`` which has a branch at
+``/srv/brz/repo/branchname``.
 
-Running a Bazaar server from inetd requires an inetd.conf entry::
+Running a Breezy server from inetd requires an inetd.conf entry::
 
-    4155  stream  tcp  nowait  bzruser  /usr/bin/bzr /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
+    4155  stream  TCP  nowait  brzuser  /usr/bin/brz /usr/bin/brz serve --inet --directory=/srv/brz/repo
 
 When running client commands, the URL you supply is a `bzr://` URL relative to
 the ``--directory`` option given in inetd.conf::
 
-    bzr log bzr://host/branchname
+    brz log bzr://host/branchname
 
 If possible, paths starting with ``~`` and ``~user`` will be expanded as for
-``bzr+ssh``.  Home directories outside the ``--directory`` specified to ``bzr
+``bzr+ssh``.  Home directories outside the ``--directory`` specified to ``brz
 serve`` will not be accessible.
 
 Dedicated
@@ -81,25 +81,25 @@ Dedicated
 This mode has the same path and URL behaviour as the inetd mode.  To
 run as a specific user, you should use ``su`` or login as that user.
 
-This example runs bzr on its official port number of `4155` and listens on all
+This example runs brz on its official port number of `4155` and listens on all
 interfaces. This allows connections from anywhere in the world that can reach
 your machine on port `4155`.
 
 server::
 
-    bzr serve --directory=/srv/bzr/repo
+    brz serve --directory=/srv/brz/repo
 
 client::
 
-    bzr log bzr://host/branchname
+    brz log bzr://host/branchname
 
-This example runs ``bzr serve`` on `localhost` port `1234`.
+This example runs ``brz serve`` on `localhost` port `1234`.
 
 server::
 
-    bzr serve --port=localhost:1234 --directory=/srv/bzr/repo
+    brz serve --listen=localhost --port=1234 --directory=/srv/brz/repo
 
 client::
 
-    bzr log bzr://localhost:1234/branchname
+    brz log bzr://localhost:1234/branchname
 

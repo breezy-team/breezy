@@ -10,7 +10,7 @@ Table of Contents
 .. toctree::
    :maxdepth: 1
 
-   whats-new/whats-new-in-2.2
+   whats-new/whats-new-in-3.0
    user-guide/index
    tutorials/index
    quick-reference/index

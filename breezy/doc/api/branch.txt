@@ -1,0 +1,37 @@
+The Branch API in breezy provides creation and management of Branches.
+
+A Branch represents a series of commits and merges carried out by a user.
+
+Make a temporary directory for these tests:
+
+   >>> from breezy import osutils
+   >>> test_dir = osutils.mkdtemp(prefix='breezy_doc_api_branch_txt_')
+
+Branches are created by ControlDir's:
+
+   >>> from breezy.branch import Branch
+   >>> from breezy.controldir import ControlDir
+
+   >>> new_branch = ControlDir.create_branch_convenience(test_dir)
+
+Existing Branches can be opened directly:
+
+   >>> transport = new_branch.controldir.transport
+   >>> another_instance = Branch.open(transport.clone('..').base)
+
+or via the ControlDir:
+
+   >>> still_the_same_branch = new_branch.controldir.open_branch()
+
+A branch has a history of revisions on it:
+
+   >>> new_branch.last_revision()
+   'null:'
+
+We need to write some more documentation, showing
+push and pull operations. Cloning might also be nice.
+
+And finally, clean up:
+
+   >>> import shutil
+   >>> shutil.rmtree(test_dir)

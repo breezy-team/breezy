@@ -1,0 +1,727 @@
+Configuration Settings
+=======================
+
+Environment settings
+---------------------
+
+While most configuration is handled by configuration files, some options
+which may be semi-permanent can also be controlled through the environment.
+
+BRZ_EMAIL
+~~~~~~~~~
+
+Override the email id used by Breezy.  Typical format::
+
+  "John Doe <jdoe@example.com>"
+
+See also the ``email`` configuration option.
+
+BRZ_PROGRESS_BAR
+~~~~~~~~~~~~~~~~
+
+Override the progress display.  Possible values are "none" or "text".  If
+the value is "none" then no progress bar is displayed.  The value "text" draws
+the ordinary command line progress bar.
+
+BRZ_SIGQUIT_PDB
+~~~~~~~~~~~~~~~
+
+Control whether SIGQUIT behaves normally or invokes a breakin debugger.
+
+* 0 = Standard SIGQUIT behavior (normally, exit with a core dump)
+* 1 = Invoke breakin debugger (default)
+
+BRZ_HOME
+~~~~~~~~
+
+Override the home directory used by Breezy.
+
+BRZ_SSH
+~~~~~~~
+
+Select a different SSH implementation.
+
+BRZ_PDB
+~~~~~~~
+
+Control whether to launch a debugger on error.
+
+* 0 = Standard behavior
+* 1 = Launch debugger
+
+BZR_REMOTE_PATH
+~~~~~~~~~~~~~~~
+
+Path to the Bazaar or Breezy executable to use when using the bzr+ssh protocol.
+
+See also the ``bzr_remote_path`` configuration option.
+
+BRZ_EDITOR
+~~~~~~~~~~
+
+Path to the editor Breezy should use for commit messages, etc.
+
+BRZ_LOG
+~~~~~~~
+
+Location of the Breezy log file. You can check the current location by
+running ``bzr version``.
+
+The log file contains debug information that is useful for diagnosing or
+reporting problems with Breezy.
+
+Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms
+will disable logging.
+
+
+BRZ_PLUGIN_PATH
+~~~~~~~~~~~~~~~
+
+The path to the plugins directory that Breezy should use.
+If not set, Breezy will search for plugins in:
+
+* the user specific plugin directory (containing the ``user`` plugins),
+
+* the breezy directory (containing the ``core`` plugins),
+
+* the site specific plugin directory if applicable (containing
+  the ``site`` plugins).
+
+If ``BZR_PLUGIN_PATH`` is set in any fashion, it will change the
+the way the plugin are searched. 
+
+As for the ``PATH`` variables, if multiple directories are
+specified in ``BZR_PLUGIN_PATH`` they should be separated by the
+platform specific appropriate character (':' on Unix,
+';' on windows)
+
+By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
+in ``user``.  However it will continue to search in ``core`` and
+``site`` unless they are explicitly removed.
+
+If you need to change the order or remove one of these
+directories, you should use special values:
+
+* ``-user``, ``-core``, ``-site`` will remove the corresponding
+  path from the default values,
+
+* ``+user``, ``+core``, ``+site`` will add the corresponding path
+  before the remaining default values (and also remove it from
+  the default values).
+
+Note that the special values 'user', 'core' and 'site' should be
+used literally, they will be substituted by the corresponding,
+platform specific, values.
+
+The examples below use ':' as the separator, windows users
+should use ';'.
+
+Overriding the default user plugin directory::
+
+  BZR_PLUGIN_PATH='/path/to/my/other/plugins'
+
+Disabling the site directory while retaining the user directory::
+
+  BZR_PLUGIN_PATH='-site:+user'
+
+Disabling all plugins (better achieved with --no-plugins)::
+
+  BZR_PLUGIN_PATH='-user:-core:-site'
+
+Overriding the default site plugin directory::
+
+  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
+
+BRZ_DISABLE_PLUGINS
+~~~~~~~~~~~~~~~~~~~
+
+Under special circumstances (mostly when trying to diagnose a
+bug), it's better to disable a plugin (or several) rather than
+uninstalling them completely. Such plugins can be specified in
+the ``BZR_DISABLE_PLUGINS`` environment variable.
+
+In that case, ``bzr`` will stop loading the specified plugins and
+will raise an import error if they are explicitly imported (by
+another plugin that depends on them for example).
+
+Disabling ``myplugin`` and ``yourplugin`` is achieved by::
+
+  BZR_DISABLE_PLUGINS='myplugin:yourplugin'
+
+BRZ_PLUGINS_AT
+~~~~~~~~~~~~~~
+
+When adding a new feature or working on a bug in a plugin,
+developers often need to use a specific version of a given
+plugin. Since python requires that the directory containing the
+code is named like the plugin itself this make it impossible to
+use arbitrary directory names (using a two-level directory scheme
+is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even
+if they don't appear in ``BZR_PLUGIN_PATH`` .
+
+Plugins specified in this environment variable takes precedence
+over the ones in ``BZR_PLUGIN_PATH``.
+
+The variable specified a list of ``plugin_name@plugin path``,
+``plugin_name`` being the name of the plugin as it appears in
+python module paths, ``plugin_path`` being the path to the
+directory containing the plugin code itself
+(i.e. ``plugins/myplugin`` not ``plugins``).  Use ':' as the list
+separator, use ';' on windows.
+
+Example:
+~~~~~~~~
+
+Using a specific version of ``myplugin``:
+``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
+
+BRZPATH
+~~~~~~~
+
+The path where Breezy should look for shell plugin external commands.
+
+
+http_proxy, https_proxy
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Specifies the network proxy for outgoing connections, for example::
+
+  http_proxy=http://proxy.example.com:3128/ 
+  https_proxy=http://proxy.example.com:3128/
+
+
+Configuration files
+-------------------
+
+Location
+~~~~~~~~
+
+Configuration files are located in ``$HOME/.bazaar`` on Unix and
+``C:\Documents and Settings\<username>\Application Data\Breezy\2.0`` on
+Windows. (You can check the location for your system by using
+``bzr version``.)
+
+There are three primary configuration files in this location:
+
+* ``breezy.conf`` describes default configuration options,
+
+* ``locations.conf`` describes configuration information for
+  specific branch locations,
+
+* ``authentication.conf`` describes credential information for
+  remote servers.
+
+Each branch can also contain a configuration file that sets values specific
+to that branch. This file is found at ``.bzr/branch/branch.conf`` within the
+branch. This file is visible to all users of a branch, if you wish to override
+one of the values for a branch with a setting that is specific to you then you
+can do so in ``locations.conf``.
+
+General format
+~~~~~~~~~~~~~~
+
+An ini file has three types of contructs: section headers, section
+options and comments.
+
+Comments
+^^^^^^^^
+
+A comment is any line that starts with a "#" (sometimes called a "hash
+mark", "pound sign" or "number sign"). Comment lines are ignored by
+Breezy when parsing ini files.
+
+Section headers
+^^^^^^^^^^^^^^^
+
+A section header is a word enclosed in brackets that starts at the begining
+of a line.  A typical section header looks like this::
+
+    [DEFAULT]
+
+The only valid section headers for breezy.conf currently are [DEFAULT] and
+[ALIASES].  Section headers are case sensitive. The default section provides for
+setting options which can be overridden with the branch config file.
+
+For ``locations.conf``, the options from the section with the
+longest matching section header are used to the exclusion of other
+potentially valid section headers. A section header uses the path for
+the branch as the section header. Some examples include::
+
+    [http://mybranches.isp.com/~jdoe/branchdir]
+    [/home/jdoe/branches/]
+
+
+Section options
+^^^^^^^^^^^^^^^
+
+A section option resides within a section. A section option contains an
+option name, an equals sign and a value.  For example::
+
+    email            = John Doe <jdoe@isp.com>
+    gpg_signing_key  = Amy Pond <amy@example.com>
+
+A option can reference other options by enclosing them in curly brackets::
+
+    my_branch_name = feature_x
+    my_server      = bzr+ssh://example.com
+    push_location   = {my_server}/project/{my_branch_name}
+
+Option policies
+^^^^^^^^^^^^^^^
+
+Options defined in a section affect the named directory or URL plus
+any locations they contain.  Policies can be used to change how an
+option value is interpreted for contained locations.  Currently
+there are three policies available:
+
+ none:
+   the value is interpreted the same for contained locations.  This is
+   the default behaviour.
+ norecurse:
+   the value is only used for the exact location specified by the
+   section name.
+ appendpath:
+   for contained locations, any additional path components are
+   appended to the value.
+
+Policies are specified by keys with names of the form "<option_name>:policy".
+For example, to define the push location for a tree of branches, the
+following could be used::
+
+  [/top/location]
+  push_location = sftp://example.com/location
+  push_location:policy = appendpath
+
+With this configuration, the push location for ``/top/location/branch1``
+would be ``sftp://example.com/location/branch1``.
+
+Section local options
+^^^^^^^^^^^^^^^^^^^^^
+
+Some options are defined automatically inside a given section and can be
+refered to in this section only. 
+
+For example, the ``appendpath`` policy can be used like this::
+
+  [/home/vila/src/bzr/bugs]
+  mypush = lp:~vila/bzr
+  mypush:policy=appendpath
+
+Using ``relpath`` to achieve the same result is done like this::
+
+  [/home/vila/src/bzr/bugs]
+  mypush = lp:~vila/bzr/{relpath}
+
+In both cases, when used in a directory like
+``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
+
+   $ bzr config mypush
+   lp:~vila/bzr/832013-expand-in-stack
+
+Another such option is ``basename`` which can be used like this::
+
+  [/home/vila/src/bzr]
+  mypush = lp:~vila/bzr/{basename}
+
+When used in a directory like
+``/home/vila/src/bzr/bugs/832013-expand-in-stack`` we'll get::
+
+   $ bzr config mypush
+   lp:~vila/bzr/832013-expand-in-stack
+
+Note that ``basename`` here refers to the base name of ``relpath`` which
+itself is defined as the relative path between the section name and the
+location it matches.
+
+Another such option is ``branchname``, which refers to the name of a colocated
+branch.  For non-colocated branches, it behaves like basename.  It can be used
+like this::
+
+  [/home/vila/src/bzr/bugs]
+  mypush = lp:~vila/bzr/{branchname}
+
+When used with a colocated branch named ``832013-expand-in-stack``, we'll get::
+
+  bzr config mypush
+  lp:~vila/bzr/832013-expand-in-stack
+
+When an option is local to a Section, it cannot be referred to from option
+values in any other section from the same ``Store`` nor from any other
+``Store``.
+
+
+The main configuration file, breezy.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``breezy.conf`` allows two sections: ``[DEFAULT]`` and ``[ALIASES]``.
+The default section contains the default
+configuration options for all branches. The default section can be
+overriden by providing a branch-specific section in ``locations.conf``.
+
+A typical ``breezy.conf`` section often looks like the following::
+
+    [DEFAULT]
+    email             = John Doe <jdoe@isp.com>
+    editor            = /usr/bin/vim
+    create_signatures = when-required
+
+
+The branch location configuration file, locations.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``locations.conf`` allows one to specify overriding settings for
+a specific branch. The format is almost identical to the default section in
+breezy.conf with one significant change: The section header, instead of saying
+default, will be the path to a branch that you wish to override a value
+for. The '?' and '*' wildcards are supported::
+
+    [/home/jdoe/branches/nethack]
+    email = Nethack Admin <nethack@nethack.com>
+
+    [http://hypothetical.site.com/branches/devel-branch]
+    create_signatures = always
+
+The authentication configuration file, authentication.conf
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``authentication.conf`` allows one to specify credentials for
+remote servers. This can be used for all the supported transports and any part
+of bzr that requires authentication (smtp for example).
+
+The syntax of the file obeys the same rules as the others except for the
+option policies which don't apply.
+
+For more information on the possible uses of the authentication configuration
+file see :doc:`authentication-help`.
+
+
+Common options
+--------------
+
+debug_flags
+~~~~~~~~~~~
+
+A comma-separated list of debugging options to turn on.  The same values
+can be used as with the -D command-line option (see `help global-options`).
+For example::
+
+    debug_flags = hpss
+
+or::
+
+    debug_flags = hpss,evil
+
+email
+~~~~~
+
+The email address to use when committing a branch. Typically takes the form
+of::
+
+    email = Full Name <account@hostname.tld>
+
+editor
+~~~~~~
+
+The path of the editor that you wish to use if *bzr commit* is run without
+a commit message. This setting is trumped by the environment variable
+``BZR_EDITOR``, and overrides the ``VISUAL`` and ``EDITOR`` environment
+variables.
+
+log_format
+~~~~~~~~~~
+
+The default log format to use. Standard log formats are ``long``, ``short``
+and ``line``. Additional formats may be provided by plugins. The default
+value is ``long``.
+
+check_signatures
+~~~~~~~~~~~~~~~~
+
+Reserved for future use.  These options will allow a policy for branches to
+require signatures.
+
+require
+    The gnupg signature for revisions must be present and must be valid.
+
+ignore
+    Do not check gnupg signatures of revisions.
+
+check-available
+    (default) If gnupg signatures for revisions are present, check them.
+    Breezy will fail if it finds a bad signature, but will not fail if
+    no signature is present.
+
+create_signatures
+~~~~~~~~~~~~~~~~~
+
+Defines the behaviour of signing revisions on commits.  By default bzr will not
+sign new commits.
+
+always
+    Sign every new revision that is committed.  If the signing fails then the
+    commit will not be made.
+
+when-required
+    Reserved for future use.
+
+never
+    Reserved for future use.
+
+In future it is planned that ``when-required`` will sign newly
+committed revisions only when the branch requires them.  ``never`` will refuse
+to sign newly committed revisions, even if the branch requires signatures.
+
+dirstate.fdatasync
+~~~~~~~~~~~~~~~~~~
+
+If true (default), working tree metadata changes are flushed through the
+OS buffers to physical disk.  This is somewhat slower, but means data
+should not be lost if the machine crashes.  See also repository.fdatasync.
+
+gpg_signing_key
+~~~~~~~~~~~~~~~
+
+The GnuPG user identity to use when signing commits.  Can be an e-mail
+address, key fingerprint or full key ID.  When unset or when set to
+"default" Breezy will use the user e-mail set with ``whoami``.
+
+recurse
+~~~~~~~
+
+Only useful in ``locations.conf``. Defines whether or not the
+configuration for this section applies to subdirectories:
+
+true
+    (default) This section applies to subdirectories as well.
+
+false
+    This section only applies to the branch at this directory and not
+    branches below it.
+
+bzr_remote_path
+~~~~~~~~~~~~~~~
+
+(Default: "bzr").  The path to the command that should be used to run the smart
+server for bzr.  This value may only be specified in locations.conf, because:
+
+- it's needed before branch.conf is accessible
+- allowing remote branch.conf files to specify commands would be a security
+  risk
+
+It is overridden by the BZR_REMOTE_PATH environment variable.
+
+smtp_server
+~~~~~~~~~~~
+
+(Default: "localhost"). SMTP server to use when Breezy needs to send
+email, eg. with ``merge-directive --mail-to``, or the bzr-email plugin.
+
+smtp_username, smtp_password
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+User and password to authenticate to the SMTP server. If smtp_username
+is set, and smtp_password is not, Breezy will prompt for a password.
+These settings are only needed if the SMTP server requires authentication
+to send mail.
+
+locks.steal_dead
+~~~~~~~~~~~~~~~~
+
+If set to true, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  Otherwise, it will
+print a message and you can break the lock manually, if you are satisfied
+the object is no longer in use.
+
+mail_client
+~~~~~~~~~~~
+
+A mail client to use for sending merge requests.
+By default, bzr will try to use ``mapi`` on Windows.  On other platforms, it
+will try ``xdg-email``. If either of these fails, it will fall back to
+``editor``.
+
+Supported values for specific clients:
+
+:claws: Use Claws.  This skips a dialog for attaching files.
+:evolution: Use Evolution.
+:kmail: Use KMail.
+:mutt: Use Mutt.
+:thunderbird: Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+    this works around some bugs that xdg-email doesn't handle.
+
+Supported generic values are:
+
+:default: See above.
+:editor: Use your editor to compose the merge request.  This also uses
+    your commit id, (see ``bzr whoami``), smtp_server and (optionally)
+    smtp_username and smtp_password.
+:mapi: Use your preferred e-mail client on Windows.
+:xdg-email: Use xdg-email to run your preferred mail program
+
+repository.fdatasync
+~~~~~~~~~~~~~~~~~~~~
+
+If true (default), repository changes are flushed through the OS buffers
+to physical disk.  This is somewhat slower, but means data should not be
+lost if the machine crashes.  See also dirstate.fdatasync.
+
+submit_branch
+~~~~~~~~~~~~~
+
+The branch you intend to submit your current work to.  This is automatically
+set by ``bzr send``, and is also used by the ``submit:`` revision spec.  This
+should usually be set on a per-branch or per-location basis.
+
+public_branch
+~~~~~~~~~~~~~
+
+A publically-accessible version of this branch (implying that this version is
+not publically-accessible).  Used (and set) by ``bzr send``.
+
+suppress_warnings
+~~~~~~~~~~~~~~~~~
+
+A list of strings, each string represent a warning that can be emitted by
+bzr. Mentioning a warning in this list tells bzr to not emit it.
+
+Valid values:
+
+* ``format_deprecation``:
+    whether the format deprecation warning is shown on repositories that are
+    using deprecated formats.
+
+* ``insecure_permissions``:
+    whether a warning is shown if ``authentication.conf`` can be read
+    by other users.
+
+default_format
+~~~~~~~~~~~~~~
+
+A format name for the default format used when creating branches.  See ``bzr
+help formats`` for possible values.
+
+
+Unicode options
+---------------
+
+output_encoding
+~~~~~~~~~~~~~~~
+
+A Python unicode encoding name for text output from bzr, such as log
+information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
+is the terminal encoding prefered by the operating system.
+
+
+Branch type specific options
+----------------------------
+
+These options apply only to branches that use the ``dirstate-tags`` or
+later format.  They
+are usually set in ``.bzr/branch/branch.conf`` automatically, but may be
+manually set in ``locations.conf`` or ``breezy.conf``.
+
+append_revisions_only
+~~~~~~~~~~~~~~~~~~~~~
+
+If set to "True" then revisions can only be appended to the log, not
+removed.  A branch with this setting enabled can only pull from another
+branch if the other branch's log is a longer version of its own.  This is
+normally set by ``bzr init --append-revisions-only``. If you set it
+manually, use either 'True' or 'False' (case-sensitive) to maintain
+compatibility with previous bzr versions (older than 2.2).
+
+parent_location
+~~~~~~~~~~~~~~~
+
+If present, the location of the default branch for pull or merge.  This option
+is normally set when creating a branch, the first ``pull`` or by ``pull
+--remember``.
+
+push_location
+~~~~~~~~~~~~~
+
+If present, the location of the default branch for push.  This option
+is normally set by the first ``push`` or ``push --remember``.
+
+push_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing.
+
+bound_location
+~~~~~~~~~~~~~~
+
+The location that commits should go to when acting as a checkout.
+This option is normally set by ``bind``.
+
+bound
+~~~~~
+
+If set to "True", the branch should act as a checkout, and push each commit to
+the bound_location.  This option is normally set by ``bind``/``unbind``.
+
+send_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before sending a merge directive.
+
+add.maximum_file_size
+~~~~~~~~~~~~~~~~~~~~~
+
+Defines the maximum file size the command line "add" operation will allow
+in recursive mode, with files larger than this value being skipped. You may 
+specify this value as an integer (in which case it is interpreted as bytes), 
+or you may specify the value using SI units, i.e. 10KB, 20MB, 1G. A value of 0 
+will disable skipping.
+
+External Merge Tools
+--------------------
+
+bzr.mergetool.<name>
+~~~~~~~~~~~~~~~~~~~~
+
+Defines an external merge tool called <name> with the given command-line.
+Arguments containing spaces should be quoted using single or double quotes. The
+executable may omit its path if it can be found on the PATH.
+
+The following markers can be used in the command-line to substitute filenames
+involved in the merge conflict::
+
+  {base}      file.BASE
+  {this}      file.THIS
+  {other}     file.OTHER
+  {result}    output file
+  {this_temp} temp copy of file.THIS, used to overwrite output file if merge
+              succeeds.
+
+For example::
+
+  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
+
+Because ``mergetool`` and ``config`` itself both use curly braces as
+interpolation markers, trying to display the mergetool line results in the
+following problem::
+
+
+  $ bzr config bzr.mergetool.kdiff3='kdiff3 {base} {this} {other} -o {result}'
+  $ bzr config bzr.mergetool.kdiff3
+  bzr: ERROR: Option base is not defined while expanding "kdiff3 {base} {this} {other} -o {result}".
+
+To avoid this, ``config`` can be instructed not to try expanding variables::
+
+  $ bzr config --all bzr.mergetool.kdiff3
+  branch:
+    bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
+
+
+bzr.default_mergetool
+~~~~~~~~~~~~~~~~~~~~~
+
+Specifies which external merge tool (as defined above) should be selected by
+default in tools such as ``bzr qconflicts``.
+
+For example::
+
+  bzr.default_mergetool = kdiff3

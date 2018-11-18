@@ -6,8 +6,8 @@ Dumb servers
 
 Bazaar can also serve branches over protocols that know nothing about Bazaar's
 specific needs.  These are called "dumb servers" to distinguish them from
-Bazaar's native protocol.  Currently HTTP, FTP, SFTP and HTTP+WebDAV can be
-used to read branches remotely.  FTP, SFTP and HTTP+WebDAV can be used for
+Bazaar's native protocol.  Currently HTTP, HTTPS, FTP, SFTP and HTTP+WebDAV can
+be used to read branches remotely.  FTP, SFTP and HTTP+WebDAV can be used for
 writing as well.  To use any of these protocols, it is just necessary to
 provide access to the server's filesystem under ``/srv/bzr``.
 
@@ -33,14 +33,14 @@ limited.
 Smart server over HTTP(S)
 -------------------------
 
-Bazaar can use its native protocol with HTTP requests.  Since HTTP is a network
-protocol that is available on many networks, this can be a good option where
-SSH access is not possible.  Another benefit of this setup is that all of the
-authentication and access control methods available to the HTTP server (basic,
-LDAP, ActiveDirectory, etc.) are then available to control access to Bazaar
-branches.  More information about setting up this type of access using Apache
-and FastCGI or mod_python or WSGI is in the `smart server section of the User's
-Guide <../user-guide/http_smart_server.html>`_.
+Bazaar can use its native protocol with HTTP or HTTPS requests.  Since HTTP is
+a network protocol that is available on many networks, this can be a good
+option where SSH access is not possible.  Another benefit of this setup is that
+all of the authentication and access control methods available to the HTTP
+server (basic, LDAP, ActiveDirectory, etc.) are then available to control
+access to Bazaar branches.  More information about setting up this type of
+access using Apache and FastCGI or mod_python or WSGI is in the `smart server
+section of the User's Guide <../user-guide/http_smart_server.html>`_.
 
 Direct Smart Server Access
 --------------------------

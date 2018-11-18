@@ -1,0 +1,45 @@
+Debug Flags
+===========
+
+These flags can be passed on the brz command line or (without the ``-D``
+prefix) put in the ``debug_flags`` variable in ``breezy.conf``.
+
+-Dauth            Trace authentication sections used.
+-Dbytes           Print out how many bytes were transferred
+-Ddirstate        Trace dirstate activity (verbose!)
+-Derror           Instead of normal error handling, always print a traceback
+                  on error.
+-Devil            Capture call sites that do expensive or badly-scaling
+                  operations.
+-Dfetch           Trace history copying between repositories.
+-Dfilters         Emit information for debugging content filtering.
+-Dforceinvdeltas  Force use of inventory deltas during generic streaming fetch.
+-Dgraph           Trace graph traversal.
+-Dhashcache       Log every time a working file is read to determine its hash.
+-Dhooks           Trace hook execution.
+-Dhpss            Trace smart protocol requests and responses.
+-Dhpssdetail      More hpss details.
+-Dhpssvfs         Traceback on vfs access to Remote objects.
+-Dhttp            Trace http connections, requests and responses.
+-Dindex           Trace major index operations.
+-Dknit            Trace knit operations.
+-Dlock            Trace when lockdir locks are taken or released.
+-Dnoretry         If a connection is reset, fail immediately rather than
+                  retrying the request.
+-Dprogress        Trace progress bar operations.
+-Dmem_dump        Dump memory to a file upon an out of memory error.
+-Dmerge           Emit information for debugging merges.
+-Dno_apport       Don't use apport to report crashes.
+-Dno_activity 	  Don't show transport activity indicator in progress bar.
+-Dpack            Emit information about pack operations.
+-Drelock          Emit a message every time a branch or repository object is
+                  unlocked then relocked the same way.
+-Dsftp            Trace SFTP internals.
+-Dstatic_tuple    Error when a tuple is used where a StaticTuple is expected
+-Dstream          Trace fetch streams.
+-Dstrict_locks    Trace when OS locks are potentially used in a non-portable
+                  manner.
+-Dunlock          Some errors during unlock are treated as warnings.
+-DIDS_never       Never use InterDifferingSerializer when fetching.
+-DIDS_always      Always use InterDifferingSerializer to fetch if appropriate
+                  for the format, even for non-local fetches.

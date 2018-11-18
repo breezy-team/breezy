@@ -2,39 +2,41 @@
 
 # Copyright (C) 2005 Canonical Ltd
 
-"""Print to stdout a description of the current directory, 
+"""Print to stdout a description of the current directory,
 formatted as a Python data structure.
 
 This can be useful in tests that need to recreate directory
 contents."""
 
-import sys
-import os
+from __future__ import print_function
 
-from bzrlib.trace import enable_default_logging
+import os
+import sys
+
+from breezy.trace import enable_default_logging
 enable_default_logging()
-from bzrlib.selftest.treeshape import capture_tree_contents
+from breezy.selftest.treeshape import capture_tree_contents
 
 def main(argv):
     # a lame reimplementation of pformat that splits multi-line
     # strings into concatenated string literals.
-    print '['
+    print('[')
     for tt in capture_tree_contents('.'):
         assert isinstance(tt, tuple)
-        print '    (', repr(tt[0]) + ',',
+        print('    (', repr(tt[0]) + ',', end=' ')
         if len(tt) == 1:
-            print '),'
+            print('),')
         else:
             assert len(tt) == 2
             val = tt[1]
-            print
+            print()
             if val == '':
-                print "        ''"
+                print("        ''")
             else:
                 for valline in val.splitlines(True):
-                    print '       ', repr(valline)
-            print '    ),'
-    print ']'
+                    print('       ', repr(valline))
+            print('    ),')
+    print(']')
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

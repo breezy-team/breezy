@@ -26,7 +26,11 @@ relevant existing bug, or send a proposal to the list.  If there is a bug
 you should set it to "In Progress" and if you wish assign it to yourself.
 
 You might like to start with a bug tagged `easy
-<https://bugs.edge.launchpad.net/bzr/+bugs?field.tag=easy>`_.
+<https://bugs.launchpad.net/bzr/+bugs?field.tag=easy>`_.
+
+If you are wondering if your understanding of the bug is correct, or if the 
+approach you have in mind is likely to work, feel to ask about it on the bug,
+in ``#bzr`` or on the mailing list.
 
 Making a branch
 ---------------
@@ -65,6 +69,16 @@ You probably want this configuration in ``~/.bazaar/locations.conf``::
 with your local and Launchpad usernames inserted.
 
 
+
+Publishing your changes
+-----------------------
+
+After you've locally committed your changes, the configuration above
+should be enough that you can push them to Launchpad with a simple ::
+
+    $ bzr push
+
+
 Writing tests
 -------------
 
@@ -74,9 +88,9 @@ right place to put your test.  Don't hesitate to ask, or to propose a
 merge that does not yet have tests.
 
 Normally for command-line code you should look in
-``bzrlib.tests.blackbox`` and for library code in ``bzrlib.tests``.  For
+``breezy.tests.blackbox`` and for library code in ``breezy.tests``.  For
 functions on an interface for which there are multiple implementations,
-like `Transport`, look in ``bzrlib.tests.per_transport``.
+like `Transport`, look in ``breezy.tests.per_transport``.
 
 It's a good idea to search the tests for something related to the thing
 you're changing and you may find a test you can modify or adapt.
@@ -86,7 +100,7 @@ To run the tests::
     $ ./bzr selftest
 
 Normally the tests will skip if some library dependencies are not present.
-On Ubuntu, you can install them with this command (you must have some
+On Ubuntu, you can install them with this command (you must have source
 repositories enabled in Software Sources)::
 
     $ sudo apt-get build-dep bzr
@@ -103,7 +117,7 @@ Proposing a merge
 
 
 Then propose a merge into bzr; for bzr 2.2 and later you can use the ``bzr
-propose-merge`` command.  In the comment for your merge proposal please
+lp-propose-merge`` command.  In the comment for your merge proposal please
 explain what you're trying to do and why.  For `example
 <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 

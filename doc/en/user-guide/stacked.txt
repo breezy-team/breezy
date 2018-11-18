@@ -41,7 +41,7 @@ Creating a stacked branch
 To create a stacked branch, use the ``stacked`` option of the branch command.
 For example::
 
-  bzr branch --stacked source-url my-dir
+  brz branch --stacked source-url my-dir
 
 This will create ``my-dir`` as a stacked branch with no local revisions.
 If it is defined, the public branch associated with ``source-url`` will be
@@ -69,58 +69,67 @@ Most changes on most projects build on an existing branch such as the
 branch stacked on one of these is easy to do using the ``push``
 command like this::
 
-  bzr push --stacked-on reference-url my-url
+  brz push --stacked-on reference-url my-url
 
 This creates a new branch at ``my-url`` that is stacked on ``reference-url``
 and only contains the revisions in the current branch that are not already
 in the branch at ``reference-url``. In particular, ``my-url`` and
-``reference-url`` can be on the same host, and the ``--stacked`` option
+``reference-url`` can be on the same host, and the ``--stacked-on`` option
 can be used additionally to inform ``push`` to reference the
 revisions in ``reference-url``. For example::
 
-  bzr push --stacked-on sftp://host/project --stacked sftp://host/user/stacked-branch
+  brz push --stacked-on bzr+ssh://host/project bzr+ssh://host/user/stacked-branch
 
 This usage fits the scenario described in the Motivation section.
 
+You can also use the ``--stacked`` option without specifying ``--stacked-on``.
+This will automatically set the *stacked-on* location to the parent branch of
+the branch you are pushing (or its ``public_location`` if configured).  For
+example::
 
-.. The following text is hidden because bug 375013 breaks the example.
-   When bug 375013 is fixed, we should unhide this text.
-      - Andrew Bennetts, 10 March 2010
+  brz branch source-url my-dir
+  cd my-dir
+  (hack, hack, hack)
+  brz commit -m "fix bug"
+  brz push --stacked
 
-.. If the local branch was created as a stacked branch, then you can
-.. use the ``--stacked`` option to ``push`` and the *stacked-on* location
-.. will be implicit. For example::
-.. 
-..   bzr branch --stacked source-url my-dir
-..   cd my-dir
-..   (hack, hack, hack)
-..   bzr commit -m "fix bug"
-..   bzr push --stacked
+You can combine ``brz branch --stacked`` and ``brz push --stacked`` to work on a
+branch without downloading or uploading the whole history::
+
+  brz branch --stacked source-url my-dir
+  cd my-dir
+  (hack, hack, hack)
+  brz commit -m "fix bug"
+  brz push --stacked
 
 
 Limitations of stacked branches
 -------------------------------
 
-Currently, you cannot commit to a stacked branch, due to `bug 375013`_.
-
-.. _bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
-
-The important thing to remember about a stacked branch is that the
-stacked-on branch needs to be available for almost all operations. This is
-not an issue when both branches are local or both branches are on the
-same server.
+The important thing to remember about a stacked branch is that the stacked-on
+branch needs to be accessible for almost all operations.  This is not an issue
+when both branches are local, or when both branches are on the same server and
+the stacked-on location is a relative path.  But clearly a branch hosted on a
+server with a stacked-on location of ``file:///...`` is not going to work for
+anyone except the user that originally pushed it.  It's a good idea to configure
+``public_location`` to help prevent that.
 
 Similarly, because most of the history is stored in the stacked-on repository,
-operations like ``bzr log`` can be slower when the stacked-on repository is
+operations like ``brz log`` can be slower when the stacked-on repository is
 accessed via a network.
+
+If a stacked branch is in a format older than 2a, you cannot commit to it due to
+`bug 375013`_.
+
+.. _bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
 
 
 Changing branch stacking
 ------------------------
 
-Stacking of existing branches can be changed using the ``bzr reconfigure``
+Stacking of existing branches can be changed using the ``brz reconfigure``
 command to either stack on an existing branch, or to turn off stacking.
-Be aware that when ``bzr reconfigure --unstacked`` is used, bzr will
+Be aware that when ``brz reconfigure --unstacked`` is used, brz will
 copy all the referenced data from the stacked-on repository into the
 previously stacked repository.  For large repositories this may take
 considerable time and may substantially increase the size of the

@@ -1,0 +1,108 @@
+####################################
+Developer guide to breezy transports
+####################################
+
+This guide describes the `Transport` classes that Breezy uses for most
+local and remote file access.  (Working tree files are the major
+exception (`bug 606249 <https://bugs.launchpad.net/bzr/+bug/606249>`).
+
+
+Handling symlinks
+#################
+
+A symlink creates an alias where files or directories can be accessed by a
+different name.  Symlinks are useful but raise a few annoying cases for
+bzr.
+
+It's important to have tests for symlinks but these tests can't run on
+Windows, so you need eg ::
+
+    _test_needs_features = [tests.SymlinkFeature]
+
+or ::
+
+    self.requireFeature(tests.SymlinkFeature)
+
+Breezy versions symlinks as objects in their own right, whose content is
+the path they point to.  Breezy doesn't care whether a versioned
+symlink is absolute or relative; or whether it points inside or outside
+the working tree; or whether its referent exists or not.  In Unix the
+target of a symlink is a byte string; Breezy treats this as a Unicode string
+in the filesystem encoding (`osutils._fs_enc`).
+
+So when we say ``brz add symlink``, this should always add the symlink to
+its containing working tree, and never dereference the symlink.
+
+However, ``brz add symlink/file`` shouldn't add ``file`` as a child of
+``symlink``.  (Symlinks don't have files underneath them: they may point to
+a directory which contains children, but if the symlink was pointed
+somewhere else those children would be unaffected.)  This could either add
+the file in its containing working tree, or fail outright.
+
+One interesting case for this is ::
+
+    brz add ~/dev/bug123/a.c
+
+where ``~/dev`` is actually a symlink to ``/srv/dev/joe/``.  In this case
+clearly the user does want us to follow the symlink to open the tree.
+
+As of bzr2.2, when we open a `WorkingTree`, we typically immediately
+compute its real path and store that as ``.basedir``, but `BzrDir` stores
+its apparent path.  (This may not be the best thing.)
+
+
+Useful functions
+----------------
+
+`breezy.osutils.dereference_path` does the commonly useful operation of
+resolving the directory part of a path, but leaving the filename
+untouched.  In other words ::
+
+  ln -s x a
+  ln -s y x/b
+  dereference_path('a/b') => 'x/b'
+
+
+Relative paths beyond symlinks
+------------------------------
+
+Another interesting case is when a control directory contains a relative
+path, perhaps from a branch to its master or from a working tree to its
+branch.  If it contains ``../`` parts as it typically will, these may have
+different effects depending on whether they're looked up relative to the
+real path or the apparent path given by the user.  It may be that some
+users expect different behaviours at different times.  
+
+Resolving the path relative to the real directory makes it somewhat more
+consistent with what you would see by in a shell entering that directory
+and then opening the given name.  It may also make things more consistent
+when there are multiple links to the same bzrdir.  However it may cause
+problems when using a transport that hides symlinks.
+
+We could possibly handle this by doing less path arithmetic and asking the
+OS or server to open the path including ``..`` and other relative
+elements, but that might cause other problems.  HTTP servers may do their
+own path arithmetic before passing it to the OS.
+
+
+Transports that hide symlinks
+-----------------------------
+
+On local, SFTP and bzr+ssh transports, we can directly see symlinks as
+symlinks.  Over HTTP (and FTP?) they're expanded by the server and we
+cannot detect them.  This can cause problems when Breezy follows relative
+paths because typically we will join the paths, and we may do this
+inconsistently with how the server, which can see the symlinks, would do.
+
+
+Symlinks and ChrootTransports
+-----------------------------
+
+Breezy has an internal concept of a `ChrootTransport` that locks access into
+a particular directory.  Symlinks should not break out of a chroot jail
+which implies they should be expanded and checked within breezy.
+(At least as long as the transport lets us see the symlink; otherwise it
+may not be possible.) 
+
+
+ .. vim: ft=rst sw=4

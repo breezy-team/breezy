@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright 2009 Canonical Ltd.
+# Copyright 2009-2010 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,70 +16,115 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
+"""Generate doc/en/release-notes/index.txt from the per-series NEWS files.
+
+NEWS files are kept in doc/en/release-notes/, one file per series, e.g.
+doc/en/release-notes/brz-2.3.txt
+"""
+
+# XXX: add test_source test that latest doc/en/release-notes/brz-*.txt has the
+# NEWS file-id (so that merges of new work will tend to always land new NEWS
+# entries in the latest series).
+
+
+import os.path
+import re
 import sys
 from optparse import OptionParser
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+preamble_plain = """\
+####################
+Breezy Release Notes
+####################
 
 
-def split_into_topics(lines, out_file, out_dir):
-    """Split a large NEWS file into topics, one per release.
+.. contents:: List of Releases
+   :depth: 2
 
-    Releases are detected by matching headings that look like
-    release names. Topics are created with matching names
-    replacing spaces with dashes.
+"""
+
+preamble_sphinx = """\
+####################
+Breezy Release Notes
+####################
+
+
+.. toctree::
+   :maxdepth: 2
+
+"""
+
+
+def natural_sort_key(file_name):
+    """Split 'aaa-N.MMbbb' into ('aaa-', N, '.' MM, 'bbb')
+    
+    e.g. 1.10b1 will sort as greater than 1.2::
+
+        >>> natural_sort_key('brz-1.10b1.txt') > natural_sort_key('brz-1.2.txt')
+        True
     """
-    topic_file = None
-    for index, line in enumerate(lines):
-        maybe_new_topic = line[:4] in ['bzr ', 'bzr-0',]
-        if maybe_new_topic and lines[index + 1].startswith('####'):
-            release = line.strip()
-            if topic_file is None:
-                # First topic found
-                out_file.write(".. toctree::\n   :maxdepth: 1\n\n")
-            else:
-                # close the current topic
-                topic_file.close()
-            topic_file = open_topic_file(out_file, out_dir, release)
-        elif topic_file:
-            topic_file.write(line)
-        else:
-            # Still in the header - dump content straight to output
-            out_file.write(line)
+    file_name = os.path.basename(file_name)
+    parts = re.findall(r'(?:[0-9]+|[^0-9]+)', file_name)
+    result = []
+    for part in parts:
+        if re.match('^[0-9]+$', part) is not None:
+            part = int(part)
+        result.append(part)
+    return tuple(result)
 
 
-def open_topic_file(out_file, out_dir, release):
-    topic_name = release.replace(' ', '-')
-    out_file.write("   %s\n" % (topic_name,))
-    topic_path = os.path.join(out_dir, "%s.txt" % (topic_name,))
-    result = open(topic_path, 'w')
-    result.write("%s\n" % (release,))
-    return result
+def output_news_file_sphinx(out_file, news_file_name):
+    news_file_name = os.path.basename(news_file_name)
+    if not news_file_name.endswith('.txt'):
+        raise AssertionError(
+            'NEWS file %s does not have .txt extension.'
+            % (news_file_name,))
+    doc_name = news_file_name[:-4]
+    link_text = doc_name.replace('-', ' ')
+    out_file.write('   %s <%s>\n' % (link_text, doc_name))
+
+
+def output_news_file_plain(out_file, news_file_name):
+    with open(news_file_name, 'r') as f:
+        lines = f.readlines()
+    title = os.path.basename(news_file_name)[len('brz-'):-len('.txt')]
+    for line in lines:
+        if line == '####################\n':
+            line = '#' * len(title) + '\n'
+        elif line == 'Breezy Release Notes\n':
+            line = title + '\n'
+        elif line == '.. toctree::\n':
+            continue
+        elif line == '   :maxdepth: 1\n':
+            continue
+        out_file.write(line)
+    out_file.write('\n\n')
 
 
 def main(argv):
     # Check usage
-    parser = OptionParser(usage="%prog SOURCE DESTINATION")
+    parser = OptionParser(usage="%prog OUTPUT_FILE NEWS_FILE [NEWS_FILE ...]")
     (options, args) = parser.parse_args(argv)
-    if len(args) != 2:
+    if len(args) < 2:
         parser.print_help()
         sys.exit(1)
 
     # Open the files and do the work
-    infile_name = args[0]
-    outfile_name = args[1]
-    outdir = os.path.dirname(outfile_name)
-    infile = open(infile_name, 'r')
-    try:
-        lines = infile.readlines()
-    finally:
-        infile.close()
-    outfile = open(outfile_name, 'w')
-    try:
-        split_into_topics(lines, outfile, outdir)
-    finally:
-        outfile.close()
+    out_file_name = args[0]
+    news_file_names = sorted(args[1:], key=natural_sort_key, reverse=True)
+
+    if os.path.basename(out_file_name) == 'index.txt':
+        preamble = preamble_sphinx
+        output_news_file = output_news_file_sphinx
+    else:
+        preamble = preamble_plain
+        output_news_file = output_news_file_plain
+
+    with open(out_file_name, 'w') as out_file:
+        out_file.write(preamble)
+        for news_file_name in news_file_names:
+            output_news_file(out_file, news_file_name)
 
 
 if __name__ == '__main__':

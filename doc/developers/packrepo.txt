@@ -10,7 +10,7 @@ Using KnitPack repositories
 Motivation
 ----------
 
-KnitPack is a new repository format for Bazaar, which is expected to be
+KnitPack is a new repository format for Breezy, which is expected to be
 faster both locally and over the network, is usually more compact, and
 will work with more FTP servers.
 
@@ -138,14 +138,14 @@ Reporting problems
 
 If you need any help or encounter any problems, please contact the developers
 via the usual ways, i.e. chat to us on IRC or send a message to our mailing
-list. See http://bazaar-vcs.org/BzrSupport for contact details.
+list. See http://wiki.bazaar.canonical.com/BzrSupport for contact details.
 
 
 Technical notes
 ===============
 
 Bazaar 0.92 adds a new format (experimental at first) implemented in
-``bzrlib.repofmt.pack_repo.py``.
+``breezy.repofmt.pack_repo.py``.
 
 This format provides a knit-like interface which is quite compatible
 with knit format repositories: you can get a VersionedFile for a
@@ -186,7 +186,7 @@ extn     Purpose    Key                      References
                                              compression base
 ======== ========== ======================== ==========================
 
-Indices are accessed through the ``bzrlib.index.GraphIndex`` class.
+Indices are accessed through the ``breezy.index.GraphIndex`` class.
 Indices are stored as sorted files on disk.  Each line is one record,
 and contains:
 
@@ -250,7 +250,7 @@ the data written into the pack body file.
 
 The ``pack-names`` file gives the list of all finished non-obsolete
 packs.  (This should always be the same as the list of files in the
-``packs/`` directory, but the file is needed for readonly http clients
+``packs/`` directory, but the file is needed for read-only HTTP clients
 that can't easily list directories, and it includes other information.)
 The constraint on the ``pack-names`` list is that every file mentioned
 must exist in the ``packs/`` directory.

@@ -26,6 +26,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from __future__ import print_function
+
 import os
 import re
 import shutil
@@ -35,8 +37,8 @@ from subprocess import call
 
 verbose = False
 
-IMAGE_DIRECTIVE_PATTERN = re.compile(ur'^..\s+image::\s+(.*)\s+$')
-DIRECTIVE_ELEMENT_PATTERN = re.compile(ur'^\s+:[^:]+:\s+')
+IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\`\s+$')
+DIRECTIVE_ELEMENT_PATTERN = re.compile(u'^\\s+:[^:]+:\\s+')
 
 class Converter(object):
     def __init__(self, srcdir, destdir):
@@ -72,8 +74,8 @@ class Converter(object):
             if directive_match is not None:
                 image_src = directive_match.group(1)
                 if verbose:
-                    print('Image ' + image_src + ' in ' + filename
-                          + ': ' + line.strip())
+                    print(('Image ' + image_src + ' in ' + filename
+                          + ': ' + line.strip()))
 
                 foundimg = True
             outfile.write(line)
@@ -94,7 +96,7 @@ class ImageFixer(object):
     def replace_extension(self, path, newext):
         if path.endswith(newext):
             raise Exception("File '" + path + "' already has extension '"
-                            + newext +"'")
+                            + newext + "'")
         dot = path.rfind('.')
         if dot == -1:
             return path + newext
@@ -142,9 +144,9 @@ if __name__ == '__main__':
     destdir = None
 
     if len(argv) < 2:
-        print('Usage: ' + argv[0] + ' ' + IN_DIR_OPT + 'INDIR '
-              + OUT_DIR_OPT + 'OUTDIR')
-        print
+        print(('Usage: ' + argv[0] + ' ' + IN_DIR_OPT + 'INDIR '
+              + OUT_DIR_OPT + 'OUTDIR'))
+        print()
         print('This will convert all .txt files in INDIR into file in OUTDIR')
         print('while adjusting the use of images and possibly converting SVG')
         print('images to PDF files so LaTeX can include them.')
@@ -158,12 +160,12 @@ if __name__ == '__main__':
         elif arg.startswith(OUT_DIR_OPT):
             destdir = arg[len(OUT_DIR_OPT):]
         else:
-            print('Invalid argument ' + arg)
+            print(('Invalid argument ' + arg))
             sys.exit(1)
 
     if srcdir is None or destdir is None:
-        print('Please specify the ' + IN_DIR_OPT + ' and '
-              + OUT_DIR_OPT + ' options.')
+        print(('Please specify the ' + IN_DIR_OPT + ' and '
+              + OUT_DIR_OPT + ' options.'))
         sys.exit(1)
 
     if not os.path.exists(destdir):

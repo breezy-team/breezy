@@ -59,8 +59,8 @@ in the ``locations.conf`` file or individually in each branch's
 mail should be sent.  If it isn't set, email is sent via ``/usr/bin/mail``.
 It can also be configured to communicate directly with an SMTP server.
 For more details on configuring this plugin, see
-http://doc.bazaar-vcs.org/plugins/en/email-plugin.html.  As examples, consider
-the following two possible configurations.  A minimal one (uses
+http://doc.bazaar.canonical.com/plugins/en/email-plugin.html.  As examples,
+consider the following two possible configurations.  A minimal one (uses
 ``/usr/bin/mail``)
 
 ::
@@ -166,8 +166,8 @@ To use it, simply install the plugin and set your feed reader to follow the
 ``branch.atom`` files.
 
 In addition, there are other tools that are not plugins for creating news
-feeds from Bazaar branches.  See http://bazaar-vcs.org/FeedGenerators for more
-on those tools.
+feeds from Bazaar branches.  See
+http://wiki.bazaar.canonical.com/FeedGenerators for more on those tools.
 
 Mirroring
 ---------

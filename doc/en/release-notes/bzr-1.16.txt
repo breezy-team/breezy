@@ -1,0 +1,269 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.16.1
+##########
+
+:Released: 2009-06-26
+
+End user testing of the 2a format revealed two serious bugs. The first,
+#365615, caused bzr to raise AbsentContentFactory errors when autopacking.
+This meant that commits or pushes to 2a-format repositories failed
+intermittently.
+
+The second bug, #390563, caused the smart server to raise AbsentContentFactory
+when streaming 2a stacked 2a-format branches. This particularly affected
+branches stored on Launchpad in the 2a format.
+
+Both of these bugs cause command failures only, neither of them cause data
+corruption or data loss. And, of course, both of these bugs are now fixed.
+
+Bug Fixes
+*********
+
+* We now properly request a more minimal set of file texts when fetching
+  multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
+
+* Repositories using CHK pages (which includes the new 2a format) will no
+  longer error during commit or push operations when an autopack operation
+  is triggered. (Robert Collins, #365615)
+
+* ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
+  of referenced nodes rather than the *union* to determine what
+  uninteresting pages we still need to look at. Prior to this,
+  incrementally pushing to stacked branch would push the minimal data, but
+  fetching everything would request extra texts. There are some unhandled
+  cases wrt trees of different depths, but this fixes the common cases.
+  (Robert Collins, John Arbash Meinel, #390563)
+
+* ``GroupCompress`` repositories now take advantage of the pack hints
+  parameter to permit cross-format fetching to incrementally pack the
+  converted data. (Robert Collins)
+
+* ``Repository.commit_write_group`` now returns opaque data about what
+  was committed, for passing to the ``Repository.pack``. Repositories
+  without atomic commits will still return None. (Robert Collins)
+
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
+
+* ``StreamSink`` and ``InterDifferingSerialiser`` will call
+  ``Repository.pack`` with the hint returned by
+  ``Repository.commit_write_group`` if the formats were different and the
+  repository can increase compression by doing a pack operation.
+  (Robert Collins, #376748)
+
+
+bzr 1.16
+########
+:Codename: yesterday-in-california
+:1.16rc1: 2009-06-11
+:1.16: 2009-06-18
+
+This version of Bazaar contains the beta release of the new ``2a`` repository
+format, suitable for testing by fearless, advanced users. This format or an
+updated version of it will become the default format in Bazaar 2.0. Please
+read the NEWS entry before even thinking about upgrading to the new format.
+
+Also included are speedups for many operations on huge projects, a bug fix for
+pushing stacked new stacked branches to smart servers and the usual bevy of
+bug fixes and improvements.
+
+
+Changes from 1.16rc1 to 1.16final
+*********************************
+
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
+
+Compatibility Breaks
+********************
+
+* Display prompt on stderr (instead of stdout) when querying users so
+  that the output of commands can be safely redirected.
+  (Vincent Ladeuil, #376582)
+
+
+New Features
+************
+
+* A new repository format ``2a`` has been added.  This is a beta release
+  of the brisbane-core (aka group-compress) project.  This format now
+  suitable for wider testing by advanced users willing to deal with some
+  bugs.  We would appreciate test reports, either positive or negative.
+  Format 2a is substantially smaller and faster for many operations on
+  many trees.  This format or an updated version will become the default
+  in bzr 2.0.
+
+  This is a rich-root format, so this repository format can be used with
+  bzr-svn.  Bazaar branches in previous non-rich-root formats can be
+  converted (including by merge, push and pull) to format 2a, but not vice
+  versa.  We recommend upgrading previous development formats to 2a.
+
+  Upgrading to this format can take considerable time because it expands
+  and more concisely repacks the full history.
+
+  If you use stacked branches, you must upgrade the stacked branches
+  before the stacked-on branches.  (See <https://bugs.launchpad.net/bugs/374735>)
+
+* ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
+  but using a Revision serializer using bencode rather than XML.
+  (Jelmer Vernooij, John Arbash Meinel)
+
+* mail_client=claws now supports --body (and message body hooks).  Also uses
+  configured from address.  (Barry Warsaw)
+
+Improvements
+************
+
+
+* ``--development6-rich-root`` can now stack. (Modulo some smart-server
+  bugs with stacking and non default formats.)
+  (John Arbash Meinel, #373455)
+
+* ``--development6-rich-root`` delays generating a delta index for the
+  first object inserted into a group. This has a beneficial impact on
+  ``bzr commit`` since each committed texts goes to its own group. For
+  committing a 90MB file, it drops peak memory by about 200MB, and speeds
+  up commit from 7s => 4s. (John Arbash Meinel)
+
+* Numerous operations are now faster for huge projects, i.e. those
+  with a large number of files and/or a large number of revisions,
+  particularly when the latest development format is used. These
+  operations (and improvements on OpenOffice.org) include:
+
+  * branch in a shared repository (2X faster)
+  * branch --no-tree (100X faster)
+  * diff (2X faster)
+  * tags (70X faster)
+
+  (Ian Clatworthy)
+
+* Pyrex version of ``bencode`` support. This provides optimized support
+  for both encoding and decoding, and is now found at ``bzrlib.bencode``.
+  ``bzrlib.utils.bencode`` is now deprecated.
+  (Alexander Belchenko, Jelmer Vernooij, John Arbash Meinel)
+
+
+Bug Fixes
+*********
+
+* Bazaar can now pass attachment files to the mutt email client.
+  (Edwin Grubbs, #384158)
+
+* Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
+  see which files can also be added.  (Jason Spashett, #76616)
+
+* ``bzr pull -r 123`` from a stacked branch on a smart server no longer fails.
+  Also, the ``Branch.revision_history()`` API now works in the same
+  situation.  (Andrew Bennetts, #380314)
+  
+* ``bzr serve`` on Windows no longer displays a traceback simply because a
+  TCP client disconnected. (Andrew Bennetts)
+
+* Clarify the rules for locking and fallback repositories. Fix bugs in how
+  ``RemoteRepository`` was handling fallbacks along with the
+  ``_real_repository``. (Andrew Bennetts, John Arbash Meinel, #375496)
+
+* Fix a small bug with fetching revisions w/ ghosts into a new stacked
+  branch. Not often triggered, because it required ghosts to be part of
+  the fetched revisions, not in the stacked-on ancestry.
+  (John Arbash Meinel)
+
+* Fix status and commit to work with content filtered trees, addressing
+  numerous bad bugs with line-ending support. (Ian Clatworthy, #362030)
+
+* Fix problem of "directory not empty" when contending for a lock over
+  SFTP.  (Martin Pool, #340352)
+
+* Fix rule handling so that eol is optional, not mandatory.
+  (Ian Clatworthy, #379370)
+
+* Pushing a new stacked branch to a 1.15 smart server was broken due to a
+  bug in the ``BzrDirFormat.initialize_ex`` smart verb.  This is fixed in
+  1.16, but required changes to the network protocol, so the
+  ``BzrDirFormat.initialize_ex`` verb has been removed and replaced with a
+  corrected ``BzrDirFormat.initialize_ex_1.16`` verb.  1.15 clients will
+  still work with a 1.16 server as they will fallback to slower (and
+  bug-free) methods.
+  (Jonathan Lange, Robert Collins, Andrew Bennetts, #385132)
+
+* Reconcile can now deal with text revisions that originated in revisions 
+  that are ghosts. (Jelmer Vernooij, #336749)
+
+* Support cloning of branches with ghosts in the left hand side history.
+  (Jelmer Vernooij, #248540)
+
+* The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
+  helpful message to the trace file, unless the temp directory really was
+  removed (which would be very strange).  Since the diff operation has
+  succeeded from the user's perspective, no output is written to stderr 
+  or stdout.  (Maritza Mendez, #363837)
+
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
+
+Documentation
+*************
+
+* Added directory structure and started translation of docs in Russian.
+  (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
+  Volodymyr Kotulskyi)
+
+API Changes
+***********
+
+* Added osutils.parent_directories(). (Ian Clatworthy)
+
+* ``bzrlib.progress.ProgressBar``, ``ChildProgress``, ``DotsProgressBar``,
+  ``TTYProgressBar`` and ``child_progress`` are now deprecated; use
+  ``ui_factory.nested_progress_bar`` instead.  (Martin Pool)
+
+* ``graph.StackedParentsProvider`` is now a public API, replacing
+  ``graph._StackedParentsProvider``. The api is now considered stable and ready
+  for external users. (Gary van der Merwe)
+
+* ``bzrlib.user_encoding`` is deprecated in favor of
+  ``get_user_encoding``.  (Alexander Belchenko)
+
+* TreeTransformBase no longer assumes that limbo is provided via disk.
+  DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
+
+Internals
+*********
+
+* Remove ``weave.py`` script for accessing internals of old weave-format
+  repositories.  (Martin Pool)
+
+Testing
+*******
+
+* ``make check`` no longer repeats the test run in ``LANG=C``.
+  (Martin Pool, #386180)
+
+* The number of cores is now correctly detected on OSX. (John Szakmeister)
+
+* The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
+
+* The number of cores is also detected on FreeBSD. (Matthew Fuller)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

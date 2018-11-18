@@ -1,4 +1,5 @@
 #!/bin/bash
+# Helper to run sed on versions in dependencies in debian/control
 
 if [ -z "$UBUNTU_RELEASES" ]; then
     echo "Configure the distro platforms that you want to"

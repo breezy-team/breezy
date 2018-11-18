@@ -10,7 +10,7 @@ For example, a developer working on a laptop might take it home overnight
 so his/her task branches could well be inaccessible when a gatekeeper
 in another timezone wants to review or merge it.
 
-Bazaar provides a neat feature to assist here: *merge directives*.
+Breezy provides a neat feature to assist here: *merge directives*.
 
 Understanding merge directives
 ------------------------------
@@ -42,7 +42,7 @@ development mailing list.
 ``send`` without options will create a merge directive, fire up your email
 tool and attach it, ready for you to add the explanatory text bit.
 (See the online help for ``send`` and
-`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
+`Configuration Settings <../user-reference/index.html#configuration-settings>`_
 in the User Reference for further details on how to configure this.)
 
 Most projects like people to add some explanation to the mail along with
@@ -56,7 +56,7 @@ examine it, or save it for later use.  If an output file of ``-`` is
 given, the directive is written to stdout.  For example::
 
   cd X-fix-123
-  bzr send -o ../fix-123.patch
+  brz send -o ../fix-123.patch
 
 
 Applying a merge directive
@@ -66,6 +66,6 @@ Merge directives can be applied in much the same way as branches: by
 using the ``merge`` and ``pull`` commands.
 
 They can also be useful when communicating with upstream projects
-that don't use Bazaar. In particular, the preview of the overall
+that don't use Breezy. In particular, the preview of the overall
 change in a merge directive looks like a vanilla software patch, so
 they can be applied using ``patch -p0`` for example.

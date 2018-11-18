@@ -1,0 +1,93 @@
+Switch --store
+==============
+
+In workflows that a single working tree, like co-located branches, sometimes
+you want to switch while you have uncommitted changes.  By default, ``switch``
+will apply your uncommitted changes to the new branch that you switch to.  But
+often you don't want that.  You just want to do some work in the other branch,
+and eventually return to this branch and work some more.
+
+You could run ``brz shelve --all`` before switching, to store the changes
+safely.  So you have to know that there are uncommitted changes present, and
+you have to remember to run ``brz shelve --all``.  Then when you switch back to
+the branch, you need to remember to unshelve the changes, and you need to know
+what their shelf-id was.
+
+Using ``switch --store`` takes care of all of this for you.  If there are any
+uncommitted changes in your tree, it stores them in your branch.  It then
+restores any uncommitted changes that were stored in the branch of your target
+tree.  It's almost like having two working trees and using ``cd`` to switch
+between them.
+
+To take an example, first we'd set up a co-located branch::
+
+  $ brz init foo
+  Created a standalone tree (format: 2a)
+  $ cd foo
+  $ brz switch -b foo
+
+Now create committed and uncommitted changes::
+
+  $ touch committed
+  $ brz add
+  adding committed
+  $ brz commit -m "Add committed"
+  Committing to: /home/abentley/sandbox/foo/
+  added committed
+  Committed revision 1.
+  $ touch uncommitted
+  $ brz add
+  adding uncommitted
+  $ ls
+  committed  uncommitted
+
+Now create a new branch using ``--store``.  The uncommitted changes are stored
+in "foo", but the committed changes are retained.
+::
+
+  $ brz switch -b --store bar
+  Uncommitted changes stored in branch "foo".
+  Tree is up to date at revision 1.
+  Switched to branch: /home/abentley/sandbox/foo/
+  abentley@speedy:~/sandbox/foo$ ls
+  committed
+
+Now, create uncommitted changes in "bar"::
+
+  $ touch uncommitted-bar
+  $ brz add
+  adding uncommitted-bar
+
+Finally, switch back to "foo"::
+
+  $ brz switch --store foo
+  Uncommitted changes stored in branch "bar".
+  Tree is up to date at revision 1.
+  Switched to branch: /home/abentley/sandbox/foo/
+  $ ls
+  committed  uncommitted
+
+Each branch holds only one set of stored changes.  If you try to store a second
+set, you get an error.  If you use ``--store`` all the time, this can't happen.
+But if you use plain switch, then it won't restore the uncommitted changes
+already present::
+
+  $ brz switch bar
+  Tree is up to date at revision 1.
+  Switched to branch: /home/abentley/sandbox/foo/
+  $ brz switch --store foo
+  brz: ERROR: Cannot store uncommitted changes because this branch already
+  stores uncommitted changes.
+
+If you're working in a branch that already has stored changes, you can restore
+them with ``brz switch . --store``::
+
+  $ brz shelve --all -m "Uncommitted changes from foo"
+  Selected changes:
+  -D  uncommitted
+  Changes shelved with id "1".
+  $ brz switch . --store
+  Tree is up to date at revision 1.
+  Switched to branch: /home/abentley/sandbox/foo/
+  $ ls
+  committed  uncommitted-bar

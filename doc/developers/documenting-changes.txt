@@ -1,0 +1,100 @@
+===================
+Documenting Changes
+===================
+
+When you change bzr, please update the relevant documentation for the
+change you made:
+
+Changing existing behavior
+  If the change will break existing command lines, or break
+  interoperability with other versions of Breezy, mention this in
+  "External Compatibility Breaks" in NEWS, and also in "What's New".
+
+Adding a new feature, function or option
+  Describe this in NEWS, in the user guide, and in the "What's New"
+  document.  Consider whether you should also update command help
+  or any help topics.
+
+A new hook or extension point
+  These are also described in NEWS, in the hook documentation, and in
+  "What's New."  Even though they might be API-only changes, the fact that
+  they exist may interest users enough to write a new plugin that uses
+  them.
+
+Fixing a bug
+  If the bug has any user-visible impact, describe it in the NEWS file
+  in such a way that users can tell whether the problem they're
+  experiencing is the one that was fixed.
+
+Improving performance
+  Mention this under "improvements" in NEWS, and if it's a notable
+  improvement mention it in "What's New".
+
+Deprecating an API, or adding a new recommended API
+  Mention this in the "API Changes" of NEWS, if it's likely to affect
+  plugin authors.  Consider whether you should also update the developer
+  documentation.
+
+Changing the way the test suite works or adding more tests
+  Mention this under "Testing" in NEWS, and update the developer guide
+  to testing.
+
+Purely internal changes
+  If the change has no user-visible impact and is not interesting to
+  plugin developers, it doesn't need to be mentioned in NEWS.  If you're
+  setting a new pattern or adding a new abstraction, update the developer
+  docs.
+
+NEWS File
+---------
+
+If you make a user-visible change, please add a note to the NEWS file.
+The description should be written to make sense to someone who's just
+a user of bzr, not a developer: new functions or classes shouldn't be
+mentioned, but new commands, changes in behaviour or fixed nontrivial
+bugs should be listed.  See the existing entries for an idea of what
+should be done.
+
+Within each release, entries in the news file should have the most
+user-visible changes first.  So the order should be approximately:
+
+* changes to existing behaviour - the highest priority because the
+  user's existing knowledge is incorrect
+* new features - should be brought to their attention
+* bug fixes - may be of interest if the bug was affecting them, and
+  should include the bug number if any
+* major documentation changes, including fixed documentation bugs
+
+People who made significant contributions to each change are listed in
+parenthesis.  This can include reporting bugs (particularly with good
+details or reproduction recipes), submitting patches, etc.
+
+To help with merging, NEWS entries should be sorted lexicographically
+within each section.
+
+Commands
+--------
+
+The docstring of a command is used by ``bzr help`` to generate help output
+for the command. The list 'takes_options' attribute on a command is used by
+``bzr help`` to document the options for the command - the command
+docstring does not need to document them. Finally, the '_see_also'
+attribute on a command can be used to reference other related help topics.
+
+API Documentation
+-----------------
+
+Functions, methods, classes and modules should have docstrings
+describing how they are used.
+
+The first line of the docstring should be a self-contained sentence.
+
+For the special case of Command classes, this acts as the user-visible
+documentation shown by the help command.
+
+The docstrings should be formatted as reStructuredText_ (like this
+document), suitable for processing using the epydoc_ tool into HTML
+documentation.
+
+.. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _epydoc: http://epydoc.sourceforge.net/
