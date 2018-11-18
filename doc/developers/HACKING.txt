@@ -205,7 +205,7 @@ The key tools we use to enable these practices are:
 
 * Patch Queue Manager - https://launchpad.net/pqm/
 
-For further information, see <http://wiki.bazaar.canonical.com/BzrDevelopment>.
+For further information, see <https://www.breezy-vcs.org/developers/>.
 
 
 Preparing a Sandbox for Making Changes to Breezy
@@ -292,7 +292,7 @@ doc/en/whats-new/
 
 
 Automatically-generated API reference information is available at
-<http://people.canonical.com/~mwh/bzrlibapi/>.
+<https://www.breezy-vcs.org/developers/api/>.
 
 See also the `Breezy Architectural Overview
 <https://www.breezy-vcs.org/developers/overview.html>`_.

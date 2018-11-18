@@ -32,12 +32,16 @@ import os
 import sys
 import time
 
+try:
+    import _thread
+except ImportError:
+    import thread as _thread
+
 import breezy
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import select
 import socket
-import thread
 import weakref
 
 from breezy import (
@@ -432,7 +436,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         tstart = osutils.timer_func()
         osutils.send_all(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
-            thread_id = thread.get_ident()
+            thread_id = _thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
                             osutils.timer_func() - tstart))
