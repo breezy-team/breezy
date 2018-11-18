@@ -225,4 +225,7 @@ brz_team = u'Breezy Developers'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
+    'testtools': ('https://testtools.readthedocs.io/en/latest', None),
+    'configobj': ('https://configobj.readthedocs.io/en/latest', None),
+    'dulwich': ('https://dulwich.readthedocs.io/en/latest', None),
 }
