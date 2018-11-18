@@ -12,7 +12,7 @@ the Breezy mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The latest developer documentation can be found online at
-http://doc.bazaar.canonical.com/developers/.
+https://www.breezy-vcs.org/developers/.
 
 Getting Started
 ###############
@@ -52,7 +52,7 @@ Planning and Discussing Changes
 
 There is a very active community around Breezy. Mostly we meet on IRC
 (#bzr on irc.freenode.net) and on the mailing list. To join the Breezy
-community, see http://wiki.bazaar.canonical.com/BzrSupport.
+community, see https://www.breezy-vcs.org/pages/support.html.
 
 If you are planning to make a change, it's a very good idea to mention it
 on the IRC channel and/or on the mailing list. There are many advantages
@@ -208,8 +208,6 @@ The key tools we use to enable these practices are:
 For further information, see <http://wiki.bazaar.canonical.com/BzrDevelopment>.
 
 
-
-
 Preparing a Sandbox for Making Changes to Breezy
 ================================================
 
@@ -297,7 +295,7 @@ Automatically-generated API reference information is available at
 <http://people.canonical.com/~mwh/bzrlibapi/>.
 
 See also the `Breezy Architectural Overview
-<http://doc.bazaar.canonical.com/developers/overview.html>`_.
+<https://www.breezy-vcs.org/developers/overview.html>`_.
 
 
 Core Topics
@@ -533,7 +531,7 @@ stuff covered above, "core" developers have responsibility for:
 
 * reviewing changes
 * planning releases
-* managing releases (see `Releasing Breezy <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
+* managing releases (see `Releasing Breezy <https://www.breezy-vcs.org/developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting

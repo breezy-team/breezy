@@ -222,21 +222,6 @@ like they would have collaborated on the ``dev`` branch. [#cbranch]_
    hierarchical namespace where the nested branch is derived from the
    outer branch.
 
-.. [#cbranch] When using lots of independent branches, having to retype
-   the full URL all the time takes a lot of typing. We are looking into
-   various methods to help with this, such as branch aliases, etc. For
-   now, though, the brztools_ plugin provides the ``brz cbranch`` command.
-   Which is designed to take a base branch, create a new public branch,
-   and create a checkout of that branch, all with much less typing.
-   Configuring ``cbranch`` is outside the scope of this document, but the
-   final commands are similar to:
-
-::
-
-   % brz cbranch dev my-feature-branch
-
-.. _brztools: http://wiki.bazaar.canonical.com/brzTools
-
 
 Merging changes back
 --------------------
