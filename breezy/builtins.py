@@ -3857,7 +3857,7 @@ class cmd_upgrade(Command):
     tried.
 
     For more information on upgrades, see the Bazaar Upgrade Guide,
-    http://doc.bazaar.canonical.com/latest/en/upgrade-guide/.
+    https://www.breezy-vcs.org/doc/en/upgrade-guide/.
     """
 
     _see_also = ['check', 'reconcile', 'formats']

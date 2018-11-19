@@ -16,9 +16,8 @@
 
 """All of bzr.
 
-Developer documentation for Bazaar is available at
-http://doc.bazaar.canonical.com/bzr.dev/developers/,
-it should mostly also apply to Breezy.
+Developer documentation is available at
+https://www.breezy-vcs.org/developers/.
 
 Some particularly interesting things in breezy are:
 
