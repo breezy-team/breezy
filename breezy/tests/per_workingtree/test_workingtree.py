@@ -284,6 +284,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(list(tree.unknowns()),
                          ['hello.txt'])
 
+    def test_unknowns_empty_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['subdir/', 'subdir/somefile'])
+        if tree.has_versioned_directories():
+            self.assertEqual(list(tree.unknowns()), ['subdir'])
+        else:
+            self.assertEqual(list(tree.unknowns()), ['subdir/somefile'])
+
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
         t = self.make_branch_and_tree('.')
