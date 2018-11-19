@@ -55,7 +55,7 @@ MODE_CLEAR = 2
 
 class GpgNotInstalled(errors.DependencyNotPresent):
 
-    _fmt = 'python-gpg is not installed, it is needed to verify signatures'
+    _fmt = 'python-gpg is not installed, it is needed to create or verify signatures'
 
     def __init__(self, error):
         errors.DependencyNotPresent.__init__(self, 'gpg', error)
@@ -230,7 +230,11 @@ class GPGStrategy(object):
             return False
 
     def sign(self, content, mode):
-        import gpg
+        try:
+            import gpg
+        except ImportError as error:
+            raise GpgNotInstalled(error)
+
         if isinstance(content, text_type):
             raise errors.BzrBadParameterUnicode('content')
 
@@ -258,7 +262,7 @@ class GPGStrategy(object):
         try:
             import gpg
         except ImportError as error:
-            raise errors.GpgNotInstalled(error)
+            raise GpgNotInstalled(error)
 
         signed_data = gpg.Data(signed_data)
         if signature:
