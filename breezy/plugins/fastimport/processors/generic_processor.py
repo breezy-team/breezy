@@ -491,7 +491,7 @@ class GenericProcessor(processor.ImportProcessor):
         if self.skip_total and self._revision_count < self.skip_total:
             self.cache_mgr.reftracker.track_heads(cmd)
             # Check that we really do know about this commit-id
-            if not self.cache_mgr.marks.has_key(mark):
+            if mark not in self.cache_mgr.marks:
                 raise plugin_errors.BadRestart(mark)
             self.cache_mgr._blobs = {}
             self._revision_count += 1

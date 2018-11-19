@@ -305,7 +305,7 @@ def main():
                             'EnvironmentError',
                             MB_OK | MB_ICONERROR)
 
-        if hkey not is None:
+        if hkey is not None:
             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,

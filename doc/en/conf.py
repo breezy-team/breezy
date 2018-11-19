@@ -72,8 +72,8 @@ brz_documents = [
     ('tutorials/centralized_workflow',
      'brz-%s-tutorial-centralized' % (brz_locale,),
      brz_title(u'Centralized Workflow Tutorial'), brz_team, 'howto'),
-    ('whats-new/whats-new-in-2.1', 'brz-%s-whats-new' % (brz_locale,),
-     brz_title(u"What's New in Breezy 2.1?"), brz_team, 'howto'),
+    ('whats-new/whats-new-in-3.0', 'brz-%s-whats-new' % (brz_locale,),
+     brz_title(u"What's New in Breezy 3.0?"), brz_team, 'howto'),
 ]
 
 latex_documents = [
