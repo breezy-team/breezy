@@ -1,0 +1,48 @@
+Description: Fix 'brz ignore' in Git working trees.
+Origin: commit, revision id: jelmer@jelmer.uk-20181119201108-q0bj9quv423yuyox
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/1804053
+Last-Update: 2018-11-19
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20181119201108-q0bj9quv423yuyox
+
+=== modified file 'breezy/git/tests/test_blackbox.py'
+--- old/breezy/git/tests/test_blackbox.py	2018-11-16 23:28:26 +0000
++++ new/breezy/git/tests/test_blackbox.py	2018-11-19 20:11:08 +0000
+@@ -65,6 +65,13 @@
+         self.assertEqual(error, '')
+         self.assertTrue("Standalone tree (format: git)" in output)
+ 
++    def test_ignore(self):
++        self.simple_commit()
++        output, error = self.run_bzr(['ignore', 'foo'])
++        self.assertEqual(error, '')
++        self.assertEqual(output, '')
++        self.assertFileEqual("foo\n", ".gitignore")
++
+     def test_branch(self):
+         os.mkdir("gitbranch")
+         GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
+
+=== modified file 'breezy/git/workingtree.py'
+--- old/breezy/git/workingtree.py	2018-11-16 23:21:31 +0000
++++ new/breezy/git/workingtree.py	2018-11-19 20:11:08 +0000
+@@ -83,8 +83,6 @@
+     mode_kind,
+     )
+ 
+-IGNORE_FILENAME = ".gitignore"
+-
+ 
+ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
+     """A Git working tree."""
+@@ -1350,6 +1348,8 @@
+ 
+     supports_merge_modified = False
+ 
++    ignore_filename = ".gitignore"
++
+     @property
+     def _matchingcontroldir(self):
+         from .dir import LocalGitControlDirFormat
+
