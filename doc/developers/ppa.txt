@@ -74,11 +74,11 @@ Supported releases
 We build packages for every supported Ubuntu release
 <https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
 when the release passes end-of-life because all users should
-have upgraded by then.  
+have upgraded by then.
 
 As of August 2010, the following releases are supported:
 
-* Maverick 
+* Maverick
 * Lucid LTS
 * Karmic
 * Jaunty (support ends October 2010)

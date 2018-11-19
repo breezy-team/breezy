@@ -8,14 +8,9 @@ If you want to fix or improve something in Bazaar, we want to help you.
 You can ask at any time for help, on the list, on irc, or through a merge
 proposal on Launchpad.
 
-In particular, the rostered
-`Patch Pilot <http://wiki.bazaar.canonical.com/PatchPilot>`_ 
-is an experienced developer who will help you get your changes in, through
-code review, advice, debugging, writing tests, or whatever it takes.
-
 * `Bazaar mailing list <http://lists.ubuntu.com/mailman/listinfo/bazaar>`_
 
-* IRC in channel ``#bzr`` on ``irc.ubuntu.com``
+* IRC in channel ``#bzr`` on ``irc.freenode.net``
 
 
 Starting

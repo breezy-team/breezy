@@ -56,7 +56,7 @@ To upgrade Breezy on OS X (via MacPorts):
 2. Upgrade to the latest version using **sudo port upgrade brz**
 
 For further information on installing and upgrading, see
-http://wiki.bazaar.canonical.com/Download.
+https://www.breezy-vcs.org/pages/download.html
 
 
 Upgrading required plugins
