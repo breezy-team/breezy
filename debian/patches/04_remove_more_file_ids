@@ -1,0 +1,779 @@
+Origin: commit, revision id: jelmer@jelmer.uk-20181118010216-g4ewm2nyg8cexwa4
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2018-11-18
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20181118010216-g4ewm2nyg8cexwa4
+
+=== modified file 'breezy/bundle/bundle_data.py'
+--- old/breezy/bundle/bundle_data.py	2018-11-16 18:33:17 +0000
++++ new/breezy/bundle/bundle_data.py	2018-11-18 00:25:19 +0000
+@@ -682,7 +682,7 @@
+         old_path = self.old_path(path)
+         return self.base_tree.get_file_revision(old_path)
+ 
+-    def get_size_and_sha1(self, new_path, file_id=None):
++    def get_size_and_sha1(self, new_path):
+         """Return the size and sha1 hash of the given file id.
+         If the file was not locally modified, this is extracted
+         from the base_tree. Rather than re-reading the file.
+
+=== modified file 'breezy/bzr/inventorytree.py'
+--- old/breezy/bzr/inventorytree.py	2018-11-17 16:53:10 +0000
++++ new/breezy/bzr/inventorytree.py	2018-11-18 00:25:19 +0000
+@@ -207,7 +207,7 @@
+             return self.root_inventory.iter_entries_by_dir(
+                 specific_file_ids=inventory_file_ids)
+ 
+-    def iter_child_entries(self, path, file_id=None):
++    def iter_child_entries(self, path):
+         with self.lock_read():
+             ie = self._path2ie(path)
+             if ie.kind != 'directory':
+
+=== modified file 'breezy/bzr/remote.py'
+--- old/breezy/bzr/remote.py	2018-11-17 16:53:10 +0000
++++ new/breezy/bzr/remote.py	2018-11-18 00:25:19 +0000
+@@ -961,23 +961,23 @@
+                 format, name, root, subdir, force_mtime=force_mtime)
+         return ret
+ 
+-    def annotate_iter(self, path, file_id=None,
++    def annotate_iter(self, path,
+                       default_revision=_mod_revision.CURRENT_REVISION):
+         """Return an iterator of revision_id, line tuples.
+ 
+         For working trees (and mutable trees in general), the special
+         revision_id 'current:' will be used for lines that are new in this
+         tree, e.g. uncommitted changes.
+-        :param file_id: The file to produce an annotated version from
+         :param default_revision: For lines that don't match a basis, mark them
+             with this revision id. Not all implementations will make use of
+             this value.
+         """
+         ret = self._repository._annotate_file_revision(
+-            self.get_revision_id(), path, file_id, default_revision)
++            self.get_revision_id(), path, file_id=None,
++            default_revision=default_revision)
+         if ret is None:
+             return super(RemoteInventoryTree, self).annotate_iter(
+-                path, file_id, default_revision=default_revision)
++                path, default_revision=default_revision)
+         return ret
+ 
+ 
+
+=== modified file 'breezy/bzr/workingtree.py'
+--- old/breezy/bzr/workingtree.py	2018-11-16 18:33:17 +0000
++++ new/breezy/bzr/workingtree.py	2018-11-18 00:25:19 +0000
+@@ -1458,7 +1458,7 @@
+                 # indeed dirty.  - RBC 20060907
+                 self._write_inventory(self._inventory)
+ 
+-    def stored_kind(self, path, file_id=None):
++    def stored_kind(self, path):
+         """See Tree.stored_kind"""
+         return self._path2ie(path).kind
+ 
+
+=== modified file 'breezy/git/memorytree.py'
+--- old/breezy/git/memorytree.py	2018-11-11 14:23:06 +0000
++++ new/breezy/git/memorytree.py	2018-11-18 00:25:19 +0000
+@@ -73,7 +73,7 @@
+                 if kinds[pos] is None:
+                     kinds[pos] = self.kind(f)
+ 
+-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
++    def put_file_bytes_non_atomic(self, path, bytes):
+         """See MutableTree.put_file_bytes_non_atomic."""
+         self._file_transport.put_bytes(path, bytes)
+ 
+@@ -192,14 +192,14 @@
+             raise AssertionError('unknown type %d' % stat_val.st_mode)
+         return index_entry_from_stat(stat_val, blob.id, 0)
+ 
+-    def get_file_with_stat(self, path, file_id=None):
+-        return (self.get_file(path, file_id), self._lstat(path))
++    def get_file_with_stat(self, path):
++        return (self.get_file(path), self._lstat(path))
+ 
+-    def get_file(self, path, file_id=None):
++    def get_file(self, path):
+         """See Tree.get_file."""
+         return self._file_transport.get(path)
+ 
+-    def get_file_sha1(self, path, file_id=None, stat_value=None):
++    def get_file_sha1(self, path, stat_value=None):
+         """See Tree.get_file_sha1()."""
+         stream = self._file_transport.get(path)
+         return osutils.sha_file(stream)
+
+=== modified file 'breezy/git/object_store.py'
+--- old/breezy/git/object_store.py	2018-11-16 18:33:17 +0000
++++ new/breezy/git/object_store.py	2018-11-18 00:25:19 +0000
+@@ -235,17 +235,17 @@
+             except errors.NoSuchId:
+                 pass
+             else:
+-                pkind = ptree.kind(ppath, file_id)
++                pkind = ptree.kind(ppath)
+                 if kind == "file":
+                     if (pkind == "file" and
+-                            ptree.get_file_sha1(ppath, file_id) == other):
++                            ptree.get_file_sha1(ppath) == other):
+                         return (
+-                            file_id, ptree.get_file_revision(ppath, file_id))
++                            file_id, ptree.get_file_revision(ppath))
+                 if kind == "symlink":
+                     if (pkind == "symlink" and
+-                            ptree.get_symlink_target(ppath, file_id) == other):
++                            ptree.get_symlink_target(ppath) == other):
+                         return (
+-                            file_id, ptree.get_file_revision(ppath, file_id))
++                            file_id, ptree.get_file_revision(ppath))
+         raise KeyError
+ 
+     # Find all the changed blobs
+@@ -254,7 +254,7 @@
+         if name[1] in BANNED_FILENAMES:
+             continue
+         if kind[1] == "file":
+-            sha1 = tree.get_file_sha1(path[1], file_id)
++            sha1 = tree.get_file_sha1(path[1])
+             blob_id = None
+             try:
+                 (pfile_id, prevision) = find_unchanged_parent_ie(
+@@ -271,7 +271,7 @@
+                     if not changed_content:
+                         # no-change merge ?
+                         blob = Blob()
+-                        blob.data = tree.get_file_text(path[1], file_id)
++                        blob.data = tree.get_file_text(path[1])
+                         blob_id = blob.id
+             if blob_id is None:
+                 new_blobs.append((path[1], file_id))
+@@ -282,7 +282,7 @@
+                         ("blob", blob_id),
+                         (file_id, tree.get_file_revision(path[1])), path[1])
+         elif kind[1] == "symlink":
+-            target = tree.get_symlink_target(path[1], file_id)
++            target = tree.get_symlink_target(path[1])
+             blob = symlink_to_blob(target)
+             shamap[path[1]] = blob.id
+             if add_cache_entry is not None:
+@@ -294,7 +294,7 @@
+             except KeyError:
+                 if changed_content:
+                     yield (path[1], blob,
+-                           (file_id, tree.get_file_revision(path[1], file_id)))
++                           (file_id, tree.get_file_revision(path[1])))
+         elif kind[1] is None:
+             shamap[path[1]] = None
+         elif kind[1] != 'directory':
+@@ -338,7 +338,7 @@
+             except KeyError:
+                 # no-change merge ?
+                 blob = Blob()
+-                blob.data = tree.get_file_text(path, ie.file_id)
++                blob.data = tree.get_file_text(path)
+                 if add_cache_entry is not None:
+                     add_cache_entry(blob, (ie.file_id, ie.revision), path)
+                 return blob.id
+@@ -593,9 +593,8 @@
+                 # Perhaps it's a symlink ?
+                 tree = self.tree_cache.revision_tree(revision)
+                 path = tree.id2path(file_id)
+-                if tree.kind(path, file_id) == 'symlink':
+-                    blob = symlink_to_blob(
+-                        tree.get_symlink_target(path, file_id))
++                if tree.kind(path) == 'symlink':
++                    blob = symlink_to_blob(tree.get_symlink_target(path))
+             _check_expected_sha(expected_sha, blob)
+             yield blob
+ 
+
+=== modified file 'breezy/git/remote.py'
+--- old/breezy/git/remote.py	2018-11-16 18:35:30 +0000
++++ new/breezy/git/remote.py	2018-11-18 00:25:19 +0000
+@@ -816,13 +816,13 @@
+         f.seek(0)
+         return osutils.file_iterator(f)
+ 
+-    def is_versioned(self, path, file_id=None):
++    def is_versioned(self, path):
+         raise GitSmartRemoteNotSupported(self.is_versioned, self)
+ 
+     def has_filename(self, path):
+         raise GitSmartRemoteNotSupported(self.has_filename, self)
+ 
+-    def get_file_text(self, path, file_id=None):
++    def get_file_text(self, path):
+         raise GitSmartRemoteNotSupported(self.get_file_text, self)
+ 
+ 
+
+=== modified file 'breezy/git/tree.py'
+--- old/breezy/git/tree.py	2018-11-16 23:21:31 +0000
++++ new/breezy/git/tree.py	2018-11-18 00:25:19 +0000
+@@ -461,7 +461,7 @@
+         file_id = self._fileid_map.lookup_file_id(path)
+         return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
+ 
+-    def iter_child_entries(self, path, file_id=None):
++    def iter_child_entries(self, path):
+         (store, mode, tree_sha) = self._lookup_path(path)
+ 
+         if mode is not None and not stat.S_ISDIR(mode):
+
+=== modified file 'breezy/hashcache.py'
+--- old/breezy/hashcache.py	2018-11-12 01:41:38 +0000
++++ new/breezy/hashcache.py	2018-11-18 00:25:19 +0000
+@@ -173,7 +173,7 @@
+             if self._filter_provider is None:
+                 filters = []
+             else:
+-                filters = self._filter_provider(path=path, file_id=None)
++                filters = self._filter_provider(path=path)
+             digest = self._really_sha1_file(abspath, filters)
+         elif stat.S_ISLNK(mode):
+             target = osutils.readlink(abspath)
+
+=== modified file 'breezy/memorytree.py'
+--- old/breezy/memorytree.py	2018-11-16 18:33:17 +0000
++++ new/breezy/memorytree.py	2018-11-18 00:25:19 +0000
+@@ -85,11 +85,11 @@
+         missing files, so is a no-op.
+         """
+ 
+-    def get_file(self, path, file_id=None):
++    def get_file(self, path):
+         """See Tree.get_file."""
+         return self._file_transport.get(path)
+ 
+-    def get_file_sha1(self, path, file_id=None, stat_value=None):
++    def get_file_sha1(self, path, stat_value=None):
+         """See Tree.get_file_sha1()."""
+         stream = self._file_transport.get(path)
+         return sha_file(stream)
+@@ -147,9 +147,8 @@
+     def is_executable(self, path):
+         return self._inventory.get_entry_by_path(path).executable
+ 
+-    def kind(self, path, file_id=None):
+-        if file_id is None:
+-            file_id = self.path2id(path)
++    def kind(self, path):
++        file_id = self.path2id(path)
+         return self._inventory[file_id].kind
+ 
+     def mkdir(self, path, file_id=None):
+@@ -234,7 +233,7 @@
+             else:
+                 raise NotImplementedError(self._populate_from_branch)
+ 
+-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
++    def put_file_bytes_non_atomic(self, path, bytes):
+         """See MutableTree.put_file_bytes_non_atomic."""
+         self._file_transport.put_bytes(path, bytes)
+ 
+@@ -256,7 +255,7 @@
+         else:
+             self._locks -= 1
+ 
+-    def unversion(self, paths, file_ids=None):
++    def unversion(self, paths):
+         """Remove the paths from the current versioned set.
+ 
+         When a file_id is unversioned, all of its children are automatically
+@@ -269,17 +268,12 @@
+             # XXX: This should be in mutabletree, but the inventory-save action
+             # is not relevant to memory tree. Until that is done in unlock by
+             # working tree, we cannot share the implementation.
+-            if file_ids is None:
+-                file_ids = set()
+-                for path in paths:
+-                    file_id = self.path2id(path)
+-                    if file_id is None:
+-                        raise errors.NoSuchFile(path)
+-                    file_ids.add(file_id)
+-            else:
+-                for file_id in file_ids:
+-                    if not self._inventory.has_id(file_id):
+-                        raise errors.NoSuchId(self, file_id)
++            file_ids = set()
++            for path in paths:
++                file_id = self.path2id(path)
++                if file_id is None:
++                    raise errors.NoSuchFile(path)
++                file_ids.add(file_id)
+             for file_id in file_ids:
+                 if self._inventory.has_id(file_id):
+                     self._inventory.remove_recursive_id(file_id)
+
+=== modified file 'breezy/merge.py'
+--- old/breezy/merge.py	2018-11-16 18:33:17 +0000
++++ new/breezy/merge.py	2018-11-18 01:02:16 +0000
+@@ -250,17 +250,17 @@
+     @decorators.cachedproperty
+     def base_lines(self):
+         """The lines of the 'base' version of the file."""
+-        return self._merger.get_lines(self._merger.base_tree, self.base_path, self.file_id)
++        return self._merger.get_lines(self._merger.base_tree, self.base_path)
+ 
+     @decorators.cachedproperty
+     def this_lines(self):
+         """The lines of the 'this' version of the file."""
+-        return self._merger.get_lines(self._merger.this_tree, self.this_path, self.file_id)
++        return self._merger.get_lines(self._merger.this_tree, self.this_path)
+ 
+     @decorators.cachedproperty
+     def other_lines(self):
+         """The lines of the 'other' version of the file."""
+-        return self._merger.get_lines(self._merger.other_tree, self.other_path, self.file_id)
++        return self._merger.get_lines(self._merger.other_tree, self.other_path)
+ 
+ 
+ class Merger(object):
+@@ -1080,42 +1080,42 @@
+         self.working_tree.set_merge_modified(modified_hashes)
+ 
+     @staticmethod
+-    def parent(entry, file_id):
++    def parent(entry):
+         """Determine the parent for a file_id (used as a key method)"""
+         if entry is None:
+             return None
+         return entry.parent_id
+ 
+     @staticmethod
+-    def name(entry, file_id):
++    def name(entry):
+         """Determine the name for a file_id (used as a key method)"""
+         if entry is None:
+             return None
+         return entry.name
+ 
+     @staticmethod
+-    def contents_sha1(tree, path, file_id=None):
++    def contents_sha1(tree, path):
+         """Determine the sha1 of the file contents (used as a key method)."""
+         try:
+-            return tree.get_file_sha1(path, file_id)
++            return tree.get_file_sha1(path)
+         except errors.NoSuchFile:
+             return None
+ 
+     @staticmethod
+-    def executable(tree, path, file_id=None):
++    def executable(tree, path):
+         """Determine the executability of a file-id (used as a key method)."""
+         try:
+-            if tree.kind(path, file_id) != "file":
++            if tree.kind(path) != "file":
+                 return False
+         except errors.NoSuchFile:
+             return None
+         return tree.is_executable(path)
+ 
+     @staticmethod
+-    def kind(tree, path, file_id=None):
++    def kind(tree, path):
+         """Determine the kind of a file-id (used as a key method)."""
+         try:
+-            return tree.kind(path, file_id)
++            return tree.kind(path)
+         except errors.NoSuchFile:
+             return None
+ 
+@@ -1400,7 +1400,7 @@
+         else:
+             return 'not_applicable', None
+ 
+-    def get_lines(self, tree, path, file_id=None):
++    def get_lines(self, tree, path):
+         """Return the lines in a file, or an empty list."""
+         if path is None:
+             return []
+@@ -1418,9 +1418,9 @@
+         # it's possible that we got here with base as a different type.
+         # if so, we just want two-way text conflicts.
+         base_path, other_path, this_path = paths
+-        base_lines = self.get_lines(self.base_tree, base_path, file_id)
+-        other_lines = self.get_lines(self.other_tree, other_path, file_id)
+-        this_lines = self.get_lines(self.this_tree, this_path, file_id)
++        base_lines = self.get_lines(self.base_tree, base_path)
++        other_lines = self.get_lines(self.other_tree, other_path)
++        this_lines = self.get_lines(self.this_tree, this_path)
+         m3 = merge3.Merge3(base_lines, this_lines, other_lines,
+                            is_cherrypick=self.cherrypick)
+         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
+@@ -1703,7 +1703,7 @@
+ 
+     requires_file_merge_plan = False
+ 
+-    def dump_file(self, temp_dir, name, tree, path, file_id=None):
++    def dump_file(self, temp_dir, name, tree, path):
+         out_path = osutils.pathjoin(temp_dir, name)
+         with open(out_path, "wb") as out_file:
+             in_file = tree.get_file(path)
+@@ -1722,11 +1722,11 @@
+         try:
+             new_file = osutils.pathjoin(temp_dir, "new")
+             this = self.dump_file(
+-                temp_dir, "this", self.this_tree, this_path, file_id)
++                temp_dir, "this", self.this_tree, this_path)
+             base = self.dump_file(
+-                temp_dir, "base", self.base_tree, base_path, file_id)
++                temp_dir, "base", self.base_tree, base_path)
+             other = self.dump_file(
+-                temp_dir, "other", self.other_tree, other_path, file_id)
++                temp_dir, "other", self.other_tree, other_path)
+             status = breezy.patch.diff3(new_file, this, base, other)
+             if status not in (0, 1):
+                 raise errors.BzrError("Unhandled diff3 exit code")
+
+=== modified file 'breezy/mutabletree.py'
+--- old/breezy/mutabletree.py	2018-11-16 18:33:17 +0000
++++ new/breezy/mutabletree.py	2018-11-18 00:25:19 +0000
+@@ -304,7 +304,7 @@
+         :return: None
+         """
+ 
+-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
++    def put_file_bytes_non_atomic(self, path, bytes):
+         """Update the content of a file in the tree.
+ 
+         Note that the file is written in-place rather than being
+
+=== modified file 'breezy/plugins/weave_fmt/test_repository.py'
+--- old/breezy/plugins/weave_fmt/test_repository.py	2018-11-11 04:08:32 +0000
++++ new/breezy/plugins/weave_fmt/test_repository.py	2018-11-18 01:02:16 +0000
+@@ -143,7 +143,7 @@
+         control.create_branch()
+         tree = control.create_workingtree()
+         tree.add(['foo'], [b'Foo:Bar'], ['file'])
+-        tree.put_file_bytes_non_atomic('foo', b'content\n', b'Foo:Bar')
++        tree.put_file_bytes_non_atomic('foo', b'content\n')
+         try:
+             tree.commit('first post', rev_id=b'first')
+         except IllegalPath:
+
+=== modified file 'breezy/tests/per_intertree/test_compare.py'
+--- old/breezy/tests/per_intertree/test_compare.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_intertree/test_compare.py	2018-11-18 01:02:16 +0000
+@@ -805,15 +805,13 @@
+         tree1.mkdir('changing', b'parent-id')
+         tree1.mkdir('changing/unchanging', b'mid-id')
+         tree1.add(['changing/unchanging/file'], [b'file-id'], ['file'])
+-        tree1.put_file_bytes_non_atomic(
+-            'changing/unchanging/file', b'a file', file_id=b'file-id')
++        tree1.put_file_bytes_non_atomic('changing/unchanging/file', b'a file')
+         tree2 = self.make_to_branch_and_tree('2')
+         tree2.set_root_id(tree1.get_root_id())
+         tree2.mkdir('changed', b'parent-id')
+         tree2.mkdir('changed/unchanging', b'mid-id')
+         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
+-        tree2.put_file_bytes_non_atomic(
+-            'changed/unchanging/file', b'changed content', file_id=b'file-id')
++        tree2.put_file_bytes_non_atomic('changed/unchanging/file', b'changed content')
+         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+         # parent-id has changed, as has file-id
+         root_id = tree1.path2id('')
+@@ -832,16 +830,14 @@
+         tree1.mkdir('changed', b'parent-id')
+         tree1.mkdir('changed/unchanging', b'mid-id')
+         tree1.add(['changed/unchanging/file'], [b'file-id'], ['file'])
+-        tree1.put_file_bytes_non_atomic(
+-            'changed/unchanging/file', b'a file',
+-            b'file-id')
++        tree1.put_file_bytes_non_atomic('changed/unchanging/file', b'a file')
+         tree2 = self.make_to_branch_and_tree('2')
+         tree2.set_root_id(b'new')
+         tree2.mkdir('changed', b'parent-id')
+         tree2.mkdir('changed/unchanging', b'mid-id')
+         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
+         tree2.put_file_bytes_non_atomic(
+-            'changed/unchanging/file', b'changed content', file_id=b'file-id')
++            'changed/unchanging/file', b'changed content')
+         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+         # old is gone, new is added, parent-id has changed(reparented), as has
+         # file-id(content)
+
+=== modified file 'breezy/tests/per_repository_vf/test_repository.py'
+--- old/breezy/tests/per_repository_vf/test_repository.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_repository_vf/test_repository.py	2018-11-18 01:02:16 +0000
+@@ -271,8 +271,7 @@
+         with tree.lock_write():
+             self.assertEqual(set(), set(repo.texts.keys()))
+             tree.add(['foo'], [file_id], ['file'])
+-            tree.put_file_bytes_non_atomic(
+-                'foo', b'content\n', file_id=file_id)
++            tree.put_file_bytes_non_atomic('foo', b'content\n')
+             try:
+                 rev_key = (tree.commit("foo"),)
+             except errors.IllegalPath:
+@@ -293,16 +292,16 @@
+                              repo.texts.get_parent_map(repo.texts.keys()))
+         tree2 = self.make_branch_and_tree('tree2')
+         tree2.pull(tree.branch)
+-        tree2.put_file_bytes_non_atomic('foo', b'right\n', file_id=b'Foo:Bar')
++        tree2.put_file_bytes_non_atomic('foo', b'right\n')
+         right_key = (tree2.commit('right'),)
+         keys.add(file_key + right_key)
+         parents[file_key + right_key] = (file_key + rev_key,)
+-        tree.put_file_bytes_non_atomic('foo', b'left\n', file_id=b'Foo:Bar')
++        tree.put_file_bytes_non_atomic('foo', b'left\n')
+         left_key = (tree.commit('left'),)
+         keys.add(file_key + left_key)
+         parents[file_key + left_key] = (file_key + rev_key,)
+         tree.merge_from_branch(tree2.branch)
+-        tree.put_file_bytes_non_atomic('foo', b'merged\n', file_id=b'Foo:Bar')
++        tree.put_file_bytes_non_atomic('foo', b'merged\n')
+         try:
+             tree.auto_resolve()
+         except errors.UnsupportedOperation:
+
+=== modified file 'breezy/tests/per_repository_vf/test_write_group.py'
+--- old/breezy/tests/per_repository_vf/test_write_group.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_repository_vf/test_write_group.py	2018-11-18 01:02:16 +0000
+@@ -70,9 +70,7 @@
+         tree.add([''], [b'TREE_ROOT'], ['directory'])
+         tree.add(['dir'], [b'dir-id'], ['directory'])
+         tree.add(['filename'], [b'file-id'], ['file'])
+-        tree.put_file_bytes_non_atomic(
+-            'filename', b'content\n',
+-            file_id=b'file-id')
++        tree.put_file_bytes_non_atomic('filename', b'content\n')
+         tree.commit('Trunk commit', rev_id=b'rev-0')
+         tree.commit('Trunk commit', rev_id=b'rev-1')
+         tree.unlock()
+
+=== modified file 'breezy/tests/per_workingtree/test_parents.py'
+--- old/breezy/tests/per_workingtree/test_parents.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_workingtree/test_parents.py	2018-11-18 00:25:19 +0000
+@@ -442,16 +442,15 @@
+                 self._repository = tree.branch.repository
+                 self._inventory = shape
+ 
+-            def get_file_text(self, path, file_id=None):
+-                if file_id is None:
+-                    file_id = self.path2id(path)
++            def get_file_text(self, path):
++                file_id = self.path2id(path)
+                 ie = self.root_inventory.get_entry(file_id)
+                 if ie.kind != "file":
+                     return b""
+                 return b'a' * ie.text_size
+ 
+-            def get_file(self, path, file_id=None):
+-                return BytesIO(self.get_file_text(path, file_id))
++            def get_file(self, path):
++                return BytesIO(self.get_file_text(path))
+ 
+         with tree.lock_write():
+             if shape.root.revision is None:
+
+=== modified file 'breezy/tests/test_transform.py'
+--- old/breezy/tests/test_transform.py	2018-11-16 18:33:17 +0000
++++ new/breezy/tests/test_transform.py	2018-11-18 00:25:19 +0000
+@@ -2094,16 +2094,16 @@
+         calls = []
+         real_source_get_file = source.get_file
+ 
+-        def get_file(path, file_id=None):
+-            calls.append(file_id)
+-            return real_source_get_file(path, file_id)
++        def get_file(path):
++            calls.append(path)
++            return real_source_get_file(path)
+         source.get_file = get_file
+         target = self.make_branch_and_tree('target')
+         revision_tree = source.basis_tree()
+         revision_tree.lock_read()
+         self.addCleanup(revision_tree.unlock)
+         build_tree(revision_tree, target, source)
+-        self.assertEqual([b'file1-id'], calls)
++        self.assertEqual(['file1'], calls)
+         target.lock_read()
+         self.addCleanup(target.unlock)
+         self.assertEqual([], list(target.iter_changes(revision_tree)))
+@@ -2147,9 +2147,9 @@
+         calls = []
+         real_source_get_file = source.get_file
+ 
+-        def get_file(path, file_id=None):
+-            calls.append(file_id)
+-            return real_source_get_file(path, file_id)
++        def get_file(path):
++            calls.append(path)
++            return real_source_get_file(path)
+         source.get_file = get_file
+         target = self.make_branch_and_tree('target')
+         revision_tree = source.basis_tree()
+
+=== modified file 'breezy/transform.py'
+--- old/breezy/transform.py	2018-11-16 23:21:31 +0000
++++ new/breezy/transform.py	2018-11-18 01:02:16 +0000
+@@ -1796,8 +1796,7 @@
+                     continue
+                 kind = self.final_kind(trans_id)
+                 if kind is None:
+-                    kind = self._tree.stored_kind(
+-                        self._tree.id2path(file_id), file_id)
++                    kind = self._tree.stored_kind(self._tree.id2path(file_id))
+                 parent_trans_id = self.final_parent(trans_id)
+                 parent_file_id = new_path_file_ids.get(parent_trans_id)
+                 if parent_file_id is None:
+@@ -2167,8 +2166,7 @@
+             kind = self._transform.final_kind(trans_id)
+             if kind is None:
+                 kind = self._transform._tree.stored_kind(
+-                    self._transform._tree.id2path(file_id),
+-                    file_id)
++                    self._transform._tree.id2path(file_id))
+             new_entry = inventory.make_entry(
+                 kind,
+                 self._transform.final_name(trans_id),
+@@ -2709,7 +2707,7 @@
+                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
+                                    trans_id)
+             else:
+-                with accelerator_tree.get_file(accelerator_path, file_id) as f:
++                with accelerator_tree.get_file(accelerator_path) as f:
+                     chunks = osutils.file_iterator(f)
+                     if wt.supports_content_filtering():
+                         filters = wt._content_filter_stack(tree_path)
+
+=== modified file 'breezy/tree.py'
+--- old/breezy/tree.py	2018-11-16 18:40:46 +0000
++++ new/breezy/tree.py	2018-11-18 01:02:16 +0000
+@@ -1352,25 +1352,22 @@
+     :return: The canonical path
+     """
+     # go walkin...
+-    cur_id = tree.get_root_id()
+     cur_path = ''
+     bit_iter = iter(path.split("/"))
+     for elt in bit_iter:
+         lelt = normalize(elt)
+         new_path = None
+         try:
+-            for child in tree.iter_child_entries(cur_path, cur_id):
++            for child in tree.iter_child_entries(cur_path):
+                 try:
+                     if child.name == elt:
+                         # if we found an exact match, we can stop now; if
+                         # we found an approximate match we need to keep
+                         # searching because there might be an exact match
+                         # later.
+-                        cur_id = child.file_id
+                         new_path = osutils.pathjoin(cur_path, child.name)
+                         break
+                     elif normalize(child.name) == lelt:
+-                        cur_id = child.file_id
+                         new_path = osutils.pathjoin(cur_path, child.name)
+                 except errors.NoSuchId:
+                     # before a change is committed we can see this error...
+
+=== modified file 'breezy/workingtree.py'
+--- old/breezy/workingtree.py	2018-11-16 18:33:17 +0000
++++ new/breezy/workingtree.py	2018-11-18 00:25:19 +0000
+@@ -362,10 +362,10 @@
+     def has_filename(self, filename):
+         return osutils.lexists(self.abspath(filename))
+ 
+-    def get_file(self, path, file_id=None, filtered=True):
+-        return self.get_file_with_stat(path, file_id, filtered=filtered)[0]
++    def get_file(self, path, filtered=True):
++        return self.get_file_with_stat(path, filtered=filtered)[0]
+ 
+-    def get_file_with_stat(self, path, file_id=None, filtered=True,
++    def get_file_with_stat(self, path, filtered=True,
+                            _fstat=osutils.fstat):
+         """See Tree.get_file_with_stat."""
+         abspath = self.abspath(path)
+@@ -381,13 +381,13 @@
+             file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+         return (file_obj, stat_value)
+ 
+-    def get_file_text(self, path, file_id=None, filtered=True):
+-        with self.get_file(path, file_id, filtered=filtered) as my_file:
++    def get_file_text(self, path, filtered=True):
++        with self.get_file(path, filtered=filtered) as my_file:
+             return my_file.read()
+ 
+-    def get_file_lines(self, path, file_id=None, filtered=True):
++    def get_file_lines(self, path, filtered=True):
+         """See Tree.get_file_lines()"""
+-        with self.get_file(path, file_id, filtered=filtered) as file:
++        with self.get_file(path, filtered=filtered) as file:
+             return file.readlines()
+ 
+     def get_parent_ids(self):
+@@ -456,7 +456,7 @@
+                     new_parents = [revision_id]
+                 tree.set_parent_ids(new_parents)
+ 
+-    def get_file_size(self, path, file_id=None):
++    def get_file_size(self, path):
+         """See Tree.get_file_size"""
+         # XXX: this returns the on-disk size; it should probably return the
+         # canonical size
+@@ -719,7 +719,7 @@
+             self.add(path, file_id, 'directory')
+             return file_id
+ 
+-    def get_symlink_target(self, path, file_id=None):
++    def get_symlink_target(self, path):
+         abspath = self.abspath(path)
+         target = osutils.readlink(abspath)
+         return target
+@@ -753,7 +753,7 @@
+         # checkout in a subdirectory.  This can be avoided by not adding
+         # it.  mbp 20070306
+ 
+-    def extract(self, path, file_id=None, format=None):
++    def extract(self, path, format=None):
+         """Extract a subtree from this tree.
+ 
+         A new branch will be created, relative to the path for this tree.
+@@ -764,7 +764,7 @@
+         """Write the in memory meta data to disk."""
+         raise NotImplementedError(self.flush)
+ 
+-    def kind(self, relpath, file_id=None):
++    def kind(self, relpath):
+         return osutils.file_kind(self.abspath(relpath))
+ 
+     def list_files(self, include_root=False, from_dir=None, recursive=True):
+@@ -900,7 +900,7 @@
+                 self.set_parent_trees(parent_trees)
+             return count
+ 
+-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
++    def put_file_bytes_non_atomic(self, path, bytes):
+         """See MutableTree.put_file_bytes_non_atomic."""
+         with self.lock_write(), open(self.abspath(path), 'wb') as stream:
+             stream.write(bytes)
+@@ -929,7 +929,7 @@
+         """
+         raise NotImplementedError(self.is_ignored)
+ 
+-    def stored_kind(self, path, file_id=None):
++    def stored_kind(self, path):
+         """See Tree.stored_kind"""
+         raise NotImplementedError(self.stored_kind)
+ 
+
+=== modified file 'tools/win32/brz_postinstall.py'
+--- old/tools/win32/brz_postinstall.py	2018-11-17 17:37:42 +0000
++++ new/tools/win32/brz_postinstall.py	2018-11-18 01:02:16 +0000
+@@ -305,7 +305,7 @@
+                             'EnvironmentError',
+                             MB_OK | MB_ICONERROR)
+ 
+-        if hkey not is None:
++        if hkey is not None:
+             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
+             hkey2 = _winreg.CreateKey(hkey, 'command')
+             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
+
