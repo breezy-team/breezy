@@ -83,8 +83,6 @@ from .mapping import (
     mode_kind,
     )
 
-IGNORE_FILENAME = ".gitignore"
-
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
@@ -1349,6 +1347,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     requires_normalized_unicode_filenames = True
 
     supports_merge_modified = False
+
+    ignore_filename = ".gitignore"
 
     @property
     def _matchingcontroldir(self):
