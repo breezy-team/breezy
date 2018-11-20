@@ -1,0 +1,21 @@
+Description: Use 10 minute (rather than 5 second) window when checking mtime behaviour.
+Origin: commit, https://github.com/jelmer/breezy,branch=increase-time-window, revision: 7200
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/1804121
+Last-Update: 2018-11-20
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20181120011229-mqex6csmfwcgrkrc
+
+=== modified file 'breezy/tests/per_tree/test_get_file_mtime.py'
+--- old/breezy/tests/per_tree/test_get_file_mtime.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_tree/test_get_file_mtime.py	2018-11-20 01:12:29 +0000
+@@ -40,7 +40,7 @@
+         # file, working trees return the on-disk time.
+         mtime_file_id = tree.get_file_mtime('one')
+         self.assertIsInstance(mtime_file_id, (float, int))
+-        self.assertTrue(now - 5 < mtime_file_id < now + 5,
++        self.assertTrue(now - 10 * 60 < mtime_file_id < now + 10 + 60,
+                         'now: %f, mtime_file_id: %f' % (now, mtime_file_id))
+         mtime_path = tree.get_file_mtime('one')
+         self.assertEqual(mtime_file_id, mtime_path)
+
