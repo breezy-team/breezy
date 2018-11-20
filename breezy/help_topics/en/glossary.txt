@@ -1,0 +1,204 @@
+Glossary
+========
+
+.. glossary::
+
+  ancestor
+    An ancestor is one of any of the revisions that this revision is based on.
+    The immediately prior revision has a special name, the
+    :term:`parent revision`.
+
+  ancestral parent
+    Any branch that has been merged by another branch and then committed
+    becomes that branches ancestral parent.
+
+  branch
+    a line of development. In the simplest of terms, a branch is the record of
+    all the commits that have been done. Every :term:`working tree` has a
+    branch, but it may be in a different location. The actual revisions
+    produced by the commits are stored in a repository, which is sometimes
+    shared with other
+    branches.
+
+    A frequent activity done by users within the working tree of a branch is to
+    merge another branch. In this way users can share changes between two
+    branches -- even if the branch is run by someone else.
+
+    Bazaar's default behavior is to put the repository, branch, and working
+    tree all in the same place. This combination is called a standalone tree.
+    If there is no tree, it is called a :term:`standalone branch`. If the
+    repository is shared with other branches, it is called a repository branch.
+    A working tree in a different location from its branch is called a
+    checkout.
+
+  branch, bound
+    A bound branch is a branch that does not commit a new revision until after
+    the revision has been applied to another branch and first.
+
+    A bound branch is a part of a :term:`heavyweight checkout`.
+
+  cherry-pick
+    A cherrypick is an operation in which the delta between two revisions is
+    applied to a working tree. The process is roughly similiar to generating a
+    diff between two revisions and applying it to a working tree.
+
+    A cherrypick is a merge in which a range of revisions are selected and
+    merged into a working tree . Performing a limited merge is different than a
+    normal merge because normal merges imply all missing revisions should be
+    merged. One of the results of cherrypicking is the creation of intransitive
+    ancestors, which are revisons that are missing one or more of their
+    ancestors.
+
+    A cherrypick in Bazaar is a bit more advanced than the cherrypick with some
+    other revision control systems, in that a three way merge is performed
+    rather than a strict delta between revisions.
+
+    The downside to cherrypicking is that Bazaar does not track cherrypicked
+    revisions, although this feature is firmly on the wish list.
+
+    A common use-case for cherrypicking is the back-porting of fixes from an
+    ongoing branch of development to stable release branches.
+
+  checkout
+    A checkout is essentially a working tree that is linked to a branch at a
+    different location.
+
+    Checkouts also have local branches, which function as a local cache. This
+    means that checkouts can be used effectively even with branches that are
+    accessed through the Internet. Normal checkouts are sometimes called
+    heavyweight checkouts to distinguish them from lightweight checkouts.
+
+    A lightweight checkout is a related construct that lacks the local branch.
+    Lightweight checkouts are smaller, but require fast access to the branch,
+    such as on a LAN or local hard disk.
+
+    Checkouts provide a location for people to hack on code and commit. Once a
+    user commits, the associated branch is updated with a new revision that
+    represents the changes for the commit.
+
+  dag
+    Directed Acyclic Graph. The graph of revisions where each revision is
+    connected to its parent revisions.
+
+  delta
+    A delta is defined as the changes between two revisions. Any RCS that has
+    revisions typically builds a delta in order to perform a diff
+
+  merge
+    Merging is the process of applying all the changes that were introduced in
+    one branch into another branch, without applying any changes that are
+    already common to both branches. Sometimes a user will not want all of the
+    changes. For these cases, a user may instead prefer a cherrypick, which
+    gives the user the option to apply only those revisions that are wanted.
+
+    As well as altering the working tree, bzr's merge command will also get all
+    of the revisions that a branch has, and add metadata indicating that a
+    merge has been performed.
+
+  merge, criss-cross
+    A failed type of merge caused by two branches merging each other at the
+    same time.
+
+  nuclear launch codes
+    Nuclear launch codes are an example of data that has been committed to a
+    branch that must be removed at all costs. Imagine if one had access to the
+    launch codes for a nuclear warhead, accidentally committed them to a branch
+    and then pushed the branch to a public place.
+
+    In real world situations most people do not have access to nuclear
+    launchcodes. Users may have data such as passwords, proprietary code and
+    other sensitive data. Accidental release of this type of data is
+    potentially damaging to the branch owner -- perhaps damaging enough that
+    the developer may hope for a nuclear disaster!
+
+    A user dealing with a nuclear launch code problem needs specific data in
+    the branch to be exised at all costs and in a rapid manner.
+
+  repository
+    A library of revisions for branches.
+
+  revision
+    A revision is one state of the code.
+
+    bzr is snapshot based, meaning that conceptually it stores the whole state
+    of the tree at each revision. This is in contrast to changeset based, where
+    a revision refers to just the changes that were made in that revision. I
+    said "conceptually", as internally bzr uses delta compression to reduce the
+    amount of data that it stores, and so may only record the changes in a
+    revision. However you must always think of a revision as referring to a
+    whole snapshot.
+
+    A revision also contains some metadata. In particular it stores the
+    committer, and the timestamp when the commit was made, the log message that
+    was given, and the nick of the branch on which the commit was made. It also
+    stores pointers to the parent revisions, i.e. the revision preceeding it,
+    and the tip revisions of any branches that were merged. Lastly it stores a
+    number of revision properties, these is extra information that can be
+    stored with the revision and is immutable, some uses of them are to store
+    the author of the patch if it wasn't the committer (when given using the
+    --author option of bzr commit), or to store information about the bugs
+    fixed in that revision if using the bug-tracker integration.
+
+    A revision also has a name, referred to as a revision id. This is a
+    globally unique identifier for the revision so that it can be referred to
+    without ambiguity. This means that two revisions are identical, if, and
+    only if, they have the same revision id.
+
+    A revision may also be referred to using a revision number, however this is
+    not a globally unique identifier, meaning that revision 14 of your branch
+    may not be the same as revision 14 of my branch, even if they are the same
+    project. The only way to know if they are the same revision is to compare
+    the revision ids. This means that when talking about a revision you must
+    either use it's revision id, or also explain which branch you are referring
+    to when you specify a revision number.
+
+    Tags point at a revision, and so they may also be used to when referring to
+    a commit, but again, two different branches may have the same tag name
+    pointing to two different revisions, and so you should also give the branch
+    to which you are referring when stating a tag name.
+
+  revision, ancestor
+    An ancestor is one of any of the revisions that this revision is based on.
+    The immediately prior revision has a special name, the parent revision.
+
+  revision, ghost
+    A ghost :term:`revision`, also called a ghost, is a revision that a
+    :term:`branch` knows about but does not have.
+
+    Ghost revisions can occur in unusual situations such as the migration of
+    branches from foreign revision control systems into Bazaar format.
+
+    Ghost revisions can be scary the first time that a user bumps into them.
+    Thankfully though, revision ghosts are just like real ghosts (such as they
+    are) in that their discorporeal existence typically causes little, if any,
+    harm.
+
+  revision, parent
+    The revision that comes immediately prior to this revision.
+
+  shared repository
+    A shared repository is similar to the traditional concept of a repository
+    in other VCSs like CVS and Subversion. For example, in Subversion you have
+    a remote repository, which is where all of the history is stored, and
+    locally you don't have any history information, only a checkout of the
+    working tree files. Note that "Shared" in this context means shared between
+    branches. It *may* be shared between people, but standalone branches
+    can also be shared between people.
+
+    In Breezy_ terms, a "Shared Repository" is a location where multiple
+    branches can **share** their revision history information. In order to
+    support decentralized workflows, it is possible for every branch to
+    store its own revision history information. But this is often
+    inefficient, since related branches share history, and they might as
+    well share the storage as well.
+
+  tag
+    A tag is a nickname for a particular :term:`revision`. The typical use is to mark a
+    release of the software so you can easily refer to it later.
+
+  working tree
+    A working tree is a directory with project files that a user can edit.
+
+    Unlike a normal directory, a working tree is associated with a
+    :term:`branch`. The working tree is the space in which commands such as
+    commit and revert operate.

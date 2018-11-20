@@ -908,9 +908,10 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
 
-        If there are any unversioned directories then only the directory is
-        returned, not all its children.  But if there are unversioned files
-        under a versioned subdirectory, they are returned.
+        If there are any unversioned directories and the file format
+        supports versioning directories, then only the directory is returned,
+        not all its children. But if there are unversioned files under a
+        versioned subdirectory, they are returned.
 
         Currently returned depth-first, sorted by name within directories.
         This is the same order used by 'osutils.walkdirs'.
