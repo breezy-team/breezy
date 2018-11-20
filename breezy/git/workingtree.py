@@ -535,8 +535,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     except UnicodeDecodeError:
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
-                if not self._has_dir(relpath):
-                    dirnames.remove(name)
+                    if not self._has_dir(relpath):
+                        dirnames.remove(name)
             for name in filenames:
                 if not self.mapping.is_special_file(name):
                     yp = os.path.join(dir_relpath, name)
@@ -550,12 +550,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            index_paths = set([p.decode('utf-8')
-                               for p, i in self._recurse_index_entries()])
-            all_paths = set(self._iter_files_recursive(include_dirs=True))
-            for p in (all_paths - index_paths):
-                if not self._has_dir(p.encode('utf-8')):
-                    yield p
+            index_paths = set(
+                [p.decode('utf-8') for p, i in self._recurse_index_entries()])
+            all_paths = set(self._iter_files_recursive(include_dirs=False))
+            return iter(all_paths - index_paths)
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""
