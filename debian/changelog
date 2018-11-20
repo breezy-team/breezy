@@ -3,6 +3,9 @@ breezy (3.0.0~bzr7204-1) UNRELEASED; urgency=medium
   * debian/control: Mention in long description that Breezy supports the
     Git and Bazaar file formats.
   * New upstream snapshot.
+   + Drop patch 09_increase_time_window: applied upstream.
+   + Drop patch 06_git_ignore: applied upstream.
+   + Drop patch 07_empty_dir_changed: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Nov 2018 23:52:40 +0000
 

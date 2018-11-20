@@ -1,7 +1,4 @@
 01_selftest_package
 03_spurious_test_failure
 04_remove_more_file_ids
-06_git_ignore
-07_empty_dir_changed
 08_disable_sphinx_epytext
-09_increase_time_window
