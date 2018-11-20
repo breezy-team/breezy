@@ -17,7 +17,7 @@
 """Launchpad.net integration plugin for Bazaar.
 
 This plugin provides facilities for working with Bazaar branches that are
-hosted on Launchpad (http://launchpad.net).  It provides a directory service 
+hosted on Launchpad (http://launchpad.net).  It provides a directory service
 for referring to Launchpad branches using the "lp:" prefix.  For example,
 lp:bzr refers to the Bazaar's main development branch and
 lp:~username/project/branch-name can be used to refer to a specific branch.

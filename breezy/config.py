@@ -2105,7 +2105,7 @@ class CredentialStoreRegistry(registry.Registry):
         :param override_existing: Raise KeyErorr if False and something has
                 already been registered for that key. If True, ignore if there
                 is an existing key (always register the new value).
-        :param fallback: Whether this credential store should be 
+        :param fallback: Whether this credential store should be
                 used as fallback.
         """
         return super(CredentialStoreRegistry,
@@ -2125,7 +2125,7 @@ class CredentialStoreRegistry(registry.Registry):
         :param override_existing: If True, replace the existing object
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
-        :param fallback: Whether this credential store should be 
+        :param fallback: Whether this credential store should be
                 used as fallback.
         """
         return super(CredentialStoreRegistry, self).register_lazy(

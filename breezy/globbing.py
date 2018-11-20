@@ -297,9 +297,9 @@ class ExceptionGlobster(object):
     """A Globster that supports exception patterns.
 
     Exceptions are ignore patterns prefixed with '!'.  Exception
-    patterns take precedence over regular patterns and cause a 
-    matching filename to return None from the match() function.  
-    Patterns using a '!!' prefix are highest precedence, and act 
+    patterns take precedence over regular patterns and cause a
+    matching filename to return None from the match() function.
+    Patterns using a '!!' prefix are highest precedence, and act
     as regular ignores. '!!' patterns are useful to establish ignores
     that apply under paths specified by '!' exception patterns.
     """

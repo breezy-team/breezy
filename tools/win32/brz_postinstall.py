@@ -283,7 +283,7 @@ def main():
                             f.write(i)
             else:
                 print('*** Remove line <%s> from autoexec.bat' % pattern)
-                    
+
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:

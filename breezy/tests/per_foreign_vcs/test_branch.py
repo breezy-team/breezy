@@ -49,8 +49,8 @@ class ForeignBranchFactory(object):
 class ForeignBranchTests(TestCaseWithTransport):
     """Basic tests for foreign branch implementations.
 
-    These tests mainly make sure that the implementation covers the required 
-    bits of the API and returns reasonable values. 
+    These tests mainly make sure that the implementation covers the required
+    bits of the API and returns reasonable values.
     """
     branch_factory = None  # Set to an instance of ForeignBranchFactory by scenario
 
