@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7199-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7199-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Add patch 04_remove_more_file_ids: fix some compatibility issues.
@@ -8,7 +8,7 @@ breezy (3.0.0~bzr7199-1) UNRELEASED; urgency=medium
     when finding unknown files.
   * Add patch 08_disable_sphinx_epytext.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Nov 2018 00:51:18 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Nov 2018 01:10:38 +0000
 
 breezy (3.0.0~bzr7192-1) unstable; urgency=medium
 
