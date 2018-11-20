@@ -53,18 +53,11 @@ Suggests: brz-doc,
           python3-fastimport (>= 0.9.8)
 Description: easy to use distributed version control system
  Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many workflows, reliable, and
- easily extendable.
+ use and intuitive, able to adapt to many file formats and workflows, reliable,
+ and easily extendable.
  .
- Publishing of branches can be done over plain HTTP, that is, no special
- software is needed on the server to host Breezy branches. Branches can
- be pushed to the server via sftp (which most SSH installations come
- with), FTP, or over a custom and faster protocol if brz is installed in
- the remote end.
- .
- Merging in Breezy is easy, as the implementation is able to avoid many
- spurious conflicts, deals well with repeated merges between branches,
- and is able to handle modifications to renamed files correctly.
+ Out of the box, Breezy supports both the Git and Bazaar repository
+ formats.
  .
  Install python3-paramiko if you are going to push branches to remote
  hosts with sftp.
@@ -91,8 +84,8 @@ Suggests: python-breezy-dbg,
 Provides: ${python:Provides}
 Description: distributed version control system - python 2 library
  Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many workflows, reliable, and
- easily extendable.
+ use and intuitive, able to adapt to many file formats and workflows, reliable,
+ and easily extendable.
  .
  This package contains the Breezy Python 2 library.
  .
@@ -120,8 +113,8 @@ Suggests: python3-breezy-dbg,
 Provides: ${python3:Provides}
 Description: distributed version control system - python 3 library
  Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many workflows, reliable, and
- easily extendable.
+ use and intuitive, able to adapt to many file formats and workflows, reliable,
+ and easily extendable.
  .
  This package contains the Breezy Python 3 library.
  .
@@ -140,8 +133,8 @@ Provides: ${python:Provides}
 Replaces: python-breezy (<< 2.4.0~beta1-2)
 Description: distributed version control system - Python 2 testsuite
  Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many workflows, reliable, and
- easily extendable.
+ use and intuitive, able to adapt to many file formats and workflows, reliable,
+ and easily extendable.
  .
  This package contains the breezy test infrastructure and testsuite,
  which is required to run the 'brz selftest' command and to run
@@ -162,7 +155,7 @@ Provides: ${python3:Provides}
 Replaces: python3-breezy (<< 2.4.0~beta1-2)
 Description: distributed version control system - Python 3 testsuite
  Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many workflows, reliable, and
+ use and intuitive, able to adapt to many file formats workflows, reliable, and
  easily extendable.
  .
  This package contains the breezy test infrastructure and testsuite,
@@ -179,17 +172,7 @@ Depends: ${misc:Depends},
 Suggests: brz
 Description: easy to use distributed version control system (documentation)
  Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many workflows, reliable, and
- easily extendable.
- .
- Publishing of branches can be done over plain HTTP, that is, no special
- software is needed on the server to host Breezy branches. Branches can
- be pushed to the server via sftp (which most SSH installations come
- with), FTP, or over a custom and faster protocol if brz is installed in
- the remote end.
- .
- Merging in Breezy is easy, as the implementation is able to avoid many
- spurious conflicts, deals well with repeated merges between branches,
- and is able to handle modifications to renamed files correctly.
+ use and intuitive, able to adapt to many file formats and workflows, reliable,
+ and easily extendable.
  .
  This package provides the documentation.
