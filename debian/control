@@ -41,7 +41,7 @@ Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
 Homepage: https://www.breezy-vcs.org/
 
 Package: brz
-Recommends: python3-gpg, python3-dulwich (>= 0.19.6)
+Recommends: python3-gpg, python3-dulwich (>= 0.19.8)
 Architecture: all
 Depends: python3-breezy (<= ${source:Version}.1~),
          python3-breezy (>= ${source:Version}),
@@ -79,7 +79,7 @@ Depends: python-configobj,
 Recommends: ca-certificates,
             python-launchpadlib,
             ssh-client | python-paramiko,
-            python-dulwich (>= 0.19.6),
+            python-dulwich (>= 0.19.8),
             python-gpg,
 Conflicts: python-paramiko (<< 1.14.1)
 Suggests: python-breezy-dbg,
@@ -108,7 +108,7 @@ Depends: python3-configobj,
 Recommends: ca-certificates,
             python3-launchpadlib,
             ssh-client | python3-paramiko,
-            python3-dulwich (>= 0.19.6),
+            python3-dulwich (>= 0.19.8),
             python3-gpg,
 Conflicts: python3-paramiko (<< 1.14.1)
 Suggests: python3-breezy-dbg,

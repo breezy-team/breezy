@@ -3,6 +3,8 @@ breezy (3.0.0~bzr7199-2) UNRELEASED; urgency=medium
   * Set selftest timeout to 6000 seconds, to help with slow buildds.
   * Add patch 09_increase_time_window: allow more slack when comparing
     mtimes, for slow systems.
+  * debian/control: Fix dependency on python-dulwich to use at least
+    0.19.8.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Nov 2018 02:20:14 +0000
 
