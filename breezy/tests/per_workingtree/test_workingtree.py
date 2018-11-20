@@ -866,12 +866,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         files = sorted(list(tree.list_files()))
         tree.unlock()
         self.assertEqual(
-                (u'.bzrignore', '?', 'file', None),
-                (files[0][0], files[0][1], files[0][2],
-                    getattr(files[0][3], 'file_id', None)))
+            (u'.bzrignore', '?', 'file', None),
+            (files[0][0], files[0][1], files[0][2],
+                getattr(files[0][3], 'file_id', None)))
         self.assertEqual(
-                (u'foo.pyc', 'V', 'file', anid),
-                (files[1][0], files[1][1], files[1][2], files[1][3].file_id))
+            (u'foo.pyc', 'V', 'file', anid),
+            (files[1][0], files[1][1], files[1][2], files[1][3].file_id))
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
