@@ -2,3 +2,4 @@
 03_spurious_test_failure
 04_remove_more_file_ids
 06_git_ignore
+07_empty_dir_changed
