@@ -6,8 +6,9 @@ breezy (3.0.0~bzr7199-1) UNRELEASED; urgency=medium
   * Bump python-gpg from suggests to recommends.
   * Add patch 07_empty_dir_changed: don't consider empty git directories
     when finding unknown files.
+  * Add patch 08_disable_sphinx_epytext.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Nov 2018 20:19:00 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Nov 2018 00:51:18 +0000
 
 breezy (3.0.0~bzr7192-1) unstable; urgency=medium
 
