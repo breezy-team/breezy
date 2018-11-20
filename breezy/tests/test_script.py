@@ -628,12 +628,11 @@ class TestShelve(script.TestCaseWithTransportAndScript):
 
     def test_dont_shelve(self):
         # We intentionally provide no input here to test EOF
-        self.run_script("""
-            $ brz shelve -m 'shelve bar'
-            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit):
-            2>No changes to shelve.
-            """,
-                        null_output_matches_anything=True)
+        self.run_script((
+            "$ brz shelve -m 'shelve bar'\n"
+            "2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): \n"
+            "2>No changes to shelve.\n"
+            ), null_output_matches_anything=True)
         self.run_script("""
             $ brz st
             modified:
