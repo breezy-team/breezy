@@ -49,7 +49,7 @@ Web links
 * `Migration Guide <http://wiki.bazaar.canonical.com/BzrMigration>`_
   |--| for teams migrating history from another VCS tool
 
-* `Glossary <http://wiki.bazaar.canonical.com/BzrGlossary>`_
+* `Glossary <en/user-reference/glossary-help.html>`_
 
 * `Frequently Asked Questions <https://answers.launchpad.net/brz/+faqs>`_
 

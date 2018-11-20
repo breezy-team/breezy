@@ -65,6 +65,13 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(error, '')
         self.assertTrue("Standalone tree (format: git)" in output)
 
+    def test_ignore(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['ignore', 'foo'])
+        self.assertEqual(error, '')
+        self.assertEqual(output, '')
+        self.assertFileEqual("foo\n", ".gitignore")
+
     def test_branch(self):
         os.mkdir("gitbranch")
         GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
