@@ -2240,15 +2240,15 @@ class _PreviewTree(inventorytree.InventoryTree):
                     if not path.startswith(prefix):
                         continue
                     path = path[len(prefix):]
-                yield path, 'V', entry.kind, entry.file_id, entry
+                yield path, 'V', entry.kind, entry
         else:
             if from_dir is None and include_root is True:
-                root_entry = inventory.make_entry('directory', '',
-                                                  ROOT_PARENT, self.get_root_id())
-                yield '', 'V', 'directory', root_entry.file_id, root_entry
+                root_entry = inventory.make_entry(
+                    'directory', '', ROOT_PARENT, self.get_root_id())
+                yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:
-                yield path, 'V', entry.kind, entry.file_id, entry
+                yield path, 'V', entry.kind, entry
 
     def kind(self, path):
         trans_id = self._path2trans_id(path)

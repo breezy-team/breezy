@@ -772,7 +772,7 @@ class BundleTree(Tree):
             # skip the root for compatability with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def sorted_path_id(self):
         paths = []

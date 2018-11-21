@@ -66,12 +66,16 @@ class TreeEntry(object):
         return (isinstance(other, TreeEntry)
                 and other.__class__ == self.__class__)
 
+    kind = None
+
     def kind_character(self):
         return "???"
 
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
+
+    kind = 'directory'
 
     def kind_character(self):
         return "/"
@@ -80,6 +84,8 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
+    kind = 'file'
+
     def kind_character(self):
         return ''
 
@@ -87,12 +93,16 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
+    kind = 'symlink'
+
     def kind_character(self):
         return ''
 
 
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    kind = 'tree-reference'
 
     def kind_character(self):
         return '+'
@@ -258,8 +268,8 @@ class Tree(object):
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
-        :return: iterator over tuples of (path, versioned, kind, file_id,
-            inventory entry)
+        :return: iterator over tuples of
+            (path, versioned, kind, inventory entry)
         """
         raise NotImplementedError(self.list_files)
 

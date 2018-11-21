@@ -294,7 +294,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(rev1, tree.get_file_revision(u''))
             expected = inventory.InventoryDirectory(root_id, '', None)
             expected.revision = rev1
-            self.assertEqual([('', 'V', 'directory', root_id, expected)],
+            self.assertEqual([('', 'V', 'directory', expected)],
                              list(tree.list_files(include_root=True)))
         self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
         tree = wt.branch.repository.revision_tree(_mod_revision.NULL_REVISION)

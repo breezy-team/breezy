@@ -758,7 +758,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             # skip the root for compatability with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
