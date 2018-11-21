@@ -1,0 +1,13 @@
+=== modified file 'breezy/tests/test_timestamp.py'
+--- old/breezy/tests/test_timestamp.py	2018-11-17 01:32:54 +0000
++++ new/breezy/tests/test_timestamp.py	2018-11-21 22:06:20 +0000
+@@ -139,7 +139,7 @@
+             t += random.random() * 24 * 3600 * 30
+             try:
+                 time.gmtime(t)
+-            except OverflowError:
++            except (OverflowError, ValueError):
+                 # We've reached the maximum for time_t on this platform
+                 break
+             if time.localtime(t).tm_year > 9998:
+
