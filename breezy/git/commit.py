@@ -25,6 +25,7 @@ from dulwich.index import (
 import stat
 
 from .. import (
+    bugtracker,
     config as _mod_config,
     gpg,
     osutils,
@@ -227,6 +228,19 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     author = authors[0]
         c.author = fix_person_identifier(author.encode(encoding))
+        try:
+            bugstext = self._revprops.pop('bugs')
+        except KeyError:
+            pass
+        else:
+            message += "\n"
+            for url, status in bugtracker.decode_bug_urls(bugstext):
+                if status == bugtracker.FIXED:
+                    message += "Fixes: %s\n" % url
+                elif status == bugtracker.RELATED:
+                    message += "Bug: %s\n" % url
+                else:
+                    raise bugtracker.InvalidBugStatus(status)
         if self._revprops:
             raise NotImplementedError(self._revprops)
         c.commit_time = int(self._timestamp)

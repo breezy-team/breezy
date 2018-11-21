@@ -250,6 +250,20 @@ class RevpropsRepository(tests.TestCaseWithTransport):
             revprops={'authors': 'Joe Example <joe@example.com>\n'
                                  'Jane Doe <jane@example.com\n>'})
 
+    def test_bugs(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={
+                'bugs': 'https://github.com/jelmer/dulwich/issues/123 fixed\n'
+                })
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(
+            b'base\n'
+            b'Fixes: https://github.com/jelmer/dulwich/issues/123\n',
+            r[r.head()].message)
+
 
 class GitRepositoryFormat(tests.TestCase):
 
