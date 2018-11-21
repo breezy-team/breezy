@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7204-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7204-1) unstable; urgency=medium
 
   * debian/control: Mention in long description that Breezy supports the
     Git and Bazaar file formats.
@@ -10,7 +10,7 @@ breezy (3.0.0~bzr7204-1) UNRELEASED; urgency=medium
   * debian/tests/control: Fix dependency on python-dulwich to use at least
     0.19.8.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 20 Nov 2018 23:52:40 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Nov 2018 20:11:22 +0000
 
 breezy (3.0.0~bzr7199-2) unstable; urgency=medium
 
