@@ -160,12 +160,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertEqual(
                 ('filename', 'V', 'directory', tree.path2id('filename')),
                 (result[0][0], result[0][1], result[0][2],
-                    result[0][3].file_id))
+                    getattr(result[0][3], 'file_id', None)))
         else:
             self.assertEqual(
                 ('filename', '?', 'directory', None),
                 (result[0][0], result[0][1], result[0][2],
-                    result[0][3].file_id))
+                    getattr(result[0][3], 'file_id', None)))
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config
