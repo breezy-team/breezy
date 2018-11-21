@@ -20,13 +20,9 @@
 from __future__ import absolute_import
 
 import os
-import sys
 
 from breezy.lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
-import subprocess
-
 from breezy import (
     config,
     trace,
@@ -45,7 +41,7 @@ from .sixish import (
     text_type,
     )
 
-#verification results
+# verification results
 SIGNATURE_VALID = 0
 SIGNATURE_KEY_MISSING = 1
 SIGNATURE_NOT_VALID = 2
@@ -59,7 +55,8 @@ MODE_CLEAR = 2
 
 class GpgNotInstalled(errors.DependencyNotPresent):
 
-    _fmt = 'python-gpg is not installed, it is needed to verify signatures'
+    _fmt = ('python-gpg is not installed, it is needed to create or '
+            'verify signatures. %(error)s')
 
     def __init__(self, error):
         errors.DependencyNotPresent.__init__(self, 'gpg', error)
@@ -82,7 +79,7 @@ class SignatureVerificationFailed(errors.BzrError):
 
 
 def bulk_verify_signatures(repository, revids, strategy,
-        process_events_callback=None):
+                           process_events_callback=None):
     """Do verifications on a set of revisions
 
     :param repository: repository object
@@ -151,12 +148,14 @@ class LoopbackGPGStrategy(object):
         """Real strategies take a configuration."""
 
     def sign(self, content, mode):
-        return (b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content +
-                b"-----END PSEUDO-SIGNED CONTENT-----\n")
+        return (b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n" + content
+                + b"-----END PSEUDO-SIGNED CONTENT-----\n")
 
     def verify(self, signed_data, signature=None):
-        plain_text = signed_data.replace(b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n", b"")
-        plain_text = plain_text.replace(b"-----END PSEUDO-SIGNED CONTENT-----\n", b"")
+        plain_text = signed_data.replace(
+            b"-----BEGIN PSEUDO-SIGNED CONTENT-----\n", b"")
+        plain_text = plain_text.replace(
+            b"-----END PSEUDO-SIGNED CONTENT-----\n", b"")
         return SIGNATURE_VALID, None, plain_text
 
     def set_acceptable_keys(self, command_line_input):
@@ -195,8 +194,8 @@ class GPGStrategy(object):
             self.context = gpg.Context()
             self.context.armor = True
             self.context.signers = self._get_signing_keys()
-        except ImportError as error:
-            pass # can't use verify()
+        except ImportError:
+            pass  # can't use verify()
 
     def _get_signing_keys(self):
         import gpg
@@ -210,7 +209,8 @@ class GPGStrategy(object):
         if keyname is None or keyname == 'default':
             # 'default' or not setting gpg_signing_key at all means we should
             # use the user email address
-            keyname = config.extract_email_address(self._config_stack.get('email'))
+            keyname = config.extract_email_address(
+                self._config_stack.get('email'))
         possible_keys = self.context.keylist(keyname, secret=True)
         try:
             return [next(possible_keys)]
@@ -225,13 +225,18 @@ class GPGStrategy(object):
         :return: boolean if this strategy can verify signatures
         """
         try:
-            import gpg
+            import gpg  # noqa: F401
             return True
-        except ImportError as error:
+        except ImportError:
             return False
 
     def sign(self, content, mode):
-        import gpg
+        try:
+            import gpg
+        except ImportError as error:
+            raise GpgNotInstalled(
+                'Set create_signatures=no to disable creating signatures.')
+
         if isinstance(content, text_type):
             raise errors.BzrBadParameterUnicode('content')
 
@@ -259,7 +264,8 @@ class GPGStrategy(object):
         try:
             import gpg
         except ImportError as error:
-            raise errors.GpgNotInstalled(error)
+            raise GpgNotInstalled(
+                'Set check_signatures=ignore to disable verifying signatures.')
 
         signed_data = gpg.Data(signed_data)
         if signature:
@@ -269,7 +275,8 @@ class GPGStrategy(object):
         except gpg.errors.BadSignatures as error:
             fingerprint = error.result.signatures[0].fpr
             if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_EXPIRED:
-                expires = self.context.get_key(error.result.signatures[0].fpr).subkeys[0].expires
+                expires = self.context.get_key(
+                    error.result.signatures[0].fpr).subkeys[0].expires
                 if expires > error.result.signatures[0].timestamp:
                     # The expired key was not expired at time of signing.
                     # test_verify_expired_but_valid()
@@ -281,7 +288,8 @@ class GPGStrategy(object):
 
             # GPG does not know this key.
             # test_verify_unknown_key()
-            if error.result.signatures[0].summary & gpg.constants.SIGSUM_KEY_MISSING:
+            if (error.result.signatures[0].summary &
+                    gpg.constants.SIGSUM_KEY_MISSING):
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:], None
 
             return SIGNATURE_NOT_VALID, None, None
@@ -297,7 +305,7 @@ class GPGStrategy(object):
         # it.  test_verify_unacceptable_key()
         fingerprint = result.signatures[0].fpr
         if self.acceptable_keys is not None:
-            if not fingerprint in self.acceptable_keys:
+            if fingerprint not in self.acceptable_keys:
                 return SIGNATURE_KEY_MISSING, fingerprint[-8:], plain_output
         # Yay gpg set the valid bit.
         # Can't write a test for this one as you can't set a key to be
@@ -306,14 +314,18 @@ class GPGStrategy(object):
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
             email = key.uids[0].email
-            return SIGNATURE_VALID, name.decode('utf-8') + u" <" + email.decode('utf-8') + u">", plain_output
+            return (
+                SIGNATURE_VALID,
+                name.decode('utf-8') + u" <" + email.decode('utf-8') + u">",
+                plain_output)
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:
             return SIGNATURE_NOT_VALID, None, plain_output
         # Summary isn't set if sig is valid but key is untrusted but if user
         # has explicity set the key as acceptable we can validate it.
-        if result.signatures[0].summary == 0 and self.acceptable_keys is not None:
+        if (result.signatures[0].summary == 0 and
+                self.acceptable_keys is not None):
             if fingerprint in self.acceptable_keys:
                 # test_verify_untrusted_but_accepted()
                 return SIGNATURE_VALID, None, plain_output
@@ -336,7 +348,7 @@ class GPGStrategy(object):
         acceptable_keys_config = self._config_stack.get('acceptable_keys')
         if acceptable_keys_config is not None:
             patterns = acceptable_keys_config
-        if command_line_input is not None: # command line overrides config
+        if command_line_input is not None:  # command line overrides config
             patterns = command_line_input.split(',')
 
         if patterns:
@@ -350,14 +362,14 @@ class GPGStrategy(object):
                     trace.mutter("Added acceptable key: " + key.subkeys[0].fpr)
                 if not found_key:
                     trace.note(gettext(
-                            "No GnuPG key results for pattern: {0}"
-                                ).format(pattern))
+                        "No GnuPG key results for pattern: {0}"
+                        ).format(pattern))
 
 
 def valid_commits_message(count):
     """returns message for number of commits"""
     return gettext(u"{0} commits with valid signatures").format(
-                                    count[SIGNATURE_VALID])
+        count[SIGNATURE_VALID])
 
 
 def unknown_key_message(count):
@@ -365,7 +377,7 @@ def unknown_key_message(count):
     return ngettext(u"{0} commit with unknown key",
                     u"{0} commits with unknown keys",
                     count[SIGNATURE_KEY_MISSING]).format(
-                                    count[SIGNATURE_KEY_MISSING])
+        count[SIGNATURE_KEY_MISSING])
 
 
 def commit_not_valid_message(count):
@@ -373,7 +385,7 @@ def commit_not_valid_message(count):
     return ngettext(u"{0} commit not valid",
                     u"{0} commits not valid",
                     count[SIGNATURE_NOT_VALID]).format(
-                                        count[SIGNATURE_NOT_VALID])
+        count[SIGNATURE_NOT_VALID])
 
 
 def commit_not_signed_message(count):
@@ -381,7 +393,7 @@ def commit_not_signed_message(count):
     return ngettext(u"{0} commit not signed",
                     u"{0} commits not signed",
                     count[SIGNATURE_NOT_SIGNED]).format(
-                                    count[SIGNATURE_NOT_SIGNED])
+        count[SIGNATURE_NOT_SIGNED])
 
 
 def expired_commit_message(count):
@@ -389,7 +401,7 @@ def expired_commit_message(count):
     return ngettext(u"{0} commit with key now expired",
                     u"{0} commits with key now expired",
                     count[SIGNATURE_EXPIRED]).format(
-                                count[SIGNATURE_EXPIRED])
+        count[SIGNATURE_EXPIRED])
 
 
 def verbose_expired_key_message(result, repo):
@@ -422,9 +434,9 @@ def verbose_valid_message(result):
             signers[uid] += 1
     result = []
     for uid, number in signers.items():
-         result.append(ngettext(u"{0} signed {1} commit",
-                                u"{0} signed {1} commits",
-                                number).format(uid, number))
+        result.append(ngettext(u"{0} signed {1} commit",
+                               u"{0} signed {1} commits",
+                               number).format(uid, number))
     return result
 
 

@@ -49,10 +49,12 @@ class TestCommands(tests.TestCase):
         def pipe_thrower():
             raise IOError(errno.EPIPE, "Bogus pipe error")
         self.assertRaises(IOError, pipe_thrower)
+
         @display_command
         def non_thrower():
             pipe_thrower()
         non_thrower()
+
         @display_command
         def other_thrower():
             raise IOError(errno.ESPIPE, "Bogus pipe error")
@@ -128,31 +130,31 @@ class TestGetAlias(tests.TestCase):
 
     def test_simple(self):
         my_config = self._get_config("[ALIASES]\n"
-            "diff=diff -r -2..-1\n")
+                                     "diff=diff -r -2..-1\n")
         self.assertEqual([u'diff', u'-r', u'-2..-1'],
-            commands.get_alias("diff", config=my_config))
+                         commands.get_alias("diff", config=my_config))
 
     def test_single_quotes(self):
         my_config = self._get_config("[ALIASES]\n"
-            "diff=diff -r -2..-1 --diff-options "
-            "'--strip-trailing-cr -wp'\n")
+                                     "diff=diff -r -2..-1 --diff-options "
+                                     "'--strip-trailing-cr -wp'\n")
         self.assertEqual([u'diff', u'-r', u'-2..-1', u'--diff-options',
                           u'--strip-trailing-cr -wp'],
-                          commands.get_alias("diff", config=my_config))
+                         commands.get_alias("diff", config=my_config))
 
     def test_double_quotes(self):
         my_config = self._get_config("[ALIASES]\n"
-            "diff=diff -r -2..-1 --diff-options "
-            "\"--strip-trailing-cr -wp\"\n")
+                                     "diff=diff -r -2..-1 --diff-options "
+                                     "\"--strip-trailing-cr -wp\"\n")
         self.assertEqual([u'diff', u'-r', u'-2..-1', u'--diff-options',
                           u'--strip-trailing-cr -wp'],
-                          commands.get_alias("diff", config=my_config))
+                         commands.get_alias("diff", config=my_config))
 
     def test_unicode(self):
         my_config = self._get_config("[ALIASES]\n"
-            u'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
+                                     u'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
         self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
-                          commands.get_alias("iam", config=my_config))
+                         commands.get_alias("iam", config=my_config))
 
 
 class TestSeeAlso(tests.TestCase):
@@ -188,7 +190,7 @@ class TestSeeAlso(tests.TestCase):
         """Additional terms can be supplied and are deduped and sorted."""
         command = self._get_command_with_see_also(['foo', 'bar'])
         self.assertEqual(['bar', 'foo', 'gam'],
-            command.get_see_also(['gam', 'bar', 'gam']))
+                         command.get_see_also(['gam', 'bar', 'gam']))
 
 
 class TestRegisterLazy(tests.TestCase):
@@ -246,13 +248,15 @@ class TestExtendCommandHook(tests.TestCase):
         commands.Command.hooks.install_named_hook(
             "extend_command", hook_calls.append, None)
         # create a command, should not fire
+
         class cmd_test_extend_command_hook(commands.Command):
             __doc__ = """A sample command."""
         self.assertEqual([], hook_calls)
         # -- as a builtin
         # register the command class, should not fire
         try:
-            commands.builtin_command_registry.register(cmd_test_extend_command_hook)
+            commands.builtin_command_registry.register(
+                cmd_test_extend_command_hook)
             self.assertEqual([], hook_calls)
             # and ask for the object, should fire
             cmd = commands.get_cmd_object('test-extend-command-hook')
@@ -262,7 +266,8 @@ class TestExtendCommandHook(tests.TestCase):
             self.assertSubset([cmd], hook_calls)
             del hook_calls[:]
         finally:
-            commands.builtin_command_registry.remove('test-extend-command-hook')
+            commands.builtin_command_registry.remove(
+                'test-extend-command-hook')
         # -- as a plugin lazy registration
         try:
             # register the command class, should not fire
@@ -283,8 +288,10 @@ class TestGetCommandHook(tests.TestCase):
         # ui.
         commands.install_bzr_command_hooks()
         hook_calls = []
+
         class ACommand(commands.Command):
             __doc__ = """A sample command."""
+
         def get_cmd(cmd_or_None, cmd_name):
             hook_calls.append(('called', cmd_or_None, cmd_name))
             if cmd_name in ('foo', 'info'):
@@ -318,14 +325,14 @@ class TestCommandNotFound(tests.TestCase):
 
     def test_not_found_no_suggestion(self):
         e = self.assertRaises(errors.BzrCommandError,
-            commands.get_cmd_object, 'idontexistand')
+                              commands.get_cmd_object, 'idontexistand')
         self.assertEqual('unknown command "idontexistand"', str(e))
 
     def test_not_found_with_suggestion(self):
         e = self.assertRaises(errors.BzrCommandError,
-            commands.get_cmd_object, 'statue')
+                              commands.get_cmd_object, 'statue')
         self.assertEqual('unknown command "statue". Perhaps you meant "status"',
-            str(e))
+                         str(e))
 
 
 class TestGetMissingCommandHook(tests.TestCase):
@@ -333,8 +340,10 @@ class TestGetMissingCommandHook(tests.TestCase):
     def hook_missing(self):
         """Hook get_missing_command for testing."""
         self.hook_calls = []
+
         class ACommand(commands.Command):
             __doc__ = """A sample command."""
+
         def get_missing_cmd(cmd_name):
             self.hook_calls.append(('called', cmd_name))
             if cmd_name in ('foo', 'info'):
@@ -377,6 +386,7 @@ class TestListCommandHook(tests.TestCase):
         # The list_commands() hook fires when all_command_names() is invoked.
         hook_calls = []
         commands.install_bzr_command_hooks()
+
         def list_my_commands(cmd_names):
             hook_calls.append('called')
             cmd_names.update(['foo', 'bar'])
@@ -390,6 +400,7 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
 
 class TestPreAndPostCommandHooks(tests.TestCase):
     class TestError(Exception):

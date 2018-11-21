@@ -66,7 +66,7 @@ class TestRemerge(TestCaseWithTransport):
         os.unlink('this/question.OTHER')
 
         self.run_bzr_error(['jello is not versioned'],
-                     'remerge jello --merge-type weave', working_dir='this')
+                           'remerge jello --merge-type weave', working_dir='this')
         self.run_bzr_error(['conflicts encountered'],
                            'remerge hello --merge-type weave',
                            retcode=1, working_dir='this')

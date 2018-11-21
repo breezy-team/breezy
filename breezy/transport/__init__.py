@@ -115,7 +115,7 @@ class TransportListRegistry(registry.Registry):
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
         self.get(key).insert(0,
-                registry._LazyObjectGetter(module_name, member_name))
+                             registry._LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None):
         self.register(key, [], help)
@@ -134,14 +134,14 @@ def register_transport_proto(prefix, help=None, info=None,
 
 
 def register_lazy_transport(prefix, module, classname):
-    if not prefix in transport_list_registry:
+    if prefix not in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_lazy_transport_provider(
         prefix, module, classname)
 
 
 def register_transport(prefix, klass):
-    if not prefix in transport_list_registry:
+    if prefix not in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_transport_provider(prefix, klass)
 
@@ -166,7 +166,7 @@ def unregister_transport(scheme, factory):
     """Unregister a transport."""
     l = transport_list_registry.get(scheme)
     for i in l:
-        o = i.get_obj( )
+        o = i.get_obj()
         if o == factory:
             transport_list_registry.get(scheme).remove(i)
             break
@@ -194,7 +194,7 @@ class _CoalescedOffset(object):
 
     def __repr__(self):
         return '%s(%r, %r, %r)' % (self.__class__.__name__,
-            self.start, self.length, self.ranges)
+                                   self.start, self.length, self.ranges)
 
 
 class LateReadError(object):
@@ -265,7 +265,7 @@ class FileStream(object):
     def fdatasync(self):
         """Force data out to physical disk if possible.
 
-        :raises TransportNotPossible: If this transport has no way to 
+        :raises TransportNotPossible: If this transport has no way to
             flush to disk.
         """
         raise errors.TransportNotPossible(
@@ -310,12 +310,13 @@ class AppendBasedFileStream(FileStream):
 
 class TransportHooks(hooks.Hooks):
     """Mapping of hook names to registered callbacks for transport hooks"""
+
     def __init__(self):
         super(TransportHooks, self).__init__()
         self.add_hook("post_connect",
-            "Called after a new connection is established or a reconnect "
-            "occurs. The sole argument passed is either the connected "
-            "transport or smart medium instance.", (2, 5))
+                      "Called after a new connection is established or a reconnect "
+                      "occurs. The sole argument passed is either the connected "
+                      "transport or smart medium instance.", (2, 5))
 
 
 class Transport(object):
@@ -335,7 +336,7 @@ class Transport(object):
     #       where the biggest benefit between combining reads and
     #       and seeking is. Consider a runtime auto-tune.
     _bytes_to_read_before_seek = 0
-    
+
     hooks = TransportHooks()
 
     def __init__(self, base):
@@ -476,7 +477,7 @@ class Transport(object):
         """
         try:
             return len(multi)
-        except TypeError: # We can't tell how many, because relpaths is a generator
+        except TypeError:  # We can't tell how many, because relpaths is a generator
             return None
 
     def _report_activity(self, bytes, direction):
@@ -499,7 +500,7 @@ class Transport(object):
         if pb is None:
             return
         if total is None:
-            pb.update(msg, count, count+1)
+            pb.update(msg, count, count + 1)
         else:
             pb.update(msg, count, total)
 
@@ -643,7 +644,7 @@ class Transport(object):
         raise errors.NoSmartMedium(self)
 
     def readv(self, relpath, offsets, adjust_for_latency=False,
-        upper_limit=None):
+              upper_limit=None):
         """Get parts of the file at the given relative path.
 
         :param relpath: The path to read data from.
@@ -709,8 +710,8 @@ class Transport(object):
         offset_stack = iter(offsets)
         cur_offset_and_size = next(offset_stack)
         coalesced = self._coalesce_offsets(sorted_offsets,
-                               limit=self._max_readv_combine,
-                               fudge_factor=self._bytes_to_read_before_seek)
+                                           limit=self._max_readv_combine,
+                                           fudge_factor=self._bytes_to_read_before_seek)
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
@@ -723,10 +724,10 @@ class Transport(object):
                 data = fp.read(c_offset.length)
                 if len(data) < c_offset.length:
                     raise errors.ShortReadvError(relpath, c_offset.start,
-                                c_offset.length, actual=len(data))
+                                                 c_offset.length, actual=len(data))
                 for suboffset, subsize in c_offset.ranges:
-                    key = (c_offset.start+suboffset, subsize)
-                    data_map[key] = data[suboffset:suboffset+subsize]
+                    key = (c_offset.start + suboffset, subsize)
+                    data_map[key] = data[suboffset:suboffset + subsize]
 
                 # Now that we've read some data, see if we can yield anything back
                 while cur_offset_and_size in data_map:
@@ -775,7 +776,7 @@ class Transport(object):
                 # don't ask for anything < 0
                 new_offset = 0
             if (upper_limit is not None and
-                new_offset + new_length > upper_limit):
+                    new_offset + new_length > upper_limit):
                 new_length = upper_limit - new_offset
             new_offsets.append((new_offset, new_length))
         # combine the expanded offsets
@@ -836,7 +837,7 @@ class Transport(object):
 
         if max_size <= 0:
             # 'unlimited', but we actually take this to mean 100MB buffer limit
-            max_size = 100*1024*1024
+            max_size = 100 * 1024 * 1024
 
         for start, size in offsets:
             end = start + size
@@ -844,13 +845,13 @@ class Transport(object):
                 and start <= last_end + fudge_factor
                 and start >= cur.start
                 and (limit <= 0 or len(cur.ranges) < limit)
-                and (max_size <= 0 or end - cur.start <= max_size)):
+                    and (max_size <= 0 or end - cur.start <= max_size)):
                 if start < last_end:
                     raise ValueError('Overlapping range not allowed:'
-                        ' last range ended at %s, new one starts at %s'
-                        % (last_end, start))
+                                     ' last range ended at %s, new one starts at %s'
+                                     % (last_end, start))
                 cur.length = end - cur.start
-                cur.ranges.append((start-cur.start, size))
+                cur.ranges.append((start - cur.start, size))
             else:
                 if cur.start is not None:
                     coalesced_offsets.append(cur)
@@ -1136,15 +1137,18 @@ class Transport(object):
 
     def readlink(self, relpath):
         """Return a string representing the path to which the symbolic link points."""
-        raise errors.TransportNotPossible("Dereferencing symlinks is not supported on %s" % self)
+        raise errors.TransportNotPossible(
+            "Dereferencing symlinks is not supported on %s" % self)
 
     def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
-        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
+        raise errors.TransportNotPossible(
+            "Hard links are not supported on %s" % self)
 
     def symlink(self, source, link_name):
         """Create a symlink pointing to source named link_name."""
-        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
+        raise errors.TransportNotPossible(
+            "Symlinks are not supported on %s" % self)
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1172,7 +1176,8 @@ class Transport(object):
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
+        raise errors.TransportNotPossible(
+            "transport locks not supported on %s" % self)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -1185,7 +1190,8 @@ class Transport(object):
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
+        raise errors.TransportNotPossible(
+            "transport locks not supported on %s" % self)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1233,7 +1239,6 @@ class Transport(object):
         # This returns None by default, meaning the transport can't handle the
         # redirection.
         return None
-
 
 
 class _SharedConnection(object):
@@ -1372,7 +1377,7 @@ class ConnectedTransport(Transport):
         if parsed_url.port != self._parsed_url.port:
             error.append('port mismatch')
         if (not (parsed_url.path == self._parsed_url.path[:-1] or
-            parsed_url.path.startswith(self._parsed_url.path))):
+                 parsed_url.path.startswith(self._parsed_url.path))):
             error.append('path mismatch')
         if error:
             extra = ', '.join(error)
@@ -1479,13 +1484,13 @@ class ConnectedTransport(Transport):
         if (parsed_url.scheme == self._parsed_url.scheme
             and parsed_url.user == self._parsed_url.user
             and parsed_url.host == self._parsed_url.host
-            and parsed_url.port == self._parsed_url.port):
+                and parsed_url.port == self._parsed_url.port):
             path = parsed_url.path
             if not path.endswith('/'):
                 # This normally occurs at __init__ time, but it's easier to do
                 # it now to avoid creating two transports for the same base.
                 path += '/'
-            if self._parsed_url.path  == path:
+            if self._parsed_url.path == path:
                 # shortcut, it's really the same transport
                 return self
             # We don't call clone here because the intent is different: we
@@ -1523,7 +1528,7 @@ def location_to_url(location):
     except UnicodeError:
         if urlutils.is_url(location):
             raise urlutils.InvalidURL(path=location,
-                extra='URLs must be properly escaped')
+                                      extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
     else:
         if PY3:
@@ -1545,12 +1550,12 @@ def get_transport_from_path(path, possible_transports=None):
     :return: Transport object for path
     """
     return get_transport_from_url(urlutils.local_path_to_url(path),
-        possible_transports)
+                                  possible_transports)
 
 
 def get_transport_from_url(url, possible_transports=None):
     """Open a transport to access a URL.
-    
+
     :param base: a URL
     :param transports: optional reusable transports list. If not None, created
         transports will be added to the list.
@@ -1606,7 +1611,7 @@ def _try_transport_factories(base, factory_list):
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent as e:
             mutter("failed to instantiate transport %r for %r: %r" %
-                    (factory, base, e))
+                   (factory, base, e))
             last_err = e
             continue
     return None, last_err
@@ -1669,37 +1674,39 @@ class Server(object):
 
 # None is the default transport, for things with no url scheme
 register_transport_proto('file://',
-            help="Access using the standard filesystem (default)")
+                         help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'breezy.transport.local', 'LocalTransport')
 
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).",
-            register_netloc=True)
+                         help="Access using SFTP (most SSH servers provide SFTP).",
+                         register_netloc=True)
 register_lazy_transport('sftp://', 'breezy.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
-#                help="Read-only access of branches exported on the web."
+                         #                help="Read-only access of branches exported on the web."
                          register_netloc=True)
 register_lazy_transport('http+urllib://', 'breezy.transport.http',
                         'HttpTransport')
 register_transport_proto('https+urllib://',
-#                help="Read-only access of branches exported on the web using SSL."
+                         #                help="Read-only access of branches exported on the web using SSL."
                          register_netloc=True)
 register_lazy_transport('https+urllib://', 'breezy.transport.http',
                         'HttpTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
-                 help="Read-only access of branches exported on the web.")
+                         help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
-            help="Read-only access of branches exported on the web using SSL.")
+                         help="Read-only access of branches exported on the web using SSL.")
 # The default http implementation is urllib
 register_lazy_transport('http://', 'breezy.transport.http',
                         'HttpTransport')
 register_lazy_transport('https://', 'breezy.transport.http',
                         'HttpTransport')
 
-register_transport_proto('gio+', help="Access using any GIO supported protocols.")
-register_lazy_transport('gio+', 'breezy.transport.gio_transport', 'GioTransport')
+register_transport_proto(
+    'gio+', help="Access using any GIO supported protocols.")
+register_lazy_transport(
+    'gio+', 'breezy.transport.gio_transport', 'GioTransport')
 
 
 register_transport_proto('memory://')
@@ -1707,8 +1714,8 @@ register_lazy_transport('memory://', 'breezy.transport.memory',
                         'MemoryTransport')
 
 register_transport_proto('readonly+',
-#              help="This modifier converts any transport to be readonly."
-            )
+                         #              help="This modifier converts any transport to be readonly."
+                         )
 register_lazy_transport('readonly+', 'breezy.transport.readonly',
                         'ReadonlyTransportDecorator')
 
@@ -1717,7 +1724,8 @@ register_lazy_transport('fakenfs+', 'breezy.transport.fakenfs',
                         'FakeNFSTransportDecorator')
 
 register_transport_proto('log+')
-register_lazy_transport('log+', 'breezy.transport.log', 'TransportLogDecorator')
+register_lazy_transport('log+', 'breezy.transport.log',
+                        'TransportLogDecorator')
 
 register_transport_proto('trace+')
 register_lazy_transport('trace+', 'breezy.transport.trace',
@@ -1741,7 +1749,7 @@ register_lazy_transport('nosmart+', 'breezy.transport.nosmart',
                         'NoSmartTransportDecorator')
 
 register_transport_proto('bzr://',
-            help="Fast access using the Bazaar smart server.",
+                         help="Fast access using the Bazaar smart server.",
                          register_netloc=True)
 
 register_lazy_transport('bzr://', 'breezy.transport.remote',
@@ -1751,19 +1759,19 @@ register_transport_proto('bzr-v2://', register_netloc=True)
 register_lazy_transport('bzr-v2://', 'breezy.transport.remote',
                         'RemoteTCPTransportV2Only')
 register_transport_proto('bzr+http://',
-#                help="Fast access using the Bazaar smart server over HTTP."
+                         #                help="Fast access using the Bazaar smart server over HTTP."
                          register_netloc=True)
 register_lazy_transport('bzr+http://', 'breezy.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+https://',
-#                help="Fast access using the Bazaar smart server over HTTPS."
+                         #                help="Fast access using the Bazaar smart server over HTTPS."
                          register_netloc=True)
 register_lazy_transport('bzr+https://',
                         'breezy.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.",
-            register_netloc=True)
+                         help="Fast access using the Bazaar smart server over SSH.",
+                         register_netloc=True)
 register_lazy_transport('bzr+ssh://', 'breezy.transport.remote',
                         'RemoteSSHTransport')
 
@@ -1774,5 +1782,5 @@ register_lazy_transport('ssh:', 'breezy.transport.remote',
 
 transport_server_registry = registry.Registry()
 transport_server_registry.register_lazy('bzr', 'breezy.bzr.smart.server',
-    'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
+                                        'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'

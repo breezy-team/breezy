@@ -97,6 +97,7 @@ class Test_CompatibilityFeature(tests.TestCase):
             'a_feature',
             'UnicodeFilenameFeature',
             replacement_module='breezy.tests.features')
+
         def test_caller(message, category=None, stacklevel=1):
             # Find ourselves back from the right frame
             caller = sys._getframe(stacklevel)

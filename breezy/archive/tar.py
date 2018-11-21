@@ -51,10 +51,10 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
     if force_mtime is not None:
         item.mtime = force_mtime
     else:
-        item.mtime = tree.get_file_mtime(tree_path, file_id)
+        item.mtime = tree.get_file_mtime(tree_path)
     if entry.kind == "file":
         item.type = tarfile.REGTYPE
-        if tree.is_executable(tree_path, file_id):
+        if tree.is_executable(tree_path):
             item.mode = 0o755
         else:
             item.mode = 0o644
@@ -62,7 +62,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         # the tarfile contract, which wants the size of the file up front.  We
         # want to make sure it doesn't change, and we need to read it in one
         # go for content filtering.
-        content = tree.get_file_text(tree_path, file_id)
+        content = tree.get_file_text(tree_path)
         item.size = len(content)
         fileobj = BytesIO(content)
     elif entry.kind in ("directory", "tree-reference"):
@@ -75,7 +75,7 @@ def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=N
         item.type = tarfile.SYMTYPE
         item.size = 0
         item.mode = 0o755
-        item.linkname = tree.get_symlink_target(tree_path, file_id)
+        item.linkname = tree.get_symlink_target(tree_path)
         fileobj = None
     else:
         raise errors.BzrError("don't know how to export {%s} of kind %r"
@@ -124,7 +124,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
             rev = tree.repository.get_revision(tree.get_revision_id())
             root_mtime = rev.timestamp
         elif tree.is_versioned(u''):
-            root_mtime = tree.get_file_mtime('', tree.get_root_id())
+            root_mtime = tree.get_file_mtime('')
         else:
             root_mtime = None
 
@@ -138,7 +138,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
         zipstream = gzip.GzipFile(basename, 'w', fileobj=buf,
                                   mtime=root_mtime)
         for chunk in tarball_generator(
-            tree, root, subdir, force_mtime):
+                tree, root, subdir, force_mtime):
             zipstream.write(chunk)
             # Yield the data that was written so far, rinse, repeat.
             yield buf.getvalue()
@@ -160,7 +160,7 @@ def tbz_generator(tree, dest, root, subdir, force_mtime=None):
 
 
 def plain_tar_generator(tree, dest, root, subdir,
-    force_mtime=None):
+                        force_mtime=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -188,13 +188,13 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
 
     if sys.version_info[0] == 2:
         compressor = lzma.LZMACompressor(
-                options={"format": compression_format})
+            options={"format": compression_format})
     else:
         compressor = lzma.LZMACompressor(
-                format={
-                    'xz': lzma.FORMAT_XZ,
-                    'raw': lzma.FORMAT_RAW,
-                    'alone': lzma.FORMAT_ALONE,
+            format={
+                'xz': lzma.FORMAT_XZ,
+                'raw': lzma.FORMAT_RAW,
+                'alone': lzma.FORMAT_ALONE,
                 }[compression_format])
 
     for chunk in tarball_generator(

@@ -234,7 +234,7 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr_error(
             ["^brz: ERROR: Could not move a => b. b is already versioned\\.$"],
             'mv a b')
-        #check that nothing changed
+        # check that nothing changed
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
 
@@ -325,7 +325,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a'])
 
         osutils.rename('a', 'b')
-        self.build_tree(['a']) #touch a
+        self.build_tree(['a'])  # touch a
         self.run_bzr_error(
             ["^brz: ERROR: Could not rename a => b because both files exist."
              " \\(Use --after to tell brz about a rename that has already"
@@ -349,11 +349,11 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
         osutils.rename('a', 'b')
-        self.build_tree(['a']) #touch a
+        self.build_tree(['a'])  # touch a
 
         self.run_bzr('mv a b --after')
         self.assertPathExists('a')
-        self.assertNotInWorkingTree('a')#a should be unknown now.
+        self.assertNotInWorkingTree('a')  # a should be unknown now.
         self.assertPathExists('b')
         self.assertInWorkingTree('b')
 
@@ -373,8 +373,8 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a1', 'a2', 'sub'])
         osutils.rename('a1', 'sub/a1')
         osutils.rename('a2', 'sub/a2')
-        self.build_tree(['a1']) #touch a1
-        self.build_tree(['a2']) #touch a2
+        self.build_tree(['a1'])  # touch a1
+        self.build_tree(['a2'])  # touch a2
 
         self.run_bzr_error(
             ["^brz: ERROR: Could not rename a1 => sub/a1 because both files"
@@ -404,8 +404,8 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a1', 'a2', 'sub'])
         osutils.rename('a1', 'sub/a1')
         osutils.rename('a2', 'sub/a2')
-        self.build_tree(['a1']) #touch a1
-        self.build_tree(['a2']) #touch a2
+        self.build_tree(['a1'])  # touch a1
+        self.build_tree(['a2'])  # touch a2
 
         self.run_bzr('mv a1 a2 sub --after')
         self.assertPathExists('a1')
@@ -517,7 +517,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         out, err = self.run_bzr_error(["Could not rename", "not versioned"],
-            ["mv", u"\xA7", "b"])
+                                      ["mv", u"\xA7", "b"])
 
     def test_mv_removed_non_ascii(self):
         """Clear error on mv of a removed non-ascii file, see lp:898541"""
@@ -528,4 +528,4 @@ class TestMove(TestCaseWithTransport):
         tree.commit(u"Adding \xA7")
         os.remove(u"\xA7")
         out, err = self.run_bzr_error(["Could not rename", "not exist"],
-            ["mv", u"\xA7", "b"])
+                                      ["mv", u"\xA7", "b"])

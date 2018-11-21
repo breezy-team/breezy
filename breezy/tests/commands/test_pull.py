@@ -56,4 +56,3 @@ class TestPull(transport_util.TestCaseWithConnectionHookedTransport):
         pull.outf = ui_testing.StringIOWithEncoding()
         pull.run(self.get_url('remote'), directory='local')
         self.assertEqual(2, len(self.connections))
-

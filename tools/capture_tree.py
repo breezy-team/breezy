@@ -2,14 +2,16 @@
 
 # Copyright (C) 2005 Canonical Ltd
 
-"""Print to stdout a description of the current directory, 
+"""Print to stdout a description of the current directory,
 formatted as a Python data structure.
 
 This can be useful in tests that need to recreate directory
 contents."""
 
-import sys
+from __future__ import print_function
+
 import os
+import sys
 
 from breezy.trace import enable_default_logging
 enable_default_logging()

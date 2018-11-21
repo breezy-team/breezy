@@ -40,12 +40,12 @@ class EmailSender(object):
     _smtplib_implementation = SMTPConnection
 
     def __init__(self, branch, revision_id, config, local_branch=None,
-        op='commit'):
+                 op='commit'):
         self.config = config
         self.branch = branch
         self.repository = branch.repository
         if (local_branch is not None and
-            local_branch.repository.has_revision(revision_id)):
+                local_branch.repository.has_revision(revision_id)):
             self.repository = local_branch.repository
         self._revision_id = revision_id
         self.revision = None
@@ -126,7 +126,8 @@ class EmailSender(object):
         revid_new = self.revision.revision_id
         if self.revision.parent_ids:
             revid_old = self.revision.parent_ids[0]
-            tree_new, tree_old = self.repository.revision_trees((revid_new, revid_old))
+            tree_new, tree_old = self.repository.revision_trees(
+                (revid_new, revid_old))
         else:
             # revision_trees() doesn't allow None or 'null:' to be passed as a
             # revision. So we need to call revision_tree() twice.
@@ -140,7 +141,7 @@ class EmailSender(object):
         diff_content = StringIO()
         diff_options = self.config.get('post_commit_diffoptions')
         show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)
-        numlines = diff_content.getvalue().count('\n')+1
+        numlines = diff_content.getvalue().count('\n') + 1
         if numlines <= difflimit:
             return diff_content.getvalue()
         else:
@@ -158,7 +159,7 @@ class EmailSender(object):
 
     def _command_line(self):
         cmd = [self.mailer(), '-s', self.subject(), '-a',
-                "From: " + self.from_address()]
+               "From: " + self.from_address()]
         cmd.extend(self.to())
         return cmd
 
@@ -222,11 +223,12 @@ class EmailSender(object):
             msgfile.seek(0)
 
             process = subprocess.Popen(self._command_line(),
-                stdin=msgfile.fileno())
+                                       stdin=msgfile.fileno())
 
             rc = process.wait()
             if rc != 0:
-                raise errors.BzrError("Failed to send email: exit status %s" % (rc,))
+                raise errors.BzrError(
+                    "Failed to send email: exit status %s" % (rc,))
         finally:
             msgfile.close()
 
@@ -245,7 +247,7 @@ class EmailSender(object):
             msg.add_inline_attachment(diff, self.diff_filename())
 
         # Add revision_mail_headers to the headers
-        if header != None:
+        if header is None:
             for k, v in header.items():
                 msg[k] = v
 
@@ -269,10 +271,10 @@ class EmailSender(object):
     def subject(self):
         _subject = self.config.get('post_commit_subject')
         if _subject is None:
-            _subject = ("Rev %d: %s in %s" % 
-                (self.revno,
-                 self.revision.get_summary(),
-                 self.url()))
+            _subject = ("Rev %d: %s in %s" %
+                        (self.revno,
+                         self.revision.get_summary(),
+                         self.url()))
         return self._format(_subject)
 
     def diff_filename(self):
@@ -280,26 +282,26 @@ class EmailSender(object):
 
 
 opt_post_commit_body = Option("post_commit_body",
-    help="Body for post commit emails.")
+                              help="Body for post commit emails.")
 opt_post_commit_subject = Option("post_commit_subject",
-    help="Subject for post commit emails.")
+                                 help="Subject for post commit emails.")
 opt_post_commit_log_format = Option('post_commit_log_format',
-    default='long', help="Log format for option.")
+                                    default='long', help="Log format for option.")
 opt_post_commit_difflimit = Option('post_commit_difflimit',
-    default=1000, from_unicode=int_from_store,
-    help="Maximum number of lines in diffs.")
+                                   default=1000, from_unicode=int_from_store,
+                                   help="Maximum number of lines in diffs.")
 opt_post_commit_push_pull = Option('post_commit_push_pull',
-    from_unicode=bool_from_store,
-    help="Whether to send emails on push and pull.")
+                                   from_unicode=bool_from_store,
+                                   help="Whether to send emails on push and pull.")
 opt_post_commit_diffoptions = Option('post_commit_diffoptions',
-    help="Diff options to use.")
+                                     help="Diff options to use.")
 opt_post_commit_sender = Option('post_commit_sender',
-    help='From address to use for emails.')
+                                help='From address to use for emails.')
 opt_post_commit_to = ListOption('post_commit_to',
-    help='Address to send commit emails to.')
+                                help='Address to send commit emails to.')
 opt_post_commit_mailer = Option('post_commit_mailer',
-    help='Mail client to use.', default='mail')
+                                help='Mail client to use.', default='mail')
 opt_post_commit_url = Option('post_commit_url',
-    help='URL to mention for branch in post commit messages.')
+                             help='URL to mention for branch in post commit messages.')
 opt_revision_mail_headers = ListOption('revision_mail_headers',
-    help="Extra revision headers.")
+                                       help="Extra revision headers.")

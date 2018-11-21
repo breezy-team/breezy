@@ -44,7 +44,8 @@ class TestListFiles(TestCaseWithTree):
                     ]
         with tree.lock_read():
             actual = [(path, status, kind, ie.file_id)
-                      for path, status, kind, ie in tree.list_files()]
+                      for path, status, kind, ie in
+                      tree.list_files()]
         self.assertEqual(expected, actual)
 
     def test_list_files_with_root_no_recurse(self):
@@ -56,10 +57,9 @@ class TestListFiles(TestCaseWithTree):
         expected.append(
             ('b', 'V', 'directory', tree.path2id('b')))
         with tree.lock_read():
-            actual = [
-                (path, status, kind, ie.file_id)
-                for path, status, kind, ie in
-                tree.list_files(include_root=True, recursive=False)]
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(include_root=True, recursive=False)]
         self.assertEqual(expected, actual)
 
     def test_list_files_no_root_no_recurse(self):
@@ -69,10 +69,9 @@ class TestListFiles(TestCaseWithTree):
         expected.append(
             ('b', 'V', 'directory', tree.path2id('b')))
         with tree.lock_read():
-            actual = [
-                (path, status, kind, ie.file_id)
-                for path, status, kind, ie in
-                tree.list_files(recursive=False)]
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(recursive=False)]
         self.assertEqual(expected, actual)
 
     def test_list_files_from_dir(self):

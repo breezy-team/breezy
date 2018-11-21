@@ -61,11 +61,11 @@ class TestIniBasedRulesSearcher(tests.TestCase):
         rs = self.make_searcher("[name *.txt]\nfoo=bar\na=True\n")
         self.assertEqual((), rs.get_items('a.py'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('a.txt'))
+                         rs.get_items('a.txt'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('dir/a.txt'))
+                         rs.get_items('dir/a.txt'))
         self.assertEqual((('foo', 'bar'),),
-            rs.get_selected_items('a.txt', ['foo']))
+                         rs.get_selected_items('a.txt', ['foo']))
         self.assertEqual('bar', rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_from_multiple_glob_match(self):
@@ -73,19 +73,19 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             "[name *.txt *.py 'x x' \"y y\"]\nfoo=bar\na=True\n")
         self.assertEqual((), rs.get_items('NEWS'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('a.py'))
+                         rs.get_items('a.py'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('a.txt'))
+                         rs.get_items('a.txt'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('x x'))
+                         rs.get_items('x x'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('y y'))
+                         rs.get_items('y y'))
         self.assertEqual('bar', rs.get_single_value('a.txt', 'foo'))
 
     def test_get_items_pathname_match(self):
         rs = self.make_searcher("[name ./a.txt]\nfoo=baz\n")
         self.assertEqual((('foo', 'baz'),),
-            rs.get_items('a.txt'))
+                         rs.get_items('a.txt'))
         self.assertEqual('baz', rs.get_single_value('a.txt', 'foo'))
         self.assertEqual((), rs.get_items('dir/a.txt'))
         self.assertEqual(None, rs.get_single_value('dir/a.txt', 'foo'))
@@ -95,10 +95,10 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             "[name ./a.txt]\nfoo=baz\n"
             "[name *.txt]\nfoo=bar\na=True\n")
         self.assertEqual((('foo', 'baz'),),
-            rs.get_items('a.txt'))
+                         rs.get_items('a.txt'))
         self.assertEqual('baz', rs.get_single_value('a.txt', 'foo'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('dir/a.txt'))
+                         rs.get_items('dir/a.txt'))
         self.assertEqual('bar', rs.get_single_value('dir/a.txt', 'foo'))
 
 
@@ -120,11 +120,11 @@ class TestStackedRulesSearcher(tests.TestCase):
             "[name ./a.txt]\nfoo=baz\n",
             "[name *.txt]\nfoo=bar\na=True\n")
         self.assertEqual((('foo', 'baz'),),
-            rs.get_items('a.txt'))
+                         rs.get_items('a.txt'))
         self.assertEqual('baz', rs.get_single_value('a.txt', 'foo'))
         self.assertEqual(None, rs.get_single_value('a.txt', 'a'))
         self.assertEqual((('foo', 'bar'), ('a', 'True')),
-            rs.get_items('dir/a.txt'))
+                         rs.get_items('dir/a.txt'))
         self.assertEqual('bar', rs.get_single_value('dir/a.txt', 'foo'))
         self.assertEqual('True', rs.get_single_value('dir/a.txt', 'a'))
 

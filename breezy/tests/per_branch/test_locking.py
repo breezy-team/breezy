@@ -88,7 +88,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                               ('bc', 'ul', True),
                               ('r', 'ul', True),
                               ('rc', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
         else:
             self.assertEqual([('b', 'lr', True),
                               ('r', 'lr', True),
@@ -96,7 +96,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                               ('b', 'ul', True),
                               ('bc', 'ul', True),
                               ('r', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
 
     def test_02_lock_write(self):
         # Test that locking occurs in the correct order
@@ -122,7 +122,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                               ('bc', 'ul', True),
                               ('r', 'ul', True),
                               ('rc', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
         else:
             self.assertEqual([('b', 'lw', True),
                               ('r', 'lw', True),
@@ -130,7 +130,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                               ('b', 'ul', True),
                               ('bc', 'ul', True),
                               ('r', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
 
     def test_03_lock_fail_unlock_repo(self):
         # Make sure branch.unlock() is called, even if there is a
@@ -161,7 +161,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                                   ('b', 'ul', True),
                                   ('bc', 'ul', True),
                                   ('r', 'ul', False),
-                                 ], self.locks)
+                                  ], self.locks)
             else:
                 self.assertEqual([('b', 'lw', True),
                                   ('r', 'lw', True),
@@ -169,7 +169,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                                   ('b', 'ul', True),
                                   ('bc', 'ul', True),
                                   ('r', 'ul', False),
-                                 ], self.locks)
+                                  ], self.locks)
 
         finally:
             # For cleanup purposes, make sure we are unlocked
@@ -203,14 +203,14 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                                   ('bc', 'ul', False),
                                   ('r', 'ul', True),
                                   ('rc', 'ul', True),
-                                 ], self.locks)
+                                  ], self.locks)
             else:
                 self.assertEqual([('b', 'lw', True),
                                   ('r', 'lw', True),
                                   ('bc', 'lw', True),
                                   ('b', 'ul', True),
                                   ('bc', 'ul', False),
-                                 ], self.locks)
+                                  ], self.locks)
 
         finally:
             # For cleanup purposes, make sure we are unlocked
@@ -227,7 +227,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
 
         self.assertEqual([('b', 'lr', True),
                           ('r', 'lr', False),
-                         ], self.locks)
+                          ], self.locks)
 
     def test_06_lock_write_fail_repo(self):
         # Test that the branch is not locked if it cannot lock the repository
@@ -240,7 +240,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
 
         self.assertEqual([('b', 'lw', True),
                           ('r', 'lw', False),
-                         ], self.locks)
+                          ], self.locks)
 
     def test_07_lock_read_fail_control(self):
         # Test the repository is unlocked if we can't lock self
@@ -258,13 +258,13 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                               ('bc', 'lr', False),
                               ('r', 'ul', True),
                               ('rc', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
         else:
             self.assertEqual([('b', 'lr', True),
                               ('r', 'lr', True),
                               ('bc', 'lr', False),
                               ('r', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
 
     def test_08_lock_write_fail_control(self):
         # Test the repository is unlocked if we can't lock self
@@ -281,13 +281,13 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
                               ('bc', 'lw', False),
                               ('r', 'ul', True),
                               ('rc', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
         else:
             self.assertEqual([('b', 'lw', True),
                               ('r', 'lw', True),
                               ('bc', 'lw', False),
                               ('r', 'ul', True),
-                             ], self.locks)
+                              ], self.locks)
 
     def test_lock_write_returns_None_refuses_token(self):
         branch = self.make_branch('b')
@@ -366,7 +366,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             new_branch.repository = branch.repository
             new_branch.lock_write(token=lock.token)
             new_branch.unlock()
-            self.assertTrue(branch.get_physical_lock_status()) #XXX
+            self.assertTrue(branch.get_physical_lock_status())  # XXX
 
     def test_lock_write_with_token_fails_when_unlocked(self):
         # First, lock and then unlock to get superficially valid tokens.  This
@@ -523,4 +523,3 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         branch.lock_write()
         branch.unlock()
         self.assertRaises(errors.LockNotHeld, branch.repository.unlock)
-

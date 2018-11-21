@@ -27,7 +27,8 @@ class TestBasisTree(TestCaseWithWorkingTree):
         basis_tree = tree.basis_tree()
 
         with basis_tree.lock_read():
-            self.assertEqual([], list(basis_tree.list_files(include_root=True)))
+            self.assertEqual(
+                [], list(basis_tree.list_files(include_root=True)))
 
     def test_same_tree(self):
         """Test basis_tree when working tree hasn't been modified."""
@@ -41,8 +42,9 @@ class TestBasisTree(TestCaseWithWorkingTree):
             self.assertEqual(revision_id, basis_tree.get_revision_id())
             # list_files() may return in either dirblock or sorted order
             # TODO: jam 20070215 Should list_files have an explicit order?
-            self.assertEqual(['', 'dir', 'dir/subfile', 'file'],
-                     sorted(info[0] for info in basis_tree.list_files(True)))
+            self.assertEqual(
+                ['', 'dir', 'dir/subfile', 'file'],
+                sorted(info[0] for info in basis_tree.list_files(True)))
 
     def test_altered_tree(self):
         """Test basis really is basis after working has been modified."""
@@ -61,5 +63,6 @@ class TestBasisTree(TestCaseWithWorkingTree):
             self.assertEqual(revision_id, basis_tree.get_revision_id())
             # list_files() may return in either dirblock or sorted order
             # TODO: jam 20070215 Should list_files have an explicit order?
-            self.assertEqual(['', 'dir', 'dir/subfile', 'file'],
-                     sorted(info[0] for info in basis_tree.list_files(True)))
+            self.assertEqual(
+                ['', 'dir', 'dir/subfile', 'file'],
+                sorted(info[0] for info in basis_tree.list_files(True)))

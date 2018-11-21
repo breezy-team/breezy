@@ -85,7 +85,7 @@ class cmd_launchpad_open(Command):
         trace.note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
-                                # otherwise brz.exe lacks this module
+            # otherwise brz.exe lacks this module
             webbrowser.open(web_url)
 
 
@@ -140,7 +140,7 @@ class cmd_launchpad_login(Command):
             account.set_lp_login(name)
             if verbose:
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
-                                                                        (name,))
+                                (name,))
 
 
 class cmd_launchpad_logout(Command):
@@ -181,7 +181,7 @@ class cmd_launchpad_mirror(Command):
         service = LaunchpadService()
         launchpad = lp_api.login(service)
         lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
-                create_missing=False)
+                                                    create_missing=False)
         lp_branch.lp.requestMirror()
 
 
@@ -215,7 +215,7 @@ class cmd_lp_propose_merge(Command):
                                   'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
                      ListOption('review', short_name='R', type=text_type,
-                            help='Requested reviewer and optional type.')]
+                                help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']
 

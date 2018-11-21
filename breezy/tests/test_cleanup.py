@@ -99,7 +99,7 @@ class TestRunCleanup(CleanupsTestCase):
         """
         def failing_operation():
             try:
-                1/0
+                1 / 0
             finally:
                 _run_cleanup(self.no_op_cleanup)
         self.assertRaises(ZeroDivisionError, failing_operation)
@@ -114,7 +114,7 @@ class TestRunCleanup(CleanupsTestCase):
         """
         def failing_operation():
             try:
-                1/0
+                1 / 0
             finally:
                 _run_cleanup(self.failing_cleanup)
         self.assertRaises(ZeroDivisionError, failing_operation)
@@ -144,7 +144,7 @@ class TestDoWithCleanups(CleanupsTestCase):
 
     def failing_func(self):
         self.call_log.append('failing_func')
-        1/0
+        1 / 0
 
     def test_func_error_propagates(self):
         """Errors from the main function are propagated (after running
@@ -186,7 +186,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         """
         cleanups = self.make_two_failing_cleanup_funcs()
         self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
-            self.trivial_func)
+                          self.trivial_func)
         self.assertLogContains('Cleanup failed:.*ErrorB')
         # Error A may appear in the log (with Python 3 exception chaining), but
         # Error B should be the last error recorded.
@@ -198,6 +198,7 @@ class TestDoWithCleanups(CleanupsTestCase):
     def make_two_failing_cleanup_funcs(self):
         def raise_a():
             raise ErrorA('Error A')
+
         def raise_b():
             raise ErrorB('Error B')
         return [(raise_a, (), {}), (raise_b, (), {})]
@@ -206,7 +207,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
         self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
-            self.trivial_func)
+                          self.trivial_func)
         trace_value = self.get_log()
         self.assertContainsRe(
             trace_value, "brz: warning: Cleanup failed:.*Error B\n")
@@ -216,7 +217,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
         self.assertRaises(ZeroDivisionError, _do_with_cleanups, cleanups,
-            self.failing_func)
+                          self.failing_func)
         trace_value = self.get_log()
         self.assertContainsRe(
             trace_value, "brz: warning: Cleanup failed:.*Error A\n")
@@ -226,12 +227,13 @@ class TestDoWithCleanups(CleanupsTestCase):
 
     def test_func_may_mutate_cleanups(self):
         """The main func may mutate the cleanups before it returns.
-        
+
         This allows a function to gradually add cleanups as it acquires
         resources, rather than planning all the cleanups up-front.  The
         OperationWithCleanups helper relies on this working.
         """
         cleanups_list = []
+
         def func_that_adds_cleanups():
             self.call_log.append('func_that_adds_cleanups')
             cleanups_list.append((self.no_op_cleanup, (), {}))
@@ -247,7 +249,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         """
         debug.debug_flags.add('cleanup')
         self.assertRaises(ZeroDivisionError, _do_with_cleanups,
-            [(self.failing_cleanup, (), {})], self.failing_func)
+                          [(self.failing_cleanup, (), {})], self.failing_func)
         trace_value = self.get_log()
         self.assertContainsRe(
             trace_value,
@@ -264,6 +266,7 @@ class TestOperationWithCleanups(CleanupsTestCase):
         cleanup added during the func is run first.
         """
         call_log = []
+
         def func(op, foo):
             call_log.append(('func called', foo))
             op.add_cleanup(call_log.append, 'cleanup 2')
@@ -276,7 +279,7 @@ class TestOperationWithCleanups(CleanupsTestCase):
         self.assertEqual('result', result)
         self.assertEqual(
             [('func called', 'foo'), 'cleanup 1', 'cleanup 2', 'cleanup 3',
-            'cleanup 4'], call_log)
+             'cleanup 4'], call_log)
 
 
 class SampleWithCleanups(ObjectWithCleanups):

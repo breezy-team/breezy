@@ -92,7 +92,7 @@ class TestContainerWriter(tests.TestCase):
         This uses None as the output stream to show that the constructor
         doesn't try to use the output stream.
         """
-        writer = pack.ContainerWriter(None)
+        pack.ContainerWriter(None)
 
     def test_begin(self):
         """The begin() method writes the container format marker line."""
@@ -246,7 +246,7 @@ class TestContainerReader(tests.TestCase):
         This uses None as the output stream to show that the constructor
         doesn't try to use the input stream.
         """
-        reader = pack.ContainerReader(None)
+        pack.ContainerReader(None)
 
     def test_empty_container(self):
         """Read an empty container."""
@@ -342,7 +342,8 @@ class TestContainerReader(tests.TestCase):
 
     def test_validate_no_end_marker(self):
         """validate raises UnexpectedEndOfContainerError if there's no end of
-        container marker, even if the container up to this point has been valid.
+        container marker, even if the container up to this point has been
+        valid.
         """
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\n")
@@ -565,7 +566,8 @@ class TestReadvFile(tests.TestCaseWithTransport):
         """Test reading of both single bytes and all bytes in a hunk."""
         transport = self.get_transport()
         transport.put_bytes('sample', b'0123456789')
-        f = pack.ReadVFile(transport.readv('sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
+        f = pack.ReadVFile(transport.readv(
+            'sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
         results = []
         results.append(f.read(1))
         results.append(f.read(2))

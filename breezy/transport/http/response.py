@@ -49,6 +49,7 @@ class ResponseFile(object):
     Only read() and seek() (forward) are supported.
 
     """
+
     def __init__(self, path, infile):
         """Constructor.
 
@@ -70,7 +71,7 @@ class ResponseFile(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return False # propogate exceptions.
+        return False  # propogate exceptions.
 
     def read(self, size=None):
         """Read size bytes from the current position in the file.
@@ -123,6 +124,7 @@ class ResponseFile(object):
 # single_range: content_range_header data
 
 # multiple_range: boundary_header boundary (content_range_header data boundary)+
+
 
 class RangeFile(ResponseFile):
     """File-like object that allow access to partial available data.
@@ -202,7 +204,7 @@ class RangeFile(ResponseFile):
             # together they make a beautiful bug, which we will be gracious
             # about here
             if (self._unquote_boundary(boundary_line) !=
-                b'--' + self._boundary + b'\r\n'):
+                    b'--' + self._boundary + b'\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
                     "Expected a boundary (%s) line, got '%s'"
@@ -293,7 +295,7 @@ class RangeFile(ResponseFile):
             -1 to read to EOF.
         """
         if (self._size > 0
-            and self._pos == self._start + self._size):
+                and self._pos == self._start + self._size):
             if size == 0:
                 return b''
             else:
@@ -333,7 +335,7 @@ class RangeFile(ResponseFile):
             final_pos = start_pos + offset
         elif whence == 2:
             if self._size > 0:
-                final_pos = self._start + self._size + offset # offset < 0
+                final_pos = self._start + self._size + offset  # offset < 0
             else:
                 raise errors.InvalidRange(
                     self._path, self._pos,
@@ -359,7 +361,7 @@ class RangeFile(ResponseFile):
                 cur_limit = self._start + self._size
 
         size = final_pos - self._pos
-        if size > 0: # size can be < 0 if we crossed a range boundary
+        if size > 0:  # size can be < 0 if we crossed a range boundary
             # We don't need the data, just read it and throw it away
             self._checked_read(size)
 
@@ -414,11 +416,10 @@ def handle_response(url, code, msg, data):
             content_range = msg.get('content-range', None)
             if content_range is None:
                 raise errors.InvalidHttpResponse(url,
-                    'Missing the Content-Range header in a 206 range response')
+                                                 'Missing the Content-Range header in a 206 range response')
             rfile.set_range_from_header(content_range)
     else:
         raise errors.InvalidHttpResponse(url,
                                          'Unknown response code %s' % code)
 
     return rfile
-
