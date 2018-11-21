@@ -130,6 +130,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEqual(
+            b'reset refs/heads/master\n'
             b'commit refs/heads/master\n'
             b'mark :1\n'
             b'committer Somebody <jrandom@example.com> 1330445983 +0000\n'
