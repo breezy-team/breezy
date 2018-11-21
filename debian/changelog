@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7204-2) UNRELEASED; urgency=medium
+
+  * Mark brz-doc as Multi-Arch: foreign.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 21 Nov 2018 21:50:57 +0000
+
 breezy (3.0.0~bzr7204-1) unstable; urgency=medium
 
   * debian/control: Mention in long description that Breezy supports the

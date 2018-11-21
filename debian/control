@@ -165,6 +165,7 @@ Description: distributed version control system - Python 3 testsuite
  This package contains the Python 3 version.
 
 Package: brz-doc
+Multi-Arch: foreign
 Architecture: all
 Section: doc
 Depends: ${misc:Depends},
