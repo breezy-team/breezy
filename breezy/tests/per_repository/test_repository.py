@@ -289,11 +289,10 @@ class TestRepository(per_repository.TestCaseWithRepository):
         root_id = wt.path2id('')
         tree = wt.branch.repository.revision_tree(rev1)
         with tree.lock_read():
-            self.assertEqual(rev1,
-                tree.get_file_revision(u'', tree.get_root_id()))
+            self.assertEqual(rev1, tree.get_file_revision(u''))
             expected = inventory.InventoryDirectory(root_id, '', None)
             expected.revision = rev1
-            self.assertEqual([('', 'V', expected)],
+            self.assertEqual([('', 'V', 'directory', expected)],
                              list(tree.list_files(include_root=True)))
         self.assertRaises(ValueError, wt.branch.repository.revision_tree, None)
         tree = wt.branch.repository.revision_tree(_mod_revision.NULL_REVISION)

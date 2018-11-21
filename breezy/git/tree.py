@@ -403,7 +403,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 root_ie = self._get_file_ie(store, from_dir.encode("utf-8"),
                     posixpath.basename(from_dir), mode, hexsha)
         if include_root:
-            yield (from_dir, "V", root_ie)
+            yield (from_dir, "V", root_ie.kind, root_ie)
         todo = []
         if root_ie.kind == 'directory':
             todo.append((store, from_dir.encode("utf-8"), b"", hexsha, root_ie.file_id))
@@ -421,7 +421,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                         todo.append((store, child_path, child_relpath, hexsha, ie.file_id))
                 else:
                     ie = self._get_file_ie(store, child_path, name, mode, hexsha, parent_id)
-                yield child_relpath.decode('utf-8'), "V", ie
+                yield child_relpath.decode('utf-8'), "V", ie.kind, ie
 
     def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
         if not isinstance(path, bytes):

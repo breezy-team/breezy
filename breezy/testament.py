@@ -157,7 +157,7 @@ class Testament(object):
         return [line.encode('utf-8') for line in r]
 
     def _get_entries(self):
-        return ((path, ie) for (path, file_class, ie) in
+        return ((path, ie) for (path, file_class, kind, ie) in
                 self.tree.list_files(include_root=self.include_root))
 
     def _escape_path(self, path):

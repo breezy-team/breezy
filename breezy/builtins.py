@@ -3024,12 +3024,12 @@ class cmd_ls(Command):
                 note(gettext("Ignoring files outside view. View is %s") % view_str)
 
         self.add_cleanup(tree.lock_read().unlock)
-        for fp, fc, entry in tree.list_files(include_root=False,
-            from_dir=relpath, recursive=recursive):
+        for fp, fc, fkind, entry in tree.list_files(
+                include_root=False, from_dir=relpath, recursive=recursive):
             # Apply additional masking
             if not all and not selection[fc]:
                 continue
-            if kind is not None and entry.kind != kind:
+            if kind is not None and fkind != kind:
                 continue
             if apply_view:
                 try:
@@ -3200,7 +3200,7 @@ class cmd_ignore(Command):
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         self.add_cleanup(tree.lock_read().unlock)
-        for filename, fc, entry in tree.list_files():
+        for filename, fc, fkind, entry in tree.list_files():
             id = getattr(entry, 'file_id', None)
             if id is not None:
                 if ignored.match(filename):
@@ -3231,7 +3231,7 @@ class cmd_ignored(Command):
     def run(self, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        for path, file_class, entry in tree.list_files():
+        for path, file_class, kind, entry in tree.list_files():
             if file_class != 'I':
                 continue
             ## XXX: Slightly inefficient since this was already calculated

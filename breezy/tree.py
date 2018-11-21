@@ -271,7 +271,8 @@ class Tree(object):
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
-        :return: iterator over tuples of (path, versioned, inventory entry)
+        :return: iterator over tuples of
+            (path, versioned, kind, inventory entry)
         """
         raise NotImplementedError(self.list_files)
 

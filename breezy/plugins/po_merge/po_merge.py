@@ -110,7 +110,7 @@ class PoMerger(merge.PerFileMerger):
                          % (self.po_dirs, self.po_glob))
             return False
         # Do we have the corresponding .pot file
-        for path, file_class, entry in self.merger.this_tree.list_files(
+        for path, file_class, kind, entry in self.merger.this_tree.list_files(
                 from_dir=po_dir, recursive=False):
             pot_name, pot_file_id = path, entry
             if fnmatch.fnmatch(pot_name, self.pot_glob):

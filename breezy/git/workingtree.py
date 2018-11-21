@@ -756,7 +756,7 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
         with self.lock_read():
             root_ie = self._get_dir_ie(u"", None)
             if include_root and not from_dir:
-                yield "", "V", root_ie
+                yield "", "V", root_ie.kind, root_ie
             dir_ids[u""] = root_ie.file_id
             if recursive:
                 path_iterator = sorted(self._iter_files_recursive(from_dir, include_dirs=True))
@@ -791,14 +791,14 @@ class GitWorkingTree(MutableGitIndexTree,workingtree.WorkingTree):
                         else:
                             status = "?"
                             ie = fk_entries[kind]()
-                        yield posixpath.relpath(path, from_dir), status, ie
+                        yield posixpath.relpath(path, from_dir), status, kind, ie
                     continue
                 if value is not None:
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                    yield posixpath.relpath(path, from_dir), "V", ie
+                    yield posixpath.relpath(path, from_dir), "V", ie.kind, ie
                 else:
                     ie = fk_entries[kind]()
-                    yield posixpath.relpath(path, from_dir), ("I" if self.is_ignored(path) else "?"), ie
+                    yield posixpath.relpath(path, from_dir), ("I" if self.is_ignored(path) else "?"), kind, ie
 
     def all_file_ids(self):
         with self.lock_read():

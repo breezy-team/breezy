@@ -89,10 +89,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         files = list(tree.list_files())
         tree.unlock()
-        self.assertEqual(files.pop(0), ('dir', '?', TreeDirectory()))
-        self.assertEqual(files.pop(0), ('file', '?', TreeFile()))
+        self.assertEqual(
+            files.pop(0),
+            ('dir', '?', 'directory', TreeDirectory()))
+        self.assertEqual(
+            files.pop(0),
+            ('file', '?', 'file', TreeFile()))
         if has_symlinks():
-            self.assertEqual(files.pop(0), ('symlink', '?', TreeLink()))
+            self.assertEqual(
+                files.pop(0),
+                ('symlink', '?', 'symlink', TreeLink()))
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
@@ -100,7 +106,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])
         with tree.lock_read():
-            files = [(path, entry.kind) for (path, v, entry) in tree.list_files()]
+            files = [(path, kind)
+                     for (path, v, kind, entry) in tree.list_files()]
         self.assertEqual([
             ('a', 'file'),
             ('dir', 'directory'),
@@ -111,8 +118,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             if tree.has_versioned_directories():
                 tree.add(['dir', 'zz_dir'])
-                files = [(path, entry.kind) for (path, v, entry)
-                                       in tree.list_files()]
+                files = [(path, kind) for (path, v, kind, entry)
+                         in tree.list_files()]
                 self.assertEqual([
                     ('a', 'file'),
                     ('dir', 'directory'),
@@ -126,8 +133,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     ], files)
             else:
                 tree.add(['dir/b'])
-                files = [(path, entry.kind) for (path, v, entry)
-                                       in tree.list_files()]
+                files = [(path, kind)
+                         for (path, v, kind, entry) in tree.list_files()]
                 self.assertEqual([
                     ('a', 'file'),
                     ('dir', 'directory'),
@@ -151,12 +158,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(1, len(result))
         if tree.has_versioned_directories():
             self.assertEqual(
-                    ('filename', 'V', 'directory', tree.path2id('filename')),
-                    (result[0][0], result[0][1], result[0][2].kind, result[0][2].file_id))
+                ('filename', 'V', 'directory', tree.path2id('filename')),
+                (result[0][0], result[0][1], result[0][2],
+                    result[0][3].file_id))
         else:
             self.assertEqual(
-                    ('filename', '?', 'directory', None),
-                    (result[0][0], result[0][1], result[0][2].kind, result[0][2].file_id))
+                ('filename', '?', 'directory', None),
+                (result[0][0], result[0][1], result[0][2],
+                    result[0][3].file_id))
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config
@@ -221,7 +230,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
-        with open('hello.txt', 'w') as f: f.write('initial hello')
+        with open('hello.txt', 'w') as f:
+            f.write('initial hello')
 
         self.assertRaises(PathsNotVersionedError,
                           tree.revert, ['hello.txt'])
@@ -229,7 +239,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('create initial hello.txt')
 
         self.check_file_contents('hello.txt', b'initial hello')
-        with open('hello.txt', 'w') as f: f.write('new hello')
+        with open('hello.txt', 'w') as f:
+            f.write('new hello')
         self.check_file_contents('hello.txt', b'new hello')
 
         # revert file modified since last revision
@@ -243,7 +254,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # backup files are numbered
-        with open('hello.txt', 'w') as f: f.write('new hello2')
+        with open('hello.txt', 'w') as f:
+            f.write('new hello2')
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', b'initial hello')
         self.check_file_contents('hello.txt.~1~', b'new hello')
@@ -252,7 +264,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_revert_missing(self):
         # Revert a file that has been deleted since last commit
         tree = self.make_branch_and_tree('.')
-        with open('hello.txt', 'w') as f: f.write('initial hello')
+        with open('hello.txt', 'w') as f:
+            f.write('initial hello')
         tree.add('hello.txt')
         tree.commit('added hello.txt')
         os.unlink('hello.txt')
@@ -817,12 +830,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_format_leftmost_parent_id_as_ghost(self):
         tree = self.make_branch_and_tree('tree')
         self.assertIn(
-                tree._format.supports_leftmost_parent_id_as_ghost, (True, False))
+            tree._format.supports_leftmost_parent_id_as_ghost, (True, False))
 
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a
         # configurable attribute
         tree = self.make_branch_and_tree('tree')
+
         def set_branch():
             tree.branch = tree.branch
         self.assertRaises(AttributeError, set_branch)
@@ -840,11 +854,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.unlock()
         self.assertEqual(
                 (u'.bzrignore', '?', 'file', None),
-                (files[0][0], files[0][1], files[0][2].kind,
-                    getattr(files[0][2], 'file_id', None)))
+                (files[0][0], files[0][1], files[0][2],
+                    getattr(files[0][3], 'file_id', None)))
         self.assertEqual(
                 (u'foo.pyc', 'V', 'file', anid),
-                (files[1][0], files[1][1], files[1][2].kind, files[1][2].file_id))
+                (files[1][0], files[1][1], files[1][2], files[1][3].file_id))
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
@@ -858,9 +872,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         try:
             tree.add([u'a\u030a'])
             tree.lock_read()
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path, ie in
-                                tree.iter_entries_by_dir()])
+            self.assertEqual(
+                [('', 'directory'), (u'\xe5', 'file')],
+                [(path, ie.kind) for path, ie in tree.iter_entries_by_dir()])
             tree.unlock()
         finally:
             osutils.normalized_filename = orig
@@ -874,13 +888,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
         try:
-            self.assertRaises(errors.InvalidNormalization,
-                tree.add, [u'a\u030a'])
+            self.assertRaises(
+                errors.InvalidNormalization, tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
 
     def test__write_inventory(self):
-        # The private interface _write_inventory is currently used by transform.
+        # The private interface _write_inventory is currently used by
+        # transform.
         tree = self.make_branch_and_tree('.')
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable("_write_inventory does not exist on "

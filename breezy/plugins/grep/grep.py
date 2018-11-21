@@ -416,19 +416,19 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     #                and hits manually refilled. Could do this again if it was
     #                for a good reason, otherwise cache might want purging.
     outputter = opts.outputter
-    for fp, fc, entry in tree.list_files(include_root=False,
+    for fp, fc, fkind, entry in tree.list_files(include_root=False,
         from_dir=from_dir, recursive=opts.recursive):
 
         if _skip_file(opts.include, opts.exclude, fp):
             continue
 
-        if fc == 'V' and entry.kind == 'file':
+        if fc == 'V' and fkind == 'file':
             tree_path = osutils.pathjoin(from_dir if from_dir else '', fp)
             if revno is not None:
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_id = tree.get_file_revision(tree_path, entry.file_id)
+                cache_id = tree.get_file_revision(tree_path)
                 if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,

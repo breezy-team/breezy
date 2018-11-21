@@ -45,8 +45,8 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.smart_add(['tree'])
 
         with tree.lock_read():
-            files = [(path, status, ie.kind)
-                     for path, status, ie
+            files = [(path, status, kind)
+                     for path, status, kind, ie
                       in tree.list_files(include_root=True)]
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)
@@ -71,14 +71,11 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
     def test_save_false(self):
         """Dry-run add doesn't permanently affect the tree."""
         wt = self.make_branch_and_tree('.')
-        wt.lock_write()
-        try:
+        with wt.lock_write():
             self.build_tree(['file'])
             wt.smart_add(['file'], save=False)
             # the file should not be added - no id.
             self.assertEqual(wt.path2id('file'), None)
-        finally:
-            wt.unlock()
         # and the disk state should be the same - reopen to check.
         wt = wt.controldir.open_workingtree()
         self.assertFalse(wt.is_versioned('file'))
@@ -236,7 +233,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.commit("Add dir contents")
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
-            [(t[0], t[2].kind) for t in tree.list_files()])
+            [(t[0], t[2]) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_add_subdir_file_bug_205636(self):
@@ -250,7 +247,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.commit("Add file in dir")
         self.addCleanup(tree.lock_read().unlock)
         self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
-            [(t[0], t[2].kind) for t in tree.list_files()])
+            [(t[0], t[2]) for t in tree.list_files()])
         self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_custom_ids(self):
