@@ -108,7 +108,8 @@ class TestFastExport(ExternalBase):
         tree.commit("pointless")
         data = self.run_bzr("fast-export br")[0]
         self.assertTrue(data.startswith(
-            'commit refs/heads/master\nreset refs/heads/master\n'
+            'reset refs/heads/master\n'
+            'commit refs/heads/master\n'
             'mark :1\ncommitter'), data)
 
     def test_file(self):
