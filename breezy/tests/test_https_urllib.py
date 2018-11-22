@@ -102,7 +102,10 @@ class MatchHostnameTests(tests.TestCase):
 
         # Python Issue #17980: avoid denials of service by refusing more than
         # one wildcard per fragment.
-        ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
+        if sys.version_info[:2] >= (3, 7):
+            not_ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
+        else:
+            ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
         not_ok({'subject': ((('commonName', 'a*b.co*'),),)}, 'axxb.com')
         not_ok({'subject': ((('commonName', 'a*b*.com'),),)}, 'axxbxxc.com')
 
