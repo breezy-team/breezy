@@ -7,7 +7,7 @@ Naming
 By convention, most plugins are named brz-xxx and are installed into a
 directory called xxx. Note that the directory name must be a legal
 Python package name, so a plugin called brz-xxx-yyy need to be installed
-into a directory called xxx_yyy, i.e. '-' in a plugin name gets mapped to
+into a directory called xxx_yyy, i.e. '-' in a plugin name should be mapped to
 an underscore in the directory name.
 
 
@@ -15,7 +15,7 @@ Licensing
 ---------
 
 We encourage plugin authors to make their plugins publicly available
-under the same license as Breezy itself, namely GPL v2. However, there
+under the same license as Breezy itself, namely GPL v2 or later. However, there
 is no requirement to do so. You are free to create Breezy plugins for
 private or internal use within your company and not distribute them.
 
@@ -23,33 +23,6 @@ By sharing your work, a larger number of people benefit. In our experience,
 plugin developers also benefit heavily by having more users involved in
 the design, testing, bug fixing and longer term maintenance. In other words,
 sharing leads to a better plugin faster.
-
-
-Registration
-------------
-
-If you decide to make your plugin available to others, you are welcome to
-have it hosted on Launchpad and added to our plugins registry.
-Non-experimental plugins that you or others in the community can support
-may also be added to the Plugins Guide, i.e. inclusion in the Guide implies
-a certain degree of *this works as advertised*.
-
-To learn about Launchpad project registration, see
-https://help.launchpad.net/Projects/Registering.
-
-To add your plugin to the registry:
-
-1. Fetch a copy of the lp:brz-alldocs project.
-2. Edit plugin-registry.ini and commit the change.
-3. Submit a merge proposal.
-
-A Breezy developer will review your change and make some basic checks, e.g.
-the one line summary (``purpose``) is clear and the branch URL is correct.
-Once merged, your plugin will be registered and should appear shortly
-afterwards in the generated web page.
-
-Information on adding your plugin to this guide is provided later in this
-document.
 
 
 Testing
@@ -78,7 +51,7 @@ they contain a function named ``test_suite()``.  For each plugin that does,
 it calls the function and adds any resulting tests to the master test suite.
 To run just the tests for plugin xxx, the command is::
 
-  brz selftest bp.xxx
+  brz selftest -s bp.xxx
 
 
 Providing help
@@ -165,19 +138,16 @@ Configuration settings are often stored in ``branch.conf``,
 ``locations.conf`` or ``bazaar.conf``.
 
 User-visible data for a plugin called xxx should be stored in
-``.brzmeta/xxx``. If mutiple files are desirable, make ``.brzmeta/xxx``
-a directory or give them a common prefix within ``.brzmeta``, e.g.
+``.bzrmeta/xxx``. If mutiple files are desirable, make ``.bzrmeta/xxx``
+a directory or give them a common prefix within ``.bzrmeta``, e.g.
 ``xxx-foo``, ``xxx-bar``.
 
-Data managed behind the scenes should be stored in ``.brz``.
+Data managed behind the scenes should be stored in ``.bzr``.
 Depending on the nature of the data, it may belong in a subdirectory
 within there, e.g. ``checkout``, ``branch`` or ``repository``.
 It's your responsibility to ensure behind-the-scenes data is
 propagated and merged appropriately via custom code. You may want
-to use existing hooks for this or ask for new hooks to help. The
-`Branch Baggage <http://wiki.bazaar.canonical.com/DraftSpecs/BranchBaggage>`_
-feature may assist as well once implemented.
-
+to use existing hooks for this or ask for new hooks to help.
 
 Useful metadata
 ---------------
@@ -224,7 +194,7 @@ functions. It defers the import until you actually need it.
 Learning more
 -------------
 
-`Integrating with Breezy <http://wiki.bazaar.canonical.com/Integrating_with_Breezy>`_
+`Integrating with Bazaar <http://wiki.bazaar.canonical.com/Integrating_with_Bazaar>`_
 explains how to do such operations as ``add``, ``commit``, ``log`` and more.
 
 Reference documentation on some key APIs is provided below. For a more
