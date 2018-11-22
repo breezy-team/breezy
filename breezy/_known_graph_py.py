@@ -19,7 +19,10 @@
 
 from __future__ import absolute_import
 
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
 from . import (
     errors,
     revision,
