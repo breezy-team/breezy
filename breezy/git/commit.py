@@ -228,11 +228,8 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     author = authors[0]
         c.author = fix_person_identifier(author.encode(encoding))
-        try:
-            bugstext = self._revprops.pop('bugs')
-        except KeyError:
-            pass
-        else:
+        bugstext = self._revprops.pop('bugs', None)
+        if bugstext is not None:
             message += "\n"
             for url, status in bugtracker.decode_bug_urls(bugstext):
                 if status == bugtracker.FIXED:

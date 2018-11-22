@@ -36,13 +36,14 @@ Publishing your changes
 Having fixed that annoying bug or added that cool feature you've always
 wanted, it's time to impress your friends and make the world a better
 place by making your code available to others. As explained earlier,
-Launchpad is a free Breezy code hosting service so you can push your
-branch to it and others can access your code from there. For example,
-assuming you are a member of the relevant team, login to launchpad like this::
+GitHub is a code hosting service so you can push your
+branch to it and others can access your code from there.
 
-  brz github-login userid
+In the GitHub web UI, you can create a "fork" of an upstream repository. For
+example, if user "jelmer" forked the inkscape repository at
+https://github.com/inkscape/inkscape then the fork would be at
+https://github.com/jelmer/inkscape.
 
-where `userid` is your Launchpad user ID.
 You can then push your changes to a branch like this::
 
   brz push git+ssh://github.com/jelmer/inkscape,branch=my-branch
@@ -60,7 +61,7 @@ issues.
 
 When you commit using Breezy, use the --fixes option like this::
 
-  brz commit --fixes github:inkscape/inkscape/1234 -m "..."
+  brz commit --fixes github:inkscape/inkscape/1234
 
 where 1234 is the bug ID. This will add some metadata to the commit message.
 
