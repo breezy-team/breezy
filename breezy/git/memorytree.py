@@ -73,7 +73,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
                 if kinds[pos] is None:
                     kinds[pos] = self.kind(f)
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         self._file_transport.put_bytes(path, bytes)
 
@@ -192,14 +192,14 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
             raise AssertionError('unknown type %d' % stat_val.st_mode)
         return index_entry_from_stat(stat_val, blob.id, 0)
 
-    def get_file_with_stat(self, path, file_id=None):
-        return (self.get_file(path, file_id), self._lstat(path))
+    def get_file_with_stat(self, path):
+        return (self.get_file(path), self._lstat(path))
 
-    def get_file(self, path, file_id=None):
+    def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         """See Tree.get_file_sha1()."""
         stream = self._file_transport.get(path)
         return osutils.sha_file(stream)

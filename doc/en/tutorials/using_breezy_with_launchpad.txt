@@ -410,36 +410,3 @@ by sharing resources across projects. Automatic suggestions, from a
 library of 750,000 translated strings, and a community of 19,000
 registered translators can radically cut the time required to
 localise your project into many languages.
-
-
-Summary
-=======
-
-The communities we join, whether off-line or on-line,
-say a lot about the sort of people we are. The flip-side
-to this is that the tools you choose for your community - particularly
-the CDE and version control tool - can have a large impact on who
-joins and how easily they can contribute.
-
-In their own right, Launchpad and Breezy are highly useful tools.
-Together, they can:
-
-* help your community track major assets such as source code and knowledge
-* help it grow by reducing barriers to entry
-* help it interact with related communities.
-
-In particular, Launchpad is a free code hosting service for your Breezy
-branches, branches can be browsed online, branches can be linked to bugs
-and blueprints, and the status of bug-branch relationships can be
-automatically managed by mentioning the bug while committing in Breezy.
-Further integration is under development with the aim of streamlining
-the process from *great idea* to *running code in the hands of end users*.
-
-If you have any feedback on how you'd like to see Breezy and Launchpad
-further integrated, please contact us on the Bazaar mailing list,
-bazaar@lists.canonical.com.
-
-While designed as a free service to support free software projects,
-Canonical may make Launchpad available to commercial software developers
-depending on their requirements. We would be happy to hear from you
-if you think Launchpad would be useful for managing your community.

@@ -85,11 +85,11 @@ class MemoryTree(MutableInventoryTree):
         missing files, so is a no-op.
         """
 
-    def get_file(self, path, file_id=None):
+    def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         """See Tree.get_file_sha1()."""
         stream = self._file_transport.get(path)
         return sha_file(stream)
@@ -147,9 +147,8 @@ class MemoryTree(MutableInventoryTree):
     def is_executable(self, path):
         return self._inventory.get_entry_by_path(path).executable
 
-    def kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
+    def kind(self, path):
+        file_id = self.path2id(path)
         return self._inventory[file_id].kind
 
     def mkdir(self, path, file_id=None):
@@ -234,7 +233,7 @@ class MemoryTree(MutableInventoryTree):
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         self._file_transport.put_bytes(path, bytes)
 
@@ -256,7 +255,7 @@ class MemoryTree(MutableInventoryTree):
         else:
             self._locks -= 1
 
-    def unversion(self, paths, file_ids=None):
+    def unversion(self, paths):
         """Remove the paths from the current versioned set.
 
         When a file_id is unversioned, all of its children are automatically
@@ -269,17 +268,12 @@ class MemoryTree(MutableInventoryTree):
             # XXX: This should be in mutabletree, but the inventory-save action
             # is not relevant to memory tree. Until that is done in unlock by
             # working tree, we cannot share the implementation.
-            if file_ids is None:
-                file_ids = set()
-                for path in paths:
-                    file_id = self.path2id(path)
-                    if file_id is None:
-                        raise errors.NoSuchFile(path)
-                    file_ids.add(file_id)
-            else:
-                for file_id in file_ids:
-                    if not self._inventory.has_id(file_id):
-                        raise errors.NoSuchId(self, file_id)
+            file_ids = set()
+            for path in paths:
+                file_id = self.path2id(path)
+                if file_id is None:
+                    raise errors.NoSuchFile(path)
+                file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)

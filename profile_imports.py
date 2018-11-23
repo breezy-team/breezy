@@ -202,4 +202,3 @@ def uninstall():
     """Remove the import and regex compile timing hooks."""
     __builtins__['__import__'] = _real_import
     re._compile = _real_compile
-

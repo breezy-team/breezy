@@ -3059,8 +3059,8 @@ class cmd_ls(Command):
                 note(gettext("Ignoring files outside view. View is %s") % view_str)
 
         self.add_cleanup(tree.lock_read().unlock)
-        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                                                         from_dir=relpath, recursive=recursive):
+        for fp, fc, fkind, entry in tree.list_files(
+                include_root=False, from_dir=relpath, recursive=recursive):
             # Apply additional masking
             if not all and not selection[fc]:
                 continue
@@ -3084,20 +3084,20 @@ class cmd_ls(Command):
             ui.ui_factory.clear_term()
             if verbose:
                 outstring = '%-8s %s' % (fc, outstring)
-                if show_ids and fid is not None:
-                    outstring = "%-50s %s" % (outstring, fid.decode('utf-8'))
+                if show_ids and getattr(entry, 'file_id', None) is not None:
+                    outstring = "%-50s %s" % (outstring, entry.file_id.decode('utf-8'))
                 self.outf.write(outstring + '\n')
             elif null:
                 self.outf.write(fp + '\0')
                 if show_ids:
-                    if fid is not None:
-                        self.outf.write(fid.decode('utf-8'))
+                    if getattr(entry, 'file_id', None) is not None:
+                        self.outf.write(entry.file_id.decode('utf-8'))
                     self.outf.write('\0')
                 self.outf.flush()
             else:
                 if show_ids:
-                    if fid is not None:
-                        my_id = fid.decode('utf-8')
+                    if getattr(entry, 'file_id', None) is not None:
+                        my_id = entry.file_id.decode('utf-8')
                     else:
                         my_id = ''
                     self.outf.write('%-50s %s\n' % (outstring, my_id))
@@ -3235,10 +3235,9 @@ class cmd_ignore(Command):
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         self.add_cleanup(tree.lock_read().unlock)
-        for entry in tree.list_files():
-            id = entry[3]
+        for filename, fc, fkind, entry in tree.list_files():
+            id = getattr(entry, 'file_id', None)
             if id is not None:
-                filename = entry[0]
                 if ignored.match(filename):
                     matches.append(filename)
         if len(matches) > 0:
@@ -3267,7 +3266,7 @@ class cmd_ignored(Command):
     def run(self, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        for path, file_class, kind, file_id, entry in tree.list_files():
+        for path, file_class, kind, entry in tree.list_files():
             if file_class != 'I':
                 continue
             # XXX: Slightly inefficient since this was already calculated

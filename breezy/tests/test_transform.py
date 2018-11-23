@@ -2094,16 +2094,16 @@ class TestBuildTree(tests.TestCaseWithTransport):
         calls = []
         real_source_get_file = source.get_file
 
-        def get_file(path, file_id=None):
-            calls.append(file_id)
-            return real_source_get_file(path, file_id)
+        def get_file(path):
+            calls.append(path)
+            return real_source_get_file(path)
         source.get_file = get_file
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
         build_tree(revision_tree, target, source)
-        self.assertEqual([b'file1-id'], calls)
+        self.assertEqual(['file1'], calls)
         target.lock_read()
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
@@ -2147,9 +2147,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         calls = []
         real_source_get_file = source.get_file
 
-        def get_file(path, file_id=None):
-            calls.append(file_id)
-            return real_source_get_file(path, file_id)
+        def get_file(path):
+            calls.append(path)
+            return real_source_get_file(path)
         source.get_file = get_file
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()

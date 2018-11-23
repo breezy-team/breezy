@@ -85,7 +85,7 @@ class cmd_fast_import(Command):
       bzr fast-import project.fi project.bzr
 
     Numerous commands are provided for generating a fast-import file
-    to use as input. 
+    to use as input.
     To specify standard input as the input stream, use a
     source name of '-' (instead of project.fi). If the source name
     ends in '.gz', it is assumed to be compressed in gzip format.

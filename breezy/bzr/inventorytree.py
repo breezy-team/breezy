@@ -207,7 +207,7 @@ class InventoryTree(Tree):
             return self.root_inventory.iter_entries_by_dir(
                 specific_file_ids=inventory_file_ids)
 
-    def iter_child_entries(self, path, file_id=None):
+    def iter_child_entries(self, path):
         with self.lock_read():
             ie = self._path2ie(path)
             if ie.kind != 'directory':
@@ -758,7 +758,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             # skip the root for compatability with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode

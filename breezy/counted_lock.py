@@ -29,7 +29,7 @@ class CountedLock(object):
     This can be used with any object that provides a basic Lock interface,
     including LockDirs and OS file locks.
 
-    :ivar _token: While a write lock is held, this is the token 
+    :ivar _token: While a write lock is held, this is the token
         for it.
     """
 
@@ -81,7 +81,7 @@ class CountedLock(object):
 
         If the lock was originally acquired in read mode this will fail.
 
-        :param token: If given and the lock is already held, 
+        :param token: If given and the lock is already held,
             then validate that we already hold the real
             lock with this token.
 
