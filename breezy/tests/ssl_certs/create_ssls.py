@@ -110,7 +110,7 @@ ssl_params = dict(
     server_locality='LocalHost',
     server_organization='Testing Ltd',
     server_section='https server',
-    server_name='127.0.0.1',  # Always accessed under that name
+    server_name='localhost',  # Always accessed under that name
     server_email='https_server@localhost',
     server_optional_company_name='',
 )
@@ -172,6 +172,8 @@ def build_server_signing_request():
     server_csr_path = ssl_certs.build_path('server.csr')
     rm_f(server_csr_path)
     _openssl(['req', '-passin', 'stdin', '-new', '-key', key_path,
+              '-reqexts', 'v3_req',
+              '-addext', 'subjectAltName = DNS:localhost,IP:127.0.0.1,IP:::1',
               '-out', server_csr_path],
              input='%(server_pass)s\n'
              '%(server_country_code)s\n'
