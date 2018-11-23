@@ -172,9 +172,8 @@ def build_server_signing_request():
     server_csr_path = ssl_certs.build_path('server.csr')
     rm_f(server_csr_path)
     _openssl(['req', '-passin', 'stdin', '-new', '-key', key_path,
-              '-reqexts', 'v3_req',
-              '-addext', 'subjectAltName = DNS:localhost,IP:127.0.0.1,IP:::1',
-              '-out', server_csr_path],
+              '-out', server_csr_path,
+              '-addext', 'subjectAltName = DNS:localhost,IP:127.0.0.1,IP:::1'],
              input='%(server_pass)s\n'
              '%(server_country_code)s\n'
              '%(server_state)s\n'
