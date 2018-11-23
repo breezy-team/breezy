@@ -1,5 +1,4 @@
 01_selftest_package
 03_spurious_test_failure
-05_timestamp_range
 08_disable_sphinx_epytext
 09_python_3.7
