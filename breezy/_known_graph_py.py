@@ -196,7 +196,7 @@ class KnownGraph(object):
         # We use a deque rather than a simple list stack, to go for BFD rather
         # than DFD. So that if a longer path is possible, we walk it before we
         # get to the final child
-        pending = collections.deque([node])
+        pending = deque([node])
         while pending:
             node = pending.popleft()
             next_gdfo = node.gdfo + 1
