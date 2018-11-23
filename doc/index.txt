@@ -31,6 +31,8 @@ Tutorials
 
 * `Using Breezy with Launchpad <en/tutorials/using_breezy_with_launchpad.html>`_
 
+* `Using Breezy with GitHub <en/tutorials/using_breezy_with_github.html>`_
+
 * `Centralized workflow <en/tutorials/centralized_workflow.html>`_
 
 
