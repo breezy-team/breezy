@@ -566,4 +566,5 @@ class TestMove(TestCaseWithTransport):
         unknown:
           dir2/test2.txt
         $ brz mv dir/test.txt dir2/test2.txt
+        dir/test.txt => dir2/test2.txt
         ''')

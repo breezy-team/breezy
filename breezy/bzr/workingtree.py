@@ -1257,10 +1257,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     raise errors.BzrRenameFailedError(
                         from_rel, to_rel,
                         errors.NotVersionedError(path=from_rel))
-                # put entry back in the inventory so we can rename it
-                from_entry = basis_tree.root_inventory.get_entry(
-                    from_id).copy()
-                from_inv.add(from_entry)
+                try:
+                    from_entry = from_inv.get_entry(from_id)
+                except errors.NoSuchId:
+                    # put entry back in the inventory so we can rename it
+                    from_entry = basis_tree.root_inventory.get_entry(
+                        from_id).copy()
+                    from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
                 from_entry = from_inv.get_entry(from_inv_id)
