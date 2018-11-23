@@ -110,7 +110,7 @@ ssl_params = dict(
     server_locality='LocalHost',
     server_organization='Testing Ltd',
     server_section='https server',
-    server_name='localhost',  # Always accessed under that name
+    server_name='127.0.0.1',  # Always accessed under that name
     server_email='https_server@localhost',
     server_optional_company_name='',
 )
@@ -172,8 +172,7 @@ def build_server_signing_request():
     server_csr_path = ssl_certs.build_path('server.csr')
     rm_f(server_csr_path)
     _openssl(['req', '-passin', 'stdin', '-new', '-key', key_path,
-              '-out', server_csr_path,
-              '-addext', 'subjectAltName = DNS:localhost,IP:127.0.0.1,IP:::1'],
+              '-out', server_csr_path],
              input='%(server_pass)s\n'
              '%(server_country_code)s\n'
              '%(server_state)s\n'
@@ -194,6 +193,7 @@ def sign_server_certificate():
     ca_key_path = ssl_certs.build_path('ca.key')
     needs('Signing server.crt', server_csr_path, ca_cert_path, ca_key_path)
     server_cert_path = ssl_certs.build_path('server.crt')
+    server_ext_conf = ssl_certs.build_path('server.extensions.cnf')
     rm_f(server_cert_path)
     _openssl(['x509', '-req', '-passin', 'stdin',
               # Will need to be generated again in 10 years -- vila 20071122
@@ -201,6 +201,7 @@ def sign_server_certificate():
               '-in', server_csr_path,
               '-CA', ca_cert_path, '-CAkey', ca_key_path,
               '-set_serial', '01',
+              '-extfile', server_ext_conf,
               '-out', server_cert_path],
              input='%(ca_pass)s\n' % ssl_params)
 
