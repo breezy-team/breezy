@@ -103,6 +103,8 @@ class MatchHostnameTests(tests.TestCase):
         # Python Issue #17980: avoid denials of service by refusing more than
         # one wildcard per fragment.
         if sys.version_info[:2] >= (3, 7):
+            # Python 3.7 dropped support for partial wildcards, see
+            # https://docs.python.org/3/whatsnew/3.7.html#ssl
             not_ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
         else:
             ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
