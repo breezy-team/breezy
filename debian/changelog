@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7210-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7210-1) unstable; urgency=medium
 
   * Mark brz-doc as Multi-Arch: foreign.
   * Add patch 05_timestamp_range: Handle overflow on Python 2.
@@ -7,7 +7,7 @@ breezy (3.0.0~bzr7210-1) UNRELEASED; urgency=medium
   * Drop patch 04_remove_more_file_ids: applied upstream.
   * Drop patch 05_timestamp_range: applied upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 23 Nov 2018 03:12:07 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 23 Nov 2018 12:05:17 +0000
 
 breezy (3.0.0~bzr7204-1) unstable; urgency=medium
 
