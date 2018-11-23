@@ -682,7 +682,7 @@ class BundleTree(Tree):
         old_path = self.old_path(path)
         return self.base_tree.get_file_revision(old_path)
 
-    def get_size_and_sha1(self, new_path, file_id=None):
+    def get_size_and_sha1(self, new_path):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
         from the base_tree. Rather than re-reading the file.
@@ -772,7 +772,7 @@ class BundleTree(Tree):
             # skip the root for compatability with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def sorted_path_id(self):
         paths = []

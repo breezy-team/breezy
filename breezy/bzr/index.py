@@ -310,7 +310,7 @@ class GraphIndexBuilder(object):
     def finish(self):
         """Finish the index.
 
-        :returns: cBytesIO holding the full context of the index as it 
+        :returns: cBytesIO holding the full context of the index as it
         should be written to disk.
         """
         lines = [_SIGNATURE]

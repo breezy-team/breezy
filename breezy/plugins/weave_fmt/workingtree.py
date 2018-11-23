@@ -206,8 +206,7 @@ class WorkingTree2(PreDirStateWorkingTree):
 
     def _iter_conflicts(self):
         conflicted = set()
-        for info in self.list_files():
-            path = info[0]
+        for path, file_class, file_kind, entry in self.list_files():
             stem = get_conflicted_stem(path)
             if stem is None:
                 continue

@@ -447,10 +447,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     :param to_file: The output stream.
     :param specific_files: Include only changes to these files - None for all
         changes.
-    :param external_diff_options: If set, use an external GNU diff and pass 
+    :param external_diff_options: If set, use an external GNU diff and pass
         these options.
     :param extra_trees: If set, more Trees to use for looking up file ids
-    :param path_encoding: If set, the path will be encoded as specified, 
+    :param path_encoding: If set, the path will be encoded as specified,
         otherwise is supposed to be utf8
     :param format_cls: Formatter class (DiffTree subclass)
     """

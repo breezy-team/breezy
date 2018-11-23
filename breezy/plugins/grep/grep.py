@@ -429,8 +429,8 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     #                and hits manually refilled. Could do this again if it was
     #                for a good reason, otherwise cache might want purging.
     outputter = opts.outputter
-    for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                                                     from_dir=from_dir, recursive=opts.recursive):
+    for fp, fc, fkind, entry in tree.list_files(
+            include_root=False, from_dir=from_dir, recursive=opts.recursive):
 
         if _skip_file(opts.include, opts.exclude, fp):
             continue

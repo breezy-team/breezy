@@ -1480,7 +1480,7 @@ class CHKInventory(CommonInventory):
 
         if given [foo-id] we will include
             TREE_ROOT as interesting parents
-        and 
+        and
             foo-id, baz-id, frob-id, fringle-id
         As interesting ids.
         """

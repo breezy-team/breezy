@@ -1007,8 +1007,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """
         with self.lock_read():
             if from_dir is None and include_root is True:
-                yield ('', 'V', 'directory', self.get_root_id(),
-                       self.root_inventory.root)
+                yield ('', 'V', 'directory', self.root_inventory.root)
             # Convert these into local objects to save lookup times
             pathjoin = osutils.pathjoin
 
@@ -1100,12 +1099,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     # make a last minute entry
                     if f_ie:
-                        yield fp[1:], c, fk, f_ie.file_id, f_ie
+                        yield fp[1:], c, fk, f_ie
                     else:
                         try:
-                            yield fp[1:], c, fk, None, fk_entries[fk]()
+                            yield fp[1:], c, fk, fk_entries[fk]()
                         except KeyError:
-                            yield fp[1:], c, fk, None, TreeEntry()
+                            yield fp[1:], c, fk, TreeEntry()
                         continue
 
                     if fk != 'directory':
@@ -1458,7 +1457,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # indeed dirty.  - RBC 20060907
                 self._write_inventory(self._inventory)
 
-    def stored_kind(self, path, file_id=None):
+    def stored_kind(self, path):
         """See Tree.stored_kind"""
         return self._path2ie(path).kind
 

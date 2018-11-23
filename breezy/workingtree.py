@@ -362,10 +362,10 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, path, file_id=None, filtered=True):
-        return self.get_file_with_stat(path, file_id, filtered=filtered)[0]
+    def get_file(self, path, filtered=True):
+        return self.get_file_with_stat(path, filtered=filtered)[0]
 
-    def get_file_with_stat(self, path, file_id=None, filtered=True,
+    def get_file_with_stat(self, path, filtered=True,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         abspath = self.abspath(path)
@@ -381,13 +381,13 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
             file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
-    def get_file_text(self, path, file_id=None, filtered=True):
-        with self.get_file(path, file_id, filtered=filtered) as my_file:
+    def get_file_text(self, path, filtered=True):
+        with self.get_file(path, filtered=filtered) as my_file:
             return my_file.read()
 
-    def get_file_lines(self, path, file_id=None, filtered=True):
+    def get_file_lines(self, path, filtered=True):
         """See Tree.get_file_lines()"""
-        with self.get_file(path, file_id, filtered=filtered) as file:
+        with self.get_file(path, filtered=filtered) as file:
             return file.readlines()
 
     def get_parent_ids(self):
@@ -456,7 +456,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
 
-    def get_file_size(self, path, file_id=None):
+    def get_file_size(self, path):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
         # canonical size
@@ -719,7 +719,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
             self.add(path, file_id, 'directory')
             return file_id
 
-    def get_symlink_target(self, path, file_id=None):
+    def get_symlink_target(self, path):
         abspath = self.abspath(path)
         target = osutils.readlink(abspath)
         return target
@@ -753,7 +753,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-    def extract(self, path, file_id=None, format=None):
+    def extract(self, path, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -764,7 +764,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """Write the in memory meta data to disk."""
         raise NotImplementedError(self.flush)
 
-    def kind(self, relpath, file_id=None):
+    def kind(self, relpath):
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -900,7 +900,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
                 self.set_parent_trees(parent_trees)
             return count
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         with self.lock_write(), open(self.abspath(path), 'wb') as stream:
             stream.write(bytes)
@@ -930,7 +930,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         raise NotImplementedError(self.is_ignored)
 
-    def stored_kind(self, path, file_id=None):
+    def stored_kind(self, path):
         """See Tree.stored_kind"""
         raise NotImplementedError(self.stored_kind)
 

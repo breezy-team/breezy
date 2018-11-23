@@ -237,7 +237,7 @@ class TestUncommit(TestCaseWithTransport):
         script = ScriptRunner()
         script.run_script(self, """
 $ cd tree
-$ brz uncommit --force 
+$ brz uncommit --force
     2 ...
       second commit
 ...
