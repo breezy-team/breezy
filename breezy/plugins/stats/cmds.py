@@ -59,7 +59,7 @@ def collapse_by_person(revisions, canonical_committer):
             info[2][username] = info[2].setdefault(username, 0) + 1
     res = [(len(revs), revs, emails, fnames)
            for revs, emails, fnames in committer_to_info.values()]
-    res.sort(reverse=True)
+    res.sort(reverse=True, key=lambda x: x[0])
     return res
 
 
