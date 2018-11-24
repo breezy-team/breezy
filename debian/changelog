@@ -1,9 +1,9 @@
-breezy (3.0.0~bzr7210-2) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7210-2) unstable; urgency=medium
 
   * debci: Run with plugins enabled, since some tests rely on plugins being
     loaded.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Nov 2018 15:33:46 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Nov 2018 15:34:03 +0000
 
 breezy (3.0.0~bzr7210-1) unstable; urgency=medium
 
