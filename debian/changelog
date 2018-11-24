@@ -1,9 +1,9 @@
-breezy (3.0.0~bzr7210-3) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7210-3) unstable; urgency=medium
 
   * Add patch 10_timestamp_limit: take into account offset when checking
     for time overflow.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Nov 2018 22:57:23 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 24 Nov 2018 22:57:31 +0000
 
 breezy (3.0.0~bzr7210-2) unstable; urgency=medium
 
