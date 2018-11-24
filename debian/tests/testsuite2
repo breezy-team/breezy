@@ -1,2 +1,3 @@
 #!/bin/sh
-python2 /usr/bin/brz selftest -v --parallel=fork --no-plugins -x breezy.tests.test_http.TestBadStatusServer.test_http_get -x breezy.tests.test_http.TestBadStatusServer.test_http_has
+BRZ_PLUGIN_PATH=-site:-user python2 /usr/bin/brz selftest -v --parallel=fork \
+  -Oselftest.timeout=6000
