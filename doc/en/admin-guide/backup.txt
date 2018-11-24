@@ -71,23 +71,7 @@ example from ``cron``) do
   $ brz pull  # again, the parent location is remembered
 
 The action of pulling from the parent for all branches in some directory is
-common enough that there is a plugin to do it.  The `bzrtools`_ plugin
-contains a ``multi-pull`` command that does a ``pull`` in all branches under a
-specified directory.
-
-.. _bzrtools: http://launchpad.net/bzrtools
-
-With this plugin installed, the above periodically run commands would be
-
-::
-
-  $ cd /var/backup
-  $ brz multi-pull
-
-Note that ``multi-pull`` does a pull in *every* branch in the specified
-directory (the current directory by default) and care should be taken that
-this is the desired effect.  A simple script could also substitute for the
-multi-pull command while also offering greater flexibility.
+common enough that there is a plugin to do it.
 
 Bound Branch Backups
 ~~~~~~~~~~~~~~~~~~~~
