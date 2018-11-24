@@ -1,0 +1,19 @@
+Description: Include offset in check as well.
+Origin: commit, revision id: jelmer@jelmer.uk-20181124224806-zmgio17okwaq0xjq
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2018-11-24
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20181124224806-zmgio17okwaq0xjq
+
+=== modified file 'breezy/tests/test_timestamp.py'
+--- old/breezy/tests/test_timestamp.py	2018-11-21 22:07:46 +0000
++++ new/breezy/tests/test_timestamp.py	2018-11-24 22:48:06 +0000
+@@ -138,7 +138,7 @@
+         for count in range(500):
+             t += random.random() * 24 * 3600 * 30
+             try:
+-                time.gmtime(t)
++                time.gmtime(t + o)
+             except (OverflowError, ValueError):
+                 # We've reached the maximum for time_t on this platform
+                 break
+
