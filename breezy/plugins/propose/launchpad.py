@@ -72,6 +72,12 @@ def plausible_launchpad_url(url):
     return bool(regex.match(url))
 
 
+class WebserviceFailure(Exception):
+
+    def __init__(self, message):
+        self.message = message
+
+
 def _call_webservice(call, *args, **kwargs):
     """Make a call to the webservice, wrapping failures.
 
@@ -86,10 +92,10 @@ def _call_webservice(call, *args, **kwargs):
     except restful_errors.HTTPError as e:
         error_lines = []
         for line in e.content.splitlines():
-            if line.startswith('Traceback (most recent call last):'):
+            if line.startswith(b'Traceback (most recent call last):'):
                 break
             error_lines.append(line)
-        raise Exception(''.join(error_lines))
+        raise WebserviceFailure(b''.join(error_lines))
 
 
 class LaunchpadMergeProposal(MergeProposal):
@@ -426,10 +432,10 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
                 review_types=[None for reviewer in reviewers])
-        except Exception as e:
+        except WebserviceFailure as e:
             # Urgh.
-            if ('There is already a branch merge proposal '
-                'registered for branch ') in e.message:
+            if (b'There is already a branch merge proposal '
+                b'registered for branch ') in e.message:
                 raise MergeProposalExists(self.source_branch.user_url)
             raise
 
@@ -551,7 +557,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
                 review_types=[None for reviewer in reviewers])
-        except Exception as e:
+        except WebserviceFailure as e:
             # Urgh.
             if ('There is already a branch merge proposal '
                 'registered for branch ') in e.message:
