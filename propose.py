@@ -81,6 +81,14 @@ class LabelsUnsupported(errors.BzrError):
         self.hoster = hoster
 
 
+class PrerequisiteBranchUnsupported(errors.BzrError):
+    """Prerequisite branch not supported by this hoster."""
+
+    def __init__(self, hoster):
+        errors.BzrError.__init__(self)
+        self.hoster = hoster
+
+
 class MergeProposal(object):
     """A merge proposal.
 
@@ -135,12 +143,14 @@ class MergeProposalBuilder(object):
         """
         raise NotImplementedError(self.get_infotext)
 
-    def create_proposal(self, description, reviewers=None, labels=None):
+    def create_proposal(self, description, reviewers=None, labels=None,
+                        prerequisite_branch=None):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
         :param reviewers: Optional list of people to ask reviews from
         :param labels: Labels to attach to the proposal
+        :param prerequisite_branch: Optional prerequisite branch
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)

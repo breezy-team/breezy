@@ -35,6 +35,7 @@ from .propose import (
     MergeProposalExists,
     NoMergeProposal,
     NoSuchProject,
+    PrerequisiteBranchUnsupported,
     UnsupportedHoster,
     )
 
@@ -296,8 +297,11 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None):
+    def create_proposal(self, description, reviewers=None, labels=None,
+                        prerequisite_branch=None):
         """Perform the submission."""
+        if prerequisite_branch is not None:
+            raise PrerequisiteBranchUnsupported(self)
         import gitlab
         # TODO(jelmer): Support reviewers
         self.gl.auth()

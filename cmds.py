@@ -94,18 +94,24 @@ class cmd_publish_derived(Command):
         note(gettext("Pushed to %s") % public_url)
 
 
-def summarize_unmerged(local_branch, remote_branch, target):
+def summarize_unmerged(local_branch, remote_branch, target,
+                       prerequisite_branch=None):
     """Generate a text description of the unmerged revisions in branch.
 
     :param branch: The proposed branch
     :param target: Target branch
+    :param prerequisite_branch: Optional prerequisite branch
     :return: A string
     """
     log_format = _mod_log.log_formatter_registry.get_default(local_branch)
     to_file = StringIO()
     lf = log_format(to_file=to_file, show_ids=False, show_timezone='original')
-    local_extra = _mod_missing.find_unmerged(
-        remote_branch, target, restrict='local')[0]
+    if prerequisite_branch:
+        local_extra = _mod_missing.find_unmerged(
+            remote_branch, prerequisite_branch, restrict='local')[0]
+    else:
+        local_extra = _mod_missing.find_unmerged(
+            remote_branch, target, restrict='local')[0]
 
     if remote_branch.supports_tags():
         rev_tag_dict = remote_branch.tags.get_reverse_tag_dict()
@@ -136,6 +142,7 @@ class cmd_propose_merge(Command):
                        help='Requested reviewers.'),
             Option('name', help='Name of the new remote branch.', type=str),
             Option('description', help='Description of the change.', type=str),
+            Option('prerequisite', help='Prerequisite branch.', type=str),
             ListOption('labels', short_name='l', type=text_type,
                        help='Labels to apply.'),
             Option('no-allow-lossy',
@@ -147,7 +154,7 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None):
+            labels=None, prerequisite=None):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -169,16 +176,22 @@ class cmd_propose_merge(Command):
                 branch, target, name=name, allow_lossy=not no_allow_lossy)
         branch.set_push_location(remote_branch.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
+        if prerequisite is not None:
+            prerequisite_branch = _mod_branch.Branch.open(prerequisite)
+        else:
+            prerequisite_branch = None
         proposal_builder = hoster.get_proposer(remote_branch, target)
         if description is None:
             body = proposal_builder.get_initial_body()
             info = proposal_builder.get_infotext()
-            info += "\n\n" + summarize_unmerged(branch, remote_branch, target)
+            info += "\n\n" + summarize_unmerged(
+                branch, remote_branch, target, prerequisite_branch)
             description = msgeditor.edit_commit_message(
                 info, start_message=body)
         try:
             proposal = proposal_builder.create_proposal(
-                description=description, reviewers=reviewers, labels=labels)
+                description=description, reviewers=reviewers,
+                prerequisite_branch=prerequisite_branch, labels=labels)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)

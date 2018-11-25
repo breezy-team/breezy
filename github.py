@@ -26,6 +26,7 @@ from .propose import (
     MergeProposalBuilder,
     MergeProposalExists,
     NoMergeProposal,
+    PrerequisiteBranchUnsupported,
     UnsupportedHoster,
     )
 
@@ -260,8 +261,11 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         """
         return None
 
-    def create_proposal(self, description, reviewers=None, labels=None):
+    def create_proposal(self, description, reviewers=None, labels=None,
+                        prerequisite_branch=None):
         """Perform the submission."""
+        if prerequisite_branch is not None:
+            raise PrerequisiteBranchUnsupported(self)
         import github
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):

@@ -346,7 +346,6 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             self.target_branch = target_branch
             self.target_branch_lp = self.launchpad.branches.getByUrl(url=target_branch.user_url)
-        self.prerequisite_branch = self._get_prerequisite_branch()
         self.commit_message = message
         self.approve = approve
         self.fixes = fixes
@@ -357,8 +356,6 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch_lp.bzr_identity]
         info.append("Target: %s\n" % self.target_branch_lp.bzr_identity)
-        if self.prerequisite_branch is not None:
-            info.append("Prereq: %s\n" % self.prerequisite_branch.bzr_identity)
         return ''.join(info)
 
     def get_initial_body(self):
@@ -397,17 +394,6 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
                 raise MergeProposalExists(lp_api.canonical_url(mp))
 
-    def _get_prerequisite_branch(self):
-        hooks = self.hooks['get_prerequisite']
-        prerequisite_branch = None
-        for hook in hooks:
-            prerequisite_branch = hook(
-                {'launchpad': self.launchpad,
-                 'source_branch': self.source_branch_lp,
-                 'target_branch': self.target_branch_lp,
-                 'prerequisite_branch': prerequisite_branch})
-        return prerequisite_branch
-
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
             _call_webservice(
@@ -415,17 +401,19 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 vote=u'Approve',
                 subject='', # Use the default subject.
                 content=u"Rubberstamp! Proposer approves of own proposal.")
-            _call_webservice(mp.setStatus, status=u'Approved', revid=source_branch.last_revision())
+            _call_webservice(mp.setStatus, status=u'Approved',
+                             revid=self.source_branch.last_revision())
 
-    def create_proposal(self, description, reviewers=None, labels=None):
+    def create_proposal(self, description, reviewers=None, labels=None,
+                        prerequisite_branch=None):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported()
-        if self.prerequisite_branch is None:
-            prereq = None
+        if prerequisite_branch is not None:
+            prereq = self.launchpad.branches.getByUrl(
+                url=prerequisite_branch.user_url)
         else:
-            prereq = self.prerequisite_branch.lp
-            self.prerequisite_branch.update_lp()
+            prereq = None
         if reviewers is None:
             reviewers = []
         try:
@@ -482,7 +470,6 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         else:
             self.target_branch = target_branch
             (self.target_repo_lp, self.target_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(target_branch)
-        self.prerequisite_branch = self._get_prerequisite_branch()
         self.commit_message = message
         self.approve = approve
         self.fixes = fixes
@@ -493,8 +480,6 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch.user_url]
         info.append("Target: %s\n" % self.target_branch.user_url)
-        if self.prerequisite_branch is not None:
-            info.append("Prereq: %s\n" % self.prerequisite_branch.user_url)
         return ''.join(info)
 
     def get_initial_body(self):
@@ -533,17 +518,6 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             if mp.target_branch.self_link == self.target_branch_lp.self_link:
                 raise MergeProposalExists(lp_api.canonical_url(mp))
 
-    def _get_prerequisite_branch(self):
-        hooks = self.hooks['get_prerequisite']
-        prerequisite_branch = None
-        for hook in hooks:
-            prerequisite_branch = hook(
-                {'launchpad': self.launchpad,
-                 'source_branch': self.source_branch_lp,
-                 'target_branch': self.target_branch_lp,
-                 'prerequisite_branch': prerequisite_branch})
-        return prerequisite_branch
-
     def approve_proposal(self, mp):
         with self.source_branch.lock_read():
             _call_webservice(
@@ -551,24 +525,26 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 vote=u'Approve',
                 subject='', # Use the default subject.
                 content=u"Rubberstamp! Proposer approves of own proposal.")
-            _call_webservice(mp.setStatus, status=u'Approved', revid=source_branch.last_revision())
+            _call_webservice(
+                mp.setStatus, status=u'Approved',
+                revid=self.source_branch.last_revision())
 
-    def create_proposal(self, description, reviewers=None, labels=None):
+    def create_proposal(self, description, reviewers=None, labels=None,
+                        prerequisite_branch=None):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported()
-        if self.prerequisite_branch is None:
-            prereq = None
+        if prerequisite_branch is not None:
+            (prereq_repo_lp, prereq_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch)
         else:
-            prereq = self.prerequisite_branch.lp
-            self.prerequisite_branch.update_lp()
+            prereq_branch_lp = None
         if reviewers is None:
             reviewers = []
         try:
             mp = _call_webservice(
                 self.source_branch_lp.createMergeProposal,
                 merge_target=self.target_branch_lp,
-                merge_prerequisite=prereq,
+                merge_prerequisite=prereq_branch_lp,
                 initial_comment=description.strip().encode('utf-8'),
                 commit_message=self.commit_message,
                 needs_review=True,
@@ -590,3 +566,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 mp.linkBug,
                 bug=self.launchpad.bugs[int(self.fixes)])
         return LaunchpadMergeProposal(mp)
+
+
+def modified_files(old_tree, new_tree):
+    """Return a list of paths in the new tree with modified contents."""
+    for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
+            old_tree):
+        if c and k == 'file':
+            yield str(path)
