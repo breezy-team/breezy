@@ -386,3 +386,16 @@ class GrepTests(ExternalBase):
         output, error = self.run_bzr('grep text')
         self.assertEqual(output, 'a:text for a\n')
         self.assertEqual(error, '')
+
+
+class StatusTests(ExternalBase):
+
+    def test_empty_dir(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree(['a/', 'a/foo'])
+        self.build_tree_contents([('.gitignore', 'foo\n')])
+        tree.add(['.gitignore'])
+        tree.commit('add ignore')
+        output, error = self.run_bzr('st')
+        self.assertEqual(output, '')
+        self.assertEqual(error, '')
