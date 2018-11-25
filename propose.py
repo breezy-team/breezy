@@ -65,9 +65,11 @@ class ProposeMergeHooks(hooks.Hooks):
 
     def __init__(self):
         hooks.Hooks.__init__(self, __name__, "Proposer.hooks")
-        self.add_hook('get_prerequisite',
+        self.add_hook(
+            'get_prerequisite',
             "Return the prerequisite branch for proposing as merge.", (3, 0))
-        self.add_hook('merge_proposal_body',
+        self.add_hook(
+            'merge_proposal_body',
             "Return an initial body for the merge proposal message.", (3, 0))
 
 
@@ -97,9 +99,6 @@ class MergeProposal(object):
 
     def __init__(self, url=None):
         self.url = url
-
-    # TODO(jelmer): provide some way to check if this merge proposal has been
-    # merged.
 
     def get_description(self):
         """Get the description of the merge proposal."""
