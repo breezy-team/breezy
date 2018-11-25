@@ -1,6 +1,7 @@
 breezy-debian (2.8.22) UNRELEASED; urgency=medium
 
   * Set Enhances: brz.
+  * Fix compatibility with newer snapshots of Breezy.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 18 Nov 2018 17:10:21 +0000
 
