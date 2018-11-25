@@ -986,7 +986,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             raise errors.NoSuchId(self, file_id)
 
     def _set_root_id(self, file_id):
-        self._fileid_map.set_file_id("", file_id)
+        raise errors.UnsupportedOperation(self._set_root_id, self)
 
     def get_root_id(self):
         return self.path2id(u"")
