@@ -2,6 +2,7 @@ breezy-debian (2.8.22) UNRELEASED; urgency=medium
 
   * Set Enhances: brz.
   * Fix compatibility with newer snapshots of Breezy.
+  * Trim trailing whitespace.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 18 Nov 2018 17:10:21 +0000
 
@@ -140,7 +141,7 @@ bzr-builddeb (2.8.7) unstable; urgency=low
    - As of dpkg 1.17.0, source format '3.0 (native)' strictly
      enforces that native packages do not have a Debian revision.
      Use "0.1" instead of "0.1-1" for the version number in
-     test_extract_format3_native (Closes: #720003). 
+     test_extract_format3_native (Closes: #720003).
   * debian/control: Add myself to Uploaders.
   * debian/tests/control:
    - Remove the depricated no-build-needed Features flag and add
@@ -152,7 +153,7 @@ bzr-builddeb (2.8.6) unstable; urgency=low
 
   * Team upload.
   * Upload to unstable.
-  * Move to minimal dh style rules file. 
+  * Move to minimal dh style rules file.
   * Drop bzr-svn from Build-Depends-Indep and Suggests (Closes: #709288).
   * Bump Standards-Version to 3.9.4, no changes needed.
   * Drop deprecated debian/pycompat and debian/pyversions files.
@@ -774,7 +775,7 @@ bzr-builddeb (2.1~0ubuntu1) jaunty; urgency=low
   * Try to retrieve upstream tarball using get-orig-source rule in
     debian/rules if everything else fails. (Closes: #498622)
   * Support Vcs-Git in the deb: directory service if bzr-git is installed.
-  * Use svn-buildpackage configuration when present. 
+  * Use svn-buildpackage configuration when present.
   * Print name of created tag in mark-uploaded. (Closes: #497416)
 
   [ James Westby ]
@@ -848,7 +849,7 @@ bzr-builddeb (2.0.1) experimental; urgency=low
   * Handle remote files in repack check that checksums match when target
     exists. (bug #263371)
   * Fix the README to mention bzrtools is required.
-  * Depend on at least 0.1.11 of python-debian for strict=False support. 
+  * Depend on at least 0.1.11 of python-debian for strict=False support.
   * Check that versions are in the ancestry of the current branch.
     (bug #264701)
   * Fix locking problems with merge_upstream in shared repository.
@@ -1131,7 +1132,7 @@ bzr-builddeb (0.15~rc1ubuntu1) gutsy; urgency=low
  -- Reinhard Tartler <siretart@tauware.de>  Tue,  1 May 2007 16:17:06 +0200
 
 bzr-builddeb (0.15~rc1) feisty; urgency=low
-  
+
   * Version designed to work with bzr 0.15.
   * Bump depends on bzr appropriately.
   * Install the plugin in .../plugins/builddeb instead of
@@ -1207,7 +1208,7 @@ bzr-builddeb (0.13ubuntu1) feisty; urgency=low
 
 bzr-builddeb (0.13) unstable; urgency=low
 
-  * New release. 
+  * New release.
   * Comptible with bzr 0.13.
 
  -- James Westby <jw+debian@jameswestby.net>  Wed, 20 Dec 2006 00:22:18 +0000
