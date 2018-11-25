@@ -58,9 +58,6 @@ Description: easy to use distributed version control system
  .
  Out of the box, Breezy supports both the Git and Bazaar repository
  formats.
- .
- Install python3-paramiko if you are going to push branches to remote
- hosts with sftp.
 
 Package: python-breezy
 Architecture: any
@@ -88,8 +85,6 @@ Description: distributed version control system - python 2 library
  and easily extendable.
  .
  This package contains the Breezy Python 2 library.
- .
- Install python-paramiko for sftp transport support.
 
 Package: python3-breezy
 Architecture: any
@@ -117,8 +112,6 @@ Description: distributed version control system - python 3 library
  and easily extendable.
  .
  This package contains the Breezy Python 3 library.
- .
- Install python3-paramiko for sftp transport support.
 
 Package: python-breezy.tests
 Architecture: all

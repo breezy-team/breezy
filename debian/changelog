@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7210-4) UNRELEASED; urgency=medium
+
+  * debian/control: Remove notes about paramiko in description.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Nov 2018 13:10:02 +0000
+
 breezy (3.0.0~bzr7210-3) unstable; urgency=medium
 
   * Add patch 10_timestamp_limit: take into account offset when checking
