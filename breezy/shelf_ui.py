@@ -365,8 +365,7 @@ class Shelver(object):
         """
         lines = osutils.split_lines(self.change_editor.edit_file(
             self.change_editor.old_tree.id2path(file_id),
-            self.change_editor.new_tree.id2path(file_id),
-            file_id=file_id))
+            self.change_editor.new_tree.id2path(file_id)))
         return lines, self._count_changed_regions(work_tree_lines, lines)
 
     @staticmethod
