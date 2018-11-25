@@ -397,5 +397,5 @@ class StatusTests(ExternalBase):
         tree.add(['.gitignore'])
         tree.commit('add ignore')
         output, error = self.run_bzr('st')
-        self.assertEqual(output, '')
+        self.assertEqual(output, 'unknown:\n  a/\n')
         self.assertEqual(error, '')
