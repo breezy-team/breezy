@@ -206,6 +206,7 @@ class cmd_lp_propose_merge(Command):
     unspecified type, and request "review-team" to perform a "qa" review.
     """
 
+    hidden = True
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
                      Option('message', short_name='m', type=text_type,
