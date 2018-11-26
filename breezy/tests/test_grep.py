@@ -20,11 +20,11 @@ import os
 import re
 import unicodedata as ud
 
-from ... import tests, osutils
-from ...sixish import PY3
-from ..._termcolor import color_string, FG
+from .. import tests, osutils
+from ..sixish import PY3
+from .._termcolor import color_string, FG
 
-from ...tests.features import (
+from ..tests.features import (
     UnicodeFilenameFeature,
     )
 
