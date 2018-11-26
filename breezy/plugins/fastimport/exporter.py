@@ -502,8 +502,10 @@ class BzrFastExporter(object):
         files_to_get = []
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
-                text = tree_new.get_file_text(path)
-                files_to_get.append((path, (path, helpers.kind_to_mode('file', tree_new.is_executable(path)))))
+                files_to_get.append(
+                    (path,
+                     (path, helpers.kind_to_mode(
+                         'file', tree_new.is_executable(path)))))
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(
                     path.encode("utf-8"),
