@@ -29,8 +29,12 @@ The plugin also provides the following commands:
 
     launchpad-login: Show or set the Launchpad user ID
     launchpad-open: Open a Launchpad branch page in your web browser
-    lp-propose-merge: Propose merging a branch on Launchpad
     launchpad-mirror: Ask Launchpad to mirror a branch now
+
+As well as the following deprecated command:
+
+    lp-propose-merge: Propose merging a branch on Launchpad
+         (deprecated in favour of the more generic 'brz propose-merge')
 
 """
 

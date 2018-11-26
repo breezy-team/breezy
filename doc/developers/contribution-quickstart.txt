@@ -98,7 +98,7 @@ Normally the tests will skip if some library dependencies are not present.
 On Ubuntu, you can install them with this command (you must have source
 repositories enabled in Software Sources)::
 
-    $ sudo apt-get build-dep bzr
+    $ sudo apt-get build-dep brz
 
 To build the binary extensions::
 
@@ -111,8 +111,8 @@ Proposing a merge
 -----------------
 
 
-Then propose a merge into bzr; for bzr 2.2 and later you can use the ``bzr
-lp-propose-merge`` command.  In the comment for your merge proposal please
+Then propose a merge into Breezy; for Breezy 3.0 and later you can use the ``brz
+propose-merge`` command.  In the comment for your merge proposal please
 explain what you're trying to do and why.  For `example
 <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 
