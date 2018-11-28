@@ -1923,50 +1923,6 @@ class cmd_remove(Command):
                     force=(file_deletion_strategy == 'no-backup'))
 
 
-class cmd_file_id(Command):
-    __doc__ = """Print file_id of a particular file or directory.
-
-    The file_id is assigned when the file is first added and remains the
-    same through all revisions where the file exists, even when it is
-    moved or renamed.
-    """
-
-    hidden = True
-    _see_also = ['inventory', 'ls']
-    takes_args = ['filename']
-
-    @display_command
-    def run(self, filename):
-        tree, relpath = WorkingTree.open_containing(filename)
-        file_id = tree.path2id(relpath)
-        if file_id is None:
-            raise errors.NotVersionedError(filename)
-        else:
-            self.outf.write(file_id.decode('utf-8') + '\n')
-
-
-class cmd_file_path(Command):
-    __doc__ = """Print path of file_ids to a file or directory.
-
-    This prints one line for each directory down to the target,
-    starting at the branch root.
-    """
-
-    hidden = True
-    takes_args = ['filename']
-
-    @display_command
-    def run(self, filename):
-        tree, relpath = WorkingTree.open_containing(filename)
-        fid = tree.path2id(relpath)
-        if fid is None:
-            raise errors.NotVersionedError(filename)
-        segments = osutils.splitpath(relpath)
-        for pos in range(1, len(segments) + 1):
-            path = osutils.joinpath(segments[:pos])
-            self.outf.write("%s\n" % tree.path2id(path))
-
-
 class cmd_reconcile(Command):
     __doc__ = """Reconcile brz metadata in a branch.
 
@@ -2486,7 +2442,7 @@ class cmd_added(Command):
 class cmd_root(Command):
     __doc__ = """Show the tree root directory.
 
-    The root is the nearest enclosing directory with a .bzr control
+    The root is the nearest enclosing directory with a control
     directory."""
 
     takes_args = ['filename?']
@@ -6879,6 +6835,8 @@ def _register_lazy_builtins():
             ('cmd_bundle_info', [], 'breezy.bundle.commands'),
             ('cmd_config', [], 'breezy.config'),
             ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
+            ('cmd_file_id', [], 'breezy.bzr.debug_commands'),
+            ('cmd_file_path', [], 'breezy.bzr.debug_commands'),
             ('cmd_version_info', [], 'breezy.cmd_version_info'),
             ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
             ('cmd_conflicts', [], 'breezy.conflicts'),
