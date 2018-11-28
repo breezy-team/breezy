@@ -276,6 +276,8 @@ class cmd_ancestor_growth(commands.Command):
 
     encoding_type = 'replace'
 
+    hidden = True
+
     def run(self, location='.'):
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
