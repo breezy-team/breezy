@@ -84,6 +84,18 @@ class TestInfo(tests.TestCaseWithTransport):
                          '  checkout of branch: target\n')
         self.assertEqual(err, '')
 
+    def test_info_colocated(self):
+        br = self.make_branch_and_tree('target', format='development-colo')
+        target = br.controldir.create_branch(name='dichtbij')
+        br.controldir.set_branch_reference(target)
+        out, err = self.run_bzr('info target')
+        self.assertEqual(out,
+                         'Standalone tree (format: development-colo)\n'
+                         'Location:\n'
+                         '            light checkout root: target\n'
+                         '  checkout of co-located branch: dichtbij\n')
+        self.assertEqual(err, '')
+
     def test_info_standalone(self):
         transport = self.get_transport()
 

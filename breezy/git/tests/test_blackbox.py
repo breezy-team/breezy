@@ -63,7 +63,13 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone tree (format: git)" in output)
+        self.assertEqual(
+                output,
+                'Standalone tree (format: git)\n'
+                'Location:\n'
+                '            light checkout root: .\n'
+                '  checkout of co-located branch: master\n')
+
 
     def test_ignore(self):
         self.simple_commit()
