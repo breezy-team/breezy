@@ -28,7 +28,6 @@ from breezy import (
     graph,
     osutils,
     revision as _mod_revision,
-    testament as _mod_testament,
     gpg,
     )
 from breezy.bundle import serializer
@@ -887,9 +886,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 [r], specific_fileids=specific_fileids))[0]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        with self.lock_write():
-            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
-            self.add_signature_text(revision_id, signature)
+        raise NotImplementedError(self.store_revision_signature)
 
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
@@ -1087,11 +1084,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.make_working_trees)
 
     def sign_revision(self, revision_id, gpg_strategy):
-        with self.lock_write():
-            testament = _mod_testament.Testament.from_revision(
-                self, revision_id)
-            plaintext = testament.as_short_text()
-            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        raise NotImplementedError(self.sign_revision)
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
@@ -1101,18 +1094,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
-        with self.lock_read():
-            if not self.has_signature_for_revision_id(revision_id):
-                return gpg.SIGNATURE_NOT_SIGNED, None
-            signature = self.get_signature_text(revision_id)
-
-            testament = _mod_testament.Testament.from_revision(
-                self, revision_id)
-
-            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
-            if testament.as_short_text() != signed_plaintext:
-                return gpg.SIGNATURE_NOT_VALID, None
-            return (status, key)
+        raise NotImplementedError(self.verify_revision_signature)
 
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.

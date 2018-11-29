@@ -44,7 +44,7 @@ from ..revision import Revision, NULL_REVISION
 from ..sixish import (
     viewitems,
     )
-from ..testament import StrictTestament
+from ..bzr.testament import StrictTestament
 from ..trace import mutter, warning
 from ..tree import Tree
 from ..bzr.xml5 import serializer_v5

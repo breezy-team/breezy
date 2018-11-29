@@ -46,8 +46,8 @@ from breezy.bzr import (
     )
 
 from breezy.recordcounter import RecordCounter
-from breezy.testament import Testament
 from breezy.i18n import gettext
+from breezy.bzr.testament import Testament
 """)
 
 from .. import (
@@ -1120,6 +1120,39 @@ class VersionedFileRepository(Repository):
         with self.lock_write():
             self.signatures.add_lines((revision_id,), (),
                                       osutils.split_lines(signature))
+
+    def sign_revision(self, revision_id, gpg_strategy):
+        with self.lock_write():
+            testament = Testament.from_revision(
+                self, revision_id)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+
+    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        with self.lock_write():
+            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
+            self.add_signature_text(revision_id, signature)
+
+    def verify_revision_signature(self, revision_id, gpg_strategy):
+        """Verify the signature on a revision.
+
+        :param revision_id: the revision to verify
+        :gpg_strategy: the GPGStrategy object to used
+
+        :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
+        """
+        with self.lock_read():
+            if not self.has_signature_for_revision_id(revision_id):
+                return gpg.SIGNATURE_NOT_SIGNED, None
+            signature = self.get_signature_text(revision_id)
+
+            testament = Testament.from_revision(
+                self, revision_id)
+
+            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
+            if testament.as_short_text() != signed_plaintext:
+                return gpg.SIGNATURE_NOT_VALID, None
+            return (status, key)
 
     def find_text_key_references(self):
         """Find the text key references within the repository.
