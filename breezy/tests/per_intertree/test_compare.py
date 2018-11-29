@@ -799,14 +799,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('changing/unchanging', b'mid-id')
         tree1.add(['changing/unchanging/file'], [b'file-id'], ['file'])
         tree1.put_file_bytes_non_atomic(
-            'changing/unchanging/file', b'a file', file_id=b'file-id')
+            'changing/unchanging/file', b'a file')
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id(tree1.get_root_id())
         tree2.mkdir('changed', b'parent-id')
         tree2.mkdir('changed/unchanging', b'mid-id')
         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
         tree2.put_file_bytes_non_atomic(
-            'changed/unchanging/file', b'changed content', file_id=b'file-id')
+            'changed/unchanging/file', b'changed content')
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # parent-id has changed, as has file-id
         root_id = tree1.path2id('')
@@ -825,16 +825,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('changed', b'parent-id')
         tree1.mkdir('changed/unchanging', b'mid-id')
         tree1.add(['changed/unchanging/file'], [b'file-id'], ['file'])
-        tree1.put_file_bytes_non_atomic(
-            'changed/unchanging/file', b'a file',
-            b'file-id')
+        tree1.put_file_bytes_non_atomic('changed/unchanging/file', b'a file')
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id(b'new')
         tree2.mkdir('changed', b'parent-id')
         tree2.mkdir('changed/unchanging', b'mid-id')
         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
         tree2.put_file_bytes_non_atomic(
-            'changed/unchanging/file', b'changed content', file_id=b'file-id')
+            'changed/unchanging/file', b'changed content')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # old is gone, new is added, parent-id has changed(reparented), as has
         # file-id(content)
