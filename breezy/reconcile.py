@@ -68,6 +68,7 @@ class Reconciler(object):
             result = ReconcileResult()
             branch_result = self._reconcile_branch()
             repo_result = self._reconcile_repository()
+            # TODO(jelmer): Don't hardcode supported attributes here
             result.inconsistent_parents = getattr(
                     repo_result, 'inconsistent_parents', None)
             result.aborted = getattr(repo_result, 'aborted', None)
