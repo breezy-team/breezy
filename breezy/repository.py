@@ -956,11 +956,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from .reconcile import RepoReconciler
-        with self.lock_write():
-            reconciler = RepoReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+        raise NotImplementedError(self.reconcile)
 
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.

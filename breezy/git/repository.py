@@ -68,31 +68,6 @@ from dulwich.object_store import (
     )
 
 
-class RepoReconciler(object):
-    """Reconciler that reconciles a repository.
-
-    """
-
-    def __init__(self, repo, other=None, thorough=False):
-        """Construct a RepoReconciler.
-
-        :param thorough: perform a thorough check which may take longer but
-                         will correct non-data loss issues such as incorrect
-                         cached data.
-        """
-        self.repo = repo
-
-    def reconcile(self):
-        """Perform reconciliation.
-
-        After reconciliation the following attributes document found issues:
-        inconsistent_parents: The number of revisions in the repository whose
-                              ancestry was being reported incorrectly.
-        garbage_inventories: The number of inventory objects without revisions
-                             that were garbage collected.
-        """
-
-
 class GitCheck(check.Check):
 
     def __init__(self, repository, check_repo=True):
@@ -241,9 +216,10 @@ class GitRepository(ForeignRepository):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        reconciler = RepoReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        from ..reconcile import ReconcileResult
+        ret = ReconcileResult()
+        ret.aborted = False
+        return ret
 
     def supports_rich_root(self):
         return True

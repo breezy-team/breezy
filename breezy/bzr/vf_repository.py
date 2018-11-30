@@ -1704,6 +1704,13 @@ class VersionedFileRepository(Repository):
         """Return a source for streaming from this repository."""
         return StreamSource(self, to_format)
 
+    def reconcile(self, other=None, thorough=False):
+        """Reconcile this repository."""
+        from .reconcile import VersionedFileRepoReconciler
+        with self.lock_write():
+            reconciler = VersionedFileRepoReconciler(self, thorough=thorough)
+            return reconciler.reconcile()
+
 
 class MetaDirVersionedFileRepository(MetaDirRepository,
                                      VersionedFileRepository):
