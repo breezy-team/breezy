@@ -139,7 +139,7 @@ class UnpackHighresDateTests(tests.TestCase):
             t += random.random() * 24 * 3600 * 30
             try:
                 time.gmtime(t)
-            except OverflowError:
+            except (OverflowError, ValueError):
                 # We've reached the maximum for time_t on this platform
                 break
             if time.localtime(t).tm_year > 9998:

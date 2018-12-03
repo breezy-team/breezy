@@ -1796,8 +1796,7 @@ class TreeTransform(DiskTreeTransform):
                     continue
                 kind = self.final_kind(trans_id)
                 if kind is None:
-                    kind = self._tree.stored_kind(
-                        self._tree.id2path(file_id), file_id)
+                    kind = self._tree.stored_kind(self._tree.id2path(file_id))
                 parent_trans_id = self.final_parent(trans_id)
                 parent_file_id = new_path_file_ids.get(parent_trans_id)
                 if parent_file_id is None:
@@ -2167,8 +2166,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             kind = self._transform.final_kind(trans_id)
             if kind is None:
                 kind = self._transform._tree.stored_kind(
-                    self._transform._tree.id2path(file_id),
-                    file_id)
+                    self._transform._tree.id2path(file_id))
             new_entry = inventory.make_entry(
                 kind,
                 self._transform.final_name(trans_id),
@@ -2240,15 +2238,15 @@ class _PreviewTree(inventorytree.InventoryTree):
                     if not path.startswith(prefix):
                         continue
                     path = path[len(prefix):]
-                yield path, 'V', entry.kind, entry.file_id, entry
+                yield path, 'V', entry.kind, entry
         else:
             if from_dir is None and include_root is True:
-                root_entry = inventory.make_entry('directory', '',
-                                                  ROOT_PARENT, self.get_root_id())
-                yield '', 'V', 'directory', root_entry.file_id, root_entry
+                root_entry = inventory.make_entry(
+                    'directory', '', ROOT_PARENT, self.get_root_id())
+                yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:
-                yield path, 'V', entry.kind, entry.file_id, entry
+                yield path, 'V', entry.kind, entry
 
     def kind(self, path):
         trans_id = self._path2trans_id(path)
@@ -2709,7 +2707,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
             else:
-                with accelerator_tree.get_file(accelerator_path, file_id) as f:
+                with accelerator_tree.get_file(accelerator_path) as f:
                     chunks = osutils.file_iterator(f)
                     if wt.supports_content_filtering():
                         filters = wt._content_filter_stack(tree_path)
