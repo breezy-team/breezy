@@ -1,11 +1,11 @@
-breezy (3.0.0~bzr7210-4) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7210-4) unstable; urgency=medium
 
   * debian/control: Remove notes about paramiko in description.
   * add patch 11_non_utf8_locale: fix selftest when running with non-
     utf8 locale.
   * Re-export upstream signing key without extra signatures.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 25 Nov 2018 13:10:02 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 04 Dec 2018 22:47:14 +0000
 
 breezy (3.0.0~bzr7210-3) unstable; urgency=medium
 
