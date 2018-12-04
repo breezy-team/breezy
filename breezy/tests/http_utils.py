@@ -232,7 +232,7 @@ class HTTPServerRedirecting(http_server.HttpServer):
         code = None
         target = None
         for (rsource, rtarget, rcode) in self.redirections:
-            target, match = re.subn(rsource, rtarget, path)
+            target, match = re.subn(rsource, rtarget, path, count=1)
             if match:
                 code = rcode
                 break  # The first match wins

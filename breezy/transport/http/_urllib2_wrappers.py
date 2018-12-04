@@ -486,9 +486,15 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
                     "'brz help ssl.ca_certs' for more information on setting "
                     "trusted CAs.")
         try:
-            ssl_sock = ssl.SSLSocket(self.sock, self.key_file, self.cert_file,
-                                     cert_reqs=cert_reqs, ca_certs=ca_certs,
-                                     server_hostname=self.host)
+            ssl_context = ssl.create_default_context(
+                purpose=ssl.Purpose.SERVER_AUTH, cafile=ca_certs)
+            ssl.check_hostname = True
+            if self.cert_file:
+                ssl_context.load_cert_chain(
+                    keyfile=self.key_file, certfile=self.cert_file)
+            ssl_context.verify_mode = cert_reqs
+            ssl_sock = ssl_context.wrap_socket(
+                self.sock, server_hostname=self.host)
         except ssl.SSLError:
             trace.note(
                 "\n"
@@ -499,10 +505,6 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
             raise
         # Wrap the ssl socket before anybody use it
         self._wrap_socket_for_reporting(ssl_sock)
-
-        if cert_reqs == ssl.CERT_REQUIRED:
-            peer_cert = ssl_sock.getpeercert()
-            ssl.match_hostname(peer_cert, host)
 
 
 class Request(urllib_request.Request):

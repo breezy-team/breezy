@@ -19,9 +19,13 @@
 
 from __future__ import absolute_import
 
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import collections
 
 from breezy import (
     conflicts as _mod_conflicts,
@@ -850,9 +854,9 @@ class InterTree(InterObject):
                                       self.target.extras()
                                       if specific_files is None or
                                       osutils.is_inside_any(specific_files, p)])
-            all_unversioned = collections.deque(all_unversioned)
+            all_unversioned = deque(all_unversioned)
         else:
-            all_unversioned = collections.deque()
+            all_unversioned = deque()
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_files=source_specific_files))
