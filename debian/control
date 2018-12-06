@@ -113,6 +113,38 @@ Description: distributed version control system - python 3 library
  .
  This package contains the Breezy Python 3 library.
 
+Package: python-breezy-dbg
+Architecture: any
+Section: debug
+Depends: python-breezy (= ${binary:Version}),
+         ${misc:Depends},
+         ${python:Depends},
+         ${shlibs:Depends}
+Provides: ${python:Provides}
+Recommends: python-dbg
+Description: distributed version control system - python 2 debug extension
+ Breezy is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the debug extension for the Breezy Python 2 library.
+
+Package: python3-breezy-dbg
+Architecture: any
+Section: debug
+Depends: python3-breezy (= ${binary:Version}),
+         ${misc:Depends},
+         ${python3:Depends},
+         ${shlibs:Depends}
+Provides: ${python3:Provides}
+Recommends: python3-dbg
+Description: distributed version control system - python 3 debug extension
+ Breezy is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the debug extension for the Breezy Python 3 library.
+
 Package: python-breezy.tests
 Architecture: all
 Section: python

@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr7210-5) UNRELEASED; urgency=medium
+
+  * Re-add the -dbg packages, since they contain python interpreter
+    debug files not provided by -dbgsym.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 06 Dec 2018 12:34:09 +0000
+
 breezy (3.0.0~bzr7210-4) unstable; urgency=medium
 
   * debian/control: Remove notes about paramiko in description.
