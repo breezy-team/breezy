@@ -6870,42 +6870,6 @@ class cmd_fetch_ghosts(Command):
             cmd_reconcile().run(".")
 
 
-class GrepOptions(object):
-    """Container to pass around grep options.
-
-    This class is used as a container to pass around user option and
-    some other params (like outf) to processing functions. This makes
-    it easier to add more options as grep evolves.
-    """
-    verbose = False
-    ignore_case = False
-    no_recursive = False
-    from_root = False
-    null = False
-    levels = None
-    line_number = False
-    path_list = None
-    revision = None
-    pattern = None
-    include = None
-    exclude = None
-    fixed_string = False
-    files_with_matches = False
-    files_without_match = False
-    color = None
-    diff = False
-
-    # derived options
-    recursive = None
-    eol_marker = None
-    patternc = None
-    sub_patternc = None
-    print_revno = None
-    fixed_string = None
-    outf = None
-    show_color = False
-
-
 class cmd_grep(Command):
     """Print lines matching PATTERN for specified files and revisions.
 
@@ -7043,31 +7007,33 @@ class cmd_grep(Command):
         elif color == 'auto':
             show_color = _termcolor.allow_color()
 
-        GrepOptions.verbose = verbose
-        GrepOptions.ignore_case = ignore_case
-        GrepOptions.no_recursive = no_recursive
-        GrepOptions.from_root = from_root
-        GrepOptions.null = null
-        GrepOptions.levels = levels
-        GrepOptions.line_number = line_number
-        GrepOptions.path_list = path_list
-        GrepOptions.revision = revision
-        GrepOptions.pattern = pattern
-        GrepOptions.include = include
-        GrepOptions.exclude = exclude
-        GrepOptions.fixed_string = fixed_string
-        GrepOptions.files_with_matches = files_with_matches
-        GrepOptions.files_without_match = files_without_match
-        GrepOptions.color = color
-        GrepOptions.diff = False
+        opts = GrepOptions()
 
-        GrepOptions.eol_marker = eol_marker
-        GrepOptions.print_revno = print_revno
-        GrepOptions.patternc = patternc
-        GrepOptions.recursive = not no_recursive
-        GrepOptions.fixed_string = fixed_string
-        GrepOptions.outf = self.outf
-        GrepOptions.show_color = show_color
+        opts.verbose = verbose
+        opts.ignore_case = ignore_case
+        opts.no_recursive = no_recursive
+        opts.from_root = from_root
+        opts.null = null
+        opts.levels = levels
+        opts.line_number = line_number
+        opts.path_list = path_list
+        opts.revision = revision
+        opts.pattern = pattern
+        opts.include = include
+        opts.exclude = exclude
+        opts.fixed_string = fixed_string
+        opts.files_with_matches = files_with_matches
+        opts.files_without_match = files_without_match
+        opts.color = color
+        opts.diff = False
+
+        opts.eol_marker = eol_marker
+        opts.print_revno = print_revno
+        opts.patternc = patternc
+        opts.recursive = not no_recursive
+        opts.fixed_string = fixed_string
+        opts.outf = self.outf
+        opts.show_color = show_color
 
         if diff:
             # options not used:
@@ -7075,11 +7041,12 @@ class cmd_grep(Command):
             # levels(?), line_number, from_root
             # include, exclude
             # These are silently ignored.
-            grep.grep_diff(GrepOptions)
+            grep.grep_diff(opts)
         elif revision is None:
-            grep.workingtree_grep(GrepOptions)
+            grep.workingtree_grep(opts)
         else:
-            grep.versioned_grep(GrepOptions)
+            grep.versioned_grep(opts)
+
 
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should

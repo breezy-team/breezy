@@ -25,23 +25,22 @@ from fnmatch import fnmatch
 from breezy._termcolor import color_string, FG
 
 from breezy import (
-    controldir,
     diff,
-    errors,
-    lazy_regex,
-    revision as _mod_revision,
     )
 """)
-from breezy import (
+from . import (
+    controldir,
+    errors,
     osutils,
+    revision as _mod_revision,
     trace,
     )
-from breezy.revisionspec import (
+from .revisionspec import (
     RevisionSpec,
     RevisionSpec_revid,
     RevisionSpec_revno,
     )
-from breezy.sixish import (
+from .sixish import (
     BytesIO,
     )
 
@@ -50,6 +49,42 @@ _user_encoding = osutils.get_user_encoding()
 
 class _RevisionNotLinear(Exception):
     """Raised when a revision is not on left-hand history."""
+
+
+class GrepOptions(object):
+    """Container to pass around grep options.
+
+    This class is used as a container to pass around user option and
+    some other params (like outf) to processing functions. This makes
+    it easier to add more options as grep evolves.
+    """
+    verbose = False
+    ignore_case = False
+    no_recursive = False
+    from_root = False
+    null = False
+    levels = None
+    line_number = False
+    path_list = None
+    revision = None
+    pattern = None
+    include = None
+    exclude = None
+    fixed_string = False
+    files_with_matches = False
+    files_without_match = False
+    color = None
+    diff = False
+
+    # derived options
+    recursive = None
+    eol_marker = None
+    patternc = None
+    sub_patternc = None
+    print_revno = None
+    fixed_string = None
+    outf = None
+    show_color = False
 
 
 def _rev_on_mainline(rev_tuple):
