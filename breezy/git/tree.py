@@ -741,7 +741,9 @@ def tree_delta_from_git_changes(changes, mapping,
         implicit_dirs.update(osutils.parent_directories(path))
 
     for path, kind in added:
-        if path in target_extras or (kind == 'directory' and path not in implicit_dirs):
+        if kind == 'directory' and path not in implicit_dirs:
+            continue
+        if path in target_extras:
             ret.unversioned.append((path, None, kind))
         else:
             file_id = new_fileid_map.lookup_file_id(path)
