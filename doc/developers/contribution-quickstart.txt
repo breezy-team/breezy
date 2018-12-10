@@ -49,10 +49,8 @@ flow more smoothly.
 You probably want this configuration in ``~/.bazaar/locations.conf``::
 
     [/home/USER/brz]
-    push_location = lp:~LAUNCHPAD_USER/brz/
-    push_location:policy = appendpath
-    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/brz/
-    public_branch:policy = appendpath
+    push_location = lp:~LAUNCHPAD_USER/brz/{branchname}
+    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/brz/{branchname}
 
 with your local and Launchpad usernames inserted.
 
@@ -107,7 +105,7 @@ Proposing a merge
 Then propose a merge into brz; you can use the ``brz lp-propose-merge`` command.
 In the comment for your merge proposal please explain what you're trying
 to do and why.  For
-`example <https://code.launchpad.net/~ian-clatworthy/brz/whats-new-in-2.1/+merge/19677>`_:
+`example <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 
   As discussed on the mailing list, this patch adds a What's New document
   summarising the changes since 2.0.
