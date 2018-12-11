@@ -35,6 +35,7 @@ from ...workingtree import WorkingTree
 from .. import (
     tests,
     )
+from ...tests.features import PluginLoadedFeature
 
 
 class TestGitBlackBox(ExternalBase):
@@ -380,9 +381,22 @@ class SwitchTests(ExternalBase):
 class GrepTests(ExternalBase):
 
     def test_simple_grep(self):
+        self.requireFeature(PluginLoadedFeature('grep'))
         tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'text for a\n')])
         tree.add(['a'])
         output, error = self.run_bzr('grep text')
         self.assertEqual(output, 'a:text for a\n')
         self.assertEqual(error, '')
+
+
+class StatsTests(ExternalBase):
+
+    def test_simple_stats(self):
+        self.requireFeature(PluginLoadedFeature('stats'))
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        tree.commit('a commit', committer='Somebody <somebody@example.com>')
+        output, error = self.run_bzr('stats')
+        self.assertEqual(output, '   1 Somebody <somebody@example.com>\n')
