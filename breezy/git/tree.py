@@ -706,8 +706,7 @@ def tree_delta_from_git_changes(changes, mapping,
         if oldpath is None and newpath is None:
             continue
         if oldpath is None:
-            added.append(
-                (osutils.normalized_filename(newpath)[0], mode_kind(newmode)))
+            added.append((newpath, mode_kind(newmode)))
         elif newpath is None or newmode == 0:
             file_id = old_fileid_map.lookup_file_id(oldpath_decoded)
             ret.removed.append((oldpath_decoded, file_id, mode_kind(oldmode)))
@@ -734,20 +733,21 @@ def tree_delta_from_git_changes(changes, mapping,
             ret.unchanged.append(
                 (newpath_decoded, file_id, mode_kind(newmode)))
 
-    implicit_dirs = {''}
+    implicit_dirs = {b''}
     for path, kind in added:
-        if kind == 'directory' or newpath in target_extras:
+        if kind == 'directory' or path in target_extras:
             continue
         implicit_dirs.update(osutils.parent_directories(path))
 
     for path, kind in added:
         if kind == 'directory' and path not in implicit_dirs:
             continue
+        path_decoded = osutils.normalized_filename(path)[0]
         if path in target_extras:
-            ret.unversioned.append((path, None, kind))
+            ret.unversioned.append((path_decoded, None, kind))
         else:
-            file_id = new_fileid_map.lookup_file_id(path)
-            ret.added.append((path, file_id, kind))
+            file_id = new_fileid_map.lookup_file_id(path_decoded)
+            ret.added.append((path_decoded, file_id, kind))
 
     return ret
 
