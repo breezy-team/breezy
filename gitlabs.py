@@ -64,6 +64,25 @@ class GitLabLoginMissing(errors.BzrError):
     _fmt = ("Please log into GitLab")
 
 
+def default_config_path():
+    from breezy.config import config_dir
+    import os
+    return os.path.join(config_dir(), 'gitlab.conf')
+
+
+def store_gitlab_token(name, url, private_token):
+    """Store a GitLab token in a configuration file."""
+    import configparser
+    config = configparser.ConfigParser()
+    path = default_config_path()
+    config.read([path])
+    config.add_section(name)
+    config[name]['url'] = url
+    config[name]['private_token'] = private_token
+    with open(path, 'w') as f:
+        config.write(f)
+
+
 def connect_gitlab(host):
     from gitlab import Gitlab
     auth = AuthenticationConfig()
@@ -71,14 +90,11 @@ def connect_gitlab(host):
     url = 'https://%s' % host
     credentials = auth.get_credentials('https', host)
     if credentials is None:
-        import configparser
         import gitlab
-        import os
+        import configparser
         from gitlab.config import _DEFAULT_FILES
-        from breezy.config import config_dir
         config = configparser.ConfigParser()
-        config.read(_DEFAULT_FILES +
-                    [os.path.join(config_dir(), 'gitlab.conf')])
+        config.read(_DEFAULT_FILES + [default_config_path()])
         for name, section in config.items():
             if section.get('url') == url:
                 credentials = section
