@@ -452,7 +452,7 @@ class BzrFastExporter(object):
         # Build and return the result
         return commands.CommitCommand(git_ref, mark, author_info,
                                       committer_info, revobj.message.encode(
-                                          "utf-8"), from_, merges, iter(file_cmds),
+                                          "utf-8"), from_, merges, file_cmds,
                                       more_authors=more_author_info, properties=properties)
 
     def _get_revision_trees(self, parent, revision_id):
@@ -489,13 +489,16 @@ class BzrFastExporter(object):
         file_cmds, rd_modifies, renamed = self._process_renames_and_deletes(
             changes.renamed, changes.removed, revision_id, tree_old)
 
+        for cmd in file_cmds:
+            yield cmd
+
         # Map kind changes to a delete followed by an add
         for path, id_, kind1, kind2 in changes.kind_changed:
             path = self._adjust_path_for_renames(path, renamed, revision_id)
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
-            # file_cmds.append(commands.FileDeleteCommand(path))
+            # yield commands.FileDeleteCommand(path)
             my_modified.append((path, id_, kind2))
 
         # Record modifications
@@ -507,25 +510,23 @@ class BzrFastExporter(object):
                      (path, helpers.kind_to_mode(
                          'file', tree_new.is_executable(path)))))
             elif kind == 'symlink':
-                file_cmds.append(commands.FileModifyCommand(
+                yield commands.FileModifyCommand(
                     path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(path)))
+                    None, tree_new.get_symlink_target(path))
             elif kind == 'directory':
                 if not self.plain_format:
-                    file_cmds.append(
-                        commands.FileModifyCommand(
-                            path.encode("utf-8"),
-                            helpers.kind_to_mode('directory', False), None,
-                            None))
+                    yield commands.FileModifyCommand(
+                        path.encode("utf-8"),
+                        helpers.kind_to_mode('directory', False), None,
+                        None)
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                              (path, kind))
         for (path, mode), chunks in tree_new.iter_files_bytes(
                 files_to_get):
-            file_cmds.append(commands.FileModifyCommand(
-                path.encode("utf-8"), mode, None, b''.join(chunks)))
-        return file_cmds
+            yield commands.FileModifyCommand(
+                path.encode("utf-8"), mode, None, b''.join(chunks))
 
     def _process_renames_and_deletes(self, renames, deletes,
                                      revision_id, tree_old):
