@@ -73,9 +73,12 @@ class TestEncodeCache(TestCase):
         self.check_decode(u'some_\xb5_unicode_\xe5_chars')
 
     def test_cached_unicode(self):
-        x = u'\xb5yy' + u'\xe5zz'
-        y = u'\xb5yy' + u'\xe5zz'
-        self.assertFalse(x is y)
+        # Note that this is intentionally split, to prevent Python from
+        # assigning x and y to the same object
+        z = u'\xe5zz'
+        x = u'\xb5yy' + z
+        y = u'\xb5yy' + z
+        self.assertIsNot(x, y)
         xp = cache_utf8.get_cached_unicode(x)
         yp = cache_utf8.get_cached_unicode(y)
 

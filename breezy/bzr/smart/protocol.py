@@ -20,7 +20,11 @@ client and server.
 
 from __future__ import absolute_import
 
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
+
 import struct
 import sys
 try:
@@ -432,7 +436,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_header
         self.chunk_in_progress = None
-        self.chunks = collections.deque()
+        self.chunks = deque()
         self.error = False
         self.error_in_progress = None
 

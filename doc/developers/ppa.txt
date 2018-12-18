@@ -184,7 +184,7 @@ Long Form
    branches, you will produce the package for the release.
 
    The scripts will also create the branches and produce packages for
-   bzrtools and bzr-svn.
+   bzr-svn.
 
 #. Decide on the final version number.  It should be of this form::
 

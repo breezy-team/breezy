@@ -90,7 +90,6 @@ Miscellaneous topics
 A brief tour of some popular plugins
 ####################################
 
-.. include:: bzrtools_plugin.txt
 .. include:: svn_plugin.txt
 .. include later looms_plugin.txt
 
