@@ -3,6 +3,7 @@ breezy (3.0.0~bzr7223-1) UNRELEASED; urgency=medium
   * Re-add the -dbg packages, since they contain python interpreter
     debug files not provided by -dbgsym.
   * New upstream snapshot.
+  * Drop patch 09_python_3.7: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 18 Dec 2018 21:04:12 +0000
 

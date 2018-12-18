@@ -1,6 +1,5 @@
 01_selftest_package
 03_spurious_test_failure
 08_disable_sphinx_epytext
-09_python_3.7
 10_timestamp_limit
 11_non_utf8_locale
