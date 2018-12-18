@@ -5,6 +5,7 @@ breezy (3.0.0~bzr7223-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
   * Drop patch 09_python_3.7: applied upstream.
   * Drop patch 10_timestamp_limit: applied upstream.
+  * Drop patch 11_non_utf8_locale: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 18 Dec 2018 21:04:12 +0000
 
