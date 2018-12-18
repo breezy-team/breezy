@@ -23,7 +23,7 @@ See also
 --------
 
  * `Breezy Developer Documentation Catalog <../index.html>`_.
- * `Breezy Plugins Guide <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ for
+ * `Breezy Plugins Guide <plugin-development.txt>`_ for
    more suggestions about particular APIs.
 
 
@@ -241,7 +241,7 @@ startup.  Generally the plugin won't want to actually do anything at this
 time other than register or override functions to be called later.
 
 The plugin can import breezy and call any function.
-Some interesting APIs are described in `Breezy Plugins Guide <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_.
+Some interesting APIs are described in `Breezy Plugins Guide <plugin-development.txt>`_.
 
 
 Publishing your plugin

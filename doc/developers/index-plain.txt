@@ -28,8 +28,8 @@ Overall developer documentation
 
 * `Breezy Code Style Guide <code-style.html>`_.
 
-* `Writing plugins <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_
-  |--| specific advice on writing Breezy plugins. (web link)
+* `Writing plugins <plugin-development.html>`_
+  |--| specific advice on writing Breezy plugins.
 
 * `Documenting changes <documenting-changes.html>`_.
 

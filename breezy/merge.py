@@ -250,17 +250,17 @@ class MergeFileHookParams(object):
     @decorators.cachedproperty
     def base_lines(self):
         """The lines of the 'base' version of the file."""
-        return self._merger.get_lines(self._merger.base_tree, self.base_path, self.file_id)
+        return self._merger.get_lines(self._merger.base_tree, self.base_path)
 
     @decorators.cachedproperty
     def this_lines(self):
         """The lines of the 'this' version of the file."""
-        return self._merger.get_lines(self._merger.this_tree, self.this_path, self.file_id)
+        return self._merger.get_lines(self._merger.this_tree, self.this_path)
 
     @decorators.cachedproperty
     def other_lines(self):
         """The lines of the 'other' version of the file."""
-        return self._merger.get_lines(self._merger.other_tree, self.other_path, self.file_id)
+        return self._merger.get_lines(self._merger.other_tree, self.other_path)
 
 
 class Merger(object):
@@ -1080,42 +1080,42 @@ class Merge3Merger(object):
         self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
-    def parent(entry, file_id):
+    def parent(entry):
         """Determine the parent for a file_id (used as a key method)"""
         if entry is None:
             return None
         return entry.parent_id
 
     @staticmethod
-    def name(entry, file_id):
+    def name(entry):
         """Determine the name for a file_id (used as a key method)"""
         if entry is None:
             return None
         return entry.name
 
     @staticmethod
-    def contents_sha1(tree, path, file_id=None):
+    def contents_sha1(tree, path):
         """Determine the sha1 of the file contents (used as a key method)."""
         try:
-            return tree.get_file_sha1(path, file_id)
+            return tree.get_file_sha1(path)
         except errors.NoSuchFile:
             return None
 
     @staticmethod
-    def executable(tree, path, file_id=None):
+    def executable(tree, path):
         """Determine the executability of a file-id (used as a key method)."""
         try:
-            if tree.kind(path, file_id) != "file":
+            if tree.kind(path) != "file":
                 return False
         except errors.NoSuchFile:
             return None
         return tree.is_executable(path)
 
     @staticmethod
-    def kind(tree, path, file_id=None):
+    def kind(tree, path):
         """Determine the kind of a file-id (used as a key method)."""
         try:
-            return tree.kind(path, file_id)
+            return tree.kind(path)
         except errors.NoSuchFile:
             return None
 
@@ -1400,7 +1400,7 @@ class Merge3Merger(object):
         else:
             return 'not_applicable', None
 
-    def get_lines(self, tree, path, file_id=None):
+    def get_lines(self, tree, path):
         """Return the lines in a file, or an empty list."""
         if path is None:
             return []
@@ -1418,9 +1418,9 @@ class Merge3Merger(object):
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
         base_path, other_path, this_path = paths
-        base_lines = self.get_lines(self.base_tree, base_path, file_id)
-        other_lines = self.get_lines(self.other_tree, other_path, file_id)
-        this_lines = self.get_lines(self.this_tree, this_path, file_id)
+        base_lines = self.get_lines(self.base_tree, base_path)
+        other_lines = self.get_lines(self.other_tree, other_path)
+        this_lines = self.get_lines(self.this_tree, this_path)
         m3 = merge3.Merge3(base_lines, this_lines, other_lines,
                            is_cherrypick=self.cherrypick)
         start_marker = b"!START OF MERGE CONFLICT!" + b"I HOPE THIS IS UNIQUE"
@@ -1703,7 +1703,7 @@ class Diff3Merger(Merge3Merger):
 
     requires_file_merge_plan = False
 
-    def dump_file(self, temp_dir, name, tree, path, file_id=None):
+    def dump_file(self, temp_dir, name, tree, path):
         out_path = osutils.pathjoin(temp_dir, name)
         with open(out_path, "wb") as out_file:
             in_file = tree.get_file(path)
@@ -1722,11 +1722,11 @@ class Diff3Merger(Merge3Merger):
         try:
             new_file = osutils.pathjoin(temp_dir, "new")
             this = self.dump_file(
-                temp_dir, "this", self.this_tree, this_path, file_id)
+                temp_dir, "this", self.this_tree, this_path)
             base = self.dump_file(
-                temp_dir, "base", self.base_tree, base_path, file_id)
+                temp_dir, "base", self.base_tree, base_path)
             other = self.dump_file(
-                temp_dir, "other", self.other_tree, other_path, file_id)
+                temp_dir, "other", self.other_tree, other_path)
             status = breezy.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
                 raise errors.BzrError("Unhandled diff3 exit code")

@@ -961,23 +961,23 @@ class RemoteInventoryTree(InventoryRevisionTree):
                 format, name, root, subdir, force_mtime=force_mtime)
         return ret
 
-    def annotate_iter(self, path, file_id=None,
+    def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
-        :param file_id: The file to produce an annotated version from
         :param default_revision: For lines that don't match a basis, mark them
             with this revision id. Not all implementations will make use of
             this value.
         """
         ret = self._repository._annotate_file_revision(
-            self.get_revision_id(), path, file_id, default_revision)
+            self.get_revision_id(), path, file_id=None,
+            default_revision=default_revision)
         if ret is None:
             return super(RemoteInventoryTree, self).annotate_iter(
-                path, file_id, default_revision=default_revision)
+                path, default_revision=default_revision)
         return ret
 
 
