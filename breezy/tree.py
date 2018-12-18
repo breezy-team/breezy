@@ -70,12 +70,16 @@ class TreeEntry(object):
         return (isinstance(other, TreeEntry)
                 and other.__class__ == self.__class__)
 
+    kind = None
+
     def kind_character(self):
         return "???"
 
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
+
+    kind = 'directory'
 
     def kind_character(self):
         return "/"
@@ -84,6 +88,8 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
+    kind = 'file'
+
     def kind_character(self):
         return ''
 
@@ -91,12 +97,16 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
+    kind = 'symlink'
+
     def kind_character(self):
         return ''
 
 
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    kind = 'tree-reference'
 
     def kind_character(self):
         return '+'
@@ -262,8 +272,8 @@ class Tree(object):
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
-        :return: iterator over tuples of (path, versioned, kind, file_id,
-            inventory entry)
+        :return: iterator over tuples of
+            (path, versioned, kind, inventory entry)
         """
         raise NotImplementedError(self.list_files)
 
@@ -1356,25 +1366,22 @@ def get_canonical_path(tree, path, normalize):
     :return: The canonical path
     """
     # go walkin...
-    cur_id = tree.get_root_id()
     cur_path = ''
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
         lelt = normalize(elt)
         new_path = None
         try:
-            for child in tree.iter_child_entries(cur_path, cur_id):
+            for child in tree.iter_child_entries(cur_path):
                 try:
                     if child.name == elt:
                         # if we found an exact match, we can stop now; if
                         # we found an approximate match we need to keep
                         # searching because there might be an exact match
                         # later.
-                        cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                         break
                     elif normalize(child.name) == lelt:
-                        cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                 except errors.NoSuchId:
                     # before a change is committed we can see this error...

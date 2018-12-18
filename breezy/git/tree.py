@@ -409,7 +409,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     store, from_dir.encode("utf-8"),
                     posixpath.basename(from_dir), mode, hexsha)
         if include_root:
-            yield (from_dir, "V", root_ie.kind, root_ie.file_id, root_ie)
+            yield (from_dir, "V", root_ie.kind, root_ie)
         todo = []
         if root_ie.kind == 'directory':
             todo.append((store, from_dir.encode("utf-8"),
@@ -431,8 +431,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 else:
                     ie = self._get_file_ie(
                         store, child_path, name, mode, hexsha, parent_id)
-                yield (child_relpath.decode('utf-8'), "V", ie.kind, ie.file_id,
-                       ie)
+                yield (child_relpath.decode('utf-8'), "V", ie.kind, ie)
 
     def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
         if not isinstance(path, bytes):
@@ -461,7 +460,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         file_id = self._fileid_map.lookup_file_id(path)
         return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
 
-    def iter_child_entries(self, path, file_id=None):
+    def iter_child_entries(self, path):
         (store, mode, tree_sha) = self._lookup_path(path)
 
         if mode is not None and not stat.S_ISDIR(mode):
@@ -680,6 +679,7 @@ def tree_delta_from_git_changes(changes, mapping,
     if target_extras is None:
         target_extras = set()
     ret = delta.TreeDelta()
+    added = []
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if newpath == b'' and not include_root:
             continue
@@ -706,14 +706,7 @@ def tree_delta_from_git_changes(changes, mapping,
         if oldpath is None and newpath is None:
             continue
         if oldpath is None:
-            if newpath in target_extras:
-                ret.unversioned.append(
-                    (osutils.normalized_filename(newpath)[0], None,
-                     mode_kind(newmode)))
-            else:
-                file_id = new_fileid_map.lookup_file_id(newpath_decoded)
-                ret.added.append(
-                    (newpath_decoded, file_id, mode_kind(newmode)))
+            added.append((newpath, mode_kind(newmode)))
         elif newpath is None or newmode == 0:
             file_id = old_fileid_map.lookup_file_id(oldpath_decoded)
             ret.removed.append((oldpath_decoded, file_id, mode_kind(oldmode)))
@@ -739,6 +732,22 @@ def tree_delta_from_git_changes(changes, mapping,
             file_id = new_fileid_map.lookup_file_id(newpath_decoded)
             ret.unchanged.append(
                 (newpath_decoded, file_id, mode_kind(newmode)))
+
+    implicit_dirs = {b''}
+    for path, kind in added:
+        if kind == 'directory' or path in target_extras:
+            continue
+        implicit_dirs.update(osutils.parent_directories(path))
+
+    for path, kind in added:
+        if kind == 'directory' and path not in implicit_dirs:
+            continue
+        path_decoded = osutils.normalized_filename(path)[0]
+        if path in target_extras:
+            ret.unversioned.append((path_decoded, None, kind))
+        else:
+            file_id = new_fileid_map.lookup_file_id(path_decoded)
+            ret.added.append((path_decoded, file_id, kind))
 
     return ret
 

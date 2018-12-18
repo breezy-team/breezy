@@ -2024,7 +2024,7 @@ class DirStateRevisionTree(InventoryTree):
         if inv.root is not None and not include_root and from_dir is None:
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def lock_read(self):
         """Lock the tree for a set of operations.

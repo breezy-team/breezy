@@ -26,6 +26,7 @@ from breezy import (
 
 from breezy.tests import (
     TestCaseWithTransport,
+    script,
     )
 from breezy.tests.features import (
     CaseInsensitiveFilesystemFeature,
@@ -529,3 +530,41 @@ class TestMove(TestCaseWithTransport):
         os.remove(u"\xA7")
         out, err = self.run_bzr_error(["Could not rename", "not exist"],
                                       ["mv", u"\xA7", "b"])
+
+    def test_dupe_move(self):
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+        $ brz init brz-bug
+        Created a standalone tree (format: 2a)
+        $ cd brz-bug
+        $ mkdir dir
+        $ brz add
+        adding dir
+        $ echo text >> dir/test.txt
+        $ brz add
+        adding dir/test.txt
+        $ brz ci -m "Add files"
+        2>Committing to: .../brz-bug/
+        2>added dir
+        2>added dir/test.txt
+        2>Committed revision 1.
+        $ mv dir dir2
+        $ mv dir2/test.txt dir2/test2.txt
+        $ brz st
+        removed:
+          dir/
+          dir/test.txt
+        unknown:
+          dir2/
+        $ brz mv dir dir2
+        dir => dir2
+        $ brz st
+        removed:
+          dir/test.txt
+        renamed:
+          dir/ => dir2/
+        unknown:
+          dir2/test2.txt
+        $ brz mv dir/test.txt dir2/test2.txt
+        dir/test.txt => dir2/test2.txt
+        ''')

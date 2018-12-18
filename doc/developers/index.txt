@@ -60,7 +60,7 @@ Developing using breezy
    overview
    integration
 
-* `Writing plugins for Breezy <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ (web link)
+* `Writing plugins for Breezy <plugin-development.txt>`_
 
 * `breezy API reference <api/index.txt>`_
 

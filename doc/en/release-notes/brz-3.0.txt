@@ -77,6 +77,10 @@ External Compatibility Breaks
    one-letter distroseries had not been updated since natty.
    (Jelmer Vernooĳ)
 
+ * The ``brz lp-mirror-branch`` subcommand has been removed.
+   Please use the ``lp-force-branch-mirror`` command from
+   the lptools package instead. (Jelmer Vernooĳ)
+
 New Features
 ************
 

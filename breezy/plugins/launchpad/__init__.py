@@ -30,7 +30,6 @@ The plugin also provides the following commands:
     launchpad-login: Show or set the Launchpad user ID
     launchpad-open: Open a Launchpad branch page in your web browser
     lp-propose-merge: Propose merging a branch on Launchpad
-    launchpad-mirror: Ask Launchpad to mirror a branch now
 
 """
 
@@ -59,7 +58,6 @@ for klsname, aliases in [
     ("cmd_launchpad_open", ["lp-open"]),
     ("cmd_launchpad_login", ["lp-login"]),
     ("cmd_launchpad_logout", ["lp-logout"]),
-    ("cmd_launchpad_mirror", ["lp-mirror"]),
     ("cmd_lp_propose_merge", ["lp-submit", "lp-propose"]),
         ("cmd_lp_find_proposal", [])]:
     plugin_cmds.register_lazy(klsname, aliases,

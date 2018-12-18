@@ -1010,8 +1010,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """
         with self.lock_read():
             if from_dir is None and include_root is True:
-                yield ('', 'V', 'directory', self.get_root_id(),
-                       self.root_inventory.root)
+                yield ('', 'V', 'directory', self.root_inventory.root)
             # Convert these into local objects to save lookup times
             pathjoin = osutils.pathjoin
 
@@ -1103,12 +1102,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     # make a last minute entry
                     if f_ie:
-                        yield fp[1:], c, fk, f_ie.file_id, f_ie
+                        yield fp[1:], c, fk, f_ie
                     else:
                         try:
-                            yield fp[1:], c, fk, None, fk_entries[fk]()
+                            yield fp[1:], c, fk, fk_entries[fk]()
                         except KeyError:
-                            yield fp[1:], c, fk, None, TreeEntry()
+                            yield fp[1:], c, fk, TreeEntry()
                         continue
 
                     if fk != 'directory':
@@ -1261,10 +1260,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     raise errors.BzrRenameFailedError(
                         from_rel, to_rel,
                         errors.NotVersionedError(path=from_rel))
-                # put entry back in the inventory so we can rename it
-                from_entry = basis_tree.root_inventory.get_entry(
-                    from_id).copy()
-                from_inv.add(from_entry)
+                try:
+                    from_entry = from_inv.get_entry(from_id)
+                except errors.NoSuchId:
+                    # put entry back in the inventory so we can rename it
+                    from_entry = basis_tree.root_inventory.get_entry(
+                        from_id).copy()
+                    from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
                 from_entry = from_inv.get_entry(from_inv_id)
@@ -1461,7 +1463,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # indeed dirty.  - RBC 20060907
                 self._write_inventory(self._inventory)
 
-    def stored_kind(self, path, file_id=None):
+    def stored_kind(self, path):
         """See Tree.stored_kind"""
         return self._path2ie(path).kind
 
