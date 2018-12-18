@@ -39,8 +39,8 @@ def pack_stat(st, _b64=binascii.b2a_base64, _pack=struct.Struct('>6L').pack):
     """
     # base64 encoding always adds a final newline, so strip it off
     return _b64(_pack(st.st_size & 0xFFFFFFFF, int(st.st_mtime) & 0xFFFFFFFF,
-        int(st.st_ctime) & 0xFFFFFFFF, st.st_dev & 0xFFFFFFFF,
-        st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
+                      int(st.st_ctime) & 0xFFFFFFFF, st.st_dev & 0xFFFFFFFF,
+                      st.st_ino & 0xFFFFFFFF, st.st_mode))[:-1]
 
 
 def _unpack_stat(packed_stat):
@@ -121,7 +121,7 @@ def _bisect_path_right(paths, path):
     hi = len(paths)
     lo = 0
     while lo < hi:
-        mid = (lo+hi)//2
+        mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
         if _lt_path_by_dirblock(path, cur):
@@ -157,8 +157,10 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
         except KeyError:
             cur_split = cur.split(b'/')
             cache[cur] = cur_split
-        if cur_split < dirname_split: lo = mid + 1
-        else: hi = mid
+        if cur_split < dirname_split:
+            lo = mid + 1
+        else:
+            hi = mid
     return lo
 
 
@@ -229,7 +231,7 @@ def _read_dirblocks(state):
     trailing = fields.pop()
     if trailing != b'':
         raise DirstateCorrupt(state,
-            'trailing garbage: %r' % (trailing,))
+                              'trailing garbage: %r' % (trailing,))
     # consider turning fields into a tuple.
 
     # skip the first field which is the trailing null from the header.
@@ -248,10 +250,10 @@ def _read_dirblocks(state):
     # this checks our adjustment, and also catches file too short.
     if field_count - cur != expected_field_count:
         raise DirstateCorrupt(state,
-            'field count incorrect %s != %s, entry_size=%s, '\
-            'num_entries=%s fields=%r' % (
-            field_count - cur, expected_field_count, entry_size,
-            state._num_entries, fields))
+                              'field count incorrect %s != %s, entry_size=%s, '
+                              'num_entries=%s fields=%r' % (
+                                  field_count - cur, expected_field_count, entry_size,
+                                  state._num_entries, fields))
 
     if num_present_parents == 1:
         # Bind external functions to local names
@@ -287,21 +289,21 @@ def _read_dirblocks(state):
             # we know current_dirname == dirname, so re-use it to avoid
             # creating new strings
             entry = ((current_dirname, name, file_id),
-                     [(# Current Tree
+                     [(  # Current Tree
                          next(),                # minikind
                          next(),                # fingerprint
                          _int(next()),          # size
                          next() == b'y',        # executable
                          next(),                # packed_stat or revision_id
                      ),
-                     ( # Parent 1
+                (  # Parent 1
                          next(),                # minikind
                          next(),                # fingerprint
                          _int(next()),          # size
                          next() == b'y',        # executable
                          next(),                # packed_stat or revision_id
                      ),
-                     ])
+                ])
             trailing = next()
             if trailing != b'\n':
                 raise ValueError("trailing garbage in dirstate: %r" % trailing)
@@ -310,7 +312,7 @@ def _read_dirblocks(state):
         state._split_root_dirblock_into_contents()
     else:
         fields_to_entry = state._get_fields_to_entry()
-        entries = [fields_to_entry(fields[pos:pos+entry_size])
+        entries = [fields_to_entry(fields[pos:pos + entry_size])
                    for pos in range(cur, field_count, entry_size)]
         state._entries_to_current_state(entries)
     # To convert from format 2  => format 3

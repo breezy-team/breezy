@@ -104,7 +104,7 @@ class LocalTransport(transport.Transport):
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
         path = osutils.normpath(osutils.pathjoin(
-                    self._local_base, urlutils.unescape(relpath)))
+            self._local_base, urlutils.unescape(relpath)))
         # on windows, our _local_base may or may not have a drive specified
         # (ie, it may be "/" or "c:/foo").
         # If 'relpath' is '/' we *always* get back an abspath without
@@ -112,7 +112,7 @@ class LocalTransport(transport.Transport):
         # we want our abspaths to have a drive letter too - so handle that
         # here.
         if (sys.platform == "win32" and self._local_base[1:2] == ":"
-            and path == '/'):
+                and path == '/'):
             path = self._local_base[:3]
 
         return urlutils.local_path_to_url(path)
@@ -233,7 +233,7 @@ class LocalTransport(transport.Transport):
             # We couldn't create the file, maybe we need to create
             # the parent directory, and try again
             if (not create_parent_dir
-                or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
+                    or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
                 self._translate_error(e, relpath)
             parent_dir = os.path.dirname(abspath)
             if not parent_dir:
@@ -296,7 +296,7 @@ class LocalTransport(transport.Transport):
             st = self.stat(relpath)
             if S_ISDIR(st[ST_MODE]):
                 for i, basename in enumerate(self.list_dir(relpath)):
-                    queue.insert(i, relpath+'/'+basename)
+                    queue.insert(i, relpath + '/' + basename)
             else:
                 yield relpath
 
@@ -519,7 +519,10 @@ class LocalTransport(transport.Transport):
     if osutils.host_os_dereferences_symlinks():
         def readlink(self, relpath):
             """See Transport.readlink."""
-            return osutils.readlink(self._abspath(relpath))
+            try:
+                return osutils.readlink(self._abspath(relpath))
+            except (IOError, OSError) as e:
+                self._translate_error(e, relpath)
 
     if osutils.hardlinks_good():
         def hardlink(self, source, link_name):
@@ -560,7 +563,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
     def abspath(self, relpath):
         path = osutils._win32_normpath(osutils.pathjoin(
-                    self._local_base, urlutils.unescape(relpath)))
+            self._local_base, urlutils.unescape(relpath)))
         return urlutils._win32_local_path_to_url(path)
 
     def clone(self, offset=None):
@@ -583,4 +586,4 @@ class EmulatedWin32LocalTransport(LocalTransport):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from ..tests import test_server
-    return [(LocalTransport, test_server.LocalURLServer),]
+    return [(LocalTransport, test_server.LocalURLServer), ]

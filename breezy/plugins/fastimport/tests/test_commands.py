@@ -59,7 +59,8 @@ class TestSourceStream(tests.TestCase):
         self.assertIsNot(b"bla", stream.read())
 
 
-fast_export_baseline_data = """commit refs/heads/master
+fast_export_baseline_data = """reset refs/heads/master
+commit refs/heads/master
 mark :1
 committer
 data 15
@@ -93,6 +94,7 @@ data 6
 test 6
 """
 
+
 class TestFastExport(ExternalBase):
 
     _test_needs_features = [FastimportFeature]
@@ -105,17 +107,17 @@ class TestFastExport(ExternalBase):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br")[0]
-        self.assertTrue(data.startswith('commit refs/heads/master\nmark :1\ncommitter'))
+        self.assertTrue(data.startswith(
+            'reset refs/heads/master\n'
+            'commit refs/heads/master\n'
+            'mark :1\ncommitter'), data)
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br br.fi")[0]
         self.assertEquals("", data)
-        try:
-            self.assertPathExists("br.fi")
-        except AttributeError: # bzr < 2.4
-            self.failUnlessExists("br.fi")
+        self.assertPathExists("br.fi")
 
     def test_tag_rewriting(self):
         tree = self.make_branch_and_tree("br")
@@ -128,7 +130,8 @@ class TestFastExport(ExternalBase):
         # first check --no-rewrite-tag-names
         data = self.run_bzr("fast-export --plain --no-rewrite-tag-names br")[0]
         self.assertNotEqual(-1, data.find("reset refs/tags/goodTag"))
-        self.assertEqual(data.find("reset refs/tags/"), data.rfind("reset refs/tags/"))
+        self.assertEqual(data.find("reset refs/tags/"),
+                         data.rfind("reset refs/tags/"))
 
         # and now with --rewrite-tag-names
         data = self.run_bzr("fast-export --plain --rewrite-tag-names br")[0]
@@ -192,6 +195,7 @@ class TestFastExport(ExternalBase):
         data2 = self.run_bzr("fast-export bl")[0]
         self.assertEquals(data1, data2)
 
+
 simple_fast_import_stream = b"""commit refs/heads/master
 mark :1
 committer Jelmer Vernooij <jelmer@samba.org> 1299718135 +0100
@@ -224,5 +228,5 @@ committer
 data 15
 """)])
         self.make_branch_and_tree("br")
-        self.run_bzr_error(['brz: ERROR: 4: Parse error: line 4: Command .*commit.* is missing section .*committer.*\n'], "fast-import empty.fi br")
-
+        self.run_bzr_error(
+            ['brz: ERROR: 4: Parse error: line 4: Command .*commit.* is missing section .*committer.*\n'], "fast-import empty.fi br")

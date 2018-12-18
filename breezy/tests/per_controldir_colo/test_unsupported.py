@@ -16,7 +16,7 @@
 
 """Tests for bazaar control directories that do not support colocated branches.
 
-Colocated branch support is optional, and when it is not supported the methods 
+Colocated branch support is optional, and when it is not supported the methods
 and attributes colocated branch support added should fail in known ways.
 """
 
@@ -42,14 +42,15 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
         try:
             made_control = self.make_controldir('.', format=self.bzrdir_format)
         except errors.UninitializableFormat:
-            raise tests.TestNotApplicable('Control dir format not initializable')
+            raise tests.TestNotApplicable(
+                'Control dir format not initializable')
         self.assertEqual(made_control._format, self.bzrdir_format)
         made_repo = made_control.create_repository()
         return made_control
 
     def test_destroy_colocated_branch(self):
         branch = self.make_branch('branch')
-        # Colocated branches should not be supported *or* 
+        # Colocated branches should not be supported *or*
         # destroy_branch should not be supported at all
         self.assertRaises(
             (errors.NoColocatedBranchSupport, errors.UnsupportedOperation),
@@ -57,24 +58,24 @@ class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
 
     def test_create_colo_branch(self):
         made_control = self.make_controldir_with_repo()
-        self.assertRaises(errors.NoColocatedBranchSupport, 
-            made_control.create_branch, "colo")
+        self.assertRaises(errors.NoColocatedBranchSupport,
+                          made_control.create_branch, "colo")
 
     def test_open_branch(self):
         made_control = self.make_controldir_with_repo()
         self.assertRaises(errors.NoColocatedBranchSupport,
-            made_control.open_branch, name="colo")
+                          made_control.open_branch, name="colo")
 
     def test_get_branch_reference(self):
         made_control = self.make_controldir_with_repo()
         self.assertRaises(errors.NoColocatedBranchSupport,
-            made_control.get_branch_reference, "colo")
+                          made_control.get_branch_reference, "colo")
 
     def test_set_branch_reference(self):
         referenced = self.make_branch('referenced')
         made_control = self.make_controldir_with_repo()
         self.assertRaises(errors.NoColocatedBranchSupport,
-            made_control.set_branch_reference, referenced, name="colo")
+                          made_control.set_branch_reference, referenced, name="colo")
 
     def test_get_branches(self):
         made_control = self.make_controldir_with_repo()

@@ -103,11 +103,11 @@ class TestWriter(TestCaseWithTransport):
                 break
         else:
             self.fail('We were able to write all lines')
-        self.assertFalse(writer.write(b"A"*256, reserved=True))
+        self.assertFalse(writer.write(b"A" * 256, reserved=True))
         bytes_list, unused, _ = writer.finish()
         node_bytes = self.check_chunk(bytes_list, 4096)
         # the first 44 lines should have been added
-        expected_bytes = b''.join(lines[:44]) + b"A"*256
+        expected_bytes = b''.join(lines[:44]) + b"A" * 256
         self.assertEqualDiff(expected_bytes, node_bytes)
         # And the line that failed should have been saved for us
         self.assertEqual(lines[44], unused)

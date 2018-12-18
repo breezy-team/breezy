@@ -120,7 +120,7 @@ class Testament(object):
         self.parent_ids = rev.parent_ids[:]
         if not isinstance(tree, Tree):
             raise TypeError("As of bzr 2.4 Testament.__init__() takes a "
-                "Revision and a Tree.")
+                            "Revision and a Tree.")
         self.tree = tree
         self.revprops = copy(rev.properties)
         if contains_whitespace(self.revision_id):
@@ -157,7 +157,7 @@ class Testament(object):
         return [line.encode('utf-8') for line in r]
 
     def _get_entries(self):
-        return ((path, ie) for (path, versioned, kind, file_id, ie) in
+        return ((path, ie) for (path, file_class, kind, ie) in
                 self.tree.list_files(include_root=self.include_root))
 
     def _escape_path(self, path):
@@ -173,7 +173,7 @@ class Testament(object):
         if contains_whitespace(ie.file_id):
             raise ValueError(ie.file_id)
         content = ''
-        content_spacer=  ''
+        content_spacer = ''
         if ie.kind == 'file':
             # TODO: avoid switching on kind
             if not ie.text_sha1:
@@ -224,6 +224,7 @@ class StrictTestament(Testament):
     long_header = 'bazaar-ng testament version 2.1\n'
     short_header = 'bazaar-ng testament short form 2.1\n'
     include_root = False
+
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
         l += ' ' + ie.revision.decode('utf-8')

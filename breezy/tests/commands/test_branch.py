@@ -40,4 +40,3 @@ class TestBranch(TestCaseWithConnectionHookedTransport):
         cmd = cmd_branch()
         cmd.run(self.get_url('branch'), self.get_url('remote'))
         self.assertEqual(2, len(self.connections))
-

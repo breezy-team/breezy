@@ -48,7 +48,7 @@ class TestBranchReconcile(TestCaseWithBranch):
         # Now, try to set an invalid history
         try:
             self.applyDeprecated(deprecated_in((2, 4, 0)),
-                tree.branch.set_revision_history, [r1, r2b, r5])
+                                 tree.branch.set_revision_history, [r1, r2b, r5])
             if tree.branch.last_revision_info() != (3, r5):
                 # RemoteBranch silently corrects an impossible revision
                 # history given to set_revision_history.  It can be tricked
@@ -80,7 +80,8 @@ class TestBranchReconcile(TestCaseWithBranch):
     def test_reconcile_handles_ghosts_in_revhistory(self):
         tree = self.make_branch_and_tree('test')
         if not tree.branch.repository._format.supports_ghosts:
-            raise TestNotApplicable("repository format does not support ghosts")
+            raise TestNotApplicable(
+                "repository format does not support ghosts")
         tree.set_parent_ids([b"spooky"], allow_leftmost_as_ghost=True)
         r1 = tree.commit('one')
         r2 = tree.commit('two')

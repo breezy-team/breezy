@@ -18,13 +18,10 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import warnings
-
 from breezy import (
     counted_lock,
     errors,
     lock,
-    osutils,
     transactions,
     urlutils,
     )
@@ -153,14 +150,14 @@ class LockableFiles(object):
         """
         if self._lock_mode:
             if (self._lock_mode != 'w'
-                or not self.get_transaction().writeable()):
+                    or not self.get_transaction().writeable()):
                 raise errors.ReadOnlyError(self)
             self._lock.validate_token(token)
             self._lock_count += 1
             return self._token_from_lock
         else:
             token_from_lock = self._lock.lock_write(token=token)
-            #traceback.print_stack()
+            # traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_write_transaction()
@@ -174,7 +171,7 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock.lock_read()
-            #traceback.print_stack()
+            # traceback.print_stack()
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_read_transaction()
@@ -196,7 +193,7 @@ class LockableFiles(object):
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
-            #traceback.print_stack()
+            # traceback.print_stack()
             self._finish_transaction()
             try:
                 self._lock.unlock()
@@ -259,6 +256,7 @@ class TransportLock(object):
     This is suitable for use only in WorkingTrees (which are at present
     always local).
     """
+
     def __init__(self, transport, escaped_name, file_modebits, dir_modebits):
         self._transport = transport
         self._escaped_name = escaped_name
@@ -293,7 +291,7 @@ class TransportLock(object):
         """Create lock mechanism"""
         # for old-style locks, create the file now
         self._transport.put_bytes(self._escaped_name, b'',
-                            mode=self._file_modebits)
+                                  mode=self._file_modebits)
 
     def validate_token(self, token):
         if token is not None:

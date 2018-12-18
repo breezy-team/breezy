@@ -46,7 +46,6 @@ from . import osutils
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import imp
-import importlib
 from importlib import util as importlib_util
 
 from breezy import (
@@ -422,8 +421,8 @@ def _load_plugin_module(name, dir):
             if sanitised_name.startswith('brz_'):
                 sanitised_name = sanitised_name[len('brz_'):]
             trace.warning("Unable to load %r in %r as a plugin because the "
-                    "file path isn't a valid module name; try renaming "
-                    "it to %r." % (name, dir, sanitised_name))
+                          "file path isn't a valid module name; try renaming "
+                          "it to %r." % (name, dir, sanitised_name))
         else:
             return record_plugin_warning(
                 'Unable to load plugin %r from %r: %s' % (name, dir, e))
@@ -438,7 +437,7 @@ def plugins():
     for fullname in sys.modules:
         if fullname.startswith(_MODULE_PREFIX):
             name = fullname[len(_MODULE_PREFIX):]
-            if not "." in name and sys.modules[fullname] is not None:
+            if "." not in name and sys.modules[fullname] is not None:
                 result[name] = PlugIn(name, sys.modules[fullname])
     return result
 
@@ -465,7 +464,7 @@ def format_concise_plugin_list(state=None):
     items = []
     for name, a_plugin in sorted(getattr(state, 'plugins', {}).items()):
         items.append("%s[%s]" %
-            (name, a_plugin.__version__))
+                     (name, a_plugin.__version__))
     return ', '.join(items)
 
 

@@ -16,9 +16,8 @@
 
 """All of bzr.
 
-Developer documentation for Bazaar is available at
-http://doc.bazaar.canonical.com/bzr.dev/developers/,
-it should mostly also apply to Breezy.
+Developer documentation is available at
+https://www.breezy-vcs.org/developers/.
 
 Some particularly interesting things in breezy are:
 
@@ -51,7 +50,8 @@ __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 0, 0, 'alpha', 1)
+version_info = (3, 0, 0, 'alpha', 2)
+
 
 def _format_version_tuple(version_info):
     """Turn a version number 2, 3 or 5-tuple into a short string.
@@ -111,25 +111,13 @@ def _format_version_tuple(version_info):
     return main_version + sub_string
 
 
-# lazy_regex import must be done after _format_version_tuple definition
-# to avoid "no attribute '_format_version_tuple'" error when using
-# deprecated_function in the lazy_regex module.
-if getattr(sys, '_brz_lazy_regex', False):
-    # The 'brz' executable sets _brz_lazy_regex.  We install the lazy regex
-    # hack as soon as possible so that as much of the standard library can
-    # benefit, including the 'string' module.
-    del sys._brz_lazy_regex
-    import breezy.lazy_regex
-    breezy.lazy_regex.install_lazy_compile()
-
-
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
 
 
 def _patch_filesystem_default_encoding(new_enc):
     """Change the Python process global encoding for filesystem names
-    
+
     The effect is to change how open() and other builtin functions handle
     unicode filenames on posix systems. This should only be done near startup.
 
@@ -142,15 +130,15 @@ def _patch_filesystem_default_encoding(new_enc):
     try:
         import ctypes
         old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
-            "Py_FileSystemDefaultEncoding")
+                                         "Py_FileSystemDefaultEncoding")
         if is_py3:
             has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
-                "Py_HasFileSystemDefaultEncoding")
+                                          "Py_HasFileSystemDefaultEncoding")
             as_utf8 = ctypes.PYFUNCTYPE(
                 ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
                     ("PyUnicode_AsUTF8", ctypes.pythonapi))
     except (ImportError, ValueError):
-        return # No ctypes or not CPython implementation, do nothing
+        return  # No ctypes or not CPython implementation, do nothing
     if is_py3:
         new_enc = sys.intern(new_enc)
         enc_ptr = as_utf8(new_enc)

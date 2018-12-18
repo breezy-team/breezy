@@ -69,14 +69,14 @@ def _load_data_py(kndx, fp):
             pos = int(pos)
         except ValueError as e:
             raise KnitCorrupt(kndx._filename,
-                                     "invalid position on line %r: %s"
-                                     % (rec, e))
+                              "invalid position on line %r: %s"
+                              % (rec, e))
         try:
             size = int(size)
         except ValueError as e:
             raise KnitCorrupt(kndx._filename,
-                                     "invalid size on line %r: %s"
-                                     % (rec, e))
+                              "invalid size on line %r: %s"
+                              % (rec, e))
 
         # See kndx._cache_version
         # only want the _history index to reference the 1st

@@ -70,6 +70,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def create_cf_tree(self, txt_reader, txt_writer, dir='.'):
         tree = self.make_branch_and_tree(dir)
+
         def _content_filter_stack(path=None, file_id=None):
             if path.endswith('.txt'):
                 return [ContentFilter(txt_reader, txt_writer)]
@@ -84,8 +85,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         return tree, 'file1.txt', 'file2.bin'
 
     def create_cf_tree_with_two_revisions(self, txt_reader, txt_writer,
-        dir='.'):
+                                          dir='.'):
         tree = self.make_branch_and_tree(dir)
+
         def _content_filter_stack(path=None, file_id=None):
             if path.endswith('.txt'):
                 return [ContentFilter(txt_reader, txt_writer)]
@@ -133,7 +135,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_symmetric_content_filtering(self):
         # test handling when read then write gives back the initial content
-        tree, txt_path, bin_path= self.create_cf_tree(
+        tree, txt_path, bin_path = self.create_cf_tree(
             txt_reader=_swapcase, txt_writer=_swapcase)
         # Check that the basis tree has the expected content
         basis = tree.basis_tree()
@@ -144,11 +146,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         else:
             expected = b"Foo Txt"
         self.assertEqual(
-                expected,
-                basis.get_file_text(txt_path))
+            expected,
+            basis.get_file_text(txt_path))
         self.assertEqual(
-                b'Foo Bin',
-                basis.get_file_text(bin_path))
+            b'Foo Bin',
+            basis.get_file_text(bin_path))
         # Check that the working tree has the original content
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -241,7 +243,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         result = source.path_content_summary('file1.txt')
 
         self.assertEqual(result,
-            ('file', None, False, None))
+                         ('file', None, False, None))
 
         # we could give back the length of the canonical form, but in general
         # that will be expensive to compute, so it's acceptable to just return
@@ -251,7 +253,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Create a source branch with two revisions
         source, path1, path2, path3, path4 = \
             self.create_cf_tree_with_two_revisions(txt_reader=None,
-            txt_writer=None, dir='source')
+                                                   txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual(b"Foo ROCKS!", 'source/file1.txt')
@@ -280,7 +282,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Create a source branch with two revisions
         source, path1, path2, path3, path4 = \
             self.create_cf_tree_with_two_revisions(txt_reader=None,
-            txt_writer=None, dir='source')
+                                                   txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
         self.assert_basis_content(b"Foo ROCKS!", source, path1)
@@ -312,7 +314,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Create a source branch with two revisions
         source, path1, path2, path3, path4 = \
             self.create_cf_tree_with_two_revisions(txt_reader=None,
-            txt_writer=None, dir='branch-a')
+                                                   txt_writer=None, dir='branch-a')
         if not source.supports_content_filtering():
             return
 

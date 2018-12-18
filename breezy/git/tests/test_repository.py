@@ -50,6 +50,7 @@ from ..push import (
     MissingObjectsIterator,
     )
 
+
 class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     """Feature tests for GitRepository."""
 
@@ -116,7 +117,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         builder.set_symlink(b'link', b'broken')
         builder.set_file(b'subdir/subfile', b'subdir text\n', False)
         commit_handle = builder.commit(b'Joe Foo <joe@foo.com>', b'message',
-            timestamp=1205433193)
+                                       timestamp=1205433193)
         mapping = builder.finish()
         return mapping[commit_handle]
 
@@ -153,10 +154,12 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(repo.supports_rich_root(), True)
 
     def test_get_signature_text(self):
-        self.assertRaises(errors.NoSuchRevision, self.git_repo.get_signature_text, revision.NULL_REVISION)
+        self.assertRaises(
+            errors.NoSuchRevision, self.git_repo.get_signature_text, revision.NULL_REVISION)
 
     def test_has_signature_for_revision_id(self):
-        self.assertEqual(False, self.git_repo.has_signature_for_revision_id(revision.NULL_REVISION))
+        self.assertEqual(False, self.git_repo.has_signature_for_revision_id(
+            revision.NULL_REVISION))
 
     def test_all_revision_ids_none(self):
         self.assertEqual([], self.git_repo.all_revision_ids())
@@ -166,16 +169,16 @@ class TestGitRepository(tests.TestCaseWithTransport):
         revid = default_mapping.revision_id_foreign_to_bzr(cid)
         g = self.git_repo.get_known_graph_ancestry([revid])
         self.assertEqual(frozenset([revid]),
-            g.heads([revid]))
+                         g.heads([revid]))
         self.assertEqual([(revid, 0, (1,), True)],
-            [(n.key, n.merge_depth, n.revno, n.end_of_merge)
-                 for n in g.merge_sort(revid)])
+                         [(n.key, n.merge_depth, n.revno, n.end_of_merge)
+                          for n in g.merge_sort(revid)])
 
     def test_all_revision_ids(self):
         commit_id = self._do_commit()
         self.assertEqual(
-                [default_mapping.revision_id_foreign_to_bzr(commit_id)],
-                self.git_repo.all_revision_ids())
+            [default_mapping.revision_id_foreign_to_bzr(commit_id)],
+            self.git_repo.all_revision_ids())
 
     def assertIsNullInventory(self, inv):
         self.assertEqual(inv.root, None)
@@ -191,7 +194,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
 
     def test_get_parent_map_null(self):
         self.assertEqual({revision.NULL_REVISION: ()},
-                           self.git_repo.get_parent_map([revision.NULL_REVISION]))
+                         self.git_repo.get_parent_map([revision.NULL_REVISION]))
 
 
 class SigningGitRepository(tests.TestCaseWithTransport):
@@ -202,18 +205,64 @@ class SigningGitRepository(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.', format='git')
         branch = wt.branch
         revid = wt.commit("base", allow_pointless=True)
-        self.assertFalse(branch.repository.has_signature_for_revision_id(revid))
+        self.assertFalse(
+            branch.repository.has_signature_for_revision_id(revid))
         try:
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack(b'''
 create_signatures=always
 ''')
-            revid2 = wt.commit(config=conf, message="base", allow_pointless=True)
+            revid2 = wt.commit(config=conf, message="base",
+                               allow_pointless=True)
+
             def sign(text):
                 return breezy.gpg.LoopbackGPGStrategy(None).sign(text)
-            self.assertIsInstance(branch.repository.get_signature_text(revid2), bytes)
+            self.assertIsInstance(
+                branch.repository.get_signature_text(revid2), bytes)
         finally:
             breezy.gpg.GPGStrategy = oldstrategy
+
+
+class RevpropsRepository(tests.TestCaseWithTransport):
+
+    def test_author(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={'author': 'Joe Example <joe@example.com>'})
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
+
+    def test_authors(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={'authors': 'Joe Example <joe@example.com>'})
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(b'Joe Example <joe@example.com>', r[r.head()].author)
+
+    def test_multiple_authors(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        self.assertRaises(
+            Exception, wt.commit, "base", allow_pointless=True,
+            revprops={'authors': 'Joe Example <joe@example.com>\n'
+                                 'Jane Doe <jane@example.com\n>'})
+
+    def test_bugs(self):
+        wt = self.make_branch_and_tree('.', format='git')
+        revid = wt.commit(
+            "base", allow_pointless=True,
+            revprops={
+                'bugs': 'https://github.com/jelmer/dulwich/issues/123 fixed\n'
+                })
+        rev = wt.branch.repository.get_revision(revid)
+        r = dulwich.repo.Repo('.')
+        self.assertEqual(
+            b'base\n'
+            b'Fixes: https://github.com/jelmer/dulwich/issues/123\n',
+            r[r.head()].message)
 
 
 class GitRepositoryFormat(tests.TestCase):
@@ -224,7 +273,7 @@ class GitRepositoryFormat(tests.TestCase):
 
     def test_get_format_description(self):
         self.assertEqual("Git Repository",
-                          self.format.get_format_description())
+                         self.format.get_format_description())
 
 
 class RevisionGistImportTests(tests.TestCaseWithTransport):
@@ -242,8 +291,10 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
                                    self.git_repo)
 
     def object_iter(self):
-        store = BazaarObjectStore(self.bzr_tree.branch.repository, default_mapping)
-        store_iterator = MissingObjectsIterator(store, self.bzr_tree.branch.repository)
+        store = BazaarObjectStore(
+            self.bzr_tree.branch.repository, default_mapping)
+        store_iterator = MissingObjectsIterator(
+            store, self.bzr_tree.branch.repository)
         return store, store_iterator
 
     def import_rev(self, revid, parent_lookup=None):
@@ -259,11 +310,11 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
 
     def test_pointless(self):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
-                timezone=0, committer="Jelmer Vernooij <jelmer@samba.org>")
+                                     timezone=0, committer="Jelmer Vernooij <jelmer@samba.org>")
         self.assertEqual(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
-                self.import_rev(revid))
+                         self.import_rev(revid))
         self.assertEqual(b"2caa8094a5b794961cd9bf582e3e2bb090db0b14",
-                self.import_rev(revid))
+                         self.import_rev(revid))
 
 
 class ForeignTestsRepositoryFactory(object):

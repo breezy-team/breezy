@@ -31,13 +31,13 @@ from ..bzr import (
 def load_tests(loader, standard_tests, pattern):
     """Parameterize tests for all versions of groupcompress."""
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'breezy._annotator_py', 'breezy._annotator_pyx')
+                                                 'breezy._annotator_py', 'breezy._annotator_pyx')
     return suite
 
 
 class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
-    module = None # Set by load_tests
+    module = None  # Set by load_tests
 
     fa_key = (b'f-id', b'a-id')
     fb_key = (b'f-id', b'b-id')
@@ -151,7 +151,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     def test_annotate_simple(self):
         self.make_simple_text()
-        self.assertAnnotateEqual([(self.fa_key,)]*2, self.fa_key)
+        self.assertAnnotateEqual([(self.fa_key,)] * 2, self.fa_key)
         self.assertAnnotateEqual([(self.fa_key,), (self.fb_key,)], self.fb_key)
 
     def test_annotate_merge_text(self):
@@ -180,17 +180,17 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         self.make_simple_text()
         self.assertEqual([(self.fa_key, b'simple\n'),
                           (self.fa_key, b'content\n'),
-                         ], self.ann.annotate_flat(self.fa_key))
+                          ], self.ann.annotate_flat(self.fa_key))
         self.assertEqual([(self.fa_key, b'simple\n'),
                           (self.fb_key, b'new content\n'),
-                         ], self.ann.annotate_flat(self.fb_key))
+                          ], self.ann.annotate_flat(self.fb_key))
 
     def test_annotate_flat_merge_and_restored_text(self):
         self.make_merge_and_restored_text()
         # fc is a simple dominator of fa
         self.assertEqual([(self.fa_key, b'simple\n'),
                           (self.fc_key, b'content\n'),
-                         ], self.ann.annotate_flat(self.fd_key))
+                          ], self.ann.annotate_flat(self.fd_key))
 
     def test_annotate_common_merge_text(self):
         self.make_common_merge_text()
@@ -198,16 +198,17 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         # and b'b-id' comes before b'c-id'
         self.assertEqual([(self.fa_key, b'simple\n'),
                           (self.fb_key, b'new content\n'),
-                         ], self.ann.annotate_flat(self.fd_key))
+                          ], self.ann.annotate_flat(self.fd_key))
 
     def test_annotate_many_way_common_merge_text(self):
         self.make_many_way_common_merge_text()
         self.assertEqual([(self.fa_key, b'simple\n'),
-                         (self.fb_key, b'new content\n')],
+                          (self.fb_key, b'new content\n')],
                          self.ann.annotate_flat(self.ff_key))
 
     def test_annotate_flat_respects_break_ann_tie(self):
         seen = set()
+
         def custom_tiebreaker(annotated_lines):
             self.assertEqual(2, len(annotated_lines))
             left = annotated_lines[0]
@@ -226,7 +227,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         self.overrideAttr(annotate, '_break_annotation_tie', custom_tiebreaker)
         self.make_many_way_common_merge_text()
         self.assertEqual([(self.fa_key, b'simple\n'),
-                         (self.fe_key, b'new content\n')],
+                          (self.fe_key, b'new content\n')],
                          self.ann.annotate_flat(self.ff_key))
         # Calls happen in set iteration order but should keys should be seen
         self.assertEqual({self.fb_key, self.fc_key, self.fe_key}, seen)
@@ -244,14 +245,14 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         keys, ann_keys = self.ann._get_needed_keys(self.ff_key)
         self.assertEqual([self.fa_key, self.fb_key, self.fc_key,
                           self.fd_key, self.fe_key, self.ff_key,
-                         ], sorted(keys))
+                          ], sorted(keys))
         self.assertEqual({self.fa_key: 3,
                           self.fb_key: 1,
                           self.fc_key: 1,
                           self.fd_key: 1,
                           self.fe_key: 1,
                           self.ff_key: 1,
-                         }, self.ann._num_needed_children)
+                          }, self.ann._num_needed_children)
         self.assertEqual(set(), ann_keys)
 
     def test_needed_keys_with_special_text(self):
@@ -263,7 +264,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         keys, ann_keys = self.ann._get_needed_keys(spec_key)
         self.assertEqual([self.fa_key, self.fb_key, self.fc_key,
                           self.fd_key, self.fe_key,
-                         ], sorted(keys))
+                          ], sorted(keys))
         self.assertEqual([spec_key], sorted(ann_keys))
 
     def test_needed_keys_with_parent_texts(self):
@@ -292,7 +293,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         self.assertEqual({self.fd_key: 1,
                           self.fe_key: 1,
                           self.ff_key: 1,
-                         }, self.ann._num_needed_children)
+                          }, self.ann._num_needed_children)
         self.assertEqual([], sorted(ann_keys))
 
     def test_record_annotation_removes_texts(self):
@@ -306,10 +307,10 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           self.fd_key: 1,
                           self.fe_key: 1,
                           self.ff_key: 1,
-                         }, self.ann._num_needed_children)
+                          }, self.ann._num_needed_children)
         self.assertEqual([self.fa_key, self.fb_key, self.fc_key,
                           self.fd_key, self.fe_key, self.ff_key,
-                         ], sorted(self.ann._text_cache.keys()))
+                          ], sorted(self.ann._text_cache.keys()))
         self.ann._record_annotation(self.fa_key, [], [])
         self.ann._record_annotation(self.fb_key, [self.fa_key], [])
         self.assertEqual({self.fa_key: 2,
@@ -318,18 +319,19 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           self.fd_key: 1,
                           self.fe_key: 1,
                           self.ff_key: 1,
-                         }, self.ann._num_needed_children)
+                          }, self.ann._num_needed_children)
         self.assertTrue(self.fa_key in self.ann._text_cache)
         self.assertTrue(self.fa_key in self.ann._annotations_cache)
         self.ann._record_annotation(self.fc_key, [self.fa_key], [])
-        self.ann._record_annotation(self.fd_key, [self.fb_key, self.fc_key], [])
+        self.ann._record_annotation(
+            self.fd_key, [self.fb_key, self.fc_key], [])
         self.assertEqual({self.fa_key: 1,
                           self.fb_key: 0,
                           self.fc_key: 0,
                           self.fd_key: 1,
                           self.fe_key: 1,
                           self.ff_key: 1,
-                         }, self.ann._num_needed_children)
+                          }, self.ann._num_needed_children)
         self.assertTrue(self.fa_key in self.ann._text_cache)
         self.assertTrue(self.fa_key in self.ann._annotations_cache)
         self.assertFalse(self.fb_key in self.ann._text_cache)
@@ -360,14 +362,14 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         self.assertAnnotateEqual([(self.fa_key,),
                                   (self.fb_key, self.fc_key, self.fe_key),
                                   (spec_key,),
-                                 ], spec_key,
+                                  ], spec_key,
                                  exp_text=spec_text)
 
     def test_no_graph(self):
         self.make_no_graph_texts()
         self.assertAnnotateEqual([(self.fa_key,),
                                   (self.fa_key,),
-                                 ], self.fa_key)
+                                  ], self.fa_key)
         self.assertAnnotateEqual([(self.fb_key,),
                                   (self.fb_key,),
-                                 ], self.fb_key)
+                                  ], self.fb_key)

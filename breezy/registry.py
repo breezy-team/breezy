@@ -275,8 +275,8 @@ class Registry(object):
         return self._default_key
 
     default_key = property(_get_default_key, _set_default_key,
-                            doc="Current value of the default key."
-                                " Can be set to any existing key.")
+                           doc="Current value of the default key."
+                           " Can be set to any existing key.")
 
 
 class FormatRegistry(Registry):
@@ -289,10 +289,10 @@ class FormatRegistry(Registry):
     def register(self, key, obj, help=None, info=None,
                  override_existing=False):
         Registry.register(self, key, obj, help=help, info=info,
-            override_existing=override_existing)
+                          override_existing=override_existing)
         if self._other_registry is not None:
             self._other_registry.register(key, obj, help=help,
-                info=info, override_existing=override_existing)
+                                          info=info, override_existing=override_existing)
 
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
@@ -300,10 +300,10 @@ class FormatRegistry(Registry):
         # Overridden to allow capturing registrations to two seperate
         # registries in a single call.
         Registry.register_lazy(self, key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
+                               help=help, info=info, override_existing=override_existing)
         if self._other_registry is not None:
             self._other_registry.register_lazy(key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
+                                               help=help, info=info, override_existing=override_existing)
 
     def remove(self, key):
         Registry.remove(self, key)

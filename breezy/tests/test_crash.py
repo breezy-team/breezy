@@ -57,13 +57,13 @@ class TestApportReporting(tests.TestCaseInTempDir):
 
         # message explaining the crash
         self.assertContainsRe(stderr.getvalue(),
-            "    apport-bug %s" % crash_filename)
+                              "    apport-bug %s" % crash_filename)
 
         with open(crash_filename) as crash_file:
             report = crash_file.read()
 
         self.assertContainsRe(report,
-            '(?m)^BrzVersion:') # should be in the traceback
+                              '(?m)^BrzVersion:')  # should be in the traceback
         self.assertContainsRe(report, 'my error')
         self.assertContainsRe(report, 'AssertionError')
         # see https://bugs.launchpad.net/bzr/+bug/528114
@@ -97,8 +97,8 @@ class TestNonApportReporting(tests.TestCase):
             crash.report_bug_legacy(sys.exc_info(), err_file)
         report = err_file.getvalue()
         for needle in [
-            "brz: ERROR: AssertionError: my error",
-            r"Traceback \(most recent call last\):",
-            r"plugins: fake_plugin\[1\.2\.3\]",
-            ]:
+                "brz: ERROR: AssertionError: my error",
+                r"Traceback \(most recent call last\):",
+                r"plugins: fake_plugin\[1\.2\.3\]",
+                ]:
             self.assertContainsRe(report, needle)

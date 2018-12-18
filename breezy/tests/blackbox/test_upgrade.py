@@ -132,9 +132,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def test_upgrade_control_dir(self):
         old_format = OldBzrDirFormat()
         self.addCleanup(bzr.BzrProber.formats.remove,
-            old_format.get_format_string())
+                        old_format.get_format_string())
         bzr.BzrProber.formats.register(old_format.get_format_string(),
-            old_format)
+                                       old_format)
         self.addCleanup(controldir.ControlDirFormat._set_default_format,
                         controldir.ControlDirFormat.get_default_format())
 
@@ -180,7 +180,7 @@ starting repository conversion
 repository converted
 finished
 """ % (display_url, display_url, display_url, display_url, backup_dir),
-                             out)
+            out)
         self.assertEqualDiff("", err)
         converted_dir = controldir.ControlDir.open(self.get_url('branch'))
         self.assertTrue(isinstance(converted_dir._format,
@@ -199,7 +199,8 @@ finished
         self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
 
     def assertBranchFormat(self, dir, format):
-        branch = controldir.ControlDir.open_tree_or_branch(self.get_url(dir))[1]
+        branch = controldir.ControlDir.open_tree_or_branch(self.get_url(dir))[
+            1]
         branch_format = branch._format
         meta_format = controldir.format_registry.make_controldir(format)
         expected_format = meta_format.get_branch_format()
@@ -248,7 +249,8 @@ finished
 """ % (display_url, display_url, display_url, display_url, backup_dir2), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            controldir.ControlDir.open(self.get_url("old_format_branch"))._format,
+            controldir.ControlDir.open(
+                self.get_url("old_format_branch"))._format,
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
 
@@ -261,7 +263,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         t = self.get_transport()
         url = t.base
         display_url = urlutils.unescape_for_display(url,
-            'utf-8')
+                                                    'utf-8')
         out, err = self.run_bzr(['upgrade', '--format=2a', url])
         backup_dir = 'backup.bzr.~1~'
         self.assertEqualDiff("""Upgrading branch %s ...
