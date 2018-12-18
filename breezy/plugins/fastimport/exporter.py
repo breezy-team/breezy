@@ -499,13 +499,13 @@ class BzrFastExporter(object):
             my_modified.append((path, id_, kind2))
 
         # Record modifications
+        files_to_get = []
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
-                text = tree_new.get_file_text(path)
-                file_cmds.append(commands.FileModifyCommand(
-                    path.encode("utf-8"),
-                    helpers.kind_to_mode('file', tree_new.is_executable(path)),
-                    None, text))
+                files_to_get.append(
+                    (path,
+                     (path, helpers.kind_to_mode(
+                         'file', tree_new.is_executable(path)))))
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(
                     path.encode("utf-8"),
@@ -521,6 +521,10 @@ class BzrFastExporter(object):
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                              (path, kind))
+        for (path, mode), chunks in tree_new.iter_files_bytes(
+                files_to_get):
+            file_cmds.append(commands.FileModifyCommand(
+                path.encode("utf-8"), mode, None, b''.join(chunks)))
         return file_cmds
 
     def _process_renames_and_deletes(self, renames, deletes,

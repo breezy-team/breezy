@@ -5625,12 +5625,12 @@ class cmd_serve(Command):
 
     def run(self, listen=None, port=None, inet=False, directory=None,
             allow_writes=False, protocol=None, client_timeout=None):
-        from . import transport
+        from . import location, transport
         if directory is None:
             directory = osutils.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        url = transport.location_to_url(directory)
+        url = location.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)

@@ -150,16 +150,18 @@ def show_tree_status(wt,
                 new = wt
         with old.lock_read(), new.lock_read():
             for hook in hooks['pre_status']:
-                hook(StatusHookParams(old, new, to_file, versioned,
-                                      show_ids, short, verbose, specific_files=specific_files))
+                hook(StatusHookParams(
+                    old, new, to_file, versioned, show_ids, short, verbose,
+                    specific_files=specific_files))
 
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
 
             # Reporter used for short outputs
-            reporter = _mod_delta._ChangeReporter(output_file=to_file,
-                                                  unversioned_filter=new.is_ignored, classify=classify)
+            reporter = _mod_delta._ChangeReporter(
+                output_file=to_file, unversioned_filter=new.is_ignored,
+                classify=classify)
             report_changes(to_file, old, new, specific_files,
                            reporter, show_long_callback,
                            short=short, want_unversioned=want_unversioned,
@@ -183,8 +185,8 @@ def show_tree_status(wt,
             # delta.
             conflicts = new.conflicts()
             if specific_files is not None:
-                conflicts = conflicts.select_conflicts(new, specific_files,
-                                                       ignore_misses=True, recurse=True)[1]
+                conflicts = conflicts.select_conflicts(
+                    new, specific_files, ignore_misses=True, recurse=True)[1]
             if len(conflicts) > 0 and not short:
                 to_file.write("conflicts:\n")
             for conflict in conflicts:
@@ -214,8 +216,9 @@ def show_tree_status(wt,
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
             for hook in hooks['post_status']:
-                hook(StatusHookParams(old, new, to_file, versioned,
-                                      show_ids, short, verbose, specific_files=specific_files))
+                hook(StatusHookParams(
+                    old, new, to_file, versioned, show_ids, short, verbose,
+                    specific_files=specific_files))
 
 
 def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
