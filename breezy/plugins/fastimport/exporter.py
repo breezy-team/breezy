@@ -477,7 +477,7 @@ class BzrFastExporter(object):
         tree_old, tree_new = self._get_revision_trees(parent, revision_id)
         if not(tree_old and tree_new):
             # Something is wrong with this revision - ignore the filecommands
-            return []
+            return
 
         changes = tree_new.changes_from(tree_old)
 
