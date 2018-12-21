@@ -55,7 +55,7 @@ class TestSwitch(TestCaseWithTransport):
         os.chdir('checkout')
         out, err = self.run_bzr('switch ../branch2')
         self.assertContainsRe(err, 'Tree is up to date at revision 0.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
+        self.assertContainsRe(err, 'Switched to branch at .*/branch2.\n')
         self.assertEqual('', out)
 
     def test_switch_out_of_date_light_checkout(self):
@@ -69,7 +69,7 @@ class TestSwitch(TestCaseWithTransport):
         out, err = self.run_bzr('switch ../branch2')
         #self.assertContainsRe(err, '\+N  file')
         self.assertContainsRe(err, 'Updated to revision 1.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
+        self.assertContainsRe(err, 'Switched to branch at .*/branch2.\n')
         self.assertEqual('', out)
 
     def _test_switch_nick(self, lightweight):
@@ -431,7 +431,7 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
                 $ cd checkout
                 $ brz switch --create-branch switched
                 2>Tree is up to date at revision 0.
-                2>Switched to branch:...switched...
+                2>Switched to branch at .../switched/
                 $ cd ..
                 ''' % locals())
         bound_branch = branch.Branch.open_containing('checkout')[0]
@@ -590,7 +590,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
            Created a standalone tree (format: 2a)
            $ brz switch -b trunk
            2>Tree is up to date at revision 0.
-           2>Switched to branch:...
+           2>Switched to branch trunk
            $ brz commit -m 1 --unchanged
            2>Committing to: ...
            2>Committed revision 1.
@@ -599,7 +599,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
            2>Committed revision 2.
            $ brz switch -b blah -r1
            2>Updated to revision 1.
-           2>Switched to branch:...
+           2>Switched to branch blah
            $ brz branches
            * blah
              trunk

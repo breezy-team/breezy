@@ -6364,8 +6364,15 @@ class cmd_switch(Command):
         if had_explicit_nick:
             branch = control_dir.open_branch()  # get the new branch!
             branch.nick = to_branch.nick
-        note(gettext('Switched to branch: %s'),
-             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+        if to_branch.name:
+            if to_branch.controldir.control_url != control_dir.control_url:
+                note(gettext('Switched to branch %s at %s'),
+                     to_branch.name, urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+            else:
+                note(gettext('Switched to branch %s'), to_branch.name)
+        else:
+            note(gettext('Switched to branch at %s'),
+                 urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
 class cmd_view(Command):
