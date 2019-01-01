@@ -317,7 +317,10 @@ def _remove_filter_callable(filter):
     """
     def cleanup():
         if filter:
-            warnings.filters.remove(filter)
+            try:
+                warnings.filters.remove(filter)
+            except IndexError:
+                pass
     return cleanup
 
 
