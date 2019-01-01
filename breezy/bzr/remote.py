@@ -37,13 +37,13 @@ from .. import (
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
-    testament as _mod_testament,
     urlutils,
     )
 from . import (
     branch as bzrbranch,
     bzrdir as _mod_bzrdir,
     inventory_delta,
+    testament as _mod_testament,
     vf_repository,
     vf_search,
     )

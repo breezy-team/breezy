@@ -274,7 +274,7 @@ class TestPull(tests.TestCaseWithTransport):
                          branch_b.get_parent())
 
     def test_pull_bundle(self):
-        from breezy.testament import Testament
+        from breezy.bzr.testament import Testament
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
         with open('branch_a/a', 'wb') as f:

@@ -5210,7 +5210,7 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
-        from .testament import Testament, StrictTestament
+        from .bzr.testament import Testament, StrictTestament
         if strict is True:
             testament_class = StrictTestament
         else:
