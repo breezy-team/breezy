@@ -230,6 +230,8 @@ class cmd_find_merge_proposal(Command):
 class cmd_github_login(Command):
     __doc__ = """Log into GitHub.
 
+    When communicating with GitHub, some commands need to authenticate to
+    GitHub.
     """
 
     takes_args = ['username?']
@@ -260,3 +262,41 @@ class cmd_github_login(Command):
         from .github import store_github_token
         store_github_token(scheme='https', host='github.com',
                            token=authorization.token)
+
+
+class cmd_gitlab_login(Command):
+    __doc__ = """Log into a GitLab instance.
+
+    This command takes a GitLab instance URL (e.g. https://gitlab.com)
+    as well as a private token. Private tokens can be created via the
+    web UI.
+
+    :Examples:
+
+      Log into Debian's salsa:
+
+         brz gitlab-login https://salsa.debian.org if4Theis6Eich7aef0zo
+    """
+
+    takes_args = ['url', 'private_token']
+
+    takes_options = [
+            Option('name', help='Name for GitLab site in configuration.',
+                   type=str),
+            Option('no-check',
+                   "Don't check that the token is valid."),
+            ]
+
+    def run(self, url, private_token, name=None, no_check=False):
+        from .gitlabs import store_gitlab_token
+        if name is None:
+            try:
+                name = urlutils.parse_url(url)[3].split('.')[-2]
+            except (ValueError, IndexError):
+                raise errors.BzrCommandError(
+                    'please specify a site name with --name')
+        if not no_check:
+            from gitlab import Gitlab
+            gl = Gitlab(url=url, private_token=private_token)
+            gl.auth()
+        store_gitlab_token(name=name, url=url, private_token=private_token)

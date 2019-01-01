@@ -88,7 +88,7 @@ def connect_github():
     # TODO(jelmer): token = auth.get_token('https', 'github.com')
     token = retrieve_github_token('https', 'github.com')
     if token is not None:
-        return Github("token", user_agent=user_agent)
+        return Github(token, user_agent=user_agent)
     else:
         note('Accessing GitHub anonymously. To log in, run \'brz gh-login\'.')
         return Github(user_agent=user_agent)
