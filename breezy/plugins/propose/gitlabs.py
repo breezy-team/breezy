@@ -146,7 +146,7 @@ def gitlab_url_to_bzr_url(url, name):
     if not PY3:
         name = name.encode('utf-8')
     return urlutils.join_segment_parameters(
-            git_url_to_bzr_url(url), {"branch": name})
+        git_url_to_bzr_url(url), {"branch": name})
 
 
 class GitLab(Hoster):
@@ -193,13 +193,15 @@ class GitLab(Hoster):
         remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
-            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
-                overwrite=overwrite, name=name)
+            push_result = remote_dir.push_branch(
+                local_branch, revision_id=revision_id, overwrite=overwrite,
+                name=name)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
-            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
-                overwrite=overwrite, name=name, lossy=True)
+            push_result = remote_dir.push_branch(
+                local_branch, revision_id=revision_id, overwrite=overwrite,
+                name=name, lossy=True)
         public_url = gitlab_url_to_bzr_url(
             target_project.attributes['http_url_to_repo'], name)
         return push_result.target_branch, public_url
@@ -226,7 +228,7 @@ class GitLab(Hoster):
                 raise errors.NotBranchError('%s/%s/%s' % (self.gl.url, owner, project))
             raise
         return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
-                target_project.attributes['ssh_url_to_repo'], name))
+            target_project.attributes['ssh_url_to_repo'], name))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
@@ -243,10 +245,11 @@ class GitLab(Hoster):
         target_project = self.gl.projects.get(target_project_name)
         try:
             for mr in target_project.mergerequests.list(state='all'):
-                if (mr.attributes['source_project_id'] != source_project.id or
-                    mr.attributes['source_branch'] != source_branch_name or
-                    mr.attributes['target_project_id'] != target_project.id or
-                    mr.attributes['target_branch'] != target_branch_name):
+                attrs = mr.attributes
+                if (attrs['source_project_id'] != source_project.id or
+                        attrs['source_branch'] != source_branch_name or
+                        attrs['target_project_id'] != target_project.id or
+                        attrs['target_branch'] != target_branch_name):
                     continue
                 return GitLabMergeProposal(mr)
         except gitlab.GitlabListError as e:
@@ -273,7 +276,7 @@ class GitLab(Hoster):
             gl = connect_gitlab(host)
             gl.auth()
         except requests.exceptions.SSLError:
-            # Well, I guess it could be.. 
+            # Well, I guess it could be..
             raise UnsupportedHoster(branch)
         except gitlab.GitlabGetError:
             raise UnsupportedHoster(branch)

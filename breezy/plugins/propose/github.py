@@ -76,7 +76,9 @@ class NotGitHubUrl(errors.BzrError):
 
 
 def connect_github():
-    user_agent = user_agent="Breezy/%s" % breezy_version
+    """Connect to GitHub.
+    """
+    user_agent = "Breezy/%s" % breezy_version
 
     auth = AuthenticationConfig()
 
@@ -129,7 +131,7 @@ def github_url_to_bzr_url(url, branch_name):
     if not PY3:
         branch_name = branch_name.encode('utf-8')
     return urlutils.join_segment_parameters(
-            git_url_to_bzr_url(url), {"branch": branch_name})
+        git_url_to_bzr_url(url), {"branch": branch_name})
 
 
 class GitHub(Hoster):
@@ -163,20 +165,22 @@ class GitHub(Hoster):
                 owner_obj = self.gh.get_organization(owner)
             remote_repo = owner_obj.create_fork(base_repo)
             note(gettext('Forking new repository %s from %s') %
-                    (remote_repo.html_url, base_repo.html_url))
+                 (remote_repo.html_url, base_repo.html_url))
         else:
             note(gettext('Reusing existing repository %s') % remote_repo.html_url)
         remote_dir = controldir.ControlDir.open(git_url_to_bzr_url(remote_repo.ssh_url))
         try:
-            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
-                overwrite=overwrite, name=name)
+            push_result = remote_dir.push_branch(
+                local_branch, revision_id=revision_id, overwrite=overwrite,
+                name=name)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
-            push_result = remote_dir.push_branch(local_branch, revision_id=revision_id,
+            push_result = remote_dir.push_branch(
+                local_branch, revision_id=revision_id,
                 overwrite=overwrite, name=name, lossy=True)
         return push_result.target_branch, github_url_to_bzr_url(
-                remote_repo.html_url, name)
+            remote_repo.html_url, name)
 
     def get_push_url(self, branch):
         owner, project, branch_name = parse_github_url(branch)
@@ -203,15 +207,15 @@ class GitHub(Hoster):
 
     def get_proposal(self, source_branch, target_branch):
         (source_owner, source_repo_name, source_branch_name) = (
-                parse_github_url(source_branch))
+            parse_github_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
-                parse_github_url(target_branch))
+            parse_github_url(target_branch))
         target_repo = self.gh.get_repo("%s/%s" % (target_owner, target_repo_name))
         for pull in target_repo.get_pulls(head=target_branch_name):
             if pull.head.ref != source_branch_name:
                 continue
             if (pull.head.repo.owner.login != source_owner or
-                pull.head.repo.name != source_repo_name):
+                    pull.head.repo.name != source_repo_name):
                 continue
             return GitHubMergeProposal(pull)
         raise NoMergeProposal()
@@ -240,9 +244,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         self.source_branch = source_branch
         self.target_branch = target_branch
         (self.target_owner, self.target_repo_name, self.target_branch_name) = (
-                parse_github_url(self.target_branch))
+            parse_github_url(self.target_branch))
         (self.source_owner, self.source_repo_name, self.source_branch_name) = (
-                parse_github_url(self.source_branch))
+            parse_github_url(self.source_branch))
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""

@@ -177,12 +177,12 @@ class Launchpad(Hoster):
         if dir_to is None:
             try:
                 br_to = local_branch.create_clone_on_transport(
-                        to_transport, revision_id=revision_id, name=name,
-                        stacked_on=main_branch.user_url)
+                    to_transport, revision_id=revision_id, name=name,
+                    stacked_on=main_branch.user_url)
             except errors.NoRoundtrippingSupport:
                 br_to = local_branch.create_clone_on_transport(
-                        to_transport, revision_id=revision_id, name=name,
-                        stacked_on=main_branch.user_url, lossy=True)
+                    to_transport, revision_id=revision_id, name=name,
+                    stacked_on=main_branch.user_url, lossy=True)
         else:
             try:
                 dir_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name)
@@ -212,7 +212,7 @@ class Launchpad(Hoster):
             raise AssertionError
 
     def _publish_bzr(self, local_branch, base_branch, name, owner, project=None,
-                revision_id=None, overwrite=False, allow_lossy=True):
+                     revision_id=None, overwrite=False, allow_lossy=True):
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
         to_transport = get_transport("lp:" + to_path)
         try:
@@ -253,16 +253,18 @@ class Launchpad(Hoster):
         if owner is None:
             owner = self.launchpad.me.name
         (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-                base_branch.user_url)
+            base_branch.user_url)
         # TODO(jelmer): Prevent publishing to development focus
         if base_vcs == 'bzr':
-            return self._publish_bzr(local_branch, base_branch, name,
-                    project=project, owner=owner, revision_id=revision_id,
-                    overwrite=overwrite, allow_lossy=allow_lossy)
+            return self._publish_bzr(
+                local_branch, base_branch, name, project=project, owner=owner,
+                revision_id=revision_id, overwrite=overwrite,
+                allow_lossy=allow_lossy)
         elif base_vcs == 'git':
-            return self._publish_git(local_branch, base_path, name,
-                    project=project, owner=owner, revision_id=revision_id,
-                    overwrite=overwrite, allow_lossy=allow_lossy)
+            return self._publish_git(
+                local_branch, base_path, name, project=project, owner=owner,
+                revision_id=revision_id, overwrite=overwrite,
+                allow_lossy=allow_lossy)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -270,24 +272,28 @@ class Launchpad(Hoster):
         if owner is None:
             owner = self.launchpad.me.name
         (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-                base_branch.user_url)
+            base_branch.user_url)
         if base_vcs == 'bzr':
             to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
             return _mod_branch.Branch.open("lp:" + to_path)
         elif base_vcs == 'git':
-            to_path = self._get_derived_git_path(base_path.strip('/'), owner, project)
+            to_path = self._get_derived_git_path(
+                base_path.strip('/'), owner, project)
             return _mod_branch.Branch.open(
-                    "git+ssh://git.launchpad.net/" + to_path, name)
+                "git+ssh://git.launchpad.net/" + to_path, name)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
     def get_proposal(self, source_branch, target_branch):
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-                target_branch.user_url)
+        (base_vcs, base_user, base_password, base_path, base_params) = (
+            self._split_url(target_branch.user_url))
         if base_vcs == 'bzr':
-            target_branch_lp = self.launchpad.branches.getByUrl(url=target_branch.user_url)
-            source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
-            for mp in target_branch_lp.getMergeProposals(status=MERGE_PROPOSAL_STATUSES):
+            target_branch_lp = self.launchpad.branches.getByUrl(
+                url=target_branch.user_url)
+            source_branch_lp = self.launchpad.branches.getByUrl(
+                url=source_branch.user_url)
+            for mp in target_branch_lp.getMergeProposals(
+                    status=MERGE_PROPOSAL_STATUSES):
                 if mp.target_branch != target_branch_lp:
                     continue
                 if mp.source_branch != source_branch_lp:
@@ -295,13 +301,16 @@ class Launchpad(Hoster):
                 return LaunchpadMergeProposal(mp)
             raise NoMergeProposal()
         elif base_vcs == 'git':
-            (source_repo_lp, source_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(source_branch)
-            (target_repo_lp, target_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(target_branch)
-            for mp in target_branch_lp.getMergeProposals(status=MERGE_PROPOSAL_STATUSES):
+            (source_repo_lp, source_branch_lp) = (
+                self.lp_host._get_lp_git_ref_from_branch(source_branch))
+            (target_repo_lp, target_branch_lp) = (
+                self.lp_host._get_lp_git_ref_from_branch(target_branch))
+            for mp in target_branch_lp.getMergeProposals(
+                    status=MERGE_PROPOSAL_STATUSES):
                 if (target_branch_lp.path != mp.target_git_path or
-                    target_repo_lp != mp.target_git_repository or
-                    source_branch_lp.path != mp.source_git_path or
-                    source_repo_lp != mp.source_git_repository):
+                        target_repo_lp != mp.target_git_repository or
+                        source_branch_lp.path != mp.source_git_path or
+                        source_repo_lp != mp.source_git_repository):
                     continue
                 return LaunchpadMergeProposal(mp)
             raise NoMergeProposal()
@@ -309,14 +318,14 @@ class Launchpad(Hoster):
             raise AssertionError('not a valid Launchpad URL')
 
     def get_proposer(self, source_branch, target_branch):
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-                target_branch.user_url)
+        (base_vcs, base_user, base_password, base_path, base_params) = (
+            self._split_url(target_branch.user_url))
         if base_vcs == 'bzr':
             return LaunchpadBazaarMergeProposalBuilder(
-                    self, source_branch, target_branch)
+                self, source_branch, target_branch)
         elif base_vcs == 'git':
             return LaunchpadGitMergeProposalBuilder(
-                    self, source_branch, target_branch)
+                self, source_branch, target_branch)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -435,7 +444,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         except WebserviceFailure as e:
             # Urgh.
             if (b'There is already a branch merge proposal '
-                b'registered for branch ') in e.message:
+                    b'registered for branch ') in e.message:
                 raise MergeProposalExists(self.source_branch.user_url)
             raise
 
@@ -560,7 +569,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         except WebserviceFailure as e:
             # Urgh.
             if ('There is already a branch merge proposal '
-                'registered for branch ') in e.message:
+                    'registered for branch ') in e.message:
                 raise MergeProposalExists(self.source_branch.user_url)
             raise
         if self.approve:

@@ -60,15 +60,15 @@ class cmd_publish_derived(Command):
     """
 
     takes_options = [
-            'directory',
-            Option('owner', help='Owner of the new remote branch.', type=str),
-            Option('project', help='Project name for the new remote branch.',
-                   type=str),
-            Option('name', help='Name of the new remote branch.', type=str),
-            Option('no-allow-lossy',
-                   help='Allow fallback to lossy push, if necessary.'),
-            Option('overwrite', help="Overwrite existing commits."),
-            ]
+        'directory',
+        Option('owner', help='Owner of the new remote branch.', type=str),
+        Option('project', help='Project name for the new remote branch.',
+               type=str),
+        Option('name', help='Name of the new remote branch.', type=str),
+        Option('no-allow-lossy',
+               help='Allow fallback to lossy push, if necessary.'),
+        Option('overwrite', help="Overwrite existing commits."),
+        ]
     takes_args = ['submit_branch?']
 
     def run(self, submit_branch=None, owner=None, name=None, project=None,
@@ -86,9 +86,9 @@ class cmd_publish_derived(Command):
             name = branch_name(local_branch)
         hoster = _mod_propose.get_hoster(submit_branch)
         remote_branch, public_url = hoster.publish_derived(
-                local_branch, submit_branch, name=name, project=project,
-                owner=owner, allow_lossy=not no_allow_lossy,
-                overwrite=overwrite)
+            local_branch, submit_branch, name=name, project=project,
+            owner=owner, allow_lossy=not no_allow_lossy,
+            overwrite=overwrite)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
         note(gettext("Pushed to %s") % public_url)
@@ -133,21 +133,21 @@ class cmd_propose_merge(Command):
     """
 
     takes_options = [
-            'directory',
-            RegistryOption(
-                'hoster',
-                help='Use the hoster.',
-                lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
-            ListOption('reviewers', short_name='R', type=text_type,
-                       help='Requested reviewers.'),
-            Option('name', help='Name of the new remote branch.', type=str),
-            Option('description', help='Description of the change.', type=str),
-            Option('prerequisite', help='Prerequisite branch.', type=str),
-            ListOption('labels', short_name='l', type=text_type,
-                       help='Labels to apply.'),
-            Option('no-allow-lossy',
-                   help='Allow fallback to lossy push, if necessary.'),
-            ]
+        'directory',
+        RegistryOption(
+            'hoster',
+            help='Use the hoster.',
+            lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
+        ListOption('reviewers', short_name='R', type=text_type,
+                   help='Requested reviewers.'),
+        Option('name', help='Name of the new remote branch.', type=str),
+        Option('description', help='Description of the change.', type=str),
+        Option('prerequisite', help='Prerequisite branch.', type=str),
+        ListOption('labels', short_name='l', type=text_type,
+                   help='Labels to apply.'),
+        Option('no-allow-lossy',
+               help='Allow fallback to lossy push, if necessary.'),
+        ]
     takes_args = ['submit_branch?']
 
     aliases = ['propose']
@@ -173,7 +173,7 @@ class cmd_propose_merge(Command):
         if name is None:
             name = branch_name(branch)
         remote_branch, public_branch_url = hoster.publish_derived(
-                branch, target, name=name, allow_lossy=not no_allow_lossy)
+            branch, target, name=name, allow_lossy=not no_allow_lossy)
         branch.set_push_location(remote_branch.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
         if prerequisite is not None:
@@ -242,14 +242,14 @@ class cmd_github_login(Command):
         authconfig = AuthenticationConfig()
         if username is None:
             username = authconfig.get_user(
-                    'https', 'github.com', prompt=u'GitHub username', ask=True)
+                'https', 'github.com', prompt=u'GitHub username', ask=True)
         password = authconfig.get_password('https', 'github.com', username)
         client = Github(username, password)
         user = client.get_user()
         try:
             authorization = user.create_authorization(
-                    scopes=['user', 'repo', 'delete_repo'], note='Breezy',
-                    note_url='https://github.com/breezy-team/breezy')
+                scopes=['user', 'repo', 'delete_repo'], note='Breezy',
+                note_url='https://github.com/breezy-team/breezy')
         except GithubException as e:
             errs = e.data.get('errors', [])
             if errs:
@@ -281,11 +281,11 @@ class cmd_gitlab_login(Command):
     takes_args = ['url', 'private_token']
 
     takes_options = [
-            Option('name', help='Name for GitLab site in configuration.',
-                   type=str),
-            Option('no-check',
-                   "Don't check that the token is valid."),
-            ]
+        Option('name', help='Name for GitLab site in configuration.',
+               type=str),
+        Option('no-check',
+               "Don't check that the token is valid."),
+        ]
 
     def run(self, url, private_token, name=None, no_check=False):
         from .gitlabs import store_gitlab_token

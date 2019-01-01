@@ -235,11 +235,11 @@ def get_hoster(branch, possible_hosters=None):
 
 hosters = registry.Registry()
 hosters.register_lazy(
-        "launchpad", "breezy.plugins.propose.launchpad",
-        "Launchpad")
+    "launchpad", "breezy.plugins.propose.launchpad",
+    "Launchpad")
 hosters.register_lazy(
-        "github", "breezy.plugins.propose.github",
-        "GitHub")
+    "github", "breezy.plugins.propose.github",
+    "GitHub")
 hosters.register_lazy(
-        "gitlab", "breezy.plugins.propose.gitlabs",
-        "GitLab")
+    "gitlab", "breezy.plugins.propose.gitlabs",
+    "GitLab")
