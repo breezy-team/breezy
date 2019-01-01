@@ -70,10 +70,10 @@ class Reconciler(object):
             repo_result = self._reconcile_repository()
             # TODO(jelmer): Don't hardcode supported attributes here
             result.inconsistent_parents = getattr(
-                    repo_result, 'inconsistent_parents', None)
+                repo_result, 'inconsistent_parents', None)
             result.aborted = getattr(repo_result, 'aborted', None)
             result.garbage_inventories = getattr(
-                    repo_result, 'garbage_inventories', None)
+                repo_result, 'garbage_inventories', None)
             result.fixed_branch_history = getattr(
                 branch_result, 'fixed_history', None)
             return result
