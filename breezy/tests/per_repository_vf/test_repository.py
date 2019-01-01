@@ -266,6 +266,7 @@ class TestRepository(TestCaseWithRepository):
         """Test the basic behaviour of the text store."""
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
+        file_id = b"Foo:Bar"
         file_key = (file_id,)
         with tree.lock_write():
             self.assertEqual(set(), set(repo.texts.keys()))

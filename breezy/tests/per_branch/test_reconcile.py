@@ -70,7 +70,7 @@ class TestBranchReconcile(TestCaseWithBranch):
         result = a_branch.reconcile()
         self.assertIsInstance(result, reconcile.ReconcileResult)
         # No history to fix
-        self.assertIs(False, result.fixed_history)
+        self.assertIs(False, getattr(result, 'fixed_history', False))
 
     def test_reconcile_supports_thorough(self):
         a_branch = self.make_branch('a_branch')
