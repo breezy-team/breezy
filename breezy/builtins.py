@@ -5210,7 +5210,7 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
-        from .testament import Testament, StrictTestament
+        from .bzr.testament import Testament, StrictTestament
         if strict is True:
             testament_class = StrictTestament
         else:
@@ -5625,12 +5625,12 @@ class cmd_serve(Command):
 
     def run(self, listen=None, port=None, inet=False, directory=None,
             allow_writes=False, protocol=None, client_timeout=None):
-        from . import transport
+        from . import location, transport
         if directory is None:
             directory = osutils.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        url = transport.location_to_url(directory)
+        url = location.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
@@ -6364,8 +6364,15 @@ class cmd_switch(Command):
         if had_explicit_nick:
             branch = control_dir.open_branch()  # get the new branch!
             branch.nick = to_branch.nick
-        note(gettext('Switched to branch: %s'),
-             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+        if to_branch.name:
+            if to_branch.controldir.control_url != control_dir.control_url:
+                note(gettext('Switched to branch %s at %s'),
+                     to_branch.name, urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+            else:
+                note(gettext('Switched to branch %s'), to_branch.name)
+        else:
+            note(gettext('Switched to branch at %s'),
+                 urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
 class cmd_view(Command):

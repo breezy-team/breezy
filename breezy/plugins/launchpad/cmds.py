@@ -167,24 +167,6 @@ class cmd_launchpad_logout(Command):
                 old_username)
 
 
-# XXX: cmd_launchpad_mirror is untested
-class cmd_launchpad_mirror(Command):
-    __doc__ = """Ask Launchpad to mirror a branch now."""
-
-    aliases = ['lp-mirror']
-    takes_args = ['location?']
-
-    def run(self, location='.'):
-        from . import lp_api
-        from .lp_registration import LaunchpadService
-        branch, _ = _mod_branch.Branch.open_containing(location)
-        service = LaunchpadService()
-        launchpad = lp_api.login(service)
-        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
-                                                    create_missing=False)
-        lp_branch.lp.requestMirror()
-
-
 class cmd_lp_propose_merge(Command):
     __doc__ = """Propose merging a branch on Launchpad.
 

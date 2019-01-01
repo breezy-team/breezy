@@ -19,7 +19,10 @@
 
 from __future__ import absolute_import
 
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
 from . import (
     errors,
     revision,
@@ -193,7 +196,7 @@ class KnownGraph(object):
         # We use a deque rather than a simple list stack, to go for BFD rather
         # than DFD. So that if a longer path is possible, we walk it before we
         # get to the final child
-        pending = collections.deque([node])
+        pending = deque([node])
         while pending:
             node = pending.popleft()
             next_gdfo = node.gdfo + 1
