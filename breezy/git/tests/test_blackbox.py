@@ -395,6 +395,21 @@ class GrepTests(ExternalBase):
         self.assertEqual(error, '')
 
 
+class ReconcileTests(ExternalBase):
+
+    def test_simple_reconcile(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        output, error = self.run_bzr('reconcile')
+        self.assertContainsRe(
+            output,
+            'Reconciling branch file://.*\n'
+            'Reconciling repository file://.*\n'
+            'Reconciliation complete.\n')
+        self.assertEqual(error, '')
+
+
 class StatusTests(ExternalBase):
 
     def test_empty_dir(self):

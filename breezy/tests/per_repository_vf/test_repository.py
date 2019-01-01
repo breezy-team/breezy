@@ -271,7 +271,8 @@ class TestRepository(TestCaseWithRepository):
         with tree.lock_write():
             self.assertEqual(set(), set(repo.texts.keys()))
             tree.add(['foo'], [file_id], ['file'])
-            tree.put_file_bytes_non_atomic('foo', b'content\n')
+            tree.put_file_bytes_non_atomic(
+                'foo', b'content\n')
             try:
                 rev_key = (tree.commit("foo"),)
             except errors.IllegalPath:

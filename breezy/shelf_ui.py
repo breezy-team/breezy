@@ -250,7 +250,7 @@ class Shelver(object):
         path_encoding = osutils.get_terminal_encoding()
         text_differ = diff.DiffText(old_tree, new_tree, diff_file,
                                     path_encoding=path_encoding)
-        patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
+        patch = text_differ.diff(old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
 
@@ -365,8 +365,7 @@ class Shelver(object):
         """
         lines = osutils.split_lines(self.change_editor.edit_file(
             self.change_editor.old_tree.id2path(file_id),
-            self.change_editor.new_tree.id2path(file_id),
-            file_id=file_id))
+            self.change_editor.new_tree.id2path(file_id)))
         return lines, self._count_changed_regions(work_tree_lines, lines)
 
     @staticmethod

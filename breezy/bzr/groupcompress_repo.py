@@ -1098,12 +1098,11 @@ class CHKInventoryRepository(PackRepository):
         """Reconcile this repository to make sure all CHKs are in canonical
         form.
         """
-        from breezy.reconcile import PackReconciler
+        from .reconcile import PackReconciler
         with self.lock_write():
             reconciler = PackReconciler(
                 self, thorough=True, canonicalize_chks=True)
-            reconciler.reconcile()
-            return reconciler
+            return reconciler.reconcile()
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)

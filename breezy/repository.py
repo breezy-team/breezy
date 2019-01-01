@@ -218,7 +218,7 @@ class CommitBuilder(object):
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
             or errored-on beefore record_iter_changes sees the item.
-        :return: A generator of (file_id, relpath, fs_hash) tuples for use with
+        :return: A generator of (relpath, fs_hash) tuples for use with
             tree._observed_sha1.
         """
         raise NotImplementedError(self.record_iter_changes)
@@ -953,11 +953,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from .reconcile import RepoReconciler
-        with self.lock_write():
-            reconciler = RepoReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+        raise NotImplementedError(self.reconcile)
 
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.

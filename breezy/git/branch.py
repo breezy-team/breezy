@@ -615,6 +615,12 @@ class GitBranch(ForeignBranch):
             self, stop_revision=revid, lossy=lossy, _stop_revno=revno)
         return (push_result.new_revno, push_result.new_revid)
 
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from ..reconcile import ReconcileResult
+        # Nothing to do here
+        return ReconcileResult()
+
 
 class LocalGitBranch(GitBranch):
     """A local Git branch."""

@@ -206,11 +206,10 @@ class KnitRepository(MetaDirVersionedFileRepository):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from breezy.reconcile import KnitReconciler
+        from .reconcile import KnitReconciler
         with self.lock_write():
             reconciler = KnitReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+            return reconciler.reconcile()
 
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)

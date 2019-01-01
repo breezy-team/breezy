@@ -5224,17 +5224,15 @@ class cmd_annotate(Command):
         tree = _get_one_revision_tree('annotate', revision, branch=branch)
         self.add_cleanup(tree.lock_read().unlock)
         if wt is not None and revision is None:
-            file_id = wt.path2id(relpath)
-        else:
-            file_id = tree.path2id(relpath)
-        if file_id is None:
-            raise errors.NotVersionedError(filename)
-        if wt is not None and revision is None:
+            if not wt.is_versioned(relpath):
+                raise errors.NotVersionedError(relpath)
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, relpath, self.outf, long, all,
                                show_ids=show_ids)
         else:
+            if not tree.is_versioned(relpath):
+                raise errors.NotVersionedError(relpath)
             annotate_file_tree(tree, relpath, self.outf, long, all,
                                show_ids=show_ids, branch=branch)
 
