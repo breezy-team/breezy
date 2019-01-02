@@ -83,26 +83,30 @@ def store_gitlab_token(name, url, private_token):
         config.write(f)
 
 
+def iter_tokens():
+    import configparser
+    from gitlab.config import _DEFAULT_FILES
+    config = configparser.ConfigParser()
+    config.read(_DEFAULT_FILES + [default_config_path()])
+    for name, section in config.items():
+        yield name, section
+
+
 def connect_gitlab(host):
-    from gitlab import Gitlab
+    from gitlab import Gitlab, GitlabGetError
     auth = AuthenticationConfig()
 
     url = 'https://%s' % host
     credentials = auth.get_credentials('https', host)
     if credentials is None:
-        import gitlab
-        import configparser
-        from gitlab.config import _DEFAULT_FILES
-        config = configparser.ConfigParser()
-        config.read(_DEFAULT_FILES + [default_config_path()])
-        for name, section in config.items():
+        for name, section in iter_tokens():
             if section.get('url') == url:
                 credentials = section
                 break
         else:
             try:
                 return Gitlab(url)
-            except gitlab.GitlabGetError:
+            except GitlabGetError:
                 raise GitLabLoginMissing()
     else:
         credentials['url'] = url
@@ -234,6 +238,7 @@ class GitLab(Hoster):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
 
     def get_proposal(self, source_branch, target_branch):
+        import gitlab
         (source_host, source_project_name, source_branch_name) = (
             parse_gitlab_url(source_branch))
         (target_host, target_project_name, target_branch_name) = (
@@ -254,7 +259,7 @@ class GitLab(Hoster):
                 return GitLabMergeProposal(mr)
         except gitlab.GitlabListError as e:
             if e.response_code == 403:
-                raise PermissionDenied(e.error_message)
+                raise errors.PermissionDenied(e.error_message)
         raise NoMergeProposal()
 
     def hosts(self, branch):
@@ -286,6 +291,20 @@ class GitLab(Hoster):
             else:
                 raise
         return cls(gl)
+
+    @classmethod
+    def iter_instances(cls):
+        from gitlab import Gitlab
+        for name, credentials in iter_tokens():
+            if 'url' not in credentials:
+                continue
+            gl = Gitlab(**credentials)
+            yield cls(gl)
+
+    def iter_my_proposals(self):
+        self.gl.auth()
+        for mp in self.gl.mergerequests.list(owner=self.gl.user.username):
+            yield GitLabMergeProposal(mp)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
@@ -343,8 +362,23 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             merge_request = source_project.mergerequests.create(kwargs)
         except gitlab.GitlabCreateError as e:
             if e.response_code == 403:
-                raise PermissionDenied(e.error_message)
+                raise errors.PermissionDenied(e.error_message)
             if e.response_code == 409:
                 raise MergeProposalExists(self.source_branch.user_url)
             raise
         return GitLabMergeProposal(merge_request)
+
+
+def register_gitlab_instance(shortname, url):
+    """Register a gitlab instance.
+
+    :param shortname: Short name (e.g. "gitlab")
+    :param url: URL to the gitlab instance
+    """
+    from breezy.bugtracker import (
+        tracker_registry,
+        ProjectIntegerBugTracker,
+        )
+    tracker_registry.register(
+        shortname, ProjectIntegerBugTracker(
+            shortname, url + '/{project}/issues/{id}'))

@@ -214,6 +214,21 @@ class Hoster(object):
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
     # TODO(jelmer): Some way of checking up on outstanding merge proposals
 
+    def iter_my_proposals(self):
+        """Iterate over the proposals created by the currently logged in user.
+
+        :return: Iterator over MergeProposal objects
+        """
+        raise NotImplementedError(self.iter_my_proposals)
+
+    @classmethod
+    def iter_instances(cls):
+        """Iterate instances.
+
+        :return: Hoster instances
+        """
+        raise NotImplementedError(cls.iter_instances)
+
 
 def get_hoster(branch, possible_hosters=None):
     """Find the hoster for a branch."""
