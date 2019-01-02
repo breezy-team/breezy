@@ -3,6 +3,7 @@ breezy (3.0.0~bzr7233-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
    + Suggest gitlab, github and launchpadlib libraries for new propose
      functionality.
+   + Drop patch 04_lp_mirror: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 02 Jan 2019 00:23:33 +0000
 
