@@ -77,7 +77,10 @@ Suggests: python-breezy-dbg,
           python-fastimport,
           python-kerberos (>= 1.0+svn2455-1),
           python-paramiko,
-          xdg-utils
+          xdg-utils,
+          python-github,
+          python-gitlab,
+          python-launchpadlib
 Provides: ${python:Provides}
 Description: distributed version control system - python 2 library
  Breezy is a distributed version control system designed to be easy to
@@ -104,7 +107,10 @@ Suggests: python3-breezy-dbg,
           python3-fastimport,
           python3-kerberos (>= 1.0+svn2455-1),
           python3-paramiko,
-          xdg-utils
+          xdg-utils,
+          python3-github,
+          python3-gitlab,
+          python3-launchpadlib
 Provides: ${python3:Provides}
 Description: distributed version control system - python 3 library
  Breezy is a distributed version control system designed to be easy to
