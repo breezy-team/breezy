@@ -108,6 +108,14 @@ class MergeProposal(object):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
 
+    def get_source_branch_url(self):
+        """Return the source branch."""
+        raise NotImplementedError(self.get_source_branch_url)
+
+    def get_target_branch_url(self):
+        """Return the target branch."""
+        raise NotImplementedError(self.get_target_branch_url)
+
     def close(self):
         """Close the merge proposal (without merging it)."""
         raise NotImplementedError(self.close)

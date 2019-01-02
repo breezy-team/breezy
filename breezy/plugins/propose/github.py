@@ -105,6 +105,15 @@ class GitHubMergeProposal(MergeProposal):
     def url(self):
         return self._pr.html_url
 
+    def _branch_from_part(self, part):
+        return github_url_to_bzr_url(part.repo.html_url, part.ref)
+
+    def get_source_branch_url(self):
+        return self._branch_from_part(self._pr.head)
+
+    def get_target_branch_url(self):
+        return self._branch_from_part(self._pr.base)
+
     def get_description(self):
         return self._pr.body
 
@@ -245,7 +254,7 @@ class GitHub(Hoster):
     def iter_my_proposals(self):
         for issue in self.gh.search_issues(
                 query='is:pr is:open author:%s' % self.gh.get_user().login):
-            yield GitHubMergeProposal(issue.pull_request)
+            yield GitHubMergeProposal(issue.as_pull_request())
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):

@@ -142,8 +142,20 @@ class GitLabMergeProposal(MergeProposal):
     def set_description(self, description):
         self._mr.description = description
 
+    def _branch_url_from_project(self, project_id, branch_name):
+        project = self._mr.manager.gitlab.projects.get(project_id)
+        return gitlab_url_to_bzr_url(project.http_url_to_repo, branch_name)
+
+    def get_source_branch_url(self):
+        return self._branch_url_from_project(
+            self._mr.source_project_id, self._mr.source_branch)
+
+    def get_target_branch_url(self):
+        return self._branch_url_from_project(
+            self._mr.target_project_id, self._mr.target_branch)
+
     def is_merged(self):
-        return (self._mr.attributes['state'] == 'merged')
+        return (self._mr.state == 'merged')
 
 
 def gitlab_url_to_bzr_url(url, name):
@@ -168,7 +180,7 @@ class GitLab(Hoster):
         (host, project_name, branch_name) = parse_gitlab_url(branch)
         project = self.gl.projects.get(project_name)
         return gitlab_url_to_bzr_url(
-            project.attributes['ssh_url_to_repo'], branch_name)
+            project.ssh_url_to_repo, branch_name)
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -194,7 +206,7 @@ class GitLab(Hoster):
                 target_project = base_project.forks.create({})
             else:
                 raise
-        remote_repo_url = git_url_to_bzr_url(target_project.attributes['ssh_url_to_repo'])
+        remote_repo_url = git_url_to_bzr_url(target_project.ssh_url_to_repo)
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
             push_result = remote_dir.push_branch(
@@ -207,7 +219,7 @@ class GitLab(Hoster):
                 local_branch, revision_id=revision_id, overwrite=overwrite,
                 name=name, lossy=True)
         public_url = gitlab_url_to_bzr_url(
-            target_project.attributes['http_url_to_repo'], name)
+            target_project.http_url_to_repo, name)
         return push_result.target_branch, public_url
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
@@ -232,7 +244,7 @@ class GitLab(Hoster):
                 raise errors.NotBranchError('%s/%s/%s' % (self.gl.url, owner, project))
             raise
         return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
-            target_project.attributes['ssh_url_to_repo'], name))
+            target_project.ssh_url_to_repo, name))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
@@ -250,11 +262,10 @@ class GitLab(Hoster):
         target_project = self.gl.projects.get(target_project_name)
         try:
             for mr in target_project.mergerequests.list(state='all'):
-                attrs = mr.attributes
-                if (attrs['source_project_id'] != source_project.id or
-                        attrs['source_branch'] != source_branch_name or
-                        attrs['target_project_id'] != target_project.id or
-                        attrs['target_branch'] != target_branch_name):
+                if (mr.source_project_id != source_project.id or
+                        mr.source_branch != source_branch_name or
+                        mr.target_project_id != target_project.id or
+                        mr.target_branch != target_branch_name):
                     continue
                 return GitLabMergeProposal(mr)
         except gitlab.GitlabListError as e:
