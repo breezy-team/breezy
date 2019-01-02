@@ -313,3 +313,5 @@ class cmd_my_merge_proposals(Command):
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals():
                     print(mp.url)
+                    print(mp.get_source_branch_url())
+                    print(mp.get_target_branch_url())

@@ -38,6 +38,7 @@ from ... import (
     hooks,
     urlutils,
     )
+from ...git.refs import ref_to_branch_name
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
@@ -102,6 +103,22 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def __init__(self, mp):
         self._mp = mp
+
+    def get_source_branch_url(self):
+        if self._mp.source_branch:
+            return self._mp.source_branch.bzr_identity
+        else:
+            return urlutils.join_segment_parameters(
+                self._mp.source_git_repository.git_identity,
+                {"branch": ref_to_branch_name(self._mp.source_git_path.encode('utf-8'))})
+
+    def get_target_branch_url(self):
+        if self._mp.target_branch:
+            return self._mp.target_branch.bzr_identity
+        else:
+            return urlutils.join_segment_parameters(
+                self._mp.target_git_repository.git_identity,
+                {"branch": ref_to_branch_name(self._mp.target_git_path.encode('utf-8'))})
 
     @property
     def url(self):
@@ -179,12 +196,11 @@ class Launchpad(Hoster):
         if dir_to is None:
             try:
                 br_to = local_branch.create_clone_on_transport(
-                        to_transport, revision_id=revision_id, name=name,
-                        stacked_on=main_branch.user_url)
+                        to_transport, revision_id=revision_id, name=name)
             except errors.NoRoundtrippingSupport:
                 br_to = local_branch.create_clone_on_transport(
                         to_transport, revision_id=revision_id, name=name,
-                        stacked_on=main_branch.user_url, lossy=True)
+                        lossy=True)
         else:
             try:
                 dir_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name)
