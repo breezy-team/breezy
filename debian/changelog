@@ -1,24 +1,14 @@
-breezy (3.0.0~bzr7233-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7233-1) unstable; urgency=medium
 
   * New upstream snapshot.
    + Recommend gitlab, github and launchpadlib libraries for new propose
      functionality.
-   + Drop patch 04_lp_mirror: applied upstream.
    + Drop patch 09_fix_spurious: applied upstream.
+   + Drop patch 09_python_3.7: applied upstream.
+   + Drop patch 10_timestamp_limit: applied upstream.
+   + Drop patch 11_non_utf8_locale: applied upstream.
   * Bump debhelper to 11.
   * Bump standards version to 4.3.0.
-
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 02 Jan 2019 00:23:33 +0000
-
-breezy (3.0.0~bzr7223-1) unstable; urgency=medium
-
-  * Re-add the -dbg packages, since they contain python interpreter
-    debug files not provided by -dbgsym.
-  * New upstream snapshot.
-  * Drop patch 09_python_3.7: applied upstream.
-  * Drop patch 10_timestamp_limit: applied upstream.
-  * Drop patch 11_non_utf8_locale: applied upstream.
-  * Add patch 04_lp_mirror: drop lp-mirror tests.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 18 Dec 2018 21:04:12 +0000
 
