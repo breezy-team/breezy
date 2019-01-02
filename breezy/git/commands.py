@@ -201,7 +201,7 @@ class cmd_git_object(Command):
         with object_store.lock_read():
             if sha1 is not None:
                 try:
-                    obj = object_store[str(sha1)]
+                    obj = object_store[sha1.encode('ascii')]
                 except KeyError:
                     raise BzrCommandError(
                         gettext("Object not found: %s") % sha1)
@@ -212,7 +212,7 @@ class cmd_git_object(Command):
                 self.outf.write(text)
             else:
                 for sha1 in object_store:
-                    self.outf.write("%s\n" % sha1)
+                    self.outf.write("%s\n" % sha1.decode('ascii'))
 
 
 class cmd_git_refs(Command):
