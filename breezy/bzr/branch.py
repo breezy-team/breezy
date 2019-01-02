@@ -443,6 +443,13 @@ class BzrBranch(Branch, _RelockDebugMixin):
         super(BzrBranch, self)._clear_cached_state()
         self._tags_bytes = None
 
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from .reconcile import BranchReconciler
+        with self.lock_write():
+            reconciler = BranchReconciler(self, thorough=thorough)
+            return reconciler.reconcile()
+
 
 class BzrBranch8(BzrBranch):
     """A branch that stores tree-reference locations."""

@@ -444,7 +444,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit("base", allow_pointless=True, rev_id=b'A')
         self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
-            from ..testament import Testament
+            from ..bzr.testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             conf = config.MemoryStack(b'''

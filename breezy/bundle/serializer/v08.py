@@ -35,7 +35,7 @@ from breezy.bundle.bundle_data import (
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
 from breezy.sixish import text_type
-from breezy.testament import StrictTestament
+from breezy.bzr.testament import StrictTestament
 from breezy.timestamp import (
     format_highres_date,
     )

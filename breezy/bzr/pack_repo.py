@@ -1819,11 +1819,10 @@ class PackRepository(MetaDirVersionedFileRepository):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from breezy.reconcile import PackReconciler
+        from .reconcile import PackReconciler
         with self.lock_write():
             reconciler = PackReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+            return reconciler.reconcile()
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         raise NotImplementedError(self._reconcile_pack)
