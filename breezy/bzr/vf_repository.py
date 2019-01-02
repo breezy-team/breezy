@@ -46,8 +46,8 @@ from breezy.bzr import (
     )
 
 from breezy.recordcounter import RecordCounter
-from breezy.testament import Testament
 from breezy.i18n import gettext
+from breezy.bzr.testament import Testament
 """)
 
 from .. import (
@@ -294,7 +294,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
             or errored-on before record_iter_changes sees the item.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
-        :return: A generator of (file_id, relpath, fs_hash) tuples for use with
+        :return: A generator of (relpath, fs_hash) tuples for use with
             tree._observed_sha1.
         """
         # Create an inventory delta based on deltas between all the parents and
@@ -487,7 +487,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     try:
                         entry.text_sha1, entry.text_size = self._add_file_to_weave(
                             file_id, file_obj, heads, nostore_sha)
-                        yield file_id, change[1][1], (entry.text_sha1, stat_value)
+                        yield change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
@@ -1121,6 +1121,39 @@ class VersionedFileRepository(Repository):
             self.signatures.add_lines((revision_id,), (),
                                       osutils.split_lines(signature))
 
+    def sign_revision(self, revision_id, gpg_strategy):
+        with self.lock_write():
+            testament = Testament.from_revision(
+                self, revision_id)
+            plaintext = testament.as_short_text()
+            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+
+    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
+        with self.lock_write():
+            signature = gpg_strategy.sign(plaintext, gpg.MODE_CLEAR)
+            self.add_signature_text(revision_id, signature)
+
+    def verify_revision_signature(self, revision_id, gpg_strategy):
+        """Verify the signature on a revision.
+
+        :param revision_id: the revision to verify
+        :gpg_strategy: the GPGStrategy object to used
+
+        :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
+        """
+        with self.lock_read():
+            if not self.has_signature_for_revision_id(revision_id):
+                return gpg.SIGNATURE_NOT_SIGNED, None
+            signature = self.get_signature_text(revision_id)
+
+            testament = Testament.from_revision(
+                self, revision_id)
+
+            (status, key, signed_plaintext) = gpg_strategy.verify(signature)
+            if testament.as_short_text() != signed_plaintext:
+                return gpg.SIGNATURE_NOT_VALID, None
+            return (status, key)
+
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
@@ -1703,6 +1736,13 @@ class VersionedFileRepository(Repository):
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
         return StreamSource(self, to_format)
+
+    def reconcile(self, other=None, thorough=False):
+        """Reconcile this repository."""
+        from .reconcile import VersionedFileRepoReconciler
+        with self.lock_write():
+            reconciler = VersionedFileRepoReconciler(self, thorough=thorough)
+            return reconciler.reconcile()
 
 
 class MetaDirVersionedFileRepository(MetaDirRepository,

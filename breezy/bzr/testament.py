@@ -73,13 +73,13 @@ from __future__ import absolute_import
 
 from copy import copy
 
-from .osutils import (
+from ..osutils import (
     contains_whitespace,
     contains_linebreaks,
     sha_strings,
     )
-from .sixish import text_type
-from .tree import Tree
+from ..sixish import text_type
+from ..tree import Tree
 
 
 class Testament(object):

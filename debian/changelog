@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7233-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 02 Jan 2019 00:23:33 +0000
+
 breezy (3.0.0~bzr7223-1) unstable; urgency=medium
 
   * Re-add the -dbg packages, since they contain python interpreter

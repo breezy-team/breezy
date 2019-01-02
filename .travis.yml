@@ -20,9 +20,9 @@ script:
   - BRZ_PLUGIN_PATH=-site:-user python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -Wignore::ResourceWarning ./brz selftest --parallel=fork $SELFTEST_OPTIONS
 
 install:
-  - sudo apt install python-all-dev python3-all-dev subunit
+  - sudo apt install python-all-dev python3-all-dev subunit python3-launchpadlib python-launchpadlib
   - travis_retry pip install -U setuptools
-  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE sphinx sphinx_epytext
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE sphinx sphinx_epytext launchpadlib
 
 after_success:
   - codecov

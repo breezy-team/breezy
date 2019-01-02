@@ -81,20 +81,3 @@ class TestCacheDirectory(TestCase):
         from . import lp_api
         expected_path = osutils.pathjoin(config.config_dir(), 'launchpad')
         self.assertEqual(expected_path, lp_api.get_cache_directory())
-
-
-class TestLaunchpadMirror(TestCaseWithTransport):
-    """Tests for the 'bzr lp-mirror' command."""
-
-    # Testing the lp-mirror command is quite hard, since it must talk to a
-    # Launchpad server. Here, we just test that the command exists.
-
-    _test_needs_features = [launchpadlib_feature]
-
-    def test_command_exists(self):
-        out, err = self.run_bzr(['launchpad-mirror', '--help'], retcode=0)
-        self.assertEqual('', err)
-
-    def test_alias_exists(self):
-        out, err = self.run_bzr(['lp-mirror', '--help'], retcode=0)
-        self.assertEqual('', err)

@@ -367,7 +367,7 @@ class RevisionStore(object):
             basis_rev_id = _mod_revision.NULL_REVISION
         tree = _TreeShim(self.repo, basis_inv, inv_delta, text_provider)
         changes = tree._delta_to_iter_changes()
-        for (file_id, path, fs_hash) in builder.record_iter_changes(
+        for (path, fs_hash) in builder.record_iter_changes(
                 tree, basis_rev_id, changes):
             # So far, we don't *do* anything with the result
             pass
