@@ -194,7 +194,7 @@ class cmd_git_object(Command):
         from .object_store import (
             get_object_store,
             )
-        from . import gettext
+        from ..i18n import gettext
         controldir, _ = ControlDir.open_containing(directory)
         repo = controldir.find_repository()
         object_store = get_object_store(repo)
@@ -265,7 +265,7 @@ class cmd_git_apply(Command):
         :param f: Patch file to read.
         :param signoff: Add Signed-Off-By flag.
         """
-        from . import gettext
+        from ..i18n import gettext
         from ..errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
         import subprocess
