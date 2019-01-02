@@ -7,7 +7,7 @@ Build-Depends: bash-completion,
                ca-certificates,
                cython-dbg (>= 0.17) <!nocheck>,
                dh-python,
-               debhelper (>= 9.20160114),
+               debhelper (>= 11),
                fdupes,
                python (>= 2.6.6-3),
                python-all-dbg (>= 2.6.6-3),
@@ -35,7 +35,7 @@ Build-Depends: bash-completion,
                python3-subunit <!nocheck>,
                python3-testtools (>= 0.9.5~) <!nocheck>
 Build-Conflicts: python-pyftpdlib
-Standards-Version: 4.2.1
+Standards-Version: 4.3.0
 Vcs-Bzr: https://code.breezy-vcs.org/breezy/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
 Homepage: https://www.breezy-vcs.org/
@@ -68,6 +68,8 @@ Depends: python-configobj,
          ${shlibs:Depends}
 Recommends: ca-certificates,
             python-launchpadlib,
+            python-github,
+            python-gitlab,
             ssh-client | python-paramiko,
             python-dulwich (>= 0.19.8),
             python-gpg,
@@ -77,10 +79,7 @@ Suggests: python-breezy-dbg,
           python-fastimport,
           python-kerberos (>= 1.0+svn2455-1),
           python-paramiko,
-          xdg-utils,
-          python-github,
-          python-gitlab,
-          python-launchpadlib
+          xdg-utils
 Provides: ${python:Provides}
 Description: distributed version control system - python 2 library
  Breezy is a distributed version control system designed to be easy to
@@ -98,6 +97,8 @@ Depends: python3-configobj,
          ${shlibs:Depends}
 Recommends: ca-certificates,
             python3-launchpadlib,
+            python3-github,
+            python3-gitlab,
             ssh-client | python3-paramiko,
             python3-dulwich (>= 0.19.8),
             python3-gpg,
@@ -108,9 +109,6 @@ Suggests: python3-breezy-dbg,
           python3-kerberos (>= 1.0+svn2455-1),
           python3-paramiko,
           xdg-utils,
-          python3-github,
-          python3-gitlab,
-          python3-launchpadlib
 Provides: ${python3:Provides}
 Description: distributed version control system - python 3 library
  Breezy is a distributed version control system designed to be easy to
