@@ -300,3 +300,16 @@ class cmd_gitlab_login(Command):
             gl = Gitlab(url=url, private_token=private_token)
             gl.auth()
         store_gitlab_token(name=name, url=url, private_token=private_token)
+
+
+class cmd_my_merge_proposals(Command):
+    __doc__ = """List my merge proposals.
+
+    """
+
+    def run(self):
+        from .propose import hosters
+        for name, hoster_cls in hosters.items():
+            for instance in hoster_cls.iter_instances():
+                for mp in instance.iter_my_proposals():
+                    print(mp.url)

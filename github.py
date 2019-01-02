@@ -134,6 +134,8 @@ def github_url_to_bzr_url(url, branch_name):
 
 class GitHub(Hoster):
 
+    name = 'github'
+
     supports_merge_proposal_labels = True
 
     def __repr__(self):
@@ -231,6 +233,15 @@ class GitHub(Hoster):
         except NotGitHubUrl:
             raise UnsupportedHoster(branch)
         return cls()
+
+    @classmethod
+    def iter_instances(cls):
+        yield cls()
+
+    def iter_my_proposals(self):
+        for issue in self.gh.search_issues(
+                query='is:pr is:open author:%s' % self.gh.get_user().login):
+            yield GitHubMergeProposal(issue.pull_request)
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):

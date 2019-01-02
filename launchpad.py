@@ -114,6 +114,8 @@ class LaunchpadMergeProposal(MergeProposal):
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
 
+    name = 'launchpad'
+
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
@@ -319,6 +321,14 @@ class Launchpad(Hoster):
                     self, source_branch, target_branch)
         else:
             raise AssertionError('not a valid Launchpad URL')
+
+    @classmethod
+    def iter_instances(cls):
+        yield cls()
+
+    def iter_my_proposals(self):
+        for mp in self.launchpad.me.getMergeProposals():
+            yield LaunchpadMergeProposal(mp)
 
 
 def connect_launchpad(lp_instance='production'):
