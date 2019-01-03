@@ -303,13 +303,25 @@ class cmd_gitlab_login(Command):
 
 
 class cmd_my_merge_proposals(Command):
-    __doc__ = """List my merge proposals.
+    __doc__ = """List all merge proposals owned by the logged-in user.
 
     """
 
-    def run(self):
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'status',
+            title='Proposal Status',
+            help='Only include proposals with specified status.',
+            value_switches=True,
+            enum_switch=True,
+            all='All merge proposals',
+            open='Open merge proposals',
+            merged='Merged merge proposals',
+            closed='Closed merge proposals')]
+
+    def run(self, status='open'):
         from .propose import hosters
         for name, hoster_cls in hosters.items():
             for instance in hoster_cls.iter_instances():
-                for mp in instance.iter_my_proposals():
+                for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)

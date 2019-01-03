@@ -251,9 +251,18 @@ class GitHub(Hoster):
     def iter_instances(cls):
         yield cls()
 
-    def iter_my_proposals(self):
-        for issue in self.gh.search_issues(
-                query='is:pr is:open author:%s' % self.gh.get_user().login):
+    def iter_my_proposals(self, status='open'):
+        query = ['is:pr']
+        if status == 'open':
+            query.append('is:open')
+        elif status == 'closed':
+            # Note that we don't use is:closed here, since that also includes
+            # merged pull requests.
+            query.append('is:unmerged')
+        elif status == 'merged':
+            query.append('is:merged')
+        query.append('author:%s' % self.gh.get_user().login)
+        for issue in self.gh.search_issues(query=' '.join(query)):
             yield GitHubMergeProposal(issue.as_pull_request())
 
 

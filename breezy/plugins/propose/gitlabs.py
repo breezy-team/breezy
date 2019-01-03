@@ -312,9 +312,15 @@ class GitLab(Hoster):
             gl = Gitlab(**credentials)
             yield cls(gl)
 
-    def iter_my_proposals(self):
+    def iter_my_proposals(self, status='open'):
+        state = {
+            'all': 'all',
+            'open': 'opened',
+            'merged': 'merged',
+            'closed': 'closed'}[status]
         self.gl.auth()
-        for mp in self.gl.mergerequests.list(owner=self.gl.user.username):
+        for mp in self.gl.mergerequests.list(
+                owner=self.gl.user.username, state=state):
             yield GitLabMergeProposal(mp)
 
 
