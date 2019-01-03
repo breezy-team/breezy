@@ -130,7 +130,7 @@ def _dump_text(output_dir, topic, text):
     """Dump text for a topic to a file."""
     topic_id = "%s-%s" % (topic, "help")
     filename = breezy.osutils.pathjoin(output_dir, topic_id + ".txt")
-    with open(filename, "w") as f:
+    with open(filename, "wb") as f:
         f.write(text.encode('utf-8'))
     return topic_id
 
