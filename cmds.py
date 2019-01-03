@@ -223,8 +223,8 @@ class cmd_find_merge_proposal(Command):
         else:
             target = _mod_branch.Branch.open(submit_branch)
         hoster = _mod_propose.get_hoster(branch)
-        mp = hoster.get_proposal(branch, target)
-        self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
+        for mp in hoster.iter_proposals(branch, target):
+            self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
 
 
 class cmd_github_login(Command):
