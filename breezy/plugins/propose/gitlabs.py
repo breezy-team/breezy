@@ -33,7 +33,6 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
-    NoMergeProposal,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
     UnsupportedHoster,
@@ -249,7 +248,7 @@ class GitLab(Hoster):
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
 
-    def get_proposal(self, source_branch, target_branch):
+    def iter_proposals(self, source_branch, target_branch):
         import gitlab
         (source_host, source_project_name, source_branch_name) = (
             parse_gitlab_url(source_branch))
@@ -267,11 +266,10 @@ class GitLab(Hoster):
                         mr.target_project_id != target_project.id or
                         mr.target_branch != target_branch_name):
                     continue
-                return GitLabMergeProposal(mr)
+                yield GitLabMergeProposal(mr)
         except gitlab.GitlabListError as e:
             if e.response_code == 403:
                 raise errors.PermissionDenied(e.error_message)
-        raise NoMergeProposal()
 
     def hosts(self, branch):
         try:

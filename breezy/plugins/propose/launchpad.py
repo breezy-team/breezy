@@ -27,7 +27,6 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
-    NoMergeProposal,
     UnsupportedHoster,
     )
 
@@ -51,16 +50,20 @@ from ...transport import get_transport
 
 # TODO(jelmer): Make selection of launchpad staging a configuration option.
 
-MERGE_PROPOSAL_STATUSES = [
-    'Work in progress',
-    'Needs review',
-    'Approved',
-    'Rejected',
-    'Merged',
-    'Code failed to merge',
-    'Queued',
-    'Superseded',
-    ]
+def status_to_lp_mp_statuses(status):
+    statuses = []
+    if status in ('open', 'all'):
+        statuses.extend([
+            'Work in progress',
+            'Needs review',
+            'Approved',
+            'Code failed to merge',
+            'Queued'])
+    if status in ('closed', 'all'):
+        statuses.extend(['Rejected', 'Superseded'])
+    if status in ('merged', 'all'):
+        statuses.append('Merged')
+    return statuses
 
 
 def plausible_launchpad_url(url):
@@ -108,17 +111,21 @@ class LaunchpadMergeProposal(MergeProposal):
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
         else:
+            branch_name = ref_to_branch_name(
+                self._mp.source_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.source_git_repository.git_identity,
-                {"branch": ref_to_branch_name(self._mp.source_git_path.encode('utf-8'))})
+                {"branch": branch_name})
 
     def get_target_branch_url(self):
         if self._mp.target_branch:
             return self._mp.target_branch.bzr_identity
         else:
+            branch_name = ref_to_branch_name(
+                self._mp.target_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.target_git_repository.git_identity,
-                {"branch": ref_to_branch_name(self._mp.target_git_path.encode('utf-8'))})
+                {"branch": branch_name})
 
     @property
     def url(self):
@@ -161,7 +168,8 @@ class Launchpad(Hoster):
         url, params = urlutils.split_segment_parameters(branch.user_url)
         (scheme, user, password, host, port, path) = urlutils.parse_url(
             url)
-        repo_lp = self.launchpad.git_repositories.getByPath(path=path.strip('/'))
+        repo_lp = self.launchpad.git_repositories.getByPath(
+            path=path.strip('/'))
         try:
             ref_path = params['ref']
         except KeyError:
@@ -174,13 +182,15 @@ class Launchpad(Hoster):
         return (repo_lp, ref_lp)
 
     def _get_lp_bzr_branch_from_branch(self, branch):
-        return self.launchpad.branches.getByUrl(url=urlutils.unescape(branch.user_url))
+        return self.launchpad.branches.getByUrl(
+            url=urlutils.unescape(branch.user_url))
 
     def _get_derived_git_path(self, base_path, owner, project):
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
             project = '/'.join(base_repo.unique_name.split('/')[1:])
-        # TODO(jelmer): Surely there is a better way of creating one of these URLs?
+        # TODO(jelmer): Surely there is a better way of creating one of these
+        # URLs?
         return "~%s/%s" % (owner, project)
 
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
@@ -203,19 +213,24 @@ class Launchpad(Hoster):
                     lossy=True)
         else:
             try:
-                dir_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name)
+                dir_to = dir_to.push_branch(
+                    local_branch, revision_id, overwrite=overwrite, name=name)
             except errors.NoRoundtrippingSupport:
                 if not allow_lossy:
                     raise
-                dir_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite, name=name, lossy=True)
+                dir_to = dir_to.push_branch(
+                    local_branch, revision_id, overwrite=overwrite, name=name,
+                    lossy=True)
             br_to = dir_to.target_branch
-        return br_to, ("https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
+        return br_to, (
+            "https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
 
     def _get_derived_bzr_path(self, base_branch, name, owner, project):
         if project is None:
             base_branch_lp = self._get_lp_bzr_branch_from_branch(base_branch)
             project = '/'.join(base_branch_lp.unique_name.split('/')[1:-1])
-        # TODO(jelmer): Surely there is a better way of creating one of these URLs?
+        # TODO(jelmer): Surely there is a better way of creating one of these
+        # URLs?
         return "~%s/%s/%s" % (owner, project, name)
 
     def get_push_url(self, branch):
@@ -229,8 +244,9 @@ class Launchpad(Hoster):
         else:
             raise AssertionError
 
-    def _publish_bzr(self, local_branch, base_branch, name, owner, project=None,
-                     revision_id=None, overwrite=False, allow_lossy=True):
+    def _publish_bzr(self, local_branch, base_branch, name, owner,
+                     project=None, revision_id=None, overwrite=False,
+                     allow_lossy=True):
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
         to_transport = get_transport("lp:" + to_path)
         try:
@@ -240,9 +256,11 @@ class Launchpad(Hoster):
             dir_to = None
 
         if dir_to is None:
-            br_to = local_branch.create_clone_on_transport(to_transport, revision_id=revision_id)
+            br_to = local_branch.create_clone_on_transport(
+                to_transport, revision_id=revision_id)
         else:
-            br_to = dir_to.push_branch(local_branch, revision_id, overwrite=overwrite).target_branch
+            br_to = dir_to.push_branch(
+                local_branch, revision_id, overwrite=overwrite).target_branch
         return br_to, ("https://code.launchpad.net/" + to_path)
 
     def _split_url(self, url):
@@ -257,8 +275,9 @@ class Launchpad(Hoster):
             raise ValueError("unknown host %s" % host)
         return (vcs, user, password, path, params)
 
-    def publish_derived(self, local_branch, base_branch, name, project=None, owner=None,
-                        revision_id=None, overwrite=False, allow_lossy=True):
+    def publish_derived(self, local_branch, base_branch, name, project=None,
+                        owner=None, revision_id=None, overwrite=False,
+                        allow_lossy=True):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
@@ -270,8 +289,8 @@ class Launchpad(Hoster):
         """
         if owner is None:
             owner = self.launchpad.me.name
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-            base_branch.user_url)
+        (base_vcs, base_user, base_password, base_path,
+            base_params) = self._split_url(base_branch.user_url)
         # TODO(jelmer): Prevent publishing to development focus
         if base_vcs == 'bzr':
             return self._publish_bzr(
@@ -289,10 +308,11 @@ class Launchpad(Hoster):
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         if owner is None:
             owner = self.launchpad.me.name
-        (base_vcs, base_user, base_password, base_path, base_params) = self._split_url(
-            base_branch.user_url)
+        (base_vcs, base_user, base_password, base_path,
+            base_params) = self._split_url(base_branch.user_url)
         if base_vcs == 'bzr':
-            to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
+            to_path = self._get_derived_bzr_path(
+                base_branch, name, owner, project)
             return _mod_branch.Branch.open("lp:" + to_path)
         elif base_vcs == 'git':
             to_path = self._get_derived_git_path(
@@ -302,42 +322,37 @@ class Launchpad(Hoster):
         else:
             raise AssertionError('not a valid Launchpad URL')
 
-    def get_proposal(self, source_branch, target_branch):
-        (base_vcs, base_user, base_password, base_path, base_params) = (
-            self._split_url(target_branch.user_url))
+    def iter_proposals(self, source_branch, target_branch, status='open'):
+        (base_vcs, base_user, base_password, base_path,
+            base_params) = self._split_url(target_branch.user_url)
+        statuses = status_to_lp_mp_statuses(status)
         if base_vcs == 'bzr':
             target_branch_lp = self.launchpad.branches.getByUrl(
                 url=target_branch.user_url)
             source_branch_lp = self.launchpad.branches.getByUrl(
                 url=source_branch.user_url)
-            for mp in target_branch_lp.getMergeProposals(
-                    status=MERGE_PROPOSAL_STATUSES):
-                if mp.target_branch != target_branch_lp:
+            for mp in target_branch_lp.getMergeProposals(status=statuses):
+                if mp.source_branch_link != source_branch_lp.self_link:
                     continue
-                if mp.source_branch != source_branch_lp:
-                    continue
-                return LaunchpadMergeProposal(mp)
-            raise NoMergeProposal()
+                yield LaunchpadMergeProposal(mp)
         elif base_vcs == 'git':
             (source_repo_lp, source_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(source_branch))
             (target_repo_lp, target_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(target_branch))
-            for mp in target_branch_lp.getMergeProposals(
-                    status=MERGE_PROPOSAL_STATUSES):
+            for mp in target_branch_lp.getMergeProposals(status=statuses):
                 if (target_branch_lp.path != mp.target_git_path or
                         target_repo_lp != mp.target_git_repository or
                         source_branch_lp.path != mp.source_git_path or
                         source_repo_lp != mp.source_git_repository):
                     continue
-                return LaunchpadMergeProposal(mp)
-            raise NoMergeProposal()
+                yield LaunchpadMergeProposal(mp)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
     def get_proposer(self, source_branch, target_branch):
-        (base_vcs, base_user, base_password, base_path, base_params) = (
-            self._split_url(target_branch.user_url))
+        (base_vcs, base_user, base_password, base_path,
+            base_params) = self._split_url(target_branch.user_url)
         if base_vcs == 'bzr':
             return LaunchpadBazaarMergeProposalBuilder(
                 self, source_branch, target_branch)
@@ -352,18 +367,7 @@ class Launchpad(Hoster):
         yield cls()
 
     def iter_my_proposals(self, status='open'):
-        statuses = []
-        if status in ('open', 'all'):
-            statuses.extend([
-                'Work in progress',
-                'Needs review',
-                'Approved',
-                'Code failed to merge',
-                'Queued'])
-        if status in ('closed', 'all'):
-            statuses.extend(['Rejected', 'Superseded'])
-        if status in ('merged', 'all'):
-            statuses.append('Merged')
+        statuses = status_to_lp_mp_statuses(status)
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
@@ -392,13 +396,16 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         self.lp_host = lp_host
         self.launchpad = lp_host.launchpad
         self.source_branch = source_branch
-        self.source_branch_lp = self.launchpad.branches.getByUrl(url=source_branch.user_url)
+        self.source_branch_lp = self.launchpad.branches.getByUrl(
+            url=source_branch.user_url)
         if target_branch is None:
             self.target_branch_lp = self.source_branch_lp.get_target()
-            self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.bzr_identity)
+            self.target_branch = _mod_branch.Branch.open(
+                self.target_branch_lp.bzr_identity)
         else:
             self.target_branch = target_branch
-            self.target_branch_lp = self.launchpad.branches.getByUrl(url=target_branch.user_url)
+            self.target_branch_lp = self.launchpad.branches.getByUrl(
+                url=target_branch.user_url)
         self.commit_message = message
         self.approve = approve
         self.fixes = fixes
@@ -452,7 +459,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(
                 mp.createComment,
                 vote=u'Approve',
-                subject='', # Use the default subject.
+                subject='',  # Use the default subject.
                 content=u"Rubberstamp! Proposer approves of own proposal.")
             _call_webservice(mp.setStatus, status=u'Approved',
                              revid=self.source_branch.last_revision())
@@ -516,13 +523,17 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         self.lp_host = lp_host
         self.launchpad = lp_host.launchpad
         self.source_branch = source_branch
-        (self.source_repo_lp, self.source_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(source_branch)
+        (self.source_repo_lp,
+            self.source_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(
+                source_branch)
         if target_branch is None:
             self.target_branch_lp = self.source_branch.get_target()
-            self.target_branch = _mod_branch.Branch.open(self.target_branch_lp.git_https_url)
+            self.target_branch = _mod_branch.Branch.open(
+                self.target_branch_lp.git_https_url)
         else:
             self.target_branch = target_branch
-            (self.target_repo_lp, self.target_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(target_branch)
+            (self.target_repo_lp, self.target_branch_lp) = (
+                self.lp_host._get_lp_git_ref_from_branch(target_branch))
         self.commit_message = message
         self.approve = approve
         self.fixes = fixes
@@ -576,7 +587,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             _call_webservice(
                 mp.createComment,
                 vote=u'Approve',
-                subject='', # Use the default subject.
+                subject='',  # Use the default subject.
                 content=u"Rubberstamp! Proposer approves of own proposal.")
             _call_webservice(
                 mp.setStatus, status=u'Approved',
@@ -588,7 +599,8 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
         if labels:
             raise LabelsUnsupported()
         if prerequisite_branch is not None:
-            (prereq_repo_lp, prereq_branch_lp) = self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch)
+            (prereq_repo_lp, prereq_branch_lp) = (
+                self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch))
         else:
             prereq_branch_lp = None
         if reviewers is None:

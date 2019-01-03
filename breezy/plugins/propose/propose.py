@@ -43,14 +43,6 @@ class MergeProposalExists(errors.BzrError):
         self.url = url
 
 
-class NoMergeProposal(errors.BzrError):
-
-    _fmt = "No merge proposal exists."
-
-    def __init__(self):
-        errors.BzrError.__init__(self)
-
-
 class UnsupportedHoster(errors.BzrError):
 
     _fmt = "No supported hoster for %(branch)s."
@@ -200,15 +192,14 @@ class Hoster(object):
         """
         raise NotImplementedError(self.get_proposer)
 
-    def get_proposal(self, source_branch, target_branch):
+    def iter_proposals(self, source_branch, target_branch):
         """Get a merge proposal for a specified branch tuple.
 
         :param source_branch: Source branch
         :param target_branch: Target branch
-        :raise NoMergeProposal: if no merge proposal can be found
-        :return: A MergeProposal object
+        :return: Iterate over MergeProposal object
         """
-        raise NotImplementedError(self.get_proposal)
+        raise NotImplementedError(self.iter_proposals)
 
     def hosts(self, branch):
         """Return true if this hoster hosts given branch."""
