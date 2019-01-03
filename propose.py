@@ -220,11 +220,12 @@ class Hoster(object):
         raise NotImplementedError(cls.probe)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
-    # TODO(jelmer): Some way of checking up on outstanding merge proposals
 
-    def iter_my_proposals(self):
+    def iter_my_proposals(self, status='open'):
         """Iterate over the proposals created by the currently logged in user.
 
+        :param status: Only yield proposals with this status
+            (one of: 'open', 'closed', 'merged', 'all')
         :return: Iterator over MergeProposal objects
         """
         raise NotImplementedError(self.iter_my_proposals)

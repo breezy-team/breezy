@@ -342,8 +342,20 @@ class Launchpad(Hoster):
     def iter_instances(cls):
         yield cls()
 
-    def iter_my_proposals(self):
-        for mp in self.launchpad.me.getMergeProposals():
+    def iter_my_proposals(self, status='open'):
+        statuses = []
+        if status in ('open', 'all'):
+            statuses.extend([
+                'Work in progress',
+                'Needs review',
+                'Approved',
+                'Code failed to merge',
+                'Queued'])
+        if status in ('closed', 'all'):
+            statuses.extend(['Rejected', 'Superseded'])
+        if status in ('merged', 'all'):
+            statuses.append('Merged')
+        for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
 
