@@ -38,6 +38,13 @@ from .propose import (
     UnsupportedHoster,
     )
 
+def mp_status_to_status(status):
+    return {
+        'all': 'all',
+        'open': 'opened',
+        'merged': 'merged',
+        'closed': 'closed'}[status]
+
 
 class NotGitLabUrl(errors.BzrError):
 
@@ -246,7 +253,7 @@ class GitLab(Hoster):
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
 
-    def iter_proposals(self, source_branch, target_branch):
+    def iter_proposals(self, source_branch, target_branch, status):
         import gitlab
         (source_host, source_project_name, source_branch_name) = (
             parse_gitlab_url(source_branch))
@@ -257,8 +264,9 @@ class GitLab(Hoster):
         self.gl.auth()
         source_project = self.gl.projects.get(source_project_name)
         target_project = self.gl.projects.get(target_project_name)
+        state = mp_status_to_status(status)
         try:
-            for mr in target_project.mergerequests.list(state='all'):
+            for mr in target_project.mergerequests.list(state=state):
                 if (mr.source_project_id != source_project.id or
                         mr.source_branch != source_branch_name or
                         mr.target_project_id != target_project.id or
@@ -309,11 +317,7 @@ class GitLab(Hoster):
             yield cls(gl)
 
     def iter_my_proposals(self, status='open'):
-        state = {
-            'all': 'all',
-            'open': 'opened',
-            'merged': 'merged',
-            'closed': 'closed'}[status]
+        state = mp_status_to_status(status)
         self.gl.auth()
         for mp in self.gl.mergerequests.list(
                 owner=self.gl.user.username, state=state):

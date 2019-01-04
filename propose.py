@@ -192,11 +192,12 @@ class Hoster(object):
         """
         raise NotImplementedError(self.get_proposer)
 
-    def iter_proposals(self, source_branch, target_branch):
+    def iter_proposals(self, source_branch, target_branch, status='open'):
         """Get a merge proposal for a specified branch tuple.
 
         :param source_branch: Source branch
         :param target_branch: Target branch
+        :param status: Status of proposals to iterate over
         :return: Iterate over MergeProposal object
         """
         raise NotImplementedError(self.iter_proposals)
