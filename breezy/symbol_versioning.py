@@ -319,7 +319,7 @@ def _remove_filter_callable(filter):
         if filter:
             try:
                 warnings.filters.remove(filter)
-            except IndexError:
+            except (ValueError, IndexError):
                 pass
     return cleanup
 
