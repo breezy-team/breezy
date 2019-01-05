@@ -307,6 +307,8 @@ class cmd_my_merge_proposals(Command):
 
     """
 
+    hidden = True
+
     takes_options = [
         RegistryOption.from_kwargs(
             'status',
