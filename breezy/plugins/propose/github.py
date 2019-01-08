@@ -25,7 +25,6 @@ from .propose import (
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
-    NoMergeProposal,
     PrerequisiteBranchUnsupported,
     UnsupportedHoster,
     )
@@ -105,6 +104,15 @@ class GitHubMergeProposal(MergeProposal):
     def url(self):
         return self._pr.html_url
 
+    def _branch_from_part(self, part):
+        return github_url_to_bzr_url(part.repo.html_url, part.ref)
+
+    def get_source_branch_url(self):
+        return self._branch_from_part(self._pr.head)
+
+    def get_target_branch_url(self):
+        return self._branch_from_part(self._pr.base)
+
     def get_description(self):
         return self._pr.body
 
@@ -135,6 +143,8 @@ def github_url_to_bzr_url(url, branch_name):
 
 
 class GitHub(Hoster):
+
+    name = 'github'
 
     supports_merge_proposal_labels = True
 
@@ -205,20 +215,30 @@ class GitHub(Hoster):
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(self.gh, source_branch, target_branch)
 
-    def get_proposal(self, source_branch, target_branch):
+    def iter_proposals(self, source_branch, target_branch, status='open'):
         (source_owner, source_repo_name, source_branch_name) = (
             parse_github_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
             parse_github_url(target_branch))
-        target_repo = self.gh.get_repo("%s/%s" % (target_owner, target_repo_name))
-        for pull in target_repo.get_pulls(head=target_branch_name):
+        target_repo = self.gh.get_repo(
+            "%s/%s" % (target_owner, target_repo_name))
+        state = {
+            'open': 'open',
+            'merged': 'closed',
+            'closed': 'closed',
+            'all': 'all'}
+        for pull in target_repo.get_pulls(
+                head=target_branch_name,
+                state=state[status]):
+            if (status == 'closed' and pull.merged or
+                    status == 'merged' and not pull.merged):
+                continue
             if pull.head.ref != source_branch_name:
                 continue
             if (pull.head.repo.owner.login != source_owner or
                     pull.head.repo.name != source_repo_name):
                 continue
-            return GitHubMergeProposal(pull)
-        raise NoMergeProposal()
+            yield GitHubMergeProposal(pull)
 
     def hosts(self, branch):
         try:
@@ -235,6 +255,24 @@ class GitHub(Hoster):
         except NotGitHubUrl:
             raise UnsupportedHoster(branch)
         return cls()
+
+    @classmethod
+    def iter_instances(cls):
+        yield cls()
+
+    def iter_my_proposals(self, status='open'):
+        query = ['is:pr']
+        if status == 'open':
+            query.append('is:open')
+        elif status == 'closed':
+            # Note that we don't use is:closed here, since that also includes
+            # merged pull requests.
+            query.append('is:unmerged')
+        elif status == 'merged':
+            query.append('is:merged')
+        query.append('author:%s' % self.gh.get_user().login)
+        for issue in self.gh.search_issues(query=' '.join(query)):
+            yield GitHubMergeProposal(issue.as_pull_request())
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):
