@@ -36,6 +36,7 @@ plugins.
 
 from __future__ import absolute_import
 
+import entrypoints
 import os
 import re
 import sys
@@ -101,8 +102,20 @@ def load_plugins(path=None, state=None):
         from breezy.plugins import __path__ as path
 
     state.plugin_warnings = {}
-    _load_plugins(state, path)
+    _load_plugins_from_path(state, path)
+    _load_plugins_from_entrypoints(state)
     state.plugins = plugins()
+
+
+def _load_plugins_from_entrypoints(state):
+    try:
+        import pkg_resources
+    except ImportError:
+        # No pkg_resources, no entrypoints.
+        pass
+    else:
+        for ep in pkg_resources.iter_entry_points('breezy.plugin'):
+            sys.modules[_MODULE_PREFIX + ep.name] = ep.load()
 
 
 def plugin_name(module_name):
@@ -256,7 +269,7 @@ def _install_importer_if_needed(plugin_details):
         sys.meta_path.insert(2, finder)
 
 
-def _load_plugins(state, paths):
+def _load_plugins_from_path(state, paths):
     """Do the importing all plugins from paths."""
     imported_names = set()
     for name, path in _iter_possible_plugins(paths):
