@@ -297,7 +297,7 @@ class TestTagging(TestCaseWithTransport):
 
         _mod_branch.format_registry.register(TrimmedBranchFormat())
         self.addCleanup(_mod_branch.format_registry.remove,
-                            TrimmedBranchFormat())
+                        TrimmedBranchFormat())
 
         dir_format = bzrdir.BzrDirMetaFormat1()
         dir_format._branch_format = TrimmedBranchFormat()
