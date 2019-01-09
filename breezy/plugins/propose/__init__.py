@@ -25,3 +25,6 @@ plugin_cmds.register_lazy("cmd_publish_derived", ['publish'], __name__ + ".cmds"
 plugin_cmds.register_lazy("cmd_find_merge_proposal", ['find-proposal'], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_github_login", ["gh-login"], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
+plugin_cmds.register_lazy(
+    "cmd_my_merge_proposals", ["my-proposals"],
+    __name__ + ".cmds")

@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7239-1) UNRELEASED; urgency=medium
+
+  * New upstream snapshot.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 09 Jan 2019 00:10:16 +0000
+
 breezy (3.0.0~bzr7236-1) unstable; urgency=medium
 
   * New upstream snapshot.

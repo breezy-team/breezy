@@ -576,7 +576,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
             $ mv mywork mywork1
             $ cd mywork1
             $ brz branches
-            * br1
+              br1
             ''', null_output_matches_anything=True)
 
     def test_switch_to_new_branch_on_old_rev(self):
