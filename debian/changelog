@@ -3,6 +3,7 @@ breezy (3.0.0~bzr7239-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
   * Add patch 11_pack_signature: fix repacking of commits with
     signatures on Python 3. Closes: #918723.
+  * Drop patch 10_my_proposals: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 09 Jan 2019 00:10:16 +0000
 
