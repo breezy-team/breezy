@@ -200,14 +200,18 @@ class GPGStrategy(object):
     def _get_signing_keys(self):
         import gpg
         keyname = self._config_stack.get('gpg_signing_key')
+        if keyname == 'default':
+            # Leave things to gpg
+            return []
+
         if keyname:
             try:
                 return [self.context.get_key(keyname)]
             except gpg.errors.KeyNotFound:
                 pass
 
-        if keyname is None or keyname == 'default':
-            # 'default' or not setting gpg_signing_key at all means we should
+        if keyname is None:
+            # not setting gpg_signing_key at all means we should
             # use the user email address
             keyname = config.extract_email_address(
                 self._config_stack.get('email'))
