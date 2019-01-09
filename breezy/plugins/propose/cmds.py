@@ -223,8 +223,8 @@ class cmd_find_merge_proposal(Command):
         else:
             target = _mod_branch.Branch.open(submit_branch)
         hoster = _mod_propose.get_hoster(branch)
-        mp = hoster.get_proposal(branch, target)
-        self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
+        for mp in hoster.iter_proposals(branch, target):
+            self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
 
 
 class cmd_github_login(Command):
@@ -300,3 +300,30 @@ class cmd_gitlab_login(Command):
             gl = Gitlab(url=url, private_token=private_token)
             gl.auth()
         store_gitlab_token(name=name, url=url, private_token=private_token)
+
+
+class cmd_my_merge_proposals(Command):
+    __doc__ = """List all merge proposals owned by the logged-in user.
+
+    """
+
+    hidden = True
+
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'status',
+            title='Proposal Status',
+            help='Only include proposals with specified status.',
+            value_switches=True,
+            enum_switch=True,
+            all='All merge proposals',
+            open='Open merge proposals',
+            merged='Merged merge proposals',
+            closed='Closed merge proposals')]
+
+    def run(self, status='open'):
+        from .propose import hosters
+        for name, hoster_cls in hosters.items():
+            for instance in hoster_cls.iter_instances():
+                for mp in instance.iter_my_proposals(status=status):
+                    self.outf.write('%s\n' % mp.url)

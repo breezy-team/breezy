@@ -17,9 +17,16 @@
 """Tests for commands related to tags"""
 
 from breezy import (
+    branch as _mod_branch,
     errors,
+    lockable_files,
+    lockdir,
     tag,
     transform,
+    )
+from breezy.bzr import (
+    branch as bzrbranch,
+    bzrdir,
     )
 from breezy.branch import (
     Branch,
@@ -272,15 +279,33 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(out, r'tagD  *3\n')
 
     def test_list_tags_dotted_revnos_unsupported(self):
-        tree = self.make_branch_and_tree('branch')
+        class TrimmedBranch(bzrbranch.BzrBranch6):
+
+            def revision_id_to_dotted_revno(self, revid):
+                raise errors.UnsupportedOperation(
+                    self.revision_id_to_dotted_revno, self)
+
+        class TrimmedBranchFormat(bzrbranch.BzrBranchFormat6):
+
+            def _branch_class(self):
+                return TrimmedBranch
+
+            @classmethod
+            def get_format_string(cls):
+                return b"Trimmed Branch"
+
+
+        _mod_branch.format_registry.register(TrimmedBranchFormat())
+        self.addCleanup(_mod_branch.format_registry.remove,
+                        TrimmedBranchFormat())
+
+        dir_format = bzrdir.BzrDirMetaFormat1()
+        dir_format._branch_format = TrimmedBranchFormat()
+
+        tree = self.make_branch_and_tree('branch', format=dir_format)
+        self.assertFileEqual('Trimmed Branch', 'branch/.bzr/branch/format')
         rev1 = tree.commit("rev1")
         tree.branch.tags.set_tag("mytag", rev1)
-
-        def revision_id_to_dotted_revno(self, revid):
-            raise errors.UnsupportedOperation(
-                revision_id_to_dotted_revno, self)
-        self.overrideAttr(Branch, "revision_id_to_dotted_revno",
-                          revision_id_to_dotted_revno)
         out, err = self.run_bzr('tags -d branch', encoding='utf-8')
         self.assertEqual(out, 'mytag                ?\n')
 

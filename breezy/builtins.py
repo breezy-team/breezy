@@ -206,13 +206,13 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     try:
         reference = control_dir.get_branch_reference()
     except errors.NotBranchError:
-        # There is no active branch, just return the colocated branches.
-        for name, branch in viewitems(control_dir.get_branches()):
-            yield name, branch
-        return
+        reference = None
     if reference is not None:
-        ref_branch = Branch.open(
-            reference, possible_transports=possible_transports)
+        try:
+            ref_branch = Branch.open(
+                reference, possible_transports=possible_transports)
+        except errors.NotBranchError:
+            ref_branch = None
     else:
         ref_branch = None
     if ref_branch is None or ref_branch.name:
