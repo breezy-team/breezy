@@ -6,6 +6,7 @@ breezy (3.0.0~bzr7239-1) UNRELEASED; urgency=medium
   * Drop patch 10_my_proposals: applied upstream.
   * Add patch 12_gpg_default: support 'default' setting for
     gpg_signing_key.
+  * Bump standards version to 12.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 09 Jan 2019 00:10:16 +0000
 
