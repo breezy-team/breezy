@@ -1,9 +1,9 @@
-breezy (3.0.0~bzr7239-2) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7239-2) unstable; urgency=medium
 
   * Add patch 13_gz: do not accidentally interpret temporary file name
     as zip.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Jan 2019 01:21:39 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 12 Jan 2019 01:22:11 +0000
 
 breezy (3.0.0~bzr7239-1) unstable; urgency=medium
 
