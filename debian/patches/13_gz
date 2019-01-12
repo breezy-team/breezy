@@ -1,0 +1,13 @@
+=== modified file 'breezy/plugins/fastimport/exporter.py'
+--- old/breezy/plugins/fastimport/exporter.py	2019-01-01 23:55:19 +0000
++++ new/breezy/plugins/fastimport/exporter.py	2019-01-12 01:20:59 +0000
+@@ -85,7 +85,7 @@
+ def _get_output_stream(destination):
+     if destination is None or destination == '-':
+         return helpers.binary_stream(getattr(sys.stdout, "buffer", sys.stdout))
+-    elif destination.endswith('gz'):
++    elif destination.endswith('.gz'):
+         import gzip
+         return gzip.open(destination, 'wb')
+     else:
+
