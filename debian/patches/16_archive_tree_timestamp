@@ -70,3 +70,37 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190113173222-dteocq7209l6y0m6
          # The target path should not be a part of the target file.
          # (bug #102234)
 
+=== modified file 'breezy/export.py'
+--- old/breezy/export.py	2019-01-13 17:32:22 +0000
++++ new/breezy/export.py	2019-01-13 18:33:39 +0000
+@@ -64,11 +64,13 @@
+         root = get_root_name(dest)
+ 
+     if not per_file_timestamps:
++        force_mtime = time.time()
+         if getattr(tree, '_repository', None):
+-            force_mtime = tree._repository.get_revision(
+-                tree.get_revision_id()).timestamp
+-        else:
+-            force_mtime = time.time()
++            try:
++                force_mtime = tree._repository.get_revision(
++                    tree.get_revision_id()).timestamp
++            except errors.NoSuchRevision:
++                pass
+     else:
+         force_mtime = None
+ 
+
+=== modified file 'breezy/tests/blackbox/test_export.py'
+--- old/breezy/tests/blackbox/test_export.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/blackbox/test_export.py	2019-01-13 18:33:39 +0000
+@@ -455,6 +455,6 @@
+         # being too low. If rpc_count increases, more network roundtrips have
+         # become necessary for this use case. Please do not adjust this number
+         # upwards without agreement from bzr's network support maintainers.
+-        self.assertLength(7, self.hpss_calls)
++        self.assertLength(8, self.hpss_calls)
+         self.assertLength(1, self.hpss_connections)
+         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
+
