@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7240-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7240-1) unstable; urgency=medium
 
   * Add patches 14_hg_field, 15_verify_signatures_py3: deal with unknown
     HG fields in Git commits, verify signatures correctly on Python 3.
@@ -7,7 +7,7 @@ breezy (3.0.0~bzr7240-1) UNRELEASED; urgency=medium
   * New upstream snapshot.
   * Drop patch 11_pack_signature: applied upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Jan 2019 17:55:01 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Jan 2019 18:34:14 +0000
 
 breezy (3.0.0~bzr7239-2) unstable; urgency=medium
 
