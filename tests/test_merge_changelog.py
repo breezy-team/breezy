@@ -29,7 +29,6 @@ from testtools.content_type import ContentType
 from testtools.content import Content
 
 from .... import (
-    memorytree,
     merge,
     tests,
     )
@@ -329,7 +328,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         builder.finish_series()
         the_branch = builder.get_branch()
 
-        tree = memorytree.MemoryTree.create_on_branch(the_branch)
+        tree = the_branch.create_memorytree()
         tree.lock_write()
         self.addCleanup(tree.unlock)
 
