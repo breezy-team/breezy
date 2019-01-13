@@ -64,11 +64,13 @@ def export(tree, dest, format=None, root=None, subdir=None,
         root = get_root_name(dest)
 
     if not per_file_timestamps:
+        force_mtime = time.time()
         if getattr(tree, '_repository', None):
-            force_mtime = tree._repository.get_revision(
-                tree.get_revision_id()).timestamp
-        else:
-            force_mtime = time.time()
+            try:
+                force_mtime = tree._repository.get_revision(
+                    tree.get_revision_id()).timestamp
+            except errors.NoSuchRevision:
+                pass
     else:
         force_mtime = None
 
