@@ -4,3 +4,5 @@
 11_pack_signature
 12_gpg_default
 13_gz
+14_hg_field
+15_verify_signatures_py3
