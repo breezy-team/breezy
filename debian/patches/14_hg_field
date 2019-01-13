@@ -54,3 +54,16 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190113141635-f7p75zxtisiidha7
  class RoundtripRevisionsFromBazaar(tests.TestCase):
  
 
+=== modified file 'breezy/git/mapping.py'
+--- old/breezy/git/mapping.py	2018-11-16 23:21:31 +0000
++++ new/breezy/git/mapping.py	2019-01-13 18:59:26 +0000
+@@ -452,7 +452,7 @@
+             elif k == HG_EXTRA:
+                 hgk, hgv = v.split(b':', 1)
+                 if hgk not in (HG_EXTRA_AMEND_SOURCE, ):
+-                    raise UnknownMercurialCommitExtra(commit, hgk)
++                    raise UnknownMercurialCommitExtra(commit, [hgk])
+                 extra_lines.append(k + b' ' + v + b'\n')
+             else:
+                 unknown_extra_fields.append(k)
+
