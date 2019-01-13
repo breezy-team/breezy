@@ -126,15 +126,9 @@ class ZipTgzRepacker(TgzRepacker):
             tar.addfile(tarinfo, contents)
 
     def repack(self, target_f):
-        zip = zipfile.ZipFile(self.source_f, "r")
-        try:
-            tar = tarfile.open(mode="w:gz", fileobj=target_f)
-            try:
+        with zipfile.ZipFile(self.source_f, "r") as zip:
+            with tarfile.open(mode="w:gz", fileobj=target_f) as tar:
                 self._repack_zip_to_tar(zip, tar)
-            finally:
-                tar.close()
-        finally:
-            zip.close()
 
 
 def get_filetype(filename):
@@ -168,7 +162,6 @@ def get_repacker_class(source_format, target_format):
 
 
 def _error_if_exists(target_transport, new_name, source_name):
-    source_filetype = get_filetype(source_name)
     with open_file(source_name) as source_f:
         source_sha = new_sha(source_f.read()).hexdigest()
     with open_file_via_transport(new_name, target_transport) as target_f:
@@ -179,15 +172,9 @@ def _error_if_exists(target_transport, new_name, source_name):
 
 def _repack_directory(target_transport, new_name, source_name):
     target_transport.ensure_base()
-    target_f = target_transport.open_write_stream(new_name)
-    try:
-        tar = tarfile.open(mode='w:gz', fileobj=target_f)
-        try:
+    with target_transport.open_write_stream(new_name) as target_f:
+        with tarfile.open(mode='w:gz', fileobj=target_f) as tar:
             tar.add(source_name, os.path.basename(source_name))
-        finally:
-            tar.close()
-    finally:
-        target_f.close()
 
 
 def _repack_other(target_transport, new_name, source_name):
