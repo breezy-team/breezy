@@ -1,7 +1,6 @@
 01_selftest_package
 03_spurious_test_failure
 08_disable_sphinx_epytext
-11_pack_signature
 12_gpg_default
 13_gz
 14_hg_field

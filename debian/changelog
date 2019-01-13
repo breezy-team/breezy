@@ -5,6 +5,7 @@ breezy (3.0.0~bzr7240-1) UNRELEASED; urgency=medium
   * Add patch 16_archive_tree_timestamp: generate consistent timestamps
     when exporting tarballs.
   * New upstream snapshot.
+  * Drop patch 11_pack_signature: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Jan 2019 17:55:01 +0000
 
