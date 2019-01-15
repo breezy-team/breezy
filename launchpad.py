@@ -134,6 +134,12 @@ class LaunchpadMergeProposal(MergeProposal):
     def is_merged(self):
         return (self._mp.queue_status == 'Merged')
 
+    def get_description(self):
+        return self._mp.description
+
+    def set_description(self, description):
+        self._mp.description = description
+
 
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
