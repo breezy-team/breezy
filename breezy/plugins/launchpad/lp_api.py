@@ -94,41 +94,11 @@ def lookup_service_root(service_root):
         return staging_root.replace('staging', 'qastaging')
 
 
-def _get_api_url(service):
-    """Return the root URL of the Launchpad API.
-
-    e.g. For the 'staging' Launchpad service, this function returns
-    launchpadlib.launchpad.STAGING_SERVICE_ROOT.
-
-    :param service: A `LaunchpadService` object.
-    :return: A URL as a string.
-    """
-    if service._lp_instance is None:
-        lp_instance = service.DEFAULT_INSTANCE
-    else:
-        lp_instance = service._lp_instance
-    try:
-        return lookup_service_root(lp_instance)
-    except ValueError:
-        raise InvalidLaunchpadInstance(lp_instance)
-
-
 class NoLaunchpadBranch(errors.BzrError):
     _fmt = 'No launchpad branch could be found for branch "%(url)s".'
 
     def __init__(self, branch):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
-
-
-def login(service, timeout=None, proxy_info=None,
-          version=Launchpad.DEFAULT_VERSION):
-    """Log in to the Launchpad API.
-
-    :return: The root `Launchpad` object from launchpadlib.
-    """
-    return connect_launchpad(
-        _get_api_url(service), timeout=timeout, proxy_info=proxy_info,
-        version=version)
 
 
 def connect_launchpad(base_url, timeout=None, proxy_info=None,
