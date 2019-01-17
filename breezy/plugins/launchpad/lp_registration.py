@@ -48,6 +48,11 @@ from ... import (
     )
 from ...transport.http import _urllib2_wrappers
 
+from .lp_api import (
+    LAUNCHPAD_DOMAINS,
+    LAUNCHPAD_BAZAAR_DOMAINS,
+    )
+
 
 # for testing, do
 '''
@@ -104,14 +109,6 @@ class LaunchpadService(object):
     See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we
     can call.
     """
-
-    LAUNCHPAD_DOMAINS = {
-        'production': 'launchpad.net',
-        'staging': 'staging.launchpad.net',
-        'qastaging': 'qastaging.launchpad.net',
-        'demo': 'demo.launchpad.net',
-        'dev': 'launchpad.dev',
-        }
 
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
@@ -201,7 +198,7 @@ class LaunchpadService(object):
             instance = self.DEFAULT_INSTANCE
         else:
             instance = self._lp_instance
-        return self.LAUNCHPAD_DOMAINS[instance]
+        return LAUNCHPAD_DOMAINS[instance]
 
     def _guess_branch_path(self, branch_url, _request_factory=None):
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
@@ -216,10 +213,7 @@ class LaunchpadService(object):
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]
         else:
-            domains = (
-                'bazaar.%s' % domain
-                for domain in self.LAUNCHPAD_DOMAINS.values())
-            if hostinfo not in domains:
+            if hostinfo not in LAUNCHPAD_BAZAAR_DOMAINS:
                 raise NotLaunchpadBranch(branch_url)
         return path.lstrip('/')
 

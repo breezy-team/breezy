@@ -45,9 +45,6 @@ from ... import (
     transport,
     )
 from ...i18n import gettext
-from .lp_registration import (
-    InvalidLaunchpadInstance,
-    )
 
 try:
     import launchpadlib
@@ -62,6 +59,19 @@ from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
+
+
+LAUNCHPAD_DOMAINS = {
+    'production': 'launchpad.net',
+    'staging': 'staging.launchpad.net',
+    'qastaging': 'qastaging.launchpad.net',
+    'demo': 'demo.launchpad.net',
+    'dev': 'launchpad.dev',
+    }
+
+LAUNCHPAD_BAZAAR_DOMAINS = [
+    'bazaar.%s' % domain
+    for domain in LAUNCHPAD_DOMAINS.values()]
 
 
 def get_cache_directory():
