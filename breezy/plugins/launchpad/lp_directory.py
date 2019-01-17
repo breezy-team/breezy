@@ -47,6 +47,7 @@ from .account import get_lp_login
 # is counted as a netloc protocol.
 transport.register_urlparse_netloc_protocol('bzr+ssh')
 transport.register_urlparse_netloc_protocol('lp')
+transport.register_urlparse_netloc_protocol('lp+bzr')
 
 
 class LaunchpadDirectory(object):
@@ -136,6 +137,8 @@ class LaunchpadDirectory(object):
                 series=series,
                 project=project)
             scheme, netloc, path, query, fragment = urlsplit(url)
+        elif scheme == 'lp+bzr':
+            scheme = 'lp'
         return url, path
 
     def _expand_user(self, path, url, lp_login):

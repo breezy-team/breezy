@@ -105,6 +105,10 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
                            'lp:apt')
 
+    def test_short_form_bzr(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
+                           'lp+bzr:apt')
+
     def test_two_part_form(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt/2.2',
                            'lp:apt/2.2')
@@ -399,6 +403,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
                 return '!unexpected look_up value!'
 
         directories.remove('lp:')
+        directories.remove('lp+bzr:')
         directories.remove('ubuntu:')
         directories.remove('debianlp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
