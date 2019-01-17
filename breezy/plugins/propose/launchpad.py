@@ -143,13 +143,13 @@ class Launchpad(Hoster):
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
-    def __init__(self, staging=False):
+    def __init__(self):
         self._staging = staging
         if staging:
-            lp_instance = 'staging'
+            lp_base_url = lp_api.STAGING_SERVICE_ROOT
         else:
-            lp_instance = 'production'
-        self.launchpad = connect_launchpad(lp_instance)
+            lp_base_url = None
+        self.launchpad = lp_api.connect_launchpad(lp_base_url)
 
     def __repr__(self):
         return "Launchpad(staging=%s)" % self._staging
@@ -370,11 +370,6 @@ class Launchpad(Hoster):
         statuses = status_to_lp_mp_statuses(status)
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
-
-
-def connect_launchpad(lp_instance='production'):
-    service = lp_registration.LaunchpadService(lp_instance=lp_instance)
-    return lp_api.login(service, version='devel')
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):

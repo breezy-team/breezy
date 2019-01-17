@@ -69,11 +69,10 @@ class Proposer(object):
         """
         self.tree = tree
         if staging:
-            lp_instance = 'staging'
+            lp_base_url = lp_api.STAGING_SERVICE_ROOT
         else:
-            lp_instance = 'production'
-        service = lp_registration.LaunchpadService(lp_instance=lp_instance)
-        self.launchpad = lp_api.login(service)
+            lp_base_url = None
+        self.launchpad = lp_api.connect_launchpad(lp_bsae_url)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:

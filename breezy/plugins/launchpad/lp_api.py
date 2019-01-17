@@ -126,12 +126,24 @@ def login(service, timeout=None, proxy_info=None,
 
     :return: The root `Launchpad` object from launchpadlib.
     """
+    return connect_launchpad(
+        _get_api_url(service), timeout=timeout, proxy_info=proxy_info,
+        version=version)
+
+
+def connect_launchpad(base_url, timeout=None, proxy_info=None,
+                      version=Launchpad.DEFAULT_VERSION):
+    """Log in to the Launchpad API.
+
+    :return: The root `Launchpad` object from launchpadlib.
+    """
     if proxy_info is None:
         proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
     return Launchpad.login_with(
-        'breezy', _get_api_url(service), cache_directory, timeout=timeout,
+        'breezy', base_url, cache_directory, timeout=timeout,
         proxy_info=proxy_info, version=version)
+
 
 
 class LaunchpadBranch(object):

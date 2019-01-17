@@ -267,10 +267,9 @@ class cmd_lp_find_proposal(Command):
                 webbrowser.open(lp_api.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from . import (lp_api, lp_registration)
+        from . import lp_api
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
-        launchpad = lp_api.login(lp_registration.LaunchpadService(),
-                                 version='devel')
+        launchpad = lp_api.connect_launchpad(version='devel')
         pb.update(gettext('Finding proposals'))
         return list(launchpad.branches.getMergeProposals(
                     merged_revision=revision_id))
