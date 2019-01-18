@@ -36,7 +36,6 @@ plugins.
 
 from __future__ import absolute_import
 
-import entrypoints
 import os
 import re
 import sys
@@ -103,7 +102,8 @@ def load_plugins(path=None, state=None):
 
     state.plugin_warnings = {}
     _load_plugins_from_path(state, path)
-    _load_plugins_from_entrypoints(state)
+    if (None, 'entrypoints') in _env_plugin_path():
+        _load_plugins_from_entrypoints(state)
     state.plugins = plugins()
 
 
@@ -218,11 +218,11 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
     """Gives list of paths and contexts for plugins from environ key.
 
     Each entry is either a specific path to load plugins from and the value
-    'path', or None and one of the three values 'user', 'core', 'site'.
+    'path', or None and one of the values 'user', 'core', 'entrypoints', 'site'.
     """
     path_details = []
     env = osutils.path_from_environ(key)
-    defaults = {"user": not env, "core": True, "site": True}
+    defaults = {"user": not env, "core": True, "site": True, 'entrypoints': True}
     if env:
         # Add paths specified by user in order
         for p in env.split(os.pathsep):
@@ -235,7 +235,7 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
                 path_details.append((p, 'path'))
 
     # Add any remaining default paths
-    for name in ('user', 'core', 'site'):
+    for name in ('user', 'core', 'entrypoints', 'site'):
         if defaults[name]:
             path_details.append((None, name))
 
