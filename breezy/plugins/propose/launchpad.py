@@ -42,7 +42,6 @@ from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
     lp_api,
-    lp_registration,
     )
 """)
 from ...transport import get_transport

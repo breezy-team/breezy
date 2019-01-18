@@ -30,7 +30,6 @@ from breezy import (
 from breezy.i18n import gettext
 from breezy.plugins.launchpad import (
     lp_api,
-    lp_registration,
     )
 """)
 
