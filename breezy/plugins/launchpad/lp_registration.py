@@ -49,6 +49,7 @@ from ... import (
 from ...transport.http import _urllib2_wrappers
 
 from .lp_api import (
+    DEFAULT_INSTANCE,
     LAUNCHPAD_DOMAINS,
     LAUNCHPAD_BAZAAR_DOMAINS,
     )
@@ -116,9 +117,6 @@ class LaunchpadService(object):
     for instance, domain in LAUNCHPAD_DOMAINS.items():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
-    # We use production as the default because edge has been deprecated circa
-    # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-    DEFAULT_INSTANCE = 'production'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None
@@ -195,7 +193,7 @@ class LaunchpadService(object):
     @property
     def domain(self):
         if self._lp_instance is None:
-            instance = self.DEFAULT_INSTANCE
+            instance = DEFAULT_INSTANCE
         else:
             instance = self._lp_instance
         return LAUNCHPAD_DOMAINS[instance]
