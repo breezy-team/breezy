@@ -35,6 +35,7 @@ from ... import (
     )
 from ...i18n import gettext
 
+from .lp_api import LAUNCHPAD_DOMAINS
 from .lp_registration import (
     InvalidURL,
     LaunchpadService,
@@ -73,7 +74,7 @@ class LaunchpadDirectory(object):
         _, netloc, _, _, _ = urlsplit(url)
         if netloc == '':
             netloc = LaunchpadService.DEFAULT_INSTANCE
-        base_url = LaunchpadService.LAUNCHPAD_DOMAINS[netloc]
+        base_url = LAUNCHPAD_DOMAINS[netloc]
         base = 'bzr+ssh://bazaar.%s/' % (base_url,)
         maybe_invalid = False
         if path.startswith('~'):
