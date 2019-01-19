@@ -476,7 +476,7 @@ class RemoteGitDir(GitDir):
         refname = self._get_selected_ref(name)
 
         def get_changed_refs(old_refs):
-            ret = dict(old_refs)
+            ret = {}
             if refname not in ret:
                 raise NotBranchError(self.user_url)
             ret[refname] = dulwich.client.ZERO_SHA
@@ -569,7 +569,7 @@ class RemoteGitDir(GitDir):
         with source_store.lock_read():
             def get_changed_refs(refs):
                 self._refs = remote_refs_dict_to_container(refs)
-                ret = dict(refs)
+                ret = {}
                 # TODO(jelmer): Unpeel if necessary
                 push_result.new_original_revid = revision_id
                 if lossy:
@@ -898,7 +898,7 @@ class RemoteGitTagDict(GitTags):
         ref = tag_name_to_ref(name)
 
         def get_changed_refs(old_refs):
-            ret = dict(old_refs)
+            ret = {}
             if sha == dulwich.client.ZERO_SHA and ref not in ret:
                 raise NoSuchTag(name)
             ret[ref] = sha
