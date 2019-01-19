@@ -29,6 +29,7 @@ from .. import (
     plugin,
     tests,
     )
+from ..tests.features import pkg_resources_feature
 from ..sixish import (
     StringIO,
     viewkeys,
@@ -894,3 +895,39 @@ good 0.1.0
   Hi there
 
 """, ''.join(plugin.describe_plugins(state=self)))
+
+
+class DummyPlugin(object):
+    """Plugin."""
+
+
+class TestLoadEnvPlugin(BaseTestPlugins):
+
+    _test_needs_features = [pkg_resources_feature]
+
+    def setup_plugin(self, source=""):
+        # This test tests a new plugin appears in breezy.plugin.plugins().
+        # check the plugin is not loaded already
+        self.assertPluginUnknown('plugin')
+        # write a plugin that _cannot_ fail to load.
+        import pkg_resources
+        d = pkg_resources.Distribution(__file__)
+        ep = pkg_resources.EntryPoint.parse(
+            'plugin = ' + __name__ + ':DummyPlugin', dist=d)
+        d._ep_map = {'breezy.plugin': {'plugin': ep}}
+        pkg_resources.working_set.add(d, 'plugin')
+        self.load_with_paths(['.'])
+        self.addCleanup(d._ep_map.clear)
+
+    def test_plugin_loaded(self):
+        self.assertPluginUnknown('plugin')
+        self.setup_plugin()
+        p = self.plugins['plugin']
+        self.assertIsInstance(p, breezy.plugin.PlugIn)
+        self.assertIs(p.module, sys.modules[self.module_prefix + 'plugin'])
+
+    def test_plugin_loaded_disabled(self):
+        self.assertPluginUnknown('plugin')
+        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'plugin')
+        self.setup_plugin()
+        self.assertNotIn('plugin', self.plugins)
