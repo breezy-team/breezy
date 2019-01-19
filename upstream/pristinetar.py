@@ -284,23 +284,20 @@ class PristineTarSource(UpstreamSource):
         """
         if exclude is None:
             exclude = []
+
         def include_change(c):
             if not exclude:
                 return True
             path = c[1][1]
             if path is None:
                 return True
-            for e in exclude:
-                if path == e or path.startswith(e+"/"):
-                    return False
-            else:
-                return True
+            return not osutils.is_inside_any(exclude, path)
         message = "Import upstream version %s" % (version,)
+        revprops = {}
         if component is not None:
             message += ", component %s" % component
             if tree.branch.repository._format.supports_custom_revision_properties:
                 revprops["deb-component"] = component
-        revprops = {}
         git_delta = None
         if md5 is not None:
             if tree.branch.repository._format.supports_custom_revision_properties:
