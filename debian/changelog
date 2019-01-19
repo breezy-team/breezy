@@ -1,3 +1,9 @@
+breezy-debian (2.8.23) UNRELEASED; urgency=medium
+
+  * Convert copyright file to machine-readable format.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Jan 2019 19:17:53 +0000
+
 breezy-debian (2.8.22) unstable; urgency=medium
 
   * Set Enhances: brz.

@@ -1,47 +1,55 @@
-This package was debianized by James Westby <jw+debian@jameswestby.net> on
-Thu, 03 Aug 2006 19:22:20 +0100.
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: brz-debian
+Upstream-Contact: Jelmer Vernooĳ <jelmer@debian.org>
+Source: https://launchpad.net/brz-debian
 
-Upstream Author: James Westby <jw+debian@jameswestby.net>
+Files: *
+Copyright:
+ 2005 Jamie Wilkinson <jaq@debian.org>
+ 2006, 2007 James Westby <jw+debian@jameswestby.net>
+ 2007 Reinhard Tartler <siretart@tauware.de>
+ 2008 Canonical Ltd.
+ 2008-2018 Jelmer Vernooĳ <jelmer@jelmer.uk>
+License: GPL-2+
 
-Copyright: 2005 Jamie Wilkinson <jaq@debian.org>
-           2006, 2007 James Westby <jw+debian@jameswestby.net>
-           2007 Reinhard Tartler <siretart@tauware.de>
-           2008 Canonical Ltd.
-           2008-2018 Jelmer Vernooĳ <jelmer@jelmer.uk>
+Files: debian/*
+Copyright:
+ 2006 James Westby <jw+debian@jameswestby.net>
+ 2006-2018 Jelmer Vernooĳ <jelmer@debian.org>
+License: GPL-2+
 
-License:
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
+ .
+ On Debian systems, the full text of the GNU General Public License is available
+ in /usr/share/common-licenses/GPL-2.
 
-    breezy-debian is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+Files:
+ merge_upstream.py
+ import_dsc.py
+Comment: Imported from bzrtools
+Copyright:
+ 2005, 2006, 2007 Aaron Bentley <aaron.bentley@utoronto.ca>
+ 2005, 2006 Canonical Limited.
+ 2006 Michael Ellerman.
+License: GPL-2+
 
-    breezy-debian is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with breezy-debian; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
-On Debian systems, the complete text of the GNU General
-Public License can be found in `/usr/share/common-licenses/GPL-2'.
-
-merge_upstream.py and import_dsc.py include code from bzrtools, which is
-
-# Copyright (C) 2005, 2006, 2007 Aaron Bentley <aaron.bentley@utoronto.ca>
-# Copyright (C) 2005, 2006 Canonical Limited.
-# Copyright (C) 2006 Michael Ellerman.
-
-and is also under the GPL, version 2 or later.
-
-bzrtools_bzrtools.py comes from bzrtools and is:
-
-# Copyright (C) 2005, 2006, 2007 Aaron Bentley <aaron@aaronbentley.com>
-# Copyright (C) 2007 John Arbash Meinel
-
-and is also under the GPL, version 2 or later.
-
-The Debian packaging is (C) 2006 James Westby <jw+debian@jameswestby.net>,
-and is placed under the same license as the rest of the package.
+Files:
+ bzrtools_bzrtools.py
+Comment: Imported from bzrtools
+Copyright:
+ 2005, 2006, 2007 Aaron Bentley <aaron@aaronbentley.com>
+ 2007 John Arbash Meinel
+License: GPL-2+
