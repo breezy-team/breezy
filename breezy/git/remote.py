@@ -477,7 +477,7 @@ class RemoteGitDir(GitDir):
 
         def get_changed_refs(old_refs):
             ret = {}
-            if refname not in ret:
+            if refname not in old_refs:
                 raise NotBranchError(self.user_url)
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
@@ -899,7 +899,7 @@ class RemoteGitTagDict(GitTags):
 
         def get_changed_refs(old_refs):
             ret = {}
-            if sha == dulwich.client.ZERO_SHA and ref not in ret:
+            if sha == dulwich.client.ZERO_SHA and ref not in old_refs:
                 raise NoSuchTag(name)
             ret[ref] = sha
             return ret
