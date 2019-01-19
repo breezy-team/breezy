@@ -22,7 +22,14 @@ from ... import generate_ids
 from ... import urlutils
 from ...controldir import ControlDir
 from ...errors import NoSuchFile, BzrCommandError, NotBranchError
-from ...osutils import file_iterator, basename, file_kind, splitpath, normpath
+from ...osutils import (
+    file_iterator,
+    basename,
+    file_kind,
+    splitpath,
+    normpath,
+    is_inside_any,
+    )
 from ...sixish import StringIO
 from ...trace import warning
 from ...transform import TreeTransform, resolve_conflicts, cook_conflicts
@@ -63,31 +70,38 @@ def import_tar(tree, tar_input, file_ids_from=None, target_tree=None):
     import_archive(tree, tar_file, file_ids_from=file_ids_from,
             target_tree=target_tree)
 
+
 def import_zip(tree, zip_input, file_ids_from=None, target_tree=None):
     zip_file = ZipFileWrapper(zip_input, 'r')
     import_archive(tree, zip_file, file_ids_from=file_ids_from,
             target_tree=target_tree)
 
-def import_dir(tree, dir, file_ids_from=None, target_tree=None):
+
+def import_dir(tree, dir, file_ids_from=None, target_tree=None, exclude=None):
     dir_input = BytesIO(dir.encode('utf-8'))
     dir_input.seek(0)
     dir_file = DirWrapper(dir_input)
-    import_archive(tree, dir_file, file_ids_from=file_ids_from,
-            target_tree=target_tree)
+    import_archive(
+        tree, dir_file, file_ids_from=file_ids_from, target_tree=target_tree,
+        exclude=exclude)
 
-def import_archive(tree, archive_file, file_ids_from=None, target_tree=None):
+
+def import_archive(tree, archive_file, file_ids_from=None, target_tree=None,
+                   exclude=None):
     if file_ids_from is None:
         file_ids_from = []
     for other_tree in file_ids_from:
         other_tree.lock_read()
     try:
-        return _import_archive(tree, archive_file, file_ids_from,
-                target_tree=target_tree)
+        return _import_archive(
+            tree, archive_file, file_ids_from, target_tree=target_tree,
+            exclude=exclude)
     finally:
         for other_tree in file_ids_from:
             other_tree.unlock()
 
-def _get_paths_to_process(archive_file, prefix, implied_parents):
+
+def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
     to_process = set()
     for member in archive_file.getmembers():
         if member.type == 'g':
@@ -103,12 +117,15 @@ def _get_paths_to_process(archive_file, prefix, implied_parents):
             continue
         if should_ignore(relative_path):
             continue
+        if exclude and is_inside_any(exclude, relative_path):
+            continue
         add_implied_parents(implied_parents, relative_path)
         to_process.add((relative_path, member))
     return to_process
 
 
-def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
+def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
+                    exclude=None):
     prefix = common_directory(names_of_files(archive_file))
     tt = TreeTransform(tree)
     try:
@@ -124,7 +141,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
         implied_parents = set()
         seen = set()
         to_process = _get_paths_to_process(archive_file, prefix,
-                implied_parents)
+                implied_parents, exclude=exclude)
         renames = {}
 
         # First we find the renames

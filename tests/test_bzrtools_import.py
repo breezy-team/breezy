@@ -184,3 +184,12 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         import_dir(tree, "source")
         self.assertEqual(["", u"\xa7"],
             sorted([tree.id2path(i) for i in tree.all_file_ids()]))
+
+    def test_exclude(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(["source/", u"source/not-excluded", u"source/test"])
+        import_dir(tree, "source", exclude=['test'])
+        self.assertEqual(["", "not-excluded"],
+            sorted([tree.id2path(i) for i in tree.all_file_ids()]))
