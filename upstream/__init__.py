@@ -174,16 +174,15 @@ class UScanSource(UpstreamSource):
         self.tree = tree
         self.top_level = top_level
 
-    def _export_watchfile(self):
+    def _export_file(self, name):
         if self.top_level:
-            watchfile = 'watch'
+            file = name
         else:
-            watchfile = 'debian/watch'
+            file = 'debian/' + name
         (tmp, tempfilename) = tempfile.mkstemp()
         try:
             tmp = os.fdopen(tmp, 'wb')
-            watch = self.tree.get_file_text(watchfile)
-            tmp.write(watch)
+            tmp.write(self.tree.get_file_text(file))
         finally:
             tmp.close()
         return tempfilename
@@ -206,7 +205,7 @@ class UScanSource(UpstreamSource):
 
     def get_latest_version(self, package, current_version):
         try:
-            tempfilename = self._export_watchfile()
+            tempfilename = self._export_file('watch')
         except NoSuchFile:
             note("No watch file to use to check latest upstream release.")
             return None
@@ -223,7 +222,7 @@ class UScanSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note("Using uscan to look for the upstream tarball.")
         try:
-            tempfilename = self._export_watchfile()
+            tempfilename = self._export_file('watch')
         except NoSuchFile:
             note("No watch file to use to retrieve upstream tarball.")
             raise PackageVersionNotPresent(package, version, self)

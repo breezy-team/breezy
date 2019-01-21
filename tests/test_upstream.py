@@ -350,19 +350,19 @@ class UScanSourceTests(TestCaseWithTransport):
 
     def test_export_watchfile_none(self):
         src = UScanSource(self.tree, False)
-        self.assertRaises(NoSuchFile, src._export_watchfile)
+        self.assertRaises(NoSuchFile, src._export_file, 'watch')
 
     def test_export_watchfile_top_level(self):
         src = UScanSource(self.tree, True)
         self.build_tree(['watch'])
         self.tree.add(['watch'])
-        self.assertIsNot(src._export_watchfile(), None)
+        self.assertIsNot(src._export_file('watch'), None)
 
     def test_export_watchfile(self):
         src = UScanSource(self.tree, False)
         self.build_tree(['debian/', 'debian/watch'])
         self.tree.smart_add(['debian/watch'])
-        self.assertIsNot(src._export_watchfile(), None)
+        self.assertIsNot(src._export_file('watch'), None)
 
     def test__xml_report_extract_upstream_version(self):
         self.assertEquals("1.2.9",
