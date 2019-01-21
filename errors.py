@@ -209,11 +209,6 @@ class InconsistentSourceFormatError(BzrError):
         BzrError.__init__(self, version_bool=version_bool, format_bool=format_bool)
 
 
-class WatchFileMissing(BzrError):
-
-    _fmt = "No watch file found."
-
-
 class StrictBuildFailed(BzrError):
 
     _fmt = ("Build refused because there are unknown files in the tree. "

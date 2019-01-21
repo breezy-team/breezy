@@ -27,6 +27,7 @@ import tempfile
 
 from debian.changelog import Version
 
+from ....errors import NoSuchFile
 from .... import osutils
 from ....export import export
 from ....trace import (
@@ -37,7 +38,6 @@ from ....trace import (
 from ..errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
-    WatchFileMissing,
     )
 from ..repack_tarball import (
     get_filetype,
@@ -179,13 +179,10 @@ class UScanSource(UpstreamSource):
             watchfile = 'watch'
         else:
             watchfile = 'debian/watch'
-        watch_id = self.tree.path2id(watchfile)
-        if watch_id is None:
-            raise WatchFileMissing()
         (tmp, tempfilename) = tempfile.mkstemp()
         try:
             tmp = os.fdopen(tmp, 'wb')
-            watch = self.tree.get_file_text(watchfile, watch_id)
+            watch = self.tree.get_file_text(watchfile)
             tmp.write(watch)
         finally:
             tmp.close()
@@ -210,7 +207,7 @@ class UScanSource(UpstreamSource):
     def get_latest_version(self, package, current_version):
         try:
             tempfilename = self._export_watchfile()
-        except WatchFileMissing:
+        except NoSuchFile:
             note("No watch file to use to check latest upstream release.")
             return None
         try:
@@ -227,7 +224,7 @@ class UScanSource(UpstreamSource):
         note("Using uscan to look for the upstream tarball.")
         try:
             tempfilename = self._export_watchfile()
-        except WatchFileMissing:
+        except NoSuchFile:
             note("No watch file to use to retrieve upstream tarball.")
             raise PackageVersionNotPresent(package, version, self)
         try:

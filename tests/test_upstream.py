@@ -37,6 +37,7 @@ from ....revision import (
 from ....tests import (
     TestCase,
     )
+from ....errors import NoSuchFile
 from ....tests.features import PluginLoadedFeature
 from ..config import (
     DebBuildConfig,
@@ -44,7 +45,6 @@ from ..config import (
 from ..errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
-    WatchFileMissing,
     )
 from ....sixish import text_type
 from . import (
@@ -350,21 +350,19 @@ class UScanSourceTests(TestCaseWithTransport):
 
     def test_export_watchfile_none(self):
         src = UScanSource(self.tree, False)
-        self.assertRaises(WatchFileMissing, src._export_watchfile)
+        self.assertRaises(NoSuchFile, src._export_watchfile)
 
     def test_export_watchfile_top_level(self):
         src = UScanSource(self.tree, True)
         self.build_tree(['watch'])
-        self.assertRaises(WatchFileMissing, src._export_watchfile)
         self.tree.add(['watch'])
-        self.assertTrue(src._export_watchfile() is not None)
+        self.assertIsNot(src._export_watchfile(), None)
 
     def test_export_watchfile(self):
         src = UScanSource(self.tree, False)
         self.build_tree(['debian/', 'debian/watch'])
-        self.assertRaises(WatchFileMissing, src._export_watchfile)
         self.tree.smart_add(['debian/watch'])
-        self.assertTrue(src._export_watchfile() is not None)
+        self.assertIsNot(src._export_watchfile(), None)
 
     def test__xml_report_extract_upstream_version(self):
         self.assertEquals("1.2.9",
