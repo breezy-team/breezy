@@ -1,9 +1,9 @@
-breezy-debian (2.8.23) UNRELEASED; urgency=medium
+breezy-debian (2.8.23) unstable; urgency=medium
 
   * Convert copyright file to machine-readable format.
   * Pass copyright-file to uscan, so that Files-Excluded can be read.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Jan 2019 19:17:53 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 22 Jan 2019 00:35:45 +0000
 
 breezy-debian (2.8.22) unstable; urgency=medium
 
