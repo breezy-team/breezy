@@ -197,7 +197,8 @@ class UScanSource(UpstreamSource):
         dehs_tag = dehs_tags[0]
         for w in dehs_tag.getElementsByTagName("warnings"):
             warning(w.firstChild.wholeText)
-        upstream_version_tags = dehs_tag.getElementsByTagName("upstream-version")
+        upstream_version_tags = dehs_tag.getElementsByTagName(
+            "upstream-version")
         if len(upstream_version_tags) != 1:
             return None
         upstream_version_tag = upstream_version_tags[0]
@@ -205,36 +206,48 @@ class UScanSource(UpstreamSource):
 
     def get_latest_version(self, package, current_version):
         try:
-            tempfilename = self._export_file('watch')
+            watch_tempfilename = self._export_file('watch')
         except NoSuchFile:
             note("No watch file to use to check latest upstream release.")
             return None
+        args = ["--package=%s" % package, "--report",
+                "--no-download", "--dehs",
+                "--upstream-version=%s" % current_version]
         try:
-            p = subprocess.Popen(["uscan", "--package=%s" % package, "--report",
-                "--no-download", "--dehs", "--watchfile=%s" % tempfilename,
-                "--upstream-version=%s" % current_version],
+            p = subprocess.Popen(
+                ["uscan", "--watchfile=%s" % watch_tempfilename] + args,
                 stdout=subprocess.PIPE)
             (stdout, stderr) = p.communicate()
         finally:
-            os.unlink(tempfilename)
+            os.unlink(watch_tempfilename)
         return self._xml_report_extract_upstream_version(stdout)
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note("Using uscan to look for the upstream tarball.")
         try:
-            tempfilename = self._export_file('watch')
+            watch_tempfilename = self._export_file('watch')
         except NoSuchFile:
             note("No watch file to use to retrieve upstream tarball.")
             raise PackageVersionNotPresent(package, version, self)
-        try:
-            r = subprocess.call(["uscan", "--watchfile=%s" % tempfilename, 
-                "--upstream-version=%s" % version,
+        args = ["--upstream-version=%s" % version,
                 "--force-download", "--rename", "--package=%s" % package,
                 "--check-dirname-level=0",
                 "--download", "--destdir=%s" % target_dir,
-                "--download-version=%s" % version])
+                "--download-version=%s" % version]
+        try:
+            copyright_tempfilename = self._export_file('copyright')
+        except NoSuchFile:
+            note('No copyright file found.')
+            copyright_tempfilename = None
+        else:
+            args.append("--copyright-file=%s" % copyright_tempfilename)
+        try:
+            r = subprocess.call(
+                ["uscan", "--watchfile=%s" % watch_tempfilename] + args)
         finally:
-            os.unlink(tempfilename)
+            os.unlink(watch_tempfilename)
+            if copyright_tempfilename:
+                os.unlink(copyright_tempfilename)
         if r != 0:
             note("uscan could not find the needed tarball.")
             raise PackageVersionNotPresent(package, version, self)
