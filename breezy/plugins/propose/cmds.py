@@ -278,7 +278,7 @@ class cmd_gitlab_login(Command):
          brz gitlab-login https://salsa.debian.org if4Theis6Eich7aef0zo
     """
 
-    takes_args = ['url', 'private_token']
+    takes_args = ['url', 'private_token?']
 
     takes_options = [
         Option('name', help='Name for GitLab site in configuration.',
@@ -287,7 +287,8 @@ class cmd_gitlab_login(Command):
                "Don't check that the token is valid."),
         ]
 
-    def run(self, url, private_token, name=None, no_check=False):
+    def run(self, url, private_token=None, name=None, no_check=False):
+        from breezy import ui
         from .gitlabs import store_gitlab_token
         if name is None:
             try:
@@ -295,6 +296,10 @@ class cmd_gitlab_login(Command):
             except (ValueError, IndexError):
                 raise errors.BzrCommandError(
                     'please specify a site name with --name')
+        if private_token is None:
+            note("Please visit %s to obtain a private token.",
+                 urlutils.join(url, "profile/personal_access_tokens"))
+            private_token = ui.ui_factory.get_password(u'Private token')
         if not no_check:
             from gitlab import Gitlab
             gl = Gitlab(url=url, private_token=private_token)
