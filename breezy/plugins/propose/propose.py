@@ -43,14 +43,6 @@ class MergeProposalExists(errors.BzrError):
         self.url = url
 
 
-class NoMergeProposal(errors.BzrError):
-
-    _fmt = "No merge proposal exists."
-
-    def __init__(self):
-        errors.BzrError.__init__(self)
-
-
 class UnsupportedHoster(errors.BzrError):
 
     _fmt = "No supported hoster for %(branch)s."
@@ -107,6 +99,14 @@ class MergeProposal(object):
     def set_description(self, description):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
+
+    def get_source_branch_url(self):
+        """Return the source branch."""
+        raise NotImplementedError(self.get_source_branch_url)
+
+    def get_target_branch_url(self):
+        """Return the target branch."""
+        raise NotImplementedError(self.get_target_branch_url)
 
     def close(self):
         """Close the merge proposal (without merging it)."""
@@ -192,15 +192,15 @@ class Hoster(object):
         """
         raise NotImplementedError(self.get_proposer)
 
-    def get_proposal(self, source_branch, target_branch):
+    def iter_proposals(self, source_branch, target_branch, status='open'):
         """Get a merge proposal for a specified branch tuple.
 
         :param source_branch: Source branch
         :param target_branch: Target branch
-        :raise NoMergeProposal: if no merge proposal can be found
-        :return: A MergeProposal object
+        :param status: Status of proposals to iterate over
+        :return: Iterate over MergeProposal object
         """
-        raise NotImplementedError(self.get_proposal)
+        raise NotImplementedError(self.iter_proposals)
 
     def hosts(self, branch):
         """Return true if this hoster hosts given branch."""
@@ -212,7 +212,23 @@ class Hoster(object):
         raise NotImplementedError(cls.probe)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
-    # TODO(jelmer): Some way of checking up on outstanding merge proposals
+
+    def iter_my_proposals(self, status='open'):
+        """Iterate over the proposals created by the currently logged in user.
+
+        :param status: Only yield proposals with this status
+            (one of: 'open', 'closed', 'merged', 'all')
+        :return: Iterator over MergeProposal objects
+        """
+        raise NotImplementedError(self.iter_my_proposals)
+
+    @classmethod
+    def iter_instances(cls):
+        """Iterate instances.
+
+        :return: Hoster instances
+        """
+        raise NotImplementedError(cls.iter_instances)
 
 
 def get_hoster(branch, possible_hosters=None):

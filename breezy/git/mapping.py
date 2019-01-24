@@ -452,7 +452,7 @@ class BzrGitMapping(foreign.VcsMapping):
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
                 if hgk not in (HG_EXTRA_AMEND_SOURCE, ):
-                    raise UnknownMercurialCommitExtra(commit, hgk)
+                    raise UnknownMercurialCommitExtra(commit, [hgk])
                 extra_lines.append(k + b' ' + v + b'\n')
             else:
                 unknown_extra_fields.append(k)

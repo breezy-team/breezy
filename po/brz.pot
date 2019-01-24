@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: brz\n"
 "Report-Msgid-Bugs-To: <bazaar@canonical.com>\n"
-"POT-Creation-Date: 2018-11-17 19:23+0000\n"
+"POT-Creation-Date: 2019-01-14 01:26+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -112,70 +112,70 @@ msgstr ""
 msgid "Unstacking"
 msgstr ""
 
-#: breezy/branch.py:2021
+#: breezy/branch.py:2020
 #, python-format
 msgid "Pushed up to revision %d."
 msgstr ""
 
-#: breezy/branch.py:2023
+#: breezy/branch.py:2022
 #, python-format
 msgid "%d tag updated."
 msgid_plural "%d tags updated."
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/branch.py:2027
+#: breezy/branch.py:2026
 msgid "No new revisions or tags to push."
 msgstr ""
 
-#: breezy/branch.py:2029
+#: breezy/branch.py:2028
 msgid "No new revisions to push."
 msgstr ""
 
-#: breezy/branch.py:2049
+#: breezy/branch.py:2048
 #, python-brace-format
 msgid "checked branch {0} format {1}"
 msgstr ""
 
-#: breezy/branch.py:2052
+#: breezy/branch.py:2051
 #, python-format
 msgid "found error:%s"
 msgstr ""
 
-#: breezy/builtins.py:258 breezy/builtins.py:3058 breezy/workingtree.py:243
+#: breezy/builtins.py:259 breezy/builtins.py:3015 breezy/workingtree.py:243
 #, python-format
 msgid "Ignoring files outside view. View is %s"
 msgstr ""
 
-#: breezy/builtins.py:268
+#: breezy/builtins.py:269
 #, python-format
 msgid "brz %s --revision takes exactly one revision identifier"
 msgstr ""
 
-#: breezy/builtins.py:323
+#: breezy/builtins.py:324
 msgid "Display status summary."
 msgstr ""
 
-#: breezy/builtins.py:325
+#: breezy/builtins.py:326
 msgid ""
 "This reports on versioned and unknown files, reporting them\n"
 "grouped by state.  Possible states are:"
 msgstr ""
 
-#: breezy/builtins.py:328
+#: breezy/builtins.py:329
 msgid ""
 "added\n"
 "    Versioned in the working copy but not in the previous revision."
 msgstr ""
 
-#: breezy/builtins.py:331
+#: breezy/builtins.py:332
 msgid ""
 "removed\n"
 "    Versioned in the previous revision but removed or deleted\n"
 "    in the working copy."
 msgstr ""
 
-#: breezy/builtins.py:335
+#: breezy/builtins.py:336
 msgid ""
 "renamed\n"
 "    Path of this file changed from the previous revision;\n"
@@ -183,25 +183,25 @@ msgid ""
 "    parent directory was renamed."
 msgstr ""
 
-#: breezy/builtins.py:340
+#: breezy/builtins.py:341
 msgid ""
 "modified\n"
 "    Text has changed since the previous revision."
 msgstr ""
 
-#: breezy/builtins.py:343
+#: breezy/builtins.py:344
 msgid ""
 "kind changed\n"
 "    File kind has been changed (e.g. from file to directory)."
 msgstr ""
 
-#: breezy/builtins.py:346
+#: breezy/builtins.py:347
 msgid ""
 "unknown\n"
 "    Not versioned and not matching an ignore pattern."
 msgstr ""
 
-#: breezy/builtins.py:349
+#: breezy/builtins.py:350
 msgid ""
 "Additionally for directories, symlinks and files with a changed\n"
 "executable bit, Bazaar indicates their type using a trailing\n"
@@ -209,20 +209,20 @@ msgid ""
 "disabled using the '--no-classify' option."
 msgstr ""
 
-#: breezy/builtins.py:354
+#: breezy/builtins.py:355
 msgid ""
 "To see ignored files use 'brz ignored'.  For details on the\n"
 "changes to file texts, use 'brz diff'."
 msgstr ""
 
-#: breezy/builtins.py:357
+#: breezy/builtins.py:358
 msgid ""
 "Note that --short or -S gives status flags for each item, similar\n"
 "to Subversion's status command. To get output similar to svn -q,\n"
 "use brz status -SV."
 msgstr ""
 
-#: breezy/builtins.py:361
+#: breezy/builtins.py:362
 msgid ""
 "If no arguments are specified, the status of the entire working\n"
 "directory is shown.  Otherwise, only the status of the specified\n"
@@ -230,7 +230,7 @@ msgid ""
 "is reported for everything inside that directory."
 msgstr ""
 
-#: breezy/builtins.py:366
+#: breezy/builtins.py:367
 msgid ""
 "Before merges are committed, the pending merge tip revisions are\n"
 "shown. To see all pending merge revisions, use the -v option.\n"
@@ -238,13 +238,13 @@ msgid ""
 "the no-pending option or specify a file/directory."
 msgstr ""
 
-#: breezy/builtins.py:371
+#: breezy/builtins.py:372
 msgid ""
 "To compare the working directory to a specific revision, pass a\n"
 "single revision to the revision argument."
 msgstr ""
 
-#: breezy/builtins.py:374
+#: breezy/builtins.py:375
 msgid ""
 "To see which files have changed in a specific revision, or between\n"
 "two revisions, pass a revision range to the revision argument.\n"
@@ -252,132 +252,132 @@ msgid ""
 msgstr ""
 
 # help of 'short' option of 'status' command
-#: breezy/builtins.py:383
+#: breezy/builtins.py:384
 msgid "Use short status indicators."
 msgstr ""
 
 # help of 'versioned' option of 'status' command
-#: breezy/builtins.py:385
+#: breezy/builtins.py:386
 msgid "Only show versioned files."
 msgstr ""
 
 # help of 'no-pending' option of 'status' command
-#: breezy/builtins.py:387
+#: breezy/builtins.py:388
 msgid "Don't show pending merges."
 msgstr ""
 
 # help of 'no-classify' option of 'status' command
-#: breezy/builtins.py:389
+#: breezy/builtins.py:390
 msgid "Do not mark object type using indicator."
 msgstr ""
 
-#: breezy/builtins.py:404
+#: breezy/builtins.py:405
 msgid "brz status --revision takes exactly one or two revision specifiers"
 msgstr ""
 
-#: breezy/builtins.py:448 breezy/builtins.py:5298
+#: breezy/builtins.py:449 breezy/builtins.py:5251
 msgid "You can only supply one of revision_id or --revision"
 msgstr ""
 
-#: breezy/builtins.py:452 breezy/builtins.py:5301
+#: breezy/builtins.py:453 breezy/builtins.py:5254
 msgid "You must supply either --revision or a revision_id"
 msgstr ""
 
-#: breezy/builtins.py:459
+#: breezy/builtins.py:460
 #, python-format
 msgid "Repository %r does not support access to raw revision texts"
 msgstr ""
 
-#: breezy/builtins.py:470
+#: breezy/builtins.py:471
 #, python-brace-format
 msgid "The repository {0} contains no revision {1}."
 msgstr ""
 
-#: breezy/builtins.py:477
+#: breezy/builtins.py:478
 msgid "You cannot specify a NULL revision."
 msgstr ""
 
-#: breezy/builtins.py:483
+#: breezy/builtins.py:484
 msgid "Remove the working tree from a given branch/checkout."
 msgstr ""
 
-#: breezy/builtins.py:485
+#: breezy/builtins.py:486
 msgid ""
 "Since a lightweight checkout is little more than a working tree\n"
 "this will refuse to run against one."
 msgstr ""
 
-#: breezy/builtins.py:488
+#: breezy/builtins.py:489
 msgid "To re-create the working tree, use \"brz checkout\"."
 msgstr ""
 
 # help of 'force' option of 'remove-tree' command
-#: breezy/builtins.py:494
+#: breezy/builtins.py:495
 msgid "Remove the working tree even if it has uncommitted or shelved changes."
 msgstr ""
 
-#: breezy/builtins.py:509
+#: breezy/builtins.py:510
 msgid "No working tree to remove"
 msgstr ""
 
-#: breezy/builtins.py:512
+#: breezy/builtins.py:513
 msgid "You cannot remove the working tree of a remote path"
 msgstr ""
 
-#: breezy/builtins.py:522
+#: breezy/builtins.py:523
 msgid "You cannot remove the working tree from a lightweight checkout"
 msgstr ""
 
-#: breezy/builtins.py:563
+#: breezy/builtins.py:564
 msgid ""
 "The tree does not appear to be corrupt. You probably want \"brz revert\" "
 "instead. Use \"--force\" if you are sure you want to reset the working tree."
 msgstr ""
 
-#: breezy/builtins.py:574
+#: breezy/builtins.py:575
 msgid ""
 ", the header appears corrupt, try passing -r -1 to set the state to the last "
 "commit"
 msgstr ""
 
-#: breezy/builtins.py:579
+#: breezy/builtins.py:580
 #, python-brace-format
 msgid "failed to reset the tree state{0}"
 msgstr ""
 
-#: breezy/builtins.py:583
+#: breezy/builtins.py:584
 msgid "Show current revision number."
 msgstr ""
 
-#: breezy/builtins.py:585
+#: breezy/builtins.py:586
 msgid "This is equal to the number of revisions on this branch."
 msgstr ""
 
-#: breezy/builtins.py:599
+#: breezy/builtins.py:600
 msgid "--tree and --revision can not be used together"
 msgstr ""
 
-#: breezy/builtins.py:615
+#: breezy/builtins.py:616
 msgid "Revision numbers only make sense for single revisions, not ranges"
 msgstr ""
 
 # help of 'tree' option of 'revno' command
-#: breezy/builtins.py:638
+#: breezy/builtins.py:639
 msgid "Show revno of working tree."
 msgstr ""
 
-#: breezy/builtins.py:687
+#: breezy/builtins.py:688
 msgid "Add specified files or directories."
 msgstr ""
 
-#: breezy/builtins.py:689
+#: breezy/builtins.py:690
 msgid ""
 "In non-recursive mode, all the named items are added, regardless\n"
 "of whether they were previously ignored.  A warning is given if\n"
 "any of the named files are already versioned."
 msgstr ""
 
-#: breezy/builtins.py:693
+#: breezy/builtins.py:694
 msgid ""
 "In recursive mode (the default), files are treated the same way\n"
 "but the behaviour for directories is different.  Directories that\n"
@@ -388,19 +388,19 @@ msgid ""
 "directories.  If no names are given '.' is assumed."
 msgstr ""
 
-#: breezy/builtins.py:701
+#: breezy/builtins.py:702
 msgid ""
 "A warning will be printed when nested trees are encountered,\n"
 "unless they are explicitly ignored."
 msgstr ""
 
-#: breezy/builtins.py:704
+#: breezy/builtins.py:705
 msgid ""
 "Therefore simply saying 'brz add' will version all files that\n"
 "are currently unknown."
 msgstr ""
 
-#: breezy/builtins.py:707
+#: breezy/builtins.py:708
 msgid ""
 "Adding a file whose parent directory is not versioned will\n"
 "implicitly add the parent, and so on up to the root. This means\n"
@@ -408,13 +408,13 @@ msgid ""
 "get added when you add a file in the directory."
 msgstr ""
 
-#: breezy/builtins.py:712
+#: breezy/builtins.py:713
 msgid ""
 "--dry-run will show which files would be added, but not actually\n"
 "add them."
 msgstr ""
 
-#: breezy/builtins.py:715
+#: breezy/builtins.py:716
 msgid ""
 "--file-ids-from will try to use the file ids from the supplied path.\n"
 "It looks up ids trying to find a matching parent directory with the\n"
@@ -425,13 +425,13 @@ msgid ""
 "into a subdirectory of this one."
 msgstr ""
 
-#: breezy/builtins.py:723
+#: breezy/builtins.py:724
 msgid ""
 "Any files matching patterns in the ignore list will not be added\n"
 "unless they are explicitly mentioned."
 msgstr ""
 
-#: breezy/builtins.py:726
+#: breezy/builtins.py:727
 msgid ""
 "In recursive mode, files larger than the configuration option\n"
 "add.maximum_file_size will be skipped. Named items are never skipped due\n"
@@ -439,112 +439,112 @@ msgid ""
 msgstr ""
 
 # help of 'no-recurse' option of 'add' command
-#: breezy/builtins.py:733
+#: breezy/builtins.py:734
 msgid "Don't recursively add the contents of directories."
 msgstr ""
 
 # help of 'file-ids-from' option of 'add' command
-#: breezy/builtins.py:741
+#: breezy/builtins.py:742
 msgid "Lookup file ids from this tree."
 msgstr ""
 
-#: breezy/builtins.py:778
+#: breezy/builtins.py:779
 #, python-brace-format
 msgid "ignored {0} matching \"{1}\"\n"
 msgstr ""
 
-#: breezy/builtins.py:783
+#: breezy/builtins.py:784
 msgid "Create a new versioned directory."
 msgstr ""
 
-#: breezy/builtins.py:785
+#: breezy/builtins.py:786
 msgid "This is equivalent to creating the directory and then adding it."
 msgstr ""
 
 # help of 'parents' option of 'mkdir' command
-#: breezy/builtins.py:792
+#: breezy/builtins.py:793
 msgid "No error if existing, make parent directories as needed."
 msgstr ""
 
-#: breezy/builtins.py:826
+#: breezy/builtins.py:827
 #, python-format
 msgid "added %s\n"
 msgstr ""
 
-#: breezy/builtins.py:870
+#: breezy/builtins.py:871
 #, python-format
 msgid "invalid kind %r specified"
 msgstr ""
 
-#: breezy/builtins.py:908
+#: breezy/builtins.py:909
 msgid "Copy a file."
 msgstr ""
 
-#: breezy/builtins.py:910
+#: breezy/builtins.py:911
 msgid "    brz cp SOURCE... DESTINATION"
 msgstr ""
 
-#: breezy/builtins.py:912
+#: breezy/builtins.py:913
 msgid ""
 "If the last argument is a versioned directory, all the other names\n"
 "are copied into it.  Otherwise, there must be exactly two arguments\n"
 "and the file is copied to a new name."
 msgstr ""
 
-#: breezy/builtins.py:916
+#: breezy/builtins.py:917
 msgid ""
 "Files cannot be copied between branches. Only files can be copied\n"
 "at the moment."
 msgstr ""
 
-#: breezy/builtins.py:932 breezy/builtins.py:1025
+#: breezy/builtins.py:933 breezy/builtins.py:1026
 msgid "missing file argument"
 msgstr ""
 
-#: breezy/builtins.py:938
+#: breezy/builtins.py:939
 msgid "can not copy root of branch"
 msgstr ""
 
-#: breezy/builtins.py:946
+#: breezy/builtins.py:947
 msgid "to copy multiple files the destination must be a versioned directory"
 msgstr ""
 
-#: breezy/builtins.py:960 breezy/builtins.py:976
+#: breezy/builtins.py:961 breezy/builtins.py:977
 #, python-format
 msgid "Could not copy %s => %s: %s is not versioned."
 msgstr ""
 
-#: breezy/builtins.py:964
+#: breezy/builtins.py:965
 #, python-format
 msgid "Could not copy %s => %s . %s is not versioned\\."
 msgstr ""
 
-#: breezy/builtins.py:968
+#: breezy/builtins.py:969
 #, python-format
 msgid "Could not copy %s => %s . %s is a directory."
 msgstr ""
 
-#: breezy/builtins.py:980
+#: breezy/builtins.py:981
 #, python-format
 msgid "Could not copy to %s: %s is not a directory."
 msgstr ""
 
-#: breezy/builtins.py:987
+#: breezy/builtins.py:988
 msgid "Move or rename a file."
 msgstr ""
 
-#: breezy/builtins.py:989
+#: breezy/builtins.py:990
 msgid "    brz mv SOURCE... DESTINATION"
 msgstr ""
 
-#: breezy/builtins.py:991
+#: breezy/builtins.py:992
 msgid ""
 "If the last argument is a versioned directory, all the other names\n"
 "are moved into it.  Otherwise, there must be exactly two arguments\n"
 "and the file is changed to a new name."
 msgstr ""
 
-#: breezy/builtins.py:995
+#: breezy/builtins.py:996
 msgid ""
 "If OLDNAME does not exist on the filesystem but is versioned and\n"
 "NEWNAME does exist on the filesystem but is not versioned, mv\n"
@@ -553,52 +553,52 @@ msgid ""
 "The same is valid when moving many SOURCE files to a DESTINATION."
 msgstr ""
 
-#: breezy/builtins.py:1001
+#: breezy/builtins.py:1002
 msgid "Files cannot be moved between branches."
 msgstr ""
 
 # help of 'after' option of 'mv' command
-#: breezy/builtins.py:1008
+#: breezy/builtins.py:1009
 msgid ""
 "Move only the brz identifier of the file, because the file has already been "
 "moved."
 msgstr ""
 
 # help of 'auto' option of 'mv' command
-#: breezy/builtins.py:1010
+#: breezy/builtins.py:1011
 msgid "Automatically guess renames."
 msgstr ""
 
 # help of 'dry-run' option of 'mv' command
-#: breezy/builtins.py:1012
+#: breezy/builtins.py:1013
 msgid "Avoid making changes when guessing renames."
 msgstr ""
 
-#: breezy/builtins.py:1021
+#: breezy/builtins.py:1022
 msgid "--dry-run requires --auto."
 msgstr ""
 
-#: breezy/builtins.py:1031
+#: breezy/builtins.py:1032
 msgid "can not move root of branch"
 msgstr ""
 
-#: breezy/builtins.py:1038
+#: breezy/builtins.py:1039
 msgid "Only one path may be specified to --auto."
 msgstr ""
 
-#: breezy/builtins.py:1041
+#: breezy/builtins.py:1042
 msgid "--after cannot be specified with --auto."
 msgstr ""
 
-#: breezy/builtins.py:1077
+#: breezy/builtins.py:1078
 msgid "to mv multiple files the destination must be a versioned directory"
 msgstr ""
 
-#: breezy/builtins.py:1130
+#: breezy/builtins.py:1131
 msgid "Turn this branch into a mirror of another branch."
 msgstr ""
 
-#: breezy/builtins.py:1132
+#: breezy/builtins.py:1133
 msgid ""
 "By default, this command only works on branches that have not diverged.\n"
 "Branches are considered diverged if the destination branch's most recent\n"
@@ -606,21 +606,21 @@ msgid ""
 "parent."
 msgstr ""
 
-#: breezy/builtins.py:1137
+#: breezy/builtins.py:1138
 msgid ""
 "If branches have diverged, you can use 'brz merge' to integrate the changes\n"
 "from one into the other.  Once one branch has merged, the other should\n"
 "be able to pull it again."
 msgstr ""
 
-#: breezy/builtins.py:1141
+#: breezy/builtins.py:1142
 msgid ""
 "If you want to replace your local changes and just want your branch to\n"
 "match the remote one, use pull --overwrite. This will work even if the two\n"
 "branches have diverged."
 msgstr ""
 
-#: breezy/builtins.py:1145
+#: breezy/builtins.py:1146
 msgid ""
 "If there is no default location set, the first pull will set it (use\n"
 "--no-remember to avoid setting it). After that, you can omit the\n"
@@ -628,14 +628,14 @@ msgid ""
 "value will only be saved if the remote location can be accessed."
 msgstr ""
 
-#: breezy/builtins.py:1150
+#: breezy/builtins.py:1151
 msgid ""
 "The --verbose option will display the revisions pulled using the log_format\n"
 "configuration option. You can use a different format by overriding it with\n"
 "-Olog_format=<other_format>."
 msgstr ""
 
-#: breezy/builtins.py:1154
+#: breezy/builtins.py:1155
 msgid ""
 "Note: The location can be specified either in the form of a branch,\n"
 "or in the form of a path to a file containing a merge directive generated\n"
@@ -643,77 +643,77 @@ msgid ""
 msgstr ""
 
 # help of 'verbose' option of 'pull' command
-#: breezy/builtins.py:1162
+#: breezy/builtins.py:1163
 msgid "Show logs of pulled revisions."
 msgstr ""
 
 # help of 'directory' option of 'pull' command
-#: breezy/builtins.py:1164
+#: breezy/builtins.py:1165
 msgid ""
 "Branch to pull into, rather than the one containing the working directory."
 msgstr ""
 
 # help of 'local' option of 'pull' command
-#: breezy/builtins.py:1167
+#: breezy/builtins.py:1168
 msgid ""
 "Perform a local pull in a bound branch.  Local pulls are not applied to the "
 "master branch."
 msgstr ""
 
-#: breezy/builtins.py:1204
+#: breezy/builtins.py:1205
 msgid "No working tree, ignoring --show-base"
 msgstr ""
 
-#: breezy/builtins.py:1220
+#: breezy/builtins.py:1221
 msgid "No pull location known or specified."
 msgstr ""
 
-#: breezy/builtins.py:1227
+#: breezy/builtins.py:1228
 #, python-format
 msgid "Using saved parent location: %s\n"
 msgstr ""
 
-#: breezy/builtins.py:1234 breezy/builtins.py:4494
+#: breezy/builtins.py:1235 breezy/builtins.py:4449
 msgid "Cannot use -r with merge directives or bundles"
 msgstr ""
 
-#: breezy/builtins.py:1277
+#: breezy/builtins.py:1278
 msgid "Update a mirror of this branch."
 msgstr ""
 
-#: breezy/builtins.py:1279
+#: breezy/builtins.py:1280
 msgid ""
 "The target branch will not have its working tree populated because this\n"
 "is both expensive, and is not supported on remote file systems."
 msgstr ""
 
-#: breezy/builtins.py:1282
+#: breezy/builtins.py:1283
 msgid ""
 "Some smart servers or protocols *may* put the working tree in place in\n"
 "the future."
 msgstr ""
 
-#: breezy/builtins.py:1285
+#: breezy/builtins.py:1286
 msgid ""
 "This command only works on branches that have not diverged.  Branches are\n"
 "considered diverged if the destination branch's most recent commit is one\n"
 "that has not been merged (directly or indirectly) by the source branch."
 msgstr ""
 
-#: breezy/builtins.py:1289
+#: breezy/builtins.py:1290
 msgid ""
 "If branches have diverged, you can use 'brz push --overwrite' to replace\n"
 "the other branch completely, discarding its unmerged changes."
 msgstr ""
 
-#: breezy/builtins.py:1292
+#: breezy/builtins.py:1293
 msgid ""
 "If you want to ensure you have the different changes in the other branch,\n"
 "do a merge (see brz help merge) from the other branch, and commit that.\n"
 "After that you will be able to do a push without '--overwrite'."
 msgstr ""
 
-#: breezy/builtins.py:1296
+#: breezy/builtins.py:1297
 msgid ""
 "If there is no default push location set, the first push will set it (use\n"
 "--no-remember to avoid setting it).  After that, you can omit the\n"
@@ -721,7 +721,7 @@ msgid ""
 "value will only be saved if the remote location can be accessed."
 msgstr ""
 
-#: breezy/builtins.py:1301
+#: breezy/builtins.py:1302
 msgid ""
 "The --verbose option will display the revisions pushed using the log_format\n"
 "configuration option. You can use a different format by overriding it with\n"
@@ -729,27 +729,27 @@ msgid ""
 msgstr ""
 
 # help of 'directory' option of 'push' command
-#: breezy/builtins.py:1312
+#: breezy/builtins.py:1313
 msgid ""
 "Branch to push from, rather than the one containing the working directory."
 msgstr ""
 
 # help of 'use-existing-dir' option of 'push' command
-#: breezy/builtins.py:1315
+#: breezy/builtins.py:1316
 msgid ""
 "By default push will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow push to proceed."
 msgstr ""
 
 # help of 'stacked' option of 'push' command
-#: breezy/builtins.py:1320
+#: breezy/builtins.py:1321
 msgid ""
 "Create a stacked branch that references the public location of the parent "
 "branch."
 msgstr ""
 
 # help of 'stacked-on' option of 'push' command
-#: breezy/builtins.py:1323
+#: breezy/builtins.py:1324
 msgid ""
 "Create a stacked branch that refers to another branch for the commit "
 "history. Only the work not present in the referenced branch is included in "
@@ -757,55 +757,55 @@ msgid ""
 msgstr ""
 
 # help of 'strict' option of 'push' command
-#: breezy/builtins.py:1328
+#: breezy/builtins.py:1329
 msgid ""
 "Refuse to push if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
 
 # help of 'no-tree' option of 'push' command
-#: breezy/builtins.py:1331
+#: breezy/builtins.py:1332
 msgid "Don't populate the working tree, even for protocols that support it."
 msgstr ""
 
 # help of 'overwrite-tags' option of 'pull' command
 # help of 'overwrite-tags' option of 'push' command
-#: breezy/builtins.py:1334
+#: breezy/builtins.py:1335
 msgid "Overwrite tags only."
 msgstr ""
 
 # help of 'lossy' option of 'push' command
-#: breezy/builtins.py:1335
+#: breezy/builtins.py:1336
 msgid ""
 "Allow lossy push, i.e. dropping metadata that can't be represented in the "
 "target."
 msgstr ""
 
-#: breezy/builtins.py:1387
+#: breezy/builtins.py:1388
 msgid "Could not determine branch to refer to."
 msgstr ""
 
-#: breezy/builtins.py:1396
+#: breezy/builtins.py:1397
 #, python-format
 msgid ""
 "No push location known or specified. To push to the parent branch (at %s), "
 "use 'brz push :parent'."
 msgstr ""
 
-#: breezy/builtins.py:1402
+#: breezy/builtins.py:1403
 msgid "No push location known or specified."
 msgstr ""
 
-#: breezy/builtins.py:1406
+#: breezy/builtins.py:1407
 #, python-format
 msgid "Using saved push location: %s"
 msgstr ""
 
-#: breezy/builtins.py:1417
+#: breezy/builtins.py:1418
 msgid "Create a new branch that is a copy of an existing branch."
 msgstr ""
 
-#: breezy/builtins.py:1419
+#: breezy/builtins.py:1420
 msgid ""
 "If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will\n"
 "be used.  In other words, \"branch ../foo/bar\" will attempt to create ./"
@@ -816,113 +816,113 @@ msgid ""
 "create ./foo-bar."
 msgstr ""
 
-#: breezy/builtins.py:1426
+#: breezy/builtins.py:1427
 msgid ""
 "To retrieve the branch as of a particular revision, supply the --revision\n"
 "parameter, as in \"branch foo/bar -r 5\"."
 msgstr ""
 
 # help of 'no-tree' option of 'branch' command
-#: breezy/builtins.py:1438
+#: breezy/builtins.py:1439
 msgid "Create a branch without a working-tree."
 msgstr ""
 
 # help of 'switch' option of 'branch' command
-#: breezy/builtins.py:1440
+#: breezy/builtins.py:1441
 msgid "Switch the checkout in the current directory to the new branch."
 msgstr ""
 
 # help of 'stacked' option of 'branch' command
-#: breezy/builtins.py:1443
+#: breezy/builtins.py:1444
 msgid ""
 "Create a stacked branch referring to the source branch. The new branch will "
 "depend on the availability of the source branch for all operations."
 msgstr ""
 
 # help of 'standalone' option of 'branch' command
-#: breezy/builtins.py:1447
+#: breezy/builtins.py:1448
 msgid "Do not use a shared repository, even if available."
 msgstr ""
 
 # help of 'use-existing-dir' option of 'branch' command
-#: breezy/builtins.py:1449
+#: breezy/builtins.py:1450
 msgid ""
 "By default branch will fail if the target directory exists, but does not "
 "already have a control directory.  This flag will allow branch to proceed."
 msgstr ""
 
 # help of 'bind' option of 'branch' command
-#: breezy/builtins.py:1454
+#: breezy/builtins.py:1455
 msgid "Bind new branch to from location."
 msgstr ""
 
-#: breezy/builtins.py:1491
+#: breezy/builtins.py:1492
 #, python-format
 msgid "Target directory \"%s\" already exists."
 msgstr ""
 
-#: breezy/builtins.py:1503
+#: breezy/builtins.py:1504
 #, python-format
 msgid "Parent of \"%s\" does not exist."
 msgstr ""
 
-#: breezy/builtins.py:1521
+#: breezy/builtins.py:1522
 #, python-brace-format
 msgid "The branch {0} has no revision {1}."
 msgstr ""
 
-#: breezy/builtins.py:1537 breezy/push.py:54
+#: breezy/builtins.py:1538 breezy/push.py:54
 #, python-format
 msgid "Created new stacked branch referring to %s."
 msgstr ""
 
-#: breezy/builtins.py:1543
+#: breezy/builtins.py:1544
 #, python-format
 msgid "Branched %d revision."
 msgid_plural "Branched %d revisions."
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/builtins.py:1547 breezy/push.py:57
+#: breezy/builtins.py:1548 breezy/push.py:57
 msgid "Created new branch."
 msgstr ""
 
-#: breezy/builtins.py:1552
+#: breezy/builtins.py:1553
 #, python-format
 msgid "New branch bound to %s"
 msgstr ""
 
-#: breezy/builtins.py:1557 breezy/builtins.py:6368
+#: breezy/builtins.py:1558
 #, python-format
 msgid "Switched to branch: %s"
 msgstr ""
 
-#: breezy/builtins.py:1562
+#: breezy/builtins.py:1563
 msgid "List the branches available at the current location."
 msgstr ""
 
-#: breezy/builtins.py:1564
+#: breezy/builtins.py:1565
 msgid ""
 "This command will print the names of all the branches at the current\n"
 "location."
 msgstr ""
 
 # help of 'recursive' option of 'branches' command
-#: breezy/builtins.py:1571
+#: breezy/builtins.py:1572
 msgid ""
 "Recursively scan for branches rather than just looking in the specified "
 "location."
 msgstr ""
 
-#: breezy/builtins.py:1600
+#: breezy/builtins.py:1601
 msgid "(default)"
 msgstr ""
 
-#: breezy/builtins.py:1612
+#: breezy/builtins.py:1613
 msgid "Create a new checkout of an existing branch."
 msgstr ""
 
-#: breezy/builtins.py:1614
+#: breezy/builtins.py:1615
 msgid ""
 "If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree\n"
 "for the branch found in '.'. This is useful if you have removed the working\n"
@@ -930,7 +930,7 @@ msgid ""
 "current location using SFTP."
 msgstr ""
 
-#: breezy/builtins.py:1619
+#: breezy/builtins.py:1620
 msgid ""
 "If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION\n"
 "will be used.  In other words, \"checkout ../foo/bar\" will attempt to "
@@ -942,7 +942,7 @@ msgid ""
 "attempt to create ./foo-bar."
 msgstr ""
 
-#: breezy/builtins.py:1626
+#: breezy/builtins.py:1627
 msgid ""
 "To retrieve the branch as of a particular revision, supply the --revision\n"
 "parameter, as in \"checkout foo/bar -r 5\". Note that this will be\n"
@@ -951,7 +951,7 @@ msgid ""
 msgstr ""
 
 # help of 'lightweight' option of 'checkout' command
-#: breezy/builtins.py:1636
+#: breezy/builtins.py:1637
 msgid ""
 "Perform a lightweight checkout.  Lightweight checkouts depend on access to "
 "the branch for every operation.  Normal checkouts can perform common "
@@ -961,40 +961,40 @@ msgstr ""
 
 # help of 'files-from' option of 'branch' command
 # help of 'files-from' option of 'checkout' command
-#: breezy/builtins.py:1643
+#: breezy/builtins.py:1644
 msgid "Get file contents from this tree."
 msgstr ""
 
 # help of 'hardlink' option of 'branch' command
 # help of 'hardlink' option of 'checkout' command
-#: breezy/builtins.py:1645
+#: breezy/builtins.py:1646
 msgid "Hard-link working tree files where possible."
 msgstr ""
 
-#: breezy/builtins.py:1685
+#: breezy/builtins.py:1686
 msgid ""
 "Show list of renamed files.\n"
 "    "
 msgstr ""
 
-#: breezy/builtins.py:1713
+#: breezy/builtins.py:1714
 msgid "Update a working tree to a new revision."
 msgstr ""
 
-#: breezy/builtins.py:1715
+#: breezy/builtins.py:1716
 msgid ""
 "This will perform a merge of the destination revision (the tip of the\n"
 "branch, or the specified revision) into the working tree, and then make\n"
 "that revision the basis revision for the working tree."
 msgstr ""
 
-#: breezy/builtins.py:1719
+#: breezy/builtins.py:1720
 msgid ""
 "You can use this to visit an older revision, or to update a working tree\n"
 "that is out of date from its branch."
 msgstr ""
 
-#: breezy/builtins.py:1722
+#: breezy/builtins.py:1723
 msgid ""
 "If there are any uncommitted changes in the tree, they will be carried\n"
 "across and remain as uncommitted changes after the update.  To discard\n"
@@ -1002,13 +1002,13 @@ msgid ""
 "with the changes brought in by the change in basis revision."
 msgstr ""
 
-#: breezy/builtins.py:1727
+#: breezy/builtins.py:1728
 msgid ""
 "If the tree's branch is bound to a master branch, brz will also update\n"
 "the branch from the master."
 msgstr ""
 
-#: breezy/builtins.py:1730
+#: breezy/builtins.py:1731
 msgid ""
 "You cannot update just a single file or directory, because each Bazaar\n"
 "working tree has just a single basis revision.  If you want to restore a\n"
@@ -1018,103 +1018,103 @@ msgid ""
 "out the old content of that file to a new location."
 msgstr ""
 
-#: breezy/builtins.py:1737
+#: breezy/builtins.py:1738
 msgid ""
 "The 'dir' argument, if given, must be the location of the root of a\n"
 "working tree to update.  By default, the working tree that contains the\n"
 "current working directory is used."
 msgstr ""
 
-#: breezy/builtins.py:1753
+#: breezy/builtins.py:1754
 msgid "brz update --revision takes exactly one revision"
 msgstr ""
 
-#: breezy/builtins.py:1761
+#: breezy/builtins.py:1762
 msgid "brz update can only update a whole tree, not a file or subdirectory"
 msgstr ""
 
-#: breezy/builtins.py:1792
+#: breezy/builtins.py:1793
 #, python-brace-format
 msgid "Tree is up to date at revision {0} of branch {1}"
 msgstr ""
 
-#: breezy/builtins.py:1808
+#: breezy/builtins.py:1809
 #, python-format
 msgid ""
 "branch has no revision %s\n"
 "brz update --revision only works for a revision in the branch history"
 msgstr ""
 
-#: breezy/builtins.py:1814
+#: breezy/builtins.py:1815
 #, python-brace-format
 msgid "Updated to revision {0} of branch {1}"
 msgstr ""
 
-#: breezy/builtins.py:1818
+#: breezy/builtins.py:1819
 msgid ""
 "Your local commits will now show as pending merges with 'brz status', and "
 "can be committed with 'brz commit'."
 msgstr ""
 
-#: breezy/builtins.py:1827
+#: breezy/builtins.py:1828
 msgid "Show information about a working tree, branch or repository."
 msgstr ""
 
-#: breezy/builtins.py:1829
+#: breezy/builtins.py:1830
 msgid ""
 "This command will show all known locations and formats associated to the\n"
 "tree, branch or repository."
 msgstr ""
 
-#: breezy/builtins.py:1832
+#: breezy/builtins.py:1833
 msgid ""
 "In verbose mode, statistical information is included with each report.\n"
 "To see extended statistic information, use a verbosity level of 2 or\n"
 "higher by specifying the verbose option multiple times, e.g. -vv."
 msgstr ""
 
-#: breezy/builtins.py:1836
+#: breezy/builtins.py:1837
 msgid "Branches and working trees will also report any missing revisions."
 msgstr ""
 
-#: breezy/builtins.py:1838 breezy/builtins.py:3795 breezy/builtins.py:4962
-#: breezy/builtins.py:6559 breezy/plugins/fastimport/cmds.py:211
-#: breezy/plugins/fastimport/cmds.py:417
+#: breezy/builtins.py:1839 breezy/builtins.py:3750 breezy/builtins.py:4917
+#: breezy/builtins.py:6519 breezy/plugins/fastimport/cmds.py:211
+#: breezy/plugins/fastimport/cmds.py:417 breezy/plugins/propose/cmds.py:274
 msgid ":Examples:"
 msgstr ""
 
-#: breezy/builtins.py:1840
+#: breezy/builtins.py:1841
 msgid "  Display information on the format and related locations:"
 msgstr ""
 
-#: breezy/builtins.py:1842
+#: breezy/builtins.py:1843
 msgid "    brz info"
 msgstr ""
 
-#: breezy/builtins.py:1844
+#: breezy/builtins.py:1845
 msgid ""
 "  Display the above together with extended format information and\n"
 "  basic statistics (like the number of files in the working tree and\n"
 "  number of revisions in the branch and repository):"
 msgstr ""
 
-#: breezy/builtins.py:1848
+#: breezy/builtins.py:1849
 msgid "    brz info -v"
 msgstr ""
 
-#: breezy/builtins.py:1850
+#: breezy/builtins.py:1851
 msgid "  Display the above together with number of committers to the branch:"
 msgstr ""
 
-#: breezy/builtins.py:1852
+#: breezy/builtins.py:1853
 msgid "    brz info -vv"
 msgstr ""
 
-#: breezy/builtins.py:1871
+#: breezy/builtins.py:1872
 msgid "Remove files or directories."
 msgstr ""
 
-#: breezy/builtins.py:1873
+#: breezy/builtins.py:1874
 msgid ""
 "This makes Bazaar stop tracking changes to the specified files. Bazaar will\n"
 "delete them if they can easily be recovered using revert otherwise they\n"
@@ -1124,44 +1124,44 @@ msgid ""
 msgstr ""
 
 # help of 'new' option of 'remove' command
-#: breezy/builtins.py:1882
+#: breezy/builtins.py:1883
 msgid "Only remove files that have never been committed."
 msgstr ""
 
 # help of 'file-deletion-strategy' option of 'remove' command
-#: breezy/builtins.py:1884
+#: breezy/builtins.py:1885
 msgid "The file deletion mode to be used."
 msgstr ""
 
 # title of 'file-deletion-strategy' option of 'remove' command
-#: breezy/builtins.py:1885
+#: breezy/builtins.py:1886
 msgid "Deletion Strategy"
 msgstr ""
 
 # help of 'file-deletion-strategy=safe' option of 'remove' command
-#: breezy/builtins.py:1886
+#: breezy/builtins.py:1887
 msgid "Backup changed files (default)."
 msgstr ""
 
 # help of 'file-deletion-strategy=keep' option of 'remove' command
-#: breezy/builtins.py:1887
+#: breezy/builtins.py:1888
 msgid "Delete from brz but leave the working copy."
 msgstr ""
 
 # help of 'file-deletion-strategy=no-backup' option of 'remove' command
-#: breezy/builtins.py:1888
+#: breezy/builtins.py:1889
 msgid "Don't backup changed files."
 msgstr ""
 
-#: breezy/builtins.py:1909
+#: breezy/builtins.py:1910
 msgid "No matching files."
 msgstr ""
 
-#: breezy/builtins.py:1970
+#: breezy/builtins.py:1927
 msgid "Reconcile brz metadata in a branch."
 msgstr ""
 
-#: breezy/builtins.py:1972
+#: breezy/builtins.py:1929
 msgid ""
 "This can correct data mismatches that may have been caused by\n"
 "previous ghost operations or brz upgrades. You should only\n"
@@ -1169,7 +1169,7 @@ msgid ""
 "advises you to run it."
 msgstr ""
 
-#: breezy/builtins.py:1977
+#: breezy/builtins.py:1934
 msgid ""
 "If a second branch is provided, cross-branch reconciliation is\n"
 "also attempted, which will check that data like the tree root\n"
@@ -1177,20 +1177,20 @@ msgid ""
 "correctly in both branches."
 msgstr ""
 
-#: breezy/builtins.py:1982
+#: breezy/builtins.py:1939
 msgid ""
 "At the same time it is run it may recompress data resulting in\n"
 "a potential saving in disk space or performance gain."
 msgstr ""
 
-#: breezy/builtins.py:1985
+#: breezy/builtins.py:1942
 msgid "The branch *MUST* be on a listable system such as local disk or sftp."
 msgstr ""
 
 # help of 'format=git-bare' option of 'init' command
 # help of 'format=git-bare' option of 'init-repository' command
 # help of 'format=git-bare' option of 'upgrade' command
-#: breezy/builtins.py:2052 breezy/builtins.py:2173 breezy/builtins.py:3830
+#: breezy/builtins.py:2009 breezy/builtins.py:2130 breezy/builtins.py:3785
 msgid "Bare GIT repository (no working tree)."
 msgstr ""
 
@@ -1203,28 +1203,28 @@ msgstr ""
 # help of 'format=2a' option of 'upgrade' command
 # help of 'format=bzr' option of 'upgrade' command
 # help of 'format=default' option of 'upgrade' command
-#: breezy/builtins.py:2052 breezy/builtins.py:2173 breezy/builtins.py:3830
+#: breezy/builtins.py:2009 breezy/builtins.py:2130 breezy/builtins.py:3785
 msgid "Format for the bzr 2.0 series.\n"
 msgstr ""
 
 # help of 'format=git' option of 'init' command
 # help of 'format=git' option of 'init-repository' command
 # help of 'format=git' option of 'upgrade' command
-#: breezy/builtins.py:2052 breezy/builtins.py:2173 breezy/builtins.py:3830
+#: breezy/builtins.py:2009 breezy/builtins.py:2130 breezy/builtins.py:3785
 msgid "GIT repository."
 msgstr ""
 
-#: breezy/builtins.py:2053
+#: breezy/builtins.py:2010
 msgid "Make a directory into a versioned branch."
 msgstr ""
 
-#: breezy/builtins.py:2055
+#: breezy/builtins.py:2012
 msgid ""
 "Use this to create an empty branch, or before importing an\n"
 "existing project."
 msgstr ""
 
-#: breezy/builtins.py:2058
+#: breezy/builtins.py:2015
 msgid ""
 "If there is a repository in a parent directory of the location, then\n"
 "the history of the branch will be stored in the repository.  Otherwise\n"
@@ -1232,17 +1232,17 @@ msgid ""
 "in the .bzr directory."
 msgstr ""
 
-#: breezy/builtins.py:2063
+#: breezy/builtins.py:2020
 msgid ""
 "If there is already a branch at the location but it has no working tree,\n"
 "the tree can be populated with 'brz checkout'."
 msgstr ""
 
-#: breezy/builtins.py:2066
+#: breezy/builtins.py:2023
 msgid "Recipe for importing a tree of files::"
 msgstr ""
 
-#: breezy/builtins.py:2068
+#: breezy/builtins.py:2025
 msgid ""
 "    cd ~/project\n"
 "    brz init\n"
@@ -1253,52 +1253,52 @@ msgstr ""
 
 # help of 'create-prefix' option of 'init' command
 # help of 'create-prefix' option of 'push' command
-#: breezy/builtins.py:2079
+#: breezy/builtins.py:2036
 msgid "Create the path leading up to the branch if it does not already exist."
 msgstr ""
 
 # help of 'format' option of 'init' command
-#: breezy/builtins.py:2082
+#: breezy/builtins.py:2039
 msgid "Specify a format for this branch. See \"help formats\" for a full list."
 msgstr ""
 
 # help of 'append-revisions-only' option of 'init' command
-#: breezy/builtins.py:2091
+#: breezy/builtins.py:2048
 msgid "Never change revnos or the existing log.  Append revisions to it only."
 msgstr ""
 
 # help of 'no-tree' option of 'init' command
-#: breezy/builtins.py:2094
+#: breezy/builtins.py:2051
 msgid "Create a branch without a working tree."
 msgstr ""
 
-#: breezy/builtins.py:2115 breezy/push.py:112
+#: breezy/builtins.py:2072 breezy/push.py:112
 #, python-format
 msgid ""
 "Parent directory of %s does not exist.\n"
 "You may supply --create-prefix to create all leading parent directories."
 msgstr ""
 
-#: breezy/builtins.py:2150
+#: breezy/builtins.py:2107
 msgid ""
 "This branch format cannot be set to append-revisions-only.  Try --default."
 msgstr ""
 
-#: breezy/builtins.py:2161
+#: breezy/builtins.py:2118
 #, python-brace-format
 msgid "Created a {0} (format: {1})\n"
 msgstr ""
 
-#: breezy/builtins.py:2170
+#: breezy/builtins.py:2127
 #, python-format
 msgid "Using shared repository: %s\n"
 msgstr ""
 
-#: breezy/builtins.py:2174
+#: breezy/builtins.py:2131
 msgid "Create a shared repository for branches to share storage space."
 msgstr ""
 
-#: breezy/builtins.py:2176
+#: breezy/builtins.py:2133
 msgid ""
 "New branches created under the repository directory will store their\n"
 "revisions in the repository, not in the branch directory.  For branches\n"
@@ -1306,7 +1306,7 @@ msgid ""
 "speeds up the creation of new branches."
 msgstr ""
 
-#: breezy/builtins.py:2181
+#: breezy/builtins.py:2138
 msgid ""
 "If the --no-trees option is given then the branches in the repository\n"
 "will not have working trees by default.  They will still exist as\n"
@@ -1316,23 +1316,23 @@ msgid ""
 "branches, such as on a server."
 msgstr ""
 
-#: breezy/builtins.py:2188
+#: breezy/builtins.py:2145
 msgid ""
 ":Examples:\n"
 "    Create a shared repository holding just branches::"
 msgstr ""
 
-#: breezy/builtins.py:2191
+#: breezy/builtins.py:2148
 msgid ""
 "        brz init-repo --no-trees repo\n"
 "        brz init repo/trunk"
 msgstr ""
 
-#: breezy/builtins.py:2194
+#: breezy/builtins.py:2151
 msgid "    Make a lightweight checkout elsewhere::"
 msgstr ""
 
-#: breezy/builtins.py:2196
+#: breezy/builtins.py:2153
 msgid ""
 "        brz checkout --lightweight repo/trunk trunk-checkout\n"
 "        cd trunk-checkout\n"
@@ -1340,27 +1340,27 @@ msgid ""
 msgstr ""
 
 # help of 'format' option of 'init-repository' command
-#: breezy/builtins.py:2204
+#: breezy/builtins.py:2161
 msgid ""
 "Specify a format for this repository. See \"brz help formats\" for details."
 msgstr ""
 
 # title of 'format' option of 'init-repository' command
 # title of 'format' option of 'fast-import' command
-#: breezy/builtins.py:2210 breezy/plugins/fastimport/cmds.py:287
+#: breezy/builtins.py:2167 breezy/plugins/fastimport/cmds.py:287
 msgid "Repository format"
 msgstr ""
 
 # help of 'no-trees' option of 'init-repository' command
-#: breezy/builtins.py:2212
+#: breezy/builtins.py:2169
 msgid "Branches in the repository will default to not having a working tree."
 msgstr ""
 
-#: breezy/builtins.py:2243
+#: breezy/builtins.py:2200
 msgid "Show differences in the working tree, between revisions or branches."
 msgstr ""
 
-#: breezy/builtins.py:2245
+#: breezy/builtins.py:2202
 msgid ""
 "If no arguments are given, all changes for the current tree are listed.\n"
 "If files are given, only the changes in those files are listed.\n"
@@ -1370,13 +1370,13 @@ msgid ""
 "given."
 msgstr ""
 
-#: breezy/builtins.py:2252
+#: breezy/builtins.py:2209
 msgid ""
 "\"brz diff -p1\" is equivalent to \"brz diff --prefix old/:new/\", and\n"
 "produces patches suitable for \"patch -p1\"."
 msgstr ""
 
-#: breezy/builtins.py:2255
+#: breezy/builtins.py:2212
 msgid ""
 "Note that when using the -r argument with a range of revisions, the\n"
 "differences are computed between the two specified revisions.  That\n"
@@ -1386,7 +1386,7 @@ msgid ""
 "in the range."
 msgstr ""
 
-#: breezy/builtins.py:2262
+#: breezy/builtins.py:2219
 msgid ""
 ":Exit values:\n"
 "    1 - changed\n"
@@ -1395,209 +1395,209 @@ msgid ""
 "    0 - no change"
 msgstr ""
 
-#: breezy/builtins.py:2268
+#: breezy/builtins.py:2225
 msgid ""
 ":Examples:\n"
 "    Shows the difference in the working tree versus the last commit::"
 msgstr ""
 
-#: breezy/builtins.py:2271
+#: breezy/builtins.py:2228
 msgid "        brz diff"
 msgstr ""
 
-#: breezy/builtins.py:2273
+#: breezy/builtins.py:2230
 msgid "    Difference between the working tree and revision 1::"
 msgstr ""
 
-#: breezy/builtins.py:2275
+#: breezy/builtins.py:2232
 msgid "        brz diff -r1"
 msgstr ""
 
-#: breezy/builtins.py:2277
+#: breezy/builtins.py:2234
 msgid "    Difference between revision 3 and revision 1::"
 msgstr ""
 
-#: breezy/builtins.py:2279
+#: breezy/builtins.py:2236
 msgid "        brz diff -r1..3"
 msgstr ""
 
-#: breezy/builtins.py:2281
+#: breezy/builtins.py:2238
 msgid "    Difference between revision 3 and revision 1 for branch xxx::"
 msgstr ""
 
-#: breezy/builtins.py:2283
+#: breezy/builtins.py:2240
 msgid "        brz diff -r1..3 xxx"
 msgstr ""
 
-#: breezy/builtins.py:2285
+#: breezy/builtins.py:2242
 msgid "    The changes introduced by revision 2 (equivalent to -r1..2)::"
 msgstr ""
 
-#: breezy/builtins.py:2287
+#: breezy/builtins.py:2244
 msgid "        brz diff -c2"
 msgstr ""
 
-#: breezy/builtins.py:2289
+#: breezy/builtins.py:2246
 msgid "    To see the changes introduced by revision X::"
 msgstr ""
 
-#: breezy/builtins.py:2291
+#: breezy/builtins.py:2248
 msgid "        brz diff -cX"
 msgstr ""
 
-#: breezy/builtins.py:2293
+#: breezy/builtins.py:2250
 msgid ""
 "    Note that in the case of a merge, the -c option shows the changes\n"
 "    compared to the left hand parent. To see the changes against\n"
 "    another parent, use::"
 msgstr ""
 
-#: breezy/builtins.py:2297
+#: breezy/builtins.py:2254
 msgid "        brz diff -r<chosen_parent>..X"
 msgstr ""
 
-#: breezy/builtins.py:2299
+#: breezy/builtins.py:2256
 msgid ""
 "    The changes between the current revision and the previous revision\n"
 "    (equivalent to -c-1 and -r-2..-1)"
 msgstr ""
 
-#: breezy/builtins.py:2302
+#: breezy/builtins.py:2259
 msgid "        brz diff -r-2.."
 msgstr ""
 
-#: breezy/builtins.py:2304
+#: breezy/builtins.py:2261
 msgid "    Show just the differences for file NEWS::"
 msgstr ""
 
-#: breezy/builtins.py:2306
+#: breezy/builtins.py:2263
 msgid "        brz diff NEWS"
 msgstr ""
 
-#: breezy/builtins.py:2308
+#: breezy/builtins.py:2265
 msgid "    Show the differences in working tree xxx for file NEWS::"
 msgstr ""
 
-#: breezy/builtins.py:2310
+#: breezy/builtins.py:2267
 msgid "        brz diff xxx/NEWS"
 msgstr ""
 
-#: breezy/builtins.py:2312
+#: breezy/builtins.py:2269
 msgid "    Show the differences from branch xxx to this working tree:"
 msgstr ""
 
-#: breezy/builtins.py:2314
+#: breezy/builtins.py:2271
 msgid "        brz diff --old xxx"
 msgstr ""
 
-#: breezy/builtins.py:2316
+#: breezy/builtins.py:2273
 msgid "    Show the differences between two branches for file NEWS::"
 msgstr ""
 
-#: breezy/builtins.py:2318
+#: breezy/builtins.py:2275
 msgid "        brz diff --old xxx --new yyy NEWS"
 msgstr ""
 
-#: breezy/builtins.py:2320
+#: breezy/builtins.py:2277
 msgid "    Same as 'brz diff' but prefix paths with old/ and new/::"
 msgstr ""
 
-#: breezy/builtins.py:2322
+#: breezy/builtins.py:2279
 msgid "        brz diff --prefix old/:new/"
 msgstr ""
 
-#: breezy/builtins.py:2324
+#: breezy/builtins.py:2281
 msgid "    Show the differences using a custom diff program with options::"
 msgstr ""
 
-#: breezy/builtins.py:2326
+#: breezy/builtins.py:2283
 msgid "        brz diff --using /usr/bin/diff --diff-options -wu"
 msgstr ""
 
 # help of 'diff-options' option of 'diff' command
-#: breezy/builtins.py:2332
+#: breezy/builtins.py:2289
 msgid "Pass these options to the external diff program."
 msgstr ""
 
 # help of 'prefix' option of 'diff' command
-#: breezy/builtins.py:2335
+#: breezy/builtins.py:2292
 msgid ""
 "Set prefixes added to old and new filenames, as two values separated by a "
 "colon. (eg \"old/:new/\")."
 msgstr ""
 
 # help of 'old' option of 'diff' command
-#: breezy/builtins.py:2338
+#: breezy/builtins.py:2295
 msgid "Branch/tree to compare from."
 msgstr ""
 
 # help of 'new' option of 'diff' command
-#: breezy/builtins.py:2342
+#: breezy/builtins.py:2299
 msgid "Branch/tree to compare to."
 msgstr ""
 
 # help of 'using' option of 'diff' command
-#: breezy/builtins.py:2348
+#: breezy/builtins.py:2305
 msgid "Use this command to compare files."
 msgstr ""
 
 # help of 'format' option of 'diff' command
-#: breezy/builtins.py:2353
+#: breezy/builtins.py:2310
 msgid "Diff format to use."
 msgstr ""
 
 # title of 'format' option of 'diff' command
-#: breezy/builtins.py:2355
+#: breezy/builtins.py:2312
 msgid "Diff format"
 msgstr ""
 
 # help of 'context' option of 'diff' command
-#: breezy/builtins.py:2357
+#: breezy/builtins.py:2314
 msgid "How many lines of context to show."
 msgstr ""
 
-#: breezy/builtins.py:2382
+#: breezy/builtins.py:2339
 msgid "--prefix expects two values separated by a colon (eg \"old/:new/\")"
 msgstr ""
 
-#: breezy/builtins.py:2386
+#: breezy/builtins.py:2343
 msgid "brz diff --revision takes exactly one or two revision specifiers"
 msgstr ""
 
-#: breezy/builtins.py:2391 breezy/builtins.py:2787 breezy/builtins.py:2795
+#: breezy/builtins.py:2348 breezy/builtins.py:2744 breezy/builtins.py:2752
 #, python-brace-format
 msgid "{0} and {1} are mutually exclusive"
 msgstr ""
 
-#: breezy/builtins.py:2411
+#: breezy/builtins.py:2368
 msgid ""
 "List files deleted in the working tree.\n"
 "    "
 msgstr ""
 
-#: breezy/builtins.py:2486
+#: breezy/builtins.py:2443
 msgid "Show the tree root directory."
 msgstr ""
 
-#: breezy/builtins.py:2488
+#: breezy/builtins.py:2445
 msgid ""
-"The root is the nearest enclosing directory with a .bzr control\n"
+"The root is the nearest enclosing directory with a control\n"
 "directory."
 msgstr ""
 
-#: breezy/builtins.py:2504
+#: breezy/builtins.py:2461
 msgid "The limit argument must be an integer."
 msgstr ""
 
-#: breezy/builtins.py:2512
+#: breezy/builtins.py:2469
 msgid "The levels argument must be an integer."
 msgstr ""
 
-#: breezy/builtins.py:2517
+#: breezy/builtins.py:2474
 msgid "Show historical log for a branch or subset of a branch."
 msgstr ""
 
-#: breezy/builtins.py:2519
+#: breezy/builtins.py:2476
 msgid ""
 "log is brz's default tool for exploring the history of a branch.\n"
 "The branch to use is taken from the first parameter. If no parameters\n"
@@ -1605,14 +1605,14 @@ msgid ""
 "Here are some simple examples::"
 msgstr ""
 
-#: breezy/builtins.py:2524
+#: breezy/builtins.py:2481
 msgid ""
 "  brz log                       log the current branch\n"
 "  brz log foo.py                log a file in its branch\n"
 "  brz log http://server/branch  log a branch on a server"
 msgstr ""
 
-#: breezy/builtins.py:2528
+#: breezy/builtins.py:2485
 msgid ""
 "The filtering, ordering and information shown for each revision can\n"
 "be controlled as explained below. By default, all revisions are\n"
@@ -1622,11 +1622,11 @@ msgid ""
 "were merged."
 msgstr ""
 
-#: breezy/builtins.py:2535
+#: breezy/builtins.py:2492
 msgid ":Output control:"
 msgstr ""
 
-#: breezy/builtins.py:2537
+#: breezy/builtins.py:2494
 msgid ""
 "  The log format controls how information about each revision is\n"
 "  displayed. The standard log formats are called ``long``, ``short``\n"
@@ -1634,13 +1634,13 @@ msgid ""
 "  for more details on log formats."
 msgstr ""
 
-#: breezy/builtins.py:2542
+#: breezy/builtins.py:2499
 msgid ""
 "  The following options can be used to control what information is\n"
 "  displayed::"
 msgstr ""
 
-#: breezy/builtins.py:2545
+#: breezy/builtins.py:2502
 msgid ""
 "    -l N        display a maximum of N revisions\n"
 "    -n N        display N levels of revisions (0 for all, 1 for collapsed)\n"
@@ -1649,25 +1649,25 @@ msgid ""
 "    --show-ids  display revision-ids (and file-ids), not just revnos"
 msgstr ""
 
-#: breezy/builtins.py:2551
+#: breezy/builtins.py:2508
 msgid ""
 "  Note that the default number of levels to display is a function of the\n"
 "  log format. If the -n option is not used, the standard log formats show\n"
 "  just the top level (mainline)."
 msgstr ""
 
-#: breezy/builtins.py:2555
+#: breezy/builtins.py:2512
 msgid ""
 "  Status summaries are shown using status flags like A, M, etc. To see\n"
 "  the changes explained using words like ``added`` and ``modified``\n"
 "  instead, use the -vv option."
 msgstr ""
 
-#: breezy/builtins.py:2559
+#: breezy/builtins.py:2516
 msgid ":Ordering control:"
 msgstr ""
 
-#: breezy/builtins.py:2561
+#: breezy/builtins.py:2518
 msgid ""
 "  To display revisions from oldest to newest, use the --forward option.\n"
 "  In most cases, using this option will have little impact on the total\n"
@@ -1675,17 +1675,17 @@ msgid ""
 "  display revisions like --reverse does when it can."
 msgstr ""
 
-#: breezy/builtins.py:2566
+#: breezy/builtins.py:2523
 msgid ":Revision filtering:"
 msgstr ""
 
-#: breezy/builtins.py:2568
+#: breezy/builtins.py:2525
 msgid ""
 "  The -r option can be used to specify what revision or range of revisions\n"
 "  to filter against. The various forms are shown below::"
 msgstr ""
 
-#: breezy/builtins.py:2571
+#: breezy/builtins.py:2528
 msgid ""
 "    -rX      display revision X\n"
 "    -rX..    display revision X and later\n"
@@ -1693,13 +1693,13 @@ msgid ""
 "    -rX..Y   display from X to Y inclusive"
 msgstr ""
 
-#: breezy/builtins.py:2576
+#: breezy/builtins.py:2533
 msgid ""
 "  See ``brz help revisionspec`` for details on how to specify X and Y.\n"
 "  Some common examples are given below::"
 msgstr ""
 
-#: breezy/builtins.py:2579
+#: breezy/builtins.py:2536
 msgid ""
 "    -r-1                show just the tip\n"
 "    -r-10..             show the last 10 mainline revisions\n"
@@ -1709,7 +1709,7 @@ msgid ""
 "    -rdate:yesterday..  show changes since yesterday"
 msgstr ""
 
-#: breezy/builtins.py:2586
+#: breezy/builtins.py:2543
 msgid ""
 "  When logging a range of revisions using -rX..Y, log starts at\n"
 "  revision Y and searches back in history through the primary\n"
@@ -1719,73 +1719,73 @@ msgid ""
 "  a nested merge revision and the log will be truncated accordingly."
 msgstr ""
 
-#: breezy/builtins.py:2593
+#: breezy/builtins.py:2550
 msgid ":Path filtering:"
 msgstr ""
 
-#: breezy/builtins.py:2595
+#: breezy/builtins.py:2552
 msgid ""
 "  If parameters are given and the first one is not a branch, the log\n"
 "  will be filtered to show only those revisions that changed the\n"
 "  nominated files or directories."
 msgstr ""
 
-#: breezy/builtins.py:2599
+#: breezy/builtins.py:2556
 msgid ""
 "  Filenames are interpreted within their historical context. To log a\n"
 "  deleted file, specify a revision range so that the file existed at\n"
 "  the end or start of the range."
 msgstr ""
 
-#: breezy/builtins.py:2603
+#: breezy/builtins.py:2560
 msgid ""
 "  Historical context is also important when interpreting pathnames of\n"
 "  renamed files/directories. Consider the following example:"
 msgstr ""
 
-#: breezy/builtins.py:2606
+#: breezy/builtins.py:2563
 msgid ""
 "  * revision 1: add tutorial.txt\n"
 "  * revision 2: modify tutorial.txt\n"
 "  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt"
 msgstr ""
 
-#: breezy/builtins.py:2610
+#: breezy/builtins.py:2567
 msgid "  In this case:"
 msgstr ""
 
-#: breezy/builtins.py:2612
+#: breezy/builtins.py:2569
 msgid "  * ``brz log guide.txt`` will log the file added in revision 1"
 msgstr ""
 
-#: breezy/builtins.py:2614
+#: breezy/builtins.py:2571
 msgid "  * ``brz log tutorial.txt`` will log the new file added in revision 3"
 msgstr ""
 
-#: breezy/builtins.py:2616
+#: breezy/builtins.py:2573
 msgid ""
 "  * ``brz log -r2 -p tutorial.txt`` will show the changes made to\n"
 "    the original file in revision 2."
 msgstr ""
 
-#: breezy/builtins.py:2619
+#: breezy/builtins.py:2576
 msgid ""
 "  * ``brz log -r2 -p guide.txt`` will display an error message as there\n"
 "    was no file called guide.txt in revision 2."
 msgstr ""
 
-#: breezy/builtins.py:2622
+#: breezy/builtins.py:2579
 msgid ""
 "  Renames are always followed by log. By design, there is no need to\n"
 "  explicitly ask for this (and no way to stop logging a file back\n"
 "  until it was last renamed)."
 msgstr ""
 
-#: breezy/builtins.py:2626
+#: breezy/builtins.py:2583
 msgid ":Other filtering:"
 msgstr ""
 
-#: breezy/builtins.py:2628
+#: breezy/builtins.py:2585
 msgid ""
 "  The --match option can be used for finding revisions that match a\n"
 "  regular expression in a commit message, committer, author or bug.\n"
@@ -1794,11 +1794,11 @@ msgid ""
 "  --match-message can be used to only match a specific field."
 msgstr ""
 
-#: breezy/builtins.py:2634
+#: breezy/builtins.py:2591
 msgid ":Tips & tricks:"
 msgstr ""
 
-#: breezy/builtins.py:2636
+#: breezy/builtins.py:2593
 msgid ""
 "  GUI tools and IDEs are often better at exploring history than command\n"
 "  line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the\n"
@@ -1807,11 +1807,11 @@ msgid ""
 "  <http://wiki.bazaar.canonical.com/IDEIntegration>."
 msgstr ""
 
-#: breezy/builtins.py:2642
+#: breezy/builtins.py:2599
 msgid "  You may find it useful to add the aliases below to ``breezy.conf``::"
 msgstr ""
 
-#: breezy/builtins.py:2644
+#: breezy/builtins.py:2601
 msgid ""
 "    [ALIASES]\n"
 "    tip = log -r-1\n"
@@ -1819,20 +1819,20 @@ msgid ""
 "    show = log -v -p"
 msgstr ""
 
-#: breezy/builtins.py:2649
+#: breezy/builtins.py:2606
 msgid ""
 "  ``brz tip`` will then show the latest revision while ``brz top``\n"
 "  will show the last 10 mainline revisions. To see the details of a\n"
 "  particular revision X,  ``brz show -rX``."
 msgstr ""
 
-#: breezy/builtins.py:2653
+#: breezy/builtins.py:2610
 msgid ""
 "  If you are interested in looking deeper into a particular merge X,\n"
 "  use ``brz log -n0 -rX``."
 msgstr ""
 
-#: breezy/builtins.py:2656
+#: breezy/builtins.py:2613
 msgid ""
 "  ``brz log -v`` on a branch with lots of history is currently\n"
 "  very slow. A fix for this issue is currently under development.\n"
@@ -1840,7 +1840,7 @@ msgid ""
 "  be given when using the -v option."
 msgstr ""
 
-#: breezy/builtins.py:2661
+#: breezy/builtins.py:2618
 msgid ""
 "  brz has a generic full-text matching plugin, brz-search, that can be\n"
 "  used to find revisions matching user names, commit messages, etc.\n"
@@ -1848,7 +1848,7 @@ msgid ""
 "  a list of words but not others."
 msgstr ""
 
-#: breezy/builtins.py:2666
+#: breezy/builtins.py:2623
 msgid ""
 "  When exploring non-mainline history on large projects with deep\n"
 "  history, the performance of log can be greatly improved by installing\n"
@@ -1857,169 +1857,169 @@ msgid ""
 msgstr ""
 
 # help of 'forward' option of 'log' command
-#: breezy/builtins.py:2675
+#: breezy/builtins.py:2632
 msgid "Show from oldest to newest."
 msgstr ""
 
 # help of 'verbose' option of 'log' command
-#: breezy/builtins.py:2678
+#: breezy/builtins.py:2635
 msgid "Show files changed in each revision."
 msgstr ""
 
 # help of 'change' option of 'log' command
-#: breezy/builtins.py:2684
+#: breezy/builtins.py:2641
 msgid "Show just the specified revision. See also \"help revisionspec\"."
 msgstr ""
 
 # help of 'authors' option of 'log' command
-#: breezy/builtins.py:2688
+#: breezy/builtins.py:2645
 msgid "What names to list as authors - first, all or committer."
 msgstr ""
 
 # title of 'authors' option of 'log' command
-#: breezy/builtins.py:2689
+#: breezy/builtins.py:2646
 msgid "Authors"
 msgstr ""
 
 # help of 'levels' option of 'log' command
-#: breezy/builtins.py:2695
+#: breezy/builtins.py:2652
 msgid "Number of levels to display - 0 for all, 1 for flat."
 msgstr ""
 
 # help of 'limit' option of 'log' command
-#: breezy/builtins.py:2705
+#: breezy/builtins.py:2662
 msgid "Limit the output to the first N revisions."
 msgstr ""
 
 # help of 'show-diff' option of 'log' command
-#: breezy/builtins.py:2710
+#: breezy/builtins.py:2667
 msgid "Show changes made in each revision as a patch."
 msgstr ""
 
 # help of 'include-merged' option of 'log' command
-#: breezy/builtins.py:2712
+#: breezy/builtins.py:2669
 msgid "Show merged revisions like --levels 0 does."
 msgstr ""
 
 # help of 'omit-merges' option of 'log' command
-#: breezy/builtins.py:2716
+#: breezy/builtins.py:2673
 msgid "Do not report commits with more than one parent."
 msgstr ""
 
 # help of 'exclude-common-ancestry' option of 'log' command
-#: breezy/builtins.py:2718
+#: breezy/builtins.py:2675
 msgid ""
 "Display only the revisions that are not part of both ancestries (require -"
 "rX..Y)."
 msgstr ""
 
 # help of 'signatures' option of 'log' command
-#: breezy/builtins.py:2722
+#: breezy/builtins.py:2679
 msgid "Show digital signature validity."
 msgstr ""
 
 # help of 'match' option of 'log' command
-#: breezy/builtins.py:2725
+#: breezy/builtins.py:2682
 msgid "Show revisions whose properties match this expression."
 msgstr ""
 
 # help of 'match-message' option of 'log' command
-#: breezy/builtins.py:2729
+#: breezy/builtins.py:2686
 msgid "Show revisions whose message matches this expression."
 msgstr ""
 
 # help of 'match-committer' option of 'log' command
-#: breezy/builtins.py:2733
+#: breezy/builtins.py:2690
 msgid "Show revisions whose committer matches this expression."
 msgstr ""
 
 # help of 'match-author' option of 'log' command
-#: breezy/builtins.py:2737
+#: breezy/builtins.py:2694
 msgid "Show revisions whose authors match this expression."
 msgstr ""
 
 # help of 'match-bugs' option of 'log' command
-#: breezy/builtins.py:2741
+#: breezy/builtins.py:2698
 msgid "Show revisions whose bugs match this expression."
 msgstr ""
 
-#: breezy/builtins.py:2781
+#: breezy/builtins.py:2738
 msgid "--exclude-common-ancestry requires -r with two revisions"
 msgstr ""
 
-#: breezy/builtins.py:2809
+#: breezy/builtins.py:2766
 #, python-format
 msgid "Path unknown at end or start of revision range: %s"
 msgstr ""
 
-#: breezy/builtins.py:2927
+#: breezy/builtins.py:2884
 #, python-format
 msgid "brz %s doesn't accept two revisions in different branches."
 msgstr ""
 
-#: breezy/builtins.py:2943
+#: breezy/builtins.py:2900
 #, python-format
 msgid "brz %s --revision takes one or two values."
 msgstr ""
 
-#: breezy/builtins.py:2988
+#: breezy/builtins.py:2945
 msgid ""
 "List files in a tree.\n"
 "    "
 msgstr ""
 
 # help of 'recursive' option of 'ls' command
-#: breezy/builtins.py:2997
+#: breezy/builtins.py:2954
 msgid "Recurse into subdirectories."
 msgstr ""
 
 # help of 'from-root' option of 'ls' command
-#: breezy/builtins.py:2999
+#: breezy/builtins.py:2956
 msgid "Print paths relative to the root of the branch."
 msgstr ""
 
 # help of 'unknown' option of 'ls' command
-#: breezy/builtins.py:3001
+#: breezy/builtins.py:2958
 msgid "Print unknown files."
 msgstr ""
 
 # help of 'versioned' option of 'ls' command
-#: breezy/builtins.py:3002
+#: breezy/builtins.py:2959
 msgid "Print versioned files."
 msgstr ""
 
 # help of 'ignored' option of 'ls' command
-#: breezy/builtins.py:3005
+#: breezy/builtins.py:2962
 msgid "Print ignored files."
 msgstr ""
 
 # help of 'kind' option of 'ls' command
-#: breezy/builtins.py:3007
+#: breezy/builtins.py:2964
 msgid ""
 "List entries of a particular kind: file, directory, symlink, tree-reference."
 msgstr ""
 
-#: breezy/builtins.py:3022
+#: breezy/builtins.py:2979
 msgid "invalid kind specified"
 msgstr ""
 
-#: breezy/builtins.py:3026
+#: breezy/builtins.py:2983
 msgid "Cannot set both --verbose and --null"
 msgstr ""
 
-#: breezy/builtins.py:3035
+#: breezy/builtins.py:2992
 msgid "cannot specify both --from-root and PATH"
 msgstr ""
 
-#: breezy/builtins.py:3122
+#: breezy/builtins.py:3079
 msgid "Ignore specified files or patterns."
 msgstr ""
 
-#: breezy/builtins.py:3124
+#: breezy/builtins.py:3081
 msgid "See ``brz help patterns`` for details on the syntax of patterns."
 msgstr ""
 
-#: breezy/builtins.py:3126
+#: breezy/builtins.py:3083
 msgid ""
 "If a .bzrignore file does not exist, the ignore command\n"
 "will create one and add the specified files or patterns to the newly\n"
@@ -2028,7 +2028,7 @@ msgid ""
 "the use of the ignore command will require an explicit add command."
 msgstr ""
 
-#: breezy/builtins.py:3132
+#: breezy/builtins.py:3089
 msgid ""
 "To remove patterns from the ignore list, edit the .bzrignore file.\n"
 "After adding, editing or deleting that file either indirectly by\n"
@@ -2036,7 +2036,7 @@ msgid ""
 "it."
 msgstr ""
 
-#: breezy/builtins.py:3137
+#: breezy/builtins.py:3094
 msgid ""
 "Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows\n"
 "the global ignore file can be found in the application data directory as\n"
@@ -2045,96 +2045,96 @@ msgid ""
 "can be edited directly using an editor."
 msgstr ""
 
-#: breezy/builtins.py:3143
+#: breezy/builtins.py:3100
 msgid ""
 "Patterns prefixed with '!' are exceptions to ignore patterns and take\n"
 "precedence over regular ignores.  Such exceptions are used to specify\n"
 "files that should be versioned which would otherwise be ignored."
 msgstr ""
 
-#: breezy/builtins.py:3147
+#: breezy/builtins.py:3104
 msgid ""
 "Patterns prefixed with '!!' act as regular ignore patterns, but have\n"
 "precedence over the '!' exception patterns."
 msgstr ""
 
-#: breezy/builtins.py:3150
+#: breezy/builtins.py:3107
 msgid ":Notes:"
 msgstr ""
 
-#: breezy/builtins.py:3152
+#: breezy/builtins.py:3109
 msgid ""
 "* Ignore patterns containing shell wildcards must be quoted from\n"
 "  the shell on Unix."
 msgstr ""
 
-#: breezy/builtins.py:3155
+#: breezy/builtins.py:3112
 msgid ""
 "* Ignore patterns starting with \"#\" act as comments in the ignore file.\n"
 "  To ignore patterns that begin with that character, use the \"RE:\" prefix."
 msgstr ""
 
-#: breezy/builtins.py:3158
+#: breezy/builtins.py:3115
 msgid ""
 ":Examples:\n"
 "    Ignore the top level Makefile::"
 msgstr ""
 
-#: breezy/builtins.py:3161
+#: breezy/builtins.py:3118
 msgid "        brz ignore ./Makefile"
 msgstr ""
 
-#: breezy/builtins.py:3163
+#: breezy/builtins.py:3120
 msgid "    Ignore .class files in all directories...::"
 msgstr ""
 
-#: breezy/builtins.py:3165
+#: breezy/builtins.py:3122
 msgid "        brz ignore \"*.class\""
 msgstr ""
 
-#: breezy/builtins.py:3167
+#: breezy/builtins.py:3124
 msgid "    ...but do not ignore \"special.class\"::"
 msgstr ""
 
-#: breezy/builtins.py:3169
+#: breezy/builtins.py:3126
 msgid "        brz ignore \"!special.class\""
 msgstr ""
 
-#: breezy/builtins.py:3171
+#: breezy/builtins.py:3128
 msgid "    Ignore files whose name begins with the \"#\" character::"
 msgstr ""
 
-#: breezy/builtins.py:3173
+#: breezy/builtins.py:3130
 msgid "        brz ignore \"RE:^#\""
 msgstr ""
 
-#: breezy/builtins.py:3175 breezy/builtins.py:3179
+#: breezy/builtins.py:3132 breezy/builtins.py:3136
 msgid "    Ignore .o files under the lib directory::"
 msgstr ""
 
-#: breezy/builtins.py:3177
+#: breezy/builtins.py:3134
 msgid "        brz ignore \"lib/**/*.o\""
 msgstr ""
 
-#: breezy/builtins.py:3181
+#: breezy/builtins.py:3138
 msgid "        brz ignore \"RE:lib/.*\\.o\""
 msgstr ""
 
-#: breezy/builtins.py:3183
+#: breezy/builtins.py:3140
 msgid "    Ignore everything but the \"debian\" toplevel directory::"
 msgstr ""
 
-#: breezy/builtins.py:3185
+#: breezy/builtins.py:3142
 msgid "        brz ignore \"RE:(?!debian/).*\""
 msgstr ""
 
-#: breezy/builtins.py:3187
+#: breezy/builtins.py:3144
 msgid ""
 "    Ignore everything except the \"local\" toplevel directory,\n"
 "    but always ignore autosave files ending in ~, even under local/::"
 msgstr ""
 
-#: breezy/builtins.py:3190
+#: breezy/builtins.py:3147
 msgid ""
 "        brz ignore \"*\"\n"
 "        brz ignore \"!./local\"\n"
@@ -2142,26 +2142,26 @@ msgid ""
 msgstr ""
 
 # help of 'default-rules' option of 'ignore' command
-#: breezy/builtins.py:3199
+#: breezy/builtins.py:3156
 msgid "Display the default ignore rules that brz uses."
 msgstr ""
 
-#: breezy/builtins.py:3211
+#: breezy/builtins.py:3168
 msgid "ignore requires at least one NAME_PATTERN or --default-rules."
 msgstr ""
 
-#: breezy/builtins.py:3222
+#: breezy/builtins.py:3179
 #, python-format
 msgid "Invalid ignore pattern found. %s"
 msgid_plural "Invalid ignore patterns found. %s"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/builtins.py:3231
+#: breezy/builtins.py:3188
 msgid "NAME_PATTERN should not be an absolute path"
 msgstr ""
 
-#: breezy/builtins.py:3244
+#: breezy/builtins.py:3200
 #, python-format
 msgid ""
 "Warning: the following files are version controlled and match your ignore "
@@ -2171,62 +2171,62 @@ msgid ""
 "them.\n"
 msgstr ""
 
-#: breezy/builtins.py:3251
+#: breezy/builtins.py:3207
 msgid "List ignored files and the patterns that matched them."
 msgstr ""
 
-#: breezy/builtins.py:3253
+#: breezy/builtins.py:3209
 msgid ""
 "List all the ignored files and the ignore pattern that caused the file to\n"
 "be ignored."
 msgstr ""
 
-#: breezy/builtins.py:3256
+#: breezy/builtins.py:3212
 msgid "Alternatively, to list just the files::"
 msgstr ""
 
-#: breezy/builtins.py:3258
+#: breezy/builtins.py:3214
 msgid "    brz ls --ignored"
 msgstr ""
 
-#: breezy/builtins.py:3292
+#: breezy/builtins.py:3248
 #, python-format
 msgid "not a valid revision-number: %r"
 msgstr ""
 
-#: breezy/builtins.py:3300
+#: breezy/builtins.py:3256
 msgid "Export current or past revision to a destination directory or archive."
 msgstr ""
 
-#: breezy/builtins.py:3302
+#: breezy/builtins.py:3258
 msgid "If no revision is specified this exports the last committed revision."
 msgstr ""
 
-#: breezy/builtins.py:3304
+#: breezy/builtins.py:3260
 msgid ""
 "Format may be an \"exporter\" name, such as tar, tgz, tbz2.  If none is\n"
 "given, try to find the format with the extension. If no extension\n"
 "is found exports to a directory (equivalent to --format=dir)."
 msgstr ""
 
-#: breezy/builtins.py:3308
+#: breezy/builtins.py:3264
 msgid ""
 "If root is supplied, it will be used as the root directory inside\n"
 "container formats (tar, zip, etc). If it is not supplied it will default\n"
 "to the exported filename. The root option has no effect for 'dir' format."
 msgstr ""
 
-#: breezy/builtins.py:3312
+#: breezy/builtins.py:3268
 msgid ""
 "If branch is omitted then the branch containing the current working\n"
 "directory will be used."
 msgstr ""
 
-#: breezy/builtins.py:3315
+#: breezy/builtins.py:3271
 msgid "Note: Export of tree with non-ASCII filenames to zip is not supported."
 msgstr ""
 
-#: breezy/builtins.py:3317
+#: breezy/builtins.py:3273
 msgid ""
 "  =================       =========================\n"
 "  Supported formats       Autodetected by extension\n"
@@ -2240,78 +2240,78 @@ msgid ""
 msgstr ""
 
 # help of 'format' option of 'export' command
-#: breezy/builtins.py:3332
+#: breezy/builtins.py:3288
 msgid "Type of file to export to."
 msgstr ""
 
 # help of 'filters' option of 'export' command
-#: breezy/builtins.py:3335
+#: breezy/builtins.py:3291
 msgid "Apply content filters to export the convenient form."
 msgstr ""
 
 # help of 'root' option of 'export' command
-#: breezy/builtins.py:3339
+#: breezy/builtins.py:3295
 msgid "Name of the root directory inside the exported file."
 msgstr ""
 
 # help of 'per-file-timestamps' option of 'export' command
-#: breezy/builtins.py:3341
+#: breezy/builtins.py:3297
 msgid ""
 "Set modification time of files to that of the last revision in which it was "
 "changed."
 msgstr ""
 
 # help of 'uncommitted' option of 'export' command
-#: breezy/builtins.py:3344
+#: breezy/builtins.py:3300
 msgid "Export the working tree contents rather than that of the last revision."
 msgstr ""
 
-#: breezy/builtins.py:3364
+#: breezy/builtins.py:3320
 msgid "--uncommitted requires a working tree"
 msgstr ""
 
-#: breezy/builtins.py:3392
+#: breezy/builtins.py:3348
 #, python-format
 msgid "Unsupported export format: %s"
 msgstr ""
 
-#: breezy/builtins.py:3396
+#: breezy/builtins.py:3352
 msgid "Write the contents of a file as of a given revision to standard output."
 msgstr ""
 
-#: breezy/builtins.py:3398
+#: breezy/builtins.py:3354
 msgid "If no revision is nominated, the last revision is used."
 msgstr ""
 
-#: breezy/builtins.py:3400
+#: breezy/builtins.py:3356
 msgid ""
 "Note: Take care to redirect standard output when using this command on a\n"
 "binary file."
 msgstr ""
 
 # help of 'name-from-revision' option of 'cat' command
-#: breezy/builtins.py:3407
+#: breezy/builtins.py:3363
 msgid "The path name in the old tree."
 msgstr ""
 
 # help of 'filters' option of 'cat' command
-#: breezy/builtins.py:3408
+#: breezy/builtins.py:3364
 msgid "Apply content filters to display the convenience form."
 msgstr ""
 
-#: breezy/builtins.py:3419
+#: breezy/builtins.py:3375
 msgid "brz cat --revision takes exactly one revision specifier"
 msgstr ""
 
-#: breezy/builtins.py:3445 breezy/builtins.py:3457
+#: breezy/builtins.py:3395 breezy/builtins.py:3409
 msgid "{0!r} is not present in revision {1}"
 msgstr ""
 
-#: breezy/builtins.py:3481
+#: breezy/builtins.py:3436
 msgid "Commit changes into a new revision."
 msgstr ""
 
-#: breezy/builtins.py:3483
+#: breezy/builtins.py:3438
 msgid ""
 "An explanatory message needs to be given for each commit. This is\n"
 "often done by using the --message option (getting the message from the\n"
@@ -2321,44 +2321,44 @@ msgid ""
 "boilerplate text loaded into the editor, use the --show-diff option."
 msgstr ""
 
-#: breezy/builtins.py:3490
+#: breezy/builtins.py:3445
 msgid ""
 "By default, the entire tree is committed and the person doing the\n"
 "commit is assumed to be the author. These defaults can be overridden\n"
 "as explained below."
 msgstr ""
 
-#: breezy/builtins.py:3494
+#: breezy/builtins.py:3449
 msgid ":Selective commits:"
 msgstr ""
 
-#: breezy/builtins.py:3496
+#: breezy/builtins.py:3451
 msgid ""
 "  If selected files are specified, only changes to those files are\n"
 "  committed.  If a directory is specified then the directory and\n"
 "  everything within it is committed."
 msgstr ""
 
-#: breezy/builtins.py:3500
+#: breezy/builtins.py:3455
 msgid ""
 "  When excludes are given, they take precedence over selected files.\n"
 "  For example, to commit only changes within foo, but not changes\n"
 "  within foo/bar::"
 msgstr ""
 
-#: breezy/builtins.py:3504
+#: breezy/builtins.py:3459
 msgid "    brz commit foo -x foo/bar"
 msgstr ""
 
-#: breezy/builtins.py:3506
+#: breezy/builtins.py:3461
 msgid "  A selective commit after a merge is not yet supported."
 msgstr ""
 
-#: breezy/builtins.py:3508
+#: breezy/builtins.py:3463
 msgid ":Custom authors:"
 msgstr ""
 
-#: breezy/builtins.py:3510
+#: breezy/builtins.py:3465
 msgid ""
 "  If the author of the change is not the same person as the committer,\n"
 "  you can specify the author's name using the --author option. The\n"
@@ -2368,11 +2368,11 @@ msgid ""
 "  author."
 msgstr ""
 
-#: breezy/builtins.py:3517
+#: breezy/builtins.py:3472
 msgid ":Checks:"
 msgstr ""
 
-#: breezy/builtins.py:3519
+#: breezy/builtins.py:3474
 msgid ""
 "  A common mistake is to forget to add a new file or directory before\n"
 "  running the commit command. The --strict option checks for unknown\n"
@@ -2381,18 +2381,18 @@ msgid ""
 "  for details."
 msgstr ""
 
-#: breezy/builtins.py:3525
+#: breezy/builtins.py:3480
 msgid ":Things to note:"
 msgstr ""
 
-#: breezy/builtins.py:3527
+#: breezy/builtins.py:3482
 msgid ""
 "  If you accidentially commit the wrong changes or make a spelling\n"
 "  mistake in the commit message say, you can use the uncommit command\n"
 "  to undo it. See ``brz help uncommit`` for details."
 msgstr ""
 
-#: breezy/builtins.py:3531
+#: breezy/builtins.py:3486
 msgid ""
 "  Hooks can also be configured to run after a commit. This allows you\n"
 "  to trigger updates to external systems like bug trackers. The --fixes\n"
@@ -2401,74 +2401,74 @@ msgid ""
 msgstr ""
 
 # help of 'exclude' option of 'commit' command
-#: breezy/builtins.py:3542
+#: breezy/builtins.py:3497
 msgid "Do not consider changes made to a given path."
 msgstr ""
 
 # help of 'message' option of 'commit' command
-#: breezy/builtins.py:3545
+#: breezy/builtins.py:3500
 msgid "Description of the new revision."
 msgstr ""
 
 # help of 'unchanged' option of 'commit' command
-#: breezy/builtins.py:3548
+#: breezy/builtins.py:3503
 msgid "Commit even if nothing has changed."
 msgstr ""
 
 # help of 'file' option of 'commit' command
-#: breezy/builtins.py:3552
+#: breezy/builtins.py:3507
 msgid "Take commit message from this file."
 msgstr ""
 
 # help of 'strict' option of 'commit' command
-#: breezy/builtins.py:3554
+#: breezy/builtins.py:3509
 msgid "Refuse to commit if there are unknown files in the working tree."
 msgstr ""
 
 # help of 'commit-time' option of 'commit' command
-#: breezy/builtins.py:3557
+#: breezy/builtins.py:3512
 msgid ""
 "Manually set a commit time using commit date format, e.g. '2009-10-10 "
 "08:00:00 +0100'."
 msgstr ""
 
 # help of 'bugs' option of 'commit' command
-#: breezy/builtins.py:3561
+#: breezy/builtins.py:3516
 msgid "Link to a related bug. (see \"brz help bugs\")."
 msgstr ""
 
 # help of 'fixes' option of 'commit' command
-#: breezy/builtins.py:3564
+#: breezy/builtins.py:3519
 msgid "Mark a bug as being fixed by this revision (see \"brz help bugs\")."
 msgstr ""
 
 # help of 'author' option of 'commit' command
-#: breezy/builtins.py:3568
+#: breezy/builtins.py:3523
 msgid "Set the author's name, if it's different from the committer."
 msgstr ""
 
 # help of 'local' option of 'commit' command
-#: breezy/builtins.py:3571
+#: breezy/builtins.py:3526
 msgid ""
 "Perform a local commit in a bound branch.  Local commits are not pushed to "
 "the master branch until a normal commit is performed."
 msgstr ""
 
 # help of 'show-diff' option of 'commit' command
-#: breezy/builtins.py:3577
+#: breezy/builtins.py:3532
 msgid ""
 "When no message is supplied, show the diff along with the status summary in "
 "the message editor."
 msgstr ""
 
 # help of 'lossy' option of 'commit' command
-#: breezy/builtins.py:3580
+#: breezy/builtins.py:3535
 msgid ""
 "When committing to a foreign version control system do not push data that "
 "can not be natively represented."
 msgstr ""
 
-#: breezy/builtins.py:3597
+#: breezy/builtins.py:3552
 #, python-format
 msgid ""
 "No tracker specified for bug %s. Use the form 'tracker:id' or specify a "
@@ -2476,7 +2476,7 @@ msgid ""
 "See \"brz help bugs\" for more information on this feature. Commit refused."
 msgstr ""
 
-#: breezy/builtins.py:3606
+#: breezy/builtins.py:3561
 #, python-format
 msgid ""
 "Invalid bug %s. Must be in the form of 'tracker:id'. See \"brz help bugs\" "
@@ -2484,91 +2484,91 @@ msgid ""
 "Commit refused."
 msgstr ""
 
-#: breezy/builtins.py:3615
+#: breezy/builtins.py:3570
 #, python-format
 msgid "Unrecognized bug %s. Commit refused."
 msgstr ""
 
-#: breezy/builtins.py:3618
+#: breezy/builtins.py:3573
 #, python-format
 msgid ""
 "%s\n"
 "Commit refused."
 msgstr ""
 
-#: breezy/builtins.py:3645
+#: breezy/builtins.py:3600
 msgid "Could not parse --commit-time: "
 msgstr ""
 
-#: breezy/builtins.py:3689
+#: breezy/builtins.py:3644
 msgid "please specify either --message or --file"
 msgstr ""
 
-#: breezy/builtins.py:3719
+#: breezy/builtins.py:3674
 msgid "please specify a commit message with either --message or --file"
 msgstr ""
 
-#: breezy/builtins.py:3722
+#: breezy/builtins.py:3677
 msgid ""
 "Empty commit message specified. Please specify a commit message with either "
 "--message or --file or leave a blank message with --message \"\"."
 msgstr ""
 
-#: breezy/builtins.py:3742
+#: breezy/builtins.py:3697
 msgid ""
 "No changes to commit. Please 'brz add' the files you want to commit, or use "
 "--unchanged to force an empty commit."
 msgstr ""
 
-#: breezy/builtins.py:3746
+#: breezy/builtins.py:3701
 msgid ""
 "Conflicts detected in working tree.  Use \"brz conflicts\" to list, \"brz "
 "resolve FILE\" to resolve."
 msgstr ""
 
-#: breezy/builtins.py:3750
+#: breezy/builtins.py:3705
 msgid "Commit refused because there are unknown files in the working tree."
 msgstr ""
 
-#: breezy/builtins.py:3753
+#: breezy/builtins.py:3708
 msgid ""
 "\n"
 "To commit to master branch, run update and then commit.\n"
 "You can also pass --local to commit to continue working disconnected."
 msgstr ""
 
-#: breezy/builtins.py:3761
+#: breezy/builtins.py:3716
 msgid ""
 "Validate working tree structure, branch consistency and repository history."
 msgstr ""
 
-#: breezy/builtins.py:3763
+#: breezy/builtins.py:3718
 msgid ""
 "This command checks various invariants about branch and repository storage\n"
 "to detect data corruption or brz bugs."
 msgstr ""
 
-#: breezy/builtins.py:3766
+#: breezy/builtins.py:3721
 msgid ""
 "The working tree and branch checks will only give output if a problem is\n"
 "detected. The output fields of the repository check are:"
 msgstr ""
 
-#: breezy/builtins.py:3769
+#: breezy/builtins.py:3724
 msgid ""
 "revisions\n"
 "    This is just the number of revisions checked.  It doesn't\n"
 "    indicate a problem."
 msgstr ""
 
-#: breezy/builtins.py:3773
+#: breezy/builtins.py:3728
 msgid ""
 "versionedfiles\n"
 "    This is just the number of versionedfiles checked.  It\n"
 "    doesn't indicate a problem."
 msgstr ""
 
-#: breezy/builtins.py:3777
+#: breezy/builtins.py:3732
 msgid ""
 "unreferenced ancestors\n"
 "    Texts that are ancestors of other texts, but\n"
@@ -2576,14 +2576,14 @@ msgid ""
 "    subtle problem that Bazaar can work around."
 msgstr ""
 
-#: breezy/builtins.py:3782
+#: breezy/builtins.py:3737
 msgid ""
 "unique file texts\n"
 "    This is the total number of unique file contents\n"
 "    seen in the checked revisions.  It does not indicate a problem."
 msgstr ""
 
-#: breezy/builtins.py:3786
+#: breezy/builtins.py:3741
 msgid ""
 "repeated file texts\n"
 "    This is the total number of repeated texts seen\n"
@@ -2592,57 +2592,57 @@ msgid ""
 "    indicate a problem."
 msgstr ""
 
-#: breezy/builtins.py:3792
+#: breezy/builtins.py:3747
 msgid ""
 "If no restrictions are specified, all Bazaar data that is found at the "
 "given\n"
 "location will be checked."
 msgstr ""
 
-#: breezy/builtins.py:3797
+#: breezy/builtins.py:3752
 msgid "    Check the tree and branch at 'foo'::"
 msgstr ""
 
-#: breezy/builtins.py:3799
+#: breezy/builtins.py:3754
 msgid "        brz check --tree --branch foo"
 msgstr ""
 
-#: breezy/builtins.py:3801
+#: breezy/builtins.py:3756
 msgid "    Check only the repository at 'bar'::"
 msgstr ""
 
-#: breezy/builtins.py:3803
+#: breezy/builtins.py:3758
 msgid "        brz check --repo bar"
 msgstr ""
 
-#: breezy/builtins.py:3805
+#: breezy/builtins.py:3760
 msgid "    Check everything at 'baz'::"
 msgstr ""
 
-#: breezy/builtins.py:3807
+#: breezy/builtins.py:3762
 msgid "        brz check baz"
 msgstr ""
 
 # help of 'branch' option of 'check' command
-#: breezy/builtins.py:3813
+#: breezy/builtins.py:3768
 msgid "Check the branch related to the current directory."
 msgstr ""
 
 # help of 'repo' option of 'check' command
-#: breezy/builtins.py:3815
+#: breezy/builtins.py:3770
 msgid "Check the repository related to the current directory."
 msgstr ""
 
 # help of 'tree' option of 'check' command
-#: breezy/builtins.py:3817
+#: breezy/builtins.py:3772
 msgid "Check the working tree related to the current directory."
 msgstr ""
 
-#: breezy/builtins.py:3831
+#: breezy/builtins.py:3786
 msgid "Upgrade a repository, branch or working tree to a newer format."
 msgstr ""
 
-#: breezy/builtins.py:3833
+#: breezy/builtins.py:3788
 msgid ""
 "When the default format has changed after a major new release of\n"
 "Bazaar, you may be informed during certain operations that you\n"
@@ -2651,7 +2651,7 @@ msgid ""
 "with older repositories or with older versions of Bazaar."
 msgstr ""
 
-#: breezy/builtins.py:3839
+#: breezy/builtins.py:3794
 msgid ""
 "If you wish to upgrade to a particular format rather than the\n"
 "current default, that can be specified using the --format option.\n"
@@ -2661,7 +2661,7 @@ msgid ""
 "2.x default) so downgrading is not always possible."
 msgstr ""
 
-#: breezy/builtins.py:3846
+#: breezy/builtins.py:3801
 msgid ""
 "A backup.bzr.~#~ directory is created at the start of the conversion\n"
 "process (where # is a number). By default, this is left there on\n"
@@ -2672,7 +2672,7 @@ msgid ""
 "afterwards."
 msgstr ""
 
-#: breezy/builtins.py:3854
+#: breezy/builtins.py:3809
 msgid ""
 "If the location given is a shared repository, dependent branches\n"
 "are also converted provided the repository converts successfully.\n"
@@ -2680,170 +2680,170 @@ msgid ""
 "tried."
 msgstr ""
 
-#: breezy/builtins.py:3859
+#: breezy/builtins.py:3814
 msgid ""
 "For more information on upgrades, see the Bazaar Upgrade Guide,\n"
-"http://doc.bazaar.canonical.com/latest/en/upgrade-guide/."
+"https://www.breezy-vcs.org/doc/en/upgrade-guide/."
 msgstr ""
 
 # help of 'format' option of 'upgrade' command
-#: breezy/builtins.py:3867
+#: breezy/builtins.py:3822
 msgid "Upgrade to a specific format.  See \"brz help formats\" for details."
 msgstr ""
 
 # title of 'format' option of 'init' command
 # title of 'format' option of 'upgrade' command
-#: breezy/builtins.py:3872
+#: breezy/builtins.py:3827
 msgid "Branch format"
 msgstr ""
 
 # help of 'clean' option of 'upgrade' command
-#: breezy/builtins.py:3874
+#: breezy/builtins.py:3829
 msgid "Remove the backup.bzr directory if successful."
 msgstr ""
 
 # help of 'dry-run' option of 'add' command
 # help of 'dry-run' option of 'upgrade' command
-#: breezy/builtins.py:3876
+#: breezy/builtins.py:3831
 msgid "Show what would be done, but don't actually do anything."
 msgstr ""
 
-#: breezy/builtins.py:3891
+#: breezy/builtins.py:3846
 msgid "Show or set brz user id."
 msgstr ""
 
-#: breezy/builtins.py:3893
+#: breezy/builtins.py:3848
 msgid ""
 ":Examples:\n"
 "    Show the email of the current user::"
 msgstr ""
 
-#: breezy/builtins.py:3896
+#: breezy/builtins.py:3851
 msgid "        brz whoami --email"
 msgstr ""
 
-#: breezy/builtins.py:3898
+#: breezy/builtins.py:3853
 msgid "    Set the current user::"
 msgstr ""
 
-#: breezy/builtins.py:3900
+#: breezy/builtins.py:3855
 msgid "        brz whoami \"Frank Chu <fchu@example.com>\""
 msgstr ""
 
 # help of 'email' option of 'whoami' command
-#: breezy/builtins.py:3904
+#: breezy/builtins.py:3859
 msgid "Display email address only."
 msgstr ""
 
 # help of 'branch' option of 'whoami' command
-#: breezy/builtins.py:3906
+#: breezy/builtins.py:3861
 msgid "Set identity for the current branch instead of globally."
 msgstr ""
 
-#: breezy/builtins.py:3932
+#: breezy/builtins.py:3887
 msgid "--email can only be used to display existing identity"
 msgstr ""
 
-#: breezy/builtins.py:3956
+#: breezy/builtins.py:3911
 msgid "Print or set the branch nickname."
 msgstr ""
 
-#: breezy/builtins.py:3958
+#: breezy/builtins.py:3913
 msgid ""
 "If unset, the colocated branch name is used for colocated branches, and\n"
 "the branch directory name is used for other branches.  To print the\n"
 "current nickname, execute with no argument."
 msgstr ""
 
-#: breezy/builtins.py:3962
+#: breezy/builtins.py:3917
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally."
 msgstr ""
 
-#: breezy/builtins.py:3983
+#: breezy/builtins.py:3938
 msgid "Set/unset and display aliases."
 msgstr ""
 
-#: breezy/builtins.py:3985
+#: breezy/builtins.py:3940
 msgid ""
 ":Examples:\n"
 "    Show the current aliases::"
 msgstr ""
 
-#: breezy/builtins.py:3988
+#: breezy/builtins.py:3943
 msgid "        brz alias"
 msgstr ""
 
-#: breezy/builtins.py:3990
+#: breezy/builtins.py:3945
 msgid "    Show the alias specified for 'll'::"
 msgstr ""
 
-#: breezy/builtins.py:3992
+#: breezy/builtins.py:3947
 msgid "        brz alias ll"
 msgstr ""
 
-#: breezy/builtins.py:3994
+#: breezy/builtins.py:3949
 msgid "    Set an alias for 'll'::"
 msgstr ""
 
-#: breezy/builtins.py:3996
+#: breezy/builtins.py:3951
 msgid "        brz alias ll=\"log --line -r-10..-1\""
 msgstr ""
 
-#: breezy/builtins.py:3998
+#: breezy/builtins.py:3953
 msgid "    To remove an alias for 'll'::"
 msgstr ""
 
-#: breezy/builtins.py:4000
+#: breezy/builtins.py:3955
 msgid "        brz alias --remove ll"
 msgstr ""
 
 # help of 'remove' option of 'alias' command
-#: breezy/builtins.py:4005
+#: breezy/builtins.py:3960
 msgid "Remove the alias."
 msgstr ""
 
-#: breezy/builtins.py:4023
+#: breezy/builtins.py:3978
 msgid "brz alias --remove expects an alias to remove."
 msgstr ""
 
-#: breezy/builtins.py:4214
+#: breezy/builtins.py:4169
 msgid "subunit not available. subunit needs to be installed to use --subunit."
 msgstr ""
 
-#: breezy/builtins.py:4231
+#: breezy/builtins.py:4186
 msgid "subunit not available. subunit needs to be installed to use --subunit2."
 msgstr ""
 
-#: breezy/builtins.py:4240
+#: breezy/builtins.py:4195
 msgid ""
 "--benchmark is no longer supported from brz 2.2; use bzr-usertest instead"
 msgstr ""
 
-#: breezy/builtins.py:4287
+#: breezy/builtins.py:4242
 msgid "Show version of brz."
 msgstr ""
 
 # help of 'short' option of 'version' command
-#: breezy/builtins.py:4291
+#: breezy/builtins.py:4246
 msgid "Print just the version number."
 msgstr ""
 
-#: breezy/builtins.py:4310
+#: breezy/builtins.py:4265
 msgid "It sure does!\n"
 msgstr ""
 
-#: breezy/builtins.py:4334
+#: breezy/builtins.py:4289
 #, python-format
 msgid "merge base is revision %s\n"
 msgstr ""
 
-#: breezy/builtins.py:4339
+#: breezy/builtins.py:4294
 msgid "Perform a three-way merge."
 msgstr ""
 
-#: breezy/builtins.py:4341
+#: breezy/builtins.py:4296
 msgid ""
 "The source of the merge can be specified either in the form of a branch,\n"
 "or in the form of a path to a file containing a merge directive generated\n"
@@ -2854,20 +2854,20 @@ msgid ""
 "the current working tree."
 msgstr ""
 
-#: breezy/builtins.py:4349
+#: breezy/builtins.py:4304
 msgid ""
 "When merging from a branch, by default brz will try to merge in all new\n"
 "work from the other branch, automatically determining an appropriate base\n"
 "revision.  If this fails, you may need to give an explicit base."
 msgstr ""
 
-#: breezy/builtins.py:4353
+#: breezy/builtins.py:4308
 msgid ""
 "To pick a different ending revision, pass \"--revision OTHER\".  brz will\n"
 "try to merge in all new work up to and including revision OTHER."
 msgstr ""
 
-#: breezy/builtins.py:4356
+#: breezy/builtins.py:4311
 msgid ""
 "If you specify two values, \"--revision BASE..OTHER\", only revisions BASE\n"
 "through OTHER, excluding BASE but including OTHER, will be merged.  If this\n"
@@ -2878,11 +2878,11 @@ msgid ""
 "changes from the other branch is not stored in the commit."
 msgstr ""
 
-#: breezy/builtins.py:4364
+#: breezy/builtins.py:4319
 msgid "Revision numbers are always relative to the source branch."
 msgstr ""
 
-#: breezy/builtins.py:4366 breezy/conflicts.py:54 breezy/conflicts.py:109
+#: breezy/builtins.py:4321 breezy/conflicts.py:54 breezy/conflicts.py:109
 msgid ""
 "Merge will do its best to combine the changes in two branches, but there\n"
 "are some kinds of problems only a human can fix.  When it encounters those,\n"
@@ -2890,11 +2890,11 @@ msgid ""
 "before you can commit."
 msgstr ""
 
-#: breezy/builtins.py:4371
+#: breezy/builtins.py:4326
 msgid "Use brz resolve when you have fixed a problem.  See also brz conflicts."
 msgstr ""
 
-#: breezy/builtins.py:4373
+#: breezy/builtins.py:4328
 msgid ""
 "If there is no default branch set, the first merge will set it (use\n"
 "--no-remember to avoid setting it). After that, you can omit the branch\n"
@@ -2902,14 +2902,14 @@ msgid ""
 "only be saved if the remote location can be accessed."
 msgstr ""
 
-#: breezy/builtins.py:4378
+#: breezy/builtins.py:4333
 msgid ""
 "The results of the merge are placed into the destination working\n"
 "directory, where they can be reviewed (with brz diff), tested, and then\n"
 "committed to record the result of the merge."
 msgstr ""
 
-#: breezy/builtins.py:4382
+#: breezy/builtins.py:4337
 msgid ""
 "merge refuses to run if there are any uncommitted changes, unless\n"
 "--force is given.  If --force is given, then the changes from the source\n"
@@ -2918,60 +2918,60 @@ msgid ""
 "merge revision which has more than two parents."
 msgstr ""
 
-#: breezy/builtins.py:4388
+#: breezy/builtins.py:4343
 msgid ""
 "If one would like to merge changes from the working tree of the other\n"
 "branch without merging any committed revisions, the --uncommitted option\n"
 "can be given."
 msgstr ""
 
-#: breezy/builtins.py:4392
+#: breezy/builtins.py:4347
 msgid ""
 "To select only some changes to merge, use \"merge -i\", which will prompt\n"
 "you to apply each diff hunk and file change, similar to \"shelve\"."
 msgstr ""
 
-#: breezy/builtins.py:4395
+#: breezy/builtins.py:4350
 msgid ""
 ":Examples:\n"
 "    To merge all new revisions from brz.dev::"
 msgstr ""
 
-#: breezy/builtins.py:4398
+#: breezy/builtins.py:4353
 msgid "        brz merge ../brz.dev"
 msgstr ""
 
-#: breezy/builtins.py:4400
+#: breezy/builtins.py:4355
 msgid "    To merge changes up to and including revision 82 from brz.dev::"
 msgstr ""
 
-#: breezy/builtins.py:4402
+#: breezy/builtins.py:4357
 msgid "        brz merge -r 82 ../brz.dev"
 msgstr ""
 
-#: breezy/builtins.py:4404
+#: breezy/builtins.py:4359
 msgid "    To merge the changes introduced by 82, without previous changes::"
 msgstr ""
 
-#: breezy/builtins.py:4406
+#: breezy/builtins.py:4361
 msgid "        brz merge -r 81..82 ../brz.dev"
 msgstr ""
 
-#: breezy/builtins.py:4408
+#: breezy/builtins.py:4363
 msgid "    To apply a merge directive contained in /tmp/merge::"
 msgstr ""
 
-#: breezy/builtins.py:4410
+#: breezy/builtins.py:4365
 msgid "        brz merge /tmp/merge"
 msgstr ""
 
-#: breezy/builtins.py:4412
+#: breezy/builtins.py:4367
 msgid ""
 "    To create a merge revision with three parents from two branches\n"
 "    feature1a and feature1b:"
 msgstr ""
 
-#: breezy/builtins.py:4415
+#: breezy/builtins.py:4370
 msgid ""
 "        brz merge ../feature1a\n"
 "        brz merge ../feature1b --force\n"
@@ -2979,18 +2979,18 @@ msgid ""
 msgstr ""
 
 # help of 'force' option of 'merge' command
-#: breezy/builtins.py:4427
+#: breezy/builtins.py:4382
 msgid "Merge even if the destination tree has uncommitted changes."
 msgstr ""
 
 # help of 'uncommitted' option of 'merge' command
-#: breezy/builtins.py:4433
+#: breezy/builtins.py:4388
 msgid ""
 "Apply uncommitted changes from a working copy, instead of branch changes."
 msgstr ""
 
 # help of 'pull' option of 'merge' command
-#: breezy/builtins.py:4435
+#: breezy/builtins.py:4390
 msgid ""
 "If the destination is already completely merged into the source, pull from "
 "the source rather than merging.  When this happens, you do not need to "
@@ -2998,114 +2998,114 @@ msgid ""
 msgstr ""
 
 # help of 'directory' option of 'merge' command
-#: breezy/builtins.py:4440
+#: breezy/builtins.py:4395
 msgid ""
 "Branch to merge into, rather than the one containing the working directory."
 msgstr ""
 
 # help of 'preview' option of 'merge' command
-#: breezy/builtins.py:4442
+#: breezy/builtins.py:4397
 msgid "Instead of merging, show a diff of the merge."
 msgstr ""
 
 # help of 'interactive' option of 'merge' command
-#: breezy/builtins.py:4444
+#: breezy/builtins.py:4399
 msgid "Select changes interactively."
 msgstr ""
 
-#: breezy/builtins.py:4467
+#: breezy/builtins.py:4422
 msgid ""
 "Merging into empty branches not currently supported, https://bugs.launchpad."
 "net/bzr/+bug/308562"
 msgstr ""
 
-#: breezy/builtins.py:4489
+#: breezy/builtins.py:4444
 msgid "Cannot use --uncommitted with bundles or merge directives."
 msgstr ""
 
-#: breezy/builtins.py:4500
+#: breezy/builtins.py:4455
 msgid "Cannot use --uncommitted and --revision at the same time."
 msgstr ""
 
-#: breezy/builtins.py:4520
+#: breezy/builtins.py:4475
 msgid "merger: "
 msgstr ""
 
-#: breezy/builtins.py:4522 breezy/bundle/apply_bundle.py:65
+#: breezy/builtins.py:4477 breezy/bundle/apply_bundle.py:65
 msgid "Nothing to do."
 msgstr ""
 
-#: breezy/builtins.py:4527
+#: breezy/builtins.py:4482
 msgid "Cannot pull individual files"
 msgstr ""
 
-#: breezy/builtins.py:4535
+#: breezy/builtins.py:4490
 msgid "This branch has no commits. (perhaps you would prefer 'brz pull')"
 msgstr ""
 
-#: breezy/builtins.py:4593
+#: breezy/builtins.py:4548
 #, python-format
 msgid "Show-base is not supported for this merge type. %s"
 msgstr ""
 
-#: breezy/builtins.py:4602
+#: breezy/builtins.py:4557
 #, python-format
 msgid "Conflict reduction is not supported for merge type %s."
 msgstr ""
 
-#: breezy/builtins.py:4606
+#: breezy/builtins.py:4561
 msgid "Cannot do conflict reduction and show base."
 msgstr ""
 
-#: breezy/builtins.py:4615
+#: breezy/builtins.py:4570
 msgid "Plan file merge unsupported: Merge type incompatible with tree formats."
 msgstr ""
 
-#: breezy/builtins.py:4726
+#: breezy/builtins.py:4681
 msgid "No location specified or remembered"
 msgstr ""
 
-#: breezy/builtins.py:4728
+#: breezy/builtins.py:4683
 #, python-brace-format
 msgid "{0} remembered {1} location {2}"
 msgstr ""
 
-#: breezy/builtins.py:4734
+#: breezy/builtins.py:4689
 msgid "Redo a merge."
 msgstr ""
 
-#: breezy/builtins.py:4736
+#: breezy/builtins.py:4691
 msgid ""
 "Use this if you want to try a different merge technique while resolving\n"
 "conflicts.  Some merge techniques are better than others, and remerge\n"
 "lets you try different ones on different files."
 msgstr ""
 
-#: breezy/builtins.py:4740
+#: breezy/builtins.py:4695
 msgid ""
 "The options for remerge have the same meaning and defaults as the ones for\n"
 "merge.  The difference is that remerge can (only) be run when there is a\n"
 "pending merge, and it lets you specify particular files."
 msgstr ""
 
-#: breezy/builtins.py:4744
+#: breezy/builtins.py:4699
 msgid ""
 ":Examples:\n"
 "    Re-do the merge of all conflicted files, and show the base text in\n"
 "    conflict regions, in addition to the usual THIS and OTHER texts::"
 msgstr ""
 
-#: breezy/builtins.py:4748
+#: breezy/builtins.py:4703
 msgid "        brz remerge --show-base"
 msgstr ""
 
-#: breezy/builtins.py:4750
+#: breezy/builtins.py:4705
 msgid ""
 "    Re-do the merge of \"foobar\", using the weave merge algorithm, with\n"
 "    additional processing to reduce the size of conflict regions::"
 msgstr ""
 
-#: breezy/builtins.py:4753
+#: breezy/builtins.py:4708
 msgid "        brz remerge --merge-type weave --reprocess foobar"
 msgstr ""
 
@@ -3113,22 +3113,22 @@ msgstr ""
 # help of 'show-base' option of 'pull' command
 # help of 'show-base' option of 'remerge' command
 # help of 'show-base' option of 'update' command
-#: breezy/builtins.py:4760
+#: breezy/builtins.py:4715
 msgid "Show base revision text in conflicts."
 msgstr ""
 
-#: breezy/builtins.py:4773
+#: breezy/builtins.py:4728
 msgid ""
 "Sorry, remerge only works after normal merges.  Not cherrypicking or multi-"
 "merges."
 msgstr ""
 
-#: breezy/builtins.py:4828
+#: breezy/builtins.py:4783
 msgid ""
 "Set files in the working tree back to the contents of a previous revision."
 msgstr ""
 
-#: breezy/builtins.py:4830
+#: breezy/builtins.py:4785
 msgid ""
 "Giving a list of files will revert only those files.  Otherwise, all files\n"
 "will be reverted.  If the revision is not specified with '--revision', the\n"
@@ -3137,7 +3137,7 @@ msgid ""
 "the working tree basis revision."
 msgstr ""
 
-#: breezy/builtins.py:4836
+#: breezy/builtins.py:4791
 msgid ""
 "To remove only some changes, without reverting to a prior version, use\n"
 "merge instead.  For example, \"merge . -r -2..-3\" (don't forget the \".\")\n"
@@ -3149,7 +3149,7 @@ msgid ""
 "update command."
 msgstr ""
 
-#: breezy/builtins.py:4845
+#: breezy/builtins.py:4800
 msgid ""
 "Uncommitted changes to files that are reverted will be discarded.\n"
 "Howver, by default, any files that have been manually changed will be\n"
@@ -3157,7 +3157,7 @@ msgid ""
 "files have '.~#~' appended to their name, where # is a number."
 msgstr ""
 
-#: breezy/builtins.py:4850
+#: breezy/builtins.py:4805
 msgid ""
 "When you provide files, you can use their current pathname or the pathname\n"
 "from the target revision.  So you can use revert to \"undelete\" a file by\n"
@@ -3165,7 +3165,7 @@ msgid ""
 "reverted."
 msgstr ""
 
-#: breezy/builtins.py:4855
+#: breezy/builtins.py:4810
 msgid ""
 "If you have newly added files since the target revision, they will be\n"
 "removed.  If the files to be removed have been changed, backups will be\n"
@@ -3173,7 +3173,7 @@ msgid ""
 "deleted."
 msgstr ""
 
-#: breezy/builtins.py:4860
+#: breezy/builtins.py:4815
 msgid ""
 "The working tree contains a list of revisions that have been merged but\n"
 "not yet committed. These revisions will be included as additional parents\n"
@@ -3185,7 +3185,7 @@ msgid ""
 "reverting any files."
 msgstr ""
 
-#: breezy/builtins.py:4869
+#: breezy/builtins.py:4824
 msgid ""
 "Using \"brz revert --forget-merges\", it is possible to apply all of the\n"
 "changes from a branch in a single revision.  To do this, perform the merge\n"
@@ -3200,177 +3200,177 @@ msgid ""
 msgstr ""
 
 # help of 'no-backup' option of 'revert' command
-#: breezy/builtins.py:4883
+#: breezy/builtins.py:4838
 msgid "Do not save backups of reverted files."
 msgstr ""
 
 # help of 'forget-merges' option of 'revert' command
-#: breezy/builtins.py:4885
+#: breezy/builtins.py:4840
 msgid "Remove pending merge marker, without changing any files."
 msgstr ""
 
-#: breezy/builtins.py:4916
+#: breezy/builtins.py:4871
 msgid ""
 "Show help on a command or other topic.\n"
 "    "
 msgstr ""
 
 # help of 'long' option of 'help' command
-#: breezy/builtins.py:4921
+#: breezy/builtins.py:4876
 msgid "Show help on all commands."
 msgstr ""
 
-#: breezy/builtins.py:4950
+#: breezy/builtins.py:4905
 msgid "Show unmerged/unpulled revisions between two branches."
 msgstr ""
 
-#: breezy/builtins.py:4952
+#: breezy/builtins.py:4907
 msgid "OTHER_BRANCH may be local or remote."
 msgstr ""
 
-#: breezy/builtins.py:4954
+#: breezy/builtins.py:4909
 msgid ""
 "To filter on a range of revisions, you can use the command -r begin..end\n"
 "-r revision requests a specific revision, -r ..end or -r begin.. are\n"
 "also valid."
 msgstr ""
 
-#: breezy/builtins.py:4958
+#: breezy/builtins.py:4913
 msgid ""
 ":Exit values:\n"
 "    1 - some missing revisions\n"
 "    0 - no missing revisions"
 msgstr ""
 
-#: breezy/builtins.py:4964
+#: breezy/builtins.py:4919
 msgid ""
 "    Determine the missing revisions between this and the branch at the\n"
 "    remembered pull location::"
 msgstr ""
 
-#: breezy/builtins.py:4967
+#: breezy/builtins.py:4922
 msgid "        brz missing"
 msgstr ""
 
-#: breezy/builtins.py:4969
+#: breezy/builtins.py:4924
 msgid "    Determine the missing revisions between this and another branch::"
 msgstr ""
 
-#: breezy/builtins.py:4971
+#: breezy/builtins.py:4926
 msgid "        brz missing http://server/branch"
 msgstr ""
 
-#: breezy/builtins.py:4973
+#: breezy/builtins.py:4928
 msgid ""
 "    Determine the missing revisions up to a specific revision on the other\n"
 "    branch::"
 msgstr ""
 
-#: breezy/builtins.py:4976
+#: breezy/builtins.py:4931
 msgid "        brz missing -r ..-10"
 msgstr ""
 
-#: breezy/builtins.py:4978
+#: breezy/builtins.py:4933
 msgid ""
 "    Determine the missing revisions up to a specific revision on this\n"
 "    branch::"
 msgstr ""
 
-#: breezy/builtins.py:4981
+#: breezy/builtins.py:4936
 msgid "        brz missing --my-revision ..-10"
 msgstr ""
 
 # help of 'reverse' option of 'missing' command
-#: breezy/builtins.py:4988
+#: breezy/builtins.py:4943
 msgid "Reverse the order of revisions."
 msgstr ""
 
 # help of 'mine-only' option of 'missing' command
-#: breezy/builtins.py:4990
+#: breezy/builtins.py:4945
 msgid "Display changes in the local branch only."
 msgstr ""
 
 # help of 'this' option of 'missing' command
-#: breezy/builtins.py:4991
+#: breezy/builtins.py:4946
 msgid "Same as --mine-only."
 msgstr ""
 
 # help of 'theirs-only' option of 'missing' command
-#: breezy/builtins.py:4993
+#: breezy/builtins.py:4948
 msgid "Display changes in the remote branch only."
 msgstr ""
 
 # help of 'other' option of 'missing' command
-#: breezy/builtins.py:4994
+#: breezy/builtins.py:4949
 msgid "Same as --theirs-only."
 msgstr ""
 
 # help of 'revision' option of 'missing' command
-#: breezy/builtins.py:4999
+#: breezy/builtins.py:4954
 msgid ""
 "Filter on other branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
 
 # help of 'my-revision' option of 'missing' command
-#: breezy/builtins.py:5003
+#: breezy/builtins.py:4958
 msgid ""
 "Filter on local branch revisions (inclusive). See \"help revisionspec\" for "
 "details."
 msgstr ""
 
 # help of 'include-merged' option of 'missing' command
-#: breezy/builtins.py:5006
+#: breezy/builtins.py:4961
 msgid "Show all revisions in addition to the mainline ones."
 msgstr ""
 
-#: breezy/builtins.py:5047
+#: breezy/builtins.py:5002
 msgid "No peer location known or specified."
 msgstr ""
 
-#: breezy/builtins.py:5051
+#: breezy/builtins.py:5006
 #, python-brace-format
 msgid "Using saved parent location: {0}\n"
 msgstr ""
 
-#: breezy/builtins.py:5084
+#: breezy/builtins.py:5039
 #, python-format
 msgid "You have %d extra revision:\n"
 msgid_plural "You have %d extra revisions:\n"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/builtins.py:5104
+#: breezy/builtins.py:5059
 #, python-format
 msgid "You are missing %d revision:\n"
 msgid_plural "You are missing %d revisions:\n"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/builtins.py:5119
+#: breezy/builtins.py:5074
 msgid "This branch has no new revisions.\n"
 msgstr ""
 
-#: breezy/builtins.py:5122
+#: breezy/builtins.py:5077
 msgid "Other branch has no new revisions.\n"
 msgstr ""
 
-#: breezy/builtins.py:5127
+#: breezy/builtins.py:5082
 msgid "Branches are up to date.\n"
 msgstr ""
 
-#: breezy/builtins.py:5138
+#: breezy/builtins.py:5093
 msgid "Compress the data within a repository."
 msgstr ""
 
-#: breezy/builtins.py:5140
+#: breezy/builtins.py:5095
 msgid ""
 "This operation compresses the data within a bazaar repository. As\n"
 "bazaar supports automatic packing of repository, this operation is\n"
 "normally not required to be done manually."
 msgstr ""
 
-#: breezy/builtins.py:5144
+#: breezy/builtins.py:5099
 msgid ""
 "During the pack operation, bazaar takes a backup of existing repository\n"
 "data, i.e. pack files. This backup is eventually removed by bazaar\n"
@@ -3379,7 +3379,7 @@ msgid ""
 "used."
 msgstr ""
 
-#: breezy/builtins.py:5150
+#: breezy/builtins.py:5105
 msgid ""
 "Warning: If you use --clean-obsolete-packs and your machine crashes\n"
 "during or immediately after repacking, you may be left with a state\n"
@@ -3388,25 +3388,25 @@ msgid ""
 msgstr ""
 
 # help of 'clean-obsolete-packs' option of 'pack' command
-#: breezy/builtins.py:5160
+#: breezy/builtins.py:5115
 msgid "Delete obsolete packs to save disk space."
 msgstr ""
 
-#: breezy/builtins.py:5174
+#: breezy/builtins.py:5129
 msgid "List the installed plugins."
 msgstr ""
 
-#: breezy/builtins.py:5176
+#: breezy/builtins.py:5131
 msgid ""
 "This command displays the list of installed plugins including\n"
 "version of plugin and a short description of each."
 msgstr ""
 
-#: breezy/builtins.py:5179
+#: breezy/builtins.py:5134
 msgid "--verbose shows the path where each plugin is located."
 msgstr ""
 
-#: breezy/builtins.py:5181
+#: breezy/builtins.py:5136
 msgid ""
 "A plugin is an external component for Bazaar that extends the\n"
 "revision control system, by adding or replacing code in Bazaar.\n"
@@ -3415,7 +3415,7 @@ msgid ""
 "customizing log output."
 msgstr ""
 
-#: breezy/builtins.py:5187
+#: breezy/builtins.py:5142
 msgid ""
 "See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>\n"
 "for further information on plugins including where to find them and how to\n"
@@ -3423,122 +3423,122 @@ msgid ""
 "plugins using the Python programming language."
 msgstr ""
 
-#: breezy/builtins.py:5203
+#: breezy/builtins.py:5158
 msgid "Show testament (signing-form) of a revision."
 msgstr ""
 
 # help of 'long' option of 'testament' command
-#: breezy/builtins.py:5206
+#: breezy/builtins.py:5161
 msgid "Produce long-format testament."
 msgstr ""
 
 # help of 'strict' option of 'testament' command
-#: breezy/builtins.py:5208
+#: breezy/builtins.py:5163
 msgid "Produce a strict-format testament."
 msgstr ""
 
-#: breezy/builtins.py:5236
+#: breezy/builtins.py:5191
 msgid "Show the origin of each line in a file."
 msgstr ""
 
-#: breezy/builtins.py:5238
+#: breezy/builtins.py:5193
 msgid ""
 "This prints out the given file with an annotation on the left side\n"
 "indicating which revision, author and date introduced the change."
 msgstr ""
 
-#: breezy/builtins.py:5241
+#: breezy/builtins.py:5196
 msgid ""
 "If the origin is the same for a run of consecutive lines, it is\n"
 "shown only at the top, unless the --all option is given."
 msgstr ""
 
 # help of 'all' option of 'annotate' command
-#: breezy/builtins.py:5249
+#: breezy/builtins.py:5204
 msgid "Show annotations on all lines."
 msgstr ""
 
 # help of 'long' option of 'annotate' command
-#: breezy/builtins.py:5250
+#: breezy/builtins.py:5205
 msgid "Show commit date in annotations."
 msgstr ""
 
-#: breezy/builtins.py:5340
+#: breezy/builtins.py:5293
 msgid "Cannot sign a range of non-revision-history revisions"
 msgstr ""
 
-#: breezy/builtins.py:5353
+#: breezy/builtins.py:5306
 msgid "Please supply either one revision, or a range."
 msgstr ""
 
-#: breezy/builtins.py:5357
+#: breezy/builtins.py:5310
 msgid ""
 "Convert the current branch into a checkout of the supplied branch.\n"
 "If no branch is supplied, rebind to the last bound location."
 msgstr ""
 
-#: breezy/builtins.py:5360
+#: breezy/builtins.py:5313
 msgid ""
 "Once converted into a checkout, commits must succeed on the master branch\n"
 "before they will be applied to the local branch."
 msgstr ""
 
-#: breezy/builtins.py:5363
+#: breezy/builtins.py:5316
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally, in which case binding will update the local nickname to be\n"
 "that of the master."
 msgstr ""
 
-#: breezy/builtins.py:5379
+#: breezy/builtins.py:5332
 msgid "No location supplied.  This format does not remember old locations."
 msgstr ""
 
-#: breezy/builtins.py:5385
+#: breezy/builtins.py:5338
 msgid "Branch is already bound"
 msgstr ""
 
-#: breezy/builtins.py:5388
+#: breezy/builtins.py:5341
 msgid "No location supplied and no previous location known"
 msgstr ""
 
-#: breezy/builtins.py:5395
+#: breezy/builtins.py:5348
 msgid "These branches have diverged. Try merging, and then bind again."
 msgstr ""
 
-#: breezy/builtins.py:5402
+#: breezy/builtins.py:5355
 msgid "Convert the current checkout into a regular branch."
 msgstr ""
 
-#: breezy/builtins.py:5404
+#: breezy/builtins.py:5357
 msgid ""
 "After unbinding, the local branch is considered independent and subsequent\n"
 "commits will be local only."
 msgstr ""
 
-#: breezy/builtins.py:5415
+#: breezy/builtins.py:5368
 msgid "Local branch is not bound"
 msgstr ""
 
-#: breezy/builtins.py:5419
+#: breezy/builtins.py:5372
 msgid "Remove the last committed revision."
 msgstr ""
 
-#: breezy/builtins.py:5421
+#: breezy/builtins.py:5374
 msgid ""
 "--verbose will print out what is being removed.\n"
 "--dry-run will go through all the motions, but not actually\n"
 "remove anything."
 msgstr ""
 
-#: breezy/builtins.py:5425
+#: breezy/builtins.py:5378
 msgid ""
 "If --revision is specified, uncommit revisions to leave the branch at the\n"
 "specified revision.  For example, \"brz uncommit -r 15\" will leave the\n"
 "branch at revision 15."
 msgstr ""
 
-#: breezy/builtins.py:5429
+#: breezy/builtins.py:5382
 msgid ""
 "Uncommit leaves the working tree ready for a new commit.  The only change\n"
 "it may make is to restore any pending merges that were present before\n"
@@ -3546,75 +3546,75 @@ msgid ""
 msgstr ""
 
 # help of 'dry-run' option of 'uncommit' command
-#: breezy/builtins.py:5440
+#: breezy/builtins.py:5393
 msgid "Don't actually make changes."
 msgstr ""
 
 # help of 'force' option of 'uncommit' command
-#: breezy/builtins.py:5441
+#: breezy/builtins.py:5394
 msgid "Say yes to all questions."
 msgstr ""
 
 # help of 'keep-tags' option of 'uncommit' command
-#: breezy/builtins.py:5443
+#: breezy/builtins.py:5396
 msgid "Keep tags that point to removed revisions."
 msgstr ""
 
 # help of 'local' option of 'uncommit' command
-#: breezy/builtins.py:5445
+#: breezy/builtins.py:5398
 msgid "Only remove the commits from the local branch when in a checkout."
 msgstr ""
 
-#: breezy/builtins.py:5494
+#: breezy/builtins.py:5447
 msgid "No revisions to uncommit.\n"
 msgstr ""
 
-#: breezy/builtins.py:5509
+#: breezy/builtins.py:5462
 msgid "Dry-run, pretending to remove the above revisions.\n"
 msgstr ""
 
-#: breezy/builtins.py:5513
+#: breezy/builtins.py:5466
 msgid "The above revision(s) will be removed.\n"
 msgstr ""
 
-#: breezy/builtins.py:5517
+#: breezy/builtins.py:5470
 msgid "Uncommit these revisions"
 msgstr ""
 
-#: breezy/builtins.py:5520
+#: breezy/builtins.py:5473
 msgid "Canceled\n"
 msgstr ""
 
-#: breezy/builtins.py:5528
+#: breezy/builtins.py:5481
 #, python-format
 msgid ""
 "You can restore the old tip by running:\n"
 "  brz pull . -r revid:%s\n"
 msgstr ""
 
-#: breezy/builtins.py:5534
+#: breezy/builtins.py:5487
 msgid "Break a dead lock."
 msgstr ""
 
-#: breezy/builtins.py:5536
+#: breezy/builtins.py:5489
 msgid ""
 "This command breaks a lock on a repository, branch, working directory or\n"
 "config file."
 msgstr ""
 
-#: breezy/builtins.py:5539
+#: breezy/builtins.py:5492
 msgid ""
 "CAUTION: Locks should only be broken when you are sure that the process\n"
 "holding the lock has been stopped."
 msgstr ""
 
-#: breezy/builtins.py:5542
+#: breezy/builtins.py:5495
 msgid ""
 "You can get information on what locks are open via the 'brz info\n"
 "[location]' command."
 msgstr ""
 
-#: breezy/builtins.py:5545
+#: breezy/builtins.py:5498
 msgid ""
 ":Examples:\n"
 "    brz break-lock\n"
@@ -3623,61 +3623,61 @@ msgid ""
 msgstr ""
 
 # help of 'config' option of 'break-lock' command
-#: breezy/builtins.py:5554
+#: breezy/builtins.py:5507
 msgid "LOCATION is the directory where the config lock is."
 msgstr ""
 
 # help of 'force' option of 'break-lock' command
-#: breezy/builtins.py:5556
+#: breezy/builtins.py:5509
 msgid "Do not ask for confirmation before breaking the lock."
 msgstr ""
 
 # help of 'protocol=git' option of 'serve' command
-#: breezy/builtins.py:5591
+#: breezy/builtins.py:5544
 msgid "Git Smart server protocol over TCP. (default port: 9418)"
 msgstr ""
 
 # help of 'protocol=git-receive-pack' option of 'serve' command
-#: breezy/builtins.py:5591
+#: breezy/builtins.py:5544
 msgid "Git Smart server receive pack command. (inetd mode only)"
 msgstr ""
 
 # help of 'protocol=git-upload-pack' option of 'serve' command
-#: breezy/builtins.py:5591
+#: breezy/builtins.py:5544
 msgid "Git Smart server upload pack command. (inetd mode only)"
 msgstr ""
 
 # help of 'protocol=bzr' option of 'serve' command
-#: breezy/builtins.py:5591
+#: breezy/builtins.py:5544
 msgid "The Bazaar smart server protocol over TCP. (default port: 4155)"
 msgstr ""
 
-#: breezy/builtins.py:5592
+#: breezy/builtins.py:5545
 msgid "Run the brz server."
 msgstr ""
 
 # help of 'inet' option of 'serve' command
-#: breezy/builtins.py:5598
+#: breezy/builtins.py:5551
 msgid "Serve on stdin/out for use from inetd or sshd."
 msgstr ""
 
 # title of 'protocol' option of 'serve' command
-#: breezy/builtins.py:5599
+#: breezy/builtins.py:5552
 msgid "protocol"
 msgstr ""
 
 # help of 'protocol' option of 'serve' command
-#: breezy/builtins.py:5600
+#: breezy/builtins.py:5553
 msgid "Protocol to serve."
 msgstr ""
 
 # help of 'listen' option of 'serve' command
-#: breezy/builtins.py:5605
+#: breezy/builtins.py:5558
 msgid "Listen for connections on nominated address."
 msgstr ""
 
 # help of 'port' option of 'serve' command
-#: breezy/builtins.py:5608
+#: breezy/builtins.py:5561
 msgid ""
 "Listen for connections on nominated port.  Passing 0 as the port number will "
 "result in a dynamically allocated port.  The default port depends on the "
@@ -3685,12 +3685,12 @@ msgid ""
 msgstr ""
 
 # help of 'directory' option of 'serve' command
-#: breezy/builtins.py:5613
+#: breezy/builtins.py:5566
 msgid "Serve contents of this directory."
 msgstr ""
 
 # help of 'allow-writes' option of 'serve' command
-#: breezy/builtins.py:5615
+#: breezy/builtins.py:5568
 msgid ""
 "By default the server is a readonly server.  Supplying --allow-writes "
 "enables write access to the contents of the served directory and below.  "
@@ -3700,115 +3700,115 @@ msgid ""
 msgstr ""
 
 # help of 'client-timeout' option of 'serve' command
-#: breezy/builtins.py:5624
+#: breezy/builtins.py:5577
 msgid "Override the default idle client timeout (5min)."
 msgstr ""
 
-#: breezy/builtins.py:5642
+#: breezy/builtins.py:5595
 msgid "Combine a tree into its containing tree."
 msgstr ""
 
-#: breezy/builtins.py:5644
+#: breezy/builtins.py:5597
 msgid "This command requires the target tree to be in a rich-root format."
 msgstr ""
 
-#: breezy/builtins.py:5646
+#: breezy/builtins.py:5599
 msgid ""
 "The TREE argument should be an independent tree, inside another tree, but\n"
 "not part of it.  (Such trees can be produced by \"brz split\", but also by\n"
 "running \"brz branch\" with the target inside a tree.)"
 msgstr ""
 
-#: breezy/builtins.py:5650
+#: breezy/builtins.py:5603
 msgid ""
 "The result is a combined tree, with the subtree no longer an independent\n"
 "part.  This is marked as a merge of the subtree into the containing tree,\n"
 "and all history is preserved."
 msgstr ""
 
-#: breezy/builtins.py:5669
+#: breezy/builtins.py:5622
 #, python-format
 msgid ""
 "Can't join trees because %s doesn't support rich root data.\n"
 "You can use brz upgrade on the repository."
 msgstr ""
 
-#: breezy/builtins.py:5679 breezy/builtins.py:5685
+#: breezy/builtins.py:5632 breezy/builtins.py:5638
 #, python-brace-format
 msgid "Cannot join {0}.  {1}"
 msgstr ""
 
-#: breezy/builtins.py:5689
+#: breezy/builtins.py:5642
 msgid "Split a subdirectory of a tree into a separate tree."
 msgstr ""
 
-#: breezy/builtins.py:5691
+#: breezy/builtins.py:5644
 msgid ""
 "This command will produce a target tree in a format that supports\n"
 "rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be\n"
 "converted into earlier formats like 'dirstate-tags'."
 msgstr ""
 
-#: breezy/builtins.py:5695
+#: breezy/builtins.py:5648
 msgid ""
 "The TREE argument should be a subdirectory of a working tree.  That\n"
 "subdirectory will be converted into an independent tree, with its own\n"
 "branch.  Commits in the top-level tree will not apply to the new subtree."
 msgstr ""
 
-#: breezy/builtins.py:5777
+#: breezy/builtins.py:5730
 msgid "No submit branch specified or known"
 msgstr ""
 
-#: breezy/builtins.py:5787 breezy/send.py:109
+#: breezy/builtins.py:5740 breezy/send.py:109
 msgid "No public branch specified or known"
 msgstr ""
 
-#: breezy/builtins.py:5792
+#: breezy/builtins.py:5745
 msgid "brz merge-directive takes at most two one revision identifiers"
 msgstr ""
 
-#: breezy/builtins.py:5801
+#: breezy/builtins.py:5754
 msgid "No revisions to bundle."
 msgstr ""
 
-#: breezy/builtins.py:5820
+#: breezy/builtins.py:5773
 msgid "Mail or create a merge-directive for submitting changes."
 msgstr ""
 
-#: breezy/builtins.py:5822
+#: breezy/builtins.py:5775
 msgid "A merge directive provides many things needed for requesting merges:"
 msgstr ""
 
-#: breezy/builtins.py:5824
+#: breezy/builtins.py:5777
 msgid "* A machine-readable description of the merge to perform"
 msgstr ""
 
-#: breezy/builtins.py:5826
+#: breezy/builtins.py:5779
 msgid "* An optional patch that is a preview of the changes requested"
 msgstr ""
 
-#: breezy/builtins.py:5828
+#: breezy/builtins.py:5781
 msgid ""
 "* An optional bundle of revision data, so that the changes can be applied\n"
 "  directly from the merge directive, without retrieving data from a\n"
 "  branch."
 msgstr ""
 
-#: breezy/builtins.py:5832
+#: breezy/builtins.py:5785
 msgid ""
 "`brz send` creates a compact data set that, when applied using brz\n"
 "merge, has the same effect as merging from the source branch."
 msgstr ""
 
-#: breezy/builtins.py:5835
+#: breezy/builtins.py:5788
 msgid ""
 "By default the merge directive is self-contained and can be applied to any\n"
 "branch containing submit_branch in its ancestory without needing access to\n"
 "the source branch."
 msgstr ""
 
-#: breezy/builtins.py:5839
+#: breezy/builtins.py:5792
 msgid ""
 "If --no-bundle is specified, then Bazaar doesn't send the contents of the\n"
 "revisions, but only a structured request to merge from the\n"
@@ -3817,7 +3817,7 @@ msgid ""
 "included if known, so that people can check it later."
 msgstr ""
 
-#: breezy/builtins.py:5845
+#: breezy/builtins.py:5798
 msgid ""
 "The submit branch defaults to the parent of the source branch, but can be\n"
 "overridden.  Both submit branch and public branch will be remembered in\n"
@@ -3826,7 +3826,7 @@ msgid ""
 "be changed using --from."
 msgstr ""
 
-#: breezy/builtins.py:5851
+#: breezy/builtins.py:5804
 msgid ""
 "Both the submit branch and the public branch follow the usual behavior with\n"
 "respect to --remember: If there is no default location set, the first send\n"
@@ -3835,7 +3835,7 @@ msgid ""
 "--remember. The value will only be saved if the location can be accessed."
 msgstr ""
 
-#: breezy/builtins.py:5857
+#: breezy/builtins.py:5810
 msgid ""
 "In order to calculate those changes, brz must analyse the submit branch.\n"
 "Therefore it is most efficient for the submit branch to be a local mirror.\n"
@@ -3843,20 +3843,20 @@ msgid ""
 "in the merge directive."
 msgstr ""
 
-#: breezy/builtins.py:5862
+#: breezy/builtins.py:5815
 msgid ""
 "The default behaviour is to send the merge directive by mail, unless -o is\n"
 "given, in which case it is sent to a file."
 msgstr ""
 
-#: breezy/builtins.py:5865
+#: breezy/builtins.py:5818
 msgid ""
 "Mail is sent using your preferred mail program.  This should be transparent\n"
 "on Windows (it uses MAPI).  On Unix, it requires the xdg-email utility.\n"
 "If the preferred client can't be found (or used), your editor will be used."
 msgstr ""
 
-#: breezy/builtins.py:5869
+#: breezy/builtins.py:5822
 msgid ""
 "To use a specific mail program, set the mail_client configuration option.\n"
 "Supported values for specific clients are \"claws\", \"evolution\", \"kmail"
@@ -3868,7 +3868,7 @@ msgid ""
 "may also add supported clients."
 msgstr ""
 
-#: breezy/builtins.py:5875
+#: breezy/builtins.py:5828
 msgid ""
 "If mail is being sent, a to address is required.  This can be supplied\n"
 "either on the commandline, by setting the submit_to configuration\n"
@@ -3876,13 +3876,13 @@ msgid ""
 "in the submit branch."
 msgstr ""
 
-#: breezy/builtins.py:5880
+#: breezy/builtins.py:5833
 msgid ""
 "The merge directives created by brz send may be applied using brz merge or\n"
 "brz pull by specifying a file containing a merge directive as the location."
 msgstr ""
 
-#: breezy/builtins.py:5883
+#: breezy/builtins.py:5836
 msgid ""
 "brz send makes extensive use of public locations to map local locations "
 "into\n"
@@ -3891,44 +3891,44 @@ msgid ""
 msgstr ""
 
 # help of 'output' option of 'send' command
-#: breezy/builtins.py:5907
+#: breezy/builtins.py:5860
 msgid "Write merge directive to this file or directory; use - for stdout."
 msgstr ""
 
 # help of 'strict' option of 'send' command
-#: breezy/builtins.py:5911
+#: breezy/builtins.py:5864
 msgid ""
 "Refuse to send if there are uncommitted changes in the working tree, --no-"
 "strict disables the check."
 msgstr ""
 
 # help of 'mail-to' option of 'send' command
-#: breezy/builtins.py:5913
+#: breezy/builtins.py:5866
 msgid "Mail the request to this address."
 msgstr ""
 
 # help of 'body' option of 'send' command
-#: breezy/builtins.py:5917
+#: breezy/builtins.py:5870
 msgid "Body for the email."
 msgstr ""
 
 # help of 'no-bundle' option of 'send' command
-#: breezy/builtins.py:5964
+#: breezy/builtins.py:5917
 msgid "Do not include a bundle in the merge directive."
 msgstr ""
 
 # help of 'no-patch' option of 'send' command
-#: breezy/builtins.py:5965
+#: breezy/builtins.py:5918
 msgid "Do not include a preview patch in the merge directive."
 msgstr ""
 
 # help of 'remember' option of 'send' command
-#: breezy/builtins.py:5968
+#: breezy/builtins.py:5921
 msgid "Remember submit and public branch."
 msgstr ""
 
 # help of 'from' option of 'send' command
-#: breezy/builtins.py:5970
+#: breezy/builtins.py:5923
 msgid ""
 "Branch to generate the submission from, rather than the one containing the "
 "working directory."
@@ -3936,46 +3936,46 @@ msgstr ""
 
 # title of 'format' option of 'send' command
 # title of 'format' option of 'version-info' command
-#: breezy/builtins.py:5980 breezy/cmd_version_info.py:77
+#: breezy/builtins.py:5933 breezy/cmd_version_info.py:77
 msgid "format"
 msgstr ""
 
 # help of 'format' option of 'send' command
-#: breezy/builtins.py:5981
+#: breezy/builtins.py:5934
 msgid "Use the specified output format."
 msgstr ""
 
-#: breezy/builtins.py:6003
+#: breezy/builtins.py:5956
 msgid "Create, remove or modify a tag naming a revision."
 msgstr ""
 
-#: breezy/builtins.py:6005
+#: breezy/builtins.py:5958
 msgid ""
 "Tags give human-meaningful names to revisions.  Commands that take a -r\n"
 "(--revision) option can be given -rtag:X, where X is any previously\n"
 "created tag."
 msgstr ""
 
-#: breezy/builtins.py:6009
+#: breezy/builtins.py:5962
 msgid ""
 "Tags are stored in the branch.  Tags are copied from one branch to another\n"
 "along when you branch, push, pull or merge."
 msgstr ""
 
-#: breezy/builtins.py:6012
+#: breezy/builtins.py:5965
 msgid ""
 "It is an error to give a tag name that already exists unless you pass\n"
 "--force, in which case the tag is moved to point to the new revision."
 msgstr ""
 
-#: breezy/builtins.py:6015
+#: breezy/builtins.py:5968
 msgid ""
 "To rename a tag (change the name but keep it on the same revsion), run "
 "``brz\n"
 "tag new-name -r tag:old-name`` and then ``brz tag --delete oldname``."
 msgstr ""
 
-#: breezy/builtins.py:6018
+#: breezy/builtins.py:5971
 msgid ""
 "If no tag name is specified it will be determined through the\n"
 "'automatic_tag_name' hook. This can e.g. be used to automatically tag\n"
@@ -3984,85 +3984,85 @@ msgid ""
 msgstr ""
 
 # help of 'delete' option of 'tag' command
-#: breezy/builtins.py:6028
+#: breezy/builtins.py:5981
 msgid "Delete this tag rather than placing it."
 msgstr ""
 
 # help of 'directory' option of 'tag' command
-#: breezy/builtins.py:6031
+#: breezy/builtins.py:5984
 msgid "Branch in which to place the tag."
 msgstr ""
 
 # help of 'force' option of 'tag' command
-#: breezy/builtins.py:6033
+#: breezy/builtins.py:5986
 msgid "Replace existing tags."
 msgstr ""
 
-#: breezy/builtins.py:6049
+#: breezy/builtins.py:6002
 msgid "No tag specified to delete."
 msgstr ""
 
-#: breezy/builtins.py:6051
+#: breezy/builtins.py:6004
 #, python-format
 msgid "Deleted tag %s."
 msgstr ""
 
-#: breezy/builtins.py:6056
+#: breezy/builtins.py:6009
 msgid "Tags can only be placed on a single revision, not on a range"
 msgstr ""
 
-#: breezy/builtins.py:6065
+#: breezy/builtins.py:6018
 msgid "Please specify a tag name."
 msgstr ""
 
-#: breezy/builtins.py:6073
+#: breezy/builtins.py:6026
 #, python-format
 msgid "Tag %s already exists for that revision."
 msgstr ""
 
-#: breezy/builtins.py:6077
+#: breezy/builtins.py:6030
 #, python-format
 msgid "Created tag %s."
 msgstr ""
 
-#: breezy/builtins.py:6079
+#: breezy/builtins.py:6032
 #, python-format
 msgid "Updated tag %s."
 msgstr ""
 
-#: breezy/builtins.py:6083
+#: breezy/builtins.py:6036
 msgid "List tags."
 msgstr ""
 
-#: breezy/builtins.py:6085
+#: breezy/builtins.py:6038
 msgid ""
 "This command shows a table of tag names and the revisions they reference."
 msgstr ""
 
 # help of 'directory' option of 'tags' command
-#: breezy/builtins.py:6091
+#: breezy/builtins.py:6044
 msgid "Branch whose tags should be displayed."
 msgstr ""
 
 # help of 'sort' option of 'tags' command
-#: breezy/builtins.py:6093
+#: breezy/builtins.py:6046
 msgid "Sort tags by different criteria."
 msgstr ""
 
 # title of 'sort' option of 'tags' command
-#: breezy/builtins.py:6093
+#: breezy/builtins.py:6046
 msgid "Sorting"
 msgstr ""
 
-#: breezy/builtins.py:6163
+#: breezy/builtins.py:6116
 msgid "Reconfigure the type of a brz directory."
 msgstr ""
 
-#: breezy/builtins.py:6165
+#: breezy/builtins.py:6118
 msgid "A target configuration must be specified."
 msgstr ""
 
-#: breezy/builtins.py:6167
+#: breezy/builtins.py:6120
 msgid ""
 "For checkouts, the bind-to location will be auto-detected if not specified.\n"
 "The order of preference is\n"
@@ -4074,112 +4074,112 @@ msgid ""
 msgstr ""
 
 # title of 'tree_type' option of 'reconfigure' command
-#: breezy/builtins.py:6181
+#: breezy/builtins.py:6134
 msgid "Tree type"
 msgstr ""
 
 # help of 'tree_type' option of 'reconfigure' command
-#: breezy/builtins.py:6182
+#: breezy/builtins.py:6135
 msgid "The relation between branch and tree."
 msgstr ""
 
 # help of 'tree_type=branch' option of 'reconfigure' command
-#: breezy/builtins.py:6184
+#: breezy/builtins.py:6137
 msgid "Reconfigure to be an unbound branch with no working tree."
 msgstr ""
 
 # help of 'tree_type=tree' option of 'reconfigure' command
-#: breezy/builtins.py:6185
+#: breezy/builtins.py:6138
 msgid "Reconfigure to be an unbound branch with a working tree."
 msgstr ""
 
 # help of 'tree_type=checkout' option of 'reconfigure' command
-#: breezy/builtins.py:6186
+#: breezy/builtins.py:6139
 msgid "Reconfigure to be a bound branch with a working tree."
 msgstr ""
 
 # help of 'tree_type=lightweight-checkout' option of 'reconfigure' command
-#: breezy/builtins.py:6187
+#: breezy/builtins.py:6140
 msgid "Reconfigure to be a lightweight checkout (with no local history)."
 msgstr ""
 
 # title of 'repository_type' option of 'reconfigure' command
-#: breezy/builtins.py:6192
+#: breezy/builtins.py:6145
 msgid "Repository type"
 msgstr ""
 
 # help of 'repository_type' option of 'reconfigure' command
-#: breezy/builtins.py:6193
+#: breezy/builtins.py:6146
 msgid "Location fo the repository."
 msgstr ""
 
 # help of 'repository_type=standalone' option of 'reconfigure' command
-#: breezy/builtins.py:6195
+#: breezy/builtins.py:6148
 msgid ""
 "Reconfigure to be a standalone branch (i.e. stop using shared repository)."
 msgstr ""
 
 # help of 'repository_type=use-shared' option of 'reconfigure' command
-#: breezy/builtins.py:6197
+#: breezy/builtins.py:6150
 msgid "Reconfigure to use a shared repository."
 msgstr ""
 
 # title of 'repository_trees' option of 'reconfigure' command
-#: breezy/builtins.py:6201
+#: breezy/builtins.py:6154
 msgid "Trees in Repository"
 msgstr ""
 
 # help of 'repository_trees' option of 'reconfigure' command
-#: breezy/builtins.py:6202
+#: breezy/builtins.py:6155
 msgid "Whether new branches in the repository have trees."
 msgstr ""
 
 # help of 'repository_trees=with-trees' option of 'reconfigure' command
-#: breezy/builtins.py:6204
+#: breezy/builtins.py:6157
 msgid "Reconfigure repository to create working trees on branches by default."
 msgstr ""
 
 # help of 'repository_trees=with-no-trees' option of 'reconfigure' command
-#: breezy/builtins.py:6206
+#: breezy/builtins.py:6159
 msgid ""
 "Reconfigure repository to not create working trees on branches by default."
 msgstr ""
 
 # help of 'bind-to' option of 'reconfigure' command
-#: breezy/builtins.py:6209
+#: breezy/builtins.py:6162
 msgid "Branch to bind checkout to."
 msgstr ""
 
 # help of 'force' option of 'reconfigure' command
-#: breezy/builtins.py:6211
+#: breezy/builtins.py:6164
 msgid "Perform reconfiguration even if local changes will be lost."
 msgstr ""
 
 # help of 'stacked-on' option of 'reconfigure' command
-#: breezy/builtins.py:6214
+#: breezy/builtins.py:6167
 msgid "Reconfigure a branch to be stacked on another branch."
 msgstr ""
 
 # help of 'unstacked' option of 'reconfigure' command
-#: breezy/builtins.py:6218
+#: breezy/builtins.py:6171
 msgid ""
 "Reconfigure a branch to be unstacked.  This may require copying substantial "
 "data into it."
 msgstr ""
 
-#: breezy/builtins.py:6229
+#: breezy/builtins.py:6182
 msgid "Can't use both --stacked-on and --unstacked"
 msgstr ""
 
-#: breezy/builtins.py:6243
+#: breezy/builtins.py:6196
 msgid "No target configuration specified"
 msgstr ""
 
-#: breezy/builtins.py:6278
+#: breezy/builtins.py:6231
 msgid "Set the branch of a checkout and update."
 msgstr ""
 
-#: breezy/builtins.py:6280
+#: breezy/builtins.py:6233
 msgid ""
 "For lightweight checkouts, this changes the branch being referenced.\n"
 "For heavyweight checkouts, this checks that there are no local commits\n"
@@ -4187,17 +4187,17 @@ msgid ""
 "of the new location and binds to it."
 msgstr ""
 
-#: breezy/builtins.py:6285
+#: breezy/builtins.py:6238
 msgid ""
 "In both cases, the working tree is updated and uncommitted changes\n"
 "are merged. The user can commit or revert these as they desire."
 msgstr ""
 
-#: breezy/builtins.py:6288
+#: breezy/builtins.py:6241
 msgid "Pending merges need to be committed or reverted before using switch."
 msgstr ""
 
-#: breezy/builtins.py:6290
+#: breezy/builtins.py:6243
 msgid ""
 "The path to the branch to switch to can be specified relative to the parent\n"
 "directory of the current branch. For example, if you are currently in a\n"
@@ -4205,7 +4205,7 @@ msgid ""
 "/path/to/newbranch."
 msgstr ""
 
-#: breezy/builtins.py:6295
+#: breezy/builtins.py:6248
 msgid ""
 "Bound branches use the nickname of its master branch unless it is set\n"
 "locally, in which case switching will update the local nickname to be\n"
@@ -4213,39 +4213,54 @@ msgid ""
 msgstr ""
 
 # help of 'force' option of 'switch' command
-#: breezy/builtins.py:6303
+#: breezy/builtins.py:6256
 msgid "Switch even if local commits will be lost."
 msgstr ""
 
 # help of 'create-branch' option of 'switch' command
-#: breezy/builtins.py:6306
+#: breezy/builtins.py:6259
 msgid "Create the target branch from this one before switching to it."
 msgstr ""
 
 # help of 'store' option of 'switch' command
-#: breezy/builtins.py:6309
+#: breezy/builtins.py:6262
 msgid "Store and restore uncommitted changes in the branch."
 msgstr ""
 
-#: breezy/builtins.py:6323
+#: breezy/builtins.py:6276
 msgid "You must supply either a revision or a location"
 msgstr ""
 
-#: breezy/builtins.py:6336
+#: breezy/builtins.py:6289
 msgid "cannot create branch without source branch"
 msgstr ""
 
-#: breezy/builtins.py:6362
+#: breezy/builtins.py:6315
 msgid ""
 "switching would create a branch reference loop. Use the \"bzr up\" command "
 "to switch to a different revision."
 msgstr ""
 
-#: breezy/builtins.py:6373
+#: breezy/builtins.py:6323
+#, python-format
+msgid "Switched to branch %s at %s"
+msgstr ""
+
+#: breezy/builtins.py:6326
+#, python-format
+msgid "Switched to branch %s"
+msgstr ""
+
+#: breezy/builtins.py:6328
+#, python-format
+msgid "Switched to branch at %s"
+msgstr ""
+
+#: breezy/builtins.py:6333
 msgid "Manage filtered views."
 msgstr ""
 
-#: breezy/builtins.py:6375
+#: breezy/builtins.py:6335
 msgid ""
 "Views provide a mask over the tree so that users can focus on\n"
 "a subset of a tree when doing their work. After creating a view,\n"
@@ -4255,7 +4270,7 @@ msgid ""
 "must be within the current view."
 msgstr ""
 
-#: breezy/builtins.py:6382
+#: breezy/builtins.py:6342
 msgid ""
 "In most cases, a view has a short life-span: it is created to make\n"
 "a selected change and is deleted once that change is committed.\n"
@@ -4263,7 +4278,7 @@ msgid ""
 "and switch between them."
 msgstr ""
 
-#: breezy/builtins.py:6387
+#: breezy/builtins.py:6347
 msgid ""
 "To disable the current view without deleting it, you can switch to\n"
 "the pseudo view called ``off``. This can be useful when you need\n"
@@ -4271,213 +4286,213 @@ msgid ""
 "want to switch back to your view after that."
 msgstr ""
 
-#: breezy/builtins.py:6392
+#: breezy/builtins.py:6352
 msgid ""
 ":Examples:\n"
 "  To define the current view::"
 msgstr ""
 
-#: breezy/builtins.py:6395
+#: breezy/builtins.py:6355
 msgid "    brz view file1 dir1 ..."
 msgstr ""
 
-#: breezy/builtins.py:6397
+#: breezy/builtins.py:6357
 msgid "  To list the current view::"
 msgstr ""
 
-#: breezy/builtins.py:6399
+#: breezy/builtins.py:6359
 msgid "    brz view"
 msgstr ""
 
-#: breezy/builtins.py:6401
+#: breezy/builtins.py:6361
 msgid "  To delete the current view::"
 msgstr ""
 
-#: breezy/builtins.py:6403
+#: breezy/builtins.py:6363
 msgid "    brz view --delete"
 msgstr ""
 
-#: breezy/builtins.py:6405
+#: breezy/builtins.py:6365
 msgid "  To disable the current view without deleting it::"
 msgstr ""
 
-#: breezy/builtins.py:6407
+#: breezy/builtins.py:6367
 msgid "    brz view --switch off"
 msgstr ""
 
-#: breezy/builtins.py:6409
+#: breezy/builtins.py:6369
 msgid "  To define a named view and switch to it::"
 msgstr ""
 
-#: breezy/builtins.py:6411
+#: breezy/builtins.py:6371
 msgid "    brz view --name view-name file1 dir1 ..."
 msgstr ""
 
-#: breezy/builtins.py:6413
+#: breezy/builtins.py:6373
 msgid "  To list a named view::"
 msgstr ""
 
-#: breezy/builtins.py:6415
+#: breezy/builtins.py:6375
 msgid "    brz view --name view-name"
 msgstr ""
 
-#: breezy/builtins.py:6417
+#: breezy/builtins.py:6377
 msgid "  To delete a named view::"
 msgstr ""
 
-#: breezy/builtins.py:6419
+#: breezy/builtins.py:6379
 msgid "    brz view --name view-name --delete"
 msgstr ""
 
-#: breezy/builtins.py:6421
+#: breezy/builtins.py:6381
 msgid "  To switch to a named view::"
 msgstr ""
 
-#: breezy/builtins.py:6423
+#: breezy/builtins.py:6383
 msgid "    brz view --switch view-name"
 msgstr ""
 
-#: breezy/builtins.py:6425
+#: breezy/builtins.py:6385
 msgid "  To list all views defined::"
 msgstr ""
 
-#: breezy/builtins.py:6427
+#: breezy/builtins.py:6387
 msgid "    brz view --all"
 msgstr ""
 
-#: breezy/builtins.py:6429
+#: breezy/builtins.py:6389
 msgid "  To delete all views::"
 msgstr ""
 
-#: breezy/builtins.py:6431
+#: breezy/builtins.py:6391
 msgid "    brz view --delete --all"
 msgstr ""
 
 # help of 'all' option of 'view' command
-#: breezy/builtins.py:6438
+#: breezy/builtins.py:6398
 msgid "Apply list or delete action to all views."
 msgstr ""
 
 # help of 'delete' option of 'view' command
-#: breezy/builtins.py:6441
+#: breezy/builtins.py:6401
 msgid "Delete the view."
 msgstr ""
 
 # help of 'name' option of 'view' command
-#: breezy/builtins.py:6444
+#: breezy/builtins.py:6404
 msgid "Name of the view to define, list or delete."
 msgstr ""
 
 # help of 'switch' option of 'view' command
-#: breezy/builtins.py:6448
+#: breezy/builtins.py:6408
 msgid "Name of the view to switch to."
 msgstr ""
 
-#: breezy/builtins.py:6467
+#: breezy/builtins.py:6427
 msgid "Both --delete and a file list specified"
 msgstr ""
 
-#: breezy/builtins.py:6470
+#: breezy/builtins.py:6430
 msgid "Both --delete and --switch specified"
 msgstr ""
 
-#: breezy/builtins.py:6473
+#: breezy/builtins.py:6433
 msgid "Deleted all views.\n"
 msgstr ""
 
-#: breezy/builtins.py:6476
+#: breezy/builtins.py:6436
 msgid "No current view to delete"
 msgstr ""
 
-#: breezy/builtins.py:6479
+#: breezy/builtins.py:6439
 #, python-format
 msgid "Deleted '%s' view.\n"
 msgstr ""
 
-#: breezy/builtins.py:6483
+#: breezy/builtins.py:6443
 msgid "Both --switch and a file list specified"
 msgstr ""
 
-#: breezy/builtins.py:6486
+#: breezy/builtins.py:6446
 msgid "Both --switch and --all specified"
 msgstr ""
 
-#: breezy/builtins.py:6490
+#: breezy/builtins.py:6450
 msgid "No current view to disable"
 msgstr ""
 
-#: breezy/builtins.py:6492
+#: breezy/builtins.py:6452
 #, python-format
 msgid "Disabled '%s' view.\n"
 msgstr ""
 
-#: breezy/builtins.py:6498 breezy/builtins.py:6521
+#: breezy/builtins.py:6458 breezy/builtins.py:6481
 #, python-brace-format
 msgid "Using '{0}' view: {1}\n"
 msgstr ""
 
-#: breezy/builtins.py:6501
+#: breezy/builtins.py:6461
 msgid "Views defined:\n"
 msgstr ""
 
-#: breezy/builtins.py:6510
+#: breezy/builtins.py:6470
 msgid "No views defined.\n"
 msgstr ""
 
-#: breezy/builtins.py:6517
+#: breezy/builtins.py:6477
 msgid "Cannot change the 'off' pseudo view"
 msgstr ""
 
-#: breezy/builtins.py:6526
+#: breezy/builtins.py:6486
 msgid "No current view.\n"
 msgstr ""
 
-#: breezy/builtins.py:6530
+#: breezy/builtins.py:6490
 #, python-brace-format
 msgid "'{0}' view is: {1}\n"
 msgstr ""
 
-#: breezy/builtins.py:6550
+#: breezy/builtins.py:6510
 msgid "    <no hooks installed>\n"
 msgstr ""
 
-#: breezy/builtins.py:6554
+#: breezy/builtins.py:6514
 msgid "Remove a branch."
 msgstr ""
 
-#: breezy/builtins.py:6556
+#: breezy/builtins.py:6516
 msgid ""
 "This will remove the branch from the specified location but\n"
 "will keep any working tree or repository in place."
 msgstr ""
 
-#: breezy/builtins.py:6561
+#: breezy/builtins.py:6521
 msgid "  Remove the branch at repo/trunk::"
 msgstr ""
 
-#: breezy/builtins.py:6563
+#: breezy/builtins.py:6523
 msgid "    brz remove-branch repo/trunk"
 msgstr ""
 
 # help of 'force' option of 'remove-branch' command
-#: breezy/builtins.py:6570
+#: breezy/builtins.py:6530
 msgid "Remove branch even if it is the active branch."
 msgstr ""
 
-#: breezy/builtins.py:6584
+#: breezy/builtins.py:6544
 msgid "Branch is active. Use --force to remove it."
 msgstr ""
 
 # help of 'writer=plain' option of 'shelve' command
-#: breezy/builtins.py:6588
+#: breezy/builtins.py:6548
 msgid "Plaintext diff output."
 msgstr ""
 
-#: breezy/builtins.py:6589
+#: breezy/builtins.py:6549
 msgid "Temporarily set aside some changes from the current tree."
 msgstr ""
 
-#: breezy/builtins.py:6591
+#: breezy/builtins.py:6551
 msgid ""
 "Shelve allows you to temporarily put changes you've made \"on the shelf\",\n"
 "ie. out of the way, until a later time when you can bring them back from\n"
@@ -4486,11 +4501,11 @@ msgid ""
 "will they survive its deletion."
 msgstr ""
 
-#: breezy/builtins.py:6597
+#: breezy/builtins.py:6557
 msgid "If shelve --list is specified, previously-shelved changes are listed."
 msgstr ""
 
-#: breezy/builtins.py:6599
+#: breezy/builtins.py:6559
 msgid ""
 "Shelve is intended to help separate several sets of changes that have\n"
 "been inappropriately mingled.  If you just want to get rid of all changes\n"
@@ -4498,35 +4513,35 @@ msgid ""
 "shelve all text changes at once, use shelve --all."
 msgstr ""
 
-#: breezy/builtins.py:6604
+#: breezy/builtins.py:6564
 msgid ""
 "If filenames are specified, only the changes to those files will be\n"
 "shelved. Other files will be left untouched."
 msgstr ""
 
-#: breezy/builtins.py:6607
+#: breezy/builtins.py:6567
 msgid ""
 "If a revision is specified, changes since that revision will be shelved."
 msgstr ""
 
-#: breezy/builtins.py:6609
+#: breezy/builtins.py:6569
 msgid ""
 "You can put multiple items on the shelf, and by default, 'unshelve' will\n"
 "restore the most recently shelved changes."
 msgstr ""
 
-#: breezy/builtins.py:6612
+#: breezy/builtins.py:6572
 msgid ""
 "For complicated changes, it is possible to edit the changes in a separate\n"
 "editor program to decide what the file remaining in the working copy\n"
 "should look like.  To do this, add the configuration option"
 msgstr ""
 
-#: breezy/builtins.py:6616
+#: breezy/builtins.py:6576
 msgid "    change_editor = PROGRAM @new_path @old_path"
 msgstr ""
 
-#: breezy/builtins.py:6618
+#: breezy/builtins.py:6578
 msgid ""
 "where @new_path is replaced with the path of the new version of the\n"
 "file and @old_path is replaced with the path of the old version of\n"
@@ -4535,39 +4550,39 @@ msgid ""
 msgstr ""
 
 # help of 'all' option of 'shelve' command
-#: breezy/builtins.py:6630
+#: breezy/builtins.py:6590
 msgid "Shelve all changes."
 msgstr ""
 
 # help of 'writer' option of 'shelve' command
-#: breezy/builtins.py:6632
+#: breezy/builtins.py:6592
 msgid "Method to use for writing diffs."
 msgstr ""
 
 # title of 'writer' option of 'shelve' command
-#: breezy/builtins.py:6632
+#: breezy/builtins.py:6592
 msgid "writer"
 msgstr ""
 
 # help of 'list' option of 'shelve' command
-#: breezy/builtins.py:6636
+#: breezy/builtins.py:6596
 msgid "List shelved changes."
 msgstr ""
 
 # help of 'destroy' option of 'shelve' command
-#: breezy/builtins.py:6638
+#: breezy/builtins.py:6598
 msgid "Destroy removed changes instead of shelving them."
 msgstr ""
 
-#: breezy/builtins.py:6667
+#: breezy/builtins.py:6627
 msgid "No shelved changes."
 msgstr ""
 
-#: breezy/builtins.py:6678
+#: breezy/builtins.py:6638
 msgid "Restore shelved changes."
 msgstr ""
 
-#: breezy/builtins.py:6680
+#: breezy/builtins.py:6640
 msgid ""
 "By default, the most recently shelved changes are restored. However if you\n"
 "specify a shelf by id those changes will be restored instead.  This works\n"
@@ -4575,101 +4590,101 @@ msgid ""
 msgstr ""
 
 # help of 'action' option of 'unshelve' command
-#: breezy/builtins.py:6689
+#: breezy/builtins.py:6649
 msgid "The action to perform."
 msgstr ""
 
 # title of 'action' option of 'resolve' command
 # title of 'action' option of 'unshelve' command
-#: breezy/builtins.py:6689 breezy/conflicts.py:707
+#: breezy/builtins.py:6649 breezy/conflicts.py:707
 msgid "action"
 msgstr ""
 
 # help of 'action=apply' option of 'unshelve' command
-#: breezy/builtins.py:6691
+#: breezy/builtins.py:6651
 msgid "Apply changes and remove from the shelf."
 msgstr ""
 
 # help of 'action=dry-run' option of 'unshelve' command
-#: breezy/builtins.py:6692
+#: breezy/builtins.py:6652
 msgid "Show changes, but do not apply or remove them."
 msgstr ""
 
 # help of 'action=preview' option of 'unshelve' command
-#: breezy/builtins.py:6693
+#: breezy/builtins.py:6653
 msgid ""
 "Instead of unshelving the changes, show the diff that would result from "
 "unshelving."
 msgstr ""
 
 # help of 'action=delete-only' option of 'unshelve' command
-#: breezy/builtins.py:6695
+#: breezy/builtins.py:6655
 msgid "Delete changes without applying them."
 msgstr ""
 
 # help of 'action=keep' option of 'unshelve' command
-#: breezy/builtins.py:6696
+#: breezy/builtins.py:6656
 msgid "Apply changes but don't delete them."
 msgstr ""
 
-#: breezy/builtins.py:6711
+#: breezy/builtins.py:6671
 msgid "Remove unwanted files from working tree."
 msgstr ""
 
-#: breezy/builtins.py:6713
+#: breezy/builtins.py:6673
 msgid ""
 "By default, only unknown files, not ignored files, are deleted.  Versioned\n"
 "files are never deleted."
 msgstr ""
 
-#: breezy/builtins.py:6716
+#: breezy/builtins.py:6676
 msgid ""
 "Another class is 'detritus', which includes files emitted by brz during\n"
 "normal operations and selftests.  (The value of these files decreases with\n"
 "time.)"
 msgstr ""
 
-#: breezy/builtins.py:6720
+#: breezy/builtins.py:6680
 msgid ""
 "If no options are specified, unknown files are deleted.  Otherwise, option\n"
 "flags are respected, and may be combined."
 msgstr ""
 
-#: breezy/builtins.py:6723
+#: breezy/builtins.py:6683
 msgid "To check what clean-tree will do, use --dry-run."
 msgstr ""
 
 # help of 'ignored' option of 'clean-tree' command
-#: breezy/builtins.py:6726
+#: breezy/builtins.py:6686
 msgid "Delete all ignored files."
 msgstr ""
 
 # help of 'detritus' option of 'clean-tree' command
-#: breezy/builtins.py:6727
+#: breezy/builtins.py:6687
 msgid ""
 "Delete conflict files, merge and revert backups, and failed selftest dirs."
 msgstr ""
 
 # help of 'unknown' option of 'clean-tree' command
-#: breezy/builtins.py:6730
+#: breezy/builtins.py:6690
 msgid "Delete files unknown to brz (default)."
 msgstr ""
 
 # help of 'dry-run' option of 'clean-tree' command
-#: breezy/builtins.py:6731
+#: breezy/builtins.py:6691
 msgid "Show files to delete instead of deleting them."
 msgstr ""
 
 # help of 'force' option of 'clean-tree' command
-#: breezy/builtins.py:6733
+#: breezy/builtins.py:6693
 msgid "Do not prompt before deleting."
 msgstr ""
 
-#: breezy/builtins.py:6812
+#: breezy/builtins.py:6772
 msgid "Import sources from a directory, tarball or zip file"
 msgstr ""
 
-#: breezy/builtins.py:6814
+#: breezy/builtins.py:6774
 msgid ""
 "This command will import a directory, tarball or zip file into a bzr\n"
 "tree, replacing any versioned files already present.  If a directory is\n"
@@ -4677,21 +4692,21 @@ msgid ""
 "is not versioned, it is created."
 msgstr ""
 
-#: breezy/builtins.py:6819
+#: breezy/builtins.py:6779
 msgid "Tarballs may be gzip or bzip2 compressed.  This is autodetected."
 msgstr ""
 
-#: breezy/builtins.py:6821
+#: breezy/builtins.py:6781
 msgid ""
 "If the tarball or zip has a single root directory, that directory is\n"
 "stripped when extracting the tarball.  This is not done for directories."
 msgstr ""
 
-#: breezy/builtins.py:6833
+#: breezy/builtins.py:6793
 msgid "Hardlink matching files to another tree."
 msgstr ""
 
-#: breezy/builtins.py:6835
+#: breezy/builtins.py:6795
 msgid "Only files with identical content and execute bit will be linked."
 msgstr ""
 
@@ -4910,16 +4925,66 @@ msgstr ""
 msgid "annotating"
 msgstr ""
 
+#: breezy/bzr/reconcile.py:97
+msgid "Reading inventory data"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:117 breezy/bzr/reconcile.py:248
+msgid "Inventory ok."
+msgstr ""
+
+#: breezy/bzr/reconcile.py:119 breezy/bzr/reconcile.py:250
+msgid "Backing up inventory"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:121
+msgid "Backup inventory created."
+msgstr ""
+
+#: breezy/bzr/reconcile.py:137 breezy/bzr/reconcile.py:269
+msgid "Writing weave"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:140 breezy/bzr/reconcile.py:272
+msgid "Inventory regenerated."
+msgstr ""
+
+#: breezy/bzr/reconcile.py:235 breezy/bzr/reconcile.py:237
+#: breezy/bzr/reconcile.py:240
+msgid "Reading indexes"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:244 breezy/bzr/reconcile.py:246
+msgid "Checking unused inventories"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:252
+msgid "Backup Inventory created"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:310
+msgid "Fixing text parents"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:463
+#, python-brace-format
+msgid "Fixing last revision info {0}  => {1}"
+msgstr ""
+
+#: breezy/bzr/reconcile.py:470
+msgid "revision_history ok."
+msgstr ""
+
 #: breezy/bzr/remote.py:1302
 #, python-format
 msgid "bzr: ERROR (ignored): %s"
 msgstr ""
 
-#: breezy/bzr/remote.py:2607
+#: breezy/bzr/remote.py:2610
 msgid "Copying repository content as tarball..."
 msgstr ""
 
-#: breezy/bzr/smart/medium.py:735
+#: breezy/bzr/smart/medium.py:739
 #, python-brace-format
 msgid "HPSS calls: {0} ({1} vfs) {2}"
 msgstr ""
@@ -4966,24 +5031,24 @@ msgstr ""
 msgid "texts"
 msgstr ""
 
-#: breezy/bzr/vf_repository.py:1292 breezy/bzr/vf_repository.py:1302
+#: breezy/bzr/vf_repository.py:1325 breezy/bzr/vf_repository.py:1335
 msgid "Calculating text parents"
 msgstr ""
 
-#: breezy/bzr/vf_repository.py:1380
+#: breezy/bzr/vf_repository.py:1413
 msgid "Fetch texts"
 msgstr ""
 
-#: breezy/bzr/vf_repository.py:2253
+#: breezy/bzr/vf_repository.py:2293
 msgid "loading text store"
 msgstr ""
 
-#: breezy/bzr/vf_repository.py:2260
+#: breezy/bzr/vf_repository.py:2300
 msgid "checking text graph"
 msgstr ""
 
-#: breezy/bzr/vf_repository.py:2702 breezy/bzr/vf_repository.py:2716
-#: breezy/bzr/vf_repository.py:2828
+#: breezy/bzr/vf_repository.py:2742 breezy/bzr/vf_repository.py:2756
+#: breezy/bzr/vf_repository.py:2868
 msgid "Transferring revisions"
 msgstr ""
 
@@ -6393,66 +6458,66 @@ msgstr ""
 msgid "error running patch"
 msgstr ""
 
-#: breezy/gpg.py:358
+#: breezy/gpg.py:365
 #, python-brace-format
 msgid "No GnuPG key results for pattern: {0}"
 msgstr ""
 
-#: breezy/gpg.py:364
+#: breezy/gpg.py:371
 #, python-brace-format
 msgid "{0} commits with valid signatures"
 msgstr ""
 
-#: breezy/gpg.py:370
+#: breezy/gpg.py:377
 #, python-brace-format
 msgid "{0} commit with unknown key"
 msgid_plural "{0} commits with unknown keys"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:378
+#: breezy/gpg.py:385
 #, python-brace-format
 msgid "{0} commit not valid"
 msgid_plural "{0} commits not valid"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:386
+#: breezy/gpg.py:393
 #, python-brace-format
 msgid "{0} commit not signed"
 msgid_plural "{0} commits not signed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:394
+#: breezy/gpg.py:401
 #, python-brace-format
 msgid "{0} commit with key now expired"
 msgid_plural "{0} commits with key now expired"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:414
+#: breezy/gpg.py:421
 #, python-brace-format
 msgid "{0} commit by author {1} with key {2} now expired"
 msgid_plural "{0} commits by author {1} with key {2} now expired"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:430
+#: breezy/gpg.py:437
 #, python-brace-format
 msgid "{0} signed {1} commit"
 msgid_plural "{0} signed {1} commits"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:447 breezy/gpg.py:464
+#: breezy/gpg.py:454 breezy/gpg.py:471
 #, python-brace-format
 msgid "{0} commit by author {1}"
 msgid_plural "{0} commits by author {1}"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/gpg.py:479
+#: breezy/gpg.py:486
 #, python-brace-format
 msgid "Unknown key {0} signed {1} commit"
 msgid_plural "Unknown key {0} signed {1} commits"
@@ -6506,43 +6571,43 @@ msgid ""
 "held by %(user)s on %(hostname)s (process #%(pid)s), acquired %(time_ago)s"
 msgstr ""
 
-#: breezy/log.py:423
+#: breezy/log.py:424
 msgid "Further revision history missing."
 msgstr ""
 
-#: breezy/log.py:579
+#: breezy/log.py:580
 msgid "--exclude-common-ancestry requires two different revisions"
 msgstr ""
 
-#: breezy/log.py:581
+#: breezy/log.py:582
 #, python-format
 msgid "invalid direction %r"
 msgstr ""
 
-#: breezy/log.py:669
+#: breezy/log.py:670
 msgid "Start revision not found in history of end revision."
 msgstr ""
 
-#: breezy/log.py:1117 breezy/log.py:1175
+#: breezy/log.py:1118 breezy/log.py:1176
 msgid "Logging revision 0 is invalid."
 msgstr ""
 
-#: breezy/log.py:1120 breezy/log.py:1177
+#: breezy/log.py:1121 breezy/log.py:1178
 msgid "Start revision must be older than the end revision."
 msgstr ""
 
-#: breezy/log.py:1870
+#: breezy/log.py:1875
 #, python-format
 msgid "unknown log formatter: %r"
 msgstr ""
 
-#: breezy/log.py:2168
+#: breezy/log.py:2173
 msgid "fixes bug"
 msgid_plural "fixes bugs"
 msgstr[0] ""
 msgstr[1] ""
 
-#: breezy/log.py:2171
+#: breezy/log.py:2176
 msgid "related bug"
 msgid_plural "related bugs"
 msgstr[0] ""
@@ -6705,12 +6770,12 @@ msgstr ""
 msgid "lstat/stat of ({0!r}): {1!r}"
 msgstr ""
 
-#: breezy/osutils.py:1048 breezy/osutils.py:1059
+#: breezy/osutils.py:1054 breezy/osutils.py:1065
 #, python-format
 msgid "sorry, %r not allowed in path"
 msgstr ""
 
-#: breezy/osutils.py:1278
+#: breezy/osutils.py:1284
 #, python-format
 msgid "%r is too short to calculate a relative path"
 msgstr ""
@@ -6765,7 +6830,7 @@ msgstr ""
 #: breezy/plugins/fastimport/cmds.py:87
 msgid ""
 "Numerous commands are provided for generating a fast-import file\n"
-"to use as input. \n"
+"to use as input.\n"
 "To specify standard input as the input stream, use a\n"
 "source name of '-' (instead of project.fi). If the source name\n"
 "ends in '.gz', it is assumed to be compressed in gzip format."
@@ -7491,107 +7556,41 @@ msgstr ""
 msgid "Launchpad user ID %s logged out.\n"
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:172
-msgid "Ask Launchpad to mirror a branch now."
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:189
-msgid "Propose merging a branch on Launchpad."
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:191
-msgid ""
-"This will open your usual editor to provide the initial comment.  When it\n"
-"has created the proposal, it will open it in your default web browser."
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:194
-msgid ""
-"The branch will be proposed to merge into SUBMIT_BRANCH.  If SUBMIT_BRANCH\n"
-"is not supplied, the remembered submit branch will be used.  If no submit\n"
-"branch is remembered, the development focus will be used."
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:198
-msgid ""
-"By default, the SUBMIT_BRANCH's review team will be requested to review\n"
-"the merge proposal.  This can be overriden by specifying --review (-R).\n"
-"The parameter the launchpad account name of the desired reviewer.  This\n"
-"may optionally be followed by '=' and the review type.  For example:"
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:203
-msgid "  brz lp-propose-merge --review jrandom --review review-team=qa"
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:205
-msgid ""
-"This will propose a merge,  request \"jrandom\" to perform a review of\n"
-"unspecified type, and request \"review-team\" to perform a \"qa\" review."
-msgstr ""
-
-# help of 'staging' option of 'lp-propose-merge' command
-#: breezy/plugins/launchpad/cmds.py:210
-msgid "Propose the merge on staging."
-msgstr ""
-
-# help of 'message' option of 'lp-propose-merge' command
-#: breezy/plugins/launchpad/cmds.py:212
-msgid "Commit message."
-msgstr ""
-
-# help of 'approve' option of 'lp-propose-merge' command
-#: breezy/plugins/launchpad/cmds.py:214
-msgid ""
-"Mark the proposal as approved immediately, setting the approved revision to "
-"tip."
-msgstr ""
-
-# help of 'fixes' option of 'lp-propose-merge' command
-#: breezy/plugins/launchpad/cmds.py:216
-msgid "The bug this proposal fixes."
-msgstr ""
-
-# help of 'review' option of 'lp-propose-merge' command
-#: breezy/plugins/launchpad/cmds.py:218
-msgid "Requested reviewer and optional type."
-msgstr ""
-
-#: breezy/plugins/launchpad/cmds.py:253
+#: breezy/plugins/launchpad/cmds.py:236
 msgid "Find the proposal to merge this revision."
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:255
+#: breezy/plugins/launchpad/cmds.py:238
 msgid ""
 "Finds the merge proposal(s) that discussed landing the specified revision.\n"
 "This works only if the if the merged_revno was recorded for the merge\n"
 "proposal.  The proposal(s) are opened in a web browser."
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:259
+#: breezy/plugins/launchpad/cmds.py:242
 msgid ""
 "Only the revision specified is searched for.  To find the mainline\n"
 "revision that merged it into mainline, use the \"mainline\" revision spec."
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:262
+#: breezy/plugins/launchpad/cmds.py:245
 msgid "So, to find the merge proposal that reviewed line 1 of README::"
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:264
+#: breezy/plugins/launchpad/cmds.py:247
 msgid "  brz lp-find-proposal -r mainline:annotate:README:1"
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:281
+#: breezy/plugins/launchpad/cmds.py:264
 msgid "No review found."
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:282
+#: breezy/plugins/launchpad/cmds.py:265
 #, python-format
 msgid "%d proposals(s) found."
 msgstr ""
 
-#: breezy/plugins/launchpad/cmds.py:291
+#: breezy/plugins/launchpad/cmds.py:274
 msgid "Finding proposals"
 msgstr ""
 
@@ -7640,24 +7639,196 @@ msgid ""
 msgstr ""
 
 #: breezy/plugins/launchpad/lp_propose.py:152
+#: breezy/plugins/propose/cmds.py:197
 #, python-format
 msgid "There is already a branch merge proposal: %s"
 msgstr ""
 
-#: breezy/plugins/stats/cmds.py:236
+#: breezy/plugins/propose/cmds.py:53
+msgid "Publish a derived branch."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:55
+msgid ""
+"Try to create a public copy of a local branch on a hosting site,\n"
+"derived from the specified base branch."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:58
+msgid ""
+"Reasonable defaults are picked for owner name, branch name and project\n"
+"name, but they can also be overridden from the command-line."
+msgstr ""
+
+# help of 'owner' option of 'publish-derived' command
+#: breezy/plugins/propose/cmds.py:64
+msgid "Owner of the new remote branch."
+msgstr ""
+
+# help of 'project' option of 'publish-derived' command
+#: breezy/plugins/propose/cmds.py:65
+msgid "Project name for the new remote branch."
+msgstr ""
+
+# help of 'overwrite' option of 'publish-derived' command
+#: breezy/plugins/propose/cmds.py:70
+msgid "Overwrite existing commits."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:80
+#, python-format
+msgid "Using submit branch %s"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:83
+#, python-format
+msgid "Using parent branch %s"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:94
+#, python-format
+msgid "Pushed to %s"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:128
+msgid "Propose a branch for merging."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:130
+msgid ""
+"This command creates a merge proposal for the local\n"
+"branch to the target branch. The format of the merge\n"
+"proposal depends on the submit branch."
+msgstr ""
+
+# title of 'hoster' option of 'propose-merge' command
+#: breezy/plugins/propose/cmds.py:138
+msgid "hoster"
+msgstr ""
+
+# help of 'hoster' option of 'propose-merge' command
+#: breezy/plugins/propose/cmds.py:139
+msgid "Use the hoster."
+msgstr ""
+
+# help of 'reviewers' option of 'propose-merge' command
+#: breezy/plugins/propose/cmds.py:142
+msgid "Requested reviewers."
+msgstr ""
+
+# help of 'name' option of 'propose-merge' command
+# help of 'name' option of 'publish-derived' command
+#: breezy/plugins/propose/cmds.py:143
+msgid "Name of the new remote branch."
+msgstr ""
+
+# help of 'description' option of 'propose-merge' command
+#: breezy/plugins/propose/cmds.py:144
+msgid "Description of the change."
+msgstr ""
+
+# help of 'prerequisite' option of 'propose-merge' command
+#: breezy/plugins/propose/cmds.py:145
+msgid "Prerequisite branch."
+msgstr ""
+
+# help of 'labels' option of 'propose-merge' command
+#: breezy/plugins/propose/cmds.py:147
+msgid "Labels to apply."
+msgstr ""
+
+# help of 'no-allow-lossy' option of 'propose-merge' command
+# help of 'no-allow-lossy' option of 'publish-derived' command
+#: breezy/plugins/propose/cmds.py:149
+msgid "Allow fallback to lossy push, if necessary."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:166 breezy/plugins/propose/cmds.py:222
+msgid "No target location specified or remembered"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:178
+#, python-format
+msgid "Published branch to %s"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:198
+#, python-format
+msgid "Merge proposal created: %s"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:202
+msgid "Find a merge proposal."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:204
+msgid "    "
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:227
+#, python-format
+msgid "Merge proposal: %s\n"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:231
+msgid "Log into GitHub."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:233
+msgid ""
+"When communicating with GitHub, some commands need to authenticate to\n"
+"GitHub."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:268
+msgid "Log into a GitLab instance."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:270
+msgid ""
+"This command takes a GitLab instance URL (e.g. https://gitlab.com)\n"
+"as well as a private token. Private tokens can be created via the\n"
+"web UI."
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:276
+msgid "  Log into Debian's salsa:"
+msgstr ""
+
+#: breezy/plugins/propose/cmds.py:278
+msgid "     brz gitlab-login https://salsa.debian.org if4Theis6Eich7aef0zo"
+msgstr ""
+
+# help of 'name' option of 'gitlab-login' command
+#: breezy/plugins/propose/cmds.py:284
+msgid "Name for GitLab site in configuration."
+msgstr ""
+
+# help of 'no-check' option of 'gitlab-login' command
+#: breezy/plugins/propose/cmds.py:287
+msgid "Don't check that the token is valid."
+msgstr ""
+
+#: breezy/plugins/propose/github.py:177
+#, python-format
+msgid "Forking new repository %s from %s"
+msgstr ""
+
+#: breezy/plugins/propose/github.py:180
+#, python-format
+msgid "Reusing existing repository %s"
+msgstr ""
+
+#: breezy/plugins/stats/cmds.py:238
 msgid "Generate statistics for LOCATION."
 msgstr ""
 
 # help of 'show-class' option of 'committer-statistics' command
-#: breezy/plugins/stats/cmds.py:241
+#: breezy/plugins/stats/cmds.py:243
 msgid "Show the class of contributions."
 msgstr ""
 
-#: breezy/plugins/stats/cmds.py:276
-msgid "Figure out the ancestor graph for LOCATION"
-msgstr ""
-
-#: breezy/plugins/stats/cmds.py:379
+#: breezy/plugins/stats/cmds.py:383
 msgid "Determine credits for LOCATION."
 msgstr ""
 
@@ -7838,84 +8009,35 @@ msgid ""
 "directory out of the way and try again."
 msgstr ""
 
-#: breezy/reconcile.py:97
+#: breezy/reconcile.py:87
 #, python-format
 msgid "Reconciling branch %s"
 msgstr ""
 
-#: breezy/reconcile.py:103
+#: breezy/reconcile.py:92
 #, python-format
 msgid "Reconciling repository %s"
 msgstr ""
 
-#: breezy/reconcile.py:105
+#: breezy/reconcile.py:94
 msgid "Reconciling repository"
 msgstr ""
 
-#: breezy/reconcile.py:111
+#: breezy/reconcile.py:100
 #, python-format
 msgid "%s cannot canonicalize CHKs."
 msgstr ""
 
-#: breezy/reconcile.py:119
+#: breezy/reconcile.py:106
 msgid "Reconcile aborted: revision index has inconsistent parents."
 msgstr ""
 
-#: breezy/reconcile.py:121
+#: breezy/reconcile.py:108
 msgid "Run \"brz check\" for more details."
 msgstr ""
 
-#: breezy/reconcile.py:123
+#: breezy/reconcile.py:110
 msgid "Reconciliation complete."
-msgstr ""
-
-#: breezy/reconcile.py:166
-#, python-brace-format
-msgid "Fixing last revision info {0}  => {1}"
-msgstr ""
-
-#: breezy/reconcile.py:173
-msgid "revision_history ok."
-msgstr ""
-
-#: breezy/reconcile.py:234
-msgid "Reading inventory data"
-msgstr ""
-
-#: breezy/reconcile.py:254 breezy/reconcile.py:385
-msgid "Inventory ok."
-msgstr ""
-
-#: breezy/reconcile.py:256 breezy/reconcile.py:387
-msgid "Backing up inventory"
-msgstr ""
-
-#: breezy/reconcile.py:258
-msgid "Backup inventory created."
-msgstr ""
-
-#: breezy/reconcile.py:274 breezy/reconcile.py:406
-msgid "Writing weave"
-msgstr ""
-
-#: breezy/reconcile.py:277 breezy/reconcile.py:409
-msgid "Inventory regenerated."
-msgstr ""
-
-#: breezy/reconcile.py:372 breezy/reconcile.py:374 breezy/reconcile.py:377
-msgid "Reading indexes"
-msgstr ""
-
-#: breezy/reconcile.py:381 breezy/reconcile.py:383
-msgid "Checking unused inventories"
-msgstr ""
-
-#: breezy/reconcile.py:389
-msgid "Backup Inventory created"
-msgstr ""
-
-#: breezy/reconcile.py:447
-msgid "Fixing text parents"
 msgstr ""
 
 #: breezy/reconfigure.py:127
@@ -7941,28 +8063,28 @@ msgstr ""
 msgid "{0} => {1}"
 msgstr ""
 
-#: breezy/repository.py:287
+#: breezy/repository.py:286
 #, python-format
 msgid "brz: ERROR (ignored): %s"
 msgstr ""
 
-#: breezy/repository.py:1595
+#: breezy/repository.py:1573
 msgid "Moving repository to repository.backup"
 msgstr ""
 
-#: breezy/repository.py:1603
+#: breezy/repository.py:1581
 msgid "Creating new repository"
 msgstr ""
 
-#: breezy/repository.py:1608
+#: breezy/repository.py:1586
 msgid "Copying content"
 msgstr ""
 
-#: breezy/repository.py:1612
+#: breezy/repository.py:1590
 msgid "Deleting old repository content"
 msgstr ""
 
-#: breezy/repository.py:1614
+#: breezy/repository.py:1592
 msgid "repository converted"
 msgstr ""
 
@@ -8100,21 +8222,21 @@ msgstr ""
 msgid "Rename \"%(this)s\" => \"%(other)s\"?"
 msgstr ""
 
-#: breezy/shelf_ui.py:410
+#: breezy/shelf_ui.py:409
 msgid "No changes are shelved."
 msgstr ""
 
-#: breezy/shelf_ui.py:468
+#: breezy/shelf_ui.py:467
 #, python-format
 msgid "Using changes with id \"%d\"."
 msgstr ""
 
-#: breezy/shelf_ui.py:473
+#: breezy/shelf_ui.py:472
 #, python-format
 msgid "Message: %s"
 msgstr ""
 
-#: breezy/shelf_ui.py:485
+#: breezy/shelf_ui.py:484
 #, python-format
 msgid "Deleted changes with id \"%d\"."
 msgstr ""
@@ -8154,27 +8276,27 @@ msgstr ""
 msgid "Apply phase"
 msgstr ""
 
-#: breezy/transform.py:1777 breezy/transform.py:1841
+#: breezy/transform.py:1777 breezy/transform.py:1840
 msgid "removing file"
 msgstr ""
 
-#: breezy/transform.py:1792 breezy/transform.py:1871
+#: breezy/transform.py:1792 breezy/transform.py:1870
 msgid "adding file"
 msgstr ""
 
-#: breezy/transform.py:2614
+#: breezy/transform.py:2612
 msgid "Building tree"
 msgstr ""
 
-#: breezy/transform.py:2707 breezy/transform.py:2728
+#: breezy/transform.py:2705 breezy/transform.py:2726
 msgid "Adding file contents"
 msgstr ""
 
-#: breezy/transform.py:3029
+#: breezy/transform.py:3027
 msgid "Resolution pass"
 msgstr ""
 
-#: breezy/tree.py:587
+#: breezy/tree.py:601
 msgid "*** {0} content-filter: {1} => {2!r}"
 msgstr ""
 
@@ -8279,7 +8401,7 @@ msgstr ""
 msgid "PageFaultCount    %8d"
 msgstr ""
 
-#: breezy/workingtree.py:1201
+#: breezy/workingtree.py:1202
 msgid "Rerun update after fixing the conflicts."
 msgstr ""
 
@@ -8289,7 +8411,7 @@ msgstr ""
 
 #: dummy/help_topics/basic/detail.txt:1
 msgid ""
-"Breezy 3.0a2 -- a free distributed version-control tool\n"
+"Breezy 3.0b1 -- a free distributed version-control tool\n"
 "https://www.breezy-vcs.org/"
 msgstr ""
 
@@ -8352,10 +8474,10 @@ msgstr ""
 #: dummy/help_topics/branches/detail.txt:8
 msgid ""
 "In addition, one branch may be bound to another one.  Binding to another\n"
-"branch indicates that commits which happen in this branch must also \n"
-"happen in the other branch.  Breezy ensures consistency by not allowing \n"
-"commits when the two branches are out of date.  In order for a commit \n"
-"to succeed, it may be necessary to update the current branch using \n"
+"branch indicates that commits which happen in this branch must also\n"
+"happen in the other branch.  Breezy ensures consistency by not allowing\n"
+"commits when the two branches are out of date.  In order for a commit\n"
+"to succeed, it may be necessary to update the current branch using\n"
 "``brz update``."
 msgstr ""
 
@@ -8786,7 +8908,7 @@ msgstr ""
 
 #: dummy/help_topics/global-options/detail.txt:28
 msgid ""
-"See http://doc.bazaar.canonical.com/developers/profiling.html for more\n"
+"See https://www.breezy-vcs.org/developers/profiling.html for more\n"
 "information on profiling."
 msgstr ""
 
@@ -8798,6 +8920,10 @@ msgstr ""
 
 #: dummy/help_topics/global-options/summary.txt:1
 msgid "Options that control how Breezy runs"
+msgstr ""
+
+#: dummy/help_topics/glossary/summary.txt:1
+msgid "Glossary"
 msgstr ""
 
 #: dummy/help_topics/hooks/summary.txt:1
@@ -12361,6 +12487,396 @@ msgid ""
 "(and not just convert) content before committing.\n"
 msgstr ""
 
+#: en/help_topics/glossary.txt:1
+msgid ""
+"Glossary\n"
+"========"
+msgstr ""
+
+#: en/help_topics/glossary.txt:4
+msgid ".. glossary::"
+msgstr ""
+
+#: en/help_topics/glossary.txt:6
+msgid ""
+"  ancestor\n"
+"    An ancestor is one of any of the revisions that this revision is based "
+"on.\n"
+"    The immediately prior revision has a special name, the\n"
+"    :term:`parent revision`."
+msgstr ""
+
+#: en/help_topics/glossary.txt:11
+msgid ""
+"  ancestral parent\n"
+"    Any branch that has been merged by another branch and then committed\n"
+"    becomes that branches ancestral parent."
+msgstr ""
+
+#: en/help_topics/glossary.txt:15
+msgid ""
+"  branch\n"
+"    a line of development. In the simplest of terms, a branch is the record "
+"of\n"
+"    all the commits that have been done. Every :term:`working tree` has a\n"
+"    branch, but it may be in a different location. The actual revisions\n"
+"    produced by the commits are stored in a repository, which is sometimes\n"
+"    shared with other\n"
+"    branches."
+msgstr ""
+
+#: en/help_topics/glossary.txt:23
+msgid ""
+"    A frequent activity done by users within the working tree of a branch is "
+"to\n"
+"    merge another branch. In this way users can share changes between two\n"
+"    branches -- even if the branch is run by someone else."
+msgstr ""
+
+#: en/help_topics/glossary.txt:27
+msgid ""
+"    Bazaar's default behavior is to put the repository, branch, and working\n"
+"    tree all in the same place. This combination is called a standalone "
+"tree.\n"
+"    If there is no tree, it is called a :term:`standalone branch`. If the\n"
+"    repository is shared with other branches, it is called a repository "
+"branch.\n"
+"    A working tree in a different location from its branch is called a\n"
+"    checkout."
+msgstr ""
+
+#: en/help_topics/glossary.txt:34
+msgid ""
+"  branch, bound\n"
+"    A bound branch is a branch that does not commit a new revision until "
+"after\n"
+"    the revision has been applied to another branch and first."
+msgstr ""
+
+#: en/help_topics/glossary.txt:38
+msgid "    A bound branch is a part of a :term:`heavyweight checkout`."
+msgstr ""
+
+#: en/help_topics/glossary.txt:40
+msgid ""
+"  cherry-pick\n"
+"    A cherrypick is an operation in which the delta between two revisions "
+"is\n"
+"    applied to a working tree. The process is roughly similiar to generating "
+"a\n"
+"    diff between two revisions and applying it to a working tree."
+msgstr ""
+
+#: en/help_topics/glossary.txt:45
+msgid ""
+"    A cherrypick is a merge in which a range of revisions are selected and\n"
+"    merged into a working tree . Performing a limited merge is different "
+"than a\n"
+"    normal merge because normal merges imply all missing revisions should "
+"be\n"
+"    merged. One of the results of cherrypicking is the creation of "
+"intransitive\n"
+"    ancestors, which are revisons that are missing one or more of their\n"
+"    ancestors."
+msgstr ""
+
+#: en/help_topics/glossary.txt:52
+msgid ""
+"    A cherrypick in Bazaar is a bit more advanced than the cherrypick with "
+"some\n"
+"    other revision control systems, in that a three way merge is performed\n"
+"    rather than a strict delta between revisions."
+msgstr ""
+
+#: en/help_topics/glossary.txt:56
+msgid ""
+"    The downside to cherrypicking is that Bazaar does not track "
+"cherrypicked\n"
+"    revisions, although this feature is firmly on the wish list."
+msgstr ""
+
+#: en/help_topics/glossary.txt:59
+msgid ""
+"    A common use-case for cherrypicking is the back-porting of fixes from "
+"an\n"
+"    ongoing branch of development to stable release branches."
+msgstr ""
+
+#: en/help_topics/glossary.txt:62
+msgid ""
+"  checkout\n"
+"    A checkout is essentially a working tree that is linked to a branch at "
+"a\n"
+"    different location."
+msgstr ""
+
+#: en/help_topics/glossary.txt:66
+msgid ""
+"    Checkouts also have local branches, which function as a local cache. "
+"This\n"
+"    means that checkouts can be used effectively even with branches that "
+"are\n"
+"    accessed through the Internet. Normal checkouts are sometimes called\n"
+"    heavyweight checkouts to distinguish them from lightweight checkouts."
+msgstr ""
+
+#: en/help_topics/glossary.txt:71
+msgid ""
+"    A lightweight checkout is a related construct that lacks the local "
+"branch.\n"
+"    Lightweight checkouts are smaller, but require fast access to the "
+"branch,\n"
+"    such as on a LAN or local hard disk."
+msgstr ""
+
+#: en/help_topics/glossary.txt:75
+msgid ""
+"    Checkouts provide a location for people to hack on code and commit. Once "
+"a\n"
+"    user commits, the associated branch is updated with a new revision that\n"
+"    represents the changes for the commit."
+msgstr ""
+
+#: en/help_topics/glossary.txt:79
+msgid ""
+"  dag\n"
+"    Directed Acyclic Graph. The graph of revisions where each revision is\n"
+"    connected to its parent revisions."
+msgstr ""
+
+#: en/help_topics/glossary.txt:83
+msgid ""
+"  delta\n"
+"    A delta is defined as the changes between two revisions. Any RCS that "
+"has\n"
+"    revisions typically builds a delta in order to perform a diff"
+msgstr ""
+
+#: en/help_topics/glossary.txt:87
+msgid ""
+"  merge\n"
+"    Merging is the process of applying all the changes that were introduced "
+"in\n"
+"    one branch into another branch, without applying any changes that are\n"
+"    already common to both branches. Sometimes a user will not want all of "
+"the\n"
+"    changes. For these cases, a user may instead prefer a cherrypick, which\n"
+"    gives the user the option to apply only those revisions that are wanted."
+msgstr ""
+
+#: en/help_topics/glossary.txt:94
+msgid ""
+"    As well as altering the working tree, bzr's merge command will also get "
+"all\n"
+"    of the revisions that a branch has, and add metadata indicating that a\n"
+"    merge has been performed."
+msgstr ""
+
+#: en/help_topics/glossary.txt:98
+msgid ""
+"  merge, criss-cross\n"
+"    A failed type of merge caused by two branches merging each other at the\n"
+"    same time."
+msgstr ""
+
+#: en/help_topics/glossary.txt:102
+msgid ""
+"  nuclear launch codes\n"
+"    Nuclear launch codes are an example of data that has been committed to "
+"a\n"
+"    branch that must be removed at all costs. Imagine if one had access to "
+"the\n"
+"    launch codes for a nuclear warhead, accidentally committed them to a "
+"branch\n"
+"    and then pushed the branch to a public place."
+msgstr ""
+
+#: en/help_topics/glossary.txt:108
+msgid ""
+"    In real world situations most people do not have access to nuclear\n"
+"    launchcodes. Users may have data such as passwords, proprietary code "
+"and\n"
+"    other sensitive data. Accidental release of this type of data is\n"
+"    potentially damaging to the branch owner -- perhaps damaging enough "
+"that\n"
+"    the developer may hope for a nuclear disaster!"
+msgstr ""
+
+#: en/help_topics/glossary.txt:114
+msgid ""
+"    A user dealing with a nuclear launch code problem needs specific data "
+"in\n"
+"    the branch to be exised at all costs and in a rapid manner."
+msgstr ""
+
+#: en/help_topics/glossary.txt:117
+msgid ""
+"  repository\n"
+"    A library of revisions for branches."
+msgstr ""
+
+#: en/help_topics/glossary.txt:120
+msgid ""
+"  revision\n"
+"    A revision is one state of the code."
+msgstr ""
+
+#: en/help_topics/glossary.txt:123
+msgid ""
+"    bzr is snapshot based, meaning that conceptually it stores the whole "
+"state\n"
+"    of the tree at each revision. This is in contrast to changeset based, "
+"where\n"
+"    a revision refers to just the changes that were made in that revision. "
+"I\n"
+"    said \"conceptually\", as internally bzr uses delta compression to "
+"reduce the\n"
+"    amount of data that it stores, and so may only record the changes in a\n"
+"    revision. However you must always think of a revision as referring to a\n"
+"    whole snapshot."
+msgstr ""
+
+#: en/help_topics/glossary.txt:131
+msgid ""
+"    A revision also contains some metadata. In particular it stores the\n"
+"    committer, and the timestamp when the commit was made, the log message "
+"that\n"
+"    was given, and the nick of the branch on which the commit was made. It "
+"also\n"
+"    stores pointers to the parent revisions, i.e. the revision preceeding "
+"it,\n"
+"    and the tip revisions of any branches that were merged. Lastly it stores "
+"a\n"
+"    number of revision properties, these is extra information that can be\n"
+"    stored with the revision and is immutable, some uses of them are to "
+"store\n"
+"    the author of the patch if it wasn't the committer (when given using "
+"the\n"
+"    --author option of bzr commit), or to store information about the bugs\n"
+"    fixed in that revision if using the bug-tracker integration."
+msgstr ""
+
+#: en/help_topics/glossary.txt:142
+msgid ""
+"    A revision also has a name, referred to as a revision id. This is a\n"
+"    globally unique identifier for the revision so that it can be referred "
+"to\n"
+"    without ambiguity. This means that two revisions are identical, if, and\n"
+"    only if, they have the same revision id."
+msgstr ""
+
+#: en/help_topics/glossary.txt:147
+msgid ""
+"    A revision may also be referred to using a revision number, however this "
+"is\n"
+"    not a globally unique identifier, meaning that revision 14 of your "
+"branch\n"
+"    may not be the same as revision 14 of my branch, even if they are the "
+"same\n"
+"    project. The only way to know if they are the same revision is to "
+"compare\n"
+"    the revision ids. This means that when talking about a revision you "
+"must\n"
+"    either use it's revision id, or also explain which branch you are "
+"referring\n"
+"    to when you specify a revision number."
+msgstr ""
+
+#: en/help_topics/glossary.txt:155
+msgid ""
+"    Tags point at a revision, and so they may also be used to when referring "
+"to\n"
+"    a commit, but again, two different branches may have the same tag name\n"
+"    pointing to two different revisions, and so you should also give the "
+"branch\n"
+"    to which you are referring when stating a tag name."
+msgstr ""
+
+#: en/help_topics/glossary.txt:160
+msgid ""
+"  revision, ancestor\n"
+"    An ancestor is one of any of the revisions that this revision is based "
+"on.\n"
+"    The immediately prior revision has a special name, the parent revision."
+msgstr ""
+
+#: en/help_topics/glossary.txt:164
+msgid ""
+"  revision, ghost\n"
+"    A ghost :term:`revision`, also called a ghost, is a revision that a\n"
+"    :term:`branch` knows about but does not have."
+msgstr ""
+
+#: en/help_topics/glossary.txt:168
+msgid ""
+"    Ghost revisions can occur in unusual situations such as the migration "
+"of\n"
+"    branches from foreign revision control systems into Bazaar format."
+msgstr ""
+
+#: en/help_topics/glossary.txt:171
+msgid ""
+"    Ghost revisions can be scary the first time that a user bumps into "
+"them.\n"
+"    Thankfully though, revision ghosts are just like real ghosts (such as "
+"they\n"
+"    are) in that their discorporeal existence typically causes little, if "
+"any,\n"
+"    harm."
+msgstr ""
+
+#: en/help_topics/glossary.txt:176
+msgid ""
+"  revision, parent\n"
+"    The revision that comes immediately prior to this revision."
+msgstr ""
+
+#: en/help_topics/glossary.txt:179
+msgid ""
+"  shared repository\n"
+"    A shared repository is similar to the traditional concept of a "
+"repository\n"
+"    in other VCSs like CVS and Subversion. For example, in Subversion you "
+"have\n"
+"    a remote repository, which is where all of the history is stored, and\n"
+"    locally you don't have any history information, only a checkout of the\n"
+"    working tree files. Note that \"Shared\" in this context means shared "
+"between\n"
+"    branches. It *may* be shared between people, but standalone branches\n"
+"    can also be shared between people."
+msgstr ""
+
+#: en/help_topics/glossary.txt:188
+msgid ""
+"    In Breezy_ terms, a \"Shared Repository\" is a location where multiple\n"
+"    branches can **share** their revision history information. In order to\n"
+"    support decentralized workflows, it is possible for every branch to\n"
+"    store its own revision history information. But this is often\n"
+"    inefficient, since related branches share history, and they might as\n"
+"    well share the storage as well."
+msgstr ""
+
+#: en/help_topics/glossary.txt:195
+msgid ""
+"  tag\n"
+"    A tag is a nickname for a particular :term:`revision`. The typical use "
+"is to mark a\n"
+"    release of the software so you can easily refer to it later."
+msgstr ""
+
+#: en/help_topics/glossary.txt:199
+msgid ""
+"  working tree\n"
+"    A working tree is a directory with project files that a user can edit."
+msgstr ""
+
+#: en/help_topics/glossary.txt:202
+msgid ""
+"    Unlike a normal directory, a working tree is associated with a\n"
+"    :term:`branch`. The working tree is the space in which commands such as\n"
+"    commit and revert operate.\n"
+msgstr ""
+
 #: en/help_topics/hooks.txt:1
 msgid ""
 "\n"
@@ -13865,6 +14381,7 @@ msgid ""
 "formats              Information on choosing a storage format\n"
 "git                  Using Bazaar with Git\n"
 "global-options       Options that control how Breezy runs\n"
+"glossary             Glossary\n"
 "hooks                Points at which custom processing can be added\n"
 "launchpad            Using Bazaar with Launchpad.net\n"
 "location-alias       Aliases for remembered locations\n"
