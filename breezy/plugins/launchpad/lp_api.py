@@ -61,9 +61,7 @@ from launchpadlib.launchpad import (
 from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
-# 1.6.0 is the version of launchpadlib packaged in Ubuntu 10.04, the most
-# recent Ubuntu LTS release supported on the desktop at the time of writing.
-MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 0)
+MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
 
 
 def get_cache_directory():
@@ -131,13 +129,9 @@ def login(service, timeout=None, proxy_info=None,
     if proxy_info is None:
         proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
-    launchpad = Launchpad.login_with(
-        'bzr', _get_api_url(service), cache_directory, timeout=timeout,
+    return Launchpad.login_with(
+        'breezy', _get_api_url(service), cache_directory, timeout=timeout,
         proxy_info=proxy_info, version=version)
-    # XXX: Work-around a minor security bug in launchpadlib < 1.6.3, which
-    # would create this directory with default umask.
-    osutils.chmod_if_possible(cache_directory, 0o700)
-    return launchpad
 
 
 class LaunchpadBranch(object):
