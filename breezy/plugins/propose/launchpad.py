@@ -42,7 +42,6 @@ from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
     lp_api,
-    lp_registration,
     )
 """)
 from ...transport import get_transport
@@ -149,13 +148,13 @@ class Launchpad(Hoster):
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
-    def __init__(self, staging=False):
+    def __init__(self):
         self._staging = staging
         if staging:
-            lp_instance = 'staging'
+            lp_base_url = lp_api.STAGING_SERVICE_ROOT
         else:
-            lp_instance = 'production'
-        self.launchpad = connect_launchpad(lp_instance)
+            lp_base_url = None
+        self.launchpad = lp_api.connect_launchpad(lp_base_url)
 
     def __repr__(self):
         return "Launchpad(staging=%s)" % self._staging
@@ -194,7 +193,9 @@ class Launchpad(Hoster):
     def _get_derived_git_path(self, base_path, owner, project):
         base_repo = self.launchpad.git_repositories.getByPath(path=base_path)
         if project is None:
-            project = '/'.join(base_repo.unique_name.split('/')[1:])
+            project = urlutils.parse_url(base_repo.git_ssh_url)[-1].strip('/')
+        if project.startswith('~'):
+            project = '/'.join(base_path.split('/')[1:])
         # TODO(jelmer): Surely there is a better way of creating one of these
         # URLs?
         return "~%s/%s" % (owner, project)
@@ -323,8 +324,10 @@ class Launchpad(Hoster):
         elif base_vcs == 'git':
             to_path = self._get_derived_git_path(
                 base_path.strip('/'), owner, project)
-            return _mod_branch.Branch.open(
-                "git+ssh://git.launchpad.net/" + to_path, name)
+            to_url = urlutils.join_segment_parameters(
+                "git+ssh://git.launchpad.net/" + to_path,
+                {'branch': name})
+            return _mod_branch.Branch.open(to_url)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -343,9 +346,9 @@ class Launchpad(Hoster):
                 yield LaunchpadMergeProposal(mp)
         elif base_vcs == 'git':
             (source_repo_lp, source_branch_lp) = (
-                self.lp_host._get_lp_git_ref_from_branch(source_branch))
+                self._get_lp_git_ref_from_branch(source_branch))
             (target_repo_lp, target_branch_lp) = (
-                self.lp_host._get_lp_git_ref_from_branch(target_branch))
+                self._get_lp_git_ref_from_branch(target_branch))
             for mp in target_branch_lp.getMergeProposals(status=statuses):
                 if (target_branch_lp.path != mp.target_git_path or
                         target_repo_lp != mp.target_git_repository or
@@ -376,11 +379,6 @@ class Launchpad(Hoster):
         statuses = status_to_lp_mp_statuses(status)
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
-
-
-def connect_launchpad(lp_instance='production'):
-    service = lp_registration.LaunchpadService(lp_instance=lp_instance)
-    return lp_api.login(service, version='devel')
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
@@ -616,7 +614,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 self.source_branch_lp.createMergeProposal,
                 merge_target=self.target_branch_lp,
                 merge_prerequisite=prereq_branch_lp,
-                initial_comment=description.strip().encode('utf-8'),
+                initial_comment=description.strip(),
                 commit_message=self.commit_message,
                 needs_review=True,
                 reviewers=[self.launchpad.people[reviewer].self_link
