@@ -115,7 +115,10 @@ def _load_plugins_from_entrypoints(state):
         pass
     else:
         for ep in pkg_resources.iter_entry_points('breezy.plugin'):
-            sys.modules[_MODULE_PREFIX + ep.name] = ep.load()
+            fullname = _MODULE_PREFIX + ep.name
+            if fullname in sys.modules:
+                continue
+            sys.modules[fullname] = ep.load()
 
 
 def plugin_name(module_name):
