@@ -139,14 +139,14 @@ class GitTags(tag.BasicTags):
             if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
             elif overwrite or ref_name not in target_repo._git.refs:
-                target_repo._git.refs[ref_name] = unpeeled or peeled
                 try:
                     updates[tag_name] = (
-                        self.repository.lookup_foreign_revision_id(peeled))
+                        target_repo.lookup_foreign_revision_id(peeled))
                 except KeyError:
                     trace.warning('%s does not point to a valid object',
                                   tag_name)
                     continue
+                target_repo._git.refs[ref_name] = unpeeled or peeled
             else:
                 try:
                     source_revid = self.repository.lookup_foreign_revision_id(
