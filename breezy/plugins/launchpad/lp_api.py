@@ -45,9 +45,6 @@ from ... import (
     transport,
     )
 from ...i18n import gettext
-from .lp_registration import (
-    InvalidLaunchpadInstance,
-    )
 
 try:
     import launchpadlib
@@ -62,6 +59,23 @@ from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
+
+
+# We use production as the default because edge has been deprecated circa
+# 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
+DEFAULT_INSTANCE = 'production'
+
+LAUNCHPAD_DOMAINS = {
+    'production': 'launchpad.net',
+    'staging': 'staging.launchpad.net',
+    'qastaging': 'qastaging.launchpad.net',
+    'demo': 'demo.launchpad.net',
+    'dev': 'launchpad.dev',
+    }
+
+LAUNCHPAD_BAZAAR_DOMAINS = [
+    'bazaar.%s' % domain
+    for domain in LAUNCHPAD_DOMAINS.values()]
 
 
 def get_cache_directory():
@@ -94,25 +108,6 @@ def lookup_service_root(service_root):
         return staging_root.replace('staging', 'qastaging')
 
 
-def _get_api_url(service):
-    """Return the root URL of the Launchpad API.
-
-    e.g. For the 'staging' Launchpad service, this function returns
-    launchpadlib.launchpad.STAGING_SERVICE_ROOT.
-
-    :param service: A `LaunchpadService` object.
-    :return: A URL as a string.
-    """
-    if service._lp_instance is None:
-        lp_instance = service.DEFAULT_INSTANCE
-    else:
-        lp_instance = service._lp_instance
-    try:
-        return lookup_service_root(lp_instance)
-    except ValueError:
-        raise InvalidLaunchpadInstance(lp_instance)
-
-
 class NoLaunchpadBranch(errors.BzrError):
     _fmt = 'No launchpad branch could be found for branch "%(url)s".'
 
@@ -120,8 +115,8 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
-def login(service, timeout=None, proxy_info=None,
-          version=Launchpad.DEFAULT_VERSION):
+def connect_launchpad(base_url, timeout=None, proxy_info=None,
+                      version=Launchpad.DEFAULT_VERSION):
     """Log in to the Launchpad API.
 
     :return: The root `Launchpad` object from launchpadlib.
@@ -130,8 +125,9 @@ def login(service, timeout=None, proxy_info=None,
         proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
     return Launchpad.login_with(
-        'breezy', _get_api_url(service), cache_directory, timeout=timeout,
+        'breezy', base_url, cache_directory, timeout=timeout,
         proxy_info=proxy_info, version=version)
+
 
 
 class LaunchpadBranch(object):
