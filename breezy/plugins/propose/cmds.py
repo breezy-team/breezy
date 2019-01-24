@@ -268,12 +268,16 @@ class cmd_gitlab_login(Command):
     __doc__ = """Log into a GitLab instance.
 
     This command takes a GitLab instance URL (e.g. https://gitlab.com)
-    as well as a private token. Private tokens can be created via the
+    as well as an optional private token. Private tokens can be created via the
     web UI.
 
     :Examples:
 
-      Log into Debian's salsa:
+      Log into GNOME's GitLab (prompts for a token):
+
+         brz gitlab-login https://gitlab.gnome.org/
+
+      Log into Debian's salsa, using a token created earlier:
 
          brz gitlab-login https://salsa.debian.org if4Theis6Eich7aef0zo
     """
