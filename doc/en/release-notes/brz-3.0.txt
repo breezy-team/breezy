@@ -127,6 +127,9 @@ New Features
  * New ``lp-logout`` command to unset launchpad username.
    (Jelmer Vernooĳ, #349143)
 
+ * Plugins can now be registered using the 'entrypoints' mechanism in
+   setuptools. (Jelmer Vernooĳ, #1802647)
+
 Improvements
 ************
 
