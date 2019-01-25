@@ -915,7 +915,9 @@ class TestLoadEnvPlugin(BaseTestPlugins):
         ep = pkg_resources.EntryPoint.parse(
             'plugin = ' + __name__ + ':DummyPlugin', dist=d)
         d._ep_map = {'breezy.plugin': {'plugin': ep}}
-        pkg_resources.working_set.add(d, 'plugin')
+        pkg_resources.working_set.add(d, 'plugin', replace=True)
+        eps = list(pkg_resources.iter_entry_points('breezy.plugin'))
+        self.assertEqual(['plugin'], [ep.name for ep in eps])
         self.load_with_paths(['.'])
         self.addCleanup(d._ep_map.clear)
 
