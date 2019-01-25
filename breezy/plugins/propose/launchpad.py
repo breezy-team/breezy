@@ -43,6 +43,8 @@ lazy_import(globals(), """
 from breezy.plugins.launchpad import (
     lp_api,
     )
+
+from launchpadlib import uris
 """)
 from ...transport import get_transport
 
@@ -151,9 +153,9 @@ class Launchpad(Hoster):
     def __init__(self):
         self._staging = staging
         if staging:
-            lp_base_url = lp_api.STAGING_SERVICE_ROOT
+            lp_base_url = uris.STAGING_SERVICE_ROOT
         else:
-            lp_base_url = None
+            lp_base_url = uris.LPNET_SERVICE_ROOT
         self.launchpad = lp_api.connect_launchpad(lp_base_url)
 
     def __repr__(self):
