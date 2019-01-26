@@ -8,12 +8,13 @@ cache: pip
 python:
   - 3.5
   - 3.6
-  - 3.7
 
 matrix:
   include:
     - python: 2.7
       env: SELFTEST_OPTIONS="--coverage"
+    - python: 3.7
+      dist: xenial
 
 script:
   - make docs extensions
