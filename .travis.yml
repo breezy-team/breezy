@@ -2,7 +2,7 @@ language: python
 addons:
   apt:
     update: true
-sudo: false
+sudo: true
 cache: pip
 
 python:
