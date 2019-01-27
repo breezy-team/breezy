@@ -5,6 +5,8 @@ breezy (3.0.0~bzr7254-1) UNRELEASED; urgency=medium
   * Fix capitalization of Python in description.
   * Stop creating empty directory /usr/share/pyshared/breezy.
   * brz: set -e in postinst/prerm scripts.
+  * Add overrides for lintian warnings about empty directories; they're
+    fine in bzr.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Jan 2019 17:59:28 +0000
 
