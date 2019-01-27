@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7254-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7254-1) unstable; urgency=medium
 
   * New upstream snapshot.
    + Drop various patches now merged upstream.
@@ -9,7 +9,7 @@ breezy (3.0.0~bzr7254-1) UNRELEASED; urgency=medium
     fine in bzr.
   * Add patch 10_httplib2_import: avoid dependency on httplib2.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Jan 2019 19:42:06 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Jan 2019 22:11:45 +0000
 
 breezy (3.0.0~bzr7240-1) unstable; urgency=medium
 
