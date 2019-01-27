@@ -1,8 +1,3 @@
 01_selftest_package
 03_spurious_test_failure
 08_disable_sphinx_epytext
-12_gpg_default
-13_gz
-14_hg_field
-15_verify_signatures_py3
-16_archive_tree_timestamp

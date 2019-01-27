@@ -85,7 +85,7 @@ from fastimport import commands
 def _get_output_stream(destination):
     if destination is None or destination == '-':
         return helpers.binary_stream(getattr(sys.stdout, "buffer", sys.stdout))
-    elif destination.endswith('gz'):
+    elif destination.endswith('.gz'):
         import gzip
         return gzip.open(destination, 'wb')
     else:

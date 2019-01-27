@@ -60,14 +60,11 @@ class TestLaunchpadOpen(TestCaseWithTransport):
 
     def test_launchpad_branch_with_public_and_push_location(self):
         branch = self.make_branch('lp')
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             branch.set_public_branch(
                 'bzr+ssh://bazaar.launchpad.net/~foo/bar/public')
             branch.set_push_location(
                 'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
-        finally:
-            branch.unlock()
         self.assertEqual(
             ['Opening https://code.launchpad.net/~foo/bar/public in web '
              'browser'],

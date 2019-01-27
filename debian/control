@@ -81,7 +81,7 @@ Suggests: python-breezy-dbg,
           python-paramiko,
           xdg-utils
 Provides: ${python:Provides}
-Description: distributed version control system - python 2 library
+Description: distributed version control system - Python 2 library
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many file formats and workflows, reliable,
  and easily extendable.
@@ -110,7 +110,7 @@ Suggests: python3-breezy-dbg,
           python3-paramiko,
           xdg-utils,
 Provides: ${python3:Provides}
-Description: distributed version control system - python 3 library
+Description: distributed version control system - Python 3 library
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many file formats and workflows, reliable,
  and easily extendable.
