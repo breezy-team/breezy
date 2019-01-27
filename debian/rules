@@ -51,8 +51,7 @@ override_dh_auto_clean:
 override_dh_install:
 	dh_install
 	find debian/
-	mkdir -p debian/python-breezy.tests/usr/lib \
-		debian/python-breezy.tests/usr/share/pyshared/breezy
+	mkdir -p debian/python-breezy.tests/usr/lib
 	for py in $(shell pyversions -r); do \
 		mkdir -p debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
 		mv debian/python-breezy/usr/lib/$$py/dist-packages/breezy/tests \
