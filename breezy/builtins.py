@@ -3479,7 +3479,7 @@ class cmd_commit(Command):
 
     :Things to note:
 
-      If you accidentially commit the wrong changes or make a spelling
+      If you accidentally commit the wrong changes or make a spelling
       mistake in the commit message say, you can use the uncommit command
       to undo it. See ``brz help uncommit`` for details.
 
@@ -4798,7 +4798,7 @@ class cmd_revert(Command):
     update command.
 
     Uncommitted changes to files that are reverted will be discarded.
-    Howver, by default, any files that have been manually changed will be
+    However, by default, any files that have been manually changed will be
     backed up first.  (Files changed only by merge are not backed up.)  Backup
     files have '.~#~' appended to their name, where # is a number.
 
