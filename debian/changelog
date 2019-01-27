@@ -7,8 +7,9 @@ breezy (3.0.0~bzr7254-1) UNRELEASED; urgency=medium
   * brz: set -e in postinst/prerm scripts.
   * Add overrides for lintian warnings about empty directories; they're
     fine in bzr.
+  * Add patch 10_httplib2_import: avoid dependency on httplib2.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Jan 2019 17:59:28 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 27 Jan 2019 19:42:06 +0000
 
 breezy (3.0.0~bzr7240-1) unstable; urgency=medium
 
