@@ -150,7 +150,7 @@ class Launchpad(Hoster):
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
-    def __init__(self):
+    def __init__(self, staging=False):
         self._staging = staging
         if staging:
             lp_base_url = uris.STAGING_SERVICE_ROOT
