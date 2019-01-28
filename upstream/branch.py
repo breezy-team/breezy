@@ -25,7 +25,9 @@ from ....errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
     NoSuchTag,
+    UnsupportedOperation,
     )
+from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
 from ....sixish import text_type
 from ....trace import note
@@ -57,7 +59,7 @@ def upstream_tag_to_version(tag_name, package=None):
     return None
 
 
-def _upstream_branch_version(revhistory, reverse_tag_dict, package,
+def _upstream_branch_version(revhistory, upstream_revision, reverse_tag_dict, package,
                             previous_version, add_rev):
     """Determine the version string of an upstream branch.
 
@@ -76,7 +78,7 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
     :param add_rev: Function that can add a revision suffix to a version string.
     :return: Name of the upstream revision.
     """
-    if revhistory == []:
+    if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version
     for r in revhistory:
@@ -85,14 +87,14 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
             # convert to upstream version
             # return <upstream_version>+bzr<revno>
             for tag in reverse_tag_dict[r]:
-                upstream_version = upstream_tag_to_version(tag,
-                                                   package=package)
+                upstream_version = upstream_tag_to_version(
+                        tag, package=package)
                 if upstream_version is not None:
-                    if r != revhistory[0]:
+                    if r != upstream_revision:
                         upstream_version = add_rev(
-                          str(upstream_version), revhistory[0])
+                            str(upstream_version), upstream_revision)
                     return upstream_version
-    return add_rev(str(previous_version), revhistory[0])
+    return add_rev(str(previous_version), upstream_revision)
 
 
 def extract_svn_revno(rev):
@@ -190,10 +192,10 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
         # before the revision of the previous version
         stop_revids = [previous_revid]
     else:
-        previous_revno = 0
         stop_revids = None
     revhistory = graph.iter_lefthand_ancestry(upstream_revision, stop_revids)
-    return _upstream_branch_version(list(revhistory),
+    return _upstream_branch_version(
+            revhistory, upstream_revision,
             upstream_branch.tags.get_reverse_tag_dict(), package,
             previous_version,
             lambda version, revision: upstream_version_add_revision(

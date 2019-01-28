@@ -32,6 +32,7 @@ import tarfile
 import zipfile
 
 from ....revision import (
+    NULL_REVISION,
     Revision,
     )
 from ....tests import (
@@ -46,6 +47,7 @@ from ..errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
     )
+
 from ....sixish import text_type
 from . import (
     LzmaFeature,
@@ -561,38 +563,38 @@ class TestUpstreamBranchVersion(TestCase):
         return "%s+bzr%d" % (version_string, revno)
 
     def test_snapshot_none_existing(self):
-      self.revhistory = ["somerevid"]
+      self.revhistory = [b"somerevid"]
       self.assertEquals("1.2+bzr1",
-          _upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
+          _upstream_branch_version(self.revhistory, b"somerevid", {}, "bla", "1.2", self.get_suffix))
 
     def test_snapshot_nothing_new(self):
       self.revhistory = []
       self.assertEquals("1.2",
-          _upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
+          _upstream_branch_version(self.revhistory, NULL_REVISION, {}, "bla", "1.2", self.get_suffix))
 
     def test_new_tagged_release(self):
       """Last revision is tagged - use as upstream version."""
-      self.revhistory = ["somerevid"]
+      self.revhistory = [b"somerevid"]
       self.assertEquals("1.3",
-          _upstream_branch_version(self.revhistory, {"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
+          _upstream_branch_version(self.revhistory, b"somerevid", {b"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
 
     def test_refresh_snapshot_pre(self):
-      self.revhistory = ["somerevid", "oldrevid"]
+      self.revhistory = [b"somerevid", b"oldrevid"]
       self.assertEquals("1.3~bzr2",
-          _upstream_branch_version(self.revhistory, {}, "bla", "1.3~bzr1",
+          _upstream_branch_version(self.revhistory, b"somerevid", {}, "bla", "1.3~bzr1",
               self.get_suffix))
 
     def test_refresh_snapshot_post(self):
-      self.revhistory = ["somerevid", "oldrevid"]
+      self.revhistory = [b"somerevid", b"oldrevid"]
       self.assertEquals("1.3+bzr2",
-          _upstream_branch_version(self.revhistory, {}, "bla", "1.3+bzr1",
+          _upstream_branch_version(self.revhistory, b"somerevid", {}, "bla", "1.3+bzr1",
               self.get_suffix))
 
     def test_new_tag_refresh_snapshot(self):
-      self.revhistory = ["newrevid", "somerevid", "oldrevid"]
+      self.revhistory = [b"newrevid", b"somerevid", b"oldrevid"]
       self.assertEquals("1.3+bzr3",
-            _upstream_branch_version(self.revhistory,
-                {"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
+            _upstream_branch_version(self.revhistory, b"newrevid",
+                {b"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
 
 
 class TestUpstreamTagToVersion(TestCase):
