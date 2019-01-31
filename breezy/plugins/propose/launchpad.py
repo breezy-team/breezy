@@ -141,6 +141,9 @@ class LaunchpadMergeProposal(MergeProposal):
     def set_description(self, description):
         self._mp.description = description
 
+    def close(self):
+        self._mp.setStatus(status='Rejected')
+
 
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
