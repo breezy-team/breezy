@@ -81,6 +81,10 @@ External Compatibility Breaks
    Please use the ``lp-force-branch-mirror`` command from
    the lptools package instead. (Jelmer Vernooĳ, #518807)
 
+ * Up-to-date checking for Bazaar packaging branches is no
+   longer performed, since there are no longer
+   any automated imports. (Jelmer Vernooĳ)
+
 New Features
 ************
 

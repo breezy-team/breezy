@@ -22,7 +22,6 @@ from ... import (
     )
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
-from launchpadlib import uris
 import webbrowser
 
 from breezy import (
@@ -69,9 +68,9 @@ class Proposer(object):
         """
         self.tree = tree
         if staging:
-            lp_base_url = uris.STAGING_SERVICE_ROOT
+            lp_base_url = lp_api.uris.STAGING_SERVICE_ROOT
         else:
-            lp_base_url = uris.LPNET_SERVICE_ROOT
+            lp_base_url = lp_api.uris.LPNET_SERVICE_ROOT
         self.launchpad = lp_api.connect_launchpad(lp_base_url)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
