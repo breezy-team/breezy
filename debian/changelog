@@ -2,6 +2,7 @@ breezy (3.0.0~bzr7260-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
   * Drop 10_httplib2_import: applied upstream.
+  * Add patches: 09_propose_close, 10_propose_base_url.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Feb 2019 00:42:00 +0000
 

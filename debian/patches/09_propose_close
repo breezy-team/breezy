@@ -1,0 +1,50 @@
+Description: Implement .close on merge proposals.
+Origin: commit, revision id: jelmer@jelmer.uk-20190131231853-kwednv7eu49fhxka
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2019-01-31
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190131231853-kwednv7eu49fhxka
+
+=== modified file 'breezy/plugins/propose/github.py'
+--- old/breezy/plugins/propose/github.py	2019-01-04 00:40:55 +0000
++++ new/breezy/plugins/propose/github.py	2019-01-31 23:18:53 +0000
+@@ -122,6 +122,9 @@
+     def is_merged(self):
+         return self._pr.merged
+ 
++    def close(self):
++        self._pr.edit(state='closed')
++
+ 
+ def parse_github_url(branch):
+     url = urlutils.split_segment_parameters(branch.user_url)[0]
+
+=== modified file 'breezy/plugins/propose/gitlabs.py'
+--- old/breezy/plugins/propose/gitlabs.py	2019-01-04 00:40:55 +0000
++++ new/breezy/plugins/propose/gitlabs.py	2019-01-31 23:18:53 +0000
+@@ -163,6 +163,10 @@
+     def is_merged(self):
+         return (self._mr.state == 'merged')
+ 
++    def close(self):
++        self._mr.state_event = 'close'
++        self._mr.save()
++
+ 
+ def gitlab_url_to_bzr_url(url, name):
+     if not PY3:
+
+=== modified file 'breezy/plugins/propose/launchpad.py'
+--- old/breezy/plugins/propose/launchpad.py	2019-01-28 21:02:24 +0000
++++ new/breezy/plugins/propose/launchpad.py	2019-01-31 23:18:53 +0000
+@@ -141,6 +141,9 @@
+     def set_description(self, description):
+         self._mp.description = description
+ 
++    def close(self):
++        self._mp.setStatus(status='Rejected')
++
+ 
+ class Launchpad(Hoster):
+     """The Launchpad hosting service."""
+

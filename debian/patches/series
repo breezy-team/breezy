@@ -1,3 +1,5 @@
 01_selftest_package
 03_spurious_test_failure
 08_disable_sphinx_epytext
+09_propose_close
+10_propose_base_url

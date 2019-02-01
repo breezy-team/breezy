@@ -1,0 +1,74 @@
+Description: Add .base_url property to Hoster.
+Origin: commit, revision id: jelmer@jelmer.uk-20190201001837-zhqa81jpgj8hsdxh
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2019-02-01
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190201001837-zhqa81jpgj8hsdxh
+
+=== modified file 'breezy/plugins/propose/github.py'
+--- old/breezy/plugins/propose/github.py	2019-01-04 00:40:55 +0000
++++ new/breezy/plugins/propose/github.py	2019-02-01 00:18:37 +0000
+@@ -151,6 +151,12 @@
+     def __repr__(self):
+         return "GitHub()"
+ 
++    @property
++    def base_url(self):
++        # TODO(jelmer): Can we get the default URL from the Python API package
++        # somehow?
++        return "https://github.com"
++
+     def __init__(self):
+         self.gh = connect_github()
+ 
+
+=== modified file 'breezy/plugins/propose/gitlabs.py'
+--- old/breezy/plugins/propose/gitlabs.py	2019-01-04 00:40:55 +0000
++++ new/breezy/plugins/propose/gitlabs.py	2019-02-01 00:18:37 +0000
+@@ -179,6 +179,10 @@
+     def __repr__(self):
+         return "<GitLab(%r)>" % self.gl.url
+ 
++    @property
++    def base_url(self):
++        return self.gl.url
++
+     def __init__(self, gl):
+         self.gl = gl
+ 
+
+=== modified file 'breezy/plugins/propose/launchpad.py'
+--- old/breezy/plugins/propose/launchpad.py	2019-01-28 21:02:24 +0000
++++ new/breezy/plugins/propose/launchpad.py	2019-02-01 00:18:37 +0000
+@@ -158,6 +158,11 @@
+             lp_base_url = uris.LPNET_SERVICE_ROOT
+         self.launchpad = lp_api.connect_launchpad(lp_base_url)
+ 
++    @property
++    def base_url(self):
++        return lp_api.uris.web_root_for_service_root(
++            str(self.launchpad._root_uri))
++
+     def __repr__(self):
+         return "Launchpad(staging=%s)" % self._staging
+ 
+
+=== modified file 'breezy/plugins/propose/propose.py'
+--- old/breezy/plugins/propose/propose.py	2019-01-04 00:40:55 +0000
++++ new/breezy/plugins/propose/propose.py	2019-02-01 00:18:37 +0000
+@@ -159,8 +159,14 @@
+     """A hosting site manager.
+     """
+ 
++    # Does this hoster support arbitrary labels being attached to merge
++    # proposals?
+     supports_merge_proposal_labels = None
+ 
++    # The base_url that would be visible to users. I.e. https://github.com/
++    # rather than https://api.github.com/
++    base_url = None
++
+     def publish_derived(self, new_branch, base_branch, name, project=None,
+                         owner=None, revision_id=None, overwrite=False,
+                         allow_lossy=True):
+
