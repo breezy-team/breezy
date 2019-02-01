@@ -347,6 +347,49 @@ class BasicTags(_Tags):
         return result, updates, conflicts
 
 
+class MemoryTags(_Tags):
+
+    def __init__(self, tag_dict):
+        self._tag_dict = tag_dict
+
+    def get_tag_dict(self):
+        return self._tag_dict
+
+    def lookup_tag(self, tag_name):
+        """Return the referent string of a tag"""
+        td = self.get_tag_dict()
+        try:
+            return td[tag_name]
+        except KeyError:
+            raise errors.NoSuchTag(tag_name)
+
+    def get_reverse_tag_dict(self):
+        """Returns a dict with revisions as keys
+           and a list of tags for that revision as value"""
+        d = self.get_tag_dict()
+        rev = {}
+        for key in d:
+            try:
+                rev[d[key]].add(key)
+            except KeyError:
+                rev[d[key]] = set([key])
+        return rev
+
+    def set_tag(self, name, revid):
+        self._tag_dict[name] = revid
+
+    def delete_tag(self, name):
+        try:
+            del self._tag_dict[name]
+        except KeyError:
+            raise errors.NoSuchTag(name)
+
+    def rename_revisions(self, revid_map):
+        self._tag_dict = {
+            name: revid_map.get(revid, revid)
+            for name, revid in self._tag_dict.items()}
+
+
 def sort_natural(branch, tags):
     """Sort tags, with numeric substrings as numbers.
 
