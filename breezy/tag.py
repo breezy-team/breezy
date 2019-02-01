@@ -148,16 +148,13 @@ class BasicTags(_Tags):
         Behaviour if the tag is already present is not defined (yet).
         """
         # all done with a write lock held, so this looks atomic
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             master = self.branch.get_master_branch()
             if master is not None:
                 master.tags.set_tag(tag_name, tag_target)
             td = self.get_tag_dict()
             td[tag_name] = tag_target
             self._set_tag_dict(td)
-        finally:
-            self.branch.unlock()
 
     def lookup_tag(self, tag_name):
         """Return the referent string of a tag"""
@@ -195,8 +192,7 @@ class BasicTags(_Tags):
     def delete_tag(self, tag_name):
         """Delete a tag definition.
         """
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             d = self.get_tag_dict()
             try:
                 del d[tag_name]
@@ -209,8 +205,6 @@ class BasicTags(_Tags):
                 except errors.NoSuchTag:
                     pass
             self._set_tag_dict(d)
-        finally:
-            self.branch.unlock()
 
     def _set_tag_dict(self, new_dict):
         """Replace all tag definitions
