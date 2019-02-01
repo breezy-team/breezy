@@ -89,6 +89,7 @@ from ..upstream.pristinetar import (
 
 
 svn_plugin = PluginLoadedFeature('svn')
+git_plugin = PluginLoadedFeature('git')
 
 
 class MockSources(object):
@@ -626,8 +627,9 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
     def setUp(self):
         super(TestUpstreamVersionAddRevision, self).setUp()
         self.revnos = {}
-        self.svn_revnos = {"somesvnrev": 45}
-        self.revnos = {"somerev": 42, "somesvnrev": 12}
+        self.svn_revnos = {b"somesvnrev": 45}
+        self.git_shas = {b"somegitrev": b"e7f47cf254a6ddd4996fe41fa6115bd32eff5437"}
+        self.revnos = {b"somerev": 42, b"somesvnrev": 12, b"somegitrev": 66}
         self.repository = self
 
     def revision_id_to_revno(self, revid):
@@ -641,31 +643,43 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
             rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
             from ...svn import mapping
             rev.mapping = mapping.mapping_registry.get_default()()
+        if revid in self.git_shas:
+            self.requireFeature(git_plugin)
+            # Fake a bzr-svn revision
+            rev.foreign_revid = self.git_shas[revid]
+            from ...git import mapping
+            rev.mapping = mapping.mapping_registry.get_default()()
         return rev
 
     def test_update_plus_rev(self):
         self.assertEquals("1.3+bzr42",
-          upstream_version_add_revision(self, "1.3+bzr23", "somerev"))
+          upstream_version_add_revision(self, "1.3+bzr23", b"somerev"))
 
     def test_update_tilde_rev(self):
         self.assertEquals("1.3~bzr42",
-          upstream_version_add_revision(self, "1.3~bzr23", "somerev"))
+          upstream_version_add_revision(self, "1.3~bzr23", b"somerev"))
 
     def test_new_rev(self):
         self.assertEquals("1.3+bzr42",
-          upstream_version_add_revision(self, "1.3", "somerev"))
+          upstream_version_add_revision(self, "1.3", b"somerev"))
 
     def test_svn_new_rev(self):
         self.assertEquals("1.3+svn45",
-          upstream_version_add_revision(self, "1.3", "somesvnrev"))
+          upstream_version_add_revision(self, "1.3", b"somesvnrev"))
 
     def test_svn_plus_rev(self):
         self.assertEquals("1.3+svn45",
-          upstream_version_add_revision(self, "1.3+svn3", "somesvnrev"))
+          upstream_version_add_revision(self, "1.3+svn3", b"somesvnrev"))
 
     def test_svn_tilde_rev(self):
         self.assertEquals("1.3~svn45",
-            upstream_version_add_revision(self, "1.3~svn800", "somesvnrev"))
+            upstream_version_add_revision(self, "1.3~svn800", b"somesvnrev"))
+
+    def test_git_tilde_rev(self):
+        self.assertEquals(
+            "1.3~git20180101.6b10d57",
+            upstream_version_add_revision(
+                self, "1.3~git20171201.11b1d57", b"somegitrev"))
 
 
 class GetExportUpstreamRevisionTests(TestCase):

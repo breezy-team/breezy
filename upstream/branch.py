@@ -19,6 +19,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
+import time
 
 from ....branch import Branch
 from ....errors import (
@@ -97,8 +98,28 @@ def _upstream_branch_version(revhistory, upstream_revision, reverse_tag_dict, pa
     return add_rev(str(previous_version), upstream_revision)
 
 
+def extract_gitid(rev):
+    """Extract the git SHA of a revision from a Revision object.
+
+    :param rev: Revision object
+    :return: 40 character Git SHA as bytes,
+        None if this was not a git revision or
+         if the git sha could not be determined (dulwich not available).
+    """
+    try:
+        from ...git import extract_git_foreign_revid
+    except ImportError:
+        # No git support
+        return None
+    else:
+        try:
+            return extract_git_foreign_revid(rev)
+        except InvalidRevisionId:
+            return None
+
+
 def extract_svn_revno(rev):
-    """Extract the Subversion number of a revision from a revision.
+    """Extract the Subversion number of a revision from a Revision object.
 
     :param rev: Revision object
     :return: Revision number, None if this was not a Subversion revision or
@@ -132,13 +153,20 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
         return "%s%sbzr%d" % (m.group(1), m.group(2), revno)
 
     rev = upstream_branch.repository.get_revision(revid)
+    gitid = extract_gitid(rev)
+
+    m = re.match(r"^(.*)([\+~])git(\d{8})\.([a-f0-9]{7})$", version_string)
+    if m:
+        datestr = time.strftime('%Y%m%d', rev.timestamp)
+        return "%s%sgit%s.%s" % (
+            m.group(1), m.group(2), datestr, gitid)
+
     svn_revno = extract_svn_revno(rev)
 
+    m = re.match(r"^(.*)([\+~])svn(\d+)$", version_string)
     # FIXME: Raise error if +svn/~svn is present and svn_revno is not set?
-    if "+svn" in version_string and svn_revno:
-        return "%s+svn%d" % (version_string[:version_string.rfind("+svn")], svn_revno)
-    if "~svn" in version_string and svn_revno:
-        return "%s~svn%d" % (version_string[:version_string.rfind("~svn")], svn_revno)
+    if m and svn_revno:
+        return "%s%ssvn%d" % (m.group(1), m.group(2), svn_revno)
 
     if svn_revno:
         return "%s+svn%d" % (version_string, svn_revno)
