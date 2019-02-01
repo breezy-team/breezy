@@ -127,11 +127,9 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     """
     revno = upstream_branch.revision_id_to_revno(revid)
 
-    if "+bzr" in version_string:
-        return "%s+bzr%d" % (version_string[:version_string.rfind("+bzr")], revno)
-
-    if "~bzr" in version_string:
-        return "%s~bzr%d" % (version_string[:version_string.rfind("~bzr")], revno)
+    m = re.match(r"^(.*)([\+~])bzr(\d+)$", version_string)
+    if m:
+        return "%s%sbzr%d" % (m.group(1), m.group(2), revno)
 
     rev = upstream_branch.repository.get_revision(revid)
     svn_revno = extract_svn_revno(rev)
