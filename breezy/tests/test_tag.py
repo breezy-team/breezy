@@ -231,3 +231,23 @@ class MemoryTagsTests(TestCase):
         self.assertEqual({'foo': b'revid1'}, self.tags.get_tag_dict())
         self.tags.rename_revisions({b'revid1': b'revid2'})
         self.assertEqual({'foo': b'revid2'}, self.tags.get_tag_dict())
+
+    def test_merge_to(self):
+        other_tags = MemoryTags({})
+        other_tags.set_tag('tag-1', b'x')
+        self.tags.set_tag('tag-2', b'y')
+        other_tags.merge_to(self.tags)
+        self.assertEqual(b'x', self.tags.lookup_tag('tag-1'))
+        self.assertEqual(b'y', self.tags.lookup_tag('tag-2'))
+        self.assertRaises(errors.NoSuchTag, other_tags.lookup_tag, 'tag-2')
+        # conflicting merge
+        other_tags.set_tag('tag-2', b'z')
+        updates, conflicts = other_tags.merge_to(self.tags)
+        self.assertEqual({}, updates)
+        self.assertEqual(list(conflicts), [('tag-2', b'z', b'y')])
+        self.assertEqual(b'y', self.tags.lookup_tag('tag-2'))
+        # overwrite conflicts
+        updates, conflicts = other_tags.merge_to(self.tags, overwrite=True)
+        self.assertEqual(list(conflicts), [])
+        self.assertEqual({u'tag-2': b'z'}, updates)
+        self.assertEqual(b'z', self.tags.lookup_tag('tag-2'))

@@ -44,6 +44,33 @@ from breezy import (
 """)
 
 
+def _reconcile_tags(source_dict, dest_dict, overwrite):
+    """Do a two-way merge of two tag dictionaries.
+
+    * only in source => source value
+    * only in destination => destination value
+    * same definitions => that
+    * different definitions => if overwrite is False, keep destination
+      value and give a warning, otherwise use the source value
+
+    :returns: (result_dict, updates,
+        [(conflicting_tag, source_target, dest_target)])
+    """
+    conflicts = []
+    updates = {}
+    result = dict(dest_dict)  # copy
+    for name, target in source_dict.items():
+        if result.get(name) == target:
+            pass
+        elif name not in result or overwrite:
+            updates[name] = target
+            result[name] = target
+        else:
+            conflicts.append((name, target, result[name]))
+    return result, updates, conflicts
+
+
+
 class _Tags(object):
 
     def __init__(self, branch):
@@ -304,8 +331,8 @@ class BasicTags(_Tags):
 
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
-        result, updates, conflicts = self._reconcile_tags(source_dict,
-                                                          dest_dict, overwrite)
+        result, updates, conflicts = _reconcile_tags(
+            source_dict, dest_dict, overwrite)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
@@ -320,31 +347,6 @@ class BasicTags(_Tags):
             if revid in rename_map:
                 for name in names:
                     self.set_tag(name, rename_map[revid])
-
-    def _reconcile_tags(self, source_dict, dest_dict, overwrite):
-        """Do a two-way merge of two tag dictionaries.
-
-        * only in source => source value
-        * only in destination => destination value
-        * same definitions => that
-        * different definitions => if overwrite is False, keep destination
-          value and give a warning, otherwise use the source value
-
-        :returns: (result_dict, updates,
-            [(conflicting_tag, source_target, dest_target)])
-        """
-        conflicts = []
-        updates = {}
-        result = dict(dest_dict)  # copy
-        for name, target in source_dict.items():
-            if result.get(name) == target:
-                pass
-            elif name not in result or overwrite:
-                updates[name] = target
-                result[name] = target
-            else:
-                conflicts.append((name, target, result[name]))
-        return result, updates, conflicts
 
 
 class MemoryTags(_Tags):
@@ -388,6 +390,18 @@ class MemoryTags(_Tags):
         self._tag_dict = {
             name: revid_map.get(revid, revid)
             for name, revid in self._tag_dict.items()}
+
+    def _set_tag_dict(self, result):
+        self._tag_dict = dict(result.items())
+
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+        source_dict = self.get_tag_dict()
+        dest_dict = to_tags.get_tag_dict()
+        result, updates, conflicts = _reconcile_tags(
+            source_dict, dest_dict, overwrite)
+        if result != dest_dict:
+            to_tags._set_tag_dict(result)
+        return updates, conflicts
 
 
 def sort_natural(branch, tags):
