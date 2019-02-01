@@ -1,3 +1,10 @@
+breezy-debian (2.8.24) UNRELEASED; urgency=medium
+
+  * Support git snapshot id in version strings when merging a snapshot
+    from an upstream git repository.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Feb 2019 15:50:52 +0000
+
 breezy-debian (2.8.23) unstable; urgency=medium
 
   * Convert copyright file to machine-readable format.

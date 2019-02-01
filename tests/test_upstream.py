@@ -39,7 +39,10 @@ from ....tests import (
     TestCase,
     )
 from ....errors import NoSuchFile
-from ....tests.features import PluginLoadedFeature
+from ....tests.features import (
+    ModuleAvailableFeature,
+    PluginLoadedFeature,
+    )
 from ..config import (
     DebBuildConfig,
     )
@@ -89,7 +92,7 @@ from ..upstream.pristinetar import (
 
 
 svn_plugin = PluginLoadedFeature('svn')
-git_plugin = PluginLoadedFeature('git')
+dulwich = ModuleAvailableFeature('dulwich')
 
 
 class MockSources(object):
@@ -644,11 +647,13 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
             from ...svn import mapping
             rev.mapping = mapping.mapping_registry.get_default()()
         if revid in self.git_shas:
-            self.requireFeature(git_plugin)
+            self.requireFeature(dulwich)
             # Fake a bzr-svn revision
             rev.foreign_revid = self.git_shas[revid]
-            from ...git import mapping
+            from ....git import mapping
             rev.mapping = mapping.mapping_registry.get_default()()
+            rev.timestamp = 1514772000
+            rev.timezone = 0
         return rev
 
     def test_update_plus_rev(self):
@@ -677,9 +682,15 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
 
     def test_git_tilde_rev(self):
         self.assertEquals(
-            "1.3~git20180101.6b10d57",
+            "1.3~git20180101.e7f47cf",
             upstream_version_add_revision(
                 self, "1.3~git20171201.11b1d57", b"somegitrev"))
+
+    def test_git_new_rev(self):
+        self.assertEquals(
+            "1.3+git20180101.e7f47cf",
+            upstream_version_add_revision(
+                self, "1.3", b"somegitrev"))
 
 
 class GetExportUpstreamRevisionTests(TestCase):

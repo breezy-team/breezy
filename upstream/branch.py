@@ -19,8 +19,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
-import time
 
+from .... import osutils
 from ....branch import Branch
 from ....errors import (
     InvalidRevisionId,
@@ -107,7 +107,7 @@ def extract_gitid(rev):
          if the git sha could not be determined (dulwich not available).
     """
     try:
-        from ...git import extract_git_foreign_revid
+        from ....git import extract_git_foreign_revid
     except ImportError:
         # No git support
         return None
@@ -154,12 +154,14 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
 
     rev = upstream_branch.repository.get_revision(revid)
     gitid = extract_gitid(rev)
+    if gitid:
+        gitid = gitid[:7].decode('ascii')
+        gitdate = osutils.format_date(
+            rev.timestamp, rev.timezone, date_fmt='%Y%m%d', show_offset=False)
 
     m = re.match(r"^(.*)([\+~])git(\d{8})\.([a-f0-9]{7})$", version_string)
-    if m:
-        datestr = time.strftime('%Y%m%d', rev.timestamp)
-        return "%s%sgit%s.%s" % (
-            m.group(1), m.group(2), datestr, gitid)
+    if m and gitid:
+        return "%s%sgit%s.%s" % (m.group(1), m.group(2), gitdate, gitid)
 
     svn_revno = extract_svn_revno(rev)
 
@@ -170,6 +172,8 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
 
     if svn_revno:
         return "%s+svn%d" % (version_string, svn_revno)
+    elif gitid:
+        return "%s+git%s.%s" % (version_string, gitdate, gitid)
     else:
         return "%s+bzr%d" % (version_string, revno)
 
