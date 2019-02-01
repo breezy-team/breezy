@@ -23,7 +23,6 @@ from __future__ import absolute_import
 # needed by a command that uses it.
 
 
-import httplib2
 import re
 try:
     from urllib.parse import (
@@ -52,7 +51,6 @@ except ImportError as e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (
-    STAGING_SERVICE_ROOT,
     Launchpad,
     )
 from launchpadlib import uris
@@ -122,6 +120,7 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
     :return: The root `Launchpad` object from launchpadlib.
     """
     if proxy_info is None:
+        import httplib2
         proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
     return Launchpad.login_with(
@@ -196,7 +195,7 @@ class LaunchpadBranch(object):
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) == STAGING_SERVICE_ROOT:
+        if str(launchpad._root_uri) == uris.STAGING_SERVICE_ROOT:
             return url.replace('bazaar.launchpad.net',
                                'bazaar.staging.launchpad.net')
         elif str(launchpad._root_uri) == lookup_service_root('qastaging'):
