@@ -159,7 +159,13 @@ class Hoster(object):
     """A hosting site manager.
     """
 
+    # Does this hoster support arbitrary labels being attached to merge
+    # proposals?
     supports_merge_proposal_labels = None
+
+    # The base_url that would be visible to users. I.e. https://github.com/
+    # rather than https://api.github.com/
+    base_url = None
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,

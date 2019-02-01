@@ -151,6 +151,12 @@ class GitHub(Hoster):
     def __repr__(self):
         return "GitHub()"
 
+    @property
+    def base_url(self):
+        # TODO(jelmer): Can we get the default URL from the Python API package
+        # somehow?
+        return "https://github.com"
+
     def __init__(self):
         self.gh = connect_github()
 

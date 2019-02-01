@@ -179,6 +179,10 @@ class GitLab(Hoster):
     def __repr__(self):
         return "<GitLab(%r)>" % self.gl.url
 
+    @property
+    def base_url(self):
+        return self.gl.url
+
     def __init__(self, gl):
         self.gl = gl
 
