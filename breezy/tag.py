@@ -24,6 +24,8 @@ when the branch is opened.  Clients should typically do
 
 from __future__ import absolute_import
 
+from collections import defaultdict
+
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
@@ -51,7 +53,7 @@ def _reconcile_tags(source_dict, dest_dict, overwrite):
     * only in destination => destination value
     * same definitions => that
     * different definitions => if overwrite is False, keep destination
-      value and give a warning, otherwise use the source value
+      value and add to conflict list, otherwise use the source value
 
     :returns: (result_dict, updates,
         [(conflicting_tag, source_target, dest_target)])
@@ -68,7 +70,6 @@ def _reconcile_tags(source_dict, dest_dict, overwrite):
         else:
             conflicts.append((name, target, result[name]))
     return result, updates, conflicts
-
 
 
 class _Tags(object):
@@ -208,12 +209,9 @@ class BasicTags(_Tags):
         """Returns a dict with revisions as keys
            and a list of tags for that revision as value"""
         d = self.get_tag_dict()
-        rev = {}
+        rev = defaultdict(set)
         for key in d:
-            try:
-                rev[d[key]].append(key)
-            except KeyError:
-                rev[d[key]] = [key]
+            rev[d[key]].add(key)
         return rev
 
     def delete_tag(self, tag_name):
@@ -369,12 +367,9 @@ class MemoryTags(_Tags):
         """Returns a dict with revisions as keys
            and a list of tags for that revision as value"""
         d = self.get_tag_dict()
-        rev = {}
+        rev = defaultdict(set)
         for key in d:
-            try:
-                rev[d[key]].add(key)
-            except KeyError:
-                rev[d[key]] = set([key])
+            rev[d[key]].add(key)
         return rev
 
     def set_tag(self, name, revid):
