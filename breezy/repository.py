@@ -256,6 +256,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     base class for most Bazaar repositories.
     """
 
+    # Does this repository implementation support random access to
+    # items in the tree, or just bulk fetching/pushing of data?
+    supports_random_access = True
+
     def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 

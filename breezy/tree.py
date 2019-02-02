@@ -746,7 +746,7 @@ class InterTree(InterObject):
         elif source_kind == 'tree-reference':
             if (self.source.get_reference_revision(source_path)
                     != self.target.get_reference_revision(target_path)):
-                    changed_content = True
+                changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
         executable = (source_executable, target_executable)

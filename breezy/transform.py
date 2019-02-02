@@ -3122,7 +3122,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
             file_id = tt.inactive_file_id(conflict[1])
             # special-case the other tree root (move its children instead)
             if path_tree and path_tree.path2id('') == file_id:
-                    # This is the root entry, skip it
+                # This is the root entry, skip it
                 continue
             tt.version_file(file_id, conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

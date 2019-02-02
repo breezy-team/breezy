@@ -2880,8 +2880,8 @@ class TestSelftestFiltering(tests.TestCase):
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
-        self.assertTrue(self.suite is tests.preserve_input(self.suite))
-        self.assertTrue("@#$" is tests.preserve_input("@#$"))
+        self.assertIs(self.suite, tests.preserve_input(self.suite))
+        self.assertEqual("@#$", tests.preserve_input("@#$"))
 
     def test_randomize_suite(self):
         randomized_suite = tests.randomize_suite(self.suite)

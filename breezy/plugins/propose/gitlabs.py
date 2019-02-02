@@ -163,6 +163,10 @@ class GitLabMergeProposal(MergeProposal):
     def is_merged(self):
         return (self._mr.state == 'merged')
 
+    def close(self):
+        self._mr.state_event = 'close'
+        self._mr.save()
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
@@ -178,6 +182,10 @@ class GitLab(Hoster):
 
     def __repr__(self):
         return "<GitLab(%r)>" % self.gl.url
+
+    @property
+    def base_url(self):
+        return self.gl.url
 
     def __init__(self, gl):
         self.gl = gl

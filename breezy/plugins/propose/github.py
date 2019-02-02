@@ -122,6 +122,9 @@ class GitHubMergeProposal(MergeProposal):
     def is_merged(self):
         return self._pr.merged
 
+    def close(self):
+        self._pr.edit(state='closed')
+
 
 def parse_github_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
@@ -150,6 +153,12 @@ class GitHub(Hoster):
 
     def __repr__(self):
         return "GitHub()"
+
+    @property
+    def base_url(self):
+        # TODO(jelmer): Can we get the default URL from the Python API package
+        # somehow?
+        return "https://github.com"
 
     def __init__(self):
         self.gh = connect_github()

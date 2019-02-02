@@ -34,7 +34,10 @@ from dulwich.tests.utils import (
     )
 
 from .. import tests
-from ..errors import UnknownCommitExtra
+from ..errors import (
+    UnknownCommitExtra,
+    UnknownMercurialCommitExtra,
+    )
 from ..mapping import (
     BzrGitMappingv1,
     escape_file_id,
@@ -216,6 +219,22 @@ class TestImportCommit(tests.TestCase):
             c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(
             rev.properties[u'git-mergetag-0'], tag.as_raw_string())
+
+    def test_unknown_hg_fields(self):
+        c = Commit()
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message"
+        c.committer = b"Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = b"Author"
+        c._extra = [(b"HG:extra", b"bla:Foo")]
+        mapping = BzrGitMappingv1()
+        self.assertRaises(
+            UnknownMercurialCommitExtra,
+            mapping.import_commit, c, mapping.revision_id_foreign_to_bzr)
 
 
 class RoundtripRevisionsFromBazaar(tests.TestCase):

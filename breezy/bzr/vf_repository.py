@@ -478,8 +478,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         entry.executable = False
                     if (carry_over_possible
                             and parent_entry.executable == entry.executable):
-                            # Check the file length, content hash after reading
-                            # the file.
+                        # Check the file length, content hash after reading
+                        # the file.
                         nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
