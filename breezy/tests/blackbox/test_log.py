@@ -85,9 +85,9 @@ class TestLogWithLogCatcher(TestLog):
         self.addCleanup(setattr, MyLogFormatter, "__new__", None)
 
         def getme(branch):
-                # Always return our own log formatter class hijacking the
-                # default behavior (which requires setting up a config
-                # variable)
+            # Always return our own log formatter class hijacking the
+            # default behavior (which requires setting up a config
+            # variable)
             return MyLogFormatter
         self.overrideAttr(log.log_formatter_registry, 'get_default', getme)
 

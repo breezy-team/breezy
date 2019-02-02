@@ -314,8 +314,8 @@ class Merge3(object):
         yielded_a = False
         for base_idx, b_idx, match_len in matches:
             conflict_b_len = b_idx - last_b_idx
-            if conflict_b_len == 0:  # There are no lines in b which conflict,
-                                    # so skip it
+            if conflict_b_len == 0:
+                # There are no lines in b which conflict, so skip it
                 pass
             else:
                 if yielded_a:
