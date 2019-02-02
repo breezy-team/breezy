@@ -122,6 +122,9 @@ class GitHubMergeProposal(MergeProposal):
     def is_merged(self):
         return self._pr.merged
 
+    def close(self):
+        self._pr.edit(state='closed')
+
 
 def parse_github_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
