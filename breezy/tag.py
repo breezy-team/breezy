@@ -24,6 +24,8 @@ when the branch is opened.  Clients should typically do
 
 from __future__ import absolute_import
 
+from collections import defaultdict
+
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
@@ -42,6 +44,32 @@ from breezy import (
     trace,
     )
 """)
+
+
+def _reconcile_tags(source_dict, dest_dict, overwrite):
+    """Do a two-way merge of two tag dictionaries.
+
+    * only in source => source value
+    * only in destination => destination value
+    * same definitions => that
+    * different definitions => if overwrite is False, keep destination
+      value and add to conflict list, otherwise use the source value
+
+    :returns: (result_dict, updates,
+        [(conflicting_tag, source_target, dest_target)])
+    """
+    conflicts = []
+    updates = {}
+    result = dict(dest_dict)  # copy
+    for name, target in source_dict.items():
+        if result.get(name) == target:
+            pass
+        elif name not in result or overwrite:
+            updates[name] = target
+            result[name] = target
+        else:
+            conflicts.append((name, target, result[name]))
+    return result, updates, conflicts
 
 
 class _Tags(object):
@@ -148,16 +176,13 @@ class BasicTags(_Tags):
         Behaviour if the tag is already present is not defined (yet).
         """
         # all done with a write lock held, so this looks atomic
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             master = self.branch.get_master_branch()
             if master is not None:
                 master.tags.set_tag(tag_name, tag_target)
             td = self.get_tag_dict()
             td[tag_name] = tag_target
             self._set_tag_dict(td)
-        finally:
-            self.branch.unlock()
 
     def lookup_tag(self, tag_name):
         """Return the referent string of a tag"""
@@ -184,19 +209,15 @@ class BasicTags(_Tags):
         """Returns a dict with revisions as keys
            and a list of tags for that revision as value"""
         d = self.get_tag_dict()
-        rev = {}
+        rev = defaultdict(set)
         for key in d:
-            try:
-                rev[d[key]].append(key)
-            except KeyError:
-                rev[d[key]] = [key]
+            rev[d[key]].add(key)
         return rev
 
     def delete_tag(self, tag_name):
         """Delete a tag definition.
         """
-        self.branch.lock_write()
-        try:
+        with self.branch.lock_write():
             d = self.get_tag_dict()
             try:
                 del d[tag_name]
@@ -209,8 +230,6 @@ class BasicTags(_Tags):
                 except errors.NoSuchTag:
                     pass
             self._set_tag_dict(d)
-        finally:
-            self.branch.unlock()
 
     def _set_tag_dict(self, new_dict):
         """Replace all tag definitions
@@ -310,8 +329,8 @@ class BasicTags(_Tags):
 
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
-        result, updates, conflicts = self._reconcile_tags(source_dict,
-                                                          dest_dict, overwrite)
+        result, updates, conflicts = _reconcile_tags(
+            source_dict, dest_dict, overwrite)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
@@ -327,30 +346,57 @@ class BasicTags(_Tags):
                 for name in names:
                     self.set_tag(name, rename_map[revid])
 
-    def _reconcile_tags(self, source_dict, dest_dict, overwrite):
-        """Do a two-way merge of two tag dictionaries.
 
-        * only in source => source value
-        * only in destination => destination value
-        * same definitions => that
-        * different definitions => if overwrite is False, keep destination
-          value and give a warning, otherwise use the source value
+class MemoryTags(_Tags):
 
-        :returns: (result_dict, updates,
-            [(conflicting_tag, source_target, dest_target)])
-        """
-        conflicts = []
-        updates = {}
-        result = dict(dest_dict)  # copy
-        for name, target in source_dict.items():
-            if result.get(name) == target:
-                pass
-            elif name not in result or overwrite:
-                updates[name] = target
-                result[name] = target
-            else:
-                conflicts.append((name, target, result[name]))
-        return result, updates, conflicts
+    def __init__(self, tag_dict):
+        self._tag_dict = tag_dict
+
+    def get_tag_dict(self):
+        return self._tag_dict
+
+    def lookup_tag(self, tag_name):
+        """Return the referent string of a tag"""
+        td = self.get_tag_dict()
+        try:
+            return td[tag_name]
+        except KeyError:
+            raise errors.NoSuchTag(tag_name)
+
+    def get_reverse_tag_dict(self):
+        """Returns a dict with revisions as keys
+           and a list of tags for that revision as value"""
+        d = self.get_tag_dict()
+        rev = defaultdict(set)
+        for key in d:
+            rev[d[key]].add(key)
+        return rev
+
+    def set_tag(self, name, revid):
+        self._tag_dict[name] = revid
+
+    def delete_tag(self, name):
+        try:
+            del self._tag_dict[name]
+        except KeyError:
+            raise errors.NoSuchTag(name)
+
+    def rename_revisions(self, revid_map):
+        self._tag_dict = {
+            name: revid_map.get(revid, revid)
+            for name, revid in self._tag_dict.items()}
+
+    def _set_tag_dict(self, result):
+        self._tag_dict = dict(result.items())
+
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+        source_dict = self.get_tag_dict()
+        dest_dict = to_tags.get_tag_dict()
+        result, updates, conflicts = _reconcile_tags(
+            source_dict, dest_dict, overwrite)
+        if result != dest_dict:
+            to_tags._set_tag_dict(result)
+        return updates, conflicts
 
 
 def sort_natural(branch, tags):
