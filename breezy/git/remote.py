@@ -828,6 +828,8 @@ class GitRemoteRevisionTree(RevisionTree):
 
 class RemoteGitRepository(GitRepository):
 
+    supports_random_access = False
+
     @property
     def user_url(self):
         return self.control_url
