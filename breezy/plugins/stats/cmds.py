@@ -17,6 +17,8 @@
 
 from __future__ import absolute_import
 
+import operator
+
 from ... import (
     branch,
     commands,
@@ -59,7 +61,7 @@ def collapse_by_person(revisions, canonical_committer):
             info[2][username] = info[2].setdefault(username, 0) + 1
     res = [(len(revs), revs, emails, fnames)
            for revs, emails, fnames in committer_to_info.values()]
-    res.sort(reverse=True)
+    res.sort(reverse=True, key=operator.itemgetter(0))
     return res
 
 
@@ -278,6 +280,8 @@ class cmd_ancestor_growth(commands.Command):
     takes_args = ['location?']
 
     encoding_type = 'replace'
+
+    hidden = True
 
     def run(self, location='.'):
         try:

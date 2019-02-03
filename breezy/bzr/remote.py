@@ -37,13 +37,13 @@ from .. import (
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
-    testament as _mod_testament,
     urlutils,
     )
 from . import (
     branch as bzrbranch,
     bzrdir as _mod_bzrdir,
     inventory_delta,
+    testament as _mod_testament,
     vf_repository,
     vf_search,
     )
@@ -2474,7 +2474,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
-        from ..reconcile import RepoReconciler
+        from ..reconcile import ReconcileResult
         with self.lock_write():
             path = self.controldir._path_for_remote_call(self._client)
             try:
@@ -2486,7 +2486,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             if response != (b'ok', ):
                 raise errors.UnexpectedSmartServerResponse(response)
             body = handler.read_body_bytes()
-            result = RepoReconciler(self)
+            result = ReconcileResult()
+            result.garbage_inventories = None
+            result.inconsistent_parents = None
+            result.aborted = None
             for line in body.split(b'\n'):
                 if not line:
                     continue
@@ -4138,6 +4141,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     def _vfs_heads_to_fetch(self):
         self._ensure_real()
         return self._real_branch.heads_to_fetch()
+
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from .reconcile import BranchReconciler
+        with self.lock_write():
+            reconciler = BranchReconciler(self, thorough=thorough)
+            return reconciler.reconcile()
 
 
 class RemoteConfig(object):

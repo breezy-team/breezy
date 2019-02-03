@@ -308,7 +308,7 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_b.commit('merge branch_c')
 
     def test_merge_bundle(self):
-        from breezy.testament import Testament
+        from breezy.bzr.testament import Testament
         tree_a = self.make_branch_and_tree('branch_a')
         self.build_tree_contents([('branch_a/a', b'hello')])
         tree_a.add('a')

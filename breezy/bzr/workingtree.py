@@ -34,7 +34,10 @@ from __future__ import absolute_import
 
 from bisect import bisect_left
 import breezy
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
 import errno
 import itertools
 import operator
@@ -1038,7 +1041,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # jam 20060527 The kernel sized tree seems equivalent whether we
             # use a deque and popleft to keep them sorted, or if we use a plain
             # list and just reverse() them.
-            children = collections.deque(children)
+            children = deque(children)
             stack = [(from_dir_id, u'', from_dir_abspath, children)]
             while stack:
                 (from_dir_id, from_dir_relpath, from_dir_abspath,
@@ -1113,7 +1116,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     # But do this child first if recursing down
                     if recursive:
                         new_children = sorted(os.listdir(fap))
-                        new_children = collections.deque(new_children)
+                        new_children = deque(new_children)
                         stack.append((f_ie.file_id, fp, fap, new_children))
                         # Break out of inner loop,
                         # so that we start outer loop with child
@@ -1257,10 +1260,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     raise errors.BzrRenameFailedError(
                         from_rel, to_rel,
                         errors.NotVersionedError(path=from_rel))
-                # put entry back in the inventory so we can rename it
-                from_entry = basis_tree.root_inventory.get_entry(
-                    from_id).copy()
-                from_inv.add(from_entry)
+                try:
+                    from_entry = from_inv.get_entry(from_id)
+                except errors.NoSuchId:
+                    # put entry back in the inventory so we can rename it
+                    from_entry = basis_tree.root_inventory.get_entry(
+                        from_id).copy()
+                    from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
                 from_entry = from_inv.get_entry(from_inv_id)

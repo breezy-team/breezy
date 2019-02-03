@@ -138,7 +138,7 @@ class UnpackHighresDateTests(tests.TestCase):
         for count in range(500):
             t += random.random() * 24 * 3600 * 30
             try:
-                time.gmtime(t)
+                time.gmtime(t + o)
             except (OverflowError, ValueError):
                 # We've reached the maximum for time_t on this platform
                 break

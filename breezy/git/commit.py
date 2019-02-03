@@ -142,7 +142,7 @@ class GitCommitBuilder(CommitBuilder):
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
             if st is not None:
-                yield file_id, path[1], (entry.text_sha1, st)
+                yield path[1], (entry.text_sha1, st)
             if self._mapping.generate_file_id(encoded_new_path) != file_id:
                 self._override_fileids[encoded_new_path] = file_id
             else:

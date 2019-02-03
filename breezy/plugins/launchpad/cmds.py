@@ -167,24 +167,6 @@ class cmd_launchpad_logout(Command):
                 old_username)
 
 
-# XXX: cmd_launchpad_mirror is untested
-class cmd_launchpad_mirror(Command):
-    __doc__ = """Ask Launchpad to mirror a branch now."""
-
-    aliases = ['lp-mirror']
-    takes_args = ['location?']
-
-    def run(self, location='.'):
-        from . import lp_api
-        from .lp_registration import LaunchpadService
-        branch, _ = _mod_branch.Branch.open_containing(location)
-        service = LaunchpadService()
-        launchpad = lp_api.login(service)
-        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
-                                                    create_missing=False)
-        lp_branch.lp.requestMirror()
-
-
 class cmd_lp_propose_merge(Command):
     __doc__ = """Propose merging a branch on Launchpad.
 
@@ -206,6 +188,7 @@ class cmd_lp_propose_merge(Command):
     unspecified type, and request "review-team" to perform a "qa" review.
     """
 
+    hidden = True
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
                      Option('message', short_name='m', type=text_type,
@@ -284,10 +267,9 @@ class cmd_lp_find_proposal(Command):
                 webbrowser.open(lp_api.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from . import (lp_api, lp_registration)
+        from . import lp_api
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
-        launchpad = lp_api.login(lp_registration.LaunchpadService(),
-                                 version='devel')
+        launchpad = lp_api.connect_launchpad(version='devel')
         pb.update(gettext('Finding proposals'))
         return list(launchpad.branches.getMergeProposals(
                     merged_revision=revision_id))

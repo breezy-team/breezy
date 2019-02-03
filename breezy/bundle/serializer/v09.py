@@ -18,8 +18,9 @@ from __future__ import absolute_import
 
 from breezy.bundle.serializer import _get_bundle_header
 from breezy.bundle.serializer.v08 import BundleSerializerV08, BundleReader
-from breezy.testament import StrictTestament3
 from breezy.bundle.bundle_data import BundleInfo
+
+from breezy.bzr.testament import StrictTestament3
 
 
 """Serializer for bundle format 0.9"""

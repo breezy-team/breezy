@@ -35,6 +35,10 @@ from ... import (
     )
 from ...i18n import gettext
 
+from .lp_api import (
+    DEFAULT_INSTANCE,
+    LAUNCHPAD_DOMAINS,
+    )
 from .lp_registration import (
     InvalidURL,
     LaunchpadService,
@@ -47,20 +51,71 @@ from .account import get_lp_login
 # is counted as a netloc protocol.
 transport.register_urlparse_netloc_protocol('bzr+ssh')
 transport.register_urlparse_netloc_protocol('lp')
+transport.register_urlparse_netloc_protocol('lp+bzr')
+
+
+def _requires_launchpad_login(scheme, netloc, path, query,
+                              fragment):
+    """Does the URL require a Launchpad login in order to be reached?
+
+    The URL is specified by its parsed components, as returned from
+    urlsplit.
+    """
+    return (scheme in ('bzr+ssh', 'sftp')
+            and (netloc.endswith('launchpad.net') or
+                 netloc.endswith('launchpad.dev')))
+
+
+def _expand_user(path, url, lp_login):
+    if path.startswith('~/'):
+        if lp_login is None:
+            raise InvalidURL(path=url,
+                             extra='Cannot resolve "~" to your username.'
+                             ' See "bzr help launchpad-login"')
+        path = '~' + lp_login + path[1:]
+    return path
+
+
+def _update_url_scheme(url):
+    # Do ubuntu: and debianlp: expansions.
+    scheme, netloc, path, query, fragment = urlsplit(url)
+    if scheme in ('ubuntu', 'debianlp'):
+        if scheme == 'ubuntu':
+            distro = 'ubuntu'
+        elif scheme == 'debianlp':
+            distro = 'debian'
+            # No shortcuts for Debian distroseries.
+        else:
+            raise AssertionError('scheme should be ubuntu: or debianlp:')
+        # Split the path.  It's either going to be 'project' or
+        # 'series/project', but recognize that it may be a series we don't
+        # know about.
+        path_parts = path.split('/')
+        if len(path_parts) == 1:
+            # It's just a project name.
+            lp_url_template = 'lp:%(distro)s/%(project)s'
+            project = path_parts[0]
+            series = None
+        elif len(path_parts) == 2:
+            # It's a series and project.
+            lp_url_template = 'lp:%(distro)s/%(series)s/%(project)s'
+            series, project = path_parts
+        else:
+            # There are either 0 or > 2 path parts, neither of which is
+            # supported for these schemes.
+            raise InvalidURL('Bad path: %s' % url)
+        # Hack the url and let the following do the final resolution.
+        url = lp_url_template % dict(
+            distro=distro,
+            series=series,
+            project=project)
+        scheme, netloc, path, query, fragment = urlsplit(url)
+    elif scheme == 'lp+bzr':
+        scheme = 'lp'
+    return url, path
 
 
 class LaunchpadDirectory(object):
-
-    def _requires_launchpad_login(self, scheme, netloc, path, query,
-                                  fragment):
-        """Does the URL require a Launchpad login in order to be reached?
-
-        The URL is specified by its parsed components, as returned from
-        urlsplit.
-        """
-        return (scheme in ('bzr+ssh', 'sftp')
-                and (netloc.endswith('launchpad.net') or
-                     netloc.endswith('launchpad.dev')))
 
     def look_up(self, name, url):
         """See DirectoryService.look_up"""
@@ -72,8 +127,8 @@ class LaunchpadDirectory(object):
         # sent to +branch/$path.
         _, netloc, _, _, _ = urlsplit(url)
         if netloc == '':
-            netloc = LaunchpadService.DEFAULT_INSTANCE
-        base_url = LaunchpadService.LAUNCHPAD_DOMAINS[netloc]
+            netloc = DEFAULT_INSTANCE
+        base_url = LAUNCHPAD_DOMAINS[netloc]
         base = 'bzr+ssh://bazaar.%s/' % (base_url,)
         maybe_invalid = False
         if path.startswith('~'):
@@ -102,60 +157,15 @@ class LaunchpadDirectory(object):
                 path=url, extra=fault.faultString)
         return result
 
-    def _update_url_scheme(self, url):
-        # Do ubuntu: and debianlp: expansions.
-        scheme, netloc, path, query, fragment = urlsplit(url)
-        if scheme in ('ubuntu', 'debianlp'):
-            if scheme == 'ubuntu':
-                distro = 'ubuntu'
-            elif scheme == 'debianlp':
-                distro = 'debian'
-                # No shortcuts for Debian distroseries.
-            else:
-                raise AssertionError('scheme should be ubuntu: or debianlp:')
-            # Split the path.  It's either going to be 'project' or
-            # 'series/project', but recognize that it may be a series we don't
-            # know about.
-            path_parts = path.split('/')
-            if len(path_parts) == 1:
-                # It's just a project name.
-                lp_url_template = 'lp:%(distro)s/%(project)s'
-                project = path_parts[0]
-                series = None
-            elif len(path_parts) == 2:
-                # It's a series and project.
-                lp_url_template = 'lp:%(distro)s/%(series)s/%(project)s'
-                series, project = path_parts
-            else:
-                # There are either 0 or > 2 path parts, neither of which is
-                # supported for these schemes.
-                raise InvalidURL('Bad path: %s' % url)
-            # Hack the url and let the following do the final resolution.
-            url = lp_url_template % dict(
-                distro=distro,
-                series=series,
-                project=project)
-            scheme, netloc, path, query, fragment = urlsplit(url)
-        return url, path
-
-    def _expand_user(self, path, url, lp_login):
-        if path.startswith('~/'):
-            if lp_login is None:
-                raise InvalidURL(path=url,
-                                 extra='Cannot resolve "~" to your username.'
-                                 ' See "bzr help launchpad-login"')
-            path = '~' + lp_login + path[1:]
-        return path
-
     def _resolve(self, url,
                  _request_factory=ResolveLaunchpadPathRequest,
                  _lp_login=None):
         """Resolve the base URL for this transport."""
-        url, path = self._update_url_scheme(url)
+        url, path = _update_url_scheme(url)
         if _lp_login is None:
             _lp_login = get_lp_login()
         path = path.strip('/')
-        path = self._expand_user(path, url, _lp_login)
+        path = _expand_user(path, url, _lp_login)
         if _lp_login is not None:
             result = self._resolve_locally(path, url, _request_factory)
             if 'launchpad' in debug.debug_flags:
@@ -173,8 +183,8 @@ class LaunchpadDirectory(object):
         _warned_login = False
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)
-            if self._requires_launchpad_login(scheme, netloc, path, query,
-                                              fragment):
+            if _requires_launchpad_login(scheme, netloc, path, query,
+                                         fragment):
                 # Only accept launchpad.net bzr+ssh URLs if we know
                 # the user's Launchpad login:
                 if _lp_login is not None:

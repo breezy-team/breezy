@@ -28,7 +28,6 @@ from .. import (
     transport,
     urlutils,
     )
-from ..directory_service import directories
 from ..sixish import (
     BytesIO,
     )
@@ -37,7 +36,6 @@ from ..transport import (
     fakenfs,
     http,
     local,
-    location_to_url,
     memory,
     pathfilter,
     readonly,
@@ -1107,51 +1105,3 @@ class TestUnhtml(tests.TestCase):
         result = http.unhtml_roughly(fake_html)
         self.assertEqual(len(result), 1000)
         self.assertStartsWith(result, " something!")
-
-
-class SomeDirectory(object):
-
-    def look_up(self, name, url):
-        return "http://bar"
-
-
-class TestLocationToUrl(tests.TestCase):
-
-    def get_base_location(self):
-        path = osutils.abspath('/foo/bar')
-        if path.startswith('/'):
-            url = 'file://%s' % (path,)
-        else:
-            # On Windows, abspaths start with the drive letter, so we have to
-            # add in the extra '/'
-            url = 'file:///%s' % (path,)
-        return path, url
-
-    def test_regular_url(self):
-        self.assertEqual("file://foo", location_to_url("file://foo"))
-
-    def test_directory(self):
-        directories.register("bar:", SomeDirectory, "Dummy directory")
-        self.addCleanup(directories.remove, "bar:")
-        self.assertEqual("http://bar", location_to_url("bar:"))
-
-    def test_unicode_url(self):
-        self.assertRaises(urlutils.InvalidURL, location_to_url,
-                          b"http://fo/\xc3\xaf".decode("utf-8"))
-
-    def test_unicode_path(self):
-        path, url = self.get_base_location()
-        location = path + b"\xc3\xaf".decode("utf-8")
-        url += '%C3%AF'
-        self.assertEqual(url, location_to_url(location))
-
-    def test_path(self):
-        path, url = self.get_base_location()
-        self.assertEqual(url, location_to_url(path))
-
-    def test_relative_file_url(self):
-        self.assertEqual(urlutils.local_path_to_url(".") + "/bar",
-                         location_to_url("file:bar"))
-
-    def test_absolute_file_url(self):
-        self.assertEqual("file:///bar", location_to_url("file:/bar"))

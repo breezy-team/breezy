@@ -53,7 +53,7 @@ from breezy.bzr.smart import (
     server,
     vfs,
     )
-from breezy.testament import Testament
+from breezy.bzr.testament import Testament
 from breezy.tests import test_server
 from breezy.transport import (
     chroot,

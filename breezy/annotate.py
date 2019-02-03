@@ -54,7 +54,7 @@ from .revision import (
 
 def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
                        show_ids=False, branch=None):
-    """Annotate file_id in a tree.
+    """Annotate path in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
 

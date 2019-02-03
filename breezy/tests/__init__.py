@@ -4128,6 +4128,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_lazy_import',
         'breezy.tests.test_lazy_regex',
         'breezy.tests.test_library_state',
+        'breezy.tests.test_location',
         'breezy.tests.test_lock',
         'breezy.tests.test_lockable_files',
         'breezy.tests.test_lockdir',

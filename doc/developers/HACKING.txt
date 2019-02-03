@@ -125,7 +125,7 @@ the Breezy trunk.  Go to
 "Propose for merging into another branch".  Select "lp:bzr" to hand
 your changes off to the Breezy developers for review and merging.
 
-Alternatively, after pushing you can use the ``lp-propose`` command to 
+Alternatively, after pushing you can use the ``propose`` command to
 create the merge proposal.
 
 Using a meaningful name for your branch will help you and the reviewer(s)

@@ -206,13 +206,13 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     try:
         reference = control_dir.get_branch_reference()
     except errors.NotBranchError:
-        # There is no active branch, just return the colocated branches.
-        for name, branch in viewitems(control_dir.get_branches()):
-            yield name, branch
-        return
+        reference = None
     if reference is not None:
-        ref_branch = Branch.open(
-            reference, possible_transports=possible_transports)
+        try:
+            ref_branch = Branch.open(
+                reference, possible_transports=possible_transports)
+        except errors.NotBranchError:
+            ref_branch = None
     else:
         ref_branch = None
     if ref_branch is None or ref_branch.name:
@@ -1923,50 +1923,6 @@ class cmd_remove(Command):
                     force=(file_deletion_strategy == 'no-backup'))
 
 
-class cmd_file_id(Command):
-    __doc__ = """Print file_id of a particular file or directory.
-
-    The file_id is assigned when the file is first added and remains the
-    same through all revisions where the file exists, even when it is
-    moved or renamed.
-    """
-
-    hidden = True
-    _see_also = ['inventory', 'ls']
-    takes_args = ['filename']
-
-    @display_command
-    def run(self, filename):
-        tree, relpath = WorkingTree.open_containing(filename)
-        file_id = tree.path2id(relpath)
-        if file_id is None:
-            raise errors.NotVersionedError(filename)
-        else:
-            self.outf.write(file_id.decode('utf-8') + '\n')
-
-
-class cmd_file_path(Command):
-    __doc__ = """Print path of file_ids to a file or directory.
-
-    This prints one line for each directory down to the target,
-    starting at the branch root.
-    """
-
-    hidden = True
-    takes_args = ['filename']
-
-    @display_command
-    def run(self, filename):
-        tree, relpath = WorkingTree.open_containing(filename)
-        fid = tree.path2id(relpath)
-        if fid is None:
-            raise errors.NotVersionedError(filename)
-        segments = osutils.splitpath(relpath)
-        for pos in range(1, len(segments) + 1):
-            path = osutils.joinpath(segments[:pos])
-            self.outf.write("%s\n" % tree.path2id(path))
-
-
 class cmd_reconcile(Command):
     __doc__ = """Reconcile brz metadata in a branch.
 
@@ -2486,7 +2442,7 @@ class cmd_added(Command):
 class cmd_root(Command):
     __doc__ = """Show the tree root directory.
 
-    The root is the nearest enclosing directory with a .bzr control
+    The root is the nearest enclosing directory with a control
     directory."""
 
     takes_args = ['filename?']
@@ -3523,7 +3479,7 @@ class cmd_commit(Command):
 
     :Things to note:
 
-      If you accidentially commit the wrong changes or make a spelling
+      If you accidentally commit the wrong changes or make a spelling
       mistake in the commit message say, you can use the uncommit command
       to undo it. See ``brz help uncommit`` for details.
 
@@ -4842,7 +4798,7 @@ class cmd_revert(Command):
     update command.
 
     Uncommitted changes to files that are reverted will be discarded.
-    Howver, by default, any files that have been manually changed will be
+    However, by default, any files that have been manually changed will be
     backed up first.  (Files changed only by merge are not backed up.)  Backup
     files have '.~#~' appended to their name, where # is a number.
 
@@ -5210,7 +5166,7 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
-        from .testament import Testament, StrictTestament
+        from .bzr.testament import Testament, StrictTestament
         if strict is True:
             testament_class = StrictTestament
         else:
@@ -5268,17 +5224,15 @@ class cmd_annotate(Command):
         tree = _get_one_revision_tree('annotate', revision, branch=branch)
         self.add_cleanup(tree.lock_read().unlock)
         if wt is not None and revision is None:
-            file_id = wt.path2id(relpath)
-        else:
-            file_id = tree.path2id(relpath)
-        if file_id is None:
-            raise errors.NotVersionedError(filename)
-        if wt is not None and revision is None:
+            if not wt.is_versioned(relpath):
+                raise errors.NotVersionedError(relpath)
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, relpath, self.outf, long, all,
                                show_ids=show_ids)
         else:
+            if not tree.is_versioned(relpath):
+                raise errors.NotVersionedError(relpath)
             annotate_file_tree(tree, relpath, self.outf, long, all,
                                show_ids=show_ids, branch=branch)
 
@@ -5625,12 +5579,12 @@ class cmd_serve(Command):
 
     def run(self, listen=None, port=None, inet=False, directory=None,
             allow_writes=False, protocol=None, client_timeout=None):
-        from . import transport
+        from . import location, transport
         if directory is None:
             directory = osutils.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        url = transport.location_to_url(directory)
+        url = location.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
@@ -6364,8 +6318,15 @@ class cmd_switch(Command):
         if had_explicit_nick:
             branch = control_dir.open_branch()  # get the new branch!
             branch.nick = to_branch.nick
-        note(gettext('Switched to branch: %s'),
-             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+        if to_branch.name:
+            if to_branch.controldir.control_url != control_dir.control_url:
+                note(gettext('Switched to branch %s at %s'),
+                     to_branch.name, urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+            else:
+                note(gettext('Switched to branch %s'), to_branch.name)
+        else:
+            note(gettext('Switched to branch at %s'),
+                 urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
 class cmd_view(Command):
@@ -7056,6 +7017,8 @@ def _register_lazy_builtins():
             ('cmd_bundle_info', [], 'breezy.bundle.commands'),
             ('cmd_config', [], 'breezy.config'),
             ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
+            ('cmd_file_id', [], 'breezy.bzr.debug_commands'),
+            ('cmd_file_path', [], 'breezy.bzr.debug_commands'),
             ('cmd_version_info', [], 'breezy.cmd_version_info'),
             ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
             ('cmd_conflicts', [], 'breezy.conflicts'),

@@ -1,10 +1,10 @@
-Contributing to Bazaar
+Contributing to Breezy
 ======================
 
 Talk to us
 ----------
 
-If you want to fix or improve something in Bazaar, we want to help you.
+If you want to fix or improve something in Breezy, we want to help you.
 You can ask at any time for help, on the list, on irc, or through a merge
 proposal on Launchpad.
 
@@ -21,7 +21,7 @@ relevant existing bug, or send a proposal to the list.  If there is a bug
 you should set it to "In Progress" and if you wish assign it to yourself.
 
 You might like to start with a bug tagged `easy
-<https://bugs.launchpad.net/bzr/+bugs?field.tag=easy>`_.
+<https://bugs.launchpad.net/brz/+bugs?field.tag=easy>`_.
 
 If you are wondering if your understanding of the bug is correct, or if the 
 approach you have in mind is likely to work, feel to ask about it on the bug,
@@ -33,33 +33,24 @@ Making a branch
 First, get a local copy of Bazaar::
 
    $ cd $HOME
-   $ bzr init-repo bzr
-   $ cd bzr
-   $ bzr branch lp:bzr bzr.dev
+   $ brz init-repo brz
+   $ cd brz
+   $ brz branch lp:brz brz.dev
 
 Now make your own branch; we recommend you include the bug number and also
 a brief description::
 
-   $ bzr branch bzr.dev 123456-status-speed
+   $ brz branch brz.dev 123456-status-speed
 
 and go ahead and commit in there.  Normally you should fix only one bug or
 closely-related cluster of bugs per branch, to make reviews and merges
 flow more smoothly.
 
-For bugs that exist in older supported branches of bzr like 2.0 or 2.1,
-you might want to fix the bug there so it can go into a bugfix release,
-ie ::
-
-   $ bzr branch lp:bzr/2.1 bzr.2.1
-   $ bzr branch bzr.2.1 123458-2.1-status
-
 You probably want this configuration in ``~/.bazaar/locations.conf``::
 
-    [/home/USER/bzr]
-    push_location = lp:~LAUNCHPAD_USER/bzr/
-    push_location:policy = appendpath
-    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/bzr/
-    public_branch:policy = appendpath
+    [/home/USER/brz]
+    push_location = lp:~LAUNCHPAD_USER/brz/{branchname}
+    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/brz/{branchname}
 
 with your local and Launchpad usernames inserted.
 
@@ -71,7 +62,7 @@ Publishing your changes
 After you've locally committed your changes, the configuration above
 should be enough that you can push them to Launchpad with a simple ::
 
-    $ bzr push
+    $ brz push
 
 
 Writing tests
@@ -92,13 +83,13 @@ you're changing and you may find a test you can modify or adapt.
 
 To run the tests::
 
-    $ ./bzr selftest
+    $ ./brz selftest
 
 Normally the tests will skip if some library dependencies are not present.
 On Ubuntu, you can install them with this command (you must have source
 repositories enabled in Software Sources)::
 
-    $ sudo apt-get build-dep bzr
+    $ sudo apt-get build-dep brz
 
 To build the binary extensions::
 
@@ -111,8 +102,8 @@ Proposing a merge
 -----------------
 
 
-Then propose a merge into bzr; for bzr 2.2 and later you can use the ``bzr
-lp-propose-merge`` command.  In the comment for your merge proposal please
+Then propose a merge into Breezy; for Breezy 3.0 and later you can use the ``brz
+propose-merge`` command.  In the comment for your merge proposal please
 explain what you're trying to do and why.  For `example
 <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 

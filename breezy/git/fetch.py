@@ -52,7 +52,7 @@ from ..revision import (
     )
 from ..bzr.inventorytree import InventoryRevisionTree
 from ..sixish import text_type
-from ..testament import (
+from ..bzr.testament import (
     StrictTestament3,
     )
 from ..tsort import (
