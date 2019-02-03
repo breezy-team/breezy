@@ -173,10 +173,11 @@ def _get_upstream_branch_source(export_upstream, export_upstream_revision,
     from .upstream.branch import (
         LazyUpstreamBranchSource,
         )
-    upstream_source = LazyUpstreamBranchSource(export_upstream,
-        config=config)
+    upstream_revision_map = {}
     if export_upstream_revision:
-        upstream_source.upstream_revision_map[version.encode("utf-8")] = export_upstream_revision
+        upstream_revision_map[version] = export_upstream_revision
+    upstream_source = LazyUpstreamBranchSource(
+        export_upstream, config=config, upstream_revision_map=upstream_revision_map)
     return upstream_source
 
 
