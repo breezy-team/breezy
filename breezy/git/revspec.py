@@ -40,12 +40,9 @@ def valid_git_sha1(hex):
     :param hex: Hex string to validate
     :return: Boolean
     """
-    import binascii
     try:
-        binascii.unhexlify(hex)
-    except TypeError:
-        return False
-    except binascii.Error:
+        int(hex, 16)
+    except ValueError:
         return False
     else:
         return True

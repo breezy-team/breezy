@@ -32,3 +32,4 @@ class Sha1ValidTests(TestCase):
 
     def test_valid(self):
         self.assertTrue(valid_git_sha1(b"aabbccddee"))
+        self.assertTrue(valid_git_sha1(b"aabbccd"))
