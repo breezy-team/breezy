@@ -410,6 +410,11 @@ class GuessUpstreamRevspecTests(TestCase):
                 [u'revno:1200', u'tag:1.2~bzr1200', u'tag:foo-1.2~bzr1200',
                  u'tag:v1.2~bzr1200'],
                 list(guess_upstream_revspec('foo', '1.2~bzr1200')))
+        self.assertEqual(
+                [u'git:abc1def', u'tag:1.2~git20180101.abc1def',
+                 u'tag:foo-1.2~git20180101.abc1def',
+                 u'tag:v1.2~git20180101.abc1def'],
+                list(guess_upstream_revspec('foo', '1.2~git20180101.abc1def')))
 
 
 class UpstreamBranchSourceTests(TestCaseWithTransport):

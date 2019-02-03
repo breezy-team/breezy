@@ -254,6 +254,9 @@ def guess_upstream_revspec(package, version):
     """Guess revspecs matching an upstream version string."""
     if "+bzr" in version or "~bzr" in version:
         yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
+    if "+git" in version or "~git" in version:
+        yield "git:%s" % re.match(
+            ".*[~+]git([0-9]{8})\.([0-9a-f]{7}).*", version).group(2)
 
     yield 'tag:%s' % version
     yield 'tag:%s-%s' % (package, version)
