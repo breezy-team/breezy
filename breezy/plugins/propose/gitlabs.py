@@ -147,6 +147,7 @@ class GitLabMergeProposal(MergeProposal):
 
     def set_description(self, description):
         self._mr.description = description
+        self._mr.save()
 
     def _branch_url_from_project(self, project_id, branch_name):
         project = self._mr.manager.gitlab.projects.get(project_id)
