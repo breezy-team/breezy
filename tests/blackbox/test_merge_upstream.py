@@ -230,7 +230,7 @@ class TestMergeUpstream(BuilddebTestCase):
         package_path = package.tree.basedir
         os.mkdir(os.path.join(package_path, '.bzr-builddeb/'))
         with open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'w') as f:
-          f.write('[BUILDDEB]\nupstream-branch = %s\n' % changed_upstream.tree.basedir)
+            f.write('[BUILDDEB]\nupstream-branch = %s\n' % changed_upstream.tree.basedir)
 
         (out, err) = self.run_bzr(
             ['merge-upstream', '-rrevid:%s' % changed_upstream.tree.last_revision().decode('utf-8')],
