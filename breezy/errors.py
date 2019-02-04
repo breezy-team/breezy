@@ -1851,6 +1851,14 @@ class UnsupportedOperation(BzrError):
         self.tname = type(method_self).__name__
 
 
+class FetchDepthUnsupported(UnsupportedOperation):
+
+    fmt = ("InterBranch %(interbranch)r does not support fetching depths.")
+
+    def __init__(self, interbranch):
+        BzrError.__init__(self, interbranch=interbranch)
+
+
 class FetchLimitUnsupported(UnsupportedOperation):
 
     fmt = ("InterBranch %(interbranch)r does not support fetching limits.")

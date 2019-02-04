@@ -677,18 +677,19 @@ class Branch(controldir.ControlComponent):
         """Get the tree_path and branch_location for a tree reference."""
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
-    def fetch(self, from_branch, last_revision=None, limit=None):
+    def fetch(self, from_branch, last_revision=None, limit=None, depth=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
         :param limit: Optional rough limit of revisions to fetch
+        :param depth: Revision depth
         :return: None
         """
         with self.lock_write():
             return InterBranch.get(from_branch, self).fetch(
-                    last_revision, limit=limit)
+                    last_revision, limit=limit, depth=depth)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -2046,7 +2047,7 @@ class InterBranch(InterObject):
     @classmethod
     def _get_branch_formats_to_test(klass):
         """Return an iterable of format tuples for testing.
-        
+
         :return: An iterable of (from_format, to_format) to use when testing
             this InterBranch class. Each InterBranch class should define this
             method itself.
@@ -2079,11 +2080,12 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.copy_content_into)
 
-    def fetch(self, stop_revision=None, limit=None):
+    def fetch(self, stop_revision=None, limit=None, depth=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
         :param limit: Optional rough limit of revisions to fetch
+        :param depth: Optional revision depth
         """
         raise NotImplementedError(self.fetch)
 
@@ -2135,9 +2137,11 @@ class GenericInterBranch(InterBranch):
             if self.source._push_should_merge_tags():
                 self.source.tags.merge_to(self.target.tags)
 
-    def fetch(self, stop_revision=None, limit=None):
+    def fetch(self, stop_revision=None, limit=None, depth=None):
         if self.target.base == self.source.base:
             return (0, [])
+        if depth is not None:
+            raise errors.FetchDepthUnsupported(self)
         with self.source.lock_read(), self.target.lock_write():
             fetch_spec_factory = fetch.FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
