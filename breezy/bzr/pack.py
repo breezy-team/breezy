@@ -159,7 +159,7 @@ class ContainerWriter(object):
         length = len(bytes)
         if length < self._JOIN_WRITES_THRESHOLD:
             self.write_func(self._serialiser.bytes_header(length, names)
-                + bytes)
+                            + bytes)
         else:
             self.write_func(self._serialiser.bytes_header(length, names))
             self.write_func(bytes)
@@ -170,7 +170,7 @@ class ContainerWriter(object):
 
 class ReadVFile(object):
     """Adapt a readv result iterator to a file like protocol.
-    
+
     The readv result must support the iterator protocol returning (offset,
     data_bytes) pairs.
     """
@@ -193,7 +193,7 @@ class ReadVFile(object):
 
     def _next(self):
         if (self._string is None or
-            self._string.tell() == self._string_length):
+                self._string.tell() == self._string_length):
             offset, data = next(self.readv_result)
             self._string_length = len(data)
             self._string = BytesIO(data)
@@ -203,8 +203,8 @@ class ReadVFile(object):
         result = self._string.read(length)
         if len(result) < length:
             raise errors.BzrError('wanted %d bytes but next '
-                'hunk only contains %d: %r...' %
-                (length, len(result), result[:20]))
+                                  'hunk only contains %d: %r...' %
+                                  (length, len(result), result[:20]))
         return result
 
     def readline(self):
@@ -213,7 +213,7 @@ class ReadVFile(object):
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1:] != b'\n':
             raise errors.BzrError('short readline in the readvfile hunk: %r'
-                % (result, ))
+                                  % (result, ))
         return result
 
 
@@ -225,7 +225,7 @@ def make_readv_reader(transport, filename, requested_records):
     :param requested_records: The record offset, length tuples as returned
         by add_bytes_record for the desired records.
     """
-    readv_blocks = [(0, len(FORMAT_ONE)+1)]
+    readv_blocks = [(0, len(FORMAT_ONE) + 1)]
     readv_blocks.extend(requested_records)
     result = ContainerReader(ReadVFile(
         transport.readv(filename, readv_blocks)))
@@ -464,7 +464,7 @@ class ContainerPushParser(object):
         newline_pos = self._buffer.find(b'\n')
         if newline_pos != -1:
             line = self._buffer[:newline_pos]
-            self._buffer = self._buffer[newline_pos+1:]
+            self._buffer = self._buffer[newline_pos + 1:]
             return line
         else:
             return None
@@ -539,4 +539,3 @@ def iter_records_from_file(source_file):
             yield record
         if parser.finished:
             break
-

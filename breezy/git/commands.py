@@ -23,7 +23,7 @@
 
 from __future__ import absolute_import
 
-import breezy.bzr.bzrdir
+import breezy.bzr  # noqa: F401
 from ..commands import (
     Command,
     display_command,
@@ -45,8 +45,8 @@ class cmd_git_import(Command):
     takes_args = ["src_location", "dest_location?"]
 
     takes_options = [
-                     Option('colocated', help='Create colocated branches.'),
-                     ]
+        Option('colocated', help='Create colocated branches.'),
+        ]
 
     def _get_colocated_branch(self, target_controldir, name):
         from ..errors import NotBranchError
@@ -71,7 +71,6 @@ class cmd_git_import(Command):
 
     def run(self, src_location, dest_location=None, colocated=False):
         import os
-        import urllib
         from .. import (
             controldir,
             trace,
@@ -82,11 +81,12 @@ class cmd_git_import(Command):
             ControlDir,
             )
         from ..errors import (
+            BzrError,
             BzrCommandError,
             NoRepositoryPresent,
             NotBranchError,
             )
-        from . import gettext
+        from ..i18n import gettext
         from ..repository import (
             InterRepository,
             Repository,
@@ -102,7 +102,7 @@ class cmd_git_import(Command):
 
         dest_format = controldir.ControlDirFormat.get_default_format()
         if dest_format is None:
-            raise errors.BzrError('no default format')
+            raise BzrError('no default format')
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))
@@ -111,7 +111,8 @@ class cmd_git_import(Command):
 
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
-            raise BzrCommandError(gettext("%r is not a git repository") % src_location)
+            raise BzrCommandError(
+                gettext("%r is not a git repository") % src_location)
         try:
             target_controldir = ControlDir.open_from_transport(dest_transport)
         except NotBranchError:
@@ -123,7 +124,8 @@ class cmd_git_import(Command):
             target_repo = target_controldir.create_repository(shared=True)
 
         if not target_repo.supports_rich_root():
-            raise BzrCommandError(gettext("Target repository doesn't support rich roots"))
+            raise BzrCommandError(
+                gettext("Target repository doesn't support rich roots"))
 
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
@@ -137,21 +139,25 @@ class cmd_git_import(Command):
                     # Not a branch, ignore
                     continue
                 pb.update(gettext("creating branches"), i, len(refs))
-                if getattr(target_controldir._format, "colocated_branches", False) and colocated:
+                if (getattr(target_controldir._format, "colocated_branches",
+                            False) and colocated):
                     if name == "HEAD":
                         branch_name = None
-                    head_branch = self._get_colocated_branch(target_controldir, branch_name)
+                    head_branch = self._get_colocated_branch(
+                        target_controldir, branch_name)
                 else:
-                    head_branch = self._get_nested_branch(dest_transport, dest_format, branch_name)
+                    head_branch = self._get_nested_branch(
+                        dest_transport, dest_format, branch_name)
                 revid = mapping.revision_id_foreign_to_bzr(sha)
-                source_branch = LocalGitBranch(source_repo.controldir, source_repo,
-                    sha)
+                source_branch = LocalGitBranch(
+                    source_repo.controldir, source_repo, sha)
                 if head_branch.last_revision() != revid:
                     head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
                 if not head_branch.get_parent():
                     url = urlutils.join_segment_parameters(
-                        source_branch.base, {"branch": urlutils.escape(branch_name)})
+                        source_branch.base,
+                        {"branch": urlutils.escape(branch_name)})
                     head_branch.set_parent(url)
         finally:
             pb.finished()
@@ -172,9 +178,9 @@ class cmd_git_object(Command):
     aliases = ["git-objects", "git-cat"]
     takes_args = ["sha1?"]
     takes_options = [Option('directory',
-        short_name='d',
-        help='Location of repository.', type=text_type),
-        Option('pretty', help='Pretty-print objects.')]
+                            short_name='d',
+                            help='Location of repository.', type=text_type),
+                     Option('pretty', help='Pretty-print objects.')]
     encoding_type = 'exact'
 
     @display_command
@@ -188,16 +194,17 @@ class cmd_git_object(Command):
         from .object_store import (
             get_object_store,
             )
-        from . import gettext
+        from ..i18n import gettext
         controldir, _ = ControlDir.open_containing(directory)
         repo = controldir.find_repository()
         object_store = get_object_store(repo)
         with object_store.lock_read():
             if sha1 is not None:
                 try:
-                    obj = object_store[str(sha1)]
+                    obj = object_store[sha1.encode('ascii')]
                 except KeyError:
-                    raise BzrCommandError(gettext("Object not found: %s") % sha1)
+                    raise BzrCommandError(
+                        gettext("Object not found: %s") % sha1)
                 if pretty:
                     text = obj.as_pretty_string()
                 else:
@@ -205,7 +212,7 @@ class cmd_git_object(Command):
                 self.outf.write(text)
             else:
                 for sha1 in object_store:
-                    self.outf.write("%s\n" % sha1)
+                    self.outf.write("%s\n" % sha1.decode('ascii'))
 
 
 class cmd_git_refs(Command):
@@ -234,20 +241,20 @@ class cmd_git_refs(Command):
         with object_store.lock_read():
             refs = get_refs_container(controldir, object_store)
             for k, v in sorted(viewitems(refs.as_dict())):
-                self.outf.write("%s -> %s\n" % (k.decode('utf-8'), v.decode('utf-8')))
+                self.outf.write("%s -> %s\n" %
+                                (k.decode('utf-8'), v.decode('utf-8')))
 
 
 class cmd_git_apply(Command):
     """Apply a series of git-am style patches.
 
-    This command will in the future probably be integrated into 
-    "bzr pull".
+    This command will in the future probably be integrated into "bzr pull".
     """
 
     takes_options = [
         Option('signoff', short_name='s', help='Add a Signed-off-by line.'),
         Option('force',
-            help='Apply patches even if tree has uncommitted changes.')
+               help='Apply patches even if tree has uncommitted changes.')
         ]
     takes_args = ["patches*"]
 
@@ -258,7 +265,7 @@ class cmd_git_apply(Command):
         :param f: Patch file to read.
         :param signoff: Add Signed-Off-By flag.
         """
-        from . import gettext
+        from ..i18n import gettext
         from ..errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
         import subprocess
@@ -266,7 +273,7 @@ class cmd_git_apply(Command):
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree
         p = subprocess.Popen(["patch", "-p1"], stdin=subprocess.PIPE,
-            cwd=wt.basedir)
+                             cwd=wt.basedir)
         p.communicate(diff)
         exitcode = p.wait()
         if exitcode != 0:
@@ -296,8 +303,8 @@ class cmd_git_push_pristine_tar_deltas(Command):
     """Push pristine tar deltas to a git repository."""
 
     takes_options = [Option('directory',
-        short_name='d',
-        help='Location of repository.', type=text_type)]
+                            short_name='d',
+                            help='Location of repository.', type=text_type)]
     takes_args = ['target', 'package']
 
     def run(self, target, package, directory='.'):
@@ -331,14 +338,18 @@ class cmd_git_push_pristine_tar_deltas(Command):
                 except KeyError:
                     continue
                 gitid = git_store._lookup_revision_sha1(revid)
-                if not (name.startswith('upstream/') or name.startswith('upstream-')):
-                    warning("Unexpected pristine tar revision tagged %s. Ignoring.",
-                         name)
+                if (not (name.startswith('upstream/') or
+                         name.startswith('upstream-'))):
+                    warning(
+                        "Unexpected pristine tar revision tagged %s. "
+                        "Ignoring.", name)
                     continue
                 upstream_version = name[len("upstream/"):]
-                filename = '%s_%s.orig.tar.%s' % (package, upstream_version, kind)
-                if not gitid in target:
-                    warning("base git id %s for %s missing in target repository",
-                            gitid, filename)
+                filename = '%s_%s.orig.tar.%s' % (
+                    package, upstream_version, kind)
+                if gitid not in target:
+                    warning(
+                        "base git id %s for %s missing in target repository",
+                        gitid, filename)
                 store_git_pristine_tar_data(target, filename.encode('utf-8'),
-                    delta, gitid)
+                                            delta, gitid)

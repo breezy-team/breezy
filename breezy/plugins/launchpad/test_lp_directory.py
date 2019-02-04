@@ -27,7 +27,6 @@ except ImportError:  # python < 3
 import breezy
 from ... import (
     debug,
-    errors,
     tests,
     transport,
     )
@@ -54,8 +53,8 @@ def load_tests(loader, standard_tests, pattern):
     result = loader.suiteClass()
     t_tests, remaining_tests = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance((
-                TestXMLRPCTransport,
-                )))
+            TestXMLRPCTransport,
+            )))
     transport_scenarios = [
         ('http', dict(server_class=PreCannedHTTPServer,)),
         ]
@@ -93,18 +92,22 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
     """Tests for branch urls that we try to pass through local resolution."""
 
     def assertResolve(self, expected, url, submitted=False):
-        path = url[url.index(':')+1:].lstrip('/')
+        path = url[url.index(':') + 1:].lstrip('/')
         factory = FakeResolveFactory(self, path,
-                    dict(urls=['bzr+ssh://fake-resolved']))
+                                     dict(urls=['bzr+ssh://fake-resolved']))
         directory = LaunchpadDirectory()
         self.assertEqual(expected,
-            directory._resolve(url, factory, _lp_login='user'))
+                         directory._resolve(url, factory, _lp_login='user'))
         # We are testing local resolution, and the fallback when necessary.
         self.assertEqual(submitted, factory._submitted)
 
     def test_short_form(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
                            'lp:apt')
+
+    def test_short_form_bzr(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
+                           'lp+bzr:apt')
 
     def test_two_part_form(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt/2.2',
@@ -136,9 +139,9 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         """
         # This ought to be natty-updates.
         self.assertRaises(lp_registration.InvalidURL,
-            self.assertResolve,
-            '',
-            'ubuntu:natty/updates/smartpm')
+                          self.assertResolve,
+                          '',
+                          'ubuntu:natty/updates/smartpm')
 
     def test_ubuntu_apt(self):
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/ubuntu/apt',
@@ -204,7 +207,8 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
             'lp:~jameinel/debian/sid/apt/branch/f')
 
     def test_handles_special_lp(self):
-        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt', 'lp:apt')
+        self.assertResolve(
+            'bzr+ssh://bazaar.launchpad.net/+branch/apt', 'lp:apt')
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
                            'lp:///apt')
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
@@ -233,65 +237,65 @@ class DirectoryUrlTests(TestCaseInTempDir):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
-                          directory._resolve('lp:apt', factory))
+                         directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
         self.assertEqual('https://xmlrpc.launchpad.net/bazaar/',
-                          factory._service_url)
+                         factory._service_url)
 
     def test_qastaging(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
         url = 'lp://qastaging/apt'
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
-                          directory._resolve(url, factory))
+                         directory._resolve(url, factory))
         # Make sure that resolve went to the qastaging server.
         self.assertEqual('https://xmlrpc.qastaging.launchpad.net/bazaar/',
-                          factory._service_url)
+                         factory._service_url)
 
     def test_staging(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'http://bazaar.staging.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.staging.launchpad.net/~apt/apt/devel']))
         url = 'lp://staging/apt'
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.staging.launchpad.net/~apt/apt/devel',
-                          directory._resolve(url, factory))
+                         directory._resolve(url, factory))
         # Make sure that resolve went to the staging server.
         self.assertEqual('https://xmlrpc.staging.launchpad.net/bazaar/',
-                          factory._service_url)
+                         factory._service_url)
 
     def test_url_from_directory(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
-                          directory._resolve('lp:///apt', factory))
+                         directory._resolve('lp:///apt', factory))
 
     def test_directory_skip_bad_schemes(self):
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bad-scheme://bazaar.launchpad.net/~apt/apt/devel',
-                    'http://bazaar.launchpad.net/~apt/apt/devel',
-                    'http://another/location']))
+                'bad-scheme://bazaar.launchpad.net/~apt/apt/devel',
+                'http://bazaar.launchpad.net/~apt/apt/devel',
+                'http://another/location']))
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
-                          directory._resolve('lp:///apt', factory))
+                         directory._resolve('lp:///apt', factory))
 
     def test_directory_no_matching_schemes(self):
         # If the XMLRPC call does not return any protocols we support,
         # invalidURL is raised.
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
+                'bad-scheme://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertRaises(lp_registration.InvalidURL,
                           directory._resolve, 'lp:///apt', factory)
@@ -299,6 +303,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
     def test_directory_fault(self):
         # Test that XMLRPC faults get converted to InvalidURL errors.
         factory = FakeResolveFactory(self, 'apt', None)
+
         def submit(service):
             raise Fault(42, 'something went wrong')
         factory.submit = submit
@@ -312,11 +317,11 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
-                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+                'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
-                          directory._resolve('lp:///apt', factory))
+                         directory._resolve('lp:///apt', factory))
 
     def test_skip_sftp_launchpad_net_when_anonymous(self):
         # Test that sftp://bazaar.launchpad.net gets skipped if
@@ -324,19 +329,19 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'sftp://bazaar.launchpad.net/~apt/apt/devel',
-                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'sftp://bazaar.launchpad.net/~apt/apt/devel',
+                'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEqual('http://bazaar.launchpad.net/~apt/apt/devel',
-                          directory._resolve('lp:///apt', factory))
+                         directory._resolve('lp:///apt', factory))
 
     def test_with_login_avoid_resolve_factory(self):
         # Test that bzr+ssh URLs get rewritten to include the user's
         # Launchpad ID (assuming we know the Launchpad ID).
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bzr+ssh://my-super-custom/special/devel',
-                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'bzr+ssh://my-super-custom/special/devel',
+                'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEqual(
             'bzr+ssh://bazaar.launchpad.net/+branch/apt',
@@ -347,17 +352,17 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bzr+ssh://example.com/~apt/apt/devel',
-                    'http://bazaar.launchpad.net/~apt/apt/devel']))
+                'bzr+ssh://example.com/~apt/apt/devel',
+                'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEqual('bzr+ssh://example.com/~apt/apt/devel',
-                          directory._resolve('lp:///apt', factory))
+                         directory._resolve('lp:///apt', factory))
 
     # TODO: check we get an error if the url is unreasonable
     def test_error_for_bad_url(self):
         directory = LaunchpadDirectory()
         self.assertRaises(lp_registration.InvalidURL,
-            directory._resolve, 'lp://ratotehunoahu')
+                          directory._resolve, 'lp://ratotehunoahu')
 
     def test_resolve_tilde_to_user(self):
         factory = FakeResolveFactory(
@@ -376,7 +381,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
     def test_tilde_fails_no_login(self):
         factory = FakeResolveFactory(
             self, '~username/apt/test', dict(urls=[
-                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+                'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
         self.assertIs(None, get_lp_login())
         directory = LaunchpadDirectory()
         self.assertRaises(lp_registration.InvalidURL,
@@ -388,6 +393,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
     def test_directory_open_branch(self):
         # Test that opening an lp: branch redirects to the real location.
         target_branch = self.make_branch('target')
+
         class FooService(object):
             """A directory service that maps the name to a FILE url"""
 
@@ -397,6 +403,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
                 return '!unexpected look_up value!'
 
         directories.remove('lp:')
+        directories.remove('lp+bzr:')
         directories.remove('ubuntu:')
         directories.remove('debianlp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
@@ -450,6 +457,7 @@ class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
 
 if features.HTTPSServerFeature.available():
     from ...tests import https_server
+
     class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
         pass
 
@@ -503,7 +511,7 @@ Content-Type: text/plain; charset=UTF-8\r
 '''
         length = 334 + 2 * len(path)
         server.canned_response = response_format % {
-                b'length': length, b'path': path}
+            b'length': length, b'path': path}
 
     def do_request(self, server_url):
         os.environ['BRZ_LP_XMLRPC_URL'] = self.server.get_url()
@@ -571,7 +579,8 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     def test_missing_ubuntu_distroseries_without_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or
         # bogus distroseries with no project name is treated like a project.
-        self.assertURL('ubuntu/intrepid', 'ubuntu:intrepid', package='intrepid')
+        self.assertURL('ubuntu/intrepid', 'ubuntu:intrepid',
+                       package='intrepid')
 
     def test_missing_ubuntu_distroseries_with_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or
@@ -594,48 +603,27 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     def test_ubuntu_natty_distroseries_expansion(self):
         self.assertURL('ubuntu/natty/foo', 'ubuntu:natty/foo', series='natty')
 
-    def test_ubuntu_n_distroseries_expansion(self):
-        self.assertURL('ubuntu/natty/foo', 'ubuntu:n/foo', series='natty')
-
     def test_ubuntu_maverick_distroseries_expansion(self):
         self.assertURL('ubuntu/maverick/foo', 'ubuntu:maverick/foo',
                        series='maverick')
 
-    def test_ubuntu_m_distroseries_expansion(self):
-        self.assertURL('ubuntu/maverick/foo', 'ubuntu:m/foo', series='maverick')
-
     def test_ubuntu_lucid_distroseries_expansion(self):
         self.assertURL('ubuntu/lucid/foo', 'ubuntu:lucid/foo', series='lucid')
-
-    def test_ubuntu_l_distroseries_expansion(self):
-        self.assertURL('ubuntu/lucid/foo', 'ubuntu:l/foo', series='lucid')
 
     def test_ubuntu_karmic_distroseries_expansion(self):
         self.assertURL('ubuntu/karmic/foo', 'ubuntu:karmic/foo',
                        series='karmic')
 
-    def test_ubuntu_k_distroseries_expansion(self):
-        self.assertURL('ubuntu/karmic/foo', 'ubuntu:k/foo', series='karmic')
-
     def test_ubuntu_jaunty_distroseries_expansion(self):
         self.assertURL('ubuntu/jaunty/foo', 'ubuntu:jaunty/foo',
                        series='jaunty')
 
-    def test_ubuntu_j_distroseries_expansion(self):
-        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:j/foo', series='jaunty')
-
     def test_ubuntu_hardy_distroseries_expansion(self):
         self.assertURL('ubuntu/hardy/foo', 'ubuntu:hardy/foo', series='hardy')
-
-    def test_ubuntu_h_distroseries_expansion(self):
-        self.assertURL('ubuntu/hardy/foo', 'ubuntu:h/foo', series='hardy')
 
     def test_ubuntu_dapper_distroseries_expansion(self):
         self.assertURL('ubuntu/dapper/foo', 'ubuntu:dapper/foo',
                        series='dapper')
-
-    def test_ubuntu_d_distroseries_expansion(self):
-        self.assertURL('ubuntu/dapper/foo', 'ubuntu:d/foo', series='dapper')
 
     # Debian default distro series.
 

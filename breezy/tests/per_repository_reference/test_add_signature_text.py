@@ -50,4 +50,4 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
             repo.unlock()
         repo.get_signature_text(revid)
         self.assertRaises(errors.NoSuchRevision, base.get_signature_text,
-            revid)
+                          revid)

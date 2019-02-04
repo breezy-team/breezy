@@ -32,6 +32,8 @@ _on_sighup = None
 #       could just use the callable itself as the indexed part, and even in
 #       large cases, we shouldn't have more than 100 or so callbacks
 #       registered.
+
+
 def _sighup_handler(signal_number, interrupted_frame):
     """This is the actual function that is registered for handling SIGHUP.
 
@@ -113,4 +115,3 @@ def unregister_on_hangup(identifier):
         # most exceptions.
         trace.mutter('Error occurred during unregister_on_hangup:')
         trace.log_exception_quietly()
-

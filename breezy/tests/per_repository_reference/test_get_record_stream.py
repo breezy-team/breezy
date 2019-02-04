@@ -209,6 +209,6 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         if isinstance(self.stacked_repo.texts, knit.KnitVersionedFiles):
             # See https://bugs.launchpad.net/bzr/+bug/399884
             self.expectFailure('KVF does not weave fulltexts from fallback'
-                ' repositories to preserve perfect order',
-                self.assertTrue, record_keys in (keys, alt_1, alt_2, alt_3, alt_4))
+                               ' repositories to preserve perfect order',
+                               self.assertTrue, record_keys in (keys, alt_1, alt_2, alt_3, alt_4))
         self.assertIn(record_keys, (keys, alt_1, alt_2, alt_3, alt_4))

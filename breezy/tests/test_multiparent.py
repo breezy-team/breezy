@@ -102,18 +102,18 @@ class TestMulti(TestCase):
 
     def test_to_patch(self):
         self.assertEqual([b'i 1\n', b'a\n', b'\n', b'c 0 1 2 3\n'],
-            list(multiparent.MultiParent([multiparent.NewText([b'a\n']),
-            multiparent.ParentText(0, 1, 2, 3)]).to_patch()))
+                         list(multiparent.MultiParent([multiparent.NewText([b'a\n']),
+                                                       multiparent.ParentText(0, 1, 2, 3)]).to_patch()))
 
     def test_from_patch(self):
         self.assertEqual(multiparent.MultiParent(
             [multiparent.NewText([b'a\n']),
              multiparent.ParentText(0, 1, 2, 3)]),
-             multiparent.MultiParent.from_patch(b'i 1\na\n\nc 0 1 2 3'))
+            multiparent.MultiParent.from_patch(b'i 1\na\n\nc 0 1 2 3'))
         self.assertEqual(multiparent.MultiParent(
             [multiparent.NewText([b'a']),
              multiparent.ParentText(0, 1, 2, 3)]),
-             multiparent.MultiParent.from_patch(b'i 1\na\nc 0 1 2 3\n'))
+            multiparent.MultiParent.from_patch(b'i 1\na\nc 0 1 2 3\n'))
 
     def test_binary_content(self):
         patch = list(
@@ -146,8 +146,8 @@ class TestNewText(TestCase):
 
     def test_eq(self):
         self.assertEqual(multiparent.NewText([]), multiparent.NewText([]))
-        self.assertFalse(multiparent.NewText([b'a']) ==
-                         multiparent.NewText([b'b']))
+        self.assertFalse(multiparent.NewText([b'a'])
+                         == multiparent.NewText([b'b']))
         self.assertFalse(multiparent.NewText([b'a']) == Mock(lines=[b'a']))
 
     def test_to_patch(self):
@@ -164,11 +164,11 @@ class TestParentText(TestCase):
     def test_eq(self):
         self.assertEqual(multiparent.ParentText(1, 2, 3, 4),
                          multiparent.ParentText(1, 2, 3, 4))
-        self.assertFalse(multiparent.ParentText(1, 2, 3, 4) ==
-                         multiparent.ParentText(2, 2, 3, 4))
-        self.assertFalse(multiparent.ParentText(1, 2, 3, 4) ==
-                         Mock(parent=1, parent_pos=2, child_pos=3,
-                              num_lines=4))
+        self.assertFalse(multiparent.ParentText(1, 2, 3, 4)
+                         == multiparent.ParentText(2, 2, 3, 4))
+        self.assertFalse(multiparent.ParentText(1, 2, 3, 4)
+                         == Mock(parent=1, parent_pos=2, child_pos=3,
+                                 num_lines=4))
 
     def test_to_patch(self):
         self.assertEqual([b'c 0 1 2 3\n'],
@@ -184,8 +184,8 @@ class TestVersionedFile(TestCase):
 
     def add_version(self, vf, text, version_id, parent_ids):
         vf.add_version(
-                [(int2byte(t)+b'\n') for t in bytearray(text)],
-                version_id, parent_ids)
+            [(int2byte(t) + b'\n') for t in bytearray(text)],
+            version_id, parent_ids)
 
     def make_vf(self):
         vf = multiparent.MultiMemoryVersionedFile()
@@ -204,7 +204,8 @@ class TestVersionedFile(TestCase):
         vf = self.make_vf()
         vf.clear_cache()
         self.assertEqual(REV_A, vf.get_line_list([b'rev-a'])[0])
-        self.assertEqual([REV_B, REV_C], vf.get_line_list([b'rev-b', b'rev-c']))
+        self.assertEqual(
+            [REV_B, REV_C], vf.get_line_list([b'rev-b', b'rev-c']))
 
     def test_reconstruct_empty(self):
         vf = multiparent.MultiMemoryVersionedFile()
@@ -229,13 +230,16 @@ class TestVersionedFile(TestCase):
 
     def test_reconstructor(self):
         vf = self.make_vf()
-        self.assertEqual([b'a\n', b'b\n'], self.reconstruct(vf, b'rev-a',  0, 2))
-        self.assertEqual([b'c\n', b'd\n'], self.reconstruct(vf, b'rev-a',  2, 4))
-        self.assertEqual([b'e\n', b'f\n'], self.reconstruct(vf, b'rev-c',  2, 4))
+        self.assertEqual([b'a\n', b'b\n'],
+                         self.reconstruct(vf, b'rev-a', 0, 2))
+        self.assertEqual([b'c\n', b'd\n'],
+                         self.reconstruct(vf, b'rev-a', 2, 4))
+        self.assertEqual([b'e\n', b'f\n'],
+                         self.reconstruct(vf, b'rev-c', 2, 4))
         self.assertEqual([b'a\n', b'b\n', b'e\n', b'f\n'],
-                          self.reconstruct(vf, b'rev-c',  0, 4))
+                         self.reconstruct(vf, b'rev-c', 0, 4))
         self.assertEqual([b'a\n', b'b\n', b'e\n', b'f\n'],
-                          self.reconstruct_version(vf, b'rev-c'))
+                         self.reconstruct_version(vf, b'rev-c'))
 
     def test_reordered(self):
         """Check for a corner case that requires re-starting the cursor"""
@@ -262,8 +266,10 @@ class TestMultiVersionedFile(tests.TestCaseInTempDir):
         vf.save()
         newvf = multiparent.MultiVersionedFile('foop')
         newvf.load()
-        self.assertEqual(b'a\nb\nc\nd', b''.join(newvf.get_line_list([b'a'])[0]))
-        self.assertEqual(b'a\ne\nd\n', b''.join(newvf.get_line_list([b'b'])[0]))
+        self.assertEqual(b'a\nb\nc\nd', b''.join(
+            newvf.get_line_list([b'a'])[0]))
+        self.assertEqual(b'a\ne\nd\n', b''.join(
+            newvf.get_line_list([b'b'])[0]))
 
     def test_filenames(self):
         vf = multiparent.MultiVersionedFile('foop')

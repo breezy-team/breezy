@@ -71,8 +71,8 @@ class UIFactoryTestMixin(object):
         # noninteractive ones should have a reasonable default
         self._load_responses([True])
         result = self.factory.confirm_action(u'Break a lock?',
-             'bzr.lock.break.confirm',
-            {})
+                                             'bzr.lock.break.confirm',
+                                             {})
         # will be true either because we read it from the input or because
         # that's the default
         self.assertEqual(result, True)
@@ -137,21 +137,21 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_note(self, note_text):
         self.assertEqual("%s\n" % note_text,
-            self.stdout.getvalue())
+                         self.stdout.getvalue())
 
     def _check_show_error(self, msg):
         self.assertEqual("bzr: error: %s\n" % msg,
-            self.stderr.getvalue())
+                         self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
         self.assertEqual("%s\n" % msg,
-            self.stdout.getvalue())
+                         self.stdout.getvalue())
         self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
         self.assertEqual("bzr: warning: %s\n" % msg,
-            self.stderr.getvalue())
+                         self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_log_transport_activity_noarg(self):
@@ -171,7 +171,8 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _load_responses(self, responses):
         self.factory.stdin.seek(0)
-        self.factory.stdin.writelines([(r and "y\n" or "n\n") for r in responses])
+        self.factory.stdin.writelines(
+            [(r and "y\n" or "n\n") for r in responses])
         self.factory.stdin.seek(0)
 
 
@@ -188,8 +189,8 @@ class TestTTYTextUIFactory(TestTextUIFactory):
         # Displaying the result should write to the progress stream using
         # base-10 units (see HACKING.txt).
         self.assertContainsRe(self.stderr.getvalue(),
-            r'Transferred: 7kB'
-            r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
+                              r'Transferred: 7kB'
+                              r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
 
     def _check_log_transport_activity_display_no_bytes(self):
         self.assertEqual('', self.stdout.getvalue())

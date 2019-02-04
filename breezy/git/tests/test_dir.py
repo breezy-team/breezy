@@ -44,7 +44,7 @@ class TestGitDir(tests.TestCaseInTempDir):
         gd = controldir.ControlDir.open('.')
         self.assertEqual(
             "%s,branch=master" %
-                urlutils.local_path_to_url(os.path.abspath(".")),
+            urlutils.local_path_to_url(os.path.abspath(".")),
             gd.get_branch_reference())
 
     def test_open_existing(self):
@@ -69,7 +69,8 @@ class TestGitDir(tests.TestCaseInTempDir):
 
     def test_git_file(self):
         gitrepo = GitRepo.init("blah", mkdir=True)
-        self.build_tree_contents([('foo/', ), ('foo/.git', b'gitdir: ../blah/.git\n')])
+        self.build_tree_contents(
+            [('foo/', ), ('foo/.git', b'gitdir: ../blah/.git\n')])
 
         gd = controldir.ControlDir.open('foo')
         self.assertEqual(gd.control_url.rstrip('/'),
@@ -84,7 +85,7 @@ class TestGitDirFormat(tests.TestCase):
 
     def test_get_format_description(self):
         self.assertEqual("Local Git Repository",
-                          self.format.get_format_description())
+                         self.format.get_format_description())
 
     def test_eq(self):
         format2 = dir.LocalGitControlDirFormat()
@@ -92,4 +93,3 @@ class TestGitDirFormat(tests.TestCase):
         self.assertEqual(self.format, self.format)
         bzr_format = controldir.format_registry.make_controldir("default")
         self.assertNotEqual(self.format, bzr_format)
-

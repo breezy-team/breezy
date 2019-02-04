@@ -62,8 +62,8 @@ class TestHexAndUnhex(TestBtreeSerializer):
     def test_to_hex(self):
         raw_bytes = b''.join(map(int2byte, range(256)))
         for i in range(0, 240, 20):
-            self.assertHexlify(raw_bytes[i:i+20])
-        self.assertHexlify(raw_bytes[240:]+raw_bytes[0:4])
+            self.assertHexlify(raw_bytes[i:i + 20])
+        self.assertHexlify(raw_bytes[240:] + raw_bytes[0:4])
 
     def test_from_hex(self):
         self.assertUnhexlify(b'0123456789abcdef0123456789abcdef01234567')
@@ -72,8 +72,8 @@ class TestHexAndUnhex(TestBtreeSerializer):
         self.assertUnhexlify(b'123456789ABCDEF0123456789ABCDEF012345678')
         hex_chars = binascii.hexlify(b''.join(map(int2byte, range(256))))
         for i in range(0, 480, 40):
-            self.assertUnhexlify(hex_chars[i:i+40])
-        self.assertUnhexlify(hex_chars[480:]+hex_chars[0:8])
+            self.assertUnhexlify(hex_chars[i:i + 40])
+        self.assertUnhexlify(hex_chars[480:] + hex_chars[0:8])
 
     def test_from_invalid_hex(self):
         self.assertFailUnhexlify(b'123456789012345678901234567890123456789X')
@@ -85,6 +85,7 @@ class TestHexAndUnhex(TestBtreeSerializer):
 
 
 _hex_form = b'123456789012345678901234567890abcdefabcd'
+
 
 class Test_KeyToSha1(TestBtreeSerializer):
 
@@ -121,7 +122,7 @@ class Test_KeyToSha1(TestBtreeSerializer):
 
     def test_invalid_not_hex(self):
         self.assertKeyToSha1(None,
-            (b'sha1:abcdefghijklmnopqrstuvwxyz12345678901234',))
+                             (b'sha1:abcdefghijklmnopqrstuvwxyz12345678901234',))
 
 
 class Test_Sha1ToKey(TestBtreeSerializer):
@@ -216,7 +217,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         self.assertEqual([b'12345678901 1234567890 0 1',
                           b'2147483648 2147483647 0 1',
                           b'4294967296 4294967295 4294967294 1',
-                         ], [x[1][0] for x in leaf.all_items()])
+                          ], [x[1][0] for x in leaf.all_items()])
 
     def test_many_key_leaf(self):
         leaf = self.module._parse_into_chk(_multi_key_content, 1, 0)
@@ -283,11 +284,11 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
             lines.append(b'%s\0\0%d %d %d %d\n' % (key_str, i, i, i, i))
         data = b''.join(lines)
         leaf = self.module._parse_into_chk(data, 1, 0)
-        self.assertEqual(24-7, leaf.common_shift)
+        self.assertEqual(24 - 7, leaf.common_shift)
         offsets = leaf._get_offsets()
         # This is the interesting bits for each entry
         lst = [x // 2 for x in range(500)]
-        expected_offsets = [x * 2 for x in range(128)] + [255]*129
+        expected_offsets = [x * 2 for x in range(128)] + [255] * 129
         self.assertEqual(expected_offsets, offsets)
         # We truncate because offsets is an unsigned char. So the bisection
         # will just say 'greater than the last one' for all the rest

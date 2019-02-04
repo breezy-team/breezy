@@ -19,7 +19,10 @@
 
 from __future__ import absolute_import
 
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
 from . import (
     errors,
     revision,
@@ -106,7 +109,7 @@ class KnownGraph(object):
 
     def _find_tips(self):
         return [node for node in viewvalues(self._nodes)
-                      if not node.child_keys]
+                if not node.child_keys]
 
     def _find_gdfo(self):
         nodes = self._nodes
@@ -144,7 +147,7 @@ class KnownGraph(object):
 
         If this fills in a ghost, then the gdfos of all children will be
         updated accordingly.
-        
+
         :param key: The node being added. If this is a duplicate, this is a
             no-op.
         :param parent_keys: The parents of the given node.
@@ -163,9 +166,10 @@ class KnownGraph(object):
                 parent_keys = list(parent_keys)
                 existing_parent_keys = list(node.parent_keys)
                 if parent_keys == existing_parent_keys:
-                    return # Identical content
+                    return  # Identical content
                 else:
-                    raise ValueError('Parent key mismatch, existing node %s'
+                    raise ValueError(
+                        'Parent key mismatch, existing node %s'
                         ' has parents of %s not %s'
                         % (key, existing_parent_keys, parent_keys))
         else:
@@ -192,7 +196,7 @@ class KnownGraph(object):
         # We use a deque rather than a simple list stack, to go for BFD rather
         # than DFD. So that if a longer path is possible, we walk it before we
         # get to the final child
-        pending = collections.deque([node])
+        pending = deque([node])
         while pending:
             node = pending.popleft()
             next_gdfo = node.gdfo + 1
@@ -319,7 +323,7 @@ class KnownGraph(object):
 
         result = []
         for prefix in sorted(prefix_tips):
-            pending = sorted(prefix_tips[prefix], key=lambda n:n.key,
+            pending = sorted(prefix_tips[prefix], key=lambda n: n.key,
                              reverse=True)
             while pending:
                 node = pending.pop()
@@ -344,23 +348,23 @@ class KnownGraph(object):
         from breezy import tsort
         as_parent_map = dict((node.key, node.parent_keys)
                              for node in viewvalues(self._nodes)
-                              if node.parent_keys is not None)
+                             if node.parent_keys is not None)
         # We intentionally always generate revnos and never force the
         # mainline_revisions
         # Strip the sequence_number that merge_sort generates
         return [_MergeSortNode(key, merge_depth, revno, end_of_merge)
                 for _, key, merge_depth, revno, end_of_merge
-                 in tsort.merge_sort(as_parent_map, tip_key,
-                                     mainline_revisions=None,
-                                     generate_revno=True)]
-    
+                in tsort.merge_sort(as_parent_map, tip_key,
+                                    mainline_revisions=None,
+                                    generate_revno=True)]
+
     def get_parent_keys(self, key):
         """Get the parents for a key
-        
+
         Returns a list containg the parents keys. If the key is a ghost,
         None is returned. A KeyError will be raised if the key is not in
         the graph.
-        
+
         :param keys: Key to check (eg revision_id)
         :return: A list of parents
         """
@@ -368,10 +372,10 @@ class KnownGraph(object):
 
     def get_child_keys(self, key):
         """Get the children for a key
-        
+
         Returns a list containg the children keys. A KeyError will be raised
         if the key is not in the graph.
-        
+
         :param keys: Key to check (eg revision_id)
         :return: A list of children
         """

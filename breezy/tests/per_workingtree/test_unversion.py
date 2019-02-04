@@ -49,15 +49,15 @@ class TestUnversion(TestCaseWithWorkingTree):
         revtree = tree.branch.repository.revision_tree(revid)
         tree.rename_one('del/sub', 'sub')
         self.assertThat(
-                tree,
-                HasPathRelations(revtree, [('', ''), ('del/', 'del/'), ('sub/', 'del/sub/'), ('sub/b', 'del/sub/b')]))
+            tree,
+            HasPathRelations(revtree, [('', ''), ('del/', 'del/'), ('sub/', 'del/sub/'), ('sub/b', 'del/sub/b')]))
         if tree.has_versioned_directories():
             tree.unversion(['del', 'sub/b'])
         else:
             tree.unversion(['sub/b'])
         self.assertThat(
-                tree,
-                HasPathRelations(revtree, [('', ''), ('sub/', 'del/sub/')]))
+            tree,
+            HasPathRelations(revtree, [('', ''), ('sub/', 'del/sub/')]))
 
     def test_unversion_several_files(self):
         """After unversioning several files, they should not be versioned."""
@@ -136,18 +136,18 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree.move(['dir/f3'], 'dir2')
 
         self.assertThat(
-                tree, HasPathRelations(
-                    revtree,
-                    [('', ''), ('dir/', 'dir/'), ('dir2/', 'dir2/'),
-                     ('dir/a', 'dir/f1'), ('dir/z', 'dir/f2'),
-                     ('dir2/f3', 'dir/f3')]))
+            tree, HasPathRelations(
+                revtree,
+                [('', ''), ('dir/', 'dir/'), ('dir2/', 'dir2/'),
+                 ('dir/a', 'dir/f1'), ('dir/z', 'dir/f2'),
+                 ('dir2/f3', 'dir/f3')]))
 
         tree.unversion({'dir'})
         self.assertThat(
-                tree,
-                HasPathRelations(
-                    revtree,
-                    [('', ''), ('dir2/', 'dir2/'), ('dir2/f3', 'dir/f3')]))
+            tree,
+            HasPathRelations(
+                revtree,
+                [('', ''), ('dir2/', 'dir2/'), ('dir2/f3', 'dir/f3')]))
 
     def test_unversion_after_conflicted_merge(self):
         # Test for bug #114615
@@ -164,10 +164,10 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree_b.commit('delete in B')
 
         self.assertThat(
-                tree_b,
-                HasPathRelations(
-                    tree_a,
-                    [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
+            tree_b,
+            HasPathRelations(
+                tree_a,
+                [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
 
         self.build_tree_contents([('A/a/n', b'new contents for n\n')])
         tree_a.commit('change n in A')
@@ -179,15 +179,15 @@ class TestUnversion(TestCaseWithWorkingTree):
         self.assertEqual(4, num_conflicts)
 
         self.assertThat(
-                tree_b,
-                HasPathRelations(
-                    tree_a,
-                    [('', ''), ('a/', 'a/'), ('xyz/', None),
-                     ('a/n.OTHER', 'a/n'), ('xyz/m', 'a/m')]))
+            tree_b,
+            HasPathRelations(
+                tree_a,
+                [('', ''), ('a/', 'a/'), ('xyz/', None),
+                 ('a/n.OTHER', 'a/n'), ('xyz/m', 'a/m')]))
 
         tree_b.unversion(['a'])
         self.assertThat(
-                tree_b,
-                HasPathRelations(
-                    tree_a,
-                    [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
+            tree_b,
+            HasPathRelations(
+                tree_a,
+                [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))

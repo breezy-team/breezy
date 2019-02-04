@@ -55,7 +55,7 @@ class TestSwitch(TestCaseWithTransport):
         os.chdir('checkout')
         out, err = self.run_bzr('switch ../branch2')
         self.assertContainsRe(err, 'Tree is up to date at revision 0.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
+        self.assertContainsRe(err, 'Switched to branch at .*/branch2.\n')
         self.assertEqual('', out)
 
     def test_switch_out_of_date_light_checkout(self):
@@ -69,7 +69,7 @@ class TestSwitch(TestCaseWithTransport):
         out, err = self.run_bzr('switch ../branch2')
         #self.assertContainsRe(err, '\+N  file')
         self.assertContainsRe(err, 'Updated to revision 1.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
+        self.assertContainsRe(err, 'Switched to branch at .*/branch2.\n')
         self.assertEqual('', out)
 
     def _test_switch_nick(self, lightweight):
@@ -77,18 +77,18 @@ class TestSwitch(TestCaseWithTransport):
         tree1 = self.make_branch_and_tree('branch1')
         tree2 = self.make_branch_and_tree('branch2')
         tree2.pull(tree1.branch)
-        checkout =  tree1.branch.create_checkout('checkout',
-            lightweight=lightweight)
+        checkout = tree1.branch.create_checkout('checkout',
+                                                lightweight=lightweight)
         self.assertEqual(checkout.branch.nick, tree1.branch.nick)
         self.assertEqual(checkout.branch.get_config().has_explicit_nickname(),
-            False)
+                         False)
         self.run_bzr('switch branch2', working_dir='checkout')
 
         # we need to get the tree again, otherwise we don't get the new branch
         checkout = WorkingTree.open('checkout')
         self.assertEqual(checkout.branch.nick, tree2.branch.nick)
         self.assertEqual(checkout.branch.get_config().has_explicit_nickname(),
-            False)
+                         False)
 
     def test_switch_nick(self):
         self._test_switch_nick(lightweight=False)
@@ -101,20 +101,20 @@ class TestSwitch(TestCaseWithTransport):
         tree1 = self.make_branch_and_tree('branch1')
         tree2 = self.make_branch_and_tree('branch2')
         tree2.pull(tree1.branch)
-        checkout =  tree1.branch.create_checkout('checkout',
-            lightweight=lightweight)
+        checkout = tree1.branch.create_checkout('checkout',
+                                                lightweight=lightweight)
         self.assertEqual(checkout.branch.nick, tree1.branch.nick)
         checkout.branch.nick = "explicit_nick"
         self.assertEqual(checkout.branch.nick, "explicit_nick")
         self.assertEqual(checkout.branch.get_config()._get_explicit_nickname(),
-            "explicit_nick")
+                         "explicit_nick")
         self.run_bzr('switch branch2', working_dir='checkout')
 
         # we need to get the tree again, otherwise we don't get the new branch
         checkout = WorkingTree.open('checkout')
         self.assertEqual(checkout.branch.nick, tree2.branch.nick)
         self.assertEqual(checkout.branch.get_config()._get_explicit_nickname(),
-            tree2.branch.nick)
+                         tree2.branch.nick)
 
     def test_switch_explicit_nick(self):
         self._test_switch_explicit_nick(lightweight=False)
@@ -130,7 +130,7 @@ class TestSwitch(TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('repo/branchb')
         tree2.pull(tree1.branch)
         branchb_id = tree2.commit('bar')
-        checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
+        checkout = tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', 'branchb'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
         checkout = checkout.controldir.open_workingtree()
@@ -168,7 +168,7 @@ class TestSwitch(TestCaseWithTransport):
         tree2 = self.make_branch_and_tree(u'repo/branch\xe9')
         tree2.pull(tree1.branch)
         branchb_id = tree2.commit('bar')
-        checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
+        checkout = tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
         checkout = checkout.controldir.open_workingtree()
@@ -183,7 +183,7 @@ class TestSwitch(TestCaseWithTransport):
         tree2 = self.make_branch_and_tree(u'repo/branch\xe9')
         tree2.pull(tree1.branch)
         branchb_id = tree2.commit('bar')
-        checkout =  tree1.branch.create_checkout('checkout', lightweight=True)
+        checkout = tree1.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', u'branch\xe9'], working_dir='checkout')
         self.assertEqual(branchb_id, checkout.last_revision())
         checkout = checkout.controldir.open_workingtree()
@@ -219,7 +219,7 @@ class TestSwitch(TestCaseWithTransport):
         revid2 = tree.commit('rev2')
         tree.controldir.create_branch(name='foo')
         self.run_bzr_error(['Cannot switch a branch, only a checkout.'],
-            'switch foo')
+                           'switch foo')
         self.run_bzr(['switch', '--force', 'foo'])
 
     def test_switch_existing_colocated(self):
@@ -312,7 +312,7 @@ class TestSwitch(TestCaseWithTransport):
     def test_create_branch_no_branch(self):
         self.prepare_lightweight_switch()
         self.run_bzr_error(['cannot create branch without source branch'],
-            'switch --create-branch ../branch2', working_dir='tree')
+                           'switch --create-branch ../branch2', working_dir='tree')
 
     def test_create_branch(self):
         branch = self.make_branch('branch')
@@ -345,9 +345,10 @@ class TestSwitch(TestCaseWithTransport):
     def test_create_branch_directory_services(self):
         branch = self.make_branch('branch')
         tree = branch.create_checkout('tree', lightweight=True)
+
         class FooLookup(object):
             def look_up(self, name, url):
-                return 'foo-'+name
+                return 'foo-' + name
         directories.register('foo:', FooLookup, 'Create branches named foo-')
         self.addCleanup(directories.remove, 'foo:')
         self.run_bzr('switch -b foo:branch2', working_dir='tree')
@@ -358,7 +359,7 @@ class TestSwitch(TestCaseWithTransport):
         from breezy import branch as _mod_branch
         calls = []
         _mod_branch.Branch.hooks.install_named_hook('post_switch',
-            calls.append, None)
+                                                    calls.append, None)
         self.make_branch_and_tree('branch')
         self.run_bzr('branch branch branch2')
         self.run_bzr('checkout branch checkout')
@@ -371,7 +372,7 @@ class TestSwitch(TestCaseWithTransport):
         from breezy import branch as _mod_branch
         calls = []
         _mod_branch.Branch.hooks.install_named_hook('post_switch',
-            calls.append, None)
+                                                    calls.append, None)
         self.make_branch_and_tree('branch')
         self.run_bzr('branch branch branch2')
         self.run_bzr('checkout --lightweight branch checkout')
@@ -430,7 +431,7 @@ class TestSwitchParentLocation(TestSwitchParentLocationBase):
                 $ cd checkout
                 $ brz switch --create-branch switched
                 2>Tree is up to date at revision 0.
-                2>Switched to branch:...switched...
+                2>Switched to branch at .../switched/
                 $ cd ..
                 ''' % locals())
         bound_branch = branch.Branch.open_containing('checkout')[0]
@@ -461,6 +462,7 @@ class TestSwitchDoesntOpenMasterBranch(TestCaseWithTransport):
         # Note: not a lightweight checkout
         checkout = master.branch.create_checkout('checkout')
         opened = []
+
         def open_hook(branch):
             # Just append the final directory of the branch
             name = branch.base.rstrip('/').rsplit('/', 1)[1]
@@ -482,7 +484,7 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         for count in range(9):
             t.commit(message='commit %d' % count)
         out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
-            'target'])
+                                 'target'])
         self.reset_smart_call_log()
         self.run_bzr(['switch', self.get_url('from')], working_dir='target')
         # This figure represent the amount of work to perform this use case. It
@@ -490,8 +492,8 @@ class TestSmartServerSwitch(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(24, self.hpss_calls)
-        self.assertLength(4, self.hpss_connections)
+        self.assertLength(21, self.hpss_calls)
+        self.assertLength(3, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
 
@@ -559,7 +561,7 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
            $ brz commit -m 2 --unchanged
            $ brz switch -r 1
            2>brz: ERROR: switching would create a branch reference loop. Use the "bzr up" command to switch to a different revision.''',
-           null_output_matches_anything=True)
+                                      null_output_matches_anything=True)
 
     def test_switch_create_colo_locks_repo_path(self):
         self.script_runner = script.ScriptRunner()
@@ -574,5 +576,32 @@ class TestSwitchStandAloneCorruption(TestCaseWithTransport):
             $ mv mywork mywork1
             $ cd mywork1
             $ brz branches
-            * br1
+              br1
             ''', null_output_matches_anything=True)
+
+    def test_switch_to_new_branch_on_old_rev(self):
+        """switch to previous rev in a standalone directory
+
+        Inspired by: https://bugs.launchpad.net/brz/+bug/933362
+        """
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+           $ brz init
+           Created a standalone tree (format: 2a)
+           $ brz switch -b trunk
+           2>Tree is up to date at revision 0.
+           2>Switched to branch trunk
+           $ brz commit -m 1 --unchanged
+           2>Committing to: ...
+           2>Committed revision 1.
+           $ brz commit -m 2 --unchanged
+           2>Committing to: ...
+           2>Committed revision 2.
+           $ brz switch -b blah -r1
+           2>Updated to revision 1.
+           2>Switched to branch blah
+           $ brz branches
+           * blah
+             trunk
+           $ brz st
+           ''')

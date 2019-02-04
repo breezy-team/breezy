@@ -70,9 +70,9 @@ class BzrDirFormatAllInOne(BzrDirFormat):
     fixed_components = True
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
-        create_prefix=False, force_new_repo=False, stacked_on=None,
-        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
-        shared_repo=False):
+                                   create_prefix=False, force_new_repo=False, stacked_on=None,
+                                   stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+                                   shared_repo=False):
         """See ControlDir.initialize_on_transport_ex."""
         require_stacking = (stacked_on is not None)
         # Format 5 cannot stack, but we've been asked to - actually init
@@ -80,15 +80,15 @@ class BzrDirFormatAllInOne(BzrDirFormat):
         if require_stacking:
             format = BzrDirMetaFormat1()
             return format.initialize_on_transport_ex(transport,
-                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                force_new_repo=force_new_repo, stacked_on=stacked_on,
-                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                make_working_trees=make_working_trees, shared_repo=shared_repo)
+                                                     use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                                                     force_new_repo=force_new_repo, stacked_on=stacked_on,
+                                                     stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                                                     make_working_trees=make_working_trees, shared_repo=shared_repo)
         return BzrDirFormat.initialize_on_transport_ex(self, transport,
-            use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-            force_new_repo=force_new_repo, stacked_on=stacked_on,
-            stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-            make_working_trees=make_working_trees, shared_repo=shared_repo)
+                                                       use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                                                       force_new_repo=force_new_repo, stacked_on=stacked_on,
+                                                       stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                                                       make_working_trees=make_working_trees, shared_repo=shared_repo)
 
     @classmethod
     def from_string(cls, format_string):
@@ -244,13 +244,14 @@ class ConvertBzrDir4To5(Converter):
         with ui.ui_factory.nested_progress_bar() as self.pb:
             ui.ui_factory.note(gettext('starting upgrade from format 4 to 5'))
             if isinstance(self.controldir.transport, local.LocalTransport):
-                self.controldir.get_workingtree_transport(None).delete('stat-cache')
+                self.controldir.get_workingtree_transport(
+                    None).delete('stat-cache')
             self._convert_to_weaves()
             return ControlDir.open(self.controldir.user_url)
 
     def _convert_to_weaves(self):
         ui.ui_factory.note(gettext(
-          'note: upgrade may be faster if all store files are ungzipped first'))
+            'note: upgrade may be faster if all store files are ungzipped first'))
         try:
             # TODO permissions
             stat = self.controldir.transport.stat('weaves')
@@ -273,8 +274,8 @@ class ConvertBzrDir4To5(Converter):
         self.to_read = rev_history[-1:]
         while self.to_read:
             rev_id = self.to_read.pop()
-            if (rev_id not in self.revisions
-                and rev_id not in self.absent_revisions):
+            if (rev_id not in self.revisions and
+                    rev_id not in self.absent_revisions):
                 self._load_one_rev(rev_id)
         self.pb.clear()
         to_import = self._make_order()
@@ -286,9 +287,9 @@ class ConvertBzrDir4To5(Converter):
         self._write_all_revs()
         ui.ui_factory.note(gettext('upgraded to weaves:'))
         ui.ui_factory.note('  ' + gettext('%6d revisions and inventories') %
-                                                        len(self.revisions))
+                           len(self.revisions))
         ui.ui_factory.note('  ' + gettext('%6d revisions not present') %
-                                                    len(self.absent_revisions))
+                           len(self.absent_revisions))
         ui.ui_factory.note('  ' + gettext('%6d texts') % self.text_count)
         self._cleanup_spare_files_after_format4()
         self.branch._transport.put_bytes(
@@ -309,24 +310,25 @@ class ConvertBzrDir4To5(Converter):
 
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
-                self.branch._transport.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv, working=True)
+            self.branch._transport.get('inventory'))
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(
+            inv, working=True)
         self.branch._transport.put_bytes('inventory', new_inv_xml,
-            mode=self.controldir._get_file_mode())
+                                         mode=self.controldir._get_file_mode())
 
     def _write_all_weaves(self):
         controlweaves = VersionedFileStore(self.controldir.transport, prefixed=False,
-            versionedfile_class=weave.WeaveFile)
+                                           versionedfile_class=weave.WeaveFile)
         weave_transport = self.controldir.transport.clone('weaves')
         weaves = VersionedFileStore(weave_transport, prefixed=False,
-                versionedfile_class=weave.WeaveFile)
+                                    versionedfile_class=weave.WeaveFile)
         transaction = WriteTransaction()
 
         try:
             i = 0
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update(gettext('writing weave'), i,
-                                                        len(self.text_weaves))
+                               len(self.text_weaves))
                 weaves._put_weave(file_id, file_weave, transaction)
                 i += 1
             self.pb.update(gettext('inventory'), 0, 1)
@@ -344,12 +346,12 @@ class ConvertBzrDir4To5(Converter):
         from ...bzr.xml5 import serializer_v5
         from .repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
-            serializer_v5, False, versionedfile.PrefixMapper(),
-            lambda:True, lambda:True)
+                                           serializer_v5, False, versionedfile.PrefixMapper(),
+                                           lambda: True, lambda: True)
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update(gettext('write revision'), i,
-                                                len(self.converted_revs))
+                               len(self.converted_revs))
                 text = serializer_v5.write_revision_to_string(
                     self.revisions[rev_id])
                 key = (rev_id,)
@@ -368,8 +370,8 @@ class ConvertBzrDir4To5(Converter):
         if not self.branch.repository.has_revision(rev_id):
             self.pb.clear()
             ui.ui_factory.note(gettext('revision {%s} not present in branch; '
-                         'will be converted as a ghost') %
-                         rev_id)
+                                       'will be converted as a ghost') %
+                               rev_id)
             self.absent_revisions.add(rev_id)
         else:
             rev = self.branch.repository.get_revision(rev_id)
@@ -449,7 +451,7 @@ class ConvertBzrDir4To5(Converter):
         """See graph.StackedParentsProvider.get_parent_map"""
         return dict((revision_id, self.revisions[revision_id])
                     for revision_id in revision_ids
-                     if revision_id in self.revisions)
+                    if revision_id in self.revisions)
 
     def snapshot_ie(self, previous_revisions, ie, w, rev_id):
         # TODO: convert this logic, which is ~= snapshot to
@@ -519,18 +521,19 @@ class ConvertBzrDir5To6(Converter):
             store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
                 filename = urlutils.unescape(urlfilename)
-                if (filename.endswith(".weave") or
-                    filename.endswith(".gz") or
-                    filename.endswith(".sig")):
+                if (filename.endswith(".weave")
+                    or filename.endswith(".gz")
+                        or filename.endswith(".sig")):
                     file_id, suffix = os.path.splitext(filename)
                 else:
                     file_id = filename
                     suffix = ''
-                new_name = store._mapper.map((file_id.encode('utf-8'),)) + suffix
+                new_name = store._mapper.map(
+                    (file_id.encode('utf-8'),)) + suffix
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, new_name)
-                except errors.NoSuchFile: # catches missing dirs strangely enough
+                except errors.NoSuchFile:  # catches missing dirs strangely enough
                     store_transport.mkdir(osutils.dirname(new_name))
                     store_transport.move(filename, new_name)
         self.controldir.transport.put_bytes(
@@ -549,16 +552,17 @@ class ConvertBzrDir6ToMeta(Converter):
         self.controldir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
-        self.total = 20 # the steps we know about
+        self.total = 20  # the steps we know about
         self.garbage_inventories = []
         self.dir_mode = self.controldir._get_dir_mode()
         self.file_mode = self.controldir._get_file_mode()
 
-        ui.ui_factory.note(gettext('starting upgrade from format 6 to metadir'))
+        ui.ui_factory.note(
+            gettext('starting upgrade from format 6 to metadir'))
         self.controldir.transport.put_bytes(
-                'branch-format',
-                b"Converting to format 6",
-                mode=self.file_mode)
+            'branch-format',
+            b"Converting to format 6",
+            mode=self.file_mode)
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
         try:
@@ -657,8 +661,8 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def put_format(self, dirname, format):
         self.controldir.transport.put_bytes('%s/format' % dirname,
-            format.get_format_string(),
-            self.file_mode)
+                                            format.get_format_string(),
+                                            self.file_mode)
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -733,9 +737,9 @@ class BzrDirPreSplitOut(BzrDir):
         """See ControlDir.__init__."""
         super(BzrDirPreSplitOut, self).__init__(_transport, _format)
         self._control_files = lockable_files.LockableFiles(
-                                            self.get_branch_transport(None),
-                                            self._format._lock_file_name,
-                                            self._format._lock_class)
+            self.get_branch_transport(None),
+            self._format._lock_file_name,
+            self._format._lock_class)
 
     def break_lock(self):
         """Pre-splitout bzrdirs do not suffer from stale locks."""
@@ -777,7 +781,7 @@ class BzrDirPreSplitOut(BzrDir):
             raise NotImplementedError(
                 "create_branch(repository=<not None>) on %r" % (self,))
         return self._format.get_branch_format().initialize(self, name=name,
-            append_revisions_only=append_revisions_only)
+                                                           append_revisions_only=append_revisions_only)
 
     def destroy_branch(self, name=None):
         """See ControlDir.destroy_branch."""
@@ -810,7 +814,7 @@ class BzrDirPreSplitOut(BzrDir):
         # done on this format anyway. So - acceptable wart.
         if hardlink:
             warning("can't support hardlinked working trees in %r"
-                % (self,))
+                    % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:
@@ -886,7 +890,7 @@ class BzrDirPreSplitOut(BzrDir):
         format = BzrBranchFormat4()
         format.check_support_status(unsupported)
         return format.open(self, name, _found=True,
-            possible_transports=possible_transports)
+                           possible_transports=possible_transports)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
@@ -959,14 +963,14 @@ class BzrDir5(BzrDirPreSplitOut):
     def has_workingtree(self):
         """See ControlDir.has_workingtree."""
         return True
-    
+
     def open_repository(self):
         """See ControlDir.open_repository."""
         from .repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
-            recommend_upgrade=True):
+                         recommend_upgrade=True):
         """See ControlDir.create_workingtree."""
         from .workingtree import WorkingTreeFormat2
         wt_format = WorkingTreeFormat2()

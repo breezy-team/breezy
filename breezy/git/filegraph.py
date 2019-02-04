@@ -44,17 +44,18 @@ class GitFileLastChangeScanner(object):
             raise TypeError(path)
         commit = self.store[commit_id]
         target_mode, target_sha = tree_lookup_path(self.store.__getitem__,
-            commit.tree, path)
+                                                   commit.tree, path)
         if path == b'':
             target_mode = stat.S_IFDIR
         if target_mode is None:
-            raise AssertionError("sha %r for %r in %r" % (target_sha, path, commit_id))
+            raise AssertionError("sha %r for %r in %r" %
+                                 (target_sha, path, commit_id))
         while True:
             parent_commits = []
             for parent_commit in [self.store[c] for c in commit.parents]:
                 try:
                     mode, sha = tree_lookup_path(self.store.__getitem__,
-                        parent_commit.tree, path)
+                                                 parent_commit.tree, path)
                 except (NotTreeError, KeyError):
                     continue
                 else:
@@ -64,8 +65,8 @@ class GitFileLastChangeScanner(object):
                 # Candidate found iff, mode or text changed,
                 # or is a directory that didn't previously exist.
                 if mode != target_mode or (
-                    not stat.S_ISDIR(target_mode) and sha != target_sha):
-                        return (path, commit.id)
+                        not stat.S_ISDIR(target_mode) and sha != target_sha):
+                    return (path, commit.id)
             if parent_commits == []:
                 break
             commit = parent_commits[0]
@@ -79,8 +80,9 @@ class GitFileParentProvider(object):
         self.store = self.change_scanner.repository._git.object_store
 
     def _get_parents(self, file_id, text_revision):
-        commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
-            text_revision)
+        commit_id, mapping = (
+            self.change_scanner.repository.lookup_bzr_revision_id(
+                text_revision))
         try:
             path = mapping.parse_file_id(file_id)
         except ValueError:
@@ -88,14 +90,17 @@ class GitFileParentProvider(object):
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = self.change_scanner.find_last_change_revision(path.encode('utf-8'), commit_parent)
+                (path, text_parent) = (
+                    self.change_scanner.find_last_change_revision(
+                        path.encode('utf-8'), commit_parent))
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
-        return tuple([(file_id,
-            self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
-            in text_parents])
+        return tuple([
+            (file_id,
+                self.change_scanner.repository.lookup_foreign_revision_id(p))
+            for p in text_parents])
 
     def get_parent_map(self, keys):
         ret = {}

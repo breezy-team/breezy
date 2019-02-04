@@ -80,8 +80,8 @@ Congratulation! Brz successfully installed.
         batch_path = os.path.join(scripts_dir, "brz.bat")
         with open(batch_path, "w") as f:
             f.write(batch_str)
-        file_created(batch_path)        # registering manually created files for
-                                        # auto-deinstallation procedure
+        # registering manually created files for auto-deinstallation procedure
+        file_created(batch_path)
         ##
         # inform user where batch launcher is.
         print("Created:", batch_path)
@@ -93,7 +93,7 @@ Congratulation! Brz successfully installed.
     # use bdist_wininst builtins to create a shortcut.
     # CSIDL_COMMON_PROGRAMS only available works on NT/2000/XP, and
     # will fail there if the user has no admin rights.
-    if get_root_hkey()==_winreg.HKEY_LOCAL_MACHINE:
+    if get_root_hkey() == _winreg.HKEY_LOCAL_MACHINE:
         try:
             fldr = get_special_folder_path("CSIDL_COMMON_PROGRAMS")
         except OSError:

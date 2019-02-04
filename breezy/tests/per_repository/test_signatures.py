@@ -23,8 +23,9 @@ from breezy import (
     urlutils,
     )
 
-from breezy.testament import Testament
+from breezy.bzr.testament import Testament
 from breezy.tests import per_repository
+
 
 class TestSignatures(per_repository.TestCaseWithRepository):
 
@@ -48,9 +49,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo,
-                         a).as_short_text() +
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo,
+                                                   a).as_short_text() +
                          b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
 
@@ -94,7 +95,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
-        #FIXME: clone should work to urls,
+        # FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
         d2 = repo.controldir.clone(urlutils.local_path_to_url('target'))
@@ -118,9 +119,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo, a).as_short_text() +
-                         b'-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo, a).as_short_text()
+                         + b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
             (gpg.SIGNATURE_VALID, None),
@@ -136,9 +137,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo, a).as_short_text() +
-                         b'-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo, a).as_short_text()
+                         + b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
             [(a, gpg.SIGNATURE_VALID, None),
@@ -158,5 +159,5 @@ class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         self.assertRaises(errors.UnsupportedOperation,
-            repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
+                          repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()

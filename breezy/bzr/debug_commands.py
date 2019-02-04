@@ -26,7 +26,11 @@ from .. import (
     static_tuple,
     transport,
     )
-from ..commands import Command
+from ..workingtree import WorkingTree
+from ..commands import (
+    Command,
+    display_command,
+    )
 from ..option import Option
 from ..sixish import PY3
 from . import (
@@ -54,7 +58,7 @@ class cmd_dump_btree(Command):
     takes_args = ['path']
     takes_options = [Option('raw', help='Write the uncompressed bytes out,'
                                         ' rather than the parsed tuples.'),
-                    ]
+                     ]
 
     def run(self, path, raw=False):
         dirname, basename = osutils.split(path)
@@ -90,7 +94,7 @@ class cmd_dump_btree(Command):
                 page_bytes = data
             self.outf.write('\nPage %d\n' % (page_idx,))
             if len(page_bytes) == 0:
-                self.outf.write('(empty)\n');
+                self.outf.write('(empty)\n')
             else:
                 decomp_bytes = zlib.decompress(page_bytes)
                 self.outf.write(decomp_bytes)
@@ -117,12 +121,57 @@ class cmd_dump_btree(Command):
             if PY3:
                 if refs_as_tuples is not None:
                     refs_as_tuples = tuple(
-                        tuple(tuple(r.decode('utf-8') for r in t1) for t1 in t2)
+                        tuple(tuple(r.decode('utf-8')
+                                    for r in t1) for t1 in t2)
                         for t2 in refs_as_tuples)
                 as_tuple = (
-                        tuple([r.decode('utf-8') for r in node[1]]),
-                        node[2].decode('utf-8'),
-                        refs_as_tuples)
+                    tuple([r.decode('utf-8') for r in node[1]]),
+                    node[2].decode('utf-8'),
+                    refs_as_tuples)
             else:
                 as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
+
+
+class cmd_file_id(Command):
+    __doc__ = """Print file_id of a particular file or directory.
+
+    The file_id is assigned when the file is first added and remains the
+    same through all revisions where the file exists, even when it is
+    moved or renamed.
+    """
+
+    hidden = True
+    _see_also = ['inventory', 'ls']
+    takes_args = ['filename']
+
+    @display_command
+    def run(self, filename):
+        tree, relpath = WorkingTree.open_containing(filename)
+        file_id = tree.path2id(relpath)
+        if file_id is None:
+            raise errors.NotVersionedError(filename)
+        else:
+            self.outf.write(file_id.decode('utf-8') + '\n')
+
+
+class cmd_file_path(Command):
+    __doc__ = """Print path of file_ids to a file or directory.
+
+    This prints one line for each directory down to the target,
+    starting at the branch root.
+    """
+
+    hidden = True
+    takes_args = ['filename']
+
+    @display_command
+    def run(self, filename):
+        tree, relpath = WorkingTree.open_containing(filename)
+        fid = tree.path2id(relpath)
+        if fid is None:
+            raise errors.NotVersionedError(filename)
+        segments = osutils.splitpath(relpath)
+        for pos in range(1, len(segments) + 1):
+            path = osutils.joinpath(segments[:pos])
+            self.outf.write("%s\n" % tree.path2id(path))

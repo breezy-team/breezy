@@ -28,7 +28,7 @@ are not - this is done for clarity of reading. All string data is in utf8.
     WHOLE_NUMBER = {digit}, digit;
     BOOLEAN = "y" | "n";
     REVISION_ID = a non-empty utf8 string;
-    
+
     dirstate format = header line, full checksum, row count, parent details,
      ghost_details, entries;
     header line = "#bazaar dirstate flat format 3", NL;
@@ -282,7 +282,7 @@ class SHA1Provider(object):
 
     def stat_and_sha1(self, abspath):
         """Return the stat and sha1 of a file given its absolute path.
-        
+
         :param abspath:  May be a filesystem encoded absolute path
              or a unicode path.
 
@@ -324,29 +324,29 @@ class DirState(object):
     """
 
     _kind_to_minikind = {
-            'absent': b'a',
-            'file': b'f',
-            'directory': b'd',
-            'relocated': b'r',
-            'symlink': b'l',
-            'tree-reference': b't',
+        'absent': b'a',
+        'file': b'f',
+        'directory': b'd',
+        'relocated': b'r',
+        'symlink': b'l',
+        'tree-reference': b't',
         }
     _minikind_to_kind = {
-            b'a': 'absent',
-            b'f': 'file',
-            b'd': 'directory',
-            b'l': 'symlink',
-            b'r': 'relocated',
-            b't': 'tree-reference',
+        b'a': 'absent',
+        b'f': 'file',
+        b'd': 'directory',
+        b'l': 'symlink',
+        b'r': 'relocated',
+        b't': 'tree-reference',
         }
     _stat_to_minikind = {
         stat.S_IFDIR: b'd',
         stat.S_IFREG: b'f',
         stat.S_IFLNK: b'l',
     }
-    _to_yesno = {True: b'y', False: b'n'} # TODO profile the performance gain
-     # of using int conversion rather than a dict here. AND BLAME ANDREW IF
-     # it is faster.
+    _to_yesno = {True: b'y', False: b'n'}  # TODO profile the performance gain
+    # of using int conversion rather than a dict here. AND BLAME ANDREW IF
+    # it is faster.
 
     # TODO: jam 20070221 Figure out what to do if we have a record that exceeds
     #       the BISECT_PAGE_SIZE. For now, we just have to make it large enough
@@ -356,7 +356,7 @@ class DirState(object):
     NOT_IN_MEMORY = 0
     IN_MEMORY_UNMODIFIED = 1
     IN_MEMORY_MODIFIED = 2
-    IN_MEMORY_HASH_MODIFIED = 3 # Only hash-cache updates
+    IN_MEMORY_HASH_MODIFIED = 3  # Only hash-cache updates
 
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
@@ -438,7 +438,8 @@ class DirState(object):
         """
         #trace.mutter_callsite(3, "modified hash entries: %s", hash_changed_entries)
         if hash_changed_entries:
-            self._known_hash_changes.update([e[0] for e in hash_changed_entries])
+            self._known_hash_changes.update(
+                [e[0] for e in hash_changed_entries])
             if self._dirblock_state in (DirState.NOT_IN_MEMORY,
                                         DirState.IN_MEMORY_UNMODIFIED):
                 # If the dirstate is already marked a IN_MEMORY_MODIFIED, then
@@ -480,7 +481,7 @@ class DirState(object):
         # find the location in the block.
         # check its not there
         # add it.
-        #------- copied from inventory.ensure_normalized_name - keep synced.
+        # ------- copied from inventory.ensure_normalized_name - keep synced.
         # --- normalized_filename wants a unicode basename only, so get one.
         dirname, basename = osutils.split(path)
         # we dont import normalized_filename directly because we want to be
@@ -506,20 +507,22 @@ class DirState(object):
                 "must be a utf8 file_id not %s" % (type(file_id), ))
         # Make sure the file_id does not exist in this tree
         rename_from = None
-        file_id_entry = self._get_entry(0, fileid_utf8=file_id, include_deleted=True)
+        file_id_entry = self._get_entry(
+            0, fileid_utf8=file_id, include_deleted=True)
         if file_id_entry != (None, None):
             if file_id_entry[1][0][0] == b'a':
                 if file_id_entry[0] != (dirname, basename, file_id):
                     # set the old name's current operation to rename
                     self.update_minimal(file_id_entry[0],
-                        b'r',
-                        path_utf8=b'',
-                        packed_stat=b'',
-                        fingerprint=utf8path
-                    )
+                                        b'r',
+                                        path_utf8=b'',
+                                        packed_stat=b'',
+                                        fingerprint=utf8path
+                                        )
                     rename_from = file_id_entry[0][0:2]
             else:
-                path = osutils.pathjoin(file_id_entry[0][0], file_id_entry[0][1])
+                path = osutils.pathjoin(
+                    file_id_entry[0][0], file_id_entry[0][1])
                 kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
                 info = '%s:%s' % (kind, path)
                 raise errors.DuplicateFileId(file_id, info)
@@ -530,7 +533,7 @@ class DirState(object):
             block = self._dirblocks[block_index][1]
             entry_index, _ = self._find_entry_index(first_key, block)
             while (entry_index < len(block) and
-                block[entry_index][0][0:2] == first_key[0:2]):
+                   block[entry_index][0][0:2] == first_key[0:2]):
                 if block[entry_index][1][0][0] not in (b'a', b'r'):
                     # this path is in the dirstate in the current tree.
                     raise Exception("adding already added path!")
@@ -584,12 +587,13 @@ class DirState(object):
             block.insert(entry_index, entry_data)
         else:
             if block[entry_index][1][0][0] != b'a':
-                raise AssertionError(" %r(%r) already added" % (basename, file_id))
+                raise AssertionError(" %r(%r) already added" %
+                                     (basename, file_id))
             block[entry_index][1][0] = entry_data[1][0]
 
         if kind == 'directory':
-           # insert a new dirblock
-           self._ensure_block(block_index, entry_index, utf8path)
+            # insert a new dirblock
+            self._ensure_block(block_index, entry_index, utf8path)
         self._mark_modified()
         if self._id_index:
             self._add_to_id_index(self._id_index, entry_key)
@@ -610,7 +614,8 @@ class DirState(object):
         # there, this function is only meant to handle when we want to read
         # part of the disk.
         if self._dirblock_state != DirState.NOT_IN_MEMORY:
-            raise AssertionError("bad dirblock state %r" % self._dirblock_state)
+            raise AssertionError("bad dirblock state %r" %
+                                 self._dirblock_state)
 
         # The disk representation is generally info + '\0\n\0' at the end. But
         # for bisecting, it is easier to treat this as '\0' + info + '\0\n'
@@ -623,12 +628,12 @@ class DirState(object):
         entry_field_count = self._fields_per_entry() + 1
 
         low = self._end_of_header
-        high = file_size - 1 # Ignore the final '\0'
+        high = file_size - 1  # Ignore the final '\0'
         # Map from (dir, name) => entry
         found = {}
 
         # Avoid infinite seeking
-        max_count = 30*len(paths)
+        max_count = 30 * len(paths)
         count = 0
         # pending is a list of places to look.
         # each entry is a tuple of low, high, dir_names
@@ -653,12 +658,12 @@ class DirState(object):
             if count > max_count:
                 raise errors.BzrError('Too many seeks, most likely a bug.')
 
-            mid = max(low, (low+high-page_size)//2)
+            mid = max(low, (low + high - page_size) // 2)
 
             state_file.seek(mid)
             # limit the read size, so we don't end up reading data that we have
             # already read.
-            read_size = min(page_size, (high-mid)+1)
+            read_size = min(page_size, (high - mid) + 1)
             block = state_file.read(read_size)
 
             start = mid
@@ -681,7 +686,7 @@ class DirState(object):
                 # We didn't get the complete first entry
                 # so move start, and grab the next, which
                 # should be a full entry
-                start += len(entries[0])+1
+                start += len(entries[0]) + 1
                 first_fields = entries[1].split(b'\0')
                 first_entry_num = 1
 
@@ -711,7 +716,7 @@ class DirState(object):
                 # We have files after the first entry
 
                 # Parse the last entry
-                last_entry_num = len(entries)-1
+                last_entry_num = len(entries) - 1
                 last_fields = entries[last_entry_num].split(b'\0')
                 if len(last_fields) < entry_field_count:
                     # The very last hunk was not complete,
@@ -744,12 +749,12 @@ class DirState(object):
                         post.insert(0, last_path)
 
                     # Find out what paths we have
-                    paths = {first_path:[first_fields]}
+                    paths = {first_path: [first_fields]}
                     # last_path might == first_path so we need to be
                     # careful if we should append rather than overwrite
                     if last_entry_num != first_entry_num:
                         paths.setdefault(last_path, []).append(last_fields)
-                    for num in range(first_entry_num+1, last_entry_num):
+                    for num in range(first_entry_num + 1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
@@ -776,7 +781,7 @@ class DirState(object):
             if post:
                 pending.append((after, high, post))
             if pre:
-                pending.append((low, start-1, pre))
+                pending.append((low, start - 1, pre))
 
         # Consider that we may want to return the directory entries in sorted
         # order. For now, we just return them in whatever order we found them,
@@ -803,7 +808,8 @@ class DirState(object):
         # there, this function is only meant to handle when we want to read
         # part of the disk.
         if self._dirblock_state != DirState.NOT_IN_MEMORY:
-            raise AssertionError("bad dirblock state %r" % self._dirblock_state)
+            raise AssertionError("bad dirblock state %r" %
+                                 self._dirblock_state)
         # The disk representation is generally info + '\0\n\0' at the end. But
         # for bisecting, it is easier to treat this as '\0' + info + '\0\n'
         # Because it means we can sync on the '\n'
@@ -815,12 +821,12 @@ class DirState(object):
         entry_field_count = self._fields_per_entry() + 1
 
         low = self._end_of_header
-        high = file_size - 1 # Ignore the final '\0'
+        high = file_size - 1  # Ignore the final '\0'
         # Map from dir => entry
         found = {}
 
         # Avoid infinite seeking
-        max_count = 30*len(dir_list)
+        max_count = 30 * len(dir_list)
         count = 0
         # pending is a list of places to look.
         # each entry is a tuple of low, high, dir_names
@@ -845,12 +851,12 @@ class DirState(object):
             if count > max_count:
                 raise errors.BzrError('Too many seeks, most likely a bug.')
 
-            mid = max(low, (low+high-page_size)//2)
+            mid = max(low, (low + high - page_size) // 2)
 
             state_file.seek(mid)
             # limit the read size, so we don't end up reading data that we have
             # already read.
-            read_size = min(page_size, (high-mid)+1)
+            read_size = min(page_size, (high - mid) + 1)
             block = state_file.read(read_size)
 
             start = mid
@@ -873,7 +879,7 @@ class DirState(object):
                 # We didn't get the complete first entry
                 # so move start, and grab the next, which
                 # should be a full entry
-                start += len(entries[0])+1
+                start += len(entries[0]) + 1
                 first_fields = entries[1].split(b'\0')
                 first_entry_num = 1
 
@@ -900,7 +906,7 @@ class DirState(object):
                 # We have records to look at after the first entry
 
                 # Parse the last entry
-                last_entry_num = len(entries)-1
+                last_entry_num = len(entries) - 1
                 last_fields = entries[last_entry_num].split(b'\0')
                 if len(last_fields) < entry_field_count:
                     # The very last hunk was not complete,
@@ -930,12 +936,12 @@ class DirState(object):
                         post.insert(0, last_dir)
 
                     # Find out what paths we have
-                    paths = {first_dir:[first_fields]}
+                    paths = {first_dir: [first_fields]}
                     # last_dir might == first_dir so we need to be
                     # careful if we should append rather than overwrite
                     if last_entry_num != first_entry_num:
                         paths.setdefault(last_dir, []).append(last_fields)
-                    for num in range(first_entry_num+1, last_entry_num):
+                    for num in range(first_entry_num + 1, last_entry_num):
                         # TODO: jam 20070223 We are already splitting here, so
                         #       shouldn't we just split the whole thing rather
                         #       than doing the split again in add_one_record?
@@ -958,7 +964,7 @@ class DirState(object):
             if post:
                 pending.append((after, high, post))
             if pre:
-                pending.append((low, start-1, pre))
+                pending.append((low, start - 1, pre))
 
         return found
 
@@ -1037,7 +1043,9 @@ class DirState(object):
             return
         # only require all dirblocks if we are doing a full-pass removal.
         self._read_dirblocks_if_needed()
-        dead_patterns = {(b'a', b'r'), (b'a', b'a'), (b'r', b'r'), (b'r', b'a')}
+        dead_patterns = {(b'a', b'r'), (b'a', b'a'),
+                         (b'r', b'r'), (b'r', b'a')}
+
         def iter_entries_removable():
             for block in self._dirblocks:
                 deleted_positions = []
@@ -1066,7 +1074,7 @@ class DirState(object):
 
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
-                                                    len(self._ghosts))
+                                                 len(self._ghosts))
 
     def _ensure_block(self, parent_block_index, parent_row_index, dirname):
         """Ensure a block for dirname exists.
@@ -1094,13 +1102,14 @@ class DirState(object):
             return 1
         # the basename of the directory must be the end of its full name.
         if not (parent_block_index == -1 and
-            parent_block_index == -1 and dirname == b''):
+                parent_block_index == -1 and dirname == b''):
             if not dirname.endswith(
                     self._dirblocks[parent_block_index][1][parent_row_index][0][1]):
                 raise AssertionError("bad dirname %r" % dirname)
-        block_index, present = self._find_block_index_from_key((dirname, b'', b''))
+        block_index, present = self._find_block_index_from_key(
+            (dirname, b'', b''))
         if not present:
-            ## In future, when doing partial parsing, this should load and
+            # In future, when doing partial parsing, this should load and
             # populate the entire block.
             self._dirblocks.insert(block_index, (dirname, []))
         return block_index
@@ -1150,7 +1159,7 @@ class DirState(object):
         root_block = []
         contents_of_root_block = []
         for entry in self._dirblocks[0][1]:
-            if not entry[0][1]: # This is a root entry
+            if not entry[0][1]:  # This is a root entry
                 root_block.append(entry)
             else:
                 contents_of_root_block.append(entry)
@@ -1170,7 +1179,7 @@ class DirState(object):
         entry_index, _ = self._find_entry_index(key, block)
         # we may need to look at multiple entries at this path: walk while the specific_files match.
         while (entry_index < len(block) and
-            block[entry_index][0][0:2] == key[0:2]):
+               block[entry_index][0][0:2] == key[0:2]):
             result.append(block[entry_index])
             entry_index += 1
         return result
@@ -1239,7 +1248,7 @@ class DirState(object):
             return 0, True
         try:
             if (self._last_block_index is not None and
-                self._dirblocks[self._last_block_index][0] == key[0]):
+                    self._dirblocks[self._last_block_index][0] == key[0]):
                 return self._last_block_index, True
         except IndexError:
             pass
@@ -1252,7 +1261,7 @@ class DirState(object):
         # root-contents, and for b'', we get 2 back, so this is
         # simple and correct:
         present = (block_index < len(self._dirblocks) and
-            self._dirblocks[block_index][0] == key[0])
+                   self._dirblocks[block_index][0] == key[0])
         self._last_block_index = block_index
         # Reset the entry index cache to the beginning of the block.
         self._last_entry_index = -1
@@ -1271,7 +1280,7 @@ class DirState(object):
                 # A hit is when the key is after the last slot, and before or
                 # equal to the next slot.
                 if ((entry_index > 0 and block[entry_index - 1][0] < key) and
-                    key <= block[entry_index][0]):
+                        key <= block[entry_index][0]):
                     self._last_entry_index = entry_index
                     present = (block[entry_index][0] == key)
                     return entry_index, present
@@ -1279,7 +1288,7 @@ class DirState(object):
             pass
         entry_index = bisect.bisect_left(block, (key, []))
         present = (entry_index < len_block and
-            block[entry_index][0] == key)
+                   block[entry_index][0] == key)
         self._last_entry_index = entry_index
         return entry_index, present
 
@@ -1295,7 +1304,7 @@ class DirState(object):
             (it was locked by DirState.initialize)
         """
         result = DirState.initialize(dir_state_filename,
-            sha1_provider=sha1_provider)
+                                     sha1_provider=sha1_provider)
         try:
             with tree.lock_read():
                 try:
@@ -1303,7 +1312,8 @@ class DirState(object):
                     num_parents = len(parent_ids)
                     parent_trees = []
                     for parent_id in parent_ids:
-                        parent_tree = tree.branch.repository.revision_tree(parent_id)
+                        parent_tree = tree.branch.repository.revision_tree(
+                            parent_id)
                         parent_trees.append((parent_id, parent_tree))
                         parent_tree.lock_read()
                     result.set_parent_trees(parent_trees, [])
@@ -1321,10 +1331,11 @@ class DirState(object):
     def _check_delta_is_valid(self, delta):
         delta = list(inventory._check_delta_unique_ids(
                      inventory._check_delta_unique_old_paths(
-                     inventory._check_delta_unique_new_paths(
-                     inventory._check_delta_ids_match_entry(
-                     inventory._check_delta_ids_are_valid(
-                     inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+                         inventory._check_delta_unique_new_paths(
+                             inventory._check_delta_ids_match_entry(
+                                 inventory._check_delta_ids_are_valid(
+                                     inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+
         def delta_key(d):
             (old_path, new_path, file_id, new_entry) = d
             if old_path is None:
@@ -1365,7 +1376,7 @@ class DirState(object):
                     "must be a utf8 file_id not %s" % (type(file_id), ))
             if (file_id in insertions) or (file_id in removals):
                 self._raise_invalid(old_path or new_path, file_id,
-                    "repeated file_id")
+                                    "repeated file_id")
             if old_path is not None:
                 old_path = old_path.encode('utf-8')
                 removals[file_id] = old_path
@@ -1374,7 +1385,7 @@ class DirState(object):
             if new_path is not None:
                 if inv_entry is None:
                     self._raise_invalid(new_path, file_id,
-                        "new_path with no entry")
+                                        "new_path with no entry")
                 new_path = new_path.encode('utf-8')
                 dirname_utf8, basename = osutils.split(new_path)
                 if basename:
@@ -1418,14 +1429,14 @@ class DirState(object):
             if 'integrity error' not in str(e):
                 raise
             # _get_entry raises BzrError when a request is inconsistent; we
-            # want such errors to be shown as InconsistentDelta - and that 
+            # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(delta,
-                "error from _get_entry. %s" % (e,))
+                                                "error from _get_entry. %s" % (e,))
 
     def _apply_removals(self, removals):
         for file_id, path in sorted(removals, reverse=True,
-            key=operator.itemgetter(1)):
+                                    key=operator.itemgetter(1)):
             dirname, basename = osutils.split(path)
             block_i, entry_i, d_present, f_present = \
                 self._get_block_entry_index(dirname, basename, 0)
@@ -1433,14 +1444,14 @@ class DirState(object):
                 entry = self._dirblocks[block_i][1][entry_i]
             except IndexError:
                 self._raise_invalid(path, file_id,
-                    "Wrong path for old path.")
+                                    "Wrong path for old path.")
             if not f_present or entry[1][0][0] in (b'a', b'r'):
                 self._raise_invalid(path, file_id,
-                    "Wrong path for old path.")
+                                    "Wrong path for old path.")
             if file_id != entry[0][2]:
                 self._raise_invalid(path, file_id,
-                    "Attempt to remove path has wrong id - found %r."
-                    % entry[0][2])
+                                    "Attempt to remove path has wrong id - found %r."
+                                    % entry[0][2])
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not
             # leave crud behind. This increases the number of bisects needed
@@ -1455,8 +1466,8 @@ class DirState(object):
                 for child_entry in self._dirblocks[block_i][1]:
                     if child_entry[1][0][0] not in (b'r', b'a'):
                         self._raise_invalid(path, entry[0][2],
-                            "The file id was deleted but its children were "
-                            "not deleted.")
+                                            "The file id was deleted but its children were "
+                                            "not deleted.")
 
     def _apply_insertions(self, adds):
         try:
@@ -1465,7 +1476,7 @@ class DirState(object):
                                     path_utf8=path_utf8)
         except errors.NotVersionedError:
             self._raise_invalid(path_utf8.decode('utf8'), key[2],
-                "Missing parent")
+                                "Missing parent")
 
     def update_basis_by_delta(self, delta, new_revid):
         """Update the parents of this tree after a commit.
@@ -1526,13 +1537,13 @@ class DirState(object):
                     "must be a utf8 file_id not %s" % (type(file_id), ))
             if inv_entry is not None and file_id != inv_entry.file_id:
                 self._raise_invalid(new_path, file_id,
-                    "mismatched entry file_id %r" % inv_entry)
+                                    "mismatched entry file_id %r" % inv_entry)
             if new_path is None:
                 new_path_utf8 = None
             else:
                 if inv_entry is None:
                     self._raise_invalid(new_path, file_id,
-                        "new_path with no entry")
+                                        "new_path with no entry")
                 new_path_utf8 = encode(new_path)
                 # note the parent for validation
                 dirname_utf8, basename_utf8 = osutils.split(new_path_utf8)
@@ -1544,7 +1555,7 @@ class DirState(object):
                 old_path_utf8 = encode(old_path)
             if old_path is None:
                 adds.append((None, new_path_utf8, file_id,
-                    inv_to_entry(inv_entry), True))
+                             inv_to_entry(inv_entry), True))
                 new_ids.add(file_id)
             elif new_path is None:
                 deletes.append((old_path_utf8, None, file_id, None, True))
@@ -1597,7 +1608,8 @@ class DirState(object):
                             raise AssertionError("cannot rename directory to"
                                                  " itself")
                         target_path = source_path[len(old_path_utf8) + 1:]
-                    adds.append((None, target_path, entry[0][2], entry[1][1], False))
+                    adds.append(
+                        (None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))
                 deletes.append(
@@ -1621,7 +1633,7 @@ class DirState(object):
             # want such errors to be shown as InconsistentDelta - and that
             # fits the behaviour we trigger.
             raise errors.InconsistentDeltaDelta(delta,
-                "error from _get_entry. %s" % (e,))
+                                                "error from _get_entry. %s" % (e,))
 
         self._mark_modified(header_modified=True)
         self._id_index = None
@@ -1644,8 +1656,8 @@ class DirState(object):
                     # Different file_id, so not what we want.
                     continue
                 self._raise_invalid((b"%s/%s" % key[0:2]).decode('utf8'), file_id,
-                    "This file_id is new in the delta but already present in "
-                    "the target")
+                                    "This file_id is new in the delta but already present in "
+                                    "the target")
 
     def _raise_invalid(self, path, file_id, reason):
         self._changes_aborted = True
@@ -1684,8 +1696,8 @@ class DirState(object):
                     self._get_block_entry_index(parent_dir, parent_base, 1)
                 if not parent_present:
                     self._raise_invalid(new_path, file_id,
-                        "Unable to find block for this record."
-                        " Was the parent added?")
+                                        "Unable to find block for this record."
+                                        " Was the parent added?")
                 self._ensure_block(parent_block_idx, parent_entry_idx, dirname)
 
             block = self._dirblocks[block_index][1]
@@ -1693,8 +1705,8 @@ class DirState(object):
             if real_add:
                 if old_path is not None:
                     self._raise_invalid(new_path, file_id,
-                        'considered a real add but still had old_path at %s'
-                        % (old_path,))
+                                        'considered a real add but still had old_path at %s'
+                                        % (old_path,))
             if present:
                 entry = block[entry_index]
                 basis_kind = entry[1][1][0]
@@ -1704,14 +1716,14 @@ class DirState(object):
                     raise NotImplementedError()
                 else:
                     self._raise_invalid(new_path, file_id,
-                        "An entry was marked as a new add"
-                        " but the basis target already existed")
+                                        "An entry was marked as a new add"
+                                        " but the basis target already existed")
             else:
                 # The exact key was not found in the block. However, we need to
                 # check if there is a key next to us that would have matched.
                 # We only need to check 2 locations, because there are only 2
                 # trees present.
-                for maybe_index in range(entry_index-1, entry_index+1):
+                for maybe_index in range(entry_index - 1, entry_index + 1):
                     if maybe_index < 0 or maybe_index >= len(block):
                         continue
                     maybe_entry = block[maybe_index]
@@ -1726,9 +1738,9 @@ class DirState(object):
                     basis_kind = maybe_entry[1][1][0]
                     if basis_kind not in (b'a', b'r'):
                         self._raise_invalid(new_path, file_id,
-                            "we have an add record for path, but the path"
-                            " is already present with another file_id %s"
-                            % (maybe_entry[0][2],))
+                                            "we have an add record for path, but the path"
+                                            " is already present with another file_id %s"
+                                            % (maybe_entry[0][2],))
 
                 entry = (entry_key, [DirState.NULL_PARENT_DETAILS,
                                      new_details])
@@ -1761,7 +1773,7 @@ class DirState(object):
                         # which matches the file_id, but is not actually
                         # present. Something seems *really* wrong.
                         self._raise_invalid(new_path, file_id,
-                            "We found a tree0 entry that doesnt make sense")
+                                            "We found a tree0 entry that doesnt make sense")
                     # Now, we've found a tree0 entry which matches the file_id
                     # but is at a different location. So update them to be
                     # rename records.
@@ -1790,7 +1802,7 @@ class DirState(object):
             entry = self._get_entry(1, file_id, new_path)
             if entry[0] is None or entry[1][1][0] in (b'a', b'r'):
                 self._raise_invalid(new_path, file_id,
-                    'changed entry considered not present')
+                                    'changed entry considered not present')
             entry[1][1] = new_details
 
     def _update_basis_apply_deletes(self, deletes):
@@ -1815,13 +1827,13 @@ class DirState(object):
                 self._get_block_entry_index(dirname, basename, 1)
             if not file_present:
                 self._raise_invalid(old_path, file_id,
-                    'basis tree does not contain removed entry')
+                                    'basis tree does not contain removed entry')
             entry = self._dirblocks[block_index][1][entry_index]
             # The state of the entry in the 'active' WT
             active_kind = entry[1][0][0]
             if entry[0][2] != file_id:
                 self._raise_invalid(old_path, file_id,
-                    'mismatched file_id in tree 1')
+                                    'mismatched file_id in tree 1')
             dir_block = ()
             old_kind = entry[1][1][0]
             if active_kind in b'ar':
@@ -1836,11 +1848,11 @@ class DirState(object):
                     active_entry = self._get_entry(0, file_id, active_path)
                     if active_entry[1][1][0] != b'r':
                         self._raise_invalid(old_path, file_id,
-                            "Dirstate did not have matching rename entries")
+                                            "Dirstate did not have matching rename entries")
                     elif active_entry[1][0][0] in b'ar':
                         self._raise_invalid(old_path, file_id,
-                            "Dirstate had a rename pointing at an inactive"
-                            " tree0")
+                                            "Dirstate had a rename pointing at an inactive"
+                                            " tree0")
                     active_entry[1][1] = null
                 del self._dirblocks[block_index][1][entry_index]
                 if old_kind == b'd':
@@ -1867,12 +1879,12 @@ class DirState(object):
                 child_basis_kind = child_entry[1][1][0]
                 if child_basis_kind not in b'ar':
                     self._raise_invalid(old_path, file_id,
-                        "The file id was deleted but its children were "
-                        "not deleted.")
+                                        "The file id was deleted but its children were "
+                                        "not deleted.")
 
     def _after_delta_check_parents(self, parents, index):
         """Check that parents required by the delta are all intact.
-        
+
         :param parents: An iterable of (path_utf8, file_id) tuples which are
             required to be present in tree 'index' at path_utf8 with id file_id
             and be a directory.
@@ -1884,14 +1896,14 @@ class DirState(object):
             entry = self._get_entry(index, file_id, dirname_utf8)
             if entry[1] is None:
                 self._raise_invalid(dirname_utf8.decode('utf8'),
-                    file_id, "This parent is not present.")
+                                    file_id, "This parent is not present.")
             # Parents of things must be directories
             if entry[1][index][0] != b'd':
                 self._raise_invalid(dirname_utf8.decode('utf8'),
-                    file_id, "This parent is not a directory.")
+                                    file_id, "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
-        _stat_to_minikind=_stat_to_minikind):
+                       _stat_to_minikind=_stat_to_minikind):
         """Note the sha1 of a file.
 
         :param entry: The entry the sha1 is for.
@@ -1907,7 +1919,7 @@ class DirState(object):
             if self._cutoff_time is None:
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
-                and stat_value.st_ctime < self._cutoff_time):
+                    and stat_value.st_ctime < self._cutoff_time):
                 entry[1][0] = (b'f', sha1, stat_value.st_size, entry[1][0][3],
                                pack_stat(stat_value))
                 self._mark_modified([entry])
@@ -1973,7 +1985,7 @@ class DirState(object):
     def get_lines(self):
         """Serialise the entire dirstate to a sequence of lines."""
         if (self._header_state == DirState.IN_MEMORY_UNMODIFIED and
-            self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED):
+                self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED):
             # read what's on disk.
             self._state_file.seek(0)
             return self._state_file.readlines()
@@ -2009,7 +2021,7 @@ class DirState(object):
             def fields_to_entry_0_parents(fields, _int=int):
                 path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
-                    ( # Current tree
+                    (  # Current tree
                         fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
@@ -2021,14 +2033,14 @@ class DirState(object):
             def fields_to_entry_1_parent(fields, _int=int):
                 path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
-                    ( # Current tree
+                    (  # Current tree
                         fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
                         fields[6] == b'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     ),
-                    ( # Parent 1
+                    (  # Parent 1
                         fields[8],                # minikind
                         fields[9],                # fingerprint
                         _int(fields[10]),         # size
@@ -2041,21 +2053,21 @@ class DirState(object):
             def fields_to_entry_2_parents(fields, _int=int):
                 path_name_file_id_key = (fields[0], fields[1], fields[2])
                 return (path_name_file_id_key, [
-                    ( # Current tree
+                    (  # Current tree
                         fields[3],                # minikind
                         fields[4],                # fingerprint
                         _int(fields[5]),          # size
                         fields[6] == b'y',         # executable
                         fields[7],                # packed_stat or revision_id
                     ),
-                    ( # Parent 1
+                    (  # Parent 1
                         fields[8],                # minikind
                         fields[9],                # fingerprint
                         _int(fields[10]),         # size
                         fields[11] == b'y',        # executable
                         fields[12],               # packed_stat or revision_id
                     ),
-                    ( # Parent 2
+                    (  # Parent 2
                         fields[13],               # minikind
                         fields[14],               # fingerprint
                         _int(fields[15]),         # size
@@ -2068,11 +2080,11 @@ class DirState(object):
             def fields_to_entry_n_parents(fields, _int=int):
                 path_name_file_id_key = (fields[0], fields[1], fields[2])
                 trees = [(fields[cur],                # minikind
-                          fields[cur+1],              # fingerprint
-                          _int(fields[cur+2]),        # size
-                          fields[cur+3] == b'y',       # executable
-                          fields[cur+4],              # stat or revision_id
-                         ) for cur in range(3, len(fields)-1, 5)]
+                          fields[cur + 1],              # fingerprint
+                          _int(fields[cur + 2]),        # size
+                          fields[cur + 3] == b'y',       # executable
+                          fields[cur + 4],              # stat or revision_id
+                          ) for cur in range(3, len(fields) - 1, 5)]
                 return path_name_file_id_key, trees
             return fields_to_entry_n_parents
 
@@ -2107,7 +2119,7 @@ class DirState(object):
         if not present:
             # no such directory - return the dir index and 0 for the row.
             return block_index, 0, False, False
-        block = self._dirblocks[block_index][1] # access the entries only
+        block = self._dirblocks[block_index][1]  # access the entries only
         entry_index, present = self._find_entry_index(key, block)
         # linear search through entries at this path to find the one
         # requested.
@@ -2142,7 +2154,7 @@ class DirState(object):
         if path_utf8 is not None:
             if not isinstance(path_utf8, bytes):
                 raise errors.BzrError('path_utf8 is not bytes: %s %r'
-                    % (type(path_utf8), path_utf8))
+                                      % (type(path_utf8), path_utf8))
             # path lookups are faster
             dirname, basename = osutils.split(path_utf8)
             block_index, entry_index, dir_present, file_present = \
@@ -2190,13 +2202,13 @@ class DirState(object):
                         return None, None
                     if entry[1][tree_index][0] != b'r':
                         raise AssertionError(
-                            "entry %r has invalid minikind %r for tree %r" \
+                            "entry %r has invalid minikind %r for tree %r"
                             % (entry,
                                entry[1][tree_index][0],
                                tree_index))
                     real_path = entry[1][tree_index][1]
                     return self._get_entry(tree_index, fileid_utf8=fileid_utf8,
-                        path_utf8=real_path)
+                                           path_utf8=real_path)
             return None, None
 
     @classmethod
@@ -2372,11 +2384,11 @@ class DirState(object):
             path lines.
         """
         output_lines = [DirState.HEADER_FORMAT_3]
-        lines.append(b'') # a final newline
+        lines.append(b'')  # a final newline
         inventory_text = b'\0\n\0'.join(lines)
         output_lines.append(b'crc32: %d\n' % (zlib.crc32(inventory_text),))
         # -3, 1 for num parents, 1 for ghosts, 1 for final newline
-        num_entries = len(lines)-3
+        num_entries = len(lines) - 3
         output_lines.append(b'num_entries: %d\n' % (num_entries,))
         output_lines.append(inventory_text)
         return output_lines
@@ -2384,7 +2396,7 @@ class DirState(object):
     def _make_deleted_row(self, fileid_utf8, parents):
         """Return a deleted row for fileid_utf8."""
         return (b'/', b'RECYCLED.BIN', b'file', fileid_utf8, 0, DirState.NULLSTAT,
-            b''), parents
+                b''), parents
 
     def _num_present_parents(self):
         """The number of parent entries in each record row."""
@@ -2501,7 +2513,7 @@ class DirState(object):
             # Should this be a warning? For now, I'm expecting that places that
             # mark it inconsistent will warn, making a warning here redundant.
             trace.mutter('Not saving DirState because '
-                    '_changes_aborted is set.')
+                         '_changes_aborted is set.')
             return
         # TODO: Since we now distinguish IN_MEMORY_MODIFIED from
         #       IN_MEMORY_HASH_MODIFIED, we should only fail quietly if we fail
@@ -2546,7 +2558,7 @@ class DirState(object):
     def _worth_saving(self):
         """Is it worth saving the dirstate or not?"""
         if (self._header_state == DirState.IN_MEMORY_MODIFIED
-            or self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
+                or self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
             return True
         if self._dirblock_state == DirState.IN_MEMORY_HASH_MODIFIED:
             if self._worth_saving_limit == -1:
@@ -2604,7 +2616,7 @@ class DirState(object):
         # mark the old path absent, and insert a new root path
         self._make_absent(entry)
         self.update_minimal((b'', b'', new_id), b'd',
-            path_utf8=b'', packed_stat=entry[1][0][4])
+                            path_utf8=b'', packed_stat=entry[1][0][4])
         self._mark_modified()
 
     def set_parent_trees(self, trees, ghosts):
@@ -2661,7 +2673,7 @@ class DirState(object):
         # one: the current tree
         for entry in self._iter_entries():
             # skip entries not in the current tree
-            if entry[1][0][0] in (b'a', b'r'): # absent, relocated
+            if entry[1][0][0] in (b'a', b'r'):  # absent, relocated
                 continue
             by_path[entry[0]] = [entry[1][0]] + \
                 [DirState.NULL_PARENT_DETAILS] * parent_count
@@ -2677,7 +2689,8 @@ class DirState(object):
             # any fileid in this tree as we set the by_path[id] to:
             # already_processed_tree_details + new_details + new_location_suffix
             # the suffix is from tree_index+1:parent_count+1.
-            new_location_suffix = [DirState.NULL_PARENT_DETAILS] * (parent_count - tree_index)
+            new_location_suffix = [
+                DirState.NULL_PARENT_DETAILS] * (parent_count - tree_index)
             # now stitch in all the entries from this tree
             last_dirname = None
             for path, entry in tree.iter_entries_by_dir():
@@ -2738,7 +2751,8 @@ class DirState(object):
                             if by_path[a_key][lookup_index][0] in (b'r', b'a'):
                                 # its a pointer or missing statement, use it as
                                 # is.
-                                new_details.append(by_path[a_key][lookup_index])
+                                new_details.append(
+                                    by_path[a_key][lookup_index])
                             else:
                                 # we have the right key, make a pointer to it.
                                 real_path = (b'/'.join(a_key[0:2])).strip(b'/')
@@ -2770,6 +2784,7 @@ class DirState(object):
         # Saving time and objects. Also, use StaticTuple to avoid putting all
         # of these object into python's garbage collector.
         split_dirs = {}
+
         def _key(entry, _split_dirs=split_dirs, _st=static_tuple.StaticTuple):
             # sort by: directory parts, file name, file id
             dirpath, fname, file_id = entry[0]
@@ -2791,7 +2806,7 @@ class DirState(object):
         """
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(1,
-                "set_state_from_inventory called; please mutate the tree instead")
+                                  "set_state_from_inventory called; please mutate the tree instead")
         tracing = 'dirstate' in debug.debug_flags
         if tracing:
             trace.mutter("set_state_from_inventory trace:")
@@ -2816,6 +2831,7 @@ class DirState(object):
         # both must have roots so this is safe:
         current_new = next(new_iterator)
         current_old = next(old_iterator)
+
         def advance(iterator):
             try:
                 return next(iterator)
@@ -2853,18 +2869,18 @@ class DirState(object):
                 # old is finished: insert current_new into the state.
                 if tracing:
                     trace.mutter("Appending from new '%s'.",
-                        new_path_utf8.decode('utf8'))
+                                 new_path_utf8.decode('utf8'))
                 self.update_minimal(new_entry_key, current_new_minikind,
-                    executable=current_new[1].executable,
-                    path_utf8=new_path_utf8, fingerprint=fingerprint,
-                    fullscan=True)
+                                    executable=current_new[1].executable,
+                                    path_utf8=new_path_utf8, fingerprint=fingerprint,
+                                    fullscan=True)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
                 if tracing:
                     trace.mutter("Truncating from old '%s/%s'.",
-                        current_old[0][0].decode('utf8'),
-                        current_old[0][1].decode('utf8'))
+                                 current_old[0][0].decode('utf8'),
+                                 current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
@@ -2876,37 +2892,37 @@ class DirState(object):
                 # the minimal required trigger is if the execute bit or cached
                 # kind has changed.
                 if (current_old[1][0][3] != current_new[1].executable or
-                    current_old[1][0][0] != current_new_minikind):
+                        current_old[1][0][0] != current_new_minikind):
                     if tracing:
                         trace.mutter("Updating in-place change '%s'.",
-                            new_path_utf8.decode('utf8'))
+                                     new_path_utf8.decode('utf8'))
                     self.update_minimal(current_old[0], current_new_minikind,
-                        executable=current_new[1].executable,
-                        path_utf8=new_path_utf8, fingerprint=fingerprint,
-                        fullscan=True)
+                                        executable=current_new[1].executable,
+                                        path_utf8=new_path_utf8, fingerprint=fingerprint,
+                                        fullscan=True)
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
             elif (lt_by_dirs(new_dirname, current_old[0][0])
-                  or (new_dirname == current_old[0][0]
-                      and new_entry_key[1:] < current_old[0][1:])):
+                  or (new_dirname == current_old[0][0] and
+                      new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
                 # add a entry for this and advance new
                 if tracing:
                     trace.mutter("Inserting from new '%s'.",
-                        new_path_utf8.decode('utf8'))
+                                 new_path_utf8.decode('utf8'))
                 self.update_minimal(new_entry_key, current_new_minikind,
-                    executable=current_new[1].executable,
-                    path_utf8=new_path_utf8, fingerprint=fingerprint,
-                    fullscan=True)
+                                    executable=current_new[1].executable,
+                                    path_utf8=new_path_utf8, fingerprint=fingerprint,
+                                    fullscan=True)
                 current_new = advance(new_iterator)
             else:
                 # we've advanced past the place where the old key would be,
                 # without seeing it in the new list.  so it must be gone.
                 if tracing:
                     trace.mutter("Deleting from old '%s/%s'.",
-                        current_old[0][0].decode('utf8'),
-                        current_old[0][1].decode('utf8'))
+                                 current_old[0][0].decode('utf8'),
+                                 current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._mark_modified()
@@ -2944,11 +2960,12 @@ class DirState(object):
         all_remaining_keys = set()
         # Dont check the working tree, because it's going.
         for details in current_old[1][1:]:
-            if details[0] not in (b'a', b'r'): # absent, relocated
+            if details[0] not in (b'a', b'r'):  # absent, relocated
                 all_remaining_keys.add(current_old[0])
-            elif details[0] == b'r': # relocated
+            elif details[0] == b'r':  # relocated
                 # record the key for the real path.
-                all_remaining_keys.add(tuple(osutils.split(details[1])) + (current_old[0][2],))
+                all_remaining_keys.add(
+                    tuple(osutils.split(details[1])) + (current_old[0][2],))
             # absent rows are not present at any path.
         last_reference = current_old[0] not in all_remaining_keys
         if last_reference:
@@ -2956,9 +2973,11 @@ class DirState(object):
             # absent), and relocated or absent entries for the other trees:
             # Remove it, its meaningless.
             block = self._find_block(current_old[0])
-            entry_index, present = self._find_entry_index(current_old[0], block[1])
+            entry_index, present = self._find_entry_index(
+                current_old[0], block[1])
             if not present:
-                raise AssertionError('could not find entry for %s' % (current_old,))
+                raise AssertionError(
+                    'could not find entry for %s' % (current_old,))
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
             if self._id_index is not None:
@@ -2971,21 +2990,24 @@ class DirState(object):
             update_block_index, present = \
                 self._find_block_index_from_key(update_key)
             if not present:
-                raise AssertionError('could not find block for %s' % (update_key,))
+                raise AssertionError(
+                    'could not find block for %s' % (update_key,))
             update_entry_index, present = \
-                self._find_entry_index(update_key, self._dirblocks[update_block_index][1])
+                self._find_entry_index(
+                    update_key, self._dirblocks[update_block_index][1])
             if not present:
-                raise AssertionError('could not find entry for %s' % (update_key,))
+                raise AssertionError(
+                    'could not find entry for %s' % (update_key,))
             update_tree_details = self._dirblocks[update_block_index][1][update_entry_index][1]
             # it must not be absent at the moment
-            if update_tree_details[0][0] == b'a': # absent
+            if update_tree_details[0][0] == b'a':  # absent
                 raise AssertionError('bad row %r' % (update_tree_details,))
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
         self._mark_modified()
         return last_reference
 
     def update_minimal(self, key, minikind, executable=False, fingerprint=b'',
-        packed_stat=None, size=0, path_utf8=None, fullscan=False):
+                       packed_stat=None, size=0, path_utf8=None, fullscan=False):
         """Update an entry to the state in tree 0.
 
         This will either create a new entry at 'key' or update an existing one.
@@ -3097,20 +3119,24 @@ class DirState(object):
                     update_block_index, present = \
                         self._find_block_index_from_key(other_key)
                     if not present:
-                        raise AssertionError('could not find block for %s' % (other_key,))
+                        raise AssertionError(
+                            'could not find block for %s' % (other_key,))
                     update_entry_index, present = \
-                        self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
+                        self._find_entry_index(
+                            other_key, self._dirblocks[update_block_index][1])
                     if not present:
-                        raise AssertionError('update_minimal: could not find entry for %s' % (other_key,))
+                        raise AssertionError(
+                            'update_minimal: could not find entry for %s' % (other_key,))
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
-                    if update_details[0] in (b'a', b'r'): # relocated, absent
+                    if update_details[0] in (b'a', b'r'):  # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
                         # it as is.
                         new_entry[1].append(update_details)
                     else:
                         # we have the right key, make a pointer to it.
                         pointer_path = osutils.pathjoin(*other_key[0:2])
-                        new_entry[1].append((b'r', pointer_path, 0, False, b''))
+                        new_entry[1].append(
+                            (b'r', pointer_path, 0, False, b''))
             block.insert(entry_index, new_entry)
             self._add_to_id_index(id_index, key)
         else:
@@ -3130,8 +3156,8 @@ class DirState(object):
             existing_keys = id_index.get(key[2], ())
             if key not in existing_keys:
                 raise AssertionError('We found the entry in the blocks, but'
-                    ' the key is not in the id_index.'
-                    ' key: %s, existing_keys: %s' % (key, existing_keys))
+                                     ' the key is not in the id_index.'
+                                     ' key: %s, existing_keys: %s' % (key, existing_keys))
             for entry_key in existing_keys:
                 # TODO:PROFILING: It might be faster to just update
                 # rather than checking if we need to, and then overwrite
@@ -3141,10 +3167,12 @@ class DirState(object):
                     # other trees, so put absent pointers there
                     # This is the vertical axis in the matrix, all pointing
                     # to the real path.
-                    block_index, present = self._find_block_index_from_key(entry_key)
+                    block_index, present = self._find_block_index_from_key(
+                        entry_key)
                     if not present:
                         raise AssertionError('not present: %r', entry_key)
-                    entry_index, present = self._find_entry_index(entry_key, self._dirblocks[block_index][1])
+                    entry_index, present = self._find_entry_index(
+                        entry_key, self._dirblocks[block_index][1])
                     if not present:
                         raise AssertionError('not present: %r', entry_key)
                     self._dirblocks[block_index][1][entry_index][1][0] = \
@@ -3161,7 +3189,7 @@ class DirState(object):
 
     def _maybe_remove_row(self, block, index, id_index):
         """Remove index if it is absent or relocated across the row.
-        
+
         id_index is updated accordingly.
         :return: True if we removed the row, False otherwise
         """
@@ -3201,20 +3229,20 @@ class DirState(object):
         if len(self._dirblocks) > 0:
             if not self._dirblocks[0][0] == b'':
                 raise AssertionError(
-                    "dirblocks don't start with root block:\n" + \
-                    pformat(self._dirblocks))
+                    "dirblocks don't start with root block:\n"
+                    + pformat(self._dirblocks))
         if len(self._dirblocks) > 1:
             if not self._dirblocks[1][0] == b'':
                 raise AssertionError(
-                    "dirblocks missing root directory:\n" + \
-                    pformat(self._dirblocks))
+                    "dirblocks missing root directory:\n"
+                    + pformat(self._dirblocks))
         # the dirblocks are sorted by their path components, name, and dir id
         dir_names = [d[0].split(b'/')
-                for d in self._dirblocks[1:]]
+                     for d in self._dirblocks[1:]]
         if dir_names != sorted(dir_names):
             raise AssertionError(
-                "dir names are not in sorted order:\n" + \
-                pformat(self._dirblocks) + \
+                "dir names are not in sorted order:\n" +
+                pformat(self._dirblocks) +
                 "\nkeys:\n" +
                 pformat(dir_names))
         for dirblock in self._dirblocks:
@@ -3228,7 +3256,7 @@ class DirState(object):
                         (entry, pformat(dirblock)))
             if dirblock[1] != sorted(dirblock[1]):
                 raise AssertionError(
-                    "dirblock for %r is not sorted:\n%s" % \
+                    "dirblock for %r is not sorted:\n%s" %
                     (dirblock[0], pformat(dirblock)))
 
         def check_valid_parent():
@@ -3268,9 +3296,9 @@ class DirState(object):
             this_path = osutils.pathjoin(entry[0][0], entry[0][1])
             if len(entry[1]) != tree_count:
                 raise AssertionError(
-                "wrong number of entry details for row\n%s" \
-                ",\nexpected %d" % \
-                (pformat(entry), tree_count))
+                    "wrong number of entry details for row\n%s"
+                    ",\nexpected %d" %
+                    (pformat(entry), tree_count))
             absent_positions = 0
             for tree_index, tree_state in enumerate(entry[1]):
                 this_tree_map = id_path_maps[tree_index]
@@ -3285,15 +3313,15 @@ class DirState(object):
                     if minikind == b'a':
                         if previous_path is not None:
                             raise AssertionError(
-                            "file %s is absent in row %r but also present " \
-                            "at %r"% \
-                            (file_id.decode('utf-8'), entry, previous_path))
+                                "file %s is absent in row %r but also present "
+                                "at %r" %
+                                (file_id.decode('utf-8'), entry, previous_path))
                     elif minikind == b'r':
                         target_location = tree_state[1]
                         if previous_path != target_location:
                             raise AssertionError(
-                            "file %s relocation in row %r but also at %r" \
-                            % (file_id, entry, previous_path))
+                                "file %s relocation in row %r but also at %r"
+                                % (file_id, entry, previous_path))
                     else:
                         # a file, directory, etc - may have been previously
                         # pointed to by a relocation, which must point here
@@ -3327,12 +3355,16 @@ class DirState(object):
                             % (file_id, entry_key))
                     # And that from this entry key, we can look up the original
                     # record
-                    block_index, present = self._find_block_index_from_key(entry_key)
+                    block_index, present = self._find_block_index_from_key(
+                        entry_key)
                     if not present:
-                        raise AssertionError('missing block for entry key: %r', entry_key)
-                    entry_index, present = self._find_entry_index(entry_key, self._dirblocks[block_index][1])
+                        raise AssertionError(
+                            'missing block for entry key: %r', entry_key)
+                    entry_index, present = self._find_entry_index(
+                        entry_key, self._dirblocks[block_index][1])
                     if not present:
-                        raise AssertionError('missing entry for key: %r', entry_key)
+                        raise AssertionError(
+                            'missing entry for key: %r', entry_key)
                 if len(entry_keys) != len(set(entry_keys)):
                     raise AssertionError(
                         'id_index contained non-unique data for %s'
@@ -3429,7 +3461,7 @@ def py_update_entry(state, entry, abspath, stat_value,
     if minikind == b'd' and saved_minikind == b't':
         minikind = b't'
     if (minikind == saved_minikind
-        and packed_stat == saved_packed_stat):
+            and packed_stat == saved_packed_stat):
         # The stat hasn't changed since we saved, so we can re-use the
         # saved sha hash.
         if minikind == b'd':
@@ -3445,13 +3477,13 @@ def py_update_entry(state, entry, abspath, stat_value,
     worth_saving = True
     if minikind == b'f':
         executable = state._is_executable(stat_value.st_mode,
-                                         saved_executable)
+                                          saved_executable)
         if state._cutoff_time is None:
             state._sha_cutoff_time()
         if (stat_value.st_mtime < state._cutoff_time
             and stat_value.st_ctime < state._cutoff_time
             and len(entry[1]) > 1
-            and entry[1][1][0] != b'a'):
+                and entry[1][1][0] != b'a'):
             # Could check for size changes for further optimised
             # avoidance of sha1's. However the most prominent case of
             # over-shaing is during initial add, which this catches.
@@ -3475,7 +3507,7 @@ def py_update_entry(state, entry, abspath, stat_value,
             block_index, entry_index, dir_present, file_present = \
                 state._get_block_entry_index(entry[0][0], entry[0][1], 0)
             state._ensure_block(block_index, entry_index,
-                               osutils.pathjoin(entry[0][0], entry[0][1]))
+                                osutils.pathjoin(entry[0][0], entry[0][1]))
         else:
             worth_saving = False
     elif minikind == b'l':
@@ -3485,7 +3517,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         if state._cutoff_time is None:
             state._sha_cutoff_time()
         if (stat_value.st_mtime < state._cutoff_time
-            and stat_value.st_ctime < state._cutoff_time):
+                and stat_value.st_ctime < state._cutoff_time):
             entry[1][0] = (b'l', link_or_sha1, stat_value.st_size,
                            False, packed_stat)
         else:
@@ -3499,15 +3531,15 @@ def py_update_entry(state, entry, abspath, stat_value,
 class ProcessEntryPython(object):
 
     __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id",
-        "last_source_parent", "last_target_parent", "include_unchanged",
-        "partial", "use_filesystem_for_exec", "utf8_decode",
-        "searched_specific_files", "search_specific_files",
-        "searched_exact_paths", "search_specific_file_parents", "seen_ids",
-        "state", "source_index", "target_index", "want_unversioned", "tree"]
+                 "last_source_parent", "last_target_parent", "include_unchanged",
+                 "partial", "use_filesystem_for_exec", "utf8_decode",
+                 "searched_specific_files", "search_specific_files",
+                 "searched_exact_paths", "search_specific_file_parents", "seen_ids",
+                 "state", "source_index", "target_index", "want_unversioned", "tree"]
 
     def __init__(self, include_unchanged, use_filesystem_for_exec,
-        search_specific_files, state, source_index, target_index,
-        want_unversioned, tree):
+                 search_specific_files, state, source_index, target_index,
+                 want_unversioned, tree):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Are we doing a partial iter_changes?
@@ -3546,7 +3578,7 @@ class ProcessEntryPython(object):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
-            the path of entry. If None, then the path is considered absent in 
+            the path of entry. If None, then the path is considered absent in
             the target (Perhaps we should pass in a concrete entry for this ?)
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to
@@ -3573,7 +3605,7 @@ class ProcessEntryPython(object):
             if not (self.target_index == 0):
                 raise AssertionError()
             link_or_sha1 = update_entry(self.state, entry,
-                abspath=path_info[4], stat_value=path_info[3])
+                                        abspath=path_info[4], stat_value=path_info[3])
             # The entry may have been modified by update_entry
             target_details = entry[1][self.target_index]
             target_minikind = target_details[0]
@@ -3599,14 +3631,14 @@ class ProcessEntryPython(object):
                 old_dirname, old_basename = os.path.split(old_path)
                 path = pathjoin(entry[0][0], entry[0][1])
                 old_entry = self.state._get_entry(self.source_index,
-                                             path_utf8=old_path)
+                                                  path_utf8=old_path)
                 # update the source details variable to be the real
                 # location.
                 if old_entry == (None, None):
                     raise DirstateCorrupt(self.state._filename,
-                        "entry '%s/%s' is considered renamed from %r"
-                        " but source does not exist\n"
-                        "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
+                                          "entry '%s/%s' is considered renamed from %r"
+                                          " but source does not exist\n"
+                                          "entry: %s" % (entry[0][0], entry[0][1], old_path, entry))
                 source_details = old_entry[1][self.source_index]
                 source_minikind = source_details[0]
             else:
@@ -3642,9 +3674,9 @@ class ProcessEntryPython(object):
                             # Stat cache miss:
                             statvalue, link_or_sha1 = \
                                 self.state._sha1_provider.stat_and_sha1(
-                                path_info[4])
+                                    path_info[4])
                             self.state._observed_sha1(entry, link_or_sha1,
-                                statvalue)
+                                                      statvalue)
                         content_change = (link_or_sha1 != source_details[1])
                     # Target details is updated at update_entry time
                     if self.use_filesystem_for_exec:
@@ -3681,7 +3713,7 @@ class ProcessEntryPython(object):
                     source_parent_id = self.old_dirname_to_file_id[old_dirname]
                 except KeyError:
                     source_parent_entry = self.state._get_entry(self.source_index,
-                                                           path_utf8=old_dirname)
+                                                                path_utf8=old_dirname)
                     source_parent_id = source_parent_entry[0][2]
                 if source_parent_id == entry[0][2]:
                     # This is the root, so the parent is None
@@ -3699,7 +3731,7 @@ class ProcessEntryPython(object):
                     # TODO: We don't always need to do the lookup, because the
                     #       parent entry will be the same as the source entry.
                     target_parent_entry = self.state._get_entry(self.target_index,
-                                                           path_utf8=new_dirname)
+                                                                path_utf8=new_dirname)
                     if target_parent_entry == (None, None):
                         raise AssertionError(
                             "Could not find target parent in wt: %s\nparent of: %s"
@@ -3714,10 +3746,10 @@ class ProcessEntryPython(object):
 
             source_exec = source_details[3]
             changed = (content_change
-                or source_parent_id != target_parent_id
-                or old_basename != entry[0][1]
-                or source_exec != target_exec
-                )
+                       or source_parent_id != target_parent_id
+                       or old_basename != entry[0][1]
+                       or source_exec != target_exec
+                       )
             if not changed and not self.include_unchanged:
                 return None, False
             else:
@@ -3733,20 +3765,21 @@ class ProcessEntryPython(object):
                         path_u = self.utf8_decode(path)[0]
                 source_kind = DirState._minikind_to_kind[source_minikind]
                 return (entry[0][2],
-                       (old_path_u, path_u),
-                       content_change,
-                       (True, True),
-                       (source_parent_id, target_parent_id),
-                       (self.utf8_decode(old_basename)[0], self.utf8_decode(entry[0][1])[0]),
-                       (source_kind, target_kind),
-                       (source_exec, target_exec)), changed
+                        (old_path_u, path_u),
+                        content_change,
+                        (True, True),
+                        (source_parent_id, target_parent_id),
+                        (self.utf8_decode(old_basename)[
+                         0], self.utf8_decode(entry[0][1])[0]),
+                        (source_kind, target_kind),
+                        (source_exec, target_exec)), changed
         elif source_minikind in b'a' and target_minikind in _fdlt:
             # looks like a new file
             path = pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
             # TODO: these are the same for an entire directory: cache em.
             parent_id = self.state._get_entry(self.target_index,
-                                         path_utf8=entry[0][0])[0][2]
+                                              path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
             if path_info is not None:
@@ -3760,23 +3793,23 @@ class ProcessEntryPython(object):
                 else:
                     target_exec = target_details[3]
                 return (entry[0][2],
-                       (None, self.utf8_decode(path)[0]),
-                       True,
-                       (False, True),
-                       (None, parent_id),
-                       (None, self.utf8_decode(entry[0][1])[0]),
-                       (None, path_info[2]),
-                       (None, target_exec)), True
+                        (None, self.utf8_decode(path)[0]),
+                        True,
+                        (False, True),
+                        (None, parent_id),
+                        (None, self.utf8_decode(entry[0][1])[0]),
+                        (None, path_info[2]),
+                        (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return (entry[0][2],
-                       (None, self.utf8_decode(path)[0]),
-                       False,
-                       (False, True),
-                       (None, parent_id),
-                       (None, self.utf8_decode(entry[0][1])[0]),
-                       (None, None),
-                       (None, False)), True
+                        (None, self.utf8_decode(path)[0]),
+                        False,
+                        (False, True),
+                        (None, parent_id),
+                        (None, self.utf8_decode(entry[0][1])[0]),
+                        (None, None),
+                        (None, False)), True
         elif source_minikind in _fdlt and target_minikind in b'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
@@ -3784,17 +3817,18 @@ class ProcessEntryPython(object):
             # perhaps we should change this - then it would be an unknown.
             old_path = pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
-            parent_id = self.state._get_entry(self.source_index, path_utf8=entry[0][0])[0][2]
+            parent_id = self.state._get_entry(
+                self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
             return (entry[0][2],
-                   (self.utf8_decode(old_path)[0], None),
-                   True,
-                   (True, False),
-                   (parent_id, None),
-                   (self.utf8_decode(entry[0][1])[0], None),
-                   (DirState._minikind_to_kind[source_minikind], None),
-                   (source_details[3], None)), True
+                    (self.utf8_decode(old_path)[0], None),
+                    True,
+                    (True, False),
+                    (parent_id, None),
+                    (self.utf8_decode(entry[0][1])[0], None),
+                    (DirState._minikind_to_kind[source_minikind], None),
+                    (source_details[3], None)), True
         elif source_minikind in _fdlt and target_minikind in b'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
@@ -3810,8 +3844,8 @@ class ProcessEntryPython(object):
             pass
         else:
             raise AssertionError("don't know how to compare "
-                "source_minikind=%r, target_minikind=%r"
-                % (source_minikind, target_minikind))
+                                 "source_minikind=%r, target_minikind=%r"
+                                 % (source_minikind, target_minikind))
         return None, None
 
     def __iter__(self):
@@ -3819,7 +3853,7 @@ class ProcessEntryPython(object):
 
     def _gather_result_for_consistency(self, result):
         """Check a result we will yield to make sure we are consistent later.
-        
+
         This gathers result's parents into a set to output later.
 
         :param result: A result tuple.
@@ -3903,11 +3937,12 @@ class ProcessEntryPython(object):
                     raise
             else:
                 root_dir_info = (b'', current_root,
-                    osutils.file_kind_from_stat_mode(root_stat.st_mode), root_stat,
-                    root_abspath)
+                                 osutils.file_kind_from_stat_mode(
+                                     root_stat.st_mode), root_stat,
+                                 root_abspath)
                 if root_dir_info[2] == 'directory':
                     if self.tree._directory_is_tree_reference(
-                        current_root.decode('utf8')):
+                            current_root.decode('utf8')):
                         root_dir_info = root_dir_info[:2] + \
                             ('tree-reference',) + root_dir_info[3:]
 
@@ -3935,17 +3970,18 @@ class ProcessEntryPython(object):
                        (None, splitpath(current_root_unicode)[-1]),
                        (None, root_dir_info[2]),
                        (None, new_executable)
-                      )
+                       )
             initial_key = (current_root, b'', b'')
             block_index, _ = self.state._find_block_index_from_key(initial_key)
             if block_index == 0:
                 # we have processed the total root already, but because the
                 # initial key matched it we should skip it here.
-                block_index +=1
+                block_index += 1
             if root_dir_info and root_dir_info[2] == 'tree-reference':
                 current_dir_info = None
             else:
-                dir_iterator = osutils._walkdirs_utf8(root_abspath, prefix=current_root)
+                dir_iterator = osutils._walkdirs_utf8(
+                    root_abspath, prefix=current_root)
                 try:
                     current_dir_info = next(dir_iterator)
                 except OSError as e:
@@ -3960,15 +3996,16 @@ class ProcessEntryPython(object):
                     if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
                         current_dir_info = None
                     elif (sys.platform == 'win32'
-                          and (e.errno in win_errors
-                               or e_winerror in win_errors)):
+                          and (e.errno in win_errors or
+                               e_winerror in win_errors)):
                         current_dir_info = None
                     else:
                         raise
                 else:
                     if current_dir_info[0][0] == b'':
                         # remove .bzr from iteration
-                        bzr_index = bisect.bisect_left(current_dir_info[1], (b'.bzr',))
+                        bzr_index = bisect.bisect_left(
+                            current_dir_info[1], (b'.bzr',))
                         if current_dir_info[1][bzr_index][0] != b'.bzr':
                             raise AssertionError()
                         del current_dir_info[1][bzr_index]
@@ -3983,7 +4020,7 @@ class ProcessEntryPython(object):
             while (current_dir_info is not None or
                    current_block is not None):
                 if (current_dir_info and current_block
-                    and current_dir_info[0][0] != current_block[0]):
+                        and current_dir_info[0][0] != current_block[0]):
                     if _lt_by_dirs(current_dir_info[0][0], current_block[0]):
                         # filesystem data refers to paths not covered by the dirblock.
                         # this has two possibilities:
@@ -3996,31 +4033,34 @@ class ProcessEntryPython(object):
                         # recurse into unknown directories.
                         path_index = 0
                         while path_index < len(current_dir_info[1]):
-                                current_path_info = current_dir_info[1][path_index]
-                                if self.want_unversioned:
-                                    if current_path_info[2] == 'directory':
-                                        if self.tree._directory_is_tree_reference(
+                            current_path_info = current_dir_info[1][path_index]
+                            if self.want_unversioned:
+                                if current_path_info[2] == 'directory':
+                                    if self.tree._directory_is_tree_reference(
                                             current_path_info[0].decode('utf8')):
-                                            current_path_info = current_path_info[:2] + \
-                                                ('tree-reference',) + current_path_info[3:]
-                                    new_executable = bool(
-                                        stat.S_ISREG(current_path_info[3].st_mode)
-                                        and stat.S_IEXEC & current_path_info[3].st_mode)
-                                    yield (None,
-                                        (None, utf8_decode(current_path_info[0])[0]),
-                                        True,
-                                        (False, False),
-                                        (None, None),
-                                        (None, utf8_decode(current_path_info[1])[0]),
-                                        (None, current_path_info[2]),
-                                        (None, new_executable))
-                                # dont descend into this unversioned path if it is
-                                # a dir
-                                if current_path_info[2] in ('directory',
-                                                            'tree-reference'):
-                                    del current_dir_info[1][path_index]
-                                    path_index -= 1
-                                path_index += 1
+                                        current_path_info = current_path_info[:2] + \
+                                            ('tree-reference',) + \
+                                            current_path_info[3:]
+                                new_executable = bool(
+                                    stat.S_ISREG(current_path_info[3].st_mode)
+                                    and stat.S_IEXEC & current_path_info[3].st_mode)
+                                yield (None,
+                                       (None, utf8_decode(
+                                           current_path_info[0])[0]),
+                                       True,
+                                       (False, False),
+                                       (None, None),
+                                       (None, utf8_decode(
+                                        current_path_info[1])[0]),
+                                       (None, current_path_info[2]),
+                                       (None, new_executable))
+                            # dont descend into this unversioned path if it is
+                            # a dir
+                            if current_path_info[2] in ('directory',
+                                                        'tree-reference'):
+                                del current_dir_info[1][path_index]
+                                path_index -= 1
+                            path_index += 1
 
                         # This dir info has been handled, go to the next
                         try:
@@ -4038,13 +4078,14 @@ class ProcessEntryPython(object):
                         for current_entry in current_block[1]:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            result, changed = _process_entry(current_entry, None)
+                            result, changed = _process_entry(
+                                current_entry, None)
                             if changed is not None:
                                 if changed:
                                     self._gather_result_for_consistency(result)
                                 if changed or self.include_unchanged:
                                     yield result
-                        block_index +=1
+                        block_index += 1
                         if (block_index < len(self.state._dirblocks) and
                             osutils.is_inside(current_root,
                                               self.state._dirblocks[block_index][0])):
@@ -4063,7 +4104,7 @@ class ProcessEntryPython(object):
                     current_path_info = current_dir_info[1][path_index]
                     if current_path_info[2] == 'directory':
                         if self.tree._directory_is_tree_reference(
-                            current_path_info[0].decode('utf8')):
+                                current_path_info[0].decode('utf8')):
                             current_path_info = current_path_info[:2] + \
                                 ('tree-reference',) + current_path_info[3:]
                 else:
@@ -4071,14 +4112,15 @@ class ProcessEntryPython(object):
                 advance_path = True
                 path_handled = False
                 while (current_entry is not None or
-                    current_path_info is not None):
+                       current_path_info is not None):
                     if current_entry is None:
                         # the check for path_handled when the path is advanced
                         # will yield this path if needed.
                         pass
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
-                        result, changed = _process_entry(current_entry, current_path_info)
+                        result, changed = _process_entry(
+                            current_entry, current_path_info)
                         if changed is not None:
                             if changed:
                                 self._gather_result_for_consistency(result)
@@ -4101,7 +4143,8 @@ class ProcessEntryPython(object):
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            result, changed = _process_entry(current_entry, None)
+                            result, changed = _process_entry(
+                                current_entry, None)
                             if changed is not None:
                                 if changed:
                                     self._gather_result_for_consistency(result)
@@ -4109,7 +4152,8 @@ class ProcessEntryPython(object):
                                     yield result
                             advance_path = False
                     else:
-                        result, changed = _process_entry(current_entry, current_path_info)
+                        result, changed = _process_entry(
+                            current_entry, current_path_info)
                         if changed is not None:
                             path_handled = True
                             if changed:
@@ -4123,7 +4167,7 @@ class ProcessEntryPython(object):
                         else:
                             current_entry = None
                     else:
-                        advance_entry = True # reset the advance flaga
+                        advance_entry = True  # reset the advance flaga
                     if advance_path and current_path_info is not None:
                         if not path_handled:
                             # unversioned in all regards
@@ -4132,18 +4176,20 @@ class ProcessEntryPython(object):
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
                                 try:
-                                    relpath_unicode = utf8_decode(current_path_info[0])[0]
+                                    relpath_unicode = utf8_decode(
+                                        current_path_info[0])[0]
                                 except UnicodeDecodeError:
                                     raise errors.BadFilenameEncoding(
                                         current_path_info[0], osutils._fs_enc)
                                 yield (None,
-                                    (None, relpath_unicode),
-                                    True,
-                                    (False, False),
-                                    (None, None),
-                                    (None, utf8_decode(current_path_info[1])[0]),
-                                    (None, current_path_info[2]),
-                                    (None, new_executable))
+                                       (None, relpath_unicode),
+                                       True,
+                                       (False, False),
+                                       (None, None),
+                                       (None, utf8_decode(
+                                        current_path_info[1])[0]),
+                                       (None, current_path_info[2]),
+                                       (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
                             if current_path_info[2] in ('directory'):
@@ -4159,14 +4205,15 @@ class ProcessEntryPython(object):
                             current_path_info = current_dir_info[1][path_index]
                             if current_path_info[2] == 'directory':
                                 if self.tree._directory_is_tree_reference(
-                                    current_path_info[0].decode('utf8')):
+                                        current_path_info[0].decode('utf8')):
                                     current_path_info = current_path_info[:2] + \
-                                        ('tree-reference',) + current_path_info[3:]
+                                        ('tree-reference',) + \
+                                        current_path_info[3:]
                         else:
                             current_path_info = None
                         path_handled = False
                     else:
-                        advance_path = True # reset the advance flagg.
+                        advance_path = True  # reset the advance flagg.
                 if current_block is not None:
                     block_index += 1
                     if (block_index < len(self.state._dirblocks) and
@@ -4210,7 +4257,7 @@ class ProcessEntryPython(object):
                     selected_entries.append(candidate_entry)
                 # Find entries present in source at this path:
                 elif (self.source_index is not None and
-                    candidate_entry[1][self.source_index][0] not in (b'a', b'r')):
+                      candidate_entry[1][self.source_index][0] not in (b'a', b'r')):
                     found_item = True
                     if candidate_entry[1][self.target_index][0] == b'a':
                         # Deleted, emit it here.
@@ -4223,7 +4270,7 @@ class ProcessEntryPython(object):
             if not found_item:
                 raise AssertionError(
                     "Missing entry for specific path parent %r, %r" % (
-                    path_utf8, path_entries))
+                        path_utf8, path_entries))
             path_info = self._path_info(path_utf8, path_utf8.decode('utf8'))
             for entry in selected_entries:
                 if entry[0][2] in self.seen_ids:
@@ -4233,13 +4280,13 @@ class ProcessEntryPython(object):
                     raise AssertionError(
                         "Got entry<->path mismatch for specific path "
                         "%r entry %r path_info %r " % (
-                        path_utf8, entry, path_info))
+                            path_utf8, entry, path_info))
                 # Only include changes - we're outside the users requested
                 # expansion.
                 if changed:
                     self._gather_result_for_consistency(result)
                     if (result[6][0] == 'directory' and
-                        result[6][1] != 'directory'):
+                            result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if entry[1][self.source_index][0] == b'r':
@@ -4252,12 +4299,12 @@ class ProcessEntryPython(object):
                             initial_key)
                         if block_index == 0:
                             # The children of the root are in block index 1.
-                            block_index +=1
+                            block_index += 1
                         current_block = None
                         if block_index < len(self.state._dirblocks):
                             current_block = self.state._dirblocks[block_index]
                             if not osutils.is_inside(
-                                entry_path_utf8, current_block[0]):
+                                    entry_path_utf8, current_block[0]):
                                 # No entries for this directory at all.
                                 current_block = None
                         if current_block is not None:
@@ -4290,11 +4337,11 @@ class ProcessEntryPython(object):
                 raise
         utf8_basename = utf8_path.rsplit(b'/', 1)[-1]
         dir_info = (utf8_path, utf8_basename,
-            osutils.file_kind_from_stat_mode(stat.st_mode), stat,
-            abspath)
+                    osutils.file_kind_from_stat_mode(stat.st_mode), stat,
+                    abspath)
         if dir_info[2] == 'directory':
             if self.tree._directory_is_tree_reference(
-                unicode_path):
+                    unicode_path):
                 self.root_dir_info = self.root_dir_info[:2] + \
                     ('tree-reference',) + self.root_dir_info[3:]
         return dir_info
