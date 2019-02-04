@@ -19,7 +19,11 @@
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import TestCaseWithInterBranch
 
-from ...errors import FetchLimitUnsupported, NoRoundtrippingSupport
+from ...errors import (
+    FetchDepthUnsupported,
+    FetchLimitUnsupported,
+    NoRoundtrippingSupport,
+)
 from ...revision import NULL_REVISION
 
 
@@ -106,3 +110,34 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.assertEqual(NULL_REVISION, b2.last_revision())
 
         self.assertEqual({rev1, rev2}, b2.repository.has_revisions([rev1, rev2, rev3]))
+
+    def test_fetch_revisions_depth(self):
+        """Test fetch-revision operation."""
+        builder = self.make_branch_builder(
+            "b1", format=self.branch_format_from._matchingcontroldir
+        )
+        builder.start_series()
+        rev1 = builder.build_commit()
+        rev2 = builder.build_commit()
+        rev3 = builder.build_commit()
+        builder.finish_series()
+        b1 = builder.get_branch()
+        b2 = self.make_to_branch("b2")
+        try:
+            b2.fetch(b1, depth=1)
+        except FetchDepthUnsupported as e:
+            raise TestNotApplicable("interbranch does not support fetch depths") from e
+        except NoRoundtrippingSupport as e:
+            raise TestNotApplicable(
+                f"lossless cross-vcs fetch {b1!r} to {b2!r} not supported"
+            ) from e
+
+        self.assertEqual({rev3}, b2.repository.has_revisions([rev1, rev2, rev3]))
+
+        # fetch does not update the last revision
+        self.assertEqual(NULL_REVISION, b2.last_revision())
+
+        # Incrementally fetch one more
+        b2.fetch(b1, depth=2)
+
+        self.assertEqual({rev2, rev3}, b2.repository.has_revisions([rev1, rev2, rev3]))
