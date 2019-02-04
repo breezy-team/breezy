@@ -78,7 +78,7 @@ LAUNCHPAD_BAZAAR_DOMAINS = [
 
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
-    return osutils.pathjoin(config.config_dir(), 'launchpad')
+    return osutils.pathjoin(osutils.cache_dir(), 'launchpad')
 
 
 def parse_launchpadlib_version(version_number):
