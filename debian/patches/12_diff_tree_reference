@@ -1,19 +1,18 @@
-Description: Support diffing tree references.
-Origin: commit, https://github.com/jelmer/breezy,branch=diff-tree-reference, revision: 7133
+Origin: commit, https://github.com/jelmer/breezy,branch=diff-tree-reference, revision: 7135
 Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
-Last-Update: 2018-09-30
-X-Bzr-Revision-Id: jelmer@jelmer.uk-20180930010453-kt7vqf8hkftby2i9
+Last-Update: 2019-02-04
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204175806-0l7t993om14cb2ds
 
 === modified file 'breezy/diff.py'
---- old/breezy/diff.py	2018-07-13 20:57:53 +0000
-+++ new/breezy/diff.py	2018-09-30 01:04:53 +0000
-@@ -568,6 +568,21 @@
-                                      None, new_kind)
+--- old/breezy/diff.py	2018-11-25 21:48:55 +0000
++++ new/breezy/diff.py	2019-02-04 17:58:06 +0000
+@@ -570,6 +570,21 @@
+             self.differs, old_path, new_path, None, new_kind)
  
  
 +class DiffTreeReference(DiffPath):
 +
-+    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
++    def diff(self, old_path, new_path, old_kind, new_kind):
 +        """Perform comparison between two tree references.  (dummy)
 +
 +        """
@@ -28,8 +27,8 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20180930010453-kt7vqf8hkftby2i9
 +
  class DiffDirectory(DiffPath):
  
-     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
-@@ -888,7 +903,8 @@
+     def diff(self, old_path, new_path, old_kind, new_kind):
+@@ -880,7 +895,8 @@
      # list of factories that can provide instances of DiffPath objects
      # may be extended by plugins.
      diff_factories = [DiffSymlink.from_diff_tree,
