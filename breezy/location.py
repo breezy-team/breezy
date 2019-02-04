@@ -48,8 +48,8 @@ def location_to_url(location):
         location = location.encode('ascii')
     except UnicodeError:
         if urlutils.is_url(location):
-            raise urlutils.InvalidURL(path=location,
-                                      extra='URLs must be properly escaped')
+            raise urlutils.InvalidURL(
+                path=location, extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
     else:
         if PY3:
