@@ -4107,6 +4107,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
+        'breezy.tests.test_grep',
         'breezy.tests.test_groupcompress',
         'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
