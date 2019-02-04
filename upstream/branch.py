@@ -282,8 +282,6 @@ class UpstreamBranchSource(UpstreamSource):
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
-            if isinstance(revspec, bytes):
-                revspec = revspec.decode('utf-8')
         else:
             revspec = get_export_upstream_revision(self.config, version=version)
         if revspec is not None:

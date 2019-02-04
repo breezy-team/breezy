@@ -428,7 +428,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
         source = UpstreamBranchSource(self.tree.branch,
-            {"1.0": self.tree.branch.last_revision()})
+            {"1.0": self.tree.branch.last_revision().decode('utf-8')})
         os.mkdir("mydir")
         self.assertEquals(["mydir/foo_1.0.orig.tar.gz"],
             source.fetch_tarballs("foo", "1.0", "mydir"))
@@ -444,7 +444,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
         source = UpstreamBranchSource(self.tree.branch,
-            {"2.1": self.tree.branch.last_revision()})
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')})
         self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
         self.tree.commit("msg")
         self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
@@ -456,7 +456,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             [('user.conf', True), ('default.conf', False)],
             branch=self.tree.branch)
         source = UpstreamBranchSource(self.tree.branch,
-            {"2.1": self.tree.branch.last_revision()},
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             config=config)
         revid2 = self.tree.commit("msg")
         self.assertEquals(revid2,
@@ -470,7 +470,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             [('user.conf', True), ('default.conf', False)],
             branch=self.tree.branch)
         source = UpstreamBranchSource(self.tree.branch,
-            {"2.1": self.tree.branch.last_revision()},
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             config=config)
         revid2 = self.tree.commit("msg")
         self.assertEquals(revid2,
@@ -517,7 +517,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
         source = LazyUpstreamBranchSource(self.tree.branch.base,
-            {"1.0": self.tree.branch.last_revision()})
+            {"1.0": self.tree.branch.last_revision().decode('utf-8')})
         self.assertIs(None, source._upstream_branch)
         os.mkdir("mydir")
         self.assertEquals(["mydir/foo_1.0.orig.tar.gz"],
@@ -551,7 +551,7 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
             [('user.conf', True), ('default.conf', False)],
             branch=self.tree.branch)
         source = LazyUpstreamBranchSource(self.tree.branch.base,
-            {"2.1": self.tree.branch.last_revision()},
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')},
             config=config)
         self.assertIs(None, source._upstream_branch)
         revid2 = self.tree.commit("msg")
