@@ -134,6 +134,10 @@ New Features
  * Plugins can now be registered using the 'entrypoints' mechanism in
    setuptools. (Jelmer Vernooĳ, #1802647)
 
+ * The Breezy UI now handles RCP-style URLs and suggests the
+   user specify either ``git+ssh`` or ``bzr+ssh``.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 

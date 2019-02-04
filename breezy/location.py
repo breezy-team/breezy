@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import
 
+import re
+
 from . import (
     urlutils,
     )
@@ -26,6 +28,28 @@ from .sixish import (
     PY3,
     string_types,
     )
+
+
+def rcp_location_to_url(location, scheme='ssh'):
+    """Convert a rcp-style location to a URL.
+
+    :param location: Location to convert, e.g. "foo:bar"
+    :param schenme: URL scheme to return, defaults to "ssh"
+    :return: A URL, e.g. "ssh://foo/bar"
+    :raises ValueError: if this is not a RCP-style URL
+    """
+    m = re.match('^(?P<user>[^@:/]+@)?(?P<host>[^/:]+):(?P<path>.*)$', location)
+    if not m:
+        raise ValueError("Not a RCP URL")
+    if m.group('path').startswith('//'):
+        raise ValueError("Not a RCP URL: already looks like a URL")
+    quoted_user = urlutils.quote(m.group('user')[:-1]) if m.group('user') else None
+    url = urlutils.URL(
+        scheme=scheme, quoted_user=quoted_user,
+        port=None, quoted_password=None,
+        quoted_host=urlutils.quote(m.group('host')),
+        quoted_path=urlutils.quote(m.group('path')))
+    return str(url)
 
 
 def location_to_url(location):
@@ -58,7 +82,14 @@ def location_to_url(location):
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])
 
-    if not urlutils.is_url(location):
-        return urlutils.local_path_to_url(location)
+    try:
+        url = rcp_location_to_url(location, scheme="ssh")
+    except ValueError:
+        pass
+    else:
+        return url
 
-    return location
+    if urlutils.is_url(location):
+        return location
+
+    return urlutils.local_path_to_url(location)
