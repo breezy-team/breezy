@@ -2633,7 +2633,7 @@ def cache_dir():
             cache_dir = cache_dir.encode(_fs_enc)
 
     if cache_dir is None:
-        cache_dir = os.path.expanduser('~/.cache')
+        cache_dir = os.path.expanduser('~/.cache/breezy')
 
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
