@@ -572,7 +572,7 @@ class DiffKindChange(object):
 
 class DiffTreeReference(DiffPath):
 
-    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+    def diff(self, old_path, new_path, old_kind, new_kind):
         """Perform comparison between two tree references.  (dummy)
 
         """
