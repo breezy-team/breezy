@@ -6919,7 +6919,7 @@ class cmd_grep(Command):
                 'cannot specify both '
                 '-l/--files-with-matches and -L/--files-without-matches.')
 
-        global_config = GlobalConfig()
+        global_config = _mod_config.GlobalConfig()
 
         if color is None:
             color = global_config.get_user_option('grep_color')
@@ -6968,7 +6968,7 @@ class cmd_grep(Command):
         elif color == 'auto':
             show_color = _termcolor.allow_color()
 
-        opts = GrepOptions()
+        opts = grep.GrepOptions()
 
         opts.verbose = verbose
         opts.ignore_case = ignore_case
