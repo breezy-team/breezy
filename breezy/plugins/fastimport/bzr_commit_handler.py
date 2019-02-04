@@ -25,6 +25,7 @@ from ... import (
     revision,
     )
 from ...bzr import (
+    generate_ids,
     inventory,
     serializer,
     )

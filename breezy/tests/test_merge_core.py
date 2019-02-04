@@ -21,7 +21,6 @@ import breezy
 from .. import (
     controldir,
     errors,
-    generate_ids,
     merge_directive,
     osutils,
     )
@@ -35,6 +34,9 @@ from ..merge import (
     Diff3Merger,
     WeaveMerger,
     Merger,
+    )
+from ..bzr import (
+    generate_ids,
     )
 from ..osutils import getcwd, pathjoin
 from ..transform import TreeTransform
