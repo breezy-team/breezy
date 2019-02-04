@@ -6883,14 +6883,14 @@ class cmd_grep(Command):
                help='Search for pattern starting from the root of the branch. '
                '(implies --recursive)'),
         Option('ignore-case', short_name='i',
-               help='ignore case distinctions while matching.'),
+               help='Ignore case distinctions while matching.'),
         Option('levels',
                help='Number of levels to display - 0 for all, 1 for collapsed '
                '(1 is default).',
                argname='N',
                type=_parse_levels),
         Option('line-number', short_name='n',
-               help='show 1-based line number.'),
+               help='Show 1-based line number.'),
         Option('no-recursive',
                help="Don't recurse into subdirectories. (default is --recursive)"),
         Option('null', short_name='Z',
