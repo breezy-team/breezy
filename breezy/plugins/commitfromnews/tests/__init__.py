@@ -18,12 +18,12 @@
 
 from __future__ import absolute_import
 
+
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_committemplate',
         'test_msgeditor',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests
-

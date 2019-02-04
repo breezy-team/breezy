@@ -40,7 +40,6 @@ class _FastimportFeature(Feature):
 FastimportFeature = _FastimportFeature()
 
 
-
 def test_suite():
     module_names = [__name__ + '.' + x for x in [
         'test_commands',

@@ -57,8 +57,8 @@ As an example, consider a separate backup server that stores backups in
 ::
 
   $ cd /var/backup
-  $ bzr branch bzr+ssh://server.example.com/srv/bzr/trunk
-  $ bzr branch bzr+ssh://server.example.com/srv/bzr/feature-gui
+  $ brz branch bzr+ssh://server.example.com/srv/bzr/trunk
+  $ brz branch bzr+ssh://server.example.com/srv/bzr/feature-gui
 
 to create the branches on the backup server.  Then, we could regularly (for
 example from ``cron``) do
@@ -66,28 +66,12 @@ example from ``cron``) do
 ::
 
   $ cd /var/backup/trunk
-  $ bzr pull  # the location to pull from is remembered
+  $ brz pull  # the location to pull from is remembered
   $ cd ../var/backup/feature-gui
-  $ bzr pull  # again, the parent location is remembered
+  $ brz pull  # again, the parent location is remembered
 
 The action of pulling from the parent for all branches in some directory is
-common enough that there is a plugin to do it.  The `bzrtools`_ plugin
-contains a ``multi-pull`` command that does a ``pull`` in all branches under a
-specified directory.
-
-.. _bzrtools: http://launchpad.net/bzrtools
-
-With this plugin installed, the above periodically run commands would be
-
-::
-
-  $ cd /var/backup
-  $ bzr multi-pull
-
-Note that ``multi-pull`` does a pull in *every* branch in the specified
-directory (the current directory by default) and care should be taken that
-this is the desired effect.  A simple script could also substitute for the
-multi-pull command while also offering greater flexibility.
+common enough that there is a plugin to do it.
 
 Bound Branch Backups
 ~~~~~~~~~~~~~~~~~~~~
@@ -108,18 +92,18 @@ easily have used ``bzr branch`` from the backup server)
 ::
 
   $ cd /srv/bzr/projectx/trunk
-  $ bzr push bzr+ssh://backup.example.com/var/backup/trunk
+  $ brz push bzr+ssh://backup.example.com/var/backup/trunk
   $ cd ../feature-gui
-  $ bzr push bzr+ssh://backup.example.com/var/backup/feature-gui
+  $ brz push bzr+ssh://backup.example.com/var/backup/feature-gui
 
 and then we need to bind the main branches to their backups
 
 ::
 
   $ cd ../trunk
-  $ bzr bind bzr+ssh://backup.example.com/var/backup/trunk
+  $ brz bind bzr+ssh://backup.example.com/var/backup/trunk
   $ cd ../feature-gui
-  $ bzr bind bzr+ssh://backup.example.com/var/backup/feature-gui
+  $ brz bind bzr+ssh://backup.example.com/var/backup/feature-gui
 
 A branch can only be bound to a single location, so multiple backups cannot
 be created using this method.  
@@ -197,8 +181,8 @@ appropriate location::
   $ cd /srv
   $ mv bzr bzr.old
   $ cd bzr
-  $ bzr branch bzr+ssh://backup.example.com/var/backup/trunk
-  $ bzr branch bzr+ssh://backup.example.com/var/backup/feature-gui
+  $ brz branch bzr+ssh://backup.example.com/var/backup/trunk
+  $ brz branch bzr+ssh://backup.example.com/var/backup/feature-gui
 
 If there are multiple backups, then change the URL above to restore from the
 other backups.  

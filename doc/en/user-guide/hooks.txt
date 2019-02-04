@@ -33,7 +33,7 @@ an example::
     branch.Branch.hooks.install_named_hook('post_push', post_push_hook,
                                      'My post_push hook')
 
-.. _write a plugin: http://doc.bazaar.canonical.com/plugins/en/plugin-development.html
+.. _write a plugin: ../../developers/plugin-development.html
 
 To use this example, create a file named ``push_hook.py``, and stick it in
 ``plugins`` subdirectory of your configuration directory.  (If you have never

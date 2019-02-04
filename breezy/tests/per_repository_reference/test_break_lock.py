@@ -36,7 +36,7 @@ class TestBreakLock(TestCaseWithExternalReferenceRepository):
         # break_lock when locked should
         repo.lock_write()
         self.assertEqual(repo.get_physical_lock_status(),
-            unused_repo.get_physical_lock_status())
+                         unused_repo.get_physical_lock_status())
         if not unused_repo.get_physical_lock_status():
             # 'lock_write' has not taken a physical mutex out.
             repo.unlock()

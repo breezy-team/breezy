@@ -24,7 +24,7 @@ from breezy import (
     tests,
     )
 from breezy.controldir import ControlDir
-from breezy.testament import Testament
+from breezy.bzr.testament import Testament
 
 
 class ReSign(tests.TestCaseInTempDir):
@@ -55,7 +55,7 @@ class ReSign(tests.TestCaseInTempDir):
             repo.get_signature_text(revision_id))
 
     def test_resign(self):
-        #Test re signing of data.
+        # Test re signing of data.
         wt = self.setup_tree()
         repo = wt.branch.repository
 

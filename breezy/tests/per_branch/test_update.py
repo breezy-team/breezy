@@ -64,7 +64,8 @@ class TestUpdate(per_branch.TestCaseWithBranch):
             # old branch, cant test.
             return
         # commit to the child to make the last rev not-None and skew it from master.
-        child_tree.commit('foo', rev_id=b'foo', allow_pointless=True, local=True)
+        child_tree.commit('foo', rev_id=b'foo',
+                          allow_pointless=True, local=True)
         # commit to the master making the child tree out of date and not a prefix.
         master_tree.commit('bar', rev_id=b'bar', allow_pointless=True)
         self.assertEqual(b'foo', child_tree.branch.update())
@@ -78,7 +79,7 @@ class TestUpdate(per_branch.TestCaseWithBranch):
         except errors.TagsNotSupported:
             # Tags not supported
             raise tests.TestNotApplicable("only triggered from branches with"
-                " tags")
+                                          " tags")
         readonly_branch1 = branch.Branch.open('readonly+' + tree1.branch.base)
         tree2 = tree1.controldir.sprout('tree2').open_workingtree()
         try:

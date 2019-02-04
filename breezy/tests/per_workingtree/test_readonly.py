@@ -104,13 +104,10 @@ class TestReadonly(TestCaseWithWorkingTree):
         # Make it readonly, and do some operations and then unlock
         self.set_dirs_readonly('tree')
 
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             if hack_dirstate:
                 tree._dirstate._cutoff_time = self._custom_cutoff_time()
             # Make sure we check all the files
             for path in tree.all_versioned_paths():
                 size = tree.get_file_size(path)
                 sha1 = tree.get_file_sha1(path)
-        finally:
-            tree.unlock()

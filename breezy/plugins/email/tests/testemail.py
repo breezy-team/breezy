@@ -30,51 +30,51 @@ def test_suite():
     return TestLoader().loadTestsFromName(__name__)
 
 
-sample_config=(b"[DEFAULT]\n"
-               b"post_commit_to=demo@example.com\n"
-               b"post_commit_sender=Sample <foo@example.com>\n"
-               b"revision_mail_headers=X-Cheese: to the rescue!\n")
-
-unconfigured_config=(b"[DEFAULT]\n"
-                     b"email=Robert <foo@example.com>\n")
-
-sender_configured_config=(b"[DEFAULT]\n"
-                          b"post_commit_sender=Sample <foo@example.com>\n")
-
-to_configured_config=(b"[DEFAULT]\n"
-                      b"post_commit_to=Sample <foo@example.com>\n")
-
-multiple_to_configured_config=(b"[DEFAULT]\n"
-              b"post_commit_sender=Sender <from@example.com>\n"
-              b"post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
-
-customized_mail_config=(b"[DEFAULT]\n"
-                        b"post_commit_to=demo@example.com\n"
-                        b"post_commit_sender=Sample <foo@example.com>\n"
-                        b"post_commit_subject=[commit] $message\n"
-                        b"post_commit_body='''$committer has committed "
-                            b"revision 1 at $url.\n\n'''\n")
-
-push_config=(b"[DEFAULT]\n"
-    b"post_commit_to=demo@example.com\n"
-    b"post_commit_push_pull=True\n")
-
-with_url_config=(b"[DEFAULT]\n"
-                 b"post_commit_url=http://some.fake/url/\n"
+sample_config = (b"[DEFAULT]\n"
                  b"post_commit_to=demo@example.com\n"
-                 b"post_commit_sender=Sample <foo@example.com>\n")
+                 b"post_commit_sender=Sample <foo@example.com>\n"
+                 b"revision_mail_headers=X-Cheese: to the rescue!\n")
+
+unconfigured_config = (b"[DEFAULT]\n"
+                       b"email=Robert <foo@example.com>\n")
+
+sender_configured_config = (b"[DEFAULT]\n"
+                            b"post_commit_sender=Sample <foo@example.com>\n")
+
+to_configured_config = (b"[DEFAULT]\n"
+                        b"post_commit_to=Sample <foo@example.com>\n")
+
+multiple_to_configured_config = (b"[DEFAULT]\n"
+                                 b"post_commit_sender=Sender <from@example.com>\n"
+                                 b"post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
+
+customized_mail_config = (b"[DEFAULT]\n"
+                          b"post_commit_to=demo@example.com\n"
+                          b"post_commit_sender=Sample <foo@example.com>\n"
+                          b"post_commit_subject=[commit] $message\n"
+                          b"post_commit_body='''$committer has committed "
+                          b"revision 1 at $url.\n\n'''\n")
+
+push_config = (b"[DEFAULT]\n"
+               b"post_commit_to=demo@example.com\n"
+               b"post_commit_push_pull=True\n")
+
+with_url_config = (b"[DEFAULT]\n"
+                   b"post_commit_url=http://some.fake/url/\n"
+                   b"post_commit_to=demo@example.com\n"
+                   b"post_commit_sender=Sample <foo@example.com>\n")
 
 # FIXME: this should not use a literal log, rather grab one from breezy.log
-sample_log=('------------------------------------------------------------\n'
-            'revno: 1\n'
-            'revision-id: A\n'
-            'committer: Sample <john@example.com>\n'
-            'branch nick: work\n'
-            'timestamp: Thu 1970-01-01 00:00:01 +0000\n'
-            'message:\n'
-            '  foo bar baz\n'
-            '  fuzzy\n'
-            '  wuzzy\n')
+sample_log = ('------------------------------------------------------------\n'
+              'revno: 1\n'
+              'revision-id: A\n'
+              'committer: Sample <john@example.com>\n'
+              'branch nick: work\n'
+              'timestamp: Thu 1970-01-01 00:00:01 +0000\n'
+              'message:\n'
+              '  foo bar baz\n'
+              '  fuzzy\n'
+              '  wuzzy\n')
 
 
 class TestGetTo(TestCaseInTempDir):
@@ -87,8 +87,8 @@ class TestGetTo(TestCaseInTempDir):
     def test_custom_body(self):
         sender = self.get_sender(customized_mail_config)
         self.assertEqual('%s has committed revision 1 at %s.\n\n%s' %
-            (sender.revision.committer, sender.url(), sample_log),
-             sender.body())
+                         (sender.revision.committer, sender.url(), sample_log),
+                         sender.body())
 
     def test_command_line(self):
         sender = self.get_sender()
@@ -136,15 +136,15 @@ class TestGetTo(TestCaseInTempDir):
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
     def test_public_url_set(self):
-        config=(b"[DEFAULT]\n"
-                b"public_branch=http://the.publication/location/\n")
+        config = (b"[DEFAULT]\n"
+                  b"public_branch=http://the.publication/location/\n")
         sender = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://the.publication/location/')
 
     def test_url_precedence(self):
-        config=(b"[DEFAULT]\n"
-                b"post_commit_url=http://some.fake/url/\n"
-                b"public_branch=http://the.publication/location/\n")
+        config = (b"[DEFAULT]\n"
+                  b"post_commit_url=http://some.fake/url/\n"
+                  b"public_branch=http://the.publication/location/\n")
         sender = self.get_sender(config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
@@ -155,13 +155,13 @@ class TestGetTo(TestCaseInTempDir):
     def test_subject(self):
         sender = self.get_sender()
         self.assertEqual("Rev 1: foo bar baz in %s" %
-                            sender.branch.base,
+                         sender.branch.base,
                          sender.subject())
 
     def test_custom_subject(self):
         sender = self.get_sender(customized_mail_config)
         self.assertEqual("[commit] %s" %
-                            sender.revision.get_summary(),
+                         sender.revision.get_summary(),
                          sender.subject())
 
     def test_diff_filename(self):
@@ -170,18 +170,19 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_headers(self):
         sender = self.get_sender()
-        self.assertEqual({'X-Cheese': 'to the rescue!'}, sender.extra_headers())
+        self.assertEqual({'X-Cheese': 'to the rescue!'},
+                         sender.extra_headers())
 
     def get_sender(self, text=sample_config):
         my_config = config.MemoryStack(text)
         self.branch = BzrDir.create_branch_convenience('.')
         tree = self.branch.controldir.open_workingtree()
         tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id=b'A',
-            allow_pointless=True,
-            timestamp=1,
-            timezone=0,
-            committer="Sample <john@example.com>",
-            )
+                    allow_pointless=True,
+                    timestamp=1,
+                    timezone=0,
+                    committer="Sample <john@example.com>",
+                    )
         sender = EmailSender(self.branch, b'A', my_config)
         # This is usually only done after the EmailSender has locked the branch
         # and repository during send(), however, for testing, we need to do it

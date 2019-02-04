@@ -96,7 +96,7 @@ set up to run at regular intervals, for example from ``cron``.)
 
 ::
 
-  $ bzr_hookless_email.py --email=projectx-commits@example.com \
+  $ brz_hookless_email.py --email=projectx-commits@example.com \
   --recurse /srv/bzr
 
 email-notifier
@@ -143,7 +143,7 @@ If this file is stored as ``/srv/bzr/email-notifier.conf``, then the command
 
 ::
  
-  $ bzr-email-notifier.py --config=/srv/bzr/email-notifier.conf /srv/bzr/projectx
+  $ brz-email-notifier.py --config=/srv/bzr/email-notifier.conf /srv/bzr/projectx
 
 will watch all branches under the given directory for commits, branch
 creations and branch deletions.

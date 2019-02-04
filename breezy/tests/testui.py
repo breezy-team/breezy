@@ -26,7 +26,7 @@ from .. import (
 
 class ProgressRecordingUIFactory(ui.UIFactory, progress.DummyProgress):
     """Captures progress updates made through it.
-    
+
     This is overloaded as both the UIFactory and the progress model."""
 
     def __init__(self):

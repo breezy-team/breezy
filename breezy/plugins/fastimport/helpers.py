@@ -54,7 +54,7 @@ def best_format_for_objects_in_a_repository(repo):
     """
     # Based on code from breezy/info.py ...
     repo_format = repo._format
-    candidates  = []
+    candidates = []
     non_aliases = set(controldir.format_registry.keys())
     non_aliases.difference_update(controldir.format_registry.aliases())
     for key in non_aliases:
@@ -97,13 +97,13 @@ def open_destination_directory(location, format=None, verbose=True):
         contents = os.listdir(location)
         if contents:
             errors.BzrCommandError("Destination must have a .bzr directory, "
-                " not yet exist or be empty - files found in %s" % (location,))
+                                   " not yet exist or be empty - files found in %s" % (location,))
     else:
         try:
             os.mkdir(location)
         except IOError as ex:
             errors.BzrCommandError("Unable to create %s: %s" %
-                (location, ex))
+                                   (location, ex))
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")
@@ -121,9 +121,9 @@ def open_destination_directory(location, format=None, verbose=True):
 
 def kind_to_mode(kind, executable):
     if kind == "file":
-        if executable == True:
+        if executable is True:
             return stat.S_IFREG | 0o755
-        elif executable == False:
+        elif executable is False:
             return stat.S_IFREG | 0o644
         else:
             raise AssertionError("Executable %r invalid" % executable)

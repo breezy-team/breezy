@@ -34,7 +34,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         super(TestUncommitHook, self).setUp()
 
     def capture_post_uncommit_hook(self, local, master, old_revno,
-        old_revid, new_revno, new_revid):
+                                   old_revid, new_revno, new_revid):
         """Capture post uncommit hook calls to self.hook_calls.
 
         The call is logged, as is some state of the two branches.
@@ -56,7 +56,7 @@ class TestUncommitHook(per_branch.TestCaseWithBranch):
         revid = tree.commit('a revision')
         tree.unlock()
         branch.Branch.hooks.install_named_hook('post_uncommit',
-            self.capture_post_uncommit_hook, None)
+                                               self.capture_post_uncommit_hook, None)
         uncommit.uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
