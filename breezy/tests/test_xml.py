@@ -500,6 +500,13 @@ class TestSerializer(TestCase):
 
         self.assertEqual(len(expected), len(actual))
 
+    def test_serialization_error(self):
+        s_v5 = breezy.bzr.xml5.serializer_v5
+        e = self.assertRaises(
+            errors.UnexpectedInventoryFormat,
+            s_v5.read_inventory_from_string, b"<Notquitexml")
+        self.assertEqual(str(e), "unclosed token: line 1, column 0")
+
 
 class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
