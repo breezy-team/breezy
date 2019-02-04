@@ -22,17 +22,37 @@ import socket
 try:
     from urllib.parse import urlsplit, urlunsplit
 except ImportError:
-    from urlparse import urlsplit, urlunsplit
+    from urlparse import urlsplit, urlunsplit  # noqa: F401
 import urllib
-import xmlrpclib
+try:
+    from xmlrpc.client import (
+        __version__ as xmlrpc_version,
+        Fault,
+        ProtocolError,
+        ServerProxy,
+        Transport,
+        )
+except ImportError:  # python < 3
+    from xmlrpclib import (
+        __version__ as xmlrpc_version,
+        Fault,
+        ProtocolError,
+        Transport,
+        ServerProxy,
+        )
 
 from ... import (
-    config,
     errors,
     urlutils,
     __version__ as _breezy_version,
     )
 from ...transport.http import _urllib2_wrappers
+
+from .lp_api import (
+    DEFAULT_INSTANCE,
+    LAUNCHPAD_DOMAINS,
+    LAUNCHPAD_BAZAAR_DOMAINS,
+    )
 
 
 # for testing, do
@@ -62,10 +82,10 @@ class NotLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, url=url)
 
 
-class XMLRPCTransport(xmlrpclib.Transport):
+class XMLRPCTransport(Transport):
 
     def __init__(self, scheme):
-        xmlrpclib.Transport.__init__(self)
+        Transport.__init__(self)
         self._scheme = scheme
         self._opener = _urllib2_wrappers.Opener()
         self.verbose = 0
@@ -79,8 +99,8 @@ class XMLRPCTransport(xmlrpclib.Transport):
 
         response = self._opener.open(request)
         if response.code != 200:
-            raise xmlrpclib.ProtocolError(host + handler, response.code,
-                                          response.msg, response.info())
+            raise ProtocolError(host + handler, response.code,
+                                response.msg, response.info())
         return self.parse_response(response)
 
 
@@ -91,38 +111,26 @@ class LaunchpadService(object):
     can call.
     """
 
-    LAUNCHPAD_DOMAINS = {
-        'production': 'launchpad.net',
-        'staging': 'staging.launchpad.net',
-        'qastaging': 'qastaging.launchpad.net',
-        'demo': 'demo.launchpad.net',
-        'dev': 'launchpad.dev',
-        }
-
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     LAUNCHPAD_INSTANCE = {}
     for instance, domain in LAUNCHPAD_DOMAINS.items():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
-    # We use production as the default because edge has been deprecated circa
-    # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-    DEFAULT_INSTANCE = 'production'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None
     registrant_email = None
     registrant_password = None
 
-
     def __init__(self, transport=None, lp_instance=None):
         """Construct a new service talking to the launchpad rpc server"""
         self._lp_instance = lp_instance
         if transport is None:
-            uri_type = urllib.splittype(self.service_url)[0]
+            uri_type = urlutils.parse_url(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
-            transport.user_agent = 'Breezy/%s (xmlrpclib/%s)' \
-                    % (_breezy_version, xmlrpclib.__version__)
+            transport.user_agent = 'Breezy/%s (xmlrpc/%s)' \
+                % (_breezy_version, xmlrpc_version)
         self.transport = transport
 
     @property
@@ -156,26 +164,26 @@ class LaunchpadService(object):
     def get_proxy(self):
         """Return the proxy for XMLRPC requests."""
         url = self.service_url
-        return xmlrpclib.ServerProxy(url, transport=self.transport)
+        return ServerProxy(url, transport=self.transport)
 
     def send_request(self, method_name, method_params):
         proxy = self.get_proxy()
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
-        except xmlrpclib.ProtocolError as e:
+        except ProtocolError as e:
             if e.errcode == 301:
                 # TODO: This can give a ProtocolError representing a 301 error, whose
                 # e.headers['location'] tells where to go and e.errcode==301; should
                 # probably log something and retry on the new url.
                 raise NotImplementedError("should resend request to %s, but this isn't implemented"
-                        % e.headers.get('Location', 'NO-LOCATION-PRESENT'))
+                                          % e.headers.get('Location', 'NO-LOCATION-PRESENT'))
             else:
                 # we don't want to print the original message because its
                 # str representation includes the plaintext password.
                 # TODO: print more headers to help in tracking down failures
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
-                        % (self.service_url, e.errcode, e.errmsg))
+                                      % (self.service_url, e.errcode, e.errmsg))
         except socket.gaierror as e:
             raise errors.ConnectionError(
                 "Could not resolve '%s'" % self.domain,
@@ -185,10 +193,10 @@ class LaunchpadService(object):
     @property
     def domain(self):
         if self._lp_instance is None:
-            instance = self.DEFAULT_INSTANCE
+            instance = DEFAULT_INSTANCE
         else:
             instance = self._lp_instance
-        return self.LAUNCHPAD_DOMAINS[instance]
+        return LAUNCHPAD_DOMAINS[instance]
 
     def _guess_branch_path(self, branch_url, _request_factory=None):
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
@@ -198,15 +206,12 @@ class LaunchpadService(object):
             resolve = _request_factory(path)
             try:
                 result = resolve.submit(self)
-            except xmlrpclib.Fault as fault:
+            except Fault as fault:
                 raise InvalidURL(branch_url, str(fault))
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]
         else:
-            domains = (
-                'bazaar.%s' % domain
-                for domain in self.LAUNCHPAD_DOMAINS.values())
-            if hostinfo not in domains:
+            if hostinfo not in LAUNCHPAD_BAZAAR_DOMAINS:
                 raise NotLaunchpadBranch(branch_url)
         return path.lstrip('/')
 

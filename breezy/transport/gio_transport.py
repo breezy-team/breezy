@@ -26,6 +26,7 @@ supported by gio.
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import os
 import random
 import stat
@@ -50,7 +51,7 @@ from .. import (
     ui,
     )
 from ..sixish import (
-    BytesIO,
+    text_type,
     )
 from ..trace import mutter
 from . import (
@@ -102,10 +103,10 @@ class GioFileStream(FileStream):
 
     def write(self, bytes):
         try:
-            #Using pump_string_file seems to make things crash
+            # Using pump_string_file seems to make things crash
             osutils.pumpfile(BytesIO(bytes), self.stream)
         except gio.Error as e:
-            #self.transport._translate_gio_error(e,self.relpath)
+            # self.transport._translate_gio_error(e,self.relpath)
             raise errors.BzrError(str(e))
 
 
@@ -131,29 +132,29 @@ class GioTransport(ConnectedTransport):
             raise ValueError(base)
 
         (scheme, netloc, path, params, query, fragment) = \
-                urlparse(base[len('gio+'):], allow_fragments=False)
+            urlparse(base[len('gio+'):], allow_fragments=False)
         if '@' in netloc:
             user, netloc = netloc.rsplit('@', 1)
-        #Seems it is not possible to list supported backends for GIO
-        #so a hardcoded list it is then.
+        # Seems it is not possible to list supported backends for GIO
+        # so a hardcoded list it is then.
         gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
         if scheme not in gio_backends:
             raise urlutils.InvalidURL(base,
-                    extra="GIO support is only available for " + \
-                    ', '.join(gio_backends))
+                                      extra="GIO support is only available for " +
+                                      ', '.join(gio_backends))
 
-        #Remove the username and password from the url we send to GIO
-        #by rebuilding the url again.
+        # Remove the username and password from the url we send to GIO
+        # by rebuilding the url again.
         u = (scheme, netloc, path, '', '', '')
         self.url = urlunparse(u)
 
         # And finally initialize super
         super(GioTransport, self).__init__(base,
-            _from_transport=_from_transport)
+                                           _from_transport=_from_transport)
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
-        if isinstance(full_url, unicode):
+        if isinstance(full_url, text_type):
             raise urlutils.InvalidURL(full_url)
         return full_url
 
@@ -170,8 +171,8 @@ class GioTransport(ConnectedTransport):
         return file
 
     def _auth_cb(self, op, message, default_user, default_domain, flags):
-        #really use breezy.auth get_password for this
-        #or possibly better gnome-keyring?
+        # really use breezy.auth get_password for this
+        # or possibly better gnome-keyring?
         auth = config.AuthenticationConfig()
         parsed_url = urlutils.URL.from_string(self.url)
         user = None
@@ -180,20 +181,20 @@ class GioTransport(ConnectedTransport):
             prompt = (u'%s' % (parsed_url.scheme.upper(),) +
                       u' %(host)s DOMAIN\\username')
             user_and_domain = auth.get_user(parsed_url.scheme,
-                parsed_url.host, port=parsed_url.port, ask=True,
-                prompt=prompt)
+                                            parsed_url.host, port=parsed_url.port, ask=True,
+                                            prompt=prompt)
             (domain, user) = user_and_domain.split('\\', 1)
             op.set_username(user)
             op.set_domain(domain)
         elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
             user = auth.get_user(parsed_url.scheme, parsed_url.host,
-                    port=parsed_url.port, ask=True)
+                                 port=parsed_url.port, ask=True)
             op.set_username(user)
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
-            #Don't know how common this case is, but anyway
-            #a DOMAIN and a username prompt should be the
-            #same so I will missuse the ui_factory get_username
-            #a little bit here.
+            # Don't know how common this case is, but anyway
+            # a DOMAIN and a username prompt should be the
+            # same so I will missuse the ui_factory get_username
+            # a little bit here.
             prompt = (u'%s' % (parsed_url.scheme.upper(),) +
                       u' %(host)s DOMAIN')
             domain = ui.ui_factory.get_username(prompt=prompt)
@@ -203,7 +204,7 @@ class GioTransport(ConnectedTransport):
             if user is None:
                 user = op.get_username()
             password = auth.get_password(parsed_url.scheme, parsed_url.host,
-                    user, port=parsed_url.port)
+                                         user, port=parsed_url.port)
             op.set_password(password)
         op.reply(gio.MOUNT_OPERATION_HANDLED)
 
@@ -213,7 +214,8 @@ class GioTransport(ConnectedTransport):
             self.loop.quit()
         except gio.Error as e:
             self.loop.quit()
-            raise errors.BzrError("Failed to mount the given location: " + str(e));
+            raise errors.BzrError(
+                "Failed to mount the given location: " + str(e))
 
     def _create_connection(self, credentials=None):
         if credentials is None:
@@ -229,8 +231,8 @@ class GioTransport(ConnectedTransport):
             except gio.Error as e:
                 if (e.code == gio.ERROR_NOT_MOUNTED):
                     self.loop = glib.MainLoop()
-                    ui.ui_factory.show_message('Mounting %s using GIO' % \
-                            self.url)
+                    ui.ui_factory.show_message('Mounting %s using GIO' %
+                                               self.url)
                     op = gio.MountOperation()
                     if user:
                         op.set_username(user)
@@ -238,7 +240,7 @@ class GioTransport(ConnectedTransport):
                         op.set_password(password)
                     op.connect('ask-password', self._auth_cb)
                     m = connection.mount_enclosing_volume(op,
-                            self._mount_done_cb)
+                                                          self._mount_done_cb)
                     self.loop.run()
         except gio.Error as e:
             raise errors.TransportError(msg="Error setting up connection:"
@@ -293,15 +295,14 @@ class GioTransport(ConnectedTransport):
             fin = f.read()
             buf = fin.read()
             fin.close()
-            ret = BytesIO(buf)
-            return ret
+            return BytesIO(buf)
         except gio.Error as e:
-            #If we get a not mounted here it might mean
-            #that a bad path has been entered (or that mount failed)
+            # If we get a not mounted here it might mean
+            # that a bad path has been entered (or that mount failed)
             if (e.code == gio.ERROR_NOT_MOUNTED):
                 raise errors.PathError(relpath,
-                  extra='Failed to get file, make sure the path is correct. ' \
-                  + str(e))
+                                       extra='Failed to get file, make sure the path is correct. '
+                                       + str(e))
             else:
                 self._translate_gio_error(e, relpath)
 
@@ -314,7 +315,7 @@ class GioTransport(ConnectedTransport):
         if 'gio' in debug.debug_flags:
             mutter("GIO put_file %s" % relpath)
         tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                    os.getpid(), random.randint(0, 0x7FFFFFFF))
+                                         os.getpid(), random.randint(0, 0x7FFFFFFF))
         f = None
         fout = None
         try:
@@ -386,7 +387,7 @@ class GioTransport(ConnectedTransport):
         except gio.Error as e:
             self._translate_gio_error(e, relpath)
         except errors.NotADirectory as e:
-            #just pass it forward
+            # just pass it forward
             raise e
         except Exception as e:
             mutter('failed to rmdir %s: %s' % (relpath, e))
@@ -396,12 +397,12 @@ class GioTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
-        #GIO append_to seems not to append but to truncate
-        #Work around this.
+        # GIO append_to seems not to append but to truncate
+        # Work around this.
         if 'gio' in debug.debug_flags:
             mutter("GIO append_file: %s" % relpath)
         tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
-                    os.getpid(), random.randint(0, 0x7FFFFFFF))
+                                         os.getpid(), random.randint(0, 0x7FFFFFFF))
         try:
             result = 0
             fo = self._get_GIO(tmppath)
@@ -413,10 +414,10 @@ class GioTransport(ConnectedTransport):
                 fin = fi.read()
                 self._pump(fin, fout)
                 fin.close()
-            #This separate except is to catch and ignore the
-            #gio.ERROR_NOT_FOUND for the already existing file.
-            #It is valid to open a non-existing file for append.
-            #This is caused by the broken gio append_to...
+            # This separate except is to catch and ignore the
+            # gio.ERROR_NOT_FOUND for the already existing file.
+            # It is valid to open a non-existing file for append.
+            # This is caused by the broken gio append_to...
             except gio.Error as e:
                 if e.code != gio.ERROR_NOT_FOUND:
                     self._translate_gio_error(e, relpath)
@@ -424,9 +425,9 @@ class GioTransport(ConnectedTransport):
             fout.close()
             info = GioStatResult(fo)
             if info.st_size != result + length:
-                raise errors.BzrError("Failed to append size after " \
-                      "(%d) is not original (%d) + written (%d) total (%d)" % \
-                      (info.st_size, result, length, result + length))
+                raise errors.BzrError("Failed to append size after "
+                                      "(%d) is not original (%d) + written (%d) total (%d)" %
+                                      (info.st_size, result, length, result + length))
             fo.move(fi, flags=gio.FILE_COPY_OVERWRITE)
             return result
         except gio.Error as e:
@@ -447,7 +448,7 @@ class GioTransport(ConnectedTransport):
                 if e.code == gio.ERROR_NOT_SUPPORTED:
                     # Command probably not available on this server
                     mutter("GIO Could not set permissions to %s on %s. %s",
-                        oct(mode), self._remote_path(relpath), str(e))
+                           oct(mode), self._remote_path(relpath), str(e))
                 else:
                     self._translate_gio_error(e, relpath)
 
@@ -589,7 +590,7 @@ class GioTransport(ConnectedTransport):
         else:
             mutter('unable to understand error for path: %s: %s', path, err)
             raise errors.PathError(path,
-                    extra="Unhandled gio error: " + str(err))
+                                   extra="Unhandled gio error: " + str(err))
 
 
 def get_test_permutations():

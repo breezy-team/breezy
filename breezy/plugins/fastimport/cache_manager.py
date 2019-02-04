@@ -27,7 +27,7 @@ from ... import lru_cache, trace
 from . import (
     branch_mapper,
     )
-from .reftracker import (
+from fastimport.reftracker import (
     RefTracker,
     )
 from .helpers import (
@@ -64,9 +64,9 @@ class _Cleanup(object):
 
 class CacheManager(object):
 
-    _small_blob_threshold = 25*1024
-    _sticky_cache_size = 300*1024*1024
-    _sticky_flushed_size = 100*1024*1024
+    _small_blob_threshold = 25 * 1024
+    _sticky_cache_size = 300 * 1024 * 1024
+    _sticky_flushed_size = 100 * 1024 * 1024
 
     def __init__(self, info=None, verbose=False, inventory_cache_size=10):
         """Create a manager of caches.
@@ -123,7 +123,8 @@ class CacheManager(object):
         self.reftracker = RefTracker()
 
     def add_mark(self, mark, commit_id):
-        assert mark[0] != ':'
+        if mark.startswith(b':'):
+            raise ValueError(mark)
         is_new = (mark in self.marks)
         self.marks[mark] = commit_id
         return is_new
@@ -134,8 +135,9 @@ class CacheManager(object):
         :param committish: A "committish" string
         :return: Bazaar revision id
         """
-        assert committish[0] == ':'
-        return self.marks[committish.lstrip(':')]
+        if not committish.startswith(b':'):
+            raise ValueError(committish)
+        return self.marks[committish.lstrip(b':')]
 
     def dump_stats(self, note=trace.note):
         """Dump some statistics about what we cached."""
@@ -145,7 +147,7 @@ class CacheManager(object):
         self._show_stats_for(self.marks, "revision-ids", note=note)
         # These aren't interesting so omit from the output, at least for now
         #self._show_stats_for(self._blobs, "other blobs", note=note)
-        #self.reftracker.dump_stats(note=note)
+        # self.reftracker.dump_stats(note=note)
 
     def _show_stats_for(self, a_dict, label, note, tuple_key=False):
         """Dump statistics about a given dictionary.
@@ -167,7 +169,7 @@ class CacheManager(object):
                 size = size / 1024
                 unit = 'G'
         note("    %-12s: %8.1f %s (%d %s)" % (label, size, unit, count,
-            single_plural(count, "item", "items")))
+                                              single_plural(count, "item", "items")))
 
     def clear_all(self):
         """Free up any memory used by the caches."""
@@ -181,7 +183,7 @@ class CacheManager(object):
         blobs = list(self._sticky_blobs)
         sticky_blobs = self._sticky_blobs
         total_blobs = len(sticky_blobs)
-        blobs.sort(key=lambda k:len(sticky_blobs[k]))
+        blobs.sort(key=lambda k: len(sticky_blobs[k]))
         if self._tempdir is None:
             tempdir = tempfile.mkdtemp(prefix='fastimport_blobs-')
             self._tempdir = tempdir
@@ -193,6 +195,7 @@ class CacheManager(object):
             # destroyed 'too late' for cleanup to actually occur. Probably a
             # combination of bzr's "die directly, don't clean up" and how
             # exceptions close the running stack.
+
             def exit_cleanup():
                 small_blob = small_blob_ref()
                 if small_blob is not None:
@@ -233,7 +236,7 @@ class CacheManager(object):
             self._sticky_memory_bytes += len(data)
             if self._sticky_memory_bytes > self._sticky_cache_size:
                 self._flush_blobs_to_disk()
-        elif data == '':
+        elif data == b'':
             # Empty data is always sticky
             self._sticky_blobs[id] = data
         else:
@@ -266,11 +269,8 @@ class CacheManager(object):
                 f.seek(offset)
                 content = f.read(n_bytes)
             else:
-                fp = open(fn, 'rb')
-                try:
+                with open(fn, 'rb') as fp:
                     content = fp.read()
-                finally:
-                    fp.close()
             self._decref(id, self._disk_blobs, fn)
             return content
         content = self._sticky_blobs[id]

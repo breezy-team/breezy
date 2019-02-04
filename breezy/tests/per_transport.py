@@ -79,8 +79,8 @@ def transport_test_permutations():
                 pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
                 scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
-                    {"transport_class":klass,
-                     "transport_server":server_factory})
+                            {"transport_class": klass,
+                             "transport_server": server_factory})
                 result.append(scenario)
         except errors.DependencyNotPresent as e:
             # Continue even if a dependency prevents us
@@ -174,20 +174,21 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
 
         files = ['a']
-        content = 'contents of a\n'
+        content = b'contents of a\n'
         self.build_tree(['a'], transport=t, line_endings='binary')
-        self.check_transport_contents('contents of a\n', t, 'a')
+        self.check_transport_contents(b'contents of a\n', t, 'a')
         f = t.get('a')
         self.assertEqual(content, f.read())
 
     def test_get_unknown_file(self):
         t = self.get_transport()
         files = ['a', 'b']
-        contents = ['contents of a\n',
-                    'contents of b\n',
+        contents = [b'contents of a\n',
+                    b'contents of b\n',
                     ]
         self.build_tree(files, transport=t, line_endings='binary')
         self.assertRaises(NoSuchFile, t.get, 'c')
+
         def iterate_and_close(func, *args):
             for f in func(*args):
                 # We call f.read() here because things like paramiko actually
@@ -220,13 +221,13 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
 
         files = ['a', 'b', 'e', 'g']
-        contents = ['contents of a\n',
-                    'contents of b\n',
-                    'contents of e\n',
-                    'contents of g\n',
+        contents = [b'contents of a\n',
+                    b'contents of b\n',
+                    b'contents of e\n',
+                    b'contents of g\n',
                     ]
         self.build_tree(files, transport=t, line_endings='binary')
-        self.check_transport_contents('contents of a\n', t, 'a')
+        self.check_transport_contents(b'contents of a\n', t, 'a')
 
         for content, fname in zip(contents, files):
             self.assertEqual(content, t.get_bytes(fname))
@@ -239,44 +240,35 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_write_stream('foo')
-        try:
-            handle.write('b')
-            self.assertEqual('b', t.get_bytes('foo'))
-        finally:
-            handle.close()
+        with t.open_write_stream('foo') as handle:
+            handle.write(b'b')
+            self.assertEqual(b'b', t.get_bytes('foo'))
 
     def test_get_bytes_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_write_stream('foo')
-        try:
-            handle.write('b')
-            self.assertEqual('b', t.get_bytes('foo'))
-            f = t.get('foo')
-            try:
-                self.assertEqual('b', f.read())
-            finally:
-                f.close()
-        finally:
-            handle.close()
+        with t.open_write_stream('foo') as handle:
+            handle.write(b'b')
+            self.assertEqual(b'b', t.get_bytes('foo'))
+            with t.get('foo') as f:
+                self.assertEqual(b'b', f.read())
 
     def test_put_bytes(self):
         t = self.get_transport()
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.put_bytes, 'a', b'some text for a\n')
+                              t.put_bytes, 'a', b'some text for a\n')
             return
 
         t.put_bytes('a', b'some text for a\n')
         self.assertTrue(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
+        self.check_transport_contents(b'some text for a\n', t, 'a')
 
         # The contents should be overwritten
         t.put_bytes('a', b'new text for a\n')
-        self.check_transport_contents('new text for a\n', t, 'a')
+        self.check_transport_contents(b'new text for a\n', t, 'a')
 
         self.assertRaises(NoSuchFile,
                           t.put_bytes, 'path/doesnt/exist/c', b'contents')
@@ -286,38 +278,38 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.put_bytes_non_atomic, 'a', 'some text for a\n')
+                              t.put_bytes_non_atomic, 'a', b'some text for a\n')
             return
 
         self.assertFalse(t.has('a'))
-        t.put_bytes_non_atomic('a', 'some text for a\n')
+        t.put_bytes_non_atomic('a', b'some text for a\n')
         self.assertTrue(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
+        self.check_transport_contents(b'some text for a\n', t, 'a')
         # Put also replaces contents
-        t.put_bytes_non_atomic('a', 'new\ncontents for\na\n')
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+        t.put_bytes_non_atomic('a', b'new\ncontents for\na\n')
+        self.check_transport_contents(b'new\ncontents for\na\n', t, 'a')
 
         # Make sure we can create another file
-        t.put_bytes_non_atomic('d', 'contents for\nd\n')
+        t.put_bytes_non_atomic('d', b'contents for\nd\n')
         # And overwrite 'a' with empty contents
-        t.put_bytes_non_atomic('a', '')
-        self.check_transport_contents('contents for\nd\n', t, 'd')
-        self.check_transport_contents('', t, 'a')
+        t.put_bytes_non_atomic('a', b'')
+        self.check_transport_contents(b'contents for\nd\n', t, 'd')
+        self.check_transport_contents(b'', t, 'a')
 
         self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'no/such/path',
-                                       'contents\n')
+                          b'contents\n')
         # Now test the create_parent flag
         self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'dir/a',
-                                       'contents\n')
+                          b'contents\n')
         self.assertFalse(t.has('dir/a'))
-        t.put_bytes_non_atomic('dir/a', 'contents for dir/a\n',
+        t.put_bytes_non_atomic('dir/a', b'contents for dir/a\n',
                                create_parent_dir=True)
-        self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
+        self.check_transport_contents(b'contents for dir/a\n', t, 'dir/a')
 
         # But we still get NoSuchFile if we can't make the parent dir
         self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'not/there/a',
-                                       'contents\n',
-                                       create_parent_dir=True)
+                          b'contents\n',
+                          create_parent_dir=True)
 
     def test_put_bytes_permissions(self):
         t = self.get_transport()
@@ -350,29 +342,29 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_bytes_non_atomic('mode644', 'test text\n', mode=0o644)
+        t.put_bytes_non_atomic('mode644', b'test text\n', mode=0o644)
         self.assertTransportMode(t, 'mode644', 0o644)
-        t.put_bytes_non_atomic('mode666', 'test text\n', mode=0o666)
+        t.put_bytes_non_atomic('mode666', b'test text\n', mode=0o666)
         self.assertTransportMode(t, 'mode666', 0o666)
-        t.put_bytes_non_atomic('mode600', 'test text\n', mode=0o600)
+        t.put_bytes_non_atomic('mode600', b'test text\n', mode=0o600)
         self.assertTransportMode(t, 'mode600', 0o600)
-        t.put_bytes_non_atomic('mode400', 'test text\n', mode=0o400)
+        t.put_bytes_non_atomic('mode400', b'test text\n', mode=0o400)
         self.assertTransportMode(t, 'mode400', 0o400)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
-        t.put_bytes_non_atomic('nomode', 'test text\n', mode=None)
+        t.put_bytes_non_atomic('nomode', b'test text\n', mode=None)
         self.assertTransportMode(t, 'nomode', 0o666 & ~umask)
 
         # We should also be able to set the mode for a parent directory
         # when it is created
-        t.put_bytes_non_atomic('dir700/mode664', 'test text\n', mode=0o664,
+        t.put_bytes_non_atomic('dir700/mode664', b'test text\n', mode=0o664,
                                dir_mode=0o700, create_parent_dir=True)
         self.assertTransportMode(t, 'dir700', 0o700)
-        t.put_bytes_non_atomic('dir770/mode664', 'test text\n', mode=0o664,
+        t.put_bytes_non_atomic('dir770/mode664', b'test text\n', mode=0o664,
                                dir_mode=0o770, create_parent_dir=True)
         self.assertTransportMode(t, 'dir770', 0o770)
-        t.put_bytes_non_atomic('dir777/mode664', 'test text\n', mode=0o664,
+        t.put_bytes_non_atomic('dir777/mode664', b'test text\n', mode=0o664,
                                dir_mode=0o777, create_parent_dir=True)
         self.assertTransportMode(t, 'dir777', 0o777)
 
@@ -381,59 +373,59 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.put_file, 'a', BytesIO(b'some text for a\n'))
+                              t.put_file, 'a', BytesIO(b'some text for a\n'))
             return
 
         result = t.put_file('a', BytesIO(b'some text for a\n'))
         # put_file returns the length of the data written
         self.assertEqual(16, result)
         self.assertTrue(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
+        self.check_transport_contents(b'some text for a\n', t, 'a')
         # Put also replaces contents
         result = t.put_file('a', BytesIO(b'new\ncontents for\na\n'))
         self.assertEqual(19, result)
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+        self.check_transport_contents(b'new\ncontents for\na\n', t, 'a')
         self.assertRaises(NoSuchFile,
                           t.put_file, 'path/doesnt/exist/c',
-                              BytesIO(b'contents'))
+                          BytesIO(b'contents'))
 
     def test_put_file_non_atomic(self):
         t = self.get_transport()
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.put_file_non_atomic, 'a', BytesIO(b'some text for a\n'))
+                              t.put_file_non_atomic, 'a', BytesIO(b'some text for a\n'))
             return
 
         self.assertFalse(t.has('a'))
         t.put_file_non_atomic('a', BytesIO(b'some text for a\n'))
         self.assertTrue(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
+        self.check_transport_contents(b'some text for a\n', t, 'a')
         # Put also replaces contents
         t.put_file_non_atomic('a', BytesIO(b'new\ncontents for\na\n'))
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+        self.check_transport_contents(b'new\ncontents for\na\n', t, 'a')
 
         # Make sure we can create another file
         t.put_file_non_atomic('d', BytesIO(b'contents for\nd\n'))
         # And overwrite 'a' with empty contents
         t.put_file_non_atomic('a', BytesIO(b''))
-        self.check_transport_contents('contents for\nd\n', t, 'd')
-        self.check_transport_contents('', t, 'a')
+        self.check_transport_contents(b'contents for\nd\n', t, 'd')
+        self.check_transport_contents(b'', t, 'a')
 
         self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'no/such/path',
-                                       BytesIO(b'contents\n'))
+                          BytesIO(b'contents\n'))
         # Now test the create_parent flag
         self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'dir/a',
-                                       BytesIO(b'contents\n'))
+                          BytesIO(b'contents\n'))
         self.assertFalse(t.has('dir/a'))
         t.put_file_non_atomic('dir/a', BytesIO(b'contents for dir/a\n'),
                               create_parent_dir=True)
-        self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
+        self.check_transport_contents(b'contents for dir/a\n', t, 'dir/a')
 
         # But we still get NoSuchFile if we can't make the parent dir
         self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'not/there/a',
-                                       BytesIO(b'contents\n'),
-                                       create_parent_dir=True)
+                          BytesIO(b'contents\n'),
+                          create_parent_dir=True)
 
     def test_put_file_permissions(self):
 
@@ -510,7 +502,8 @@ class TransportTests(TestTransportImplementation):
             # defined for the transport interface.
             self.assertRaises(TransportNotPossible, t.mkdir, '.')
             self.assertRaises(TransportNotPossible, t.mkdir, 'new_dir')
-            self.assertRaises(TransportNotPossible, t.mkdir, 'path/doesnt/exist')
+            self.assertRaises(TransportNotPossible,
+                              t.mkdir, 'path/doesnt/exist')
             return
         # Test mkdir
         t.mkdir('dir_a')
@@ -521,8 +514,8 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(t.has('dir_b'), True)
 
         self.assertEqual([t.has(n) for n in
-            ['dir_a', 'dir_b', 'dir_q', 'dir_b']],
-            [True, True, False, True])
+                          ['dir_a', 'dir_b', 'dir_q', 'dir_b']],
+                         [True, True, False, True])
 
         # we were testing that a local mkdir followed by a transport
         # mkdir failed thusly, but given that we * in one process * do not
@@ -535,8 +528,8 @@ class TransportTests(TestTransportImplementation):
         # Test get/put in sub-directories
         t.put_bytes('dir_a/a', b'contents of dir_a/a')
         t.put_file('dir_b/b', BytesIO(b'contents of dir_b/b'))
-        self.check_transport_contents('contents of dir_a/a', t, 'dir_a/a')
-        self.check_transport_contents('contents of dir_b/b', t, 'dir_b/b')
+        self.check_transport_contents(b'contents of dir_a/a', t, 'dir_a/a')
+        self.check_transport_contents(b'contents of dir_b/b', t, 'dir_b/b')
 
         # mkdir of a dir with an absent parent
         self.assertRaises(NoSuchFile, t.mkdir, 'missing/dir')
@@ -571,7 +564,7 @@ class TransportTests(TestTransportImplementation):
             return
         handle = t.open_write_stream('foo')
         try:
-            self.assertEqual('', t.get_bytes('foo'))
+            self.assertEqual(b'', t.get_bytes('foo'))
         finally:
             handle.close()
 
@@ -619,7 +612,6 @@ class TransportTests(TestTransportImplementation):
             t2 = t.clone('copy_to_simple')
             simple_copy_files(t, t2)
 
-
         # Test that copying into a missing directory raises
         # NoSuchFile
         if t.is_readonly():
@@ -662,16 +654,16 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.append_file, 'a', 'add\nsome\nmore\ncontents\n')
+                              t.append_file, 'a', 'add\nsome\nmore\ncontents\n')
             return
         t.put_bytes('a', b'diff\ncontents for\na\n')
         t.put_bytes('b', b'contents\nfor b\n')
 
         self.assertEqual(20,
-            t.append_file('a', BytesIO(b'add\nsome\nmore\ncontents\n')))
+                         t.append_file('a', BytesIO(b'add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            b'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
 
         # a file with no parent should fail..
@@ -680,8 +672,8 @@ class TransportTests(TestTransportImplementation):
 
         # And we can create new files, too
         self.assertEqual(0,
-            t.append_file('c', BytesIO(b'some text\nfor a missing file\n')))
-        self.check_transport_contents('some text\nfor a missing file\n',
+                         t.append_file('c', BytesIO(b'some text\nfor a missing file\n')))
+        self.check_transport_contents(b'some text\nfor a missing file\n',
                                       t, 'c')
 
     def test_append_bytes(self):
@@ -689,22 +681,22 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.append_bytes, 'a', 'add\nsome\nmore\ncontents\n')
+                              t.append_bytes, 'a', b'add\nsome\nmore\ncontents\n')
             return
 
-        self.assertEqual(0, t.append_bytes('a', 'diff\ncontents for\na\n'))
-        self.assertEqual(0, t.append_bytes('b', 'contents\nfor b\n'))
+        self.assertEqual(0, t.append_bytes('a', b'diff\ncontents for\na\n'))
+        self.assertEqual(0, t.append_bytes('b', b'contents\nfor b\n'))
 
         self.assertEqual(20,
-            t.append_bytes('a', 'add\nsome\nmore\ncontents\n'))
+                         t.append_bytes('a', b'add\nsome\nmore\ncontents\n'))
 
         self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            b'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
 
         # a file with no parent should fail..
         self.assertRaises(NoSuchFile,
-                          t.append_bytes, 'missing/path', 'content')
+                          t.append_bytes, 'missing/path', b'content')
 
     def test_append_file_mode(self):
         """Check that append accepts a mode parameter"""
@@ -712,7 +704,7 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                t.append_file, 'f', BytesIO(b'f'), mode=None)
+                              t.append_file, 'f', BytesIO(b'f'), mode=None)
             return
         t.append_file('f', BytesIO(b'f'), mode=None)
 
@@ -721,9 +713,9 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                t.append_bytes, 'f', 'f', mode=None)
+                              t.append_bytes, 'f', b'f', mode=None)
             return
-        t.append_bytes('f', 'f', mode=None)
+        t.append_bytes('f', b'f', mode=None)
 
     def test_delete(self):
         # TODO: Test Transport.delete
@@ -745,11 +737,11 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('b', b'b text\n')
         t.put_bytes('c', b'c text\n')
         self.assertEqual([True, True, True],
-                [t.has(n) for n in ['a', 'b', 'c']])
+                         [t.has(n) for n in ['a', 'b', 'c']])
         t.delete('a')
         t.delete('c')
         self.assertEqual([False, True, False],
-                [t.has(n) for n in ['a', 'b', 'c']])
+                         [t.has(n) for n in ['a', 'b', 'c']])
         self.assertFalse(t.has('a'))
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('c'))
@@ -908,14 +900,14 @@ class TransportTests(TestTransportImplementation):
         self.assertTrue(t.has('b'))
         self.assertFalse(t.has('a'))
 
-        self.check_transport_contents('a first file\n', t, 'b')
+        self.check_transport_contents(b'a first file\n', t, 'b')
         self.assertEqual([False, True], [t.has(n) for n in ['a', 'b']])
 
         # Overwrite a file
         t.put_bytes('c', b'c this file\n')
         t.move('c', 'b')
         self.assertFalse(t.has('c'))
-        self.check_transport_contents('c this file\n', t, 'b')
+        self.check_transport_contents(b'c this file\n', t, 'b')
 
         # TODO: Try to write a test for atomicity
         # TODO: Test moving into a non-existent subdirectory
@@ -928,7 +920,7 @@ class TransportTests(TestTransportImplementation):
 
         t.put_bytes('a', b'a file\n')
         t.copy('a', 'b')
-        self.check_transport_contents('a file\n', t, 'b')
+        self.check_transport_contents(b'a file\n', t, 'b')
 
         self.assertRaises(NoSuchFile, t.copy, 'c', 'd')
         os.mkdir('c')
@@ -937,7 +929,7 @@ class TransportTests(TestTransportImplementation):
         #self.assertRaises(Something, t.copy, 'a', 'c')
         t.put_bytes('d', b'text in d\n')
         t.copy('d', 'b')
-        self.check_transport_contents('text in d\n', t, 'b')
+        self.check_transport_contents(b'text in d\n', t, 'b')
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
@@ -1025,12 +1017,20 @@ class TransportTests(TestTransportImplementation):
 
             st = t.stat(link_name)
             self.assertTrue(S_ISLNK(st.st_mode),
-                "expected symlink, got mode %o" % st.st_mode)
+                            "expected symlink, got mode %o" % st.st_mode)
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
-        except IOError:
-            self.knownFailure("Paramiko fails to create symlinks during tests")
+
+        self.assertEqual(source_name, t.readlink(link_name))
+
+    def test_readlink_nonexistent(self):
+        t = self.get_transport()
+        try:
+            self.assertRaises(NoSuchFile, t.readlink, 'nonexistent')
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support symlinks." %
+                              self._server.__class__)
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1116,13 +1116,20 @@ class TransportTests(TestTransportImplementation):
 
             Only the parameters different from None will be changed.
             """
-            if scheme   is None: scheme   = t._parsed_url.scheme
-            if user     is None: user     = t._parsed_url.user
-            if password is None: password = t._parsed_url.password
-            if user     is None: user     = t._parsed_url.user
-            if host     is None: host     = t._parsed_url.host
-            if port     is None: port     = t._parsed_url.port
-            if path     is None: path     = t._parsed_url.path
+            if scheme is None:
+                scheme = t._parsed_url.scheme
+            if user is None:
+                user = t._parsed_url.user
+            if password is None:
+                password = t._parsed_url.password
+            if user is None:
+                user = t._parsed_url.user
+            if host is None:
+                host = t._parsed_url.host
+            if port is None:
+                port = t._parsed_url.port
+            if path is None:
+                path = t._parsed_url.path
             return str(urlutils.URL(scheme, user, password, host, port, path))
 
         if t._parsed_url.scheme == 'ftp':
@@ -1147,7 +1154,8 @@ class TransportTests(TestTransportImplementation):
         #   (they may be typed by the user when prompted for example)
         self.assertIs(t, t._reuse_for(new_url(password='from space')))
         # We will not connect, we can use a invalid host
-        self.assertIsNot(t, t._reuse_for(new_url(host=t._parsed_url.host + 'bar')))
+        self.assertIsNot(t, t._reuse_for(
+            new_url(host=t._parsed_url.host + 'bar')))
         if t._parsed_url.port == 1234:
             port = 4321
         else:
@@ -1163,7 +1171,7 @@ class TransportTests(TestTransportImplementation):
 
         c = t.clone('subdir')
         # Some transports will create the connection  only when needed
-        t.has('surely_not') # Force connection
+        t.has('surely_not')  # Force connection
         self.assertIs(t._get_connection(), c._get_connection())
 
         # Temporary failure, we need to create a new dummy connection
@@ -1178,7 +1186,7 @@ class TransportTests(TestTransportImplementation):
         if not isinstance(t, ConnectedTransport):
             raise TestSkipped("not a connected transport")
 
-        t.has('surely_not') # Force connection
+        t.has('surely_not')  # Force connection
         self.assertIsNot(None, t._get_connection())
 
         subdir = t._reuse_for(t.base + 'whatever/but/deep/down/the/path')
@@ -1230,15 +1238,15 @@ class TransportTests(TestTransportImplementation):
         new_transport = root_transport.clone("..")
         # as we are walking up directories, the path must be
         # growing less, except at the top
-        self.assertTrue(len(new_transport.base) < len(root_transport.base)
-            or new_transport.base == root_transport.base)
+        self.assertTrue(len(new_transport.base) < len(root_transport.base) or
+                        new_transport.base == root_transport.base)
         while new_transport.base != root_transport.base:
             root_transport = new_transport
             new_transport = root_transport.clone("..")
             # as we are walking up directories, the path must be
             # growing less, except at the top
-            self.assertTrue(len(new_transport.base) < len(root_transport.base)
-                or new_transport.base == root_transport.base)
+            self.assertTrue(len(new_transport.base) < len(root_transport.base) or
+                            new_transport.base == root_transport.base)
 
         # Cloning to "/" should take us to exactly the same location.
         self.assertEqual(root_transport.base, orig_transport.clone("/").base)
@@ -1254,7 +1262,7 @@ class TransportTests(TestTransportImplementation):
         orig_transport = self.get_transport()
         root_transport = orig_transport.clone('/')
         self.assertEqual(root_transport.base + '.bzr/',
-            root_transport.clone('.bzr').base)
+                         root_transport.clone('.bzr').base)
 
     def test_base_url(self):
         t = self.get_transport()
@@ -1355,20 +1363,20 @@ class TransportTests(TestTransportImplementation):
                          'isolated/dir/',
                          'isolated/dir/foo',
                          'isolated/dir/bar',
-                         'isolated/dir/b%25z', # make sure quoting is correct
+                         'isolated/dir/b%25z',  # make sure quoting is correct
                          'isolated/bar'],
                         transport=transport)
         paths = set(transport.iter_files_recursive())
         # nb the directories are not converted
         self.assertEqual(paths,
-                    {'isolated/dir/foo',
-                         'isolated/dir/bar',
-                         'isolated/dir/b%2525z',
-                         'isolated/bar'})
+                         {'isolated/dir/foo',
+                          'isolated/dir/bar',
+                          'isolated/dir/b%2525z',
+                          'isolated/bar'})
         sub_transport = transport.clone('isolated')
         paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(paths,
-            {'dir/foo', 'dir/bar', 'dir/b%2525z', 'bar'})
+                         {'dir/foo', 'dir/bar', 'dir/b%2525z', 'bar'})
 
     def test_copy_tree(self):
         # TODO: test file contents and permissions are preserved. This test was
@@ -1385,20 +1393,20 @@ class TransportTests(TestTransportImplementation):
                          'from/dir/',
                          'from/dir/foo',
                          'from/dir/bar',
-                         'from/dir/b%25z', # make sure quoting is correct
+                         'from/dir/b%25z',  # make sure quoting is correct
                          'from/bar'],
                         transport=transport)
         transport.copy_tree('from', 'to')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
-                    {'from/dir/foo',
-                         'from/dir/bar',
-                         'from/dir/b%2525z',
-                         'from/bar',
-                         'to/dir/foo',
-                         'to/dir/bar',
-                         'to/dir/b%2525z',
-                         'to/bar',})
+                         {'from/dir/foo',
+                          'from/dir/bar',
+                          'from/dir/b%2525z',
+                          'from/bar',
+                          'to/dir/foo',
+                          'to/dir/bar',
+                          'to/dir/b%2525z',
+                          'to/bar', })
 
     def test_copy_tree_to_transport(self):
         transport = self.get_transport()
@@ -1412,7 +1420,7 @@ class TransportTests(TestTransportImplementation):
                          'from/dir/',
                          'from/dir/foo',
                          'from/dir/bar',
-                         'from/dir/b%25z', # make sure quoting is correct
+                         'from/dir/b%25z',  # make sure quoting is correct
                          'from/bar'],
                         transport=transport)
         from_transport = transport.clone('from')
@@ -1421,14 +1429,14 @@ class TransportTests(TestTransportImplementation):
         from_transport.copy_tree_to_transport(to_transport)
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
-                    {'from/dir/foo',
-                         'from/dir/bar',
-                         'from/dir/b%2525z',
-                         'from/bar',
-                         'to/dir/foo',
-                         'to/dir/bar',
-                         'to/dir/b%2525z',
-                         'to/bar',})
+                         {'from/dir/foo',
+                          'from/dir/bar',
+                          'from/dir/b%2525z',
+                          'from/bar',
+                          'to/dir/foo',
+                          'to/dir/bar',
+                          'to/dir/b%2525z',
+                          'to/bar', })
 
     def test_unicode_paths(self):
         """Test that we can read/write files with Unicode names."""
@@ -1438,13 +1446,13 @@ class TransportTests(TestTransportImplementation):
         # '\xe5' and '\xe4' actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [u'\xe5.1', # a w/ circle iso-8859-1
-                 u'\xe4.2', # a w/ dots iso-8859-1
-                 u'\u017d', # Z with umlat iso-8859-2
-                 u'\u062c', # Arabic j
-                 u'\u0410', # Russian A
-                 u'\u65e5', # Kanji person
-                ]
+        files = [u'\xe5.1',  # a w/ circle iso-8859-1
+                 u'\xe4.2',  # a w/ dots iso-8859-1
+                 u'\u017d',  # Z with umlat iso-8859-2
+                 u'\u062c',  # Arabic j
+                 u'\u0410',  # Russian A
+                 u'\u65e5',  # Kanji person
+                 ]
 
         no_unicode_support = getattr(self._server, 'no_unicode_support', False)
         if no_unicode_support:
@@ -1453,7 +1461,8 @@ class TransportTests(TestTransportImplementation):
         try:
             self.build_tree(files, transport=t, line_endings='binary')
         except UnicodeError:
-            raise TestSkipped("cannot handle unicode paths in current encoding")
+            raise TestSkipped(
+                "cannot handle unicode paths in current encoding")
 
         # A plain unicode string is not a valid url
         for fname in files:
@@ -1461,7 +1470,7 @@ class TransportTests(TestTransportImplementation):
 
         for fname in files:
             fname_utf8 = fname.encode('utf-8')
-            contents = 'contents of %s\n' % (fname_utf8,)
+            contents = b'contents of %s\n' % (fname_utf8,)
             self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):
@@ -1472,13 +1481,13 @@ class TransportTests(TestTransportImplementation):
             return
         transport.put_bytes('foo', b'bar')
         transport3 = self.get_transport()
-        self.check_transport_contents('bar', transport3, 'foo')
+        self.check_transport_contents(b'bar', transport3, 'foo')
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
         transport5 = self.get_transport('newdir')
         transport6 = transport5.clone('..')
-        self.check_transport_contents('bar', transport6, 'foo')
+        self.check_transport_contents(b'bar', transport6, 'foo')
 
     def test_lock_write(self):
         """Test transport-level write locks.
@@ -1487,7 +1496,8 @@ class TransportTests(TestTransportImplementation):
         """
         transport = self.get_transport()
         if transport.is_readonly():
-            self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
+            self.assertRaises(TransportNotPossible,
+                              transport.lock_write, 'foo')
             return
         transport.put_bytes('lock', b'')
         try:
@@ -1505,7 +1515,7 @@ class TransportTests(TestTransportImplementation):
         """
         transport = self.get_transport()
         if transport.is_readonly():
-            file('lock', 'w').close()
+            open('lock', 'w').close()
         else:
             transport.put_bytes('lock', b'')
         try:
@@ -1519,7 +1529,8 @@ class TransportTests(TestTransportImplementation):
     def test_readv(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('0123456789')
+            with open('a', 'w') as f:
+                f.write('0123456789')
         else:
             transport.put_bytes('a', b'0123456789')
 
@@ -1535,7 +1546,8 @@ class TransportTests(TestTransportImplementation):
     def test_readv_out_of_order(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('0123456789')
+            with open('a', 'w') as f:
+                f.write('0123456789')
         else:
             transport.put_bytes('a', b'01234567890')
 
@@ -1554,12 +1566,13 @@ class TransportTests(TestTransportImplementation):
         # reference the returned data with the random data. To avoid doing
         # multiple large random byte look ups we do several tests on the same
         # backing data.
-        content = osutils.rand_bytes(200*1024)
+        content = osutils.rand_bytes(200 * 1024)
         content_size = len(content)
         if transport.is_readonly():
             self.build_tree_contents([('a', content)])
         else:
             transport.put_bytes('a', content)
+
         def check_result_data(result_vector):
             for item in result_vector:
                 data_len = len(item[1])
@@ -1567,7 +1580,7 @@ class TransportTests(TestTransportImplementation):
 
         # start corner case
         result = list(transport.readv('a', ((0, 30),),
-            adjust_for_latency=True, upper_limit=content_size))
+                                      adjust_for_latency=True, upper_limit=content_size))
         # we expect 1 result, from 0, to something > 30
         self.assertEqual(1, len(result))
         self.assertEqual(0, result[0][0])
@@ -1575,16 +1588,16 @@ class TransportTests(TestTransportImplementation):
         check_result_data(result)
         # end of file corner case
         result = list(transport.readv('a', ((204700, 100),),
-            adjust_for_latency=True, upper_limit=content_size))
+                                      adjust_for_latency=True, upper_limit=content_size))
         # we expect 1 result, from 204800- its length, to the end
         self.assertEqual(1, len(result))
         data_len = len(result[0][1])
-        self.assertEqual(204800-data_len, result[0][0])
+        self.assertEqual(204800 - data_len, result[0][0])
         self.assertTrue(data_len >= 100)
         check_result_data(result)
         # out of order ranges are made in order
         result = list(transport.readv('a', ((204700, 100), (0, 50)),
-            adjust_for_latency=True, upper_limit=content_size))
+                                      adjust_for_latency=True, upper_limit=content_size))
         # we expect 2 results, in order, start and end.
         self.assertEqual(2, len(result))
         # start
@@ -1593,13 +1606,13 @@ class TransportTests(TestTransportImplementation):
         self.assertTrue(data_len >= 30)
         # end
         data_len = len(result[1][1])
-        self.assertEqual(204800-data_len, result[1][0])
+        self.assertEqual(204800 - data_len, result[1][0])
         self.assertTrue(data_len >= 100)
         check_result_data(result)
         # close ranges get combined (even if out of order)
         for request_vector in [((400, 50), (800, 234)), ((800, 234), (400, 50))]:
             result = list(transport.readv('a', request_vector,
-                adjust_for_latency=True, upper_limit=content_size))
+                                          adjust_for_latency=True, upper_limit=content_size))
             self.assertEqual(1, len(result))
             data_len = len(result[0][1])
             # minimum length is from 400 to 1034 - 634
@@ -1613,31 +1626,30 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('a'*1024*1024)
+            with open('a', 'w') as f:
+                f.write('a' * 1024 * 1024)
         else:
-            transport.put_bytes('a', b'a'*1024*1024)
+            transport.put_bytes('a', b'a' * 1024 * 1024)
         broken_vector = [(465219, 800), (225221, 800), (445548, 800),
-            (225037, 800), (221357, 800), (437077, 800), (947670, 800),
-            (465373, 800), (947422, 800)]
-        results = list(transport.readv('a', broken_vector, True, 1024*1024))
-        found_items = [False]*9
+                         (225037, 800), (221357, 800), (437077, 800), (947670, 800),
+                         (465373, 800), (947422, 800)]
+        results = list(transport.readv('a', broken_vector, True, 1024 * 1024))
+        found_items = [False] * 9
         for pos, (start, length) in enumerate(broken_vector):
             # check the range is covered by the result
             for offset, data in results:
                 if offset <= start and start + length <= offset + len(data):
                     found_items[pos] = True
-        self.assertEqual([True]*9, found_items)
+        self.assertEqual([True] * 9, found_items)
 
     def test_get_with_open_write_stream_sees_all_content(self):
         t = self.get_transport()
         if t.is_readonly():
             return
-        handle = t.open_write_stream('foo')
-        try:
-            handle.write('bcd')
-            self.assertEqual([(0, 'b'), (2, 'd')], list(t.readv('foo', ((0, 1), (2, 1)))))
-        finally:
-            handle.close()
+        with t.open_write_stream('foo') as handle:
+            handle.write(b'bcd')
+            self.assertEqual([(0, b'b'), (2, b'd')], list(
+                t.readv('foo', ((0, 1), (2, 1)))))
 
     def test_get_smart_medium(self):
         """All transports must either give a smart medium, or know they can't.
@@ -1653,7 +1665,8 @@ class TransportTests(TestTransportImplementation):
     def test_readv_short_read(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            with file('a', 'w') as f: f.write('0123456789')
+            with open('a', 'w') as f:
+                f.write('0123456789')
         else:
             transport.put_bytes('a', b'01234567890')
 
@@ -1710,17 +1723,17 @@ class TransportTests(TestTransportImplementation):
 
     def test_abspath_url_unquote_unreserved(self):
         """URLs from abspath should have unreserved characters unquoted
-        
+
         Need consistent quoting notably for tildes, see lp:842223 for more.
         """
         t = self.get_transport()
         needlessly_escaped_dir = "%2D%2E%30%39%41%5A%5F%61%7A%7E/"
         self.assertEqual(t.base + "-.09AZ_az~",
-            t.abspath(needlessly_escaped_dir))
+                         t.abspath(needlessly_escaped_dir))
 
     def test_clone_url_unquote_unreserved(self):
         """Base URL of a cloned branch needs unreserved characters unquoted
-        
+
         Cloned transports should be prefix comparable for things like the
         isolation checking of tests, see lp:842223 for more.
         """

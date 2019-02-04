@@ -72,7 +72,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
         made_control = self.make_controldir(relpath,
-            format=self.workingtree_format_to._matchingcontroldir)
+                                            format=self.workingtree_format_to._matchingcontroldir)
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format_to.initialize(made_control)
@@ -89,9 +89,9 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     """
     result = []
     for (label, intertree_class,
-        workingtree_format,
-        workingtree_format_to,
-        mutable_trees_to_test_trees) in formats:
+         workingtree_format,
+         workingtree_format_to,
+         mutable_trees_to_test_trees) in formats:
         scenario = (label, {
             "transport_server": transport_server,
             "transport_readonly_server": transport_readonly_server,
@@ -115,10 +115,11 @@ def mutable_trees_to_preview_trees(test_case, source, target):
     test_case.addCleanup(preview.finalize)
     return source, preview.get_preview_tree()
 
+
 def mutable_trees_to_revision_trees(test_case, source, target):
     """Convert both trees to repository based revision trees."""
     return (revision_tree_from_workingtree(test_case, source),
-        revision_tree_from_workingtree(test_case, target))
+            revision_tree_from_workingtree(test_case, target))
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -138,7 +139,7 @@ def load_tests(loader, standard_tests, pattern):
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
             chk_tree_format._get_matchingcontroldir = \
-                lambda:breezy.controldir.format_registry.make_controldir('2a')
+                lambda: breezy.controldir.format_registry.make_controldir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,
@@ -162,7 +163,7 @@ def load_tests(loader, standard_tests, pattern):
                  optimiser._matching_from_tree_format,
                  optimiser._matching_to_tree_format,
                  optimiser.make_source_parent_tree_python_dirstate))
-        elif (optimiser._matching_from_tree_format is not None and 
+        elif (optimiser._matching_from_tree_format is not None and
               optimiser._matching_to_tree_format is not None):
             test_intertree_permutations.append(
                 (optimiser.__name__,

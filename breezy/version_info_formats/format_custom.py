@@ -19,15 +19,18 @@
 
 from __future__ import absolute_import
 
+import codecs
+
 from breezy import errors
 from breezy.revision import (
-   NULL_REVISION,
-   )
+    NULL_REVISION,
+    )
 from breezy.lazy_regex import lazy_compile
+from breezy.sixish import PY3
 from breezy.version_info_formats import (
-   create_date_str,
-   VersionInfoBuilder,
-   )
+    create_date_str,
+    VersionInfoBuilder,
+    )
 
 
 class MissingTemplateVariable(errors.BzrError):
@@ -48,17 +51,17 @@ class Template(object):
 
     >>> t = Template()
     >>> t.add('test', 'xxx')
-    >>> print list(t.process('{test}'))
+    >>> print(list(t.process('{test}')))
     ['xxx']
-    >>> print list(t.process('{test} test'))
+    >>> print(list(t.process('{test} test')))
     ['xxx', ' test']
-    >>> print list(t.process('test {test}'))
+    >>> print(list(t.process('test {test}')))
     ['test ', 'xxx']
-    >>> print list(t.process('test {test} test'))
+    >>> print(list(t.process('test {test} test')))
     ['test ', 'xxx', ' test']
-    >>> print list(t.process('{test}\\\\n'))
+    >>> print(list(t.process('{test}\\\\n')))
     ['xxx', '\\n']
-    >>> print list(t.process('{test}\\n'))
+    >>> print(list(t.process('{test}\\n')))
     ['xxx', '\\n']
     """
 
@@ -71,7 +74,10 @@ class Template(object):
         self._data[name] = value
 
     def process(self, tpl):
-        tpl = tpl.decode('string_escape')
+        unicode_escape = codecs.getdecoder("unicode_escape")
+        tpl = unicode_escape(tpl)[0]
+        if not PY3:
+            tpl = tpl.encode('utf-8')
         pos = 0
         while True:
             match = self._tag_re.search(tpl, pos)
@@ -108,8 +114,11 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         if revision_id == NULL_REVISION:
             info.add('revno', 0)
         else:
-            info.add('revno', self._get_revno_str(revision_id))
-            info.add('revision_id', revision_id)
+            try:
+                info.add('revno', self._get_revno_str(revision_id))
+            except errors.GhostRevisionsHaveNoRevno:
+                pass
+            info.add('revision_id', revision_id.decode('utf-8'))
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
 

@@ -55,14 +55,14 @@ class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
     def test_branch_format_matches_bzrdir_branch_format(self):
         bzrdir_branch_format = self.bzrdir_format.get_branch_format()
         self.assertIs(
-                self.branch_format.__class__,
-                bzrdir_branch_format.__class__)
+            self.branch_format.__class__,
+            bzrdir_branch_format.__class__)
 
     def test_make_branch_gets_expected_format(self):
         branch = self.make_branch('.')
         self.assertIs(
-                self.branch_format.__class__,
-                branch._format.__class__)
+            self.branch_format.__class__,
+            branch._format.__class__)
 
 
 class TestBranch(per_branch.TestCaseWithBranch):
@@ -74,7 +74,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         graph = tree.branch.repository.get_graph()
         ancestry_graph = graph.get_parent_map(
             tree.branch.repository.all_revision_ids())
-        self.assertEqual({revmap['1']: ('null:',),
+        self.assertEqual({revmap['1']: (b'null:',),
                           revmap['2']: (revmap['1'], ),
                           revmap['1.1.1']: (revmap['1'], ),
                           revmap['3']: (revmap['2'], revmap['1.1.1'], ),
@@ -90,14 +90,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br.fetch(wt.branch)
         br.generate_revision_history(rev3)
         for revision_id in [rev3, rev2, rev1]:
-            self.assertIsInstance(revision_id, str)
+            self.assertIsInstance(revision_id, bytes)
         last = br.last_revision()
         self.assertEqual(rev3, last)
-        self.assertIsInstance(last, str)
+        self.assertIsInstance(last, bytes)
         revno, last = br.last_revision_info()
         self.assertEqual(3, revno)
         self.assertEqual(rev3, last)
-        self.assertIsInstance(last, str)
+        self.assertIsInstance(last, bytes)
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
@@ -114,7 +114,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = b2.repository.revision_tree(rev1)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(tree.get_file_text('foo'), 'hello')
+        self.assertEqual(tree.get_file_text('foo'), b'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
@@ -162,7 +162,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt_a.add(['one'])
         rev1 = wt_a.commit('commit one')
 
-        branch_b = wt_a.branch.controldir.sprout('b', revision_id=rev1).open_branch()
+        branch_b = wt_a.branch.controldir.sprout(
+            'b', revision_id=rev1).open_branch()
         self.assertEqual(wt_a.branch.user_url, branch_b.get_parent())
         return branch_b
 
@@ -212,14 +213,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt = self.make_branch_and_tree('.')
         if not wt.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable("repository format does not "
-                "support ghosts")
-        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
-            allow_leftmost_as_ghost=True)
-        self.assertEqual(['non:existent@rev--ision--0--2'],
-            wt.get_parent_ids())
+                                          "support ghosts")
+        wt.set_parent_ids([b'non:existent@rev--ision--0--2'],
+                          allow_leftmost_as_ghost=True)
+        self.assertEqual([b'non:existent@rev--ision--0--2'],
+                         wt.get_parent_ids())
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
+        self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
 
@@ -228,18 +229,18 @@ class TestBranch(per_branch.TestCaseWithBranch):
         wt = self.make_branch_and_tree('.')
         if not wt.branch.repository._format.supports_ghosts:
             raise tests.TestNotApplicable("repository format does not "
-                "support ghosts")
+                                          "support ghosts")
         wt.set_parent_ids([
-                'foo@azkhazan-123123-abcabc',
-                'wibble@fofof--20050401--1928390812',
+            b'foo@azkhazan-123123-abcabc',
+            b'wibble@fofof--20050401--1928390812',
             ],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit("commit from ghost base with one merge")
         # the revision should have been committed with two parents
         rev = wt.branch.repository.get_revision(rev_id)
-        self.assertEqual(['foo@azkhazan-123123-abcabc',
-            'wibble@fofof--20050401--1928390812'],
-            rev.parent_ids)
+        self.assertEqual([b'foo@azkhazan-123123-abcabc',
+                          b'wibble@fofof--20050401--1928390812'],
+                         rev.parent_ids)
 
     def test_bad_revision(self):
         self.assertRaises(errors.InvalidRevisionId,
@@ -321,10 +322,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(0, len(repo.controldir.list_branches()))
         if not self.bzrdir_format.colocated_branches:
             raise tests.TestNotApplicable("control dir format does not support "
-                "colocated branches")
+                                          "colocated branches")
         try:
-            child_branch1 = self.branch_format.initialize(repo.controldir, 
-                name='branch1')
+            child_branch1 = self.branch_format.initialize(repo.controldir,
+                                                          name='branch1')
         except errors.UninitializableFormat:
             # branch references are not default init'able and
             # not all bzrdirs support colocated branches.
@@ -341,7 +342,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         for val in (True, False):
             try:
                 branch = self.branch_format.initialize(repo.controldir,
-                    append_revisions_only=True)
+                                                       append_revisions_only=True)
             except (errors.UninitializableFormat, errors.UpgradeRequired):
                 # branch references are not default init'able and
                 # not all branches support append_revisions_only
@@ -358,7 +359,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
             self.assertFalse(branch.get_append_revisions_only())
         else:
             self.assertRaises(errors.UpgradeRequired,
-                branch.set_append_revisions_only, True)
+                              branch.set_append_revisions_only, True)
             self.assertFalse(branch.get_append_revisions_only())
 
     def test_create_open_branch_uses_repository(self):
@@ -369,9 +370,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         child_transport = repo.controldir.root_transport.clone('child')
         child_transport.mkdir('.')
         try:
-            child_dir = self.bzrdir_format.initialize_on_transport(child_transport)
+            child_dir = self.bzrdir_format.initialize_on_transport(
+                child_transport)
         except errors.UninitializableFormat:
-            raise tests.TestNotApplicable("control dir format not initializable")
+            raise tests.TestNotApplicable(
+                "control dir format not initializable")
         try:
             child_branch = self.branch_format.initialize(child_dir)
         except errors.UninitializableFormat:
@@ -429,8 +432,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
             rev1 = checkout_b.commit('rev1')
         except errors.NoRoundtrippingSupport:
             raise tests.TestNotApplicable(
-                    'roundtripping between %r and %r not supported' %
-                    (checkout_b.branch, checkout_b.branch.get_master_branch()))
+                'roundtripping between %r and %r not supported' %
+                (checkout_b.branch, checkout_b.branch.get_master_branch()))
         self.assertEqual(rev1, branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
@@ -457,7 +460,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
-            source_branch.lock_write)
+                          source_branch.lock_write)
         checkout = source_branch.create_checkout('c', lightweight=True)
         self.assertEqual(rev_id, checkout.last_revision())
 
@@ -474,7 +477,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         source_branch = _mod_branch.Branch.open(url)
         # sanity check that the test will be valid
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
-            source_branch.lock_write)
+                          source_branch.lock_write)
         checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
 
@@ -509,7 +512,7 @@ class TestBranchFormat(per_branch.TestCaseWithBranch):
         br = self.make_branch('.')
         format = br._format
         network_name = format.network_name()
-        self.assertIsInstance(network_name, str)
+        self.assertIsInstance(network_name, bytes)
         # We want to test that the network_name matches the actual format on
         # disk. For local branches that means that using network_name as a key
         # in the registry gives back the same format. For remote branches we
@@ -553,7 +556,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
                           self.get_readonly_url('g/p/q'))
         branch = self.make_branch('.')
         if not branch.controldir._format.supports_transport(
-            transport.get_transport_from_url(self.get_readonly_url('.'))):
+                transport.get_transport_from_url(self.get_readonly_url('.'))):
             raise tests.TestNotApplicable("format does not support transport")
         branch, relpath = _mod_branch.Branch.open_containing(
             self.get_readonly_url(''))
@@ -653,7 +656,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('Uninitializable branch format')
 
         self.assertEqual(None,
-            made_branch._format.get_reference(made_branch.controldir, name))
+                         made_branch._format.get_reference(made_branch.controldir, name))
 
     def test_set_reference(self):
         """set_reference on all regular branches should be callable."""
@@ -666,7 +669,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         other_branch = self.make_branch('other')
         try:
             this_branch._format.set_reference(this_branch.controldir, None,
-                other_branch)
+                                              other_branch)
         except (NotImplementedError, errors.IncompatibleFormat):
             # that's ok
             pass
@@ -693,7 +696,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.controldir)
         self.assertIsInstance(direct_opened_branch._format,
-            self.branch_format.__class__)
+                              self.branch_format.__class__)
 
         # find it via Branch.open
         opened_branch = _mod_branch.Branch.open(readonly_t.base)
@@ -728,12 +731,13 @@ class TestBound(per_branch.TestCaseWithBranch):
             self.assertIs(None, branch.get_old_bound_location())
         except errors.UpgradeRequired:
             raise tests.TestNotApplicable(
-                    'Format does not store old bound locations')
+                'Format does not store old bound locations')
         branch2 = self.make_branch('branch2')
         branch.bind(branch2)
         self.assertIs(None, branch.get_old_bound_location())
         branch.unbind()
-        self.assertContainsRe(branch.get_old_bound_location(), '\/branch2\/$')
+        self.assertContainsRe(
+            branch.get_old_bound_location(), '\\/branch2\\/$')
 
     def test_bind_diverged(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -772,7 +776,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         self.assertNotEqual(None, branch.get_master_branch())
         branch.bind(master2)
         self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
-                branch.get_master_branch().base))
+                                                    branch.get_master_branch().base))
 
     def test_set_bound_location_clears_cached_master_branch(self):
         """b.set_bound_location clears any cached value of b.get_master_branch.
@@ -788,7 +792,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         self.assertNotEqual(None, branch.get_master_branch())
         branch.set_bound_location(self.get_url('master2'))
         self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
-                branch.get_master_branch().base))
+                                                    branch.get_master_branch().base))
 
 
 class TestStrict(per_branch.TestCaseWithBranch):
@@ -845,26 +849,24 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_reference_parent(self):
         tree = self.make_branch_and_tree('tree')
         subtree = self.make_branch_and_tree('tree/subtree')
-        subtree_id = subtree.get_root_id()
+        subtree.commit('a change')
         try:
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent(
-            subtree_id,
             urlutils.relative_url(tree.branch.user_url, subtree.branch.user_url))
-        self.assertEqual(subtree.branch.base, reference_parent.base)
+        self.assertEqual(subtree.branch.user_url, reference_parent.user_url)
 
     def test_reference_parent_accepts_possible_transports(self):
         tree = self.make_branch_and_tree('tree')
         subtree = self.make_branch_and_tree('tree/subtree')
-        subtree_id = subtree.get_root_id()
+        subtree.commit('a change')
         try:
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
         reference_parent = tree.branch.reference_parent(
-            subtree_id,
             urlutils.relative_url(
                 tree.branch.user_url, subtree.branch.user_url),
             possible_transports=[subtree.controldir.root_transport])
@@ -872,7 +874,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_get_reference_info(self):
         branch = self.make_branch('branch')
         try:
-            path, loc = branch.get_reference_info('file-id')
+            path, loc = branch.get_reference_info('file')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         self.assertIs(None, path)
@@ -881,65 +883,51 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
     def test_set_reference_info(self):
         branch = self.make_branch('branch')
         try:
-            branch.set_reference_info('file-id', 'path/to/location',
-                                      'path/to/file')
+            branch.set_reference_info('path/to/file', 'path/to/location',
+                                      b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
 
     def test_set_get_reference_info(self):
         branch = self.make_branch('branch')
         try:
-            branch.set_reference_info('file-id', 'path/to/file',
-                                      'path/to/location')
+            branch.set_reference_info('path/to/file',
+                                      'path/to/location', b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         # Create a new instance to ensure storage is permanent
         branch = _mod_branch.Branch.open('branch')
-        tree_path, branch_location = branch.get_reference_info('file-id')
+        branch_location, file_id = branch.get_reference_info('path/to/file')
         self.assertEqual('path/to/location', branch_location)
 
     def test_set_null_reference_info(self):
         branch = self.make_branch('branch')
         try:
-            branch.set_reference_info('file-id', 'path/to/file',
-                                      'path/to/location')
+            branch.set_reference_info('path/to/file',
+                                      'path/to/location', b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
-        branch.set_reference_info('file-id', None, None)
-        tree_path, branch_location = branch.get_reference_info('file-id')
-        self.assertIs(None, tree_path)
+        branch.set_reference_info('path/to/file', None, None)
+        branch_location, file_id = branch.get_reference_info('path/to/file')
+        self.assertIs(None, file_id)
         self.assertIs(None, branch_location)
 
     def test_set_null_reference_info_when_null(self):
         branch = self.make_branch('branch')
         try:
-            tree_path, branch_location = branch.get_reference_info('file-id')
+            branch_location, file_id = branch.get_reference_info('file')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
-        self.assertIs(None, tree_path)
+        self.assertIs(None, file_id)
         self.assertIs(None, branch_location)
-        branch.set_reference_info('file-id', None, None)
-
-    def test_set_null_requires_two_nones(self):
-        branch = self.make_branch('branch')
-        try:
-            e = self.assertRaises(ValueError, branch.set_reference_info,
-                                  'file-id', 'path', None)
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
-        self.assertEqual('tree_path must be None when branch_location is'
-                         ' None.', str(e))
-        e = self.assertRaises(ValueError, branch.set_reference_info,
-                              'file-id', None, 'location')
-        self.assertEqual('branch_location must be None when tree_path is'
-                         ' None.', str(e))
+        branch.set_reference_info('path/to/file', None, None)
 
     def make_branch_with_reference(self, location, reference_location,
                                    file_id='file-id'):
         branch = self.make_branch(location)
         try:
-            branch.set_reference_info(file_id, 'path/to/file',
-                                      reference_location)
+            branch.set_reference_info('path/to/file',
+                                      reference_location, file_id)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         return branch
@@ -948,45 +936,46 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         referenced_branch = self.make_branch('reference_branch')
         branch = self.make_branch_with_reference('branch',
                                                  referenced_branch.base)
-        parent = branch.reference_parent('file-id', 'path/to/file')
+        parent = branch.reference_parent('path/to/file')
         self.assertEqual(parent.base, referenced_branch.base)
 
     def test_branch_relative_reference_location(self):
         branch = self.make_branch('branch')
         try:
-            branch.set_reference_info('file-id', 'path/to/file',
-            '../reference_branch')
+            branch.set_reference_info('path/to/file',
+                                      '../reference_branch', b'file-id')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         referenced_branch = self.make_branch('reference_branch')
-        parent = branch.reference_parent('file-id', 'path/to/file')
+        parent = branch.reference_parent('path/to/file')
         self.assertEqual(parent.base, referenced_branch.base)
 
     def test_sprout_copies_reference_location(self):
         branch = self.make_branch_with_reference('branch', '../reference')
         new_branch = branch.controldir.sprout('new-branch').open_branch()
         self.assertEqual('../reference',
-                         new_branch.get_reference_info('file-id')[1])
+                         new_branch.get_reference_info('path/to/file')[0])
 
     def test_clone_copies_reference_location(self):
         branch = self.make_branch_with_reference('branch', '../reference')
         new_branch = branch.controldir.clone('new-branch').open_branch()
         self.assertEqual('../reference',
-                         new_branch.get_reference_info('file-id')[1])
+                         new_branch.get_reference_info('path/to/file')[0])
 
     def test_copied_locations_are_rebased(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
+        new_branch = branch.controldir.sprout(
+            'branch/new-branch').open_branch()
         self.assertEqual('../reference',
-                         new_branch.get_reference_info('file-id')[1])
+                         new_branch.get_reference_info('path/to/file')[0])
 
     def test_update_references_retains_old_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
         new_branch = self.make_branch_with_reference(
-            'new_branch', 'reference', 'file-id2')
+            'new_branch', 'reference', b'file-id2')
         new_branch.update_references(branch)
         self.assertEqual('reference',
-                         branch.get_reference_info('file-id')[1])
+                         branch.get_reference_info('path/to/file')[0])
 
     def test_update_references_retains_known_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
@@ -994,31 +983,34 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
             'new_branch', 'reference2')
         new_branch.update_references(branch)
         self.assertEqual('reference',
-                         branch.get_reference_info('file-id')[1])
+                         branch.get_reference_info('path/to/file')[0])
 
     def test_update_references_skips_known_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
-        new_branch.set_reference_info('file-id', '../foo', '../foo')
+        new_branch = branch.controldir.sprout(
+            'branch/new-branch').open_branch()
+        new_branch.set_reference_info('../foo', '../foo', b'file-id')
         new_branch.update_references(branch)
         self.assertEqual('reference',
-                         branch.get_reference_info('file-id')[1])
+                         branch.get_reference_info('path/to/file')[0])
 
     def test_pull_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
-        new_branch.set_reference_info('file-id2', '../foo', '../foo')
+        new_branch = branch.controldir.sprout(
+            'branch/new-branch').open_branch()
+        new_branch.set_reference_info('../foo', '../foo', b'file-id2')
         branch.pull(new_branch)
         self.assertEqual('foo',
-                         branch.get_reference_info('file-id2')[1])
+                         branch.get_reference_info('../foo')[0])
 
     def test_push_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
-        new_branch = branch.controldir.sprout('branch/new-branch').open_branch()
-        new_branch.set_reference_info('file-id2', '../foo', '../foo')
+        new_branch = branch.controldir.sprout(
+            'branch/new-branch').open_branch()
+        new_branch.set_reference_info('../foo', '../foo', b'file-id2')
         new_branch.push(branch)
         self.assertEqual('foo',
-                         branch.get_reference_info('file-id2')[1])
+                         branch.get_reference_info('../foo')[0])
 
     def test_merge_updates_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
@@ -1035,7 +1027,7 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         merger.merge_type = merge.Merge3Merger
         merger.do_merge()
         self.assertEqual('../branch/reference',
-                         tree.branch.get_reference_info('file-id')[1])
+                         tree.branch.get_reference_info('path/to/file')[0])
 
 
 class TestBranchControlComponent(per_branch.TestCaseWithBranch):
@@ -1074,7 +1066,7 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         super(TestUncommittedChanges, self).setUp()
         if not self.branch_format.supports_store_uncommitted():
             raise tests.TestNotApplicable(
-                    'Branch format does not support store_uncommitted')
+                'Branch format does not support store_uncommitted')
 
     def bind(self, branch, master):
         try:

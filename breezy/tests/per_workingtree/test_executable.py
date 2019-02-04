@@ -29,13 +29,13 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestExecutable, self).setUp()
-        self.a_id = "a-20051208024829-849e76f7968d7a86"
-        self.b_id = "b-20051208024829-849e76f7968d7a86"
+        self.a_id = b"a-20051208024829-849e76f7968d7a86"
+        self.b_id = b"b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
         tt = TreeTransform(wt)
-        tt.new_file('a', tt.root, 'a test\n', self.a_id, True)
-        tt.new_file('b', tt.root, 'b test\n', self.b_id, False)
+        tt.new_file('a', tt.root, [b'a test\n'], self.a_id, True)
+        tt.new_file('b', tt.root, [b'b test\n'], self.b_id, False)
         tt.apply()
 
         self.wt = wt
@@ -43,10 +43,8 @@ class TestExecutable(TestCaseWithWorkingTree):
     def check_exist(self, tree):
         """Just check that both files have the right executable bits set"""
         tree.lock_read()
-        self.assertTrue(tree.is_executable('a'),
-                        "'a' lost the execute bit")
-        self.assertFalse(tree.is_executable('b'),
-                    "'b' gained an execute bit")
+        self.assertTrue(tree.is_executable('a'), "'a' lost the execute bit")
+        self.assertFalse(tree.is_executable('b'), "'b' gained an execute bit")
         tree.unlock()
 
     def check_empty(self, tree, ignore_inv=False):

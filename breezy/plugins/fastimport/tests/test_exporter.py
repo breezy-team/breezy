@@ -45,24 +45,20 @@ class TestOutputStream(tests.TestCase):
     def test_get_source_gz(self):
         fd, filename = tempfile.mkstemp(suffix=".gz")
         os.close(fd)
-        stream = _get_output_stream(filename)
-        stream.write("bla")
-        stream.close()
+        with _get_output_stream(filename) as stream:
+            stream.write(b"bla")
         # files ending in .gz are automatically decompressed.
-        f = gzip.GzipFile(filename)
-        self.assertEquals("bla", f.read())
-        f.close()
+        with gzip.GzipFile(filename) as f:
+            self.assertEquals(b"bla", f.read())
 
     def test_get_source_file(self):
         # other files are opened as regular files.
         fd, filename = tempfile.mkstemp()
         os.close(fd)
-        stream = _get_output_stream(filename)
-        stream.write("foo")
-        stream.close()
-        f = open(filename, 'r')
-        self.assertEquals("foo", f.read())
-        f.close()
+        with _get_output_stream(filename) as stream:
+            stream.write(b"foo")
+        with open(filename, 'r') as f:
+            self.assertEquals("foo", f.read())
 
 
 # from dulwich.tests.test_repository:
@@ -73,54 +69,71 @@ class CheckRefFormatTests(tests.TestCase):
     """
 
     def test_valid(self):
-        self.assertTrue(check_ref_format('heads/foo'))
-        self.assertTrue(check_ref_format('foo/bar/baz'))
-        self.assertTrue(check_ref_format('refs///heads/foo'))
-        self.assertTrue(check_ref_format('foo./bar'))
-        self.assertTrue(check_ref_format('heads/foo@bar'))
-        self.assertTrue(check_ref_format('heads/fix.lock.error'))
+        self.assertTrue(check_ref_format(b'heads/foo'))
+        self.assertTrue(check_ref_format(b'foo/bar/baz'))
+        self.assertTrue(check_ref_format(b'refs///heads/foo'))
+        self.assertTrue(check_ref_format(b'foo./bar'))
+        self.assertTrue(check_ref_format(b'heads/foo@bar'))
+        self.assertTrue(check_ref_format(b'heads/fix.lock.error'))
 
     def test_invalid(self):
-        self.assertFalse(check_ref_format('foo'))
-        self.assertFalse(check_ref_format('foo/.bar'))
-        self.assertFalse(check_ref_format('heads/foo/'))
-        self.assertFalse(check_ref_format('heads/foo.'))
-        self.assertFalse(check_ref_format('./foo'))
-        self.assertFalse(check_ref_format('.refs/foo'))
-        self.assertFalse(check_ref_format('heads/foo..bar'))
-        self.assertFalse(check_ref_format('heads/foo?bar'))
-        self.assertFalse(check_ref_format('heads/foo.lock'))
-        self.assertFalse(check_ref_format('heads/v@{ation'))
-        self.assertFalse(check_ref_format('heads/foo\\bar'))
-        self.assertFalse(check_ref_format('heads/foo\bar'))
-        self.assertFalse(check_ref_format('heads/foo bar'))
-        self.assertFalse(check_ref_format('heads/foo\020bar'))
-        self.assertFalse(check_ref_format('heads/foo\177bar'))
+        self.assertFalse(check_ref_format(b'foo'))
+        self.assertFalse(check_ref_format(b'foo/.bar'))
+        self.assertFalse(check_ref_format(b'heads/foo/'))
+        self.assertFalse(check_ref_format(b'heads/foo.'))
+        self.assertFalse(check_ref_format(b'./foo'))
+        self.assertFalse(check_ref_format(b'.refs/foo'))
+        self.assertFalse(check_ref_format(b'heads/foo..bar'))
+        self.assertFalse(check_ref_format(b'heads/foo?bar'))
+        self.assertFalse(check_ref_format(b'heads/foo.lock'))
+        self.assertFalse(check_ref_format(b'heads/v@{ation'))
+        self.assertFalse(check_ref_format(b'heads/foo\\bar'))
+        self.assertFalse(check_ref_format(b'heads/foo\bar'))
+        self.assertFalse(check_ref_format(b'heads/foo bar'))
+        self.assertFalse(check_ref_format(b'heads/foo\020bar'))
+        self.assertFalse(check_ref_format(b'heads/foo\177bar'))
 
 
 class CheckRefnameRewriting(tests.TestCase):
     """Tests for sanitize_ref_name_for_git function"""
 
     def test_passthrough_valid(self):
-        self.assertEqual(sanitize_ref_name_for_git('heads/foo'), 'heads/foo')
-        self.assertEqual(sanitize_ref_name_for_git('foo/bar/baz'), 'foo/bar/baz')
-        self.assertEqual(sanitize_ref_name_for_git('refs///heads/foo'), 'refs///heads/foo')
-        self.assertEqual(sanitize_ref_name_for_git('foo./bar'), 'foo./bar')
-        self.assertEqual(sanitize_ref_name_for_git('heads/foo@bar'), 'heads/foo@bar')
-        self.assertEqual(sanitize_ref_name_for_git('heads/fix.lock.error'), 'heads/fix.lock.error')
+        self.assertEqual(sanitize_ref_name_for_git(b'heads/foo'), b'heads/foo')
+        self.assertEqual(sanitize_ref_name_for_git(
+            b'foo/bar/baz'), b'foo/bar/baz')
+        self.assertEqual(sanitize_ref_name_for_git(
+            b'refs///heads/foo'), b'refs///heads/foo')
+        self.assertEqual(sanitize_ref_name_for_git(b'foo./bar'), b'foo./bar')
+        self.assertEqual(sanitize_ref_name_for_git(
+            b'heads/foo@bar'), b'heads/foo@bar')
+        self.assertEqual(sanitize_ref_name_for_git(
+            b'heads/fix.lock.error'), b'heads/fix.lock.error')
 
     def test_rewrite_invalid(self):
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('foo./bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo/')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo.')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('./foo')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('.refs/foo')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo..bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo?bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo.lock')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/v@{ation')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\\bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\020bar')))
-        self.assertTrue(check_ref_format(sanitize_ref_name_for_git('heads/foo\177bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'foo./bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo/')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo.')))
+        self.assertTrue(check_ref_format(sanitize_ref_name_for_git(b'./foo')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'.refs/foo')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo..bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo?bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo.lock')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/v@{ation')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo\bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo\\bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo\020bar')))
+        self.assertTrue(check_ref_format(
+            sanitize_ref_name_for_git(b'heads/foo\177bar')))

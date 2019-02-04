@@ -55,17 +55,17 @@ from ..textmerge import TextMerge
 
 adapter_registry = Registry()
 adapter_registry.register_lazy(('knit-delta-gz', 'fulltext'), 'breezy.bzr.knit',
-    'DeltaPlainToFullText')
+                               'DeltaPlainToFullText')
 adapter_registry.register_lazy(('knit-ft-gz', 'fulltext'), 'breezy.bzr.knit',
-    'FTPlainToFullText')
+                               'FTPlainToFullText')
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
-    'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
+                               'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'fulltext'),
-    'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
+                               'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
-    'breezy.bzr.knit', 'FTAnnotatedToUnannotated')
+                               'breezy.bzr.knit', 'FTAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'fulltext'),
-    'breezy.bzr.knit', 'FTAnnotatedToFullText')
+                               'breezy.bzr.knit', 'FTAnnotatedToFullText')
 # adapter_registry.register_lazy(('knit-annotated-ft-gz', 'chunked'),
 #     'breezy.bzr.knit', 'FTAnnotatedToChunked')
 
@@ -124,7 +124,7 @@ class ChunkedContentFactory(ContentFactory):
         elif storage_kind == 'fulltext':
             return b''.join(self._chunks)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
-            self.storage_kind)
+                                               self.storage_kind)
 
 
 class FulltextContentFactory(ContentFactory):
@@ -149,6 +149,8 @@ class FulltextContentFactory(ContentFactory):
         self.storage_kind = 'fulltext'
         self.key = key
         self.parents = parents
+        if not isinstance(text, bytes):
+            raise TypeError(text)
         self._text = text
 
     def get_bytes_as(self, storage_kind):
@@ -157,7 +159,7 @@ class FulltextContentFactory(ContentFactory):
         elif storage_kind == 'chunked':
             return [self._text]
         raise errors.UnavailableRepresentation(self.key, storage_kind,
-            self.storage_kind)
+                                               self.storage_kind)
 
 
 class AbsentContentFactory(ContentFactory):
@@ -280,11 +282,11 @@ class _MPDiffGenerator(object):
             #      having to recompute it for Knit content (pack-0.92,
             #      etc). That seems to have regressed somewhere
             left_parent_blocks = self.vf._extract_blocks(key,
-                parent_lines[0], lines)
+                                                         parent_lines[0], lines)
         else:
             left_parent_blocks = None
         diff = multiparent.MultiParent.from_lines(lines,
-                    parent_lines, left_parent_blocks)
+                                                  parent_lines, left_parent_blocks)
         self.diffs[key] = diff
 
     def _process_one_record(self, key, this_chunks):
@@ -304,7 +306,7 @@ class _MPDiffGenerator(object):
                 if p in self.ghost_parents:
                     continue
                 refcount = self.refcounts[p]
-                if refcount == 1: # Last child reference
+                if refcount == 1:  # Last child reference
                     self.refcounts.pop(p)
                     parent_chunks = self.chunks.pop(p)
                 else:
@@ -333,7 +335,7 @@ class _MPDiffGenerator(object):
                 raise errors.RevisionNotPresent(record.key, self.vf)
             self._process_one_record(record.key,
                                      record.get_bytes_as('chunked'))
-        
+
     def compute_diffs(self):
         self._extract_diffs()
         dpop = self.diffs.pop
@@ -393,8 +395,8 @@ class VersionedFile(object):
         raise NotImplementedError
 
     def add_lines(self, version_id, parents, lines, parent_texts=None,
-        left_matching_blocks=None, nostore_sha=None, random_id=False,
-        check_content=True):
+                  left_matching_blocks=None, nostore_sha=None, random_id=False,
+                  check_content=True):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -434,26 +436,26 @@ class VersionedFile(object):
         """
         self._check_write_ok()
         return self._add_lines(version_id, parents, lines, parent_texts,
-            left_matching_blocks, nostore_sha, random_id, check_content)
+                               left_matching_blocks, nostore_sha, random_id, check_content)
 
     def _add_lines(self, version_id, parents, lines, parent_texts,
-        left_matching_blocks, nostore_sha, random_id, check_content):
+                   left_matching_blocks, nostore_sha, random_id, check_content):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
     def add_lines_with_ghosts(self, version_id, parents, lines,
-        parent_texts=None, nostore_sha=None, random_id=False,
-        check_content=True, left_matching_blocks=None):
+                              parent_texts=None, nostore_sha=None, random_id=False,
+                              check_content=True, left_matching_blocks=None):
         """Add lines to the versioned file, allowing ghosts to be present.
 
         This takes the same parameters as add_lines and returns the same.
         """
         self._check_write_ok()
         return self._add_lines_with_ghosts(version_id, parents, lines,
-            parent_texts, nostore_sha, random_id, check_content, left_matching_blocks)
+                                           parent_texts, nostore_sha, random_id, check_content, left_matching_blocks)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts,
-        nostore_sha, random_id, check_content, left_matching_blocks):
+                               nostore_sha, random_id, check_content, left_matching_blocks):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
@@ -497,13 +499,13 @@ class VersionedFile(object):
         # We need to filter out ghosts, because we can't diff against them.
         knit_versions = set(self.get_parent_map(knit_versions))
         lines = dict(zip(knit_versions,
-            self._get_lf_split_line_list(knit_versions)))
+                         self._get_lf_split_line_list(knit_versions)))
         diffs = []
         for version_id in version_ids:
             target = lines[version_id]
             try:
                 parents = [lines[p] for p in parent_map[version_id] if p in
-                    knit_versions]
+                           knit_versions]
             except KeyError:
                 # I don't know how this could ever trigger.
                 # parent_map[version_id] was already triggered in the previous
@@ -516,7 +518,7 @@ class VersionedFile(object):
             else:
                 left_parent_blocks = None
             diffs.append(multiparent.MultiParent.from_lines(target, parents,
-                         left_parent_blocks))
+                                                            left_parent_blocks))
         return diffs
 
     def _extract_blocks(self, version_id, source, target):
@@ -541,25 +543,25 @@ class VersionedFile(object):
                                   if not mpvf.has_version(p))
         present_parents = set(self.get_parent_map(needed_parents))
         for parent_id, lines in zip(present_parents,
-                self._get_lf_split_line_list(present_parents)):
+                                    self._get_lf_split_line_list(present_parents)):
             mpvf.add_version(lines, parent_id, [])
         for (version, parent_ids, expected_sha1, mpdiff), lines in zip(
                 records, mpvf.get_line_list(versions)):
             if len(parent_ids) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
-                    mpvf.get_diff(parent_ids[0]).num_lines()))
+                                                                       mpvf.get_diff(parent_ids[0]).num_lines()))
             else:
                 left_matching_blocks = None
             try:
                 _, _, version_text = self.add_lines_with_ghosts(version,
-                    parent_ids, lines, vf_parents,
-                    left_matching_blocks=left_matching_blocks)
+                                                                parent_ids, lines, vf_parents,
+                                                                left_matching_blocks=left_matching_blocks)
             except NotImplementedError:
                 # The vf can't handle ghosts, so add lines normally, which will
                 # (reasonably) fail if there are ghosts in the data.
                 _, _, version_text = self.add_lines(version,
-                    parent_ids, lines, vf_parents,
-                    left_matching_blocks=left_matching_blocks)
+                                                    parent_ids, lines, vf_parents,
+                                                    left_matching_blocks=left_matching_blocks)
             vf_parents[version] = version_text
         sha1s = self.get_sha1s(versions)
         for version, parent_ids, expected_sha1, mpdiff in records:
@@ -572,7 +574,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return ''.join(self.get_lines(version_id))
+        return b''.join(self.get_lines(version_id))
     get_string = get_text
 
     def get_texts(self, version_ids):
@@ -581,7 +583,7 @@ class VersionedFile(object):
         Raises RevisionNotPresent if version is not present in
         file history.
         """
-        return [''.join(self.get_lines(v)) for v in version_ids]
+        return [b''.join(self.get_lines(v)) for v in version_ids]
 
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.
@@ -714,12 +716,12 @@ class RecordingVersionedFilesDecorator(object):
         self.calls = []
 
     def add_lines(self, key, parents, lines, parent_texts=None,
-        left_matching_blocks=None, nostore_sha=None, random_id=False,
-        check_content=True):
+                  left_matching_blocks=None, nostore_sha=None, random_id=False,
+                  check_content=True):
         self.calls.append(("add_lines", key, parents, lines, parent_texts,
-            left_matching_blocks, nostore_sha, random_id, check_content))
+                           left_matching_blocks, nostore_sha, random_id, check_content))
         return self._backing_vf.add_lines(key, parents, lines, parent_texts,
-            left_matching_blocks, nostore_sha, random_id, check_content)
+                                          left_matching_blocks, nostore_sha, random_id, check_content)
 
     def check(self):
         self._backing_vf.check()
@@ -730,9 +732,9 @@ class RecordingVersionedFilesDecorator(object):
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         self.calls.append(("get_record_stream", list(keys), sort_order,
-            include_delta_closure))
+                           include_delta_closure))
         return self._backing_vf.get_record_stream(keys, sort_order,
-            include_delta_closure)
+                                                  include_delta_closure)
 
     def get_sha1s(self, keys):
         self.calls.append(("get_sha1s", copy(keys)))
@@ -769,7 +771,7 @@ class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         self.calls.append(("get_record_stream", list(keys), sort_order,
-            include_delta_closure))
+                           include_delta_closure))
         if sort_order == 'unordered':
             def sort_key(key):
                 return (self._key_priority.get(key, 0), key)
@@ -777,11 +779,11 @@ class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
             # backing_vf
             for key in sorted(keys, key=sort_key):
                 for record in self._backing_vf.get_record_stream([key],
-                                'unordered', include_delta_closure):
+                                                                 'unordered', include_delta_closure):
                     yield record
         else:
             for record in self._backing_vf.get_record_stream(keys, sort_order,
-                            include_delta_closure):
+                                                             include_delta_closure):
                 yield record
 
 
@@ -791,7 +793,7 @@ class KeyMapper(object):
     def map(self, key):
         """Map key to an underlying storage identifier.
 
-        :param key: A key tuple e.g. ('file-id', 'revision-id').
+        :param key: A key tuple e.g. (b'file-id', b'revision-id').
         :return: An underlying storage identifier, specific to the partitioning
             mechanism.
         """
@@ -843,11 +845,11 @@ class PrefixMapper(URLEscapeMapper):
 
     def _map(self, key):
         """See KeyMapper.map()."""
-        return key[0]
+        return key[0].decode('utf-8')
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (partition_id,)
+        return (partition_id.encode('utf-8'),)
 
 
 class HashPrefixMapper(URLEscapeMapper):
@@ -859,7 +861,7 @@ class HashPrefixMapper(URLEscapeMapper):
     def _map(self, key):
         """See KeyMapper.map()."""
         prefix = self._escape(key[0])
-        return "%02x/%s" % (adler32(prefix) & 0xff, prefix)
+        return "%02x/%s" % (adler32(prefix) & 0xff, prefix.decode('utf-8'))
 
     def _escape(self, prefix):
         """No escaping needed here."""
@@ -867,7 +869,7 @@ class HashPrefixMapper(URLEscapeMapper):
 
     def _unmap(self, partition_id):
         """See KeyMapper.unmap()."""
-        return (self._unescape(osutils.basename(partition_id)),)
+        return (self._unescape(osutils.basename(partition_id)).encode('utf-8'),)
 
     def _unescape(self, basename):
         """No unescaping needed for HashPrefixMapper."""
@@ -880,7 +882,7 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
     This mapper is for use with a transport based backend.
     """
 
-    _safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
+    _safe = bytearray(b"abcdefghijklmnopqrstuvwxyz0123456789-_@,.")
 
     def _escape(self, prefix):
         """Turn a key element into a filesystem safe string.
@@ -892,9 +894,9 @@ class HashEscapedPrefixMapper(HashPrefixMapper):
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        r = [((c in self._safe) and c or ('%%%02x' % ord(c)))
-             for c in prefix]
-        return ''.join(r)
+        r = [(c in self._safe) and chr(c) or ('%%%02x' % c)
+             for c in bytearray(prefix)]
+        return ''.join(r).encode('ascii')
 
     def _unescape(self, basename):
         """Escaped names are easily unescaped by urlutils."""
@@ -910,7 +912,7 @@ def make_versioned_files_factory(versioned_file_factory, mapper):
     """
     def factory(transport):
         return ThunkedVersionedFiles(transport, versioned_file_factory, mapper,
-            lambda:True)
+                                     lambda: True)
     return factory
 
 
@@ -938,8 +940,8 @@ class VersionedFiles(object):
     """
 
     def add_lines(self, key, parents, lines, parent_texts=None,
-        left_matching_blocks=None, nostore_sha=None, random_id=False,
-        check_content=True):
+                  left_matching_blocks=None, nostore_sha=None, random_id=False,
+                  check_content=True):
         """Add a text to the store.
 
         :param key: The key tuple of the text to add. If the last element is
@@ -996,21 +998,21 @@ class VersionedFiles(object):
         # easily exhaust memory.
         chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(needed_parents, 'unordered',
-            True):
+                                             True):
             if record.storage_kind == 'absent':
                 continue
             mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
-                record.key, [])
+                             record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in zip(
                 records, mpvf.get_line_list(versions)):
             if len(parent_keys) == 1:
                 left_matching_blocks = list(mpdiff.get_matching_blocks(0,
-                    mpvf.get_diff(parent_keys[0]).num_lines()))
+                                                                       mpvf.get_diff(parent_keys[0]).num_lines()))
             else:
                 left_matching_blocks = None
             version_sha1, _, version_text = self.add_lines(key,
-                parent_keys, lines, vf_parents,
-                left_matching_blocks=left_matching_blocks)
+                                                           parent_keys, lines, vf_parents,
+                                                           left_matching_blocks=left_matching_blocks)
             if version_sha1 != expected_sha1:
                 raise errors.VersionedFileInvalidChecksum(version)
             vf_parents[key] = version_text
@@ -1024,7 +1026,7 @@ class VersionedFiles(object):
 
     def check(self, progress_bar=None):
         """Check this object for integrity.
-        
+
         :param progress_bar: A progress bar to output as the check progresses.
         :param keys: Specific keys within the VersionedFiles to check. When
             this parameter is not None, check() becomes a generator as per
@@ -1200,8 +1202,8 @@ class ThunkedVersionedFiles(VersionedFiles):
         self._is_locked = is_locked
 
     def add_lines(self, key, parents, lines, parent_texts=None,
-        left_matching_blocks=None, nostore_sha=None, random_id=False,
-        check_content=True):
+                  left_matching_blocks=None, nostore_sha=None, random_id=False,
+                  check_content=True):
         """See VersionedFiles.add_lines()."""
         path = self._mapper.map(key)
         version_id = key[-1]
@@ -1210,31 +1212,31 @@ class ThunkedVersionedFiles(VersionedFiles):
         try:
             try:
                 return vf.add_lines_with_ghosts(version_id, parents, lines,
-                    parent_texts=parent_texts,
-                    left_matching_blocks=left_matching_blocks,
-                    nostore_sha=nostore_sha, random_id=random_id,
-                    check_content=check_content)
+                                                parent_texts=parent_texts,
+                                                left_matching_blocks=left_matching_blocks,
+                                                nostore_sha=nostore_sha, random_id=random_id,
+                                                check_content=check_content)
             except NotImplementedError:
                 return vf.add_lines(version_id, parents, lines,
-                    parent_texts=parent_texts,
-                    left_matching_blocks=left_matching_blocks,
-                    nostore_sha=nostore_sha, random_id=random_id,
-                    check_content=check_content)
+                                    parent_texts=parent_texts,
+                                    left_matching_blocks=left_matching_blocks,
+                                    nostore_sha=nostore_sha, random_id=random_id,
+                                    check_content=check_content)
         except errors.NoSuchFile:
             # parent directory may be missing, try again.
             self._transport.mkdir(osutils.dirname(path))
             try:
                 return vf.add_lines_with_ghosts(version_id, parents, lines,
-                    parent_texts=parent_texts,
-                    left_matching_blocks=left_matching_blocks,
-                    nostore_sha=nostore_sha, random_id=random_id,
-                    check_content=check_content)
+                                                parent_texts=parent_texts,
+                                                left_matching_blocks=left_matching_blocks,
+                                                nostore_sha=nostore_sha, random_id=random_id,
+                                                check_content=check_content)
             except NotImplementedError:
                 return vf.add_lines(version_id, parents, lines,
-                    parent_texts=parent_texts,
-                    left_matching_blocks=left_matching_blocks,
-                    nostore_sha=nostore_sha, random_id=random_id,
-                    check_content=check_content)
+                                    parent_texts=parent_texts,
+                                    left_matching_blocks=left_matching_blocks,
+                                    nostore_sha=nostore_sha, random_id=random_id,
+                                    check_content=check_content)
 
     def annotate(self, key):
         """Return a list of (version-key, line) tuples for the text of key.
@@ -1253,7 +1255,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
         # XXX: This is over-enthusiastic but as we only thunk for Weaves today
-        # this is tolerable. Ideally we'd pass keys down to check() and 
+        # this is tolerable. Ideally we'd pass keys down to check() and
         # have the older VersiondFile interface updated too.
         for prefix, vf in self._iter_all_components():
             vf.check()
@@ -1282,7 +1284,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
         return self._file_factory(path, self._transport, create=True,
-            get_scope=lambda:None)
+                                  get_scope=lambda: None)
 
     def _partition_keys(self, keys):
         """Turn keys into a dict of prefix:suffix_list."""
@@ -1315,7 +1317,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             suffixes = [(suffix,) for suffix in suffixes]
             for record in vf.get_record_stream(suffixes, ordering,
-                include_delta_closure):
+                                               include_delta_closure):
                 if record.parents is not None:
                     record.parents = tuple(
                         prefix + parent for parent in record.parents)
@@ -1419,7 +1421,7 @@ class VersionedFilesWithFallbacks(VersionedFiles):
             if not missing_keys:
                 break
             (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
-                                                missing_keys)
+                missing_keys)
             parent_map.update(f_parent_map)
             missing_keys = f_missing_keys
         kg = _mod_graph.KnownGraph(parent_map)
@@ -1459,17 +1461,21 @@ class _PlanMergeVersionedFile(VersionedFiles):
         from ..merge import _PlanMerge
         if base is None:
             return _PlanMerge(ver_a, ver_b, self, (self._file_id,)).plan_merge()
-        old_plan = list(_PlanMerge(ver_a, base, self, (self._file_id,)).plan_merge())
-        new_plan = list(_PlanMerge(ver_a, ver_b, self, (self._file_id,)).plan_merge())
+        old_plan = list(_PlanMerge(ver_a, base, self,
+                                   (self._file_id,)).plan_merge())
+        new_plan = list(_PlanMerge(ver_a, ver_b, self,
+                                   (self._file_id,)).plan_merge())
         return _PlanMerge._subtract_plans(old_plan, new_plan)
 
     def plan_lca_merge(self, ver_a, ver_b, base=None):
         from ..merge import _PlanLCAMerge
         graph = _mod_graph.Graph(self)
-        new_plan = _PlanLCAMerge(ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
+        new_plan = _PlanLCAMerge(
+            ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
         if base is None:
             return new_plan
-        old_plan = _PlanLCAMerge(ver_a, base, self, (self._file_id,), graph).plan_merge()
+        old_plan = _PlanLCAMerge(
+            ver_a, base, self, (self._file_id,), graph).plan_merge()
         return _PlanLCAMerge._subtract_plans(list(old_plan), list(new_plan))
 
     def add_lines(self, key, parents, lines):
@@ -1499,7 +1505,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
                 yield ChunkedContentFactory(key, parents, None, lines)
         for versionedfile in self.fallback_versionedfiles:
             for record in versionedfile.get_record_stream(
-                pending, 'unordered', True):
+                    pending, 'unordered', True):
                 if record.storage_kind == 'absent':
                     continue
                 else:
@@ -1600,7 +1606,7 @@ class PlanWeaveMerge(TextMerge):
                 ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base'):
+                                 'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
@@ -1664,7 +1670,7 @@ class WeaveMerge(PlanWeaveMerge):
     """Weave merge that takes a VersionedFile and two versions as its input."""
 
     def __init__(self, versionedfile, ver_a, ver_b,
-        a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
+                 a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
         plan = versionedfile.plan_merge(ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
@@ -1726,8 +1732,8 @@ class VirtualVersionedFiles(VersionedFiles):
                 if not isinstance(lines, list):
                     raise AssertionError
                 yield ChunkedContentFactory((k,), None,
-                        sha1=osutils.sha_strings(lines),
-                        chunks=lines)
+                                            sha1=osutils.sha_strings(lines),
+                                            chunks=lines)
             else:
                 yield AbsentContentFactory((k,))
 
@@ -1749,10 +1755,10 @@ class NoDupeAddLinesDecorator(object):
         self._store = store
 
     def add_lines(self, key, parents, lines, parent_texts=None,
-            left_matching_blocks=None, nostore_sha=None, random_id=False,
-            check_content=True):
+                  left_matching_blocks=None, nostore_sha=None, random_id=False,
+                  check_content=True):
         """See VersionedFiles.add_lines.
-        
+
         This implementation may return None as the third element of the return
         value when the original store wouldn't.
         """
@@ -1771,10 +1777,10 @@ class NoDupeAddLinesDecorator(object):
                 sha1 = osutils.sha_strings(lines)
             return sha1, sum(map(len, lines)), None
         return self._store.add_lines(key, parents, lines,
-                parent_texts=parent_texts,
-                left_matching_blocks=left_matching_blocks,
-                nostore_sha=nostore_sha, random_id=random_id,
-                check_content=check_content)
+                                     parent_texts=parent_texts,
+                                     left_matching_blocks=left_matching_blocks,
+                                     nostore_sha=nostore_sha, random_id=random_id,
+                                     check_content=check_content)
 
     def __getattr__(self, name):
         return getattr(self._store, name)
@@ -1787,7 +1793,7 @@ def network_bytes_to_kind_and_offset(network_bytes):
     :return: A tuple (storage_kind, offset_of_remaining_bytes)
     """
     line_end = network_bytes.find(b'\n')
-    storage_kind = network_bytes[:line_end]
+    storage_kind = network_bytes[:line_end].decode('ascii')
     return storage_kind, line_end + 1
 
 
@@ -1820,18 +1826,18 @@ class NetworkRecordStream(object):
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
             for record in self._kind_factory[storage_kind](
-                storage_kind, bytes, line_end):
+                    storage_kind, bytes, line_end):
                 yield record
 
 
 def fulltext_network_to_record(kind, bytes, line_end):
     """Convert a network fulltext record to record."""
-    meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
-    record_meta = bytes[line_end+4:line_end+4+meta_len]
+    meta_len, = struct.unpack('!L', bytes[line_end:line_end + 4])
+    record_meta = bytes[line_end + 4:line_end + 4 + meta_len]
     key, parents = bencode.bdecode_as_tuple(record_meta)
     if parents == b'nil':
         parents = None
-    fulltext = bytes[line_end+4+meta_len:]
+    fulltext = bytes[line_end + 4 + meta_len:]
     return [FulltextContentFactory(key, parents, None, fulltext)]
 
 
@@ -1931,6 +1937,3 @@ class _KeyRefs(object):
 
     def get_referrers(self):
         return set(itertools.chain.from_iterable(viewvalues(self.refs)))
-
-
-

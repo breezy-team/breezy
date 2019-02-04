@@ -27,7 +27,6 @@ from stat import S_ISDIR
 import breezy
 from breezy.errors import (
     UnknownFormatError,
-    UnsupportedFormatError,
     )
 from breezy import (
     tests,
@@ -73,6 +72,7 @@ class TestDefaultFormat(TestCase):
         private_default = old_default().repository_format.__class__
         old_format = repository.format_registry.get_default()
         self.assertTrue(isinstance(old_format, private_default))
+
         def make_sample_bzrdir():
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
             my_bzrdir.repository_format = SampleRepositoryFormat()
@@ -137,11 +137,12 @@ class TestRepositoryFormat(TestCaseWithTransport):
         # create a branch with a few known format objects.
         # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
+
         def check_format(format, url):
             dir = format._matchingcontroldir.initialize(url)
             format.initialize(dir)
-            t = transport.get_transport_from_path(url)
-            found_format = bzrrepository.RepositoryFormatMetaDir.find_format(dir)
+            found_format = bzrrepository.RepositoryFormatMetaDir.find_format(
+                dir)
             self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
@@ -157,8 +158,8 @@ class TestRepositoryFormat(TestCaseWithTransport):
                 b"Sample .bzr repository format."),
             SampleRepositoryFormat)
         self.assertRaises(AssertionError,
-            SampleRepositoryFormat.from_string,
-                b"Different .bzr repository format.")
+                          SampleRepositoryFormat.from_string,
+                          b"Different .bzr repository format.")
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -170,13 +171,15 @@ class TestRepositoryFormat(TestCaseWithTransport):
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.repository.update_feature_flags({b"name": b"necessity"})
-        found_format = bzrrepository.RepositoryFormatMetaDir.find_format(tree.controldir)
-        self.assertIsInstance(found_format, bzrrepository.RepositoryFormatMetaDir)
+        found_format = bzrrepository.RepositoryFormatMetaDir.find_format(
+            tree.controldir)
+        self.assertIsInstance(
+            found_format, bzrrepository.RepositoryFormatMetaDir)
         self.assertEqual(found_format.features.get(b"name"), b"necessity")
-        self.assertRaises(bzrdir.MissingFeature, found_format.check_support_status,
-            True)
-        self.addCleanup(bzrrepository.RepositoryFormatMetaDir.unregister_feature,
-            b"name")
+        self.assertRaises(
+            bzrdir.MissingFeature, found_format.check_support_status, True)
+        self.addCleanup(
+            bzrrepository.RepositoryFormatMetaDir.unregister_feature, b"name")
         bzrrepository.RepositoryFormatMetaDir.register_feature(b"name")
         found_format.check_support_status(True)
 
@@ -190,9 +193,11 @@ class TestRepositoryFormatRegistry(TestCase):
     def test_register_unregister_format(self):
         format = SampleRepositoryFormat()
         self.registry.register(format)
-        self.assertEqual(format, self.registry.get(b"Sample .bzr repository format."))
+        self.assertEqual(format, self.registry.get(
+            b"Sample .bzr repository format."))
         self.registry.remove(format)
-        self.assertRaises(KeyError, self.registry.get, b"Sample .bzr repository format.")
+        self.assertRaises(KeyError, self.registry.get,
+                          b"Sample .bzr repository format.")
 
     def test_get_all(self):
         format = SampleRepositoryFormat()
@@ -209,7 +214,7 @@ class TestRepositoryFormatRegistry(TestCase):
     def test_register_extra_lazy(self):
         self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("breezy.tests.test_repository",
-            "SampleExtraRepositoryFormat")
+                                          "SampleExtraRepositoryFormat")
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
@@ -219,14 +224,14 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_attribute__fetch_order(self):
         """Knits need topological data insertion."""
-        repo = self.make_repository('.',
-                format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
-        repo = self.make_repository('.',
-                format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
@@ -242,24 +247,25 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty revision-store directory
         # empty weaves directory
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
         # Check per-file knits.
-        branch = control.create_branch()
+        control.create_branch()
         tree = control.create_workingtree()
-        tree.add(['foo'], ['Nasty-IdC:'], ['file'])
-        tree.put_file_bytes_non_atomic('foo', '')
+        tree.add(['foo'], [b'Nasty-IdC:'], ['file'])
+        tree.put_file_bytes_non_atomic('foo', b'')
         tree.commit('1st post', rev_id=b'foo')
         self.assertHasKnit(t, 'knits/e8/%254easty-%2549d%2543%253a',
-            '\nfoo fulltext 0 81  :')
+                           b'\nfoo fulltext 0 81  :')
 
-    def assertHasKnit(self, t, knit_name, extra_content=''):
+    def assertHasKnit(self, t, knit_name, extra_content=b''):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 8\n' + extra_content,
+        self.assertEqualDiff(b'# bzr knit index 8\n' + extra_content,
                              t.get(knit_name + '.kndx').read())
 
     def check_knits(self, t):
@@ -270,7 +276,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
+        knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
         # lock: is a directory
@@ -279,17 +285,19 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff(b'', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = knitrepo.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo = knitrepo.RepositoryFormatKnit1().initialize(
+            control, shared=True)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
@@ -299,12 +307,13 @@ class TestFormatKnit1(TestCaseWithTransport):
         # empty weaves directory
         # a 'shared-storage' marker file.
         t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
-                             t.get('format').read())
+        with t.get('format') as f:
+            self.assertEqualDiff(b'Bazaar-NG Knit Repository Format 1',
+                                 f.read())
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        self.assertEqualDiff(b'', t.get('shared-storage').read())
+        self.assertEqualDiff(b'', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
@@ -317,29 +326,29 @@ class TestFormatKnit1(TestCaseWithTransport):
         the whole inventory. So we grab the one from the expected text. Which
         is valid when the api is not being abused.
         """
-        repo = self.make_repository('.',
-                format=controldir.format_registry.get('knit')())
-        inv_xml = '<inventory format="5">\n</inventory>\n'
-        inv = repo._deserialise_inventory('test-rev-id', inv_xml)
-        self.assertEqual('test-rev-id', inv.root.revision)
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
+        inv_xml = b'<inventory format="5">\n</inventory>\n'
+        inv = repo._deserialise_inventory(b'test-rev-id', inv_xml)
+        self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
         """If it is set, then we re-use the global revision id"""
-        repo = self.make_repository('.',
-                format=controldir.format_registry.get('knit')())
-        inv_xml = ('<inventory format="5" revision_id="other-rev-id">\n'
-                   '</inventory>\n')
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
+        inv_xml = (b'<inventory format="5" revision_id="other-rev-id">\n'
+                   b'</inventory>\n')
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
         self.assertRaises(AssertionError, repo._deserialise_inventory,
-            'test-rev-id', inv_xml)
-        inv = repo._deserialise_inventory('other-rev-id', inv_xml)
-        self.assertEqual('other-rev-id', inv.root.revision)
+                          b'test-rev-id', inv_xml)
+        inv = repo._deserialise_inventory(b'other-rev-id', inv_xml)
+        self.assertEqual(b'other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):
-        repo = self.make_repository('.',
-                format=controldir.format_registry.get('knit')())
+        repo = self.make_repository(
+            '.', format=controldir.format_registry.get('knit')())
         self.assertFalse(repo._format.supports_external_lookups)
 
 
@@ -373,7 +382,7 @@ class InterDummy(repository.InterRepository):
     def is_compatible(repo_source, repo_target):
         """InterDummy is compatible with DummyRepository."""
         return (isinstance(repo_source, DummyRepository) and
-            isinstance(repo_target, DummyRepository))
+                isinstance(repo_target, DummyRepository))
 
 
 class TestInterRepository(TestCaseWithTransport):
@@ -418,13 +427,17 @@ class TestInterRepository(TestCaseWithTransport):
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
         dummy_a._serializer = repo._serializer
-        dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_a._format.supports_tree_reference = (
+            repo._format.supports_tree_reference)
         dummy_a._format.rich_root_data = repo._format.rich_root_data
-        dummy_a._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
+        dummy_a._format.supports_full_versioned_files = (
+            repo._format.supports_full_versioned_files)
         dummy_b._serializer = repo._serializer
-        dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_b._format.supports_tree_reference = (
+            repo._format.supports_tree_reference)
         dummy_b._format.rich_root_data = repo._format.rich_root_data
-        dummy_b._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
+        dummy_b._format.supports_full_versioned_files = (
+            repo._format.supports_full_versioned_files)
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -464,10 +477,10 @@ class TestRepositoryConverter(TestCaseWithTransport):
         target_format = TestRepositoryFormat2()
         repository.format_registry.register(source_format)
         self.addCleanup(repository.format_registry.remove,
-            source_format)
+                        source_format)
         repository.format_registry.register(target_format)
         self.addCleanup(repository.format_registry.remove,
-            target_format)
+                        target_format)
         t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
@@ -500,30 +513,23 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         tree = self.make_branch_and_tree('.', format)
-        tree.commit("Dull commit", rev_id="dull")
-        revision_tree = tree.branch.repository.revision_tree('dull')
-        revision_tree.lock_read()
-        try:
-            self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
-                u'', revision_tree.get_root_id())
-        finally:
-            revision_tree.unlock()
+        tree.commit("Dull commit", rev_id=b"dull")
+        revision_tree = tree.branch.repository.revision_tree(b'dull')
+        with revision_tree.lock_read():
+            self.assertRaises(
+                errors.NoSuchFile, revision_tree.get_file_lines, u'')
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         upgrade.Convert('.', format)
         tree = workingtree.WorkingTree.open('.')
-        revision_tree = tree.branch.repository.revision_tree('dull')
-        revision_tree.lock_read()
-        try:
-            revision_tree.get_file_lines(u'', revision_tree.get_root_id())
-        finally:
-            revision_tree.unlock()
+        revision_tree = tree.branch.repository.revision_tree(b'dull')
+        with revision_tree.lock_read():
+            revision_tree.get_file_lines(u'')
         tree.commit("Another dull commit", rev_id=b'dull2')
-        revision_tree = tree.branch.repository.revision_tree('dull2')
+        revision_tree = tree.branch.repository.revision_tree(b'dull2')
         revision_tree.lock_read()
         self.addCleanup(revision_tree.unlock)
-        self.assertEqual('dull',
-                revision_tree.get_file_revision(u'', revision_tree.get_root_id()))
+        self.assertEqual(b'dull', revision_tree.get_file_revision(u''))
 
     def test_supports_external_lookups(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -555,30 +561,6 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
             ('add', ('file', b'file-id', 'file', b'content\n'))],
-            revision_id='1')
-        builder.build_snapshot([b'1'], [
-            ('modify', ('file', b'content-2\n'))],
-            revision_id=b'2')
-        builder.finish_series()
-        source = builder.get_branch()
-        target = self.make_repository('target', format='2a')
-        target.fetch(source.repository)
-        target.lock_read()
-        self.addCleanup(target.unlock)
-        details = target.texts._index.get_build_details(
-            [(b'file-id', b'1',), (b'file-id', b'2',)])
-        file_1_details = details[(b'file-id', b'1')]
-        file_2_details = details[(b'file-id', b'2')]
-        # The index, and what to read off disk, should be the same for both
-        # versions of the file.
-        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
-
-    def test_fetch_combines_groups(self):
-        builder = self.make_branch_builder('source', format='2a')
-        builder.start_series()
-        builder.build_snapshot(None, [
-            ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [
             ('modify', ('file', b'content-2\n'))],
@@ -602,7 +584,31 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', '')),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [
+            ('modify', ('file', b'content-2\n'))],
+            revision_id=b'2')
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [(b'file-id', b'1',), (b'file-id', b'2',)])
+        file_1_details = details[(b'file-id', b'1')]
+        file_2_details = details[(b'file-id', b'2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
+
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'1')
         builder.build_snapshot([b'1'], [
             ('modify', ('file', b'content-2\n'))],
@@ -638,8 +644,8 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         inv.parent_id_basename_to_file_id._ensure_root()
         inv.id_to_entry._ensure_root()
         self.assertEqual(65536, inv.id_to_entry._root_node.maximum_size)
-        self.assertEqual(65536,
-            inv.parent_id_basename_to_file_id._root_node.maximum_size)
+        self.assertEqual(
+            65536, inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
     def test_autopack_unchanged_chk_nodes(self):
         # at 20 unchanged commits, chk pages are packed that are split into
@@ -690,7 +696,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
 
     def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
         source_builder = self.make_branch_builder('source',
-                            format='2a')
+                                                  format='2a')
         # We have to build a fairly large tree, so that we are sure the chk
         # pages will have split into multiple pages.
         entries = [('add', ('', b'a-root-id', 'directory', None))]
@@ -698,7 +704,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
             for j in 'abcdefghijklmnopqrstuvwxyz123456789':
                 fname = i + j
                 fid = fname.encode('utf-8') + b'-id'
-                content = 'content for %s\n' % (fname,)
+                content = b'content for %s\n' % (fname.encode('utf-8'),)
                 entries.append(('add', (fname, fid, 'file', content)))
         source_builder.start_series()
         source_builder.build_snapshot(None, entries, revision_id=b'rev-1')
@@ -720,32 +726,32 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # On a regular pass, getting the inventories and chk pages for rev-2
         # would only get the newly created chk pages
         search = vf_search.SearchResult({b'rev-2'}, {b'rev-1'}, 1,
-                                    {b'rev-2'})
-        simple_chk_records = []
+                                        {b'rev-2'})
+        simple_chk_records = set()
         for vf_name, substream in source.get_stream(search):
             if vf_name == 'chk_bytes':
                 for record in substream:
-                    simple_chk_records.append(record.key)
+                    simple_chk_records.add(record.key)
             else:
                 for _ in substream:
                     continue
         # 3 pages, the root (InternalNode), + 2 pages which actually changed
-        self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
-                          ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
-                          ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
-                          ('sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
-                         simple_chk_records)
+        self.assertEqual({(b'sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+                          (b'sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
+                          (b'sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
+                          (b'sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)},
+                         set(simple_chk_records))
         # Now, when we do a similar call using 'get_stream_for_missing_keys'
         # we should get a much larger set of pages.
-        missing = [('inventories', 'rev-2')]
-        full_chk_records = []
+        missing = [('inventories', b'rev-2')]
+        full_chk_records = set()
         for vf_name, substream in source.get_stream_for_missing_keys(missing):
             if vf_name == 'inventories':
                 for record in substream:
-                    self.assertEqual(('rev-2',), record.key)
+                    self.assertEqual((b'rev-2',), record.key)
             elif vf_name == 'chk_bytes':
                 for record in substream:
-                    full_chk_records.append(record.key)
+                    full_chk_records.add(record.key)
             else:
                 self.fail('Should not be getting a stream of %s' % (vf_name,))
         # We have 257 records now. This is because we have 1 root page, and 256
@@ -768,25 +774,29 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='pack-0.92')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
+        self.assertIsInstance(
+            stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_rich_root_pack(self):
         source = self.make_repository('source', format='rich-root-pack')
         target = self.make_repository('target', format='rich-root-pack')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
+        self.assertIsInstance(
+            stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
+        self.assertIsInstance(
+            stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19_rich_root(self):
         source = self.make_repository('source', format='1.9-rich-root')
         target = self.make_repository('target', format='1.9-rich-root')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
+        self.assertIsInstance(
+            stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_remote_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -795,7 +805,8 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.9')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
+        self.assertIsInstance(
+            stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_stream_source_to_non_exact(self):
         source = self.make_repository('source', format='pack-0.92')
@@ -832,57 +843,60 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
         self.builder = self.make_branch_builder('source')
         self.builder.start_series()
-        self.builder.build_snapshot(None,
-            [('add', ('', 'tree-root', 'directory', None))],
-            revision_id='initial')
+        self.builder.build_snapshot(
+            None,
+            [('add', ('', b'tree-root', 'directory', None))],
+            revision_id=b'initial')
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
 
     def assertParentIds(self, expected_result, rev_set):
-        self.assertEqual(sorted(expected_result),
+        self.assertEqual(
+            sorted(expected_result),
             sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
 
     def test_simple(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2')
-        rev_set = ['revid2']
-        self.assertParentIds(['revid1'], rev_set)
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2')
+        rev_set = [b'revid2']
+        self.assertParentIds([b'revid1'], rev_set)
 
     def test_not_first_parent(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2')
-        self.builder.build_snapshot(['revid2'], [], revision_id='revid3')
-        rev_set = ['revid3', 'revid2']
-        self.assertParentIds(['revid1'], rev_set)
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2')
+        self.builder.build_snapshot([b'revid2'], [], revision_id=b'revid3')
+        rev_set = [b'revid3', b'revid2']
+        self.assertParentIds([b'revid1'], rev_set)
 
     def test_not_null(self):
-        rev_set = ['initial']
+        rev_set = [b'initial']
         self.assertParentIds([], rev_set)
 
     def test_not_null_set(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
         rev_set = [_mod_revision.NULL_REVISION]
         self.assertParentIds([], rev_set)
 
     def test_ghost(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        rev_set = ['ghost', 'revid1']
-        self.assertParentIds(['initial'], rev_set)
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        rev_set = [b'ghost', b'revid1']
+        self.assertParentIds([b'initial'], rev_set)
 
     def test_ghost_parent(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1', 'ghost'], [], revision_id='revid2')
-        rev_set = ['revid2', 'revid1']
-        self.assertParentIds(['ghost', 'initial'], rev_set)
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot(
+            [b'revid1', b'ghost'], [], revision_id=b'revid2')
+        rev_set = [b'revid2', b'revid1']
+        self.assertParentIds([b'ghost', b'initial'], rev_set)
 
     def test_righthand_parent(self):
-        self.builder.build_snapshot(None, [], revision_id='revid1')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2a')
-        self.builder.build_snapshot(['revid1'], [], revision_id='revid2b')
-        self.builder.build_snapshot(['revid2a', 'revid2b'], [],
-                                    revision_id='revid3')
-        rev_set = ['revid3', 'revid2a']
-        self.assertParentIds(['revid1', 'revid2b'], rev_set)
+        self.builder.build_snapshot(None, [], revision_id=b'revid1')
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2a')
+        self.builder.build_snapshot([b'revid1'], [], revision_id=b'revid2b')
+        self.builder.build_snapshot([b'revid2a', b'revid2b'], [],
+                                    revision_id=b'revid3')
+        rev_set = [b'revid3', b'revid2a']
+        self.assertParentIds([b'revid1', b'revid2b'], rev_set)
 
 
 class TestWithBrokenRepo(TestCaseWithTransport):
@@ -900,42 +914,43 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             repo.start_write_group()
             cleanups.append(repo.commit_write_group)
             # make rev1a: A well-formed revision, containing 'file1'
-            inv = inventory.Inventory(revision_id='rev1a')
-            inv.root.revision = 'rev1a'
-            self.add_file(repo, inv, 'file1', 'rev1a', [])
-            repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
-            repo.add_inventory('rev1a', inv, [])
-            revision = _mod_revision.Revision('rev1a',
+            inv = inventory.Inventory(revision_id=b'rev1a')
+            inv.root.revision = b'rev1a'
+            self.add_file(repo, inv, 'file1', b'rev1a', [])
+            repo.texts.add_lines((inv.root.file_id, b'rev1a'), [], [])
+            repo.add_inventory(b'rev1a', inv, [])
+            revision = _mod_revision.Revision(
+                b'rev1a',
                 committer='jrandom@example.com', timestamp=0,
                 inventory_sha1='', timezone=0, message='foo', parent_ids=[])
-            repo.add_revision('rev1a', revision, inv)
+            repo.add_revision(b'rev1a', revision, inv)
 
             # make rev1b, which has no Revision, but has an Inventory, and
             # file1
-            inv = inventory.Inventory(revision_id='rev1b')
-            inv.root.revision = 'rev1b'
-            self.add_file(repo, inv, 'file1', 'rev1b', [])
-            repo.add_inventory('rev1b', inv, [])
+            inv = inventory.Inventory(revision_id=b'rev1b')
+            inv.root.revision = b'rev1b'
+            self.add_file(repo, inv, 'file1', b'rev1b', [])
+            repo.add_inventory(b'rev1b', inv, [])
 
             # make rev2, with file1 and file2
             # file2 is sane
             # file1 has 'rev1b' as an ancestor, even though this is not
             # mentioned by 'rev1a', making it an unreferenced ancestor
             inv = inventory.Inventory()
-            self.add_file(repo, inv, 'file1', 'rev2', ['rev1a', 'rev1b'])
-            self.add_file(repo, inv, 'file2', 'rev2', [])
-            self.add_revision(repo, 'rev2', inv, ['rev1a'])
+            self.add_file(repo, inv, 'file1', b'rev2', [b'rev1a', b'rev1b'])
+            self.add_file(repo, inv, 'file2', b'rev2', [])
+            self.add_revision(repo, b'rev2', inv, [b'rev1a'])
 
             # make ghost revision rev1c
             inv = inventory.Inventory()
-            self.add_file(repo, inv, 'file2', 'rev1c', [])
+            self.add_file(repo, inv, 'file2', b'rev1c', [])
 
             # make rev3 with file2
             # file2 refers to 'rev1c', which is a ghost in this repository, so
             # file2 cannot have rev1c as its ancestor.
             inv = inventory.Inventory()
-            self.add_file(repo, inv, 'file2', 'rev3', ['rev1c'])
-            self.add_revision(repo, 'rev3', inv, ['rev1c'])
+            self.add_file(repo, inv, 'file2', b'rev3', [b'rev1c'])
+            self.add_revision(repo, b'rev3', inv, [b'rev1c'])
             return repo
         finally:
             for cleanup in reversed(cleanups):
@@ -946,20 +961,23 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         inv.root.revision = revision_id
         repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
-        revision = _mod_revision.Revision(revision_id,
+        revision = _mod_revision.Revision(
+            revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
             timezone=0, message='foo', parent_ids=parent_ids)
         repo.add_revision(revision_id, revision, inv)
 
     def add_file(self, repo, inv, filename, revision, parents):
-        file_id = filename + '-id'
-        entry = inventory.InventoryFile(file_id, filename, 'TREE_ROOT')
+        file_id = filename.encode('utf-8') + b'-id'
+        content = [b'line\n']
+        entry = inventory.InventoryFile(file_id, filename, b'TREE_ROOT')
         entry.revision = revision
+        entry.text_sha1 = osutils.sha_strings(content)
         entry.text_size = 0
         inv.add(entry)
         text_key = (file_id, revision)
         parent_keys = [(file_id, parent) for parent in parents]
-        repo.texts.add_lines(text_key, parent_keys, ['line\n'])
+        repo.texts.add_lines(text_key, parent_keys, content)
 
     def test_insert_from_broken_repo(self):
         """Inserting a data stream from a broken repository won't silently
@@ -976,8 +994,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         empty_repo.lock_read()
         self.addCleanup(empty_repo.unlock)
         text = next(empty_repo.texts.get_record_stream(
-            [('file2-id', 'rev3')], 'topological', True))
-        self.assertEqual('line\n', text.get_bytes_as('fulltext'))
+            [(b'file2-id', b'rev3')], 'topological', True))
+        self.assertEqual(b'line\n', text.get_bytes_as('fulltext'))
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1011,11 +1029,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test__clear_obsolete_packs(self):
         packs = self.get_packs()
         obsolete_pack_trans = packs.transport.clone('obsolete_packs')
-        obsolete_pack_trans.put_bytes('a-pack.pack', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.rix', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
-        obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
-        obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
+        obsolete_pack_trans.put_bytes('a-pack.pack', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.rix', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.iix', b'content\n')
+        obsolete_pack_trans.put_bytes('another-pack.pack', b'foo\n')
+        obsolete_pack_trans.put_bytes('not-a-pack.rix', b'foo\n')
         res = packs._clear_obsolete_packs()
         self.assertEqual(['a-pack', 'another-pack'], sorted(res))
         self.assertEqual([], obsolete_pack_trans.list_dir('.'))
@@ -1023,11 +1041,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test__clear_obsolete_packs_preserve(self):
         packs = self.get_packs()
         obsolete_pack_trans = packs.transport.clone('obsolete_packs')
-        obsolete_pack_trans.put_bytes('a-pack.pack', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.rix', 'content\n')
-        obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
-        obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
-        obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
+        obsolete_pack_trans.put_bytes('a-pack.pack', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.rix', b'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.iix', b'content\n')
+        obsolete_pack_trans.put_bytes('another-pack.pack', b'foo\n')
+        obsolete_pack_trans.put_bytes('not-a-pack.rix', b'foo\n')
         res = packs._clear_obsolete_packs(preserve={'a-pack'})
         self.assertEqual(['a-pack', 'another-pack'], sorted(res))
         self.assertEqual(['a-pack.iix', 'a-pack.pack', 'a-pack.rix'],
@@ -1061,7 +1079,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_repr(self):
         packs = self.get_packs()
         self.assertContainsRe(repr(packs),
-            'RepositoryPackCollection(.*Repository(.*))')
+                              'RepositoryPackCollection(.*Repository(.*))')
 
     def test__obsolete_packs(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
@@ -1082,8 +1100,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                          sorted(packs._pack_transport.list_dir('.')))
         # names[0] should not be present in the index anymore
         self.assertEqual(names[1:],
-            sorted({osutils.splitext(n)[0] for n in
-                        packs._index_transport.list_dir('.')}))
+                         sorted({osutils.splitext(n)[0] for n in
+                                 packs._index_transport.list_dir('.')}))
 
     def test__obsolete_packs_missing_directory(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
@@ -1099,8 +1117,8 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
                          sorted(packs._pack_transport.list_dir('.')))
         # names[0] should not be present in the index anymore
         self.assertEqual(names[1:],
-            sorted({osutils.splitext(n)[0] for n in
-                        packs._index_transport.list_dir('.')}))
+                         sorted({osutils.splitext(n)[0] for n in
+                                 packs._index_transport.list_dir('.')}))
 
     def test_pack_distribution_zero(self):
         packs = self.get_packs()
@@ -1114,23 +1132,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_pack_distribution_one_to_nine(self):
         packs = self.get_packs()
         self.assertEqual([1],
-            packs.pack_distribution(1))
+                         packs.pack_distribution(1))
         self.assertEqual([1, 1],
-            packs.pack_distribution(2))
+                         packs.pack_distribution(2))
         self.assertEqual([1, 1, 1],
-            packs.pack_distribution(3))
+                         packs.pack_distribution(3))
         self.assertEqual([1, 1, 1, 1],
-            packs.pack_distribution(4))
+                         packs.pack_distribution(4))
         self.assertEqual([1, 1, 1, 1, 1],
-            packs.pack_distribution(5))
+                         packs.pack_distribution(5))
         self.assertEqual([1, 1, 1, 1, 1, 1],
-            packs.pack_distribution(6))
+                         packs.pack_distribution(6))
         self.assertEqual([1, 1, 1, 1, 1, 1, 1],
-            packs.pack_distribution(7))
+                         packs.pack_distribution(7))
         self.assertEqual([1, 1, 1, 1, 1, 1, 1, 1],
-            packs.pack_distribution(8))
+                         packs.pack_distribution(8))
         self.assertEqual([1, 1, 1, 1, 1, 1, 1, 1, 1],
-            packs.pack_distribution(9))
+                         packs.pack_distribution(9))
 
     def test_pack_distribution_stable_at_boundaries(self):
         """When there are multi-rev packs the counts are stable."""
@@ -1167,7 +1185,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def test_plan_pack_operations_2010_combines_smallest_two(self):
         packs = self.get_packs()
         existing_packs = [(1999, "big"), (9, "medium"), (1, "single2"),
-            (1, "single1")]
+                          (1, "single1")]
         # rev count - 2010 -> 2x1000 + 1x10 (3)
         pack_operations = packs.plan_autopack_combinations(
             existing_packs, [1000, 1000, 10])
@@ -1240,8 +1258,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         inv_index = GraphIndex(packs._index_transport, name + '.iix', sizes[1])
         txt_index = GraphIndex(packs._index_transport, name + '.tix', sizes[2])
         sig_index = GraphIndex(packs._index_transport, name + '.six', sizes[3])
-        self.assertEqual(pack_repo.ExistingPack(packs._pack_transport,
-            name, rev_index, inv_index, txt_index, sig_index), pack_1)
+        self.assertEqual(
+            pack_repo.ExistingPack(
+                packs._pack_transport, name, rev_index, inv_index, txt_index,
+                sig_index), pack_1)
         # and the same instance should be returned on successive calls.
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
@@ -1259,7 +1279,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
         # And the repository can access the new revision
-        self.assertEqual({rev4:(revs[-1],)}, r.get_parent_map([rev4]))
+        self.assertEqual({rev4: (revs[-1],)}, r.get_parent_map([rev4]))
         self.assertFalse(packs.reload_pack_names())
 
     def test_reload_pack_names_added_and_removed(self):
@@ -1272,7 +1292,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(names, packs.names())
         self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
-        self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
+        self.assertEqual({revs[-1]: (revs[-2],)}, r.get_parent_map([revs[-1]]))
         self.assertFalse(packs.reload_pack_names())
 
     def test_reload_pack_names_preserves_pending(self):
@@ -1286,7 +1306,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         r.start_write_group()
         self.addCleanup(r.abort_write_group)
         r.texts.insert_record_stream([versionedfile.FulltextContentFactory(
-            ('text', 'rev'), (), None, 'content\n')])
+            (b'text', b'rev'), (), None, b'content\n')])
         new_pack = packs._new_pack
         self.assertTrue(new_pack.data_inserted())
         new_pack.finish()
@@ -1296,23 +1316,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs._remove_pack_from_memory(removed_pack)
         names = packs.names()
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = {x[0][0] for x in new_nodes}
-        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        new_names = {x[0] for x in new_nodes}
+        self.assertEqual(names, sorted([x[0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
         self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
-                         sorted([x[0][0] for x in deleted_nodes]))
+                         sorted([x[0] for x in deleted_nodes]))
         packs.reload_pack_names()
         reloaded_names = packs.names()
         self.assertEqual(orig_at_load, packs._packs_at_load)
         self.assertEqual(names, reloaded_names)
         all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
-        new_names = {x[0][0] for x in new_nodes}
-        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        new_names = {x[0] for x in new_nodes}
+        self.assertEqual(names, sorted([x[0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
         self.assertEqual({new_pack.name}, new_names)
         self.assertEqual([to_remove_name],
-                         sorted([x[0][0] for x in deleted_nodes]))
+                         sorted([x[0] for x in deleted_nodes]))
 
     def test_autopack_obsoletes_new_pack(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
@@ -1320,10 +1340,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs.pack_distribution = lambda x: [10]
         r.start_write_group()
         r.revisions.insert_record_stream([versionedfile.FulltextContentFactory(
-            ('bogus-rev',), (), None, 'bogus-content\n')])
+            (b'bogus-rev',), (), None, b'bogus-content\n')])
         # This should trigger an autopack, which will combine everything into a
         # single pack file.
-        new_names = r.commit_write_group()
+        r.commit_write_group()
         names = packs.names()
         self.assertEqual(1, len(names))
         self.assertEqual([names[0] + '.pack'],
@@ -1335,6 +1355,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # full-pack via the other repo which will cause us to re-evaluate and
         # decide we don't need to do anything
         orig_execute = packs._execute_pack_operations
+
         def _munged_execute_pack_ops(*args, **kwargs):
             tree.branch.repository.pack()
             return orig_execute(*args, **kwargs)
@@ -1453,7 +1474,7 @@ class TestNewPack(TestCaseWithTransport):
             index_class=BTreeGraphIndex,
             use_chk_index=False)
         pack = pack_repo.NewPack(collection)
-        self.addCleanup(pack.abort) # Make sure the write stream gets closed
+        self.addCleanup(pack.abort)  # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
@@ -1473,18 +1494,18 @@ class TestPacker(TestCaseWithTransport):
         builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('f', 'f-id', 'file', 'content\n'))],
-            revision_id='A')
-        builder.build_snapshot(['A'],
-            [('modify', ('f', 'new-content\n'))],
-            revision_id='B')
-        builder.build_snapshot(['B'],
-            [('modify', ('f', 'third-content\n'))],
-            revision_id='C')
-        builder.build_snapshot(['C'],
-            [('modify', ('f', 'fourth-content\n'))],
-            revision_id='D')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('f', b'f-id', 'file', b'content\n'))],
+            revision_id=b'A')
+        builder.build_snapshot([b'A'],
+                               [('modify', ('f', b'new-content\n'))],
+                               revision_id=b'B')
+        builder.build_snapshot([b'B'],
+                               [('modify', ('f', b'third-content\n'))],
+                               revision_id=b'C')
+        builder.build_snapshot([b'C'],
+                               [('modify', ('f', b'fourth-content\n'))],
+                               revision_id=b'D')
         b = builder.get_branch()
         b.lock_read()
         builder.finish_series()
@@ -1494,14 +1515,14 @@ class TestPacker(TestCaseWithTransport):
         # ['D', 'C', 'B', 'A']
         packs = b.repository._pack_collection.packs
         packer = knitpack_repo.KnitPacker(b.repository._pack_collection,
-                                  packs, 'testing',
-                                  revision_ids=['B', 'C'])
+                                          packs, 'testing',
+                                          revision_ids=[b'B', b'C'])
         # Now, when we are copying the B & C revisions, their pack files should
         # be moved to the front of the stack
         # The new ordering moves B & C to the front of the .packs attribute,
         # and leaves the others in the original order.
         new_packs = [packs[1], packs[2], packs[0], packs[3]]
-        new_pack = packer.pack()
+        packer.pack()
         self.assertEqual(new_packs, packer.packs)
 
 
@@ -1514,9 +1535,9 @@ class TestOptimisingPacker(TestCaseWithTransport):
 
     def test_open_pack_will_optimise(self):
         packer = knitpack_repo.OptimisingKnitPacker(self.get_pack_collection(),
-                                            [], '.test')
+                                                    [], '.test')
         new_pack = packer.open_pack()
-        self.addCleanup(new_pack.abort) # ensure cleanup
+        self.addCleanup(new_pack.abort)  # ensure cleanup
         self.assertIsInstance(new_pack, pack_repo.NewPack)
         self.assertTrue(new_pack.revision_index._optimize_for_size)
         self.assertTrue(new_pack.inventory_index._optimize_for_size)
@@ -1530,15 +1551,15 @@ class TestGCCHKPacker(TestCaseWithTransport):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n')),
-            ], revision_id='A')
-        builder.build_snapshot(['A'], [
-            ('add', ('dir', 'dir-id', 'directory', None))],
-            revision_id='B')
-        builder.build_snapshot(['B'], [
-            ('modify', ('file', 'new content\n'))],
-            revision_id='C')
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n')),
+            ], revision_id=b'A')
+        builder.build_snapshot([b'A'], [
+            ('add', ('dir', b'dir-id', 'directory', None))],
+            revision_id=b'B')
+        builder.build_snapshot([b'B'], [
+            ('modify', ('file', b'new content\n'))],
+            revision_id=b'C')
         builder.finish_series()
         return builder.get_branch()
 
@@ -1554,11 +1575,13 @@ class TestGCCHKPacker(TestCaseWithTransport):
                   pack_name_with_rev_C_content)
         """
         b_source = self.make_abc_branch()
-        b_base = b_source.controldir.sprout('base', revision_id='A').open_branch()
-        b_stacked = b_base.controldir.sprout('stacked', stacked=True).open_branch()
+        b_base = b_source.controldir.sprout(
+            'base', revision_id=b'A').open_branch()
+        b_stacked = b_base.controldir.sprout(
+            'stacked', stacked=True).open_branch()
         b_stacked.lock_write()
         self.addCleanup(b_stacked.unlock)
-        b_stacked.fetch(b_source, 'B')
+        b_stacked.fetch(b_source, b'B')
         # Now re-open the stacked repo directly (no fallbacks) so that we can
         # fill in the A rev.
         repo_not_stacked = b_stacked.controldir.open_repository()
@@ -1566,29 +1589,29 @@ class TestGCCHKPacker(TestCaseWithTransport):
         self.addCleanup(repo_not_stacked.unlock)
         # Now we should have a pack file with A's inventory, but not its
         # Revision
-        self.assertEqual([('A',), ('B',)],
+        self.assertEqual([(b'A',), (b'B',)],
                          sorted(repo_not_stacked.inventories.keys()))
-        self.assertEqual([('B',)],
+        self.assertEqual([(b'B',)],
                          sorted(repo_not_stacked.revisions.keys()))
         stacked_pack_names = repo_not_stacked._pack_collection.names()
         # We have a couple names here, figure out which has A's inventory
         for name in stacked_pack_names:
             pack = repo_not_stacked._pack_collection.get_pack_by_name(name)
             keys = [n[1] for n in pack.inventory_index.iter_all_entries()]
-            if ('A',) in keys:
+            if (b'A',) in keys:
                 inv_a_pack_name = name
                 break
         else:
             self.fail('Could not find pack containing A\'s inventory')
-        repo_not_stacked.fetch(b_source.repository, 'A')
-        self.assertEqual([('A',), ('B',)],
+        repo_not_stacked.fetch(b_source.repository, b'A')
+        self.assertEqual([(b'A',), (b'B',)],
                          sorted(repo_not_stacked.revisions.keys()))
         new_pack_names = set(repo_not_stacked._pack_collection.names())
         rev_a_pack_names = new_pack_names.difference(stacked_pack_names)
         self.assertEqual(1, len(rev_a_pack_names))
         rev_a_pack_name = list(rev_a_pack_names)[0]
         # Now fetch 'C', so we have a couple pack files to join
-        repo_not_stacked.fetch(b_source.repository, 'C')
+        repo_not_stacked.fetch(b_source.repository, b'C')
         rev_c_pack_names = set(repo_not_stacked._pack_collection.names())
         rev_c_pack_names = rev_c_pack_names.difference(new_pack_names)
         self.assertEqual(1, len(rev_c_pack_names))
@@ -1606,7 +1629,7 @@ class TestGCCHKPacker(TestCaseWithTransport):
         a_pack = repo._pack_collection.get_pack_by_name(rev_a_pack_name)
         c_pack = repo._pack_collection.get_pack_by_name(rev_c_pack_name)
         packer = groupcompress_repo.GCCHKPacker(repo._pack_collection,
-                    [a_pack, c_pack], '.test-pack')
+                                                [a_pack, c_pack], '.test-pack')
         # This would raise ValueError in bug #437003, but should not raise an
         # error once fixed.
         packer.pack()
@@ -1619,11 +1642,11 @@ class TestGCCHKPacker(TestCaseWithTransport):
         inv_a_pack = repo._pack_collection.get_pack_by_name(inv_a_pack_name)
         repo._pack_collection._remove_pack_from_memory(inv_a_pack)
         packer = groupcompress_repo.GCCHKPacker(repo._pack_collection,
-            repo._pack_collection.all_packs(), '.test-pack')
+                                                repo._pack_collection.all_packs(), '.test-pack')
         e = self.assertRaises(ValueError, packer.pack)
         packer.new_pack.abort()
         self.assertContainsRe(str(e),
-            r"We are missing inventories for revisions: .*'A'")
+                              r"We are missing inventories for revisions: .*'A'")
 
 
 class TestCrossFormatPacks(TestCaseWithTransport):
@@ -1664,7 +1687,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         source_tree = self.make_branch_and_tree('src', format=src_fmt)
         source_tree.lock_write()
         self.addCleanup(source_tree.unlock)
-        tip = source_tree.commit('foo')
+        source_tree.commit('foo')
         target = self.make_repository('target', format=target_fmt)
         target.lock_write()
         self.addCleanup(target.unlock)
@@ -1733,4 +1756,4 @@ class TestFeatures(tests.TestCaseWithTransport):
         repo.lock_write()
         repo._format.features[b"makes-cheese-sandwich"] = b"required"
         self.assertRaises(bzrdir.MissingFeature,
-            repo._format.check_support_status, False)
+                          repo._format.check_support_status, False)

@@ -33,6 +33,7 @@ except ImportError:   # python < 3
         )
     from email.Utils import formataddr, parseaddr
 from . import __version__ as _breezy_version
+from .errors import BzrBadParameterNotUnicode
 from .osutils import safe_unicode
 from .sixish import (
     text_type,
@@ -69,8 +70,8 @@ class EmailMessage(object):
         self._body = body
         self._parts = []
 
-        if isinstance(to_address, (str, text_type)):
-            to_address = [ to_address ]
+        if isinstance(to_address, (bytes, text_type)):
+            to_address = [to_address]
 
         to_addresses = []
 
@@ -169,7 +170,7 @@ class EmailMessage(object):
         msg = EmailMessage(from_address, to_address, subject, body)
         if attachment is not None:
             msg.add_inline_attachment(attachment, attachment_filename,
-                    attachment_mime_subtype)
+                                      attachment_mime_subtype)
         SMTPConnection(config).send_email(msg)
 
     @staticmethod
@@ -179,6 +180,8 @@ class EmailMessage(object):
         :param address: An unicode string, or UTF-8 byte string.
         :return: A possibly RFC2047-encoded string.
         """
+        if not isinstance(address, (str, text_type)):
+            raise BzrBadParameterNotUnicode(address)
         # Can't call Header over all the address, because that encodes both the
         # name and the email address, which is not permitted by RFCs.
         user, email = parseaddr(address)
@@ -186,7 +189,7 @@ class EmailMessage(object):
             return email
         else:
             return formataddr((str(Header(safe_unicode(user))),
-                email))
+                               email))
 
     @staticmethod
     def string_with_encoding(string_):
@@ -201,7 +204,7 @@ class EmailMessage(object):
         # avoid base64 when it's not necessary in order to be most compatible
         # with the capabilities of the receiving side, we check with encode()
         # and decode() whether the body is actually ascii-only.
-        if isinstance(string_, unicode):
+        if isinstance(string_, text_type):
             try:
                 return (string_.encode('ascii'), 'ascii')
             except UnicodeEncodeError:

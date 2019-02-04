@@ -20,7 +20,11 @@
 import os
 import signal
 import sys
-import thread
+try:
+    from _thread import interrupt_main
+except ImportError:  # Python < 3
+    from thread import interrupt_main
+
 import threading
 
 from ... import (
@@ -77,9 +81,10 @@ class TestBzrServeBase(TestCaseWithTransport):
             finally:
                 # Then stop the server
                 trace.mutter('interrupting...')
-                thread.interrupt_main()
+                interrupt_main()
         # When the hook is fired, it just starts ``on_server_start_thread`` and
         # return
+
         def on_server_start(backing_urls, tcp_server):
             t = threading.Thread(
                 target=on_server_start_thread, args=(tcp_server,))
@@ -88,7 +93,7 @@ class TestBzrServeBase(TestCaseWithTransport):
         SmartTCPServer.hooks.install_named_hook(
             'server_started_ex', on_server_start,
             'run_bzr_serve_then_func hook')
-        # It seesm thread.interrupt_main() will not raise KeyboardInterrupt
+        # It seems interrupt_main() will not raise KeyboardInterrupt
         # until after socket.accept returns. So we set the timeout low to make
         # the test faster.
         self.overrideAttr(SmartTCPServer, '_ACCEPT_TIMEOUT', 0.1)
@@ -98,7 +103,7 @@ class TestBzrServeBase(TestCaseWithTransport):
                                     retcode=retcode)
         except KeyboardInterrupt as e:
             return (self._last_cmd_stdout.getvalue(),
-                self._last_cmd_stderr.getvalue())
+                    self._last_cmd_stderr.getvalue())
         return out, err
 
 
@@ -116,7 +121,7 @@ class TestBzrServe(TestBzrServeBase):
         """
         def hook(exception):
             if exception[0] is KeyboardInterrupt:
-                sys.stderr.write('catching KeyboardInterrupt\n')
+                sys.stderr.write(b'catching KeyboardInterrupt\n')
                 return True
             else:
                 return False
@@ -140,16 +145,16 @@ class TestBzrServe(TestBzrServeBase):
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
         result = self.finish_bzr_subprocess(process)
-        self.assertEqual('', result[0])
-        self.assertEqual('', result[1])
+        self.assertEqual(b'', result[0])
+        self.assertEqual(b'', result[1])
 
     def assertServerFinishesCleanly(self, process):
         """Shutdown the brz serve instance process looking for errors."""
         # Shutdown the server
         result = self.finish_bzr_subprocess(process, retcode=3,
                                             send_signal=signal.SIGINT)
-        self.assertEqual('', result[0])
-        self.assertEqual('brz: interrupted\n', result[1])
+        self.assertEqual(b'', result[0])
+        self.assertEqual(b'brz: interrupted\n', result[1])
 
     def make_read_requests(self, branch):
         """Do some read only requests."""
@@ -192,7 +197,7 @@ class TestBzrServe(TestBzrServeBase):
         args.extend(extra_options)
         process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
         port_line = process.stderr.readline()
-        prefix = 'listening on port: '
+        prefix = b'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
         url = 'bzr://localhost:%d/' % port
@@ -267,7 +272,7 @@ class TestBzrServe(TestBzrServeBase):
         f = open(log_fname, 'rb')
         content = f.read()
         f.close()
-        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
+        self.assertContainsRe(content, br'hpss request: \[[0-9-]+\]')
 
     def test_bzr_serve_supports_configurable_timeout(self):
         gs = config.GlobalStack()
@@ -278,7 +283,7 @@ class TestBzrServe(TestBzrServeBase):
         self.build_tree_contents([('a_file', b'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
-        self.assertEqual('contents\n', t.get_bytes('a_file'))
+        self.assertEqual(b'contents\n', t.get_bytes('a_file'))
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
         m = t.get_smart_medium()
@@ -286,7 +291,7 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            'Connection Timeout: disconnecting client after 0.2 seconds\n',
+            b'Connection Timeout: disconnecting client after 0.2 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 
@@ -295,7 +300,7 @@ class TestBzrServe(TestBzrServeBase):
         self.build_tree_contents([('a_file', b'contents\n')])
         # We can connect and issue a request
         t = transport.get_transport_from_url(url)
-        self.assertEqual('contents\n', t.get_bytes('a_file'))
+        self.assertEqual(b'contents\n', t.get_bytes('a_file'))
         # However, if we just wait for more content from the server, it will
         # eventually disconnect us.
         # TODO: Use something like signal.alarm() so that if the server doesn't
@@ -306,35 +311,35 @@ class TestBzrServe(TestBzrServeBase):
         # Now, we wait for timeout to trigger
         err = process.stderr.readline()
         self.assertEqual(
-            'Connection Timeout: disconnecting client after 0.1 seconds\n',
+            b'Connection Timeout: disconnecting client after 0.1 seconds\n',
             err)
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_graceful_shutdown(self):
-        big_contents = b'a'*64*1024
+        big_contents = b'a' * 64 * 1024
         self.build_tree_contents([('bigfile', big_contents)])
         process, url = self.start_server_port(['--client-timeout=1.0'])
         t = transport.get_transport_from_url(url)
         m = t.get_smart_medium()
         c = client._SmartClient(m)
         # Start, but don't finish a response
-        resp, response_handler = c.call_expecting_body('get', 'bigfile')
-        self.assertEqual(('ok',), resp)
+        resp, response_handler = c.call_expecting_body(b'get', b'bigfile')
+        self.assertEqual((b'ok',), resp)
         # Note: process.send_signal is a Python 2.6ism
         process.send_signal(signal.SIGHUP)
         # Wait for the server to notice the signal, and then read the actual
         # body of the response. That way we know that it is waiting for the
         # request to finish
-        self.assertEqual('Requested to stop gracefully\n',
+        self.assertEqual(b'Requested to stop gracefully\n',
                          process.stderr.readline())
-        self.assertEqual('Waiting for 1 client(s) to finish\n',
-                         process.stderr.readline())
+        self.assertIn(process.stderr.readline(),
+                      (b'', b'Waiting for 1 client(s) to finish\n'))
         body = response_handler.read_body_bytes()
         if body != big_contents:
             self.fail('Failed to properly read the contents of "bigfile"')
         # Now that our request is finished, the medium should notice it has
         # been disconnected.
-        self.assertEqual('', m.read_bytes(1))
+        self.assertEqual(b'', m.read_bytes(1))
         # And the server should be stopping
         self.assertEqual(0, process.wait())
 
@@ -358,7 +363,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
         # The when_server_started method issued a find_repositoryV3 that should
         # fail with 'norepository' because there are no repositories inside the
         # --directory.
-        self.assertEqual(('norepository',), self.client_resp)
+        self.assertEqual((b'norepository',), self.client_resp)
 
     def when_server_started(self):
         # Connect to the TCP server and issue some requests and see what comes
@@ -410,7 +415,8 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
 
     def test_bzr_serve_does_not_expand_userdir_outside_base(self):
         bzr_server = self.make_test_server('/foo')
-        self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
+        self.assertFalse(
+            bzr_server.smart_server.backing_transport.has('~user'))
 
     def test_get_base_path(self):
         """cmd_serve will turn the --directory option into a LocalTransport
@@ -422,6 +428,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         base_url = urlutils.local_path_to_url(base_dir) + '/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
+
         def capture_transport(transport, host, port, inet, timeout):
             self.bzr_serve_transport = transport
         cmd = builtins.cmd_serve()
@@ -434,11 +441,11 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport,
-            allow_writes=True)
+                allow_writes=True)
         server_maker = BzrServerFactory()
         self.assertEqual(base_url, self.bzr_serve_transport.base)
         self.assertEqual(base_dir,
-            server_maker.get_base_path(self.bzr_serve_transport))
+                         server_maker.get_base_path(self.bzr_serve_transport))
         # Read-only, from a URL
         cmd.run(directory=base_url, protocol=capture_transport)
         server_maker = BzrServerFactory()

@@ -34,6 +34,7 @@ from . import (
 from .errors import BzrError
 from .hooks import Hooks
 from .sixish import (
+    BytesIO,
     StringIO,
     )
 
@@ -45,7 +46,7 @@ class BadCommitMessageEncoding(BzrError):
 
 
 def _get_editor():
-    """Return a sequence of possible editor binaries for the current platform"""
+    """Return sequence of possible editor binaries for the current platform"""
     try:
         yield os.environ["BRZ_EDITOR"], '$BRZ_EDITOR'
     except KeyError:
@@ -72,7 +73,6 @@ def _run_editor(filename):
     for candidate, candidate_source in _get_editor():
         edargs = cmdline.split(candidate)
         try:
-            ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError as e:
             if candidate_source is not None:
@@ -92,12 +92,12 @@ def _run_editor(filename):
             break
     raise BzrError("Could not start any editor.\nPlease specify one with:\n"
                    " - $BRZ_EDITOR\n - editor=/some/path in %s\n"
-                   " - $VISUAL\n - $EDITOR" % \
-                    config.config_filename())
+                   " - $VISUAL\n - $EDITOR" %
+                   config.config_filename())
 
 
 DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
-    { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
+    {'bar': '-' * 14, 'msg': 'This line and the following will be ignored'}
 
 
 def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
@@ -120,7 +120,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     :return:    commit message or None.
     """
 
-    if not start_message is None:
+    if start_message is not None:
         start_message = start_message.encode(osutils.get_user_encoding())
     infotext = infotext.encode(osutils.get_user_encoding(), 'replace')
     return edit_commit_message_encoded(infotext, ignoreline, start_message)
@@ -150,11 +150,12 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     msgfilename = None
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
-                                    infotext, ignoreline, start_message)
+            infotext, ignoreline, start_message)
         if not msgfilename:
             return None
         basename = osutils.basename(msgfilename)
-        msg_transport = transport.get_transport_from_path(osutils.dirname(msgfilename))
+        msg_transport = transport.get_transport_from_path(
+            osutils.dirname(msgfilename))
         reference_content = msg_transport.get_bytes(basename)
         if not _run_editor(msgfilename):
             return None
@@ -163,7 +164,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
             if not ui.ui_factory.confirm_action(
                 u"Commit message was not edited, use anyway",
                 "breezy.msgeditor.unchanged",
-                {}):
+                    {}):
                 # Returning "" makes cmd_commit raise 'empty commit message
                 # specified' which is a reasonable error, given the user has
                 # rejected using the unedited template.
@@ -171,12 +172,9 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         started = False
         msg = []
         lastline, nlines = 0, 0
-        # codecs.open() ALWAYS opens file in binary mode but we need text mode
-        # 'rU' mode useful when bzr.exe used on Cygwin (bialix 20070430)
-        f = file(msgfilename, 'rU')
-        try:
+        with codecs.open(msgfilename, mode='rb', encoding=osutils.get_user_encoding()) as f:
             try:
-                for line in codecs.getreader(osutils.get_user_encoding())(f):
+                for line in f:
                     stripped_line = line.strip()
                     # strip empty line before the log message starts
                     if not started:
@@ -195,8 +193,6 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
                     msg.append(line)
             except UnicodeDecodeError:
                 raise BadCommitMessageEncoding()
-        finally:
-            f.close()
 
         if len(msg) == 0:
             return ""
@@ -238,18 +234,17 @@ def _create_temp_file_with_commit_template(infotext,
     import tempfile
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
                                                dir=tmpdir, text=True)
-    msgfile = os.fdopen(tmp_fileno, 'w')
-    try:
+    with os.fdopen(tmp_fileno, 'wb') as msgfile:
         if start_message is not None:
-            msgfile.write("%s\n" % start_message)
+            msgfile.write(b"%s\n" % start_message)
 
         if infotext is not None and infotext != "":
             hasinfo = True
-            msgfile.write("\n\n%s\n\n%s" %(ignoreline, infotext))
+            trailer = b"\n\n%s\n\n%s" % (
+                ignoreline.encode(osutils.get_user_encoding()), infotext)
+            msgfile.write(trailer)
         else:
             hasinfo = False
-    finally:
-        msgfile.close()
 
     return (msgfilename, hasinfo)
 
@@ -288,11 +283,11 @@ def make_commit_message_template_encoded(working_tree, specific_files,
     template = template.encode(output_encoding, "replace")
 
     if diff:
-        stream = StringIO()
+        stream = BytesIO()
         show_diff_trees(working_tree.basis_tree(),
                         working_tree, stream, specific_files,
                         path_encoding=output_encoding)
-        template = template + '\n' + stream.getvalue()
+        template = template + b'\n' + stream.getvalue()
 
     return template
 
@@ -311,14 +306,17 @@ class MessageEditorHooks(Hooks):
         These are all empty initially.
         """
         Hooks.__init__(self, "breezy.msgeditor", "hooks")
-        self.add_hook('set_commit_message',
+        self.add_hook(
+            'set_commit_message',
             "Set a fixed commit message. "
             "set_commit_message is called with the "
-            "breezy.commit.Commit object (so you can also change e.g. revision "
-            "properties by editing commit.builder._revprops) and the message "
-            "so far. set_commit_message must return the message to use or None"
-            " if it should use the message editor as normal.", (2, 4))
-        self.add_hook('commit_message_template',
+            "breezy.commit.Commit object (so you can also change e.g. "
+            "revision properties by editing commit.builder._revprops) and the "
+            "message so far. set_commit_message must return the message to "
+            "use or None if it should use the message editor as normal.",
+            (2, 4))
+        self.add_hook(
+            'commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the breezy.commit.Commit "
             "object and the message that is known so far. "

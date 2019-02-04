@@ -31,6 +31,8 @@ from breezy import (
     transform,
     transport,
     )
+from breezy.git.tree import GitRevisionTree
+from breezy.git.workingtree import GitWorkingTreeFormat
 from breezy.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from breezy.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
@@ -91,10 +93,15 @@ def preview_tree_post(testcase, tree):
 
 class TestTreeImplementationSupport(tests.TestCaseWithTransport):
 
-    def test_revision_tree_from_workingtree(self):
-        tree = self.make_branch_and_tree('.')
+    def test_revision_tree_from_workingtree_bzr(self):
+        tree = self.make_branch_and_tree('.', format='bzr')
         tree = revision_tree_from_workingtree(self, tree)
         self.assertIsInstance(tree, RevisionTree)
+
+    def test_revision_tree_from_workingtree(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        tree = revision_tree_from_workingtree(self, tree)
+        self.assertIsInstance(tree, GitRevisionTree)
 
 
 class TestCaseWithTree(TestCaseWithControlDir):
@@ -157,11 +164,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation changes the content of 'a' to foobar\n.
         """
         self._make_abc_tree(tree)
-        f = open(tree.basedir + '/a', 'wb')
-        try:
-            f.write('foobar\n')
-        finally:
-            f.close()
+        with open(tree.basedir + '/a', 'wb') as f:
+            f.write(b'foobar\n')
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_3(self, tree, converter=None):
@@ -192,11 +196,8 @@ class TestCaseWithTree(TestCaseWithControlDir):
         """
         self._make_abc_tree(tree)
         tree.rename_one('a', 'd')
-        f = open(tree.basedir + '/d', 'wb')
-        try:
-            f.write('bar\n')
-        finally:
-            f.close()
+        with open(tree.basedir + '/d', 'wb') as f:
+            f.write(b'bar\n')
         return self._convert_tree(tree, converter)
 
     def get_tree_no_parents_abc_content_6(self, tree, converter=None):
@@ -216,7 +217,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
     def get_tree_no_parents_abc_content_7(self, tree, converter=None):
         """return a test tree with a, b/, d/e contents.
 
-        This variation adds a dir 'd' ('d-id'), renames b to d/e.
+        This variation adds a dir 'd' (b'd-id'), renames b to d/e.
         """
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
@@ -262,18 +263,18 @@ class TestCaseWithTree(TestCaseWithControlDir):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
-            '1top-dir/',
-            u'2utf\u1234file',
-            '1top-dir/0file-in-1topdir',
-            '1top-dir/1dir-in-1topdir/'
-            ]
+                 '1top-dir/',
+                 u'2utf\u1234file',
+                 '1top-dir/0file-in-1topdir',
+                 '1top-dir/1dir-in-1topdir/'
+                 ]
         self.build_tree(paths)
         tree.add(paths)
         tt = transform.TreeTransform(tree)
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
             tt.new_symlink('symlink',
-                root_transaction_id, 'link-target', 'symlink')
+                           root_transaction_id, 'link-target', b'symlink')
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 
@@ -285,8 +286,10 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     DirStateRevisionTree by committing a working tree to create the revision
     tree.
     """
+    # TODO(jelmer): Test MemoryTree here
+    # TODO(jelmer): Test GitMemoryTree here
     scenarios = wt_make_scenarios(transport_server, transport_readonly_server,
-        formats)
+                                  formats)
     # now adjust the scenarios and add the non-working-tree tree scenarios.
     for scenario in scenarios:
         # for working tree format tests, preserve the tree
@@ -294,27 +297,30 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     # add RevisionTree scenario
     workingtree_format = format_registry.get_default()
     scenarios.append((RevisionTree.__name__,
-        create_tree_scenario(transport_server, transport_readonly_server,
-        workingtree_format, revision_tree_from_workingtree,)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           workingtree_format, revision_tree_from_workingtree,)))
+    scenarios.append((GitRevisionTree.__name__,
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           GitWorkingTreeFormat(), revision_tree_from_workingtree,)))
 
     # also test WorkingTree4/5's RevisionTree implementation which is
     # specialised.
     # XXX: Ask igc if WT5 revision tree actually is different.
     scenarios.append((DirStateRevisionTree.__name__ + ",WT4",
-        create_tree_scenario(transport_server, transport_readonly_server,
-        WorkingTreeFormat4(), _dirstate_tree_from_workingtree)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           WorkingTreeFormat4(), _dirstate_tree_from_workingtree)))
     scenarios.append((DirStateRevisionTree.__name__ + ",WT5",
-        create_tree_scenario(transport_server, transport_readonly_server,
-        WorkingTreeFormat5(), _dirstate_tree_from_workingtree)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           WorkingTreeFormat5(), _dirstate_tree_from_workingtree)))
     scenarios.append(("PreviewTree", create_tree_scenario(transport_server,
-        transport_readonly_server, workingtree_format, preview_tree_pre)))
+                                                          transport_readonly_server, workingtree_format, preview_tree_pre)))
     scenarios.append(("PreviewTreePost", create_tree_scenario(transport_server,
-        transport_readonly_server, workingtree_format, preview_tree_post)))
+                                                              transport_readonly_server, workingtree_format, preview_tree_post)))
     return scenarios
 
 
 def create_tree_scenario(transport_server, transport_readonly_server,
-    workingtree_format, converter):
+                         workingtree_format, converter):
     """Create a scenario for the specified converter
 
     :param converter: A function that converts a workingtree into the
@@ -333,6 +339,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
 
 def load_tests(loader, standard_tests, pattern):
     per_tree_mod_names = [
+        'archive',
         'annotate_iter',
         'export',
         'get_file_mtime',
@@ -340,19 +347,19 @@ def load_tests(loader, standard_tests, pattern):
         'get_root_id',
         'get_symlink_target',
         'ids',
-        'inv',
         'iter_search_rules',
         'is_executable',
         'list_files',
         'locking',
         'path_content_summary',
         'revision_tree',
+        'symlinks',
         'test_trees',
         'tree',
         'walkdirs',
         ]
     submod_tests = loader.loadTestsFromModuleNames(
-        ['breezy.tests.per_tree.test_' + name
+        [__name__ + '.test_' + name
          for name in per_tree_mod_names])
     scenarios = make_scenarios(
         tests.default_transport,

@@ -20,10 +20,26 @@ import sys
 
 from .. import tests
 
+
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'breezy.util._bencode_py', 'breezy._bencode_pyx')
+                                                 'breezy.util._bencode_py', 'breezy._bencode_pyx')
     return suite
+
+
+class RecursionLimit(object):
+    """Context manager that lowers recursion limit for testing."""
+
+    def __init__(self, limit=100):
+        self._new_limit = limit
+        self._old_limit = sys.getrecursionlimit()
+
+    def __enter__(self):
+        sys.setrecursionlimit(self._new_limit)
+        return self
+
+    def __exit__(self, *exc_info):
+        sys.setrecursionlimit(self._old_limit)
 
 
 class TestBencodeDecode(tests.TestCase):
@@ -76,10 +92,10 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(ValueError, b'00:')
         self._run_check_error(ValueError, b'35208734823ljdahflajhdf')
         self._run_check_error(ValueError, b'432432432432432:foo')
-        self._run_check_error(ValueError, b' 1:x') # leading whitespace
-        self._run_check_error(ValueError, b'-1:x') # negative
-        self._run_check_error(ValueError, b'1 x') # space vs colon
-        self._run_check_error(ValueError, b'1x') # missing colon
+        self._run_check_error(ValueError, b' 1:x')  # leading whitespace
+        self._run_check_error(ValueError, b'-1:x')  # negative
+        self._run_check_error(ValueError, b'1 x')  # space vs colon
+        self._run_check_error(ValueError, b'1x')  # missing colon
         self._run_check_error(ValueError, (b'1' * 1000) + b':')
 
     def test_list(self):
@@ -90,7 +106,8 @@ class TestBencodeDecode(tests.TestCase):
         self._check([[b'Alice', b'Bob'], [2, 3]], b'll5:Alice3:Bobeli2ei3eee')
 
     def test_list_deepnested(self):
-        self._run_check_error(RuntimeError, (b"l" * 10000) + (b"e" * 10000))
+        with RecursionLimit():
+            self._run_check_error(RuntimeError, (b"l" * 100) + (b"e" * 100))
 
     def test_malformed_list(self):
         self._run_check_error(ValueError, b'l')
@@ -101,20 +118,15 @@ class TestBencodeDecode(tests.TestCase):
 
     def test_dict(self):
         self._check({}, b'de')
-        self._check({b'':3}, b'd0:i3ee')
+        self._check({b'': 3}, b'd0:i3ee')
         self._check({b'age': 25, b'eyes': b'blue'}, b'd3:agei25e4:eyes4:bluee')
         self._check({b'spam.mp3': {b'author': b'Alice', b'length': 100000}},
-            b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
+                    b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
 
     def test_dict_deepnested(self):
-        # The recursion here provokes CPython into emitting a warning on
-        # stderr, "maximum recursion depth exceeded in __subclasscheck__", due
-        # to running out of stack space while evaluating "except (...):" in
-        # _bencode_py.  This is harmless, so we temporarily override stderr to
-        # avoid distracting noise in the test output.
-        self.overrideAttr(sys, 'stderr', self._log_file)
-        self._run_check_error(
-            RuntimeError, (b"d0:" * 10000) + b'i1e' + (b"e" * 10000))
+        with RecursionLimit():
+            self._run_check_error(
+                RuntimeError, (b"d0:" * 1000) + b'i1e' + (b"e" * 1000))
 
     def test_malformed_dict(self):
         self._run_check_error(ValueError, b'd')
@@ -184,23 +196,25 @@ class TestBencodeEncode(tests.TestCase):
     def test_list_deep_nested(self):
         top = []
         l = top
-        for i in range(10000):
+        for i in range(1000):
             l.append([])
             l = l[0]
-        self.assertRaises(RuntimeError, self.module.bencode, top)
+        with RecursionLimit():
+            self.assertRaises(RuntimeError, self.module.bencode, top)
 
     def test_dict(self):
         self._check(b'de', {})
         self._check(b'd3:agei25e4:eyes4:bluee', {b'age': 25, b'eyes': b'blue'})
         self._check(b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee',
-            {b'spam.mp3': {b'author': b'Alice', b'length': 100000}})
+                    {b'spam.mp3': {b'author': b'Alice', b'length': 100000}})
 
     def test_dict_deep_nested(self):
         d = top = {}
-        for i in range(10000):
+        for i in range(1000):
             d[b''] = {}
             d = d[b'']
-        self.assertRaises(RuntimeError, self.module.bencode, top)
+        with RecursionLimit():
+            self.assertRaises(RuntimeError, self.module.bencode, top)
 
     def test_bencached(self):
         self._check(b'i3e', self.module.Bencached(self.module.bencode(3)))
@@ -211,4 +225,3 @@ class TestBencodeEncode(tests.TestCase):
     def test_bool(self):
         self._check(b'i1e', True)
         self._check(b'i0e', False)
-

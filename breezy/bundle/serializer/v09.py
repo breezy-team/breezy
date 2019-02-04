@@ -18,8 +18,9 @@ from __future__ import absolute_import
 
 from breezy.bundle.serializer import _get_bundle_header
 from breezy.bundle.serializer.v08 import BundleSerializerV08, BundleReader
-from breezy.testament import StrictTestament3
 from breezy.bundle.bundle_data import BundleInfo
+
+from breezy.bzr.testament import StrictTestament3
 
 
 """Serializer for bundle format 0.9"""
@@ -40,7 +41,7 @@ class BundleSerializerV09(BundleSerializerV08):
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
-        f.write(_get_bundle_header('0.9') + '#\n')
+        f.write(_get_bundle_header('0.9') + b'#\n')
 
     def _testament_sha1(self, revision_id):
         return StrictTestament3.from_revision(self.source,

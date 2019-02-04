@@ -17,14 +17,13 @@
 from .. import (
     add,
     cache_utf8,
-    osutils,
     tests,
     )
 from ..bzr import (
     inventory,
     )
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 
 
@@ -36,7 +35,7 @@ class AddCustomIDAction(add.AddAction):
         file_id = cache_utf8.encode(kind + '-' + path.replace('/', '%'))
         if self.should_print:
             self._to_file.write('added %s with id %s\n'
-                                % (path, file_id))
+                                % (path, file_id.decode('utf-8')))
         return file_id
 
 
@@ -49,14 +48,14 @@ class TestAddFrom(tests.TestCaseWithTransport):
                          'base/dir/', 'base/dir/a',
                          'base/dir/subdir/',
                          'base/dir/subdir/b',
-                        ])
+                         ])
         self.base_tree.add(['a', 'b', 'dir', 'dir/a',
                             'dir/subdir', 'dir/subdir/b'])
         self.base_tree.commit('creating initial tree.')
 
     def add_helper(self, base_tree, base_path, new_tree, file_list,
                    should_print=False):
-        to_file = BytesIO()
+        to_file = StringIO()
         base_tree.lock_read()
         try:
             new_tree.lock_write()
@@ -78,7 +77,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
                  'dir/', 'dir/a',
                  'dir/subdir/',
                  'dir/subdir/b',
-                ]
+                 ]
         self.build_tree(['new/' + fn for fn in files])
         self.add_helper(self.base_tree, '', new_tree, ['new'])
 
@@ -155,9 +154,9 @@ class TestAddActions(tests.TestCase):
 
     def run_action(self, output):
         inv = inventory.Inventory()
-        stdout = BytesIO()
+        stdout = StringIO()
         action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,
-            'path', 'file')
+                              'path', 'file')
         self.assertEqual(stdout.getvalue(), output)

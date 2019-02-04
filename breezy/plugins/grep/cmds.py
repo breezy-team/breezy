@@ -33,6 +33,8 @@ from ...sixish import (
 #   incorrectly: Object already cleaned up, did you assign it to another
 #   variable?: _factory
 # with lazy import
+
+
 def _parse_levels(s):
     try:
         return int(s)
@@ -114,9 +116,9 @@ class cmd_grep(Command):
         Option('diff', short_name='p',
                help='Grep for pattern in changeset for each revision.'),
         ListOption('exclude', type=text_type, argname='glob', short_name='X',
-            help="Skip files whose base name matches GLOB."),
+                   help="Skip files whose base name matches GLOB."),
         ListOption('include', type=text_type, argname='glob', short_name='I',
-            help="Search only files whose base name matches GLOB."),
+                   help="Search only files whose base name matches GLOB."),
         Option('files-with-matches', short_name='l',
                help='Print only the name of each input file in '
                'which PATTERN is found.'),
@@ -131,10 +133,10 @@ class cmd_grep(Command):
         Option('ignore-case', short_name='i',
                help='ignore case distinctions while matching.'),
         Option('levels',
-           help='Number of levels to display - 0 for all, 1 for collapsed '
-           '(1 is default).',
-           argname='N',
-           type=_parse_levels),
+               help='Number of levels to display - 0 for all, 1 for collapsed '
+               '(1 is default).',
+               argname='N',
+               type=_parse_levels),
         Option('line-number', short_name='n',
                help='show 1-based line number.'),
         Option('no-recursive',
@@ -144,7 +146,6 @@ class cmd_grep(Command):
                'between output lines rather than a newline.'),
         ]
 
-
     @display_command
     def run(self, verbose=False, ignore_case=False, no_recursive=False,
             from_root=False, null=False, levels=None, line_number=False,
@@ -152,19 +153,18 @@ class cmd_grep(Command):
             exclude=None, fixed_string=False, files_with_matches=False,
             files_without_match=False, color=None, diff=False):
         from breezy import _termcolor
-        from breezy.plugins.grep import (
-            grep,
-            )
+        from . import grep
         import re
         if path_list is None:
             path_list = ['.']
         else:
             if from_root:
-                raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
+                raise errors.BzrCommandError(
+                    'cannot specify both --from-root and PATH.')
 
         if files_with_matches and files_without_match:
             raise errors.BzrCommandError('cannot specify both '
-                '-l/--files-with-matches and -L/--files-without-matches.')
+                                         '-l/--files-with-matches and -L/--files-without-matches.')
 
         global_config = GlobalConfig()
 
@@ -176,13 +176,13 @@ class cmd_grep(Command):
 
         if color not in ['always', 'never', 'auto']:
             raise errors.BzrCommandError('Valid values for --color are '
-                '"always", "never" or "auto".')
+                                         '"always", "never" or "auto".')
 
-        if levels==None:
-            levels=1
+        if levels is None:
+            levels = 1
 
         print_revno = False
-        if revision != None or levels == 0:
+        if revision is not None or levels == 0:
             # print revision numbers as we may be showing multiple revisions
             print_revno = True
 
@@ -205,7 +205,8 @@ class cmd_grep(Command):
             re_flags |= re.IGNORECASE
 
         if not fixed_string:
-            patternc = grep.compile_pattern(pattern, re_flags)
+            patternc = grep.compile_pattern(
+                pattern.encode(grep._user_encoding), re_flags)
 
         if color == 'always':
             show_color = True

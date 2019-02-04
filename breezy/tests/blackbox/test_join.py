@@ -28,7 +28,7 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def make_trees(self):
         base_tree = self.make_branch_and_tree('tree',
-            format='development-subtree')
+                                              format='development-subtree')
         base_tree.commit('empty commit')
         self.build_tree(['tree/subtree/', 'tree/subtree/file1'])
         sub_tree = self.make_branch_and_tree('tree/subtree')
@@ -38,7 +38,7 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def check_success(self, path):
         base_tree = workingtree.WorkingTree.open(path)
-        self.assertEqual('file1-id', base_tree.path2id('subtree/file1'))
+        self.assertEqual(b'file1-id', base_tree.path2id('subtree/file1'))
 
     def test_join(self):
         base_tree, sub_tree = self.make_trees()
@@ -56,11 +56,11 @@ class TestJoin(tests.TestCaseWithTransport):
         osutils.rename('tree/subtree', 'tree/subtree2/subtree')
         self.run_bzr_error(
             ('Cannot join .*subtree.  Parent directory is not versioned',),
-             'join tree/subtree2/subtree')
+            'join tree/subtree2/subtree')
         # disabled because this gives an ugly error at present -- mbp 20070306
-        ## self.run_bzr_error(
+        # self.run_bzr_error(
         ##     ('Cannot join .*subtree.  Parent directory is not versioned',),
-        ##      'join', '--reference', 'tree/subtree2/subtree')
+        # 'join', '--reference', 'tree/subtree2/subtree')
         self.run_bzr_error(('Not a branch:.*subtree2',),
                            'join tree/subtree2')
 
@@ -71,14 +71,14 @@ class TestJoin(tests.TestCaseWithTransport):
         self.run_bzr('join . --reference', working_dir='tree/subtree')
         sub_tree.lock_read()
         self.addCleanup(sub_tree.unlock)
-        self.assertEqual('file1-id', sub_tree.path2id('file1'))
-        self.assertTrue(sub_tree.has_id('file1-id'))
+        self.assertEqual(b'file1-id', sub_tree.path2id('file1'))
+        self.assertTrue(sub_tree.has_id(b'file1-id'))
         self.assertEqual(subtree_root_id, sub_tree.path2id(''))
         self.assertEqual('', sub_tree.id2path(subtree_root_id))
         self.assertIs(None, base_tree.path2id('subtree/file1'))
         base_tree.lock_read()
         self.addCleanup(base_tree.unlock)
-        self.assertFalse(base_tree.has_id('file1-id'))
+        self.assertFalse(base_tree.has_id(b'file1-id'))
         self.assertEqual(subtree_root_id, base_tree.path2id('subtree'))
         self.assertEqual('subtree', base_tree.id2path(subtree_root_id))
 

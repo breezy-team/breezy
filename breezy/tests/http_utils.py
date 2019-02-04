@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import base64
 import re
 try:
     from urllib.request import (
@@ -90,8 +91,8 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         # we have to stop early due to error, but we would also have to use the
         # HTTP trailer facility which may not be widely available.
         request_bytes = self.rfile.read(data_length)
-        protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
-            request_bytes)
+        protocol_factory, unused_bytes = (
+            medium._get_protocol_factory_for_bytes(request_bytes))
         out_buffer = BytesIO()
         smart_protocol_request = protocol_factory(t, out_buffer.write, '/')
         # Perhaps there should be a SmartServerHTTPMedium that takes care of
@@ -137,6 +138,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
     We set up two webservers to allows various tests involving
     proxies or redirections from one server to the other.
     """
+
     def setUp(self):
         super(TestCaseWithTwoWebservers, self).setUp()
         self.transport_secondary_server = http_server.HttpServer
@@ -191,7 +193,7 @@ class RedirectRequestHandler(http_server.TestingHTTPRequestHandler):
                 # We do not send a body
                 self.send_header('Content-Length', '0')
                 self.end_headers()
-                return False # The job is done
+                return False  # The job is done
             else:
                 # We leave the parent class serve the request
                 pass
@@ -230,53 +232,53 @@ class HTTPServerRedirecting(http_server.HttpServer):
         code = None
         target = None
         for (rsource, rtarget, rcode) in self.redirections:
-            target, match = re.subn(rsource, rtarget, path)
+            target, match = re.subn(rsource, rtarget, path, count=1)
             if match:
                 code = rcode
-                break # The first match wins
+                break  # The first match wins
             else:
                 target = None
         return code, target
 
 
 class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
-   """A support class providing redirections from one server to another.
+    """A support class providing redirections from one server to another.
 
-   We set up two webservers to allows various tests involving
-   redirections.
-   The 'old' server is redirected to the 'new' server.
-   """
+    We set up two webservers to allows various tests involving
+    redirections.
+    The 'old' server is redirected to the 'new' server.
+    """
 
-   def setUp(self):
-       super(TestCaseWithRedirectedWebserver, self).setUp()
-       # The redirections will point to the new server
-       self.new_server = self.get_readonly_server()
-       # The requests to the old server will be redirected to the new server
-       self.old_server = self.get_secondary_server()
+    def setUp(self):
+        super(TestCaseWithRedirectedWebserver, self).setUp()
+        # The redirections will point to the new server
+        self.new_server = self.get_readonly_server()
+        # The requests to the old server will be redirected to the new server
+        self.old_server = self.get_secondary_server()
 
-   def create_transport_secondary_server(self):
-       """Create the secondary server redirecting to the primary server"""
-       new = self.get_readonly_server()
-       redirecting = HTTPServerRedirecting(
-           protocol_version=self._protocol_version)
-       redirecting.redirect_to(new.host, new.port)
-       redirecting._url_protocol = self._url_protocol
-       return redirecting
+    def create_transport_secondary_server(self):
+        """Create the secondary server redirecting to the primary server"""
+        new = self.get_readonly_server()
+        redirecting = HTTPServerRedirecting(
+            protocol_version=self._protocol_version)
+        redirecting.redirect_to(new.host, new.port)
+        redirecting._url_protocol = self._url_protocol
+        return redirecting
 
-   def get_old_url(self, relpath=None):
+    def get_old_url(self, relpath=None):
         base = self.old_server.get_url()
         return self._adjust_url(base, relpath)
 
-   def get_old_transport(self, relpath=None):
+    def get_old_transport(self, relpath=None):
         t = transport.get_transport_from_url(self.get_old_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
-   def get_new_url(self, relpath=None):
+    def get_new_url(self, relpath=None):
         base = self.new_server.get_url()
         return self._adjust_url(base, relpath)
 
-   def get_new_transport(self, relpath=None):
+    def get_new_transport(self, relpath=None):
         t = transport.get_transport_from_url(self.get_new_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
@@ -333,8 +335,9 @@ class BasicAuthRequestHandler(AuthRequestHandler):
         if auth_header:
             scheme, raw_auth = auth_header.split(' ', 1)
             if scheme.lower() == tcs.auth_scheme:
-                user, password = raw_auth.decode('base64').split(':')
-                return tcs.authorized(user, password)
+                user, password = base64.b64decode(raw_auth).split(b':')
+                return tcs.authorized(user.decode('ascii'),
+                                      password.decode('ascii'))
 
         return False
 
@@ -410,7 +413,7 @@ class AuthServer(http_server.HttpServer):
     auth_header_sent = None
     auth_header_recv = None
     auth_error_code = None
-    auth_realm = "Thou should not pass"
+    auth_realm = u"Thou should not pass"
 
     def __init__(self, request_handler, auth_scheme,
                  protocol_version=None):
@@ -459,7 +462,7 @@ class DigestAuthServer(AuthServer):
         user = auth['username']
         if user not in self.password_of:
             return False
-        algorithm= auth['algorithm']
+        algorithm = auth['algorithm']
         if algorithm != 'MD5':
             return False
         qop = auth['qop']
@@ -470,11 +473,14 @@ class DigestAuthServer(AuthServer):
 
         # Recalculate the response_digest to compare with the one
         # sent by the client
-        A1 = '%s:%s:%s' % (user, realm, password)
-        A2 = '%s:%s' % (command, auth['uri'])
+        A1 = ('%s:%s:%s' % (user, realm, password)).encode('utf-8')
+        A2 = ('%s:%s' % (command, auth['uri'])).encode('utf-8')
 
-        H = lambda x: osutils.md5(x).hexdigest()
-        KD = lambda secret, data: H("%s:%s" % (secret, data))
+        def H(x):
+            return osutils.md5(x).hexdigest()
+
+        def KD(secret, data):
+            return H(("%s:%s" % (secret, data)).encode('utf-8'))
 
         nonce_count = int(auth['nc'], 16)
 
@@ -564,5 +570,3 @@ class ProxyBasicAndDigestAuthServer(DigestAuthServer, ProxyAuthServer):
         self.init_proxy_auth()
         # We really accept Digest only
         self.auth_scheme = 'digest'
-
-

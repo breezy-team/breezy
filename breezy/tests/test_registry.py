@@ -26,6 +26,8 @@ from breezy import (
     tests,
     )
 
+from ..sixish import viewitems
+
 
 class TestRegistry(tests.TestCase):
 
@@ -82,7 +84,7 @@ class TestRegistry(tests.TestCase):
         a_registry.register('one', 'one')
         self.assertRaises(KeyError, a_registry.register, 'one', 'two')
         self.assertRaises(KeyError, a_registry.register, 'one', 'two',
-                                    override_existing=False)
+                          override_existing=False)
 
         a_registry.register('one', 'two', override_existing=True)
         self.assertEqual('two', a_registry.get('one'))
@@ -103,6 +105,7 @@ class TestRegistry(tests.TestCase):
 
         # We should be able to handle a callable to get information
         help_calls = []
+
         def generic_help(reg, key):
             help_calls.append(key)
             return 'generic help for %s' % (key,)
@@ -144,7 +147,7 @@ class TestRegistry(tests.TestCase):
                           ('six', 'this is my help'),
                           ('three', 'generic help for three'),
                           ('two', 'help text for two'),
-                         ], sorted((key, a_registry.get_help(key))
+                          ], sorted((key, a_registry.get_help(key))
                                     for key in a_registry.keys()))
 
         # We don't know what order it was called in, but we should get
@@ -184,7 +187,7 @@ class TestRegistry(tests.TestCase):
                           ('one', 'string info'),
                           ('three', ['a', 'list']),
                           ('two', 2),
-                         ], sorted((key, a_registry.get_info(key))
+                          ], sorted((key, a_registry.get_info(key))
                                     for key in a_registry.keys()))
 
     def test_get_prefix(self):
@@ -200,6 +203,32 @@ class TestRegistry(tests.TestCase):
         found_object, suffix = my_registry.get_prefix('sftp://baz/qux')
         self.assertEqual('//baz/qux', suffix)
         self.assertIs(sftp_object, found_object)
+
+    def test_registry_alias(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 1, info='string info')
+        a_registry.register_alias('two', 'one')
+        a_registry.register_alias('three', 'one', info='own info')
+        self.assertEqual(a_registry.get('one'), a_registry.get('two'))
+        self.assertEqual(a_registry.get_help('one'),
+                         a_registry.get_help('two'))
+        self.assertEqual(a_registry.get_info('one'),
+                         a_registry.get_info('two'))
+        self.assertEqual('own info', a_registry.get_info('three'))
+        self.assertEqual({'two': 'one', 'three': 'one'}, a_registry.aliases())
+        self.assertEqual(
+            {'one': ['three', 'two']},
+            {k: sorted(v) for (k, v) in viewitems(a_registry.alias_map())})
+
+    def test_registry_alias_exists(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 1, info='string info')
+        a_registry.register('two', 2)
+        self.assertRaises(KeyError, a_registry.register_alias, 'one', 'one')
+
+    def test_registry_alias_targetmissing(self):
+        a_registry = registry.Registry()
+        self.assertRaises(KeyError, a_registry.register_alias, 'one', 'two')
 
 
 class TestRegistryIter(tests.TestCase):
@@ -218,7 +247,7 @@ class TestRegistryIter(tests.TestCase):
         _registry = registry.Registry()
 
         def register_more():
-           _registry.register('hidden', None)
+            _registry.register('hidden', None)
 
         # Avoid closing over self by binding local variable
         self.registry = _registry
@@ -272,20 +301,21 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         """
         os.mkdir('tmp')
         plugin_name = 'bzr_plugin_a_%s' % (osutils.rand_chars(4),)
-        with open('tmp/'+plugin_name+'.py', 'wb') as f: f.write(contents)
+        with open('tmp/' + plugin_name + '.py', 'wb') as f:
+            f.write(contents)
         return plugin_name
 
     def create_simple_plugin(self):
         return self.create_plugin_file(
-            'object1 = "foo"\n'
-            '\n\n'
-            'def function(a,b,c):\n'
-            '    return a,b,c\n'
-            '\n\n'
-            'class MyClass(object):\n'
-            '    def __init__(self, a):\n'
-            '      self.a = a\n'
-            '\n\n'
+            b'object1 = "foo"\n'
+            b'\n\n'
+            b'def function(a,b,c):\n'
+            b'    return a,b,c\n'
+            b'\n\n'
+            b'class MyClass(object):\n'
+            b'    def __init__(self, a):\n'
+            b'      self.a = a\n'
+            b'\n\n'
         )
 
     def test_lazy_import_registry_foo(self):
@@ -343,9 +373,9 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
     def test_lazy_import_get_module(self):
         a_registry = registry.Registry()
         a_registry.register_lazy('obj', "breezy.tests.test_registry",
-            'object1')
+                                 'object1')
         self.assertEqual("breezy.tests.test_registry",
-            a_registry._get_module("obj"))
+                         a_registry._get_module("obj"))
 
     def test_normal_get_module(self):
         class AThing(object):
@@ -353,4 +383,4 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         a_registry = registry.Registry()
         a_registry.register("obj", AThing())
         self.assertEqual("breezy.tests.test_registry",
-            a_registry._get_module("obj"))
+                         a_registry._get_module("obj"))

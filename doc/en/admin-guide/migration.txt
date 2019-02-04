@@ -35,9 +35,9 @@ branch.  (Recall that in `Further Configuration
 ::
 
   $ cd /srv/bzr/projectx
-  $ bzr fast-export-from-hg ../../hg/projectx projectx.fi
-  $ bzr init trunk
-  $ bzr fast-import projectx.fi trunk
+  $ brz fast-export-from-hg ../../hg/projectx projectx.fi
+  $ brz init trunk
+  $ brz fast-import projectx.fi trunk
 
 Subversion Conversion
 ---------------------

@@ -40,6 +40,10 @@ Note that context is currently only supported for write converters.
 
 from __future__ import absolute_import
 
+from io import (
+    BytesIO,
+    )
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -49,9 +53,6 @@ from breezy import (
     registry,
     )
 """)
-from ..sixish import (
-    BytesIO,
-    )
 
 
 class ContentFilter(object):
@@ -99,7 +100,7 @@ class ContentFilterContext(object):
         if self._revision_id is None:
             if self._tree is not None:
                 self._revision_id = self._tree.get_file_revision(
-                        self._relpath)
+                    self._relpath)
         return self._revision_id
 
     def revision(self):
@@ -153,13 +154,10 @@ def internal_size_sha_file_byname(name, filters):
     :param name: path to file
     :param filters: the stack of filters to apply
     """
-    f = open(name, 'rb', 65000)
-    try:
+    with open(name, 'rb', 65000) as f:
         if filters:
             f = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
-    finally:
-        f.close()
 
 
 # The registry of filter stacks indexed by name.

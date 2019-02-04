@@ -31,7 +31,7 @@ from ..bzr import knitrepo
 
 
 def parse(options, args):
-    parser = option.get_optparser(dict((o.name, o) for o in options))
+    parser = option.get_optparser(options)
     return parser.parse_args(args)
 
 
@@ -44,23 +44,26 @@ class OptionTests(TestCase):
         # to cmd_commit, when they are meant to be about option parsing in
         # general.
         self.assertEqual(
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}),
-           parse_args(cmd_commit(), ['--help']))
+            ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True,
+                  'bugs': []}),
+            parse_args(cmd_commit(), ['--help']))
         self.assertEqual(
-           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}),
-           parse_args(cmd_commit(), ['--message=biter']))
+            ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter',
+                  'bugs': []}),
+            parse_args(cmd_commit(), ['--message=biter']))
 
     def test_no_more_opts(self):
         """Terminated options"""
         self.assertEqual(
-            (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}),
+            (['-file-with-dashes'], {
+                'author': [], 'exclude': [], 'fixes': [], 'bugs': []}),
             parse_args(cmd_commit(), ['--', '-file-with-dashes']))
 
     def test_option_help(self):
         """Options have help strings."""
         out, err = self.run_bzr('commit --help')
         self.assertContainsRe(out,
-                r'--file(.|\n)*Take commit message from this file\.')
+                              r'--file(.|\n)*Take commit message from this file\.')
         self.assertContainsRe(out, r'-h.*--help')
 
     def test_option_help_global(self):
@@ -93,7 +96,7 @@ class OptionTests(TestCase):
         self.assertEqual((['-']), parse_args(cmd_commit(), ['-'])[0])
 
     def parse(self, options, args):
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         return parser.parse_args(args)
 
     def test_conversion(self):
@@ -119,30 +122,31 @@ class OptionTests(TestCase):
     def test_registry_conversion(self):
         registry = controldir.ControlDirFormatRegistry()
         bzr.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
-        bzr.register_metadir(registry, 'two', 'RepositoryFormatKnit1', 'two help')
+        bzr.register_metadir(
+            registry, 'two', 'RepositoryFormatKnit1', 'two help')
         bzr.register_metadir(registry, 'hidden', 'RepositoryFormatKnit1',
-            'two help', hidden=True)
+                             'two help', hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', '', registry, str)]
         opts, args = self.parse(options, ['--format', 'one'])
-        self.assertEqual({'format':'one'}, opts)
+        self.assertEqual({'format': 'one'}, opts)
         opts, args = self.parse(options, ['--format', 'two'])
-        self.assertEqual({'format':'two'}, opts)
+        self.assertEqual({'format': 'two'}, opts)
         self.assertRaises(option.BadOptionValue, self.parse, options,
                           ['--format', 'three'])
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--two'])
         options = [option.RegistryOption('format', '', registry, str,
-                   value_switches=True)]
+                                         value_switches=True)]
         opts, args = self.parse(options, ['--two'])
-        self.assertEqual({'format':'two'}, opts)
+        self.assertEqual({'format': 'two'}, opts)
         opts, args = self.parse(options, ['--two', '--one'])
-        self.assertEqual({'format':'one'}, opts)
+        self.assertEqual({'format': 'one'}, opts)
         opts, args = self.parse(options, ['--two', '--one',
                                           '--format', 'two'])
-        self.assertEqual({'format':'two'}, opts)
+        self.assertEqual({'format': 'two'}, opts)
         options = [option.RegistryOption('format', '', registry, str,
-                   enum_switch=False)]
+                                         enum_switch=False)]
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--format', 'two'])
 
@@ -160,15 +164,16 @@ class OptionTests(TestCase):
 
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
-                   controldir.format_registry, controldir.format_registry.make_controldir)]
+                                         controldir.format_registry, controldir.format_registry.make_controldir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
 
     def test_lazy_registry(self):
         options = [option.RegistryOption('format', '',
-                   lazy_registry=('breezy.controldir', 'format_registry'),
-                   converter=str)]
+                                         lazy_registry=(
+                                             'breezy.controldir', 'format_registry'),
+                                         converter=str)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertEqual({'format': 'knit'}, opts)
         self.assertRaises(
@@ -176,29 +181,29 @@ class OptionTests(TestCase):
 
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',
-            help='test option', short='be short', be_long='go long')
+                                                      help='test option', short='be short', be_long='go long')
         self.assertEqual(['my-option'],
-            [x[0] for x in my_option.iter_switches()])
+                         [x[0] for x in my_option.iter_switches()])
         my_option = option.RegistryOption.from_kwargs('my-option',
-            help='test option', title="My option", short='be short',
-            be_long='go long', value_switches=True)
+                                                      help='test option', title="My option", short='be short',
+                                                      be_long='go long', value_switches=True)
         self.assertEqual(['my-option', 'be-long', 'short'],
-            [x[0] for x in my_option.iter_switches()])
+                         [x[0] for x in my_option.iter_switches()])
         self.assertEqual('test option', my_option.help)
 
     def test_help(self):
         registry = controldir.ControlDirFormatRegistry()
         bzr.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
         bzr.register_metadir(registry, 'two',
-            'breezy.bzr.knitrepo.RepositoryFormatKnit1',
-            'two help',
-            )
+                             'breezy.bzr.knitrepo.RepositoryFormatKnit1',
+                             'two help',
+                             )
         bzr.register_metadir(registry, 'hidden', 'RepositoryFormat7', 'hidden help',
-            hidden=True)
+                             hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
-                   str, value_switches=True, title='Formats')]
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+                                         str, value_switches=True, title='Formats')]
+        parser = option.get_optparser(options)
         value = parser.format_option_help()
         self.assertContainsRe(value, 'format.*format help')
         self.assertContainsRe(value, 'one.*one help')
@@ -218,9 +223,9 @@ class OptionTests(TestCase):
         registry = controldir.ControlDirFormatRegistry()
         bzr.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
         bzr.register_metadir(registry, 'two',
-                'breezy.bzr.knitrepo.RepositoryFormatKnit1',
-                'two help',
-                )
+                             'breezy.bzr.knitrepo.RepositoryFormatKnit1',
+                             'two help',
+                             )
         registry.set_default('one')
         opt = option.RegistryOption('format', 'format help', registry,
                                     value_switches=False)
@@ -238,6 +243,7 @@ class OptionTests(TestCase):
     def test_option_callback_bool(self):
         "Test booleans get True and False passed correctly to a callback."""
         cb_calls = []
+
         def cb(option, name, value, parser):
             cb_calls.append((option, name, value, parser))
         options = [option.Option('hello', custom_callback=cb)]
@@ -253,10 +259,11 @@ class OptionTests(TestCase):
     def test_option_callback_str(self):
         """Test callbacks work for string options both long and short."""
         cb_calls = []
+
         def cb(option, name, value, parser):
             cb_calls.append((option, name, value, parser))
         options = [option.Option('hello', type=str, custom_callback=cb,
-            short_name='h')]
+                                 short_name='h')]
         opts, args = self.parse(options, ['--hello', 'world', '-h', 'mars'])
         self.assertEqual(2, len(cb_calls))
         opt, name, value, parser = cb_calls[0]
@@ -271,7 +278,7 @@ class TestListOptions(TestCase):
     """Tests for ListOption, used to specify lists on the command-line."""
 
     def parse(self, options, args):
-        parser = option.get_optparser(dict((o.name, o) for o in options))
+        parser = option.get_optparser(options)
         return parser.parse_args(args)
 
     def test_list_option(self):
@@ -311,12 +318,13 @@ class TestListOptions(TestCase):
     def test_option_callback_list(self):
         """Test callbacks work for list options."""
         cb_calls = []
+
         def cb(option, name, value, parser):
             # Note that the value is a reference so copy to keep it
             cb_calls.append((option, name, value[:], parser))
         options = [option.ListOption('hello', type=str, custom_callback=cb)]
         opts, args = self.parse(options, ['--hello=world', '--hello=mars',
-            '--hello=-'])
+                                          '--hello=-'])
         self.assertEqual(3, len(cb_calls))
         opt, name, value, parser = cb_calls[0]
         self.assertEqual('hello', name)
@@ -361,16 +369,16 @@ class TestOptionDefinitions(TestCase):
                     name = "/".join([opt.name, name])
                 if not helptxt:
                     msgs.append('%-16s %-16s %s' %
-                           ((scope or 'GLOBAL'), name, 'NO HELP'))
+                                ((scope or 'GLOBAL'), name, 'NO HELP'))
                 elif not option_re.match(helptxt):
                     if name.startswith("format/"):
                         # Don't complain about the odd format registry help
                         continue
                     msgs.append('%-16s %-16s %s' %
-                            ((scope or 'GLOBAL'), name, helptxt))
+                                ((scope or 'GLOBAL'), name, helptxt))
         if msgs:
             self.fail("The following options don't match the style guide:\n"
-                    + '\n'.join(msgs))
+                      + '\n'.join(msgs))
 
 
 class TestOptionMisc(TestCase):
@@ -378,9 +386,9 @@ class TestOptionMisc(TestCase):
     def test_is_hidden(self):
         registry = controldir.ControlDirFormatRegistry()
         bzr.register_metadir(registry, 'hidden', 'HiddenFormat',
-            'hidden help text', hidden=True)
+                             'hidden help text', hidden=True)
         bzr.register_metadir(registry, 'visible', 'VisibleFormat',
-            'visible help text', hidden=False)
+                             'visible help text', hidden=False)
         format = option.RegistryOption('format', '', registry, str)
         self.assertTrue(format.is_hidden('hidden'))
         self.assertFalse(format.is_hidden('visible'))
@@ -390,7 +398,7 @@ class TestOptionMisc(TestCase):
         opt = option.RegistryOption('format', help='', registry=registry)
         self.assertEqual(None, opt.short_name())
         opt = option.RegistryOption('format', short_name='F', help='',
-            registry=registry)
+                                    registry=registry)
         self.assertEqual('F', opt.short_name())
 
     def test_option_custom_help(self):
@@ -406,7 +414,7 @@ class TestOptionMisc(TestCase):
         reg.register('short', 'ShortChoice')
         reg.register('long', 'LongChoice')
         ropt = option.RegistryOption('choice', '', reg, value_switches=True,
-            short_value_switches={'short': 's'})
+                                     short_value_switches={'short': 's'})
         opts, args = parse([ropt], ['--short'])
         self.assertEqual('ShortChoice', opts.choice)
         opts, args = parse([ropt], ['-s'])
@@ -421,7 +429,8 @@ class TestVerboseQuietLinkage(TestCase):
         self.assertEqual(level, option._verbosity_level)
 
     def test_verbose_quiet_linkage(self):
-        parser = option.get_optparser(option.Option.STD_OPTIONS)
+        parser = option.get_optparser(
+            [v for k, v in sorted(option.Option.STD_OPTIONS.items())])
         self.check(parser, 0, [])
         self.check(parser, 1, ['-v'])
         self.check(parser, 2, ['-v', '-v'])

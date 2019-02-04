@@ -17,7 +17,7 @@
 
 """Tests for the TreeBuilder helper class."""
 
-from breezy import errors, tests
+from breezy import tests
 from breezy.memorytree import MemoryTree
 from breezy.tests import TestCaseWithTransport
 from breezy.treebuilder import (
@@ -55,7 +55,7 @@ class TestFakeTree(TestCaseWithTransport):
 class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
 
     def test_create(self):
-        builder = TreeBuilder()
+        TreeBuilder()
 
     def test_start_tree_locks_write(self):
         builder = TreeBuilder()
@@ -92,10 +92,9 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
         builder.start_tree(tree)
         builder.build(['foo', "bar/", "bar/file"])
         self.assertEqual(
-            'contents of foo\n',
+            b'contents of foo\n',
             tree.get_file('foo').read())
         self.assertEqual(
-            'contents of bar/file\n',
+            b'contents of bar/file\n',
             tree.get_file('bar/file').read())
         builder.finish_tree()
-

@@ -37,7 +37,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 'Tree format does not support references')
         else:
             self.fail('%r does not support references but should'
-                % (tree, ))
+                      % (tree, ))
 
     def make_nested_trees(self):
         tree, sub_tree = self.make_trees()
@@ -50,22 +50,17 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_add_reference(self):
         tree, sub_tree = self.make_nested_trees()
         sub_tree_root_id = sub_tree.get_root_id()
-        tree.lock_write()
-        try:
-            self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
+        with tree.lock_write():
+            if tree.supports_setting_file_ids():
+                self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
             self.assertEqual(tree.kind('sub-tree'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()
-            basis.lock_read()
-            try:
-                sub_tree = tree.get_nested_tree('sub-tree', sub_tree_root_id)
+            with basis.lock_read():
+                sub_tree = tree.get_nested_tree('sub-tree')
                 self.assertEqual(
-                        sub_tree.last_revision(),
-                        tree.get_reference_revision('sub-tree', sub_tree_root_id))
-            finally:
-                basis.unlock()
-        finally:
-            tree.unlock()
+                    sub_tree.last_revision(),
+                    tree.get_reference_revision('sub-tree'))
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')
@@ -107,11 +102,6 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_get_nested_tree(self):
         tree, sub_tree = self.make_nested_trees()
         sub_tree_root_id = sub_tree.get_root_id()
-        tree.lock_read()
-        try:
-            sub_tree2 = tree.get_nested_tree('sub-tree', sub_tree_root_id)
-            self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
+        with tree.lock_read():
             sub_tree2 = tree.get_nested_tree('sub-tree')
             self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
-        finally:
-            tree.unlock()

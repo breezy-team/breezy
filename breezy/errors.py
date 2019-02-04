@@ -124,7 +124,7 @@ class BzrError(Exception):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             from breezy.i18n import gettext
-            return gettext(fmt) # _fmt strings should be ascii
+            return gettext(fmt)  # _fmt strings should be ascii
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
@@ -222,7 +222,7 @@ class ReservedId(BzrError):
 class RootMissing(InternalBzrError):
 
     _fmt = ("The root entry of a tree must be the first entry supplied to "
-        "the commit builder.")
+            "the commit builder.")
 
 
 class NoPublicBranch(BzrError):
@@ -398,7 +398,7 @@ class PermissionDenied(PathError):
 class UnavailableRepresentation(InternalBzrError):
 
     _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
-        "is encoded as '%(native)s'.")
+            "is encoded as '%(native)s'.")
 
     def __init__(self, key, wanted, native):
         InternalBzrError.__init__(self)
@@ -428,7 +428,7 @@ class UnstackableLocationError(BzrError):
 class UnstackableRepositoryFormat(BzrError):
 
     _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
-        "You will need to upgrade the repository to permit branch stacking.")
+            "You will need to upgrade the repository to permit branch stacking.")
 
     def __init__(self, format, url):
         BzrError.__init__(self)
@@ -484,13 +484,13 @@ class NotBranchError(PathError):
     _fmt = 'Not a branch: "%(path)s"%(detail)s.'
 
     def __init__(self, path, detail=None, controldir=None):
-       from . import urlutils
-       path = urlutils.unescape_for_display(path, 'ascii')
-       if detail is not None:
-           detail = ': ' + detail
-       self.detail = detail
-       self.controldir = controldir
-       PathError.__init__(self, path=path)
+        from . import urlutils
+        path = urlutils.unescape_for_display(path, 'ascii')
+        if detail is not None:
+            detail = ': ' + detail
+        self.detail = detail
+        self.controldir = controldir
+        PathError.__init__(self, path=path)
 
     def __repr__(self):
         return '<%s %r>' % (self.__class__.__name__, self.__dict__)
@@ -498,7 +498,7 @@ class NotBranchError(PathError):
     def _get_format_string(self):
         # GZ 2017-06-08: Not the best place to lazy fill detail in.
         if self.detail is None:
-           self.detail = self._get_detail()
+            self.detail = self._get_detail()
         return super(NotBranchError, self)._get_format_string()
 
     def _get_detail(self):
@@ -526,8 +526,8 @@ class NoSubmitBranch(PathError):
     _fmt = 'No submit branch available for branch "%(path)s"'
 
     def __init__(self, branch):
-       from . import urlutils
-       self.path = urlutils.unescape_for_display(branch.base, 'ascii')
+        from . import urlutils
+        self.path = urlutils.unescape_for_display(branch.base, 'ascii')
 
 
 class AlreadyControlDirError(PathError):
@@ -560,16 +560,6 @@ class BranchExistsWithoutWorkingTree(PathError):
 (use brz checkout if you wish to build a working tree): "%(path)s"'
 
 
-class AtomicFileAlreadyClosed(PathError):
-
-    _fmt = ('"%(function)s" called on an AtomicFile after it was closed:'
-            ' "%(path)s"')
-
-    def __init__(self, path, function):
-        PathError.__init__(self, path=path, extra=None)
-        self.function = function
-
-
 class InaccessibleParent(PathError):
 
     _fmt = ('Parent not accessible given base "%(base)s" and'
@@ -583,6 +573,7 @@ class InaccessibleParent(PathError):
 class NoRepositoryPresent(BzrError):
 
     _fmt = 'No repository present: "%(path)s"'
+
     def __init__(self, controldir):
         BzrError.__init__(self)
         self.path = controldir.transport.clone('..').base
@@ -600,6 +591,15 @@ class UnknownFormatError(BzrError):
     def __init__(self, format, kind='branch'):
         self.kind = kind
         self.format = format
+
+
+class LineEndingError(BzrError):
+
+    _fmt = ("Line ending corrupted for file: %(file)s; "
+            "Maybe your files got corrupted in transport?")
+
+    def __init__(self, file):
+        self.file = file
 
 
 class IncompatibleFormat(BzrError):
@@ -633,9 +633,9 @@ class IncompatibleRepositories(BzrError):
     """
 
     _fmt = "%(target)s\n" \
-            "is not compatible with\n" \
-            "%(source)s\n" \
-            "%(details)s"
+        "is not compatible with\n" \
+        "%(source)s\n" \
+        "%(details)s"
 
     def __init__(self, source, target, details=None):
         if details is None:
@@ -986,13 +986,13 @@ class InvalidRevisionSpec(BzrError):
 class AppendRevisionsOnlyViolation(BzrError):
 
     _fmt = ('Operation denied because it would change the main history,'
-           ' which is not permitted by the append_revisions_only setting on'
-           ' branch "%(location)s".')
+            ' which is not permitted by the append_revisions_only setting on'
+            ' branch "%(location)s".')
 
     def __init__(self, location):
-       import breezy.urlutils as urlutils
-       location = urlutils.unescape_for_display(location, 'ascii')
-       BzrError.__init__(self, location=location)
+        import breezy.urlutils as urlutils
+        location = urlutils.unescape_for_display(location, 'ascii')
+        BzrError.__init__(self, location=location)
 
 
 class DivergedBranches(BzrError):
@@ -1038,7 +1038,7 @@ class NoCommonAncestor(BzrError):
 class NoCommonRoot(BzrError):
 
     _fmt = ("Revisions are not derived from the same root: "
-           "%(revision_a)s %(revision_b)s.")
+            "%(revision_a)s %(revision_b)s.")
 
     def __init__(self, revision_a, revision_b):
         BzrError.__init__(self, revision_a=revision_a, revision_b=revision_b)
@@ -1050,7 +1050,7 @@ class NotAncestor(BzrError):
 
     def __init__(self, rev_id, not_ancestor_id):
         BzrError.__init__(self, rev_id=rev_id,
-            not_ancestor_id=not_ancestor_id)
+                          not_ancestor_id=not_ancestor_id)
 
 
 class NoCommits(BranchError):
@@ -1062,7 +1062,6 @@ class UnlistableStore(BzrError):
 
     def __init__(self, store):
         BzrError.__init__(self, "Store %s is not listable" % store)
-
 
 
 class UnlistableBranch(BzrError):
@@ -1212,7 +1211,7 @@ class TransportError(BzrError):
         if orig_error is None:
             orig_error = ''
         if msg is None:
-            msg =  ''
+            msg = ''
         self.msg = msg
         self.orig_error = orig_error
         BzrError.__init__(self)
@@ -1263,7 +1262,7 @@ class SmartMessageHandlerError(InternalBzrError):
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info
         traceback_strings = traceback.format_exception(
-                self.exc_type, self.exc_value, self.exc_tb)
+            self.exc_type, self.exc_value, self.exc_tb)
         self.traceback_text = ''.join(traceback_strings)
 
 
@@ -1405,12 +1404,6 @@ class WorkingTreeNotRevision(BzrError):
 
     def __init__(self, tree):
         BzrError.__init__(self, basedir=tree.basedir)
-
-
-class CantReprocessAndShowBase(BzrError):
-
-    _fmt = ("Can't reprocess and show base, because reprocessing obscures "
-           "the relationship of conflicting lines to the base")
 
 
 class GraphCycleError(BzrError):
@@ -1576,7 +1569,7 @@ class TransformRenameFailed(BzrError):
 class BzrMoveFailedError(BzrError):
 
     _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
-        "%(_has_extra)s%(extra)s")
+            "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
         from breezy.osutils import splitpath
@@ -1612,7 +1605,7 @@ class BzrMoveFailedError(BzrError):
 class BzrRenameFailedError(BzrMoveFailedError):
 
     _fmt = ("Could not rename %(from_path)s%(operator)s %(to_path)s"
-        "%(_has_extra)s%(extra)s")
+            "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
@@ -1664,7 +1657,7 @@ class UninitializableFormat(BzrError):
 class BadConversionTarget(BzrError):
 
     _fmt = "Cannot convert from format %(from_format)s to format %(format)s." \
-            "    %(problem)s"
+        "    %(problem)s"
 
     def __init__(self, problem, format, from_format=None):
         BzrError.__init__(self)
@@ -1715,8 +1708,8 @@ class ExistingLimbo(BzrError):
     keep, and delete it when you are done."""
 
     def __init__(self, limbo_dir):
-       BzrError.__init__(self)
-       self.limbo_dir = limbo_dir
+        BzrError.__init__(self)
+        self.limbo_dir = limbo_dir
 
 
 class ExistingPendingDeletion(BzrError):
@@ -1726,7 +1719,7 @@ class ExistingPendingDeletion(BzrError):
     wish to keep, and delete it when you are done."""
 
     def __init__(self, pending_deletion):
-       BzrError.__init__(self, pending_deletion=pending_deletion)
+        BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
 class ImmortalLimbo(BzrError):
@@ -1736,18 +1729,18 @@ class ImmortalLimbo(BzrError):
     keep, and delete it when you are done."""
 
     def __init__(self, limbo_dir):
-       BzrError.__init__(self)
-       self.limbo_dir = limbo_dir
+        BzrError.__init__(self)
+        self.limbo_dir = limbo_dir
 
 
 class ImmortalPendingDeletion(BzrError):
 
     _fmt = ("Unable to delete transform temporary directory "
-    "%(pending_deletion)s.  Please examine %(pending_deletion)s to see if it "
-    "contains any files you wish to keep, and delete it when you are done.")
+            "%(pending_deletion)s.  Please examine %(pending_deletion)s to see if it "
+            "contains any files you wish to keep, and delete it when you are done.")
 
     def __init__(self, pending_deletion):
-       BzrError.__init__(self, pending_deletion=pending_deletion)
+        BzrError.__init__(self, pending_deletion=pending_deletion)
 
 
 class OutOfDateTree(BzrError):
@@ -1839,7 +1832,7 @@ class RepositoryUpgradeRequired(UpgradeRequired):
 class RichRootUpgradeRequired(UpgradeRequired):
 
     _fmt = ("To use this feature you must upgrade your branch at %(path)s to"
-           " a format which supports rich roots.")
+            " a format which supports rich roots.")
 
 
 class LocalRequiresBoundBranch(BzrError):
@@ -2057,6 +2050,7 @@ class ImportNameCollision(InternalBzrError):
 
 class NotAMergeDirective(BzrError):
     """File starting with %(firstline)r is not a merge directive"""
+
     def __init__(self, firstline):
         BzrError.__init__(self, firstline=firstline)
 
@@ -2351,7 +2345,7 @@ class CannotBindAddress(BzrError):
     def __init__(self, host, port, orig_error):
         # nb: in python2.4 socket.error doesn't have a useful repr
         BzrError.__init__(self, host=host, port=port,
-            orig_error=repr(orig_error.args))
+                          orig_error=repr(orig_error.args))
 
 
 class TipChangeRejected(BzrError):
@@ -2436,7 +2430,7 @@ class NoColocatedBranchSupport(BzrError):
 class RecursiveBind(BzrError):
 
     _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
-        'Please use `brz unbind` to fix.')
+            'Please use `brz unbind` to fix.')
 
     def __init__(self, branch_url):
         self.branch_url = branch_url

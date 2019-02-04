@@ -44,6 +44,7 @@ from ..bzr import (
     )
 from ..sixish import (
     BytesIO,
+    text_type,
     )
 from ..transport import remote as transport_remote
 from . import (
@@ -62,7 +63,7 @@ def lockable_config_scenarios():
         ('locations',
          {'config_class': config.LocationConfig,
           'config_args': ['.'],
-          'config_section': '.'}),]
+          'config_section': '.'}), ]
 
 
 load_tests = scenarios.load_tests_apply_scenarios
@@ -111,6 +112,8 @@ def build_branch_store(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
     return config.BranchStore(b)
+
+
 config.test_store_builder_registry.register('branch', build_branch_store)
 
 
@@ -118,6 +121,8 @@ def build_control_store(test):
     build_backing_branch(test, 'branch')
     b = controldir.ControlDir.open('branch')
     return config.ControlStore(b)
+
+
 config.test_store_builder_registry.register('control', build_control_store)
 
 
@@ -129,6 +134,8 @@ def build_remote_branch_store(test):
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
     return config.BranchStore(b)
+
+
 config.test_store_builder_registry.register('remote_branch',
                                             build_remote_branch_store)
 
@@ -143,6 +150,8 @@ def build_branch_stack(test):
     build_backing_branch(test, 'branch')
     b = branch.Branch.open('branch')
     return config.BranchStack(b)
+
+
 config.test_stack_builder_registry.register('branch', build_branch_stack)
 
 
@@ -154,8 +163,11 @@ def build_branch_only_stack(test):
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
     return config.BranchOnlyStack(b)
+
+
 config.test_stack_builder_registry.register('branch_only',
                                             build_branch_only_stack)
+
 
 def build_remote_control_stack(test):
     # There is only one permutation (but we won't be able to handle more with
@@ -167,11 +179,13 @@ def build_remote_control_stack(test):
     build_backing_branch(test, 'branch', transport_class, server_class)
     b = branch.Branch.open(test.get_url('branch'))
     return config.RemoteControlStack(b.controldir)
+
+
 config.test_stack_builder_registry.register('remote_control',
                                             build_remote_control_stack)
 
 
-sample_long_alias="log -r-15..-1 --line"
+sample_long_alias = "log -r-15..-1 --line"
 sample_config_text = u"""
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
@@ -188,28 +202,28 @@ bzr.mergetool.newtool='"newtool with spaces" {this_temp}'
 bzr.default_mergetool=sometool
 [ALIASES]
 h=help
-ll=""" + sample_long_alias + "\n"
+ll=""".encode('utf-8') + sample_long_alias.encode('utf-8') + b"\n"
 
 
-sample_always_signatures = """
+sample_always_signatures = b"""
 [DEFAULT]
 check_signatures=ignore
 create_signatures=always
 """
 
-sample_ignore_signatures = """
+sample_ignore_signatures = b"""
 [DEFAULT]
 check_signatures=require
 create_signatures=never
 """
 
-sample_maybe_signatures = """
+sample_maybe_signatures = b"""
 [DEFAULT]
 check_signatures=ignore
 create_signatures=when-required
 """
 
-sample_branches_text = """
+sample_branches_text = b"""
 [http://www.example.com]
 # Top level policy
 email=Robert Collins <robertc@example.org>
@@ -394,7 +408,7 @@ class InstrumentedConfig(config.Config):
         return 'vimdiff -fo @new_path @old_path'
 
 
-bool_config = """[DEFAULT]
+bool_config = b"""[DEFAULT]
 active = true
 inactive = false
 [UPPERCASE]
@@ -422,7 +436,7 @@ class TestConfigObj(tests.TestCase):
         outfile = BytesIO()
         co.write(outfile=outfile)
         lines = outfile.getvalue().splitlines()
-        self.assertEqual(lines, ['test = "foo#bar"'])
+        self.assertEqual(lines, [b'test = "foo#bar"'])
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
 
@@ -451,7 +465,7 @@ eggs'''
         self.assertEqual(triple_quotes_value, co2['test'])
 
 
-erroneous_config = """[section] # line 1
+erroneous_config = b"""[section] # line 1
 good=good # line 2
 [section] # line 3
 whocares=notme # line 4
@@ -522,7 +536,7 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.config_dir(), self.brz_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(config.config_dir(), unicode)
+        self.assertIsInstance(config.config_dir(), text_type)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
@@ -538,7 +552,7 @@ class TestConfigPath(tests.TestCase):
 
     def test_xdg_cache_dir(self):
         self.assertEqual(config.xdg_cache_dir(),
-            '/home/bogus/.cache')
+                         '/home/bogus/.cache')
 
 
 class TestConfigPathFallback(tests.TestCaseInTempDir):
@@ -554,7 +568,7 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
         self.assertEqual(config.config_dir(), self.bzr_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(config.config_dir(), unicode)
+        self.assertIsInstance(config.config_dir(), text_type)
 
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
@@ -570,7 +584,7 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
 
     def test_xdg_cache_dir(self):
         self.assertEqual(config.xdg_cache_dir(),
-            os.path.join(self.test_dir, '.cache'))
+                         os.path.join(self.test_dir, '.cache'))
 
 
 class TestXDGConfigDir(tests.TestCaseInTempDir):
@@ -644,7 +658,7 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         self.assertRaises(AssertionError, conf._write_config_file)
 
     def test_saved_with_content(self):
-        content = 'foo = bar\n'
+        content = b'foo = bar\n'
         config.IniBasedConfig.from_string(content, file_name='./test.conf',
                                           save=True)
         self.assertFileEqual(content, 'test.conf')
@@ -662,7 +676,7 @@ class TestIniConfigOptionExpansion(tests.TestCase):
 
     def get_config(self, string=None):
         if string is None:
-            string = ''
+            string = b''
         c = config.IniBasedConfig.from_string(string)
         return c
 
@@ -727,7 +741,7 @@ baz=end
 list={foo},{bar},{baz}
 ''')
         self.assertEqual(['start', 'middle', 'end'],
-                           conf.get_user_option('list', expand=True))
+                         conf.get_user_option('list', expand=True))
 
     def test_cascading_list(self):
         conf = self.get_config('''
@@ -737,7 +751,7 @@ baz=end
 list={foo}
 ''')
         self.assertEqual(['start', 'middle', 'end'],
-                           conf.get_user_option('list', expand=True))
+                         conf.get_user_option('list', expand=True))
 
     def test_pathological_hidden_list(self):
         conf = self.get_config('''
@@ -751,7 +765,7 @@ hidden={start}{middle}{end}
         # Nope, it's either a string or a list, and the list wins as soon as a
         # ',' appears, so the string concatenation never occur.
         self.assertEqual(['{foo', '}', '{', 'bar}'],
-                          conf.get_user_option('hidden', expand=True))
+                         conf.get_user_option('hidden', expand=True))
 
 
 class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
@@ -869,6 +883,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         after_writing = threading.Event()
         writing_done = threading.Event()
         c1_orig = c1._write_config_file
+
         def c1_write_config_file():
             before_writing.set()
             c1_orig()
@@ -876,6 +891,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
             # continue
             after_writing.wait()
         c1._write_config_file = c1_write_config_file
+
         def c1_set_option():
             c1.set_user_option('one', 'c1')
             writing_done.set()
@@ -897,41 +913,43 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         self.assertEqual('c2', c2.get_user_option('one'))
 
     def test_read_while_writing(self):
-       c1 = self.config
-       # We spawn a thread that will pause *during* the write
-       ready_to_write = threading.Event()
-       do_writing = threading.Event()
-       writing_done = threading.Event()
-       c1_orig = c1._write_config_file
-       def c1_write_config_file():
-           ready_to_write.set()
-           # The lock is held. We wait for the main thread to decide when to
-           # continue
-           do_writing.wait()
-           c1_orig()
-           writing_done.set()
-       c1._write_config_file = c1_write_config_file
-       def c1_set_option():
-           c1.set_user_option('one', 'c1')
-       t1 = threading.Thread(target=c1_set_option)
-       # Collect the thread after the test
-       self.addCleanup(t1.join)
-       # Be ready to unblock the thread if the test goes wrong
-       self.addCleanup(do_writing.set)
-       t1.start()
-       # Ensure the thread is ready to write
-       ready_to_write.wait()
-       self.assertTrue(c1._lock.is_held)
-       self.assertEqual('c1', c1.get_user_option('one'))
-       # If we read during the write, we get the old value
-       c2 = self.get_existing_config()
-       self.assertEqual('1', c2.get_user_option('one'))
-       # Let the writing occur and ensure it occurred
-       do_writing.set()
-       writing_done.wait()
-       # Now we get the updated value
-       c3 = self.get_existing_config()
-       self.assertEqual('c1', c3.get_user_option('one'))
+        c1 = self.config
+        # We spawn a thread that will pause *during* the write
+        ready_to_write = threading.Event()
+        do_writing = threading.Event()
+        writing_done = threading.Event()
+        c1_orig = c1._write_config_file
+
+        def c1_write_config_file():
+            ready_to_write.set()
+            # The lock is held. We wait for the main thread to decide when to
+            # continue
+            do_writing.wait()
+            c1_orig()
+            writing_done.set()
+        c1._write_config_file = c1_write_config_file
+
+        def c1_set_option():
+            c1.set_user_option('one', 'c1')
+        t1 = threading.Thread(target=c1_set_option)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(do_writing.set)
+        t1.start()
+        # Ensure the thread is ready to write
+        ready_to_write.wait()
+        self.assertTrue(c1._lock.is_held)
+        self.assertEqual('c1', c1.get_user_option('one'))
+        # If we read during the write, we get the old value
+        c2 = self.get_existing_config()
+        self.assertEqual('1', c2.get_user_option('one'))
+        # Let the writing occur and ensure it occurred
+        do_writing.set()
+        writing_done.wait()
+        # Now we get the updated value
+        c3 = self.get_existing_config()
+        self.assertEqual('c1', c3.get_user_option('one'))
 
 
 class TestGetUserOptionAs(TestIniConfig):
@@ -947,6 +965,7 @@ a_list = hmm, who knows ? # This is interpreted as a list !
         self.assertEqual(True, get_bool('a_true_bool'))
         self.assertEqual(False, get_bool('a_false_bool'))
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -1062,8 +1081,8 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         local_path = osutils.getcwd().encode('utf8')
         config.LocationConfig.from_string(
-            '[%s/branch]\nnickname = barry' % (local_path,),
-            'branch',  save=True)
+            b'[%s/branch]\nnickname = barry' % (local_path,),
+            'branch', save=True)
         # Now the branch will find its nick via the location config
         self.assertEqual('barry', branch.nick)
 
@@ -1074,9 +1093,9 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(config.locations_config_filename(),
-                                 '[%s/branch]\n'
-                                 'push_location = http://foobar\n'
-                                 'push_location:policy = norecurse\n'
+                                 b'[%s/branch]\n'
+                                 b'push_location = http://foobar\n'
+                                 b'push_location:policy = norecurse\n'
                                  % (local_path,))
 
     def test_autonick_urlencoded(self):
@@ -1089,6 +1108,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
     def test_warn_if_masked(self):
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -1097,6 +1117,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
             warnings[:] = []
             conf.set_user_option('example_option', repr(store), store=store,
                                  warn_masked=warn_masked)
+
         def assertWarning(warning):
             if warning is None:
                 self.assertEqual(0, len(warnings))
@@ -1190,9 +1211,9 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         tools = conf.get_merge_tools()
         self.log(repr(tools))
         self.assertEqual(
-            {u'funkytool' : u'funkytool "arg with spaces" {this_temp}',
-            u'sometool' : u'sometool {base} {this} {other} -o {result}',
-            u'newtool' : u'"newtool with spaces" {this_temp}'},
+            {u'funkytool': u'funkytool "arg with spaces" {this_temp}',
+             u'sometool': u'sometool {base} {this} {other} -o {result}',
+             u'newtool': u'"newtool with spaces" {this_temp}'},
             tools)
 
     def test_get_merge_tools_empty(self):
@@ -1334,26 +1355,26 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
             self.my_location_config._get_config_policy(
-            'http://www.example.com', 'normal_option'),
+                'http://www.example.com', 'normal_option'),
             config.POLICY_NONE)
 
     def test__get_option_policy_norecurse(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
             self.my_location_config._get_option_policy(
-            'http://www.example.com', 'norecurse_option'),
+                'http://www.example.com', 'norecurse_option'),
             config.POLICY_NORECURSE)
         # Test old recurse=False setting:
         self.assertEqual(
             self.my_location_config._get_option_policy(
-            'http://www.example.com/norecurse', 'normal_option'),
+                'http://www.example.com/norecurse', 'normal_option'),
             config.POLICY_NORECURSE)
 
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')
         self.assertEqual(
             self.my_location_config._get_option_policy(
-            'http://www.example.com', 'appendpath_option'),
+                'http://www.example.com', 'appendpath_option'),
             config.POLICY_APPENDPATH)
 
     def test__get_options_with_policy(self):
@@ -1435,7 +1456,7 @@ other_url = /other-subdir
                                        store=config.STORE_LOCATION_NORECURSE)
         self.assertEqual(
             self.my_location_config._get_option_policy(
-            'http://www.example.com', 'foo'),
+                'http://www.example.com', 'foo'),
             config.POLICY_NORECURSE)
 
     def test_set_user_option_appendpath(self):
@@ -1444,7 +1465,7 @@ other_url = /other-subdir
                                        store=config.STORE_LOCATION_APPENDPATH)
         self.assertEqual(
             self.my_location_config._get_option_policy(
-            'http://www.example.com', 'foo'),
+                'http://www.example.com', 'foo'),
             config.POLICY_APPENDPATH)
 
     def test_set_user_option_change_policy(self):
@@ -1453,7 +1474,7 @@ other_url = /other-subdir
                                        store=config.STORE_LOCATION)
         self.assertEqual(
             self.my_location_config._get_option_policy(
-            'http://www.example.com', 'norecurse_option'),
+                'http://www.example.com', 'norecurse_option'),
             config.POLICY_NONE)
 
     def get_branch_config(self, location, global_config=None,
@@ -1477,7 +1498,7 @@ other_url = /other-subdir
         self.my_config.set_user_option('foo', 'bar')
         self.assertEqual(
             self.my_config.branch.control_files.files['branch.conf'].strip(),
-            'foo = bar')
+            b'foo = bar')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
         self.my_config.set_user_option('foo', 'baz',
                                        store=config.STORE_LOCATION)
@@ -1494,15 +1515,16 @@ other_url = /other-subdir
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
-precedence_global = 'option = global'
-precedence_branch = 'option = branch'
-precedence_location = """
+precedence_global = b'option = global'
+precedence_branch = b'option = branch'
+precedence_location = b"""
 [http://]
 recurse = true
 option = recurse
 [http://example.com/specific]
 option = exact
 """
+
 
 class TestBranchConfigItems(tests.TestCaseInTempDir):
 
@@ -1528,7 +1550,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_config.set_user_option('email',
                                   "Robert Collins <robertc@example.org>")
         self.assertEqual("Robert Collins <robertc@example.org>",
-                        my_config.username())
+                         my_config.username())
 
     def test_BRZ_EMAIL_OVERRIDES(self):
         self.overrideEnv('BRZ_EMAIL', "Robert Collins <robertc@example.org>")
@@ -1583,6 +1605,7 @@ class TestMailAddressExtraction(tests.TestCase):
         self.assertEqual(('John Doe', 'jdoe@example.com'),
                          config.parse_username('John Doe jdoe@example.com'))
 
+
 class TestTreeConfig(tests.TestCaseWithTransport):
 
     def test_get_value(self):
@@ -1627,20 +1650,21 @@ class TestTransportConfig(tests.TestCaseWithTransport):
     def test_load_non_ascii(self):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', 'user=foo\n#\xff\n')
+        t.put_bytes('foo.conf', b'user=foo\n#\xff\n')
         conf = config.TransportConfig(t, 'foo.conf')
         self.assertRaises(config.ConfigContentError, conf._get_configobj)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', '[open_section\n')
+        t.put_bytes('foo.conf', b'[open_section\n')
         conf = config.TransportConfig(t, 'foo.conf')
         self.assertRaises(config.ParseConfigError, conf._get_configobj)
 
     def test_load_permission_denied(self):
         """Ensure we get an empty config file if the file is inaccessible."""
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -1707,6 +1731,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
 
     def assertGetHook(self, conf, name, value):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('get', hook, None)
@@ -1731,6 +1756,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
 
     def assertSetHook(self, conf, name, value):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('set', hook, None)
@@ -1755,6 +1781,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
 
     def assertRemoveHook(self, conf, name, section_name=None):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('remove', hook, None)
@@ -1780,6 +1807,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
 
     def assertLoadHook(self, name, conf_class, *conf_args):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('load', hook, None)
@@ -1804,6 +1832,7 @@ class TestOldConfigHooks(tests.TestCaseWithTransport):
 
     def assertSaveHook(self, conf):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('save', hook, None)
@@ -1838,6 +1867,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
     def assertGetHook(self, conf, name, value):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('get', hook, None)
@@ -1861,6 +1891,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
     def assertSetHook(self, conf, name, value):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('set', hook, None)
@@ -1887,6 +1918,7 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
     def assertLoadHook(self, expected_nb_calls, name, conf_class, *conf_args):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('load', hook, None)
@@ -1902,7 +1934,8 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
 
     def test_load_hook_remote_branch(self):
         remote_branch = branch.Branch.open(self.get_url('tree'))
-        self.assertLoadHook(1, 'file', remote.RemoteBranchConfig, remote_branch)
+        self.assertLoadHook(
+            1, 'file', remote.RemoteBranchConfig, remote_branch)
 
     def test_load_hook_remote_bzrdir(self):
         remote_bzrdir = controldir.ControlDir.open(self.get_url('tree'))
@@ -1913,10 +1946,12 @@ class TestOldConfigHooksForRemote(tests.TestCaseWithTransport):
         # caused by the differences in implementations betwen
         # SmartServerBzrDirRequestConfigFile (in smart/bzrdir.py) and
         # SmartServerBranchGetConfigFile (in smart/branch.py)
-        self.assertLoadHook(2, 'file', remote.RemoteBzrDirConfig, remote_bzrdir)
+        self.assertLoadHook(
+            2, 'file', remote.RemoteBzrDirConfig, remote_bzrdir)
 
     def assertSaveHook(self, conf):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.OldConfigHooks.install_named_hook('save', hook, None)
@@ -2019,7 +2054,7 @@ class TestOption(tests.TestCase):
 
     def test_not_supported_callable_default_value_not_unicode(self):
         def bar_not_unicode():
-            return 'bar'
+            return b'bar'
         opt = config.Option('foo', default=bar_not_unicode)
         self.assertRaises(AssertionError, opt.get_default)
 
@@ -2281,7 +2316,7 @@ class TestSection(tests.TestCase):
         a_dict = dict()
         section = config.Section(None, a_dict)
         self.assertEqual('out of thin air',
-                          section.get('foo', 'out of thin air'))
+                         section.get('foo', 'out of thin air'))
 
     def test_options_is_shared(self):
         a_dict = dict()
@@ -2293,8 +2328,8 @@ class TestMutableSection(tests.TestCase):
 
     scenarios = [('mutable',
                   {'get_section':
-                       lambda opts: config.MutableSection('myID', opts)},),
-        ]
+                   lambda opts: config.MutableSection('myID', opts)},),
+                 ]
 
     def test_set(self):
         a_dict = dict(foo='bar')
@@ -2387,6 +2422,7 @@ class TestCommandLineStore(tests.TestCase):
         self.assertRaises(errors.BzrCommandError,
                           self.store._from_cmdline, ['a=b', 'c'])
 
+
 class TestStoreMinimalAPI(tests.TestCaseWithTransport):
 
     scenarios = [(key, {'get_store': builder}) for key, builder
@@ -2422,32 +2458,32 @@ class TestReadonlyStore(TestStore):
     def test_building_delays_load(self):
         store = self.get_store(self)
         self.assertEqual(False, store.is_loaded())
-        store._load_from_string('')
+        store._load_from_string(b'')
         self.assertEqual(True, store.is_loaded())
 
     def test_get_no_sections_for_empty(self):
         store = self.get_store(self)
-        store._load_from_string('')
+        store._load_from_string(b'')
         self.assertEqual([], list(store.get_sections()))
 
     def test_get_default_section(self):
         store = self.get_store(self)
-        store._load_from_string('foo=bar')
+        store._load_from_string(b'foo=bar')
         sections = list(store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
 
     def test_get_named_section(self):
         store = self.get_store(self)
-        store._load_from_string('[baz]\nfoo=bar')
+        store._load_from_string(b'[baz]\nfoo=bar')
         sections = list(store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
     def test_load_from_string_fails_for_non_empty_store(self):
         store = self.get_store(self)
-        store._load_from_string('foo=bar')
-        self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+        store._load_from_string(b'foo=bar')
+        self.assertRaises(AssertionError, store._load_from_string, b'bar=baz')
 
 
 class TestStoreQuoting(TestStore):
@@ -2459,7 +2495,7 @@ class TestStoreQuoting(TestStore):
         super(TestStoreQuoting, self).setUp()
         self.store = self.get_store(self)
         # We need a loaded store but any content will do
-        self.store._load_from_string('')
+        self.store._load_from_string(b'')
 
     def assertIdempotent(self, s):
         """Assert that quoting an unquoted string is a no-op and vice-versa.
@@ -2491,8 +2527,8 @@ class TestStoreQuoting(TestStore):
     def test_simple_comma(self):
         if isinstance(self.store, config.IniFileStore):
             # configobj requires that lists are special-cased
-           self.assertRaises(AssertionError,
-                             self.assertIdempotent, ',')
+            self.assertRaises(AssertionError,
+                              self.assertIdempotent, ',')
         else:
             self.assertIdempotent(',')
         # When a single comma is required, quoting is also required
@@ -2510,7 +2546,7 @@ class TestStoreQuoting(TestStore):
 class TestDictFromStore(tests.TestCase):
 
     def test_unquote_not_string(self):
-        conf = config.MemoryStack('x=2\n[a_section]\na=1\n')
+        conf = config.MemoryStack(b'x=2\n[a_section]\na=1\n')
         value = conf.get('a_section')
         # Urgh, despite 'conf' asking for the no-name section, we get the
         # content of another section as a dict o_O
@@ -2520,7 +2556,7 @@ class TestDictFromStore(tests.TestCase):
         # are getting the value or displaying it. In the later case, '%s' will
         # do).
         self.assertEqual({'a': '1'}, unquoted)
-        self.assertEqual("{u'a': u'1'}", '%s' % (unquoted,))
+        self.assertIn('%s' % (unquoted,), ("{u'a': u'1'}", "{'a': '1'}"))
 
 
 class TestIniFileStoreContent(tests.TestCaseWithTransport):
@@ -2532,7 +2568,7 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
     loaded. We need to issue proper error messages in this case.
     """
 
-    invalid_utf8_char = '\xff'
+    invalid_utf8_char = b'\xff'
 
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
@@ -2551,20 +2587,21 @@ class TestIniFileStoreContent(tests.TestCaseWithTransport):
     def test_load_non_ascii(self):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', 'user=foo\n#%s\n' % (self.invalid_utf8_char,))
+        t.put_bytes('foo.conf', b'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(config.ConfigContentError, store.load)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         t = self.get_transport()
-        t.put_bytes('foo.conf', '[open_section\n')
+        t.put_bytes('foo.conf', b'[open_section\n')
         store = config.TransportIniFileStore(t, 'foo.conf')
         self.assertRaises(config.ParseConfigError, store.load)
 
     def test_load_permission_denied(self):
         """Ensure we get warned when trying to load an inaccessible file."""
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -2591,7 +2628,7 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     loaded. We need to issue proper error messages in this case.
     """
 
-    invalid_utf8_char = '\xff'
+    invalid_utf8_char = b'\xff'
 
     def test_load_utf8(self):
         """Ensure we can load an utf8-encoded file."""
@@ -2608,14 +2645,14 @@ class TestIniConfigContent(tests.TestCaseWithTransport):
     def test_load_badly_encoded_content(self):
         """Ensure we display a proper error on non-ascii, non utf-8 content."""
         with open('foo.conf', 'wb') as f:
-            f.write('user=foo\n#%s\n' % (self.invalid_utf8_char,))
+            f.write(b'user=foo\n#%s\n' % (self.invalid_utf8_char,))
         conf = config.IniBasedConfig(file_name='foo.conf')
         self.assertRaises(config.ConfigContentError, conf._get_parser)
 
     def test_load_erroneous_content(self):
         """Ensure we display a proper error on content that can't be parsed."""
         with open('foo.conf', 'wb') as f:
-            f.write('[open_section\n')
+            f.write(b'[open_section\n')
         conf = config.IniBasedConfig(file_name='foo.conf')
         self.assertRaises(config.ParseConfigError, conf._get_parser)
 
@@ -2646,7 +2683,7 @@ class TestMutableStore(TestStore):
 
     def test_mutable_section_shared(self):
         store = self.get_store(self)
-        store._load_from_string('foo=bar\n')
+        store._load_from_string(b'foo=bar\n')
         # FIXME: There should be a better way than relying on the test
         # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
@@ -2660,7 +2697,7 @@ class TestMutableStore(TestStore):
 
     def test_save_emptied_succeeds(self):
         store = self.get_store(self)
-        store._load_from_string('foo=bar\n')
+        store._load_from_string(b'foo=bar\n')
         # FIXME: There should be a better way than relying on the test
         # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
@@ -2681,7 +2718,7 @@ class TestMutableStore(TestStore):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
         store = self.get_store(self)
-        store._load_from_string('foo=bar\n')
+        store._load_from_string(b'foo=bar\n')
         self.assertEqual(False, self.has_store(store))
         store.save()
         self.assertEqual(True, self.has_store(store))
@@ -2707,7 +2744,7 @@ class TestMutableStore(TestStore):
 
     def test_set_option_in_default_section(self):
         store = self.get_store(self)
-        store._load_from_string('')
+        store._load_from_string(b'')
         # FIXME: There should be a better way than relying on the test
         # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
@@ -2723,7 +2760,7 @@ class TestMutableStore(TestStore):
 
     def test_set_option_in_named_section(self):
         store = self.get_store(self)
-        store._load_from_string('')
+        store._load_from_string(b'')
         # FIXME: There should be a better way than relying on the test
         # parametrization to identify branch.conf -- vila 2011-0526
         if self.store_id in ('branch', 'remote_branch'):
@@ -2751,6 +2788,7 @@ class TestMutableStore(TestStore):
         # Now we can try to load it
         store = self.get_store(self)
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('load', hook, None)
@@ -2761,6 +2799,7 @@ class TestMutableStore(TestStore):
 
     def test_save_hook(self):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('save', hook, None)
@@ -2778,14 +2817,14 @@ class TestMutableStore(TestStore):
         self.assertEqual((store,), calls[0])
 
     def test_set_mark_dirty(self):
-        stack = config.MemoryStack('')
+        stack = config.MemoryStack(b'')
         self.assertLength(0, stack.store.dirty_sections)
         stack.set('foo', 'baz')
         self.assertLength(1, stack.store.dirty_sections)
         self.assertTrue(stack.store._need_saving())
 
     def test_remove_mark_dirty(self):
-        stack = config.MemoryStack('foo=bar')
+        stack = config.MemoryStack(b'foo=bar')
         self.assertLength(0, stack.store.dirty_sections)
         stack.remove('foo')
         self.assertLength(1, stack.store.dirty_sections)
@@ -2803,6 +2842,7 @@ class TestStoreSaveChanges(tests.TestCaseWithTransport):
         self.st1 = config.TransportIniFileStore(self.transport, 'foo.conf')
         self.st2 = config.TransportIniFileStore(self.transport, 'foo.conf')
         self.warnings = []
+
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
@@ -2854,7 +2894,7 @@ class TestStoreSaveChanges(tests.TestCaseWithTransport):
                             ' The baz value will be saved.')
 
     def test_concurrent_deletion(self):
-        self.st1._load_from_string('foo=bar')
+        self.st1._load_from_string(b'foo=bar')
         self.st1.save()
         s1 = self.get_stack(self.st1)
         s2 = self.get_stack(self.st2)
@@ -2879,7 +2919,7 @@ class TestQuotingIniFileStore(tests.TestCaseWithTransport):
 
     def test_get_quoted_string(self):
         store = self.get_store()
-        store._load_from_string('foo= " abc "')
+        store._load_from_string(b'foo= " abc "')
         stack = config.Stack([store.get_sections])
         self.assertEqual(' abc ', stack.get('foo'))
 
@@ -2888,14 +2928,15 @@ class TestQuotingIniFileStore(tests.TestCaseWithTransport):
         stack = config.Stack([store.get_sections], store)
         stack.set('foo', ' a b c ')
         store.save()
-        self.assertFileEqual('foo = " a b c "' + os.linesep, 'foo.conf')
+        self.assertFileEqual(b'foo = " a b c "' +
+                             os.linesep.encode('ascii'), 'foo.conf')
 
 
 class TestTransportIniFileStore(TestStore):
 
     def test_loading_unknown_file_fails(self):
         store = config.TransportIniFileStore(self.get_transport(),
-            'I-do-not-exist')
+                                             'I-do-not-exist')
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
@@ -2903,7 +2944,7 @@ class TestTransportIniFileStore(TestStore):
         self.assertEqual(False, store.is_loaded())
         exc = self.assertRaises(
             config.ParseConfigError, store._load_from_string,
-            'this is invalid !')
+            b'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
         self.assertEqual(False, store.is_loaded())
@@ -2914,7 +2955,7 @@ class TestTransportIniFileStore(TestStore):
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
         store = config.TransportIniFileStore(self.get_transport(), 'foo.conf')
-        store._load_from_string('''
+        store._load_from_string(b'''
 foo=bar
 l=1,2
 [DEFAULT]
@@ -3018,6 +3059,7 @@ class TestConcurrentStoreUpdates(TestStore):
         after_writing = threading.Event()
         writing_done = threading.Event()
         c1_save_without_locking_orig = c1.store.save_without_locking
+
         def c1_save_without_locking():
             before_writing.set()
             c1_save_without_locking_orig()
@@ -3025,6 +3067,7 @@ class TestConcurrentStoreUpdates(TestStore):
             # continue
             after_writing.wait()
         c1.store.save_without_locking = c1_save_without_locking
+
         def c1_set():
             c1.set('one', 'c1')
             writing_done.set()
@@ -3045,41 +3088,43 @@ class TestConcurrentStoreUpdates(TestStore):
         self.assertEqual('c2', c2.get('one'))
 
     def test_read_while_writing(self):
-       c1 = self.stack
-       # We spawn a thread that will pause *during* the write
-       ready_to_write = threading.Event()
-       do_writing = threading.Event()
-       writing_done = threading.Event()
-       # We override the _save implementation so we know the store is locked
-       c1_save_without_locking_orig = c1.store.save_without_locking
-       def c1_save_without_locking():
-           ready_to_write.set()
-           # The lock is held. We wait for the main thread to decide when to
-           # continue
-           do_writing.wait()
-           c1_save_without_locking_orig()
-           writing_done.set()
-       c1.store.save_without_locking = c1_save_without_locking
-       def c1_set():
-           c1.set('one', 'c1')
-       t1 = threading.Thread(target=c1_set)
-       # Collect the thread after the test
-       self.addCleanup(t1.join)
-       # Be ready to unblock the thread if the test goes wrong
-       self.addCleanup(do_writing.set)
-       t1.start()
-       # Ensure the thread is ready to write
-       ready_to_write.wait()
-       self.assertEqual('c1', c1.get('one'))
-       # If we read during the write, we get the old value
-       c2 = self.get_stack(self)
-       self.assertEqual('1', c2.get('one'))
-       # Let the writing occur and ensure it occurred
-       do_writing.set()
-       writing_done.wait()
-       # Now we get the updated value
-       c3 = self.get_stack(self)
-       self.assertEqual('c1', c3.get('one'))
+        c1 = self.stack
+        # We spawn a thread that will pause *during* the write
+        ready_to_write = threading.Event()
+        do_writing = threading.Event()
+        writing_done = threading.Event()
+        # We override the _save implementation so we know the store is locked
+        c1_save_without_locking_orig = c1.store.save_without_locking
+
+        def c1_save_without_locking():
+            ready_to_write.set()
+            # The lock is held. We wait for the main thread to decide when to
+            # continue
+            do_writing.wait()
+            c1_save_without_locking_orig()
+            writing_done.set()
+        c1.store.save_without_locking = c1_save_without_locking
+
+        def c1_set():
+            c1.set('one', 'c1')
+        t1 = threading.Thread(target=c1_set)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(do_writing.set)
+        t1.start()
+        # Ensure the thread is ready to write
+        ready_to_write.wait()
+        self.assertEqual('c1', c1.get('one'))
+        # If we read during the write, we get the old value
+        c2 = self.get_stack(self)
+        self.assertEqual('1', c2.get('one'))
+        # Let the writing occur and ensure it occurred
+        do_writing.set()
+        writing_done.wait()
+        # Now we get the updated value
+        c3 = self.get_stack(self)
+        self.assertEqual('c1', c3.get('one'))
 
     # FIXME: It may be worth looking into removing the lock dir when it's not
     # needed anymore and look at possible fallouts for concurrent lockers. This
@@ -3090,7 +3135,7 @@ class TestConcurrentStoreUpdates(TestStore):
 class TestSectionMatcher(TestStore):
 
     scenarios = [('location', {'matcher': config.LocationMatcher}),
-                 ('id', {'matcher': config.NameMatcher}),]
+                 ('id', {'matcher': config.NameMatcher}), ]
 
     def setUp(self):
         super(TestSectionMatcher, self).setUp()
@@ -3099,7 +3144,7 @@ class TestSectionMatcher(TestStore):
 
     def test_no_matches_for_empty_stores(self):
         store = self.get_store(self)
-        store._load_from_string('')
+        store._load_from_string(b'')
         matcher = self.matcher(store, '/bar')
         self.assertEqual([], list(matcher.get_sections()))
 
@@ -3140,7 +3185,7 @@ class TestLocationMatcher(TestStore):
 
     def test_unrelated_section_excluded(self):
         store = self.get_store(self)
-        store._load_from_string('''
+        store._load_from_string(b'''
 [/foo]
 section=/foo
 [/foo/baz]
@@ -3153,37 +3198,37 @@ section=/foo/bar/baz
 section=/quux/quux
 ''')
         self.assertEqual(['/foo', '/foo/baz', '/foo/bar', '/foo/bar/baz',
-                           '/quux/quux'],
-                          [section.id for _, section in store.get_sections()])
+                          '/quux/quux'],
+                         [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/quux')
         sections = [section for _, section in matcher.get_sections()]
         self.assertEqual(['/foo/bar', '/foo'],
-                          [section.id for section in sections])
+                         [section.id for section in sections])
         self.assertEqual(['quux', 'bar/quux'],
-                          [section.extra_path for section in sections])
+                         [section.extra_path for section in sections])
 
     def test_more_specific_sections_first(self):
         store = self.get_store(self)
-        store._load_from_string('''
+        store._load_from_string(b'''
 [/foo]
 section=/foo
 [/foo/bar]
 section=/foo/bar
 ''')
         self.assertEqual(['/foo', '/foo/bar'],
-                          [section.id for _, section in store.get_sections()])
+                         [section.id for _, section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
         sections = [section for _, section in matcher.get_sections()]
         self.assertEqual(['/foo/bar', '/foo'],
-                          [section.id for section in sections])
+                         [section.id for section in sections])
         self.assertEqual(['baz', 'bar/baz'],
-                          [section.extra_path for section in sections])
+                         [section.extra_path for section in sections])
 
     def test_appendpath_in_no_name_section(self):
         # It's a bit weird to allow appendpath in a no-name section, but
         # someone may found a use for it
         store = self.get_store(self)
-        store._load_from_string('''
+        store._load_from_string(b'''
 foo=bar
 foo:policy = appendpath
 ''')
@@ -3208,7 +3253,7 @@ foo:policy = appendpath
         store._load_from_string(dedent("""\
             [/]
             push_location=my{branchname}
-        """))
+        """).encode('ascii'))
         matcher = config.LocationMatcher(store, 'file:///,branch=example%3c')
         self.assertEqual('example<', matcher.branch_name)
         ((_, section),) = matcher.get_sections()
@@ -3219,7 +3264,7 @@ foo:policy = appendpath
         store._load_from_string(dedent("""\
             [/]
             push_location=my{branchname}
-        """))
+        """).encode('ascii'))
         matcher = config.LocationMatcher(store, 'file:///parent/example%3c')
         self.assertEqual('example<', matcher.branch_name)
         ((_, section),) = matcher.get_sections()
@@ -3242,12 +3287,12 @@ class TestStartingPathMatcher(TestStore):
         return sections
 
     def test_empty(self):
-        self.assertSectionIDs([], self.get_url(), '')
+        self.assertSectionIDs([], self.get_url(), b'')
 
     def test_url_vs_local_paths(self):
         # The matcher location is an url and the section names are local paths
         self.assertSectionIDs(['/foo/bar', '/foo'],
-                              'file:///foo/bar/baz', '''\
+                              'file:///foo/bar/baz', b'''\
 [/foo]
 [/foo/bar]
 ''')
@@ -3255,32 +3300,31 @@ class TestStartingPathMatcher(TestStore):
     def test_local_path_vs_url(self):
         # The matcher location is a local path and the section names are urls
         self.assertSectionIDs(['file:///foo/bar', 'file:///foo'],
-                              '/foo/bar/baz', '''\
+                              '/foo/bar/baz', b'''\
 [file:///foo]
 [file:///foo/bar]
 ''')
-
 
     def test_no_name_section_included_when_present(self):
         # Note that other tests will cover the case where the no-name section
         # is empty and as such, not included.
         sections = self.assertSectionIDs(['/foo/bar', '/foo', None],
-                                         '/foo/bar/baz', '''\
+                                         '/foo/bar/baz', b'''\
 option = defined so the no-name section exists
 [/foo]
 [/foo/bar]
 ''')
         self.assertEqual(['baz', 'bar/baz', '/foo/bar/baz'],
-                          [s.locals['relpath'] for _, s in sections])
+                         [s.locals['relpath'] for _, s in sections])
 
     def test_order_reversed(self):
-        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', b'''\
 [/foo]
 [/foo/bar]
 ''')
 
     def test_unrelated_section_excluded(self):
-        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', '''\
+        self.assertSectionIDs(['/foo/bar', '/foo'], '/foo/bar/baz', b'''\
 [/foo]
 [/foo/qux]
 [/foo/bar]
@@ -3288,7 +3332,7 @@ option = defined so the no-name section exists
 
     def test_glob_included(self):
         sections = self.assertSectionIDs(['/foo/*/baz', '/foo/b*', '/foo'],
-                                         '/foo/bar/baz', '''\
+                                         '/foo/bar/baz', b'''\
 [/foo]
 [/foo/qux]
 [/foo/b*]
@@ -3298,11 +3342,11 @@ option = defined so the no-name section exists
         # nothing really is... as far using {relpath} to append it to something
         # else, this seems good enough though.
         self.assertEqual(['', 'baz', 'bar/baz'],
-                          [s.locals['relpath'] for _, s in sections])
+                         [s.locals['relpath'] for _, s in sections])
 
     def test_respect_order(self):
         self.assertSectionIDs(['/foo', '/foo/b*', '/foo/*/baz'],
-                              '/foo/bar/baz', '''\
+                              '/foo/bar/baz', b'''\
 [/foo/*/baz]
 [/foo/qux]
 [/foo/b*]
@@ -3320,7 +3364,7 @@ class TestNameMatcher(TestStore):
 
     def get_matching_sections(self, name):
         store = self.get_store(self)
-        store._load_from_string('''
+        store._load_from_string(b'''
 [foo]
 option=foo
 [foo/baz]
@@ -3349,9 +3393,9 @@ class TestBaseStackGet(tests.TestCase):
 
     def test_get_first_definition(self):
         store1 = config.IniFileStore()
-        store1._load_from_string('foo=bar')
+        store1._load_from_string(b'foo=bar')
         store2 = config.IniFileStore()
-        store2._load_from_string('foo=baz')
+        store2._load_from_string(b'foo=baz')
         conf = config.Stack([store1.get_sections, store2.get_sections])
         self.assertEqual('bar', conf.get('foo'))
 
@@ -3370,7 +3414,7 @@ class TestBaseStackGet(tests.TestCase):
         self.assertEqual(None, conf_stack.get('foo'))
 
     def test_get_for_empty_section_callable(self):
-        conf_stack = config.Stack([lambda : []])
+        conf_stack = config.Stack([lambda: []])
         self.assertEqual(None, conf_stack.get('foo'))
 
     def test_get_for_broken_callable(self):
@@ -3395,7 +3439,7 @@ class TestStackWithSimpleStore(tests.TestCase):
             config.Option('foo', default='bar', override_from_env=['FOO']))
         self.overrideEnv('FOO', 'quux')
         # Env variable provides a default taking over the option one
-        conf = self.get_conf('foo=store')
+        conf = self.get_conf(b'foo=store')
         self.assertEqual('quux', conf.get('foo'))
 
     def test_first_override_value_from_env_wins(self):
@@ -3408,18 +3452,18 @@ class TestStackWithSimpleStore(tests.TestCase):
         self.overrideEnv('FOO', 'foo')
         self.overrideEnv('BAZ', 'baz')
         # The first env var set wins
-        conf = self.get_conf('foo=store')
+        conf = self.get_conf(b'foo=store')
         self.assertEqual('foo', conf.get('foo'))
 
 
 class TestMemoryStack(tests.TestCase):
 
     def test_get(self):
-        conf = config.MemoryStack('foo=bar')
+        conf = config.MemoryStack(b'foo=bar')
         self.assertEqual('bar', conf.get('foo'))
 
     def test_set(self):
-        conf = config.MemoryStack('foo=bar')
+        conf = config.MemoryStack(b'foo=bar')
         conf.set('foo', 'baz')
         self.assertEqual('baz', conf.get('foo'))
 
@@ -3429,7 +3473,7 @@ class TestMemoryStack(tests.TestCase):
         self.assertFalse(conf.store.is_loaded())
         self.assertRaises(NotImplementedError, conf.get, 'foo')
         # But a content can still be provided
-        conf.store._load_from_string('foo=bar')
+        conf.store._load_from_string(b'foo=bar')
         self.assertEqual('bar', conf.get('foo'))
 
 
@@ -3442,14 +3486,14 @@ class TestStackIterSections(tests.TestCase):
 
     def test_empty_store(self):
         store = config.IniFileStore()
-        store._load_from_string('')
+        store._load_from_string(b'')
         conf = config.Stack([store.get_sections])
         sections = list(conf.iter_sections())
         self.assertLength(0, sections)
 
     def test_simple_store(self):
         store = config.IniFileStore()
-        store._load_from_string('foo=bar')
+        store._load_from_string(b'foo=bar')
         conf = config.Stack([store.get_sections])
         tuples = list(conf.iter_sections())
         self.assertLength(1, tuples)
@@ -3458,9 +3502,9 @@ class TestStackIterSections(tests.TestCase):
 
     def test_two_stores(self):
         store1 = config.IniFileStore()
-        store1._load_from_string('foo=bar')
+        store1._load_from_string(b'foo=bar')
         store2 = config.IniFileStore()
-        store2._load_from_string('bar=qux')
+        store2._load_from_string(b'bar=qux')
         conf = config.Stack([store1.get_sections, store2.get_sections])
         tuples = list(conf.iter_sections())
         self.assertLength(2, tuples)
@@ -3493,6 +3537,7 @@ class TestStackGet(TestStackWithTransport):
     def test_get_hook(self):
         self.conf.set('foo', 'bar')
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('get', hook, None)
@@ -3521,33 +3566,33 @@ class TestStackGetWithConverter(tests.TestCase):
 
     def test_get_default_bool_None(self):
         self.register_bool_option('foo')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(None, conf.get('foo'))
 
     def test_get_default_bool_True(self):
         self.register_bool_option('foo', u'True')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(True, conf.get('foo'))
 
     def test_get_default_bool_False(self):
         self.register_bool_option('foo', False)
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(False, conf.get('foo'))
 
     def test_get_default_bool_False_as_string(self):
         self.register_bool_option('foo', u'False')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(False, conf.get('foo'))
 
     def test_get_default_bool_from_env_converted(self):
         self.register_bool_option('foo', u'True', default_from_env=['FOO'])
         self.overrideEnv('FOO', 'False')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(False, conf.get('foo'))
 
     def test_get_default_bool_when_conversion_fails(self):
         self.register_bool_option('foo', default='True')
-        conf = self.get_conf('foo=invalid boolean')
+        conf = self.get_conf(b'foo=invalid boolean')
         self.assertEqual(True, conf.get('foo'))
 
     def register_integer_option(self, name,
@@ -3559,28 +3604,28 @@ class TestStackGetWithConverter(tests.TestCase):
 
     def test_get_default_integer_None(self):
         self.register_integer_option('foo')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(None, conf.get('foo'))
 
     def test_get_default_integer(self):
         self.register_integer_option('foo', 42)
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(42, conf.get('foo'))
 
     def test_get_default_integer_as_string(self):
         self.register_integer_option('foo', u'42')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(42, conf.get('foo'))
 
     def test_get_default_integer_from_env(self):
         self.register_integer_option('foo', default_from_env=['FOO'])
         self.overrideEnv('FOO', '18')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(18, conf.get('foo'))
 
     def test_get_default_integer_when_conversion_fails(self):
         self.register_integer_option('foo', default='12')
-        conf = self.get_conf('foo=invalid integer')
+        conf = self.get_conf(b'foo=invalid integer')
         self.assertEqual(12, conf.get('foo'))
 
     def register_list_option(self, name, default=None, default_from_env=None):
@@ -3590,38 +3635,38 @@ class TestStackGetWithConverter(tests.TestCase):
 
     def test_get_default_list_None(self):
         self.register_list_option('foo')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual(None, conf.get('foo'))
 
     def test_get_default_list_empty(self):
         self.register_list_option('foo', '')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual([], conf.get('foo'))
 
     def test_get_default_list_from_env(self):
         self.register_list_option('foo', default_from_env=['FOO'])
         self.overrideEnv('FOO', '')
-        conf = self.get_conf('')
+        conf = self.get_conf(b'')
         self.assertEqual([], conf.get('foo'))
 
     def test_get_with_list_converter_no_item(self):
         self.register_list_option('foo', None)
-        conf = self.get_conf('foo=,')
+        conf = self.get_conf(b'foo=,')
         self.assertEqual([], conf.get('foo'))
 
     def test_get_with_list_converter_many_items(self):
         self.register_list_option('foo', None)
-        conf = self.get_conf('foo=m,o,r,e')
+        conf = self.get_conf(b'foo=m,o,r,e')
         self.assertEqual(['m', 'o', 'r', 'e'], conf.get('foo'))
 
     def test_get_with_list_converter_embedded_spaces_many_items(self):
         self.register_list_option('foo', None)
-        conf = self.get_conf('foo=" bar", "baz "')
+        conf = self.get_conf(b'foo=" bar", "baz "')
         self.assertEqual([' bar', 'baz '], conf.get('foo'))
 
     def test_get_with_list_converter_stripped_spaces_many_items(self):
         self.register_list_option('foo', None)
-        conf = self.get_conf('foo= bar ,  baz ')
+        conf = self.get_conf(b'foo= bar ,  baz ')
         self.assertEqual(['bar', 'baz'], conf.get('foo'))
 
 
@@ -3650,7 +3695,7 @@ class TestIterOptionRefs(tests.TestCase):
     def test_two_refs(self):
         self.assertRefs([(False, ''), (True, '{foo}'),
                          (False, ''), (True, '{bar}'),
-                         (False, ''),],
+                         (False, ''), ],
                         '{foo}{bar}')
 
     def test_newline_in_refs_are_not_matched(self):
@@ -3673,18 +3718,18 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         self.assertExpansion('foo', 'foo')
 
     def test_expand_default_value(self):
-        self.conf.store._load_from_string('bar=baz')
+        self.conf.store._load_from_string(b'bar=baz')
         self.registry.register(config.Option('foo', default=u'{bar}'))
         self.assertEqual('baz', self.conf.get('foo', expand=True))
 
     def test_expand_default_from_env(self):
-        self.conf.store._load_from_string('bar=baz')
+        self.conf.store._load_from_string(b'bar=baz')
         self.registry.register(config.Option('foo', default_from_env=['FOO']))
         self.overrideEnv('FOO', '{bar}')
         self.assertEqual('baz', self.conf.get('foo', expand=True))
 
     def test_expand_default_on_failed_conversion(self):
-        self.conf.store._load_from_string('baz=bogus\nbar=42\nfoo={baz}')
+        self.conf.store._load_from_string(b'baz=bogus\nbar=42\nfoo={baz}')
         self.registry.register(
             config.Option('foo', default=u'{bar}',
                           from_unicode=config.int_from_store))
@@ -3694,11 +3739,11 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         self.assertExpansion('bar', '{foo}', {'foo': 'bar'})
 
     def test_env_overriding_options(self):
-        self.conf.store._load_from_string('foo=baz')
+        self.conf.store._load_from_string(b'foo=baz')
         self.assertExpansion('bar', '{foo}', {'foo': 'bar'})
 
     def test_simple_ref(self):
-        self.conf.store._load_from_string('foo=xxx')
+        self.conf.store._load_from_string(b'foo=xxx')
         self.assertExpansion('xxx', '{foo}')
 
     def test_unknown_ref(self):
@@ -3711,26 +3756,26 @@ class TestStackExpandOptions(tests.TestCaseWithTransport):
         self.assertExpansion('${Foo,f}', '${Foo,f}')
 
     def test_indirect_ref(self):
-        self.conf.store._load_from_string('''
+        self.conf.store._load_from_string(b'''
 foo=xxx
 bar={foo}
 ''')
         self.assertExpansion('xxx', '{bar}')
 
     def test_embedded_ref(self):
-        self.conf.store._load_from_string('''
+        self.conf.store._load_from_string(b'''
 foo=xxx
 bar=foo
 ''')
         self.assertExpansion('xxx', '{{bar}}')
 
     def test_simple_loop(self):
-        self.conf.store._load_from_string('foo={foo}')
+        self.conf.store._load_from_string(b'foo={foo}')
         self.assertRaises(config.OptionExpansionLoop,
                           self.conf.expand_options, '{foo}')
 
     def test_indirect_loop(self):
-        self.conf.store._load_from_string('''
+        self.conf.store._load_from_string(b'''
 foo={bar}
 bar={baz}
 baz={foo}''')
@@ -3740,7 +3785,7 @@ baz={foo}''')
         self.assertEqual('{foo}', e.string)
 
     def test_list(self):
-        self.conf.store._load_from_string('''
+        self.conf.store._load_from_string(b'''
 foo=start
 bar=middle
 baz=end
@@ -3749,10 +3794,10 @@ list={foo},{bar},{baz}
         self.registry.register(
             config.ListOption('list'))
         self.assertEqual(['start', 'middle', 'end'],
-                           self.conf.get('list', expand=True))
+                         self.conf.get('list', expand=True))
 
     def test_cascading_list(self):
-        self.conf.store._load_from_string('''
+        self.conf.store._load_from_string(b'''
 foo=start,{bar}
 bar=middle,{baz}
 baz=end
@@ -3764,10 +3809,10 @@ list={foo}
         # option ('list' here).
         self.registry.register(config.ListOption('baz'))
         self.assertEqual(['start', 'middle', 'end'],
-                           self.conf.get('list', expand=True))
+                         self.conf.get('list', expand=True))
 
     def test_pathologically_hidden_list(self):
-        self.conf.store._load_from_string('''
+        self.conf.store._load_from_string(b'''
 foo=bin
 bar=go
 start={foo
@@ -3779,7 +3824,7 @@ hidden={start}{middle}{end}
         # only after all expansions have been performed
         self.registry.register(config.ListOption('hidden'))
         self.assertEqual(['bin', 'go'],
-                          self.conf.get('hidden', expand=True))
+                         self.conf.get('hidden', expand=True))
 
 
 class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
@@ -3789,7 +3834,7 @@ class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
 
     def get_config(self, location, string):
         if string is None:
-            string = ''
+            string = b''
         # Since we don't save the config we won't strictly require to inherit
         # from TestCaseInTempDir, but an error occurs so quickly...
         c = config.LocationStack(location)
@@ -3797,7 +3842,7 @@ class TestStackCrossSectionsExpand(tests.TestCaseWithTransport):
         return c
 
     def test_dont_cross_unrelated_section(self):
-        c = self.get_config('/another/branch/path', '''
+        c = self.get_config('/another/branch/path', b'''
 [/one/branch/path]
 foo = hello
 bar = {foo}/2
@@ -3809,7 +3854,7 @@ bar = {foo}/2
                           c.get, 'bar', expand=True)
 
     def test_cross_related_sections(self):
-        c = self.get_config('/project/branch/path', '''
+        c = self.get_config('/project/branch/path', b'''
 [/project]
 foo = qu
 
@@ -3823,14 +3868,14 @@ class TestStackCrossStoresExpand(tests.TestCaseWithTransport):
 
     def test_cross_global_locations(self):
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/branch]
 lfoo = loc-foo
 lbar = {gbar}
 ''')
         l_store.save()
         g_store = config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 gfoo = {lfoo}
 gbar = glob-bar
@@ -3845,7 +3890,7 @@ class TestStackExpandSectionLocals(tests.TestCaseWithTransport):
 
     def test_expand_locals_empty(self):
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/home/user/project]
 base = {basename}
 rel = {relpath}
@@ -3857,7 +3902,7 @@ rel = {relpath}
 
     def test_expand_basename_locally(self):
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/home/user/project]
 bfoo = {basename}
 ''')
@@ -3867,7 +3912,7 @@ bfoo = {basename}
 
     def test_expand_basename_locally_longer_path(self):
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/home/user]
 bfoo = {basename}
 ''')
@@ -3877,7 +3922,7 @@ bfoo = {basename}
 
     def test_expand_relpath_locally(self):
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/home/user/project]
 lfoo = loc-foo/{relpath}
 ''')
@@ -3887,7 +3932,7 @@ lfoo = loc-foo/{relpath}
 
     def test_expand_relpath_unknonw_in_global(self):
         g_store = config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 gfoo = {relpath}
 ''')
@@ -3898,14 +3943,14 @@ gfoo = {relpath}
 
     def test_expand_local_option_locally(self):
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/home/user/project]
 lfoo = loc-foo/{relpath}
 lbar = {gbar}
 ''')
         l_store.save()
         g_store = config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 gfoo = {lfoo}
 gbar = glob-bar
@@ -3919,7 +3964,7 @@ gbar = glob-bar
         """Make sure we chose the right local in presence of several sections.
         """
         l_store = config.LocationStore()
-        l_store._load_from_string('''
+        l_store._load_from_string(b'''
 [/home/user]
 lfoo = loc-foo/{relpath}
 [/home/user/project]
@@ -3930,7 +3975,6 @@ lfoo = loc-foo/{relpath}
         self.assertEqual('loc-foo/branch', stack.get('lfoo', expand=True))
         stack = config.LocationStack('/home/user/bar/baz')
         self.assertEqual('loc-foo/bar/baz', stack.get('lfoo', expand=True))
-
 
 
 class TestStackSet(TestStackWithTransport):
@@ -3949,6 +3993,7 @@ class TestStackSet(TestStackWithTransport):
 
     def test_set_hook(self):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('set', hook, None)
@@ -3975,6 +4020,7 @@ class TestStackRemove(TestStackWithTransport):
 
     def test_remove_hook(self):
         calls = []
+
         def hook(*args):
             calls.append(args)
         config.ConfigHooks.install_named_hook('remove', hook, None)
@@ -4016,7 +4062,7 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         self.breezy_config.set_user_option('file', 'breezy')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions([('file', 'branch', 'DEFAULT', 'branch'),
-                            ('file', 'breezy', 'DEFAULT', 'breezy'),],
+                            ('file', 'breezy', 'DEFAULT', 'breezy'), ],
                            self.branch_config)
 
     def test_option_in_branch_and_locations(self):
@@ -4025,7 +4071,7 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
-             ('file', 'branch', 'DEFAULT', 'branch'),],
+             ('file', 'branch', 'DEFAULT', 'branch'), ],
             self.branch_config)
 
     def test_option_in_breezy_locations_and_branch(self):
@@ -4035,7 +4081,7 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
              ('file', 'branch', 'DEFAULT', 'branch'),
-             ('file', 'breezy', 'DEFAULT', 'breezy'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'), ],
             self.branch_config)
 
 
@@ -4049,21 +4095,21 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
         self.locations_config.remove_user_option('file', self.tree.basedir)
         self.assertOptions(
             [('file', 'branch', 'DEFAULT', 'branch'),
-             ('file', 'breezy', 'DEFAULT', 'breezy'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'), ],
             self.branch_config)
 
     def test_remove_in_branch(self):
         self.branch_config.remove_user_option('file')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
-             ('file', 'breezy', 'DEFAULT', 'breezy'),],
+             ('file', 'breezy', 'DEFAULT', 'breezy'), ],
             self.branch_config)
 
     def test_remove_in_breezy(self):
         self.breezy_config.remove_user_option('file')
         self.assertOptions(
             [('file', 'locations', self.tree.basedir, 'locations'),
-             ('file', 'branch', 'DEFAULT', 'branch'),],
+             ('file', 'branch', 'DEFAULT', 'branch'), ],
             self.branch_config)
 
 
@@ -4152,30 +4198,30 @@ class TestAuthenticationConfigFilePermissions(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestAuthenticationConfigFilePermissions, self).setUp()
         self.path = osutils.pathjoin(self.test_dir, 'authentication.conf')
-        with open(self.path, 'w') as f:
+        with open(self.path, 'wb') as f:
             f.write(b"""[broken]
 scheme=ftp
 user=joe
 port=port # Error: Not an int
 """)
         self.overrideAttr(config, 'authentication_config_filename',
-            lambda: self.path)
+                          lambda: self.path)
         osutils.chmod_if_possible(self.path, 0o755)
 
     def test_check_warning(self):
         conf = config.AuthenticationConfig()
         self.assertEqual(conf._filename, self.path)
         self.assertContainsRe(self.get_log(),
-            'Saved passwords may be accessible by other users.')
+                              'Saved passwords may be accessible by other users.')
 
     def test_check_suppressed_warning(self):
         global_config = config.GlobalConfig()
         global_config.set_user_option('suppress_warnings',
-            'insecure_permissions')
+                                      'insecure_permissions')
         conf = config.AuthenticationConfig()
         self.assertEqual(conf._filename, self.path)
         self.assertNotContainsRe(self.get_log(),
-            'Saved passwords may be accessible by other users.')
+                                 'Saved passwords may be accessible by other users.')
 
 
 class TestAuthenticationConfigFile(tests.TestCase):
@@ -4388,7 +4434,7 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
     def test_set_credentials(self):
         conf = config.AuthenticationConfig()
         conf.set_credentials('name', 'host', 'user', 'scheme', 'password',
-        99, path='/foo', verify_certificates=False, realm='realm')
+                             99, path='/foo', verify_certificates=False, realm='realm')
         credentials = conf.get_credentials(host='host', scheme='scheme',
                                            port=99, path='/foo',
                                            realm='realm')
@@ -4431,8 +4477,8 @@ class TestAuthenticationConfig(tests.TestCaseInTempDir):
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEqual(password,
-                          conf.get_password(scheme, host, user, port=port,
-                                            realm=realm, path=path))
+                         conf.get_password(scheme, host, user, port=port,
+                                           realm=realm, path=path))
         self.assertEqual(expected_prompt, ui.ui_factory.stderr.getvalue())
         self.assertEqual('', ui.ui_factory.stdout.getvalue())
 
@@ -4445,11 +4491,11 @@ class TestAuthenticationConfig(tests.TestCaseInTempDir):
         expected_prompt = expected_prompt_format % {
             'scheme': scheme, 'host': host, 'port': port,
             'realm': realm}
-        ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n')
+        ui.ui_factory = tests.TestUIFactory(stdin=username + '\n')
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEqual(username, conf.get_user(scheme, host, port=port,
-                          realm=realm, path=path, ask=True))
+                                                 realm=realm, path=path, ask=True))
         self.assertEqual(expected_prompt, ui.ui_factory.stderr.getvalue())
         self.assertEqual('', ui.ui_factory.stdout.getvalue())
 
@@ -4464,9 +4510,9 @@ class TestAuthenticationConfig(tests.TestCaseInTempDir):
     def test_username_default_no_prompt(self):
         conf = config.AuthenticationConfig()
         self.assertEqual(None,
-            conf.get_user('ftp', 'example.com'))
+                         conf.get_user('ftp', 'example.com'))
         self.assertEqual("explicitdefault",
-            conf.get_user('ftp', 'example.com', default="explicitdefault"))
+                         conf.get_user('ftp', 'example.com', default="explicitdefault"))
 
     def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
@@ -4501,7 +4547,7 @@ password=jimpass
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
         self.assertEqual(entered_password,
-                          conf.get_password('ssh', 'bar.org', user='jim'))
+                         conf.get_password('ssh', 'bar.org', user='jim'))
         self.assertContainsRe(
             self.get_log(),
             'password ignored in section \\[ssh with password\\]')
@@ -4519,7 +4565,7 @@ user=jim
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
         self.assertEqual(entered_password,
-                          conf.get_password('ssh', 'bar.org', user='jim'))
+                         conf.get_password('ssh', 'bar.org', user='jim'))
         # No warning shoud be emitted since there is no password. We are only
         # providing "user".
         self.assertNotContainsRe(
@@ -4549,11 +4595,11 @@ class StubCredentialStore(config.CredentialStore):
         self._password[(scheme, host)] = password
 
     def get_credentials(self, scheme, host, port=None, user=None,
-        path=None, realm=None):
+                        path=None, realm=None):
         key = (scheme, host)
-        if not key in self._username:
+        if key not in self._username:
             return None
-        return { "scheme": scheme, "host": host, "port": port,
+        return {"scheme": scheme, "host": host, "port": port,
                 "user": self._username[key], "password": self._password[key]}
 
 
@@ -4563,7 +4609,7 @@ class CountingCredentialStore(config.CredentialStore):
         self._calls = 0
 
     def get_credentials(self, scheme, host, port=None, user=None,
-        path=None, realm=None):
+                        path=None, realm=None):
         self._calls += 1
         return None
 
@@ -4587,7 +4633,7 @@ class TestCredentialStoreRegistry(tests.TestCase):
     def test_fallback_none_registered(self):
         r = config.CredentialStoreRegistry()
         self.assertEqual(None,
-                          r.get_fallback_credentials("http", "example.com"))
+                         r.get_fallback_credentials("http", "example.com"))
 
     def test_register(self):
         r = config.CredentialStoreRegistry()
@@ -4615,7 +4661,7 @@ class TestCredentialStoreRegistry(tests.TestCase):
         store = CountingCredentialStore()
         r.register("count", store, fallback=False)
         self.assertEqual(None,
-                          r.get_fallback_credentials("http", "example.com"))
+                         r.get_fallback_credentials("http", "example.com"))
         self.assertEqual(0, store._calls)
 
     def test_fallback_credentials(self):
@@ -4658,7 +4704,7 @@ class TestBase64CredentialStore(tests.TestCase):
         r = config.credential_store_registry
         plain_text = r.get_credential_store('base64')
         decoded = plain_text.decode_password(dict(password='c2VjcmV0'))
-        self.assertEqual('secret', decoded)
+        self.assertEqual(b'secret', decoded)
 
 
 # FIXME: Once we have a way to declare authentication to all test servers, we
@@ -4699,29 +4745,20 @@ class TestDefaultMailDomain(tests.TestCaseInTempDir):
     """Test retrieving default domain from mailname file"""
 
     def test_default_mail_domain_simple(self):
-        f = file('simple', 'w')
-        try:
+        with open('simple', 'w') as f:
             f.write("domainname.com\n")
-        finally:
-            f.close()
         r = config._get_default_mail_domain('simple')
         self.assertEqual('domainname.com', r)
 
     def test_default_mail_domain_no_eol(self):
-        f = file('no_eol', 'w')
-        try:
+        with open('no_eol', 'w') as f:
             f.write("domainname.com")
-        finally:
-            f.close()
         r = config._get_default_mail_domain('no_eol')
         self.assertEqual('domainname.com', r)
 
     def test_default_mail_domain_multiple_lines(self):
-        f = file('multiple_lines', 'w')
-        try:
+        with open('multiple_lines', 'w') as f:
             f.write("domainname.com\nsome other text\n")
-        finally:
-            f.close()
         r = config._get_default_mail_domain('multiple_lines')
         self.assertEqual('domainname.com', r)
 
@@ -4729,20 +4766,20 @@ class TestDefaultMailDomain(tests.TestCaseInTempDir):
 class EmailOptionTests(tests.TestCase):
 
     def test_default_email_uses_BRZ_EMAIL(self):
-        conf = config.MemoryStack('email=jelmer@debian.org')
+        conf = config.MemoryStack(b'email=jelmer@debian.org')
         # BRZ_EMAIL takes precedence over EMAIL
         self.overrideEnv('BRZ_EMAIL', 'jelmer@samba.org')
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@samba.org', conf.get('email'))
 
     def test_default_email_uses_EMAIL(self):
-        conf = config.MemoryStack('')
+        conf = config.MemoryStack(b'')
         self.overrideEnv('BRZ_EMAIL', None)
         self.overrideEnv('EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@apache.org', conf.get('email'))
 
     def test_BRZ_EMAIL_overrides(self):
-        conf = config.MemoryStack('email=jelmer@debian.org')
+        conf = config.MemoryStack(b'email=jelmer@debian.org')
         self.overrideEnv('BRZ_EMAIL', 'jelmer@apache.org')
         self.assertEqual('jelmer@apache.org', conf.get('email'))
         self.overrideEnv('BRZ_EMAIL', None)
@@ -4753,51 +4790,51 @@ class EmailOptionTests(tests.TestCase):
 class MailClientOptionTests(tests.TestCase):
 
     def test_default(self):
-        conf = config.MemoryStack('')
+        conf = config.MemoryStack(b'')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.DefaultMail)
 
     def test_evolution(self):
-        conf = config.MemoryStack('mail_client=evolution')
+        conf = config.MemoryStack(b'mail_client=evolution')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.Evolution)
 
     def test_kmail(self):
-        conf = config.MemoryStack('mail_client=kmail')
+        conf = config.MemoryStack(b'mail_client=kmail')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.KMail)
 
     def test_mutt(self):
-        conf = config.MemoryStack('mail_client=mutt')
+        conf = config.MemoryStack(b'mail_client=mutt')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.Mutt)
 
     def test_thunderbird(self):
-        conf = config.MemoryStack('mail_client=thunderbird')
+        conf = config.MemoryStack(b'mail_client=thunderbird')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.Thunderbird)
 
     def test_explicit_default(self):
-        conf = config.MemoryStack('mail_client=default')
+        conf = config.MemoryStack(b'mail_client=default')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.DefaultMail)
 
     def test_editor(self):
-        conf = config.MemoryStack('mail_client=editor')
+        conf = config.MemoryStack(b'mail_client=editor')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.Editor)
 
     def test_mapi(self):
-        conf = config.MemoryStack('mail_client=mapi')
+        conf = config.MemoryStack(b'mail_client=mapi')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.MAPIClient)
 
     def test_xdg_email(self):
-        conf = config.MemoryStack('mail_client=xdg-email')
+        conf = config.MemoryStack(b'mail_client=xdg-email')
         client = conf.get('mail_client')
         self.assertIs(client, mail_client.XDGEmail)
 
     def test_unknown(self):
-        conf = config.MemoryStack('mail_client=firebird')
+        conf = config.MemoryStack(b'mail_client=firebird')
         self.assertRaises(config.ConfigOptionValueError, conf.get,
-                'mail_client')
+                          'mail_client')

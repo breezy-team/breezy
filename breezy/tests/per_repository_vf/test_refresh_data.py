@@ -54,7 +54,7 @@ class TestRefreshData(TestCaseWithRepository):
             server_repo.lock_write(token)
         except errors.TokenLockingNotSupported:
             self.skipTest('Cannot concurrently insert into repo format %r'
-                % self.repository_format)
+                          % self.repository_format)
         try:
             server_repo.fetch(source.branch.repository, revid)
         finally:
@@ -80,7 +80,7 @@ class TestRefreshData(TestCaseWithRepository):
             pass
         else:
             self.assertEqual(
-                ['commit-in-target', 'new-rev'],
+                [b'commit-in-target', b'new-rev'],
                 sorted(repo.all_revision_ids()))
 
     def test_refresh_data_after_fetch_new_data_visible(self):
@@ -89,6 +89,5 @@ class TestRefreshData(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         self.fetch_new_revision_into_concurrent_instance(repo, token)
         repo.refresh_data()
-        self.assertNotEqual({}, repo.get_graph().get_parent_map(['new-rev']))
-
-
+        self.assertNotEqual(
+            {}, repo.get_graph().get_parent_map([b'new-rev']))

@@ -57,14 +57,13 @@ class TestCleanTree(TestCaseInTempDir):
         os.mkdir('branch')
         tree = ControlDir.create_standalone_workingtree('branch')
         transport = tree.controldir.root_transport
-        transport.put_bytes('.bzrignore', '*~\n*.pyc\n.bzrignore\n')
-        transport.put_bytes('file.BASE', 'contents')
-        tree.lock_write()
-        try:
+        transport.put_bytes('.bzrignore', b'*~\n*.pyc\n.bzrignore\n')
+        transport.put_bytes('file.BASE', b'contents')
+        with tree.lock_write():
             self.assertEqual(len(list(iter_deletables(tree, unknown=True))), 1)
-            transport.put_bytes('file', 'contents')
-            transport.put_bytes('file~', 'contents')
-            transport.put_bytes('file.pyc', 'contents')
+            transport.put_bytes('file', b'contents')
+            transport.put_bytes('file~', b'contents')
+            transport.put_bytes('file.pyc', b'contents')
             dels = sorted([r for a, r in iter_deletables(tree, unknown=True)])
             self.assertEqual(['file', 'file.BASE'], dels)
 
@@ -77,8 +76,6 @@ class TestCleanTree(TestCaseInTempDir):
 
             dels = [r for a, r in iter_deletables(tree, unknown=False)]
             self.assertEqual([], dels)
-        finally:
-            tree.unlock()
 
     def test_delete_items_warnings(self):
         """Ensure delete_items issues warnings on EACCES. (bug #430785)
@@ -113,7 +110,7 @@ class TestCleanTree(TestCaseInTempDir):
                     # be shown to the user.
                     function = os.listdir
                 onerror(function=function,
-                    path=path, excinfo=excinfo)
+                        path=path, excinfo=excinfo)
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
         self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
@@ -124,13 +121,12 @@ class TestCleanTree(TestCaseInTempDir):
         self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])
         clean_tree('.', unknown=True, no_prompt=True)
         self.assertContainsRe(stderr.getvalue(),
-            'bzr: warning: unable to remove.*0foo')
+                              'bzr: warning: unable to remove.*0foo')
         self.assertContainsRe(stderr.getvalue(),
-            'bzr: warning: unable to remove.*subdir0')
+                              'bzr: warning: unable to remove.*subdir0')
 
         # Ensure that error other than EACCES during os.remove are
         # not turned into warnings.
         self.build_tree(['subdir1/'])
         self.assertRaises(OSError, clean_tree, '.',
-            unknown=True, no_prompt=True)
-
+                          unknown=True, no_prompt=True)

@@ -31,6 +31,7 @@ from breezy import (
     )
 import breezy.branch
 from breezy.tests import (
+    features,
     TestCase,
     TestSkipped,
     )
@@ -74,7 +75,7 @@ class TestApiUsage(TestSourceHelper):
     def find_occurences(self, rule, filename):
         """Find the number of occurences of rule in a file."""
         occurences = 0
-        source = file(filename, 'r')
+        source = open(filename, 'r')
         for line in source:
             if line.find(rule) > -1:
                 occurences += 1
@@ -88,7 +89,7 @@ class TestApiUsage(TestSourceHelper):
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
         # Note that this is an exact equality so that when the number drops,
-        #it is not given a buffer but rather has this test updated immediately.
+        # it is not given a buffer but rather has this test updated immediately.
         self.assertEqual(0, occurences)
 
     def test_branch_WorkingTree(self):
@@ -145,12 +146,8 @@ class TestSource(TestSourceHelper):
 
     def get_source_file_contents(self, extensions=None):
         for fname in self.get_source_files(extensions=extensions):
-            f = open(fname, 'rb')
-            try:
-                text = f.read()
-            finally:
-                f.close()
-            yield fname, text
+            with open(fname, 'r') as f:
+                yield fname, f.read()
 
     def is_our_code(self, fname):
         """True if it's a "real" part of breezy rather than external code"""
@@ -209,8 +206,8 @@ class TestSource(TestSourceHelper):
             else:
                 if 'by Canonical' in match.group():
                     incorrect.append((fname,
-                        'should not have: "by Canonical": %s'
-                        % (match.group(),)))
+                                      'should not have: "by Canonical": %s'
+                                      % (match.group(),)))
 
         if incorrect:
             help_text = ["Some files have missing or incorrect copyright"
@@ -223,7 +220,7 @@ class TestSource(TestSourceHelper):
                          "or add '# Copyright (C)"
                          " 2007 Bazaar hackers' to these files:",
                          "",
-                        ]
+                         ]
             for fname, comment in incorrect:
                 help_text.append(fname)
                 help_text.append((' ' * 4) + comment)
@@ -279,7 +276,7 @@ class TestSource(TestSourceHelper):
 
     def _format_message(self, dict_, message):
         files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
-                for f, lines in dict_.items()])
+                        for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
     def test_coding_style(self):
@@ -313,19 +310,32 @@ class TestSource(TestSourceHelper):
         problems = []
         if tabs:
             problems.append(self._format_message(tabs,
-                'Tab characters were found in the following source files.'
-                '\nThey should either be replaced by "\\t" or by spaces:'))
+                                                 'Tab characters were found in the following source files.'
+                                                 '\nThey should either be replaced by "\\t" or by spaces:'))
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
-                'Non-unix newlines were found in the following source files:'))
+                                                 'Non-unix newlines were found in the following source files:'))
         if no_newline_at_eof:
             no_newline_at_eof.sort()
             problems.append("The following source files doesn't have a "
-                "newline at the end:"
-               '\n\n    %s'
-               % ('\n    '.join(no_newline_at_eof)))
+                            "newline at the end:"
+                            '\n\n    %s'
+                            % ('\n    '.join(no_newline_at_eof)))
         if problems:
             self.fail('\n\n'.join(problems))
+
+    def test_flake8(self):
+        self.requireFeature(features.flake8)
+        # Older versions of flake8 don't support the 'paths'
+        # variable
+        new_path = list(sys.path)
+        new_path.insert(
+            0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
+        self.overrideAttr(sys, 'path', new_path)
+        from flake8.api import legacy as flake8
+        style_guide = flake8.get_style_guide(config=u'setup.cfg', jobs="1")
+        report = style_guide.check_files(list(self.get_source_files()))
+        self.assertEqual([], report.get_statistics(''))
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""
@@ -350,8 +360,9 @@ class TestSource(TestSourceHelper):
                 continue
             if not assert_re.search(text):
                 continue
-            ast = parser.ast2tuple(parser.suite(text))
-            if search(ast):
+            st = parser.suite(text)
+            code = parser.st2tuple(st)
+            if search(code):
                 badfiles.append(fname)
         if badfiles:
             self.fail(
@@ -367,10 +378,9 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
+        common_classes = ('StaticTuple',)
         class_re = re.compile(r'^(cdef\s+)?(public\s+)?'
                               r'(api\s+)?class (\w+).*:', re.MULTILINE)
-        extern_class_re = re.compile(r'## extern cdef class (\w+)',
-                                     re.MULTILINE)
         except_re = re.compile(
             r'cdef\s+'        # start with cdef
             r'([\w *]*?)\s*'  # this is the return signature
@@ -381,7 +391,7 @@ class TestSource(TestSourceHelper):
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
             known_classes = {m[-1] for m in class_re.findall(text)}
-            known_classes.update(extern_class_re.findall(text))
+            known_classes.update(common_classes)
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:
                 if sig.startswith('api '):
@@ -426,7 +436,7 @@ class TestSource(TestSourceHelper):
             if "/tests/" in fname or "test_" in fname:
                 # We don't really care about tests
                 continue
-            if not "from __future__ import absolute_import" in text:
+            if "from __future__ import absolute_import" not in text:
                 missing_absolute_import.append(fname)
 
         if missing_absolute_import:

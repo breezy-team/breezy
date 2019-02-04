@@ -28,7 +28,6 @@ from __future__ import absolute_import
 # TODO: Perhaps use a Python pickle instead of a text file; might be faster.
 
 
-
 CACHE_HEADER = b"### bzr hashcache v5\n"
 
 import os
@@ -51,7 +50,6 @@ from .sixish import (
 FP_MTIME_COLUMN = 1
 FP_CTIME_COLUMN = 2
 FP_MODE_COLUMN = 5
-
 
 
 class HashCache(object):
@@ -91,7 +89,7 @@ class HashCache(object):
     needs_write = False
 
     def __init__(self, root, cache_file_name, mode=None,
-            content_filter_stack_provider=None):
+                 content_filter_stack_provider=None):
         """Create a hash cache in base dir, and set the file mode to mode.
 
         :param content_filter_stack_provider: a function that takes a
@@ -165,8 +163,6 @@ class HashCache(object):
             cache_sha1, cache_fp = None, None
 
         if cache_fp == file_fp:
-            ## mutter("hashcache hit for %s %r -> %s", path, file_fp, cache_sha1)
-            ## mutter("now = %s", time.time())
             self.hit_count += 1
             return cache_sha1
 
@@ -177,7 +173,7 @@ class HashCache(object):
             if self._filter_provider is None:
                 filters = []
             else:
-                filters = self._filter_provider(path=path, file_id=None)
+                filters = self._filter_provider(path=path)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             target = osutils.readlink(abspath)
@@ -209,9 +205,9 @@ class HashCache(object):
                 self.needs_write = True
                 del self._cache[path]
         else:
-            ## mutter('%r added to cache: now=%f, mtime=%d, ctime=%d',
+            # mutter('%r added to cache: now=%f, mtime=%d, ctime=%d',
             ##        path, time.time(), file_fp[FP_MTIME_COLUMN],
-            ##        file_fp[FP_CTIME_COLUMN])
+            # file_fp[FP_CTIME_COLUMN])
             self.update_count += 1
             self.needs_write = True
             self._cache[path] = (digest, file_fp)
@@ -223,24 +219,20 @@ class HashCache(object):
 
     def write(self):
         """Write contents of cache to file."""
-        outf = atomicfile.AtomicFile(self.cache_file_name(), 'wb',
-                                     new_mode=self._mode)
-        try:
+        with atomicfile.AtomicFile(self.cache_file_name(), 'wb',
+                                   new_mode=self._mode) as outf:
             outf.write(CACHE_HEADER)
 
-            for path, c  in viewitems(self._cache):
+            for path, c in viewitems(self._cache):
                 line_info = [path.encode('utf-8'), b'// ', c[0], b' ']
                 line_info.append(b'%d %d %d %d %d %d' % c[1])
                 line_info.append(b'\n')
                 outf.write(b''.join(line_info))
-            outf.commit()
             self.needs_write = False
-            ## mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
-            ##        self.cache_file_name(), self.hit_count, self.miss_count,
-            ##        self.stat_count,
-            ##        self.danger_count, self.update_count)
-        finally:
-            outf.close()
+            # mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
+            #        self.cache_file_name(), self.hit_count, self.miss_count,
+            # self.stat_count,
+            # self.danger_count, self.update_count)
 
     def read(self):
         """Reinstate cache from file.

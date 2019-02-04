@@ -107,7 +107,7 @@ def get_unicode_argv():
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
         raise errors.BzrError(gettext("Parameter {0!r} encoding is unsupported by {1} "
-            "application locale.").format(a, user_encoding))
+                                      "application locale.").format(a, user_encoding))
 
 
 def make_readonly(filename):
@@ -155,7 +155,10 @@ def minimum_path_selection(paths):
         return set(paths)
 
     def sort_key(path):
-        return path.split('/')
+        if isinstance(path, bytes):
+            return path.split(b'/')
+        else:
+            return path.split('/')
     sorted_paths = sorted(list(paths), key=sort_key)
 
     search_paths = [sorted_paths[0]]
@@ -187,6 +190,7 @@ def quotefn(f):
 
 
 _directory_kind = 'directory'
+
 
 def get_umask():
     """Return the current umask"""
@@ -224,9 +228,10 @@ if lexists is None:
             return True
         except OSError as e:
             if e.errno == errno.ENOENT:
-                return False;
+                return False
             else:
-                raise errors.BzrError(gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
+                raise errors.BzrError(
+                    gettext("lstat/stat of ({0!r}): {1!r}").format(f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -256,7 +261,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (errors.NoSuchFile,) as e:
+    except (errors.NoSuchFile,):
         pass
     except IOError as e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
@@ -266,7 +271,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
             raise
     except Exception as e:
         if (getattr(e, 'errno', None) is None
-            or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
+                or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
     else:
         file_existed = True
@@ -282,7 +287,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         # case-insensitive filesystem), so we may have accidentally renamed
         # source by when we tried to rename target
         if (file_existed and e.errno in (None, errno.ENOENT)
-            and old.lower() == new.lower()):
+                and old.lower() == new.lower()):
             # source and target are the same file on a case-insensitive
             # filesystem, so we don't generate an exception
             pass
@@ -323,7 +328,7 @@ def _posix_normpath(path):
     # as a special case here by simply removing the first slash, as we consider
     # that breaking POSIX compatibility for this obscure feature is acceptable.
     # This is not a paranoid precaution, as we notably get paths like this when
-    # the repo is hosted at the root of the filesystem, i.e. in "/".    
+    # the repo is hosted at the root of the filesystem, i.e. in "/".
     if path.startswith('//'):
         path = path[1:]
     return path
@@ -366,7 +371,7 @@ def _posix_getuser_unicode():
         return name.decode(user_encoding)
     except UnicodeDecodeError:
         raise errors.BzrError("Encoding of username %r is unsupported by %s "
-            "application locale." % (name, user_encoding))
+                              "application locale." % (name, user_encoding))
 
 
 def _win32_fixdrive(path):
@@ -384,12 +389,12 @@ def _win32_fixdrive(path):
 
 def _win32_abspath(path):
     # Real ntpath.abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.abspath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real ntpath.realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.realpath(path).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -397,7 +402,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -442,8 +447,8 @@ def _rename_wrap_exception(rename_func):
             rename_func(old, new)
         except OSError as e:
             detailed_error = OSError(e.errno, e.strerror +
-                                " [occurred when renaming '%s' to '%s']" %
-                                (old, new))
+                                     " [occurred when renaming '%s' to '%s']" %
+                                     (old, new))
             detailed_error.old_filename = old
             detailed_error.new_filename = new
             raise detailed_error
@@ -480,6 +485,7 @@ splitext = os.path.splitext
 lstat = os.lstat
 fstat = os.fstat
 
+
 def wrap_stat(st):
     return st
 
@@ -512,8 +518,8 @@ if sys.platform == 'win32':
         """
         exception = excinfo[1]
         if function in (os.remove, os.rmdir) \
-            and isinstance(exception, OSError) \
-            and exception.errno == errno.EACCES:
+                and isinstance(exception, OSError) \
+                and exception.errno == errno.EACCES:
             make_writable(path)
             function(path)
         else:
@@ -557,12 +563,12 @@ def get_terminal_encoding(trace=False):
             output_encoding = get_user_encoding()
             if trace:
                 mutter('encoding stdout as osutils.get_user_encoding() %r',
-                   output_encoding)
+                       output_encoding)
         else:
             output_encoding = input_encoding
             if trace:
                 mutter('encoding stdout as sys.stdin encoding %r',
-                    output_encoding)
+                       output_encoding)
     else:
         if trace:
             mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
@@ -571,8 +577,8 @@ def get_terminal_encoding(trace=False):
         output_encoding = get_user_encoding()
         if trace:
             mutter('cp0 is invalid encoding.'
-               ' encoding stdout as osutils.get_user_encoding() %r',
-               output_encoding)
+                   ' encoding stdout as osutils.get_user_encoding() %r',
+                   output_encoding)
     # check encoding
     try:
         codecs.lookup(output_encoding)
@@ -581,7 +587,7 @@ def get_terminal_encoding(trace=False):
                          ' unknown terminal encoding %s.\n'
                          '  Using encoding %s instead.\n'
                          % (output_encoding, get_user_encoding())
-                        )
+                         )
         output_encoding = get_user_encoding()
 
     return output_encoding
@@ -614,12 +620,14 @@ def isfile(f):
     except OSError:
         return False
 
+
 def islink(f):
     """True if f is a symlink."""
     try:
         return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
+
 
 def is_inside(dir, fname):
     """True if fname is inside dir.
@@ -636,11 +644,15 @@ def is_inside(dir, fname):
     if dir == fname:
         return True
 
-    if dir == '':
+    if dir in ('', b''):
         return True
 
-    if dir[-1] != '/':
-        dir += '/'
+    if isinstance(dir, bytes):
+        if not dir.endswith(b'/'):
+            dir += b'/'
+    else:
+        if not dir.endswith('/'):
+            dir += '/'
 
     return fname.startswith(dir)
 
@@ -719,12 +731,12 @@ def pump_string_file(bytes, file_handle, segment_size=None):
     # writes fail on some platforms (e.g. Windows with SMB  mounted
     # drives).
     if not segment_size:
-        segment_size = 5242880 # 5MB
+        segment_size = 5242880  # 5MB
     offsets = range(0, len(bytes), segment_size)
     view = memoryview(bytes)
     write = file_handle.write
     for offset in offsets:
-        write(view[offset:offset+segment_size])
+        write(view[offset:offset + segment_size])
 
 
 def file_iterator(input_file, readsize=32768):
@@ -751,7 +763,7 @@ def sha_file(f):
     The file cursor should be already at the start.
     """
     s = sha()
-    BUFSIZE = 128<<10
+    BUFSIZE = 128 << 10
     while True:
         b = f.read(BUFSIZE)
         if not b:
@@ -768,7 +780,7 @@ def size_sha_file(f):
     """
     size = 0
     s = sha()
-    BUFSIZE = 128<<10
+    BUFSIZE = 128 << 10
     while True:
         b = f.read(BUFSIZE)
         if not b:
@@ -784,7 +796,7 @@ def sha_file_by_name(fname):
     f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
         while True:
-            b = os.read(f, 1<<16)
+            b = os.read(f, 1 << 16)
             if not b:
                 return _hexdigest(s)
             s.update(b)
@@ -819,7 +831,7 @@ def compare_files(a, b):
         bi = b.read(BUFSIZE)
         if ai != bi:
             return False
-        if ai == '':
+        if not ai:
             return True
 
 
@@ -829,6 +841,7 @@ def local_time_offset(t=None):
         t = time.time()
     offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
     return offset.days * 86400 + offset.seconds
+
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 _default_format_by_weekday_num = [wd + " %Y-%m-%d %H:%M:%S" for wd in weekdays]
@@ -847,7 +860,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     :param show_offset: Whether to append the timezone.
     """
     (date_fmt, tt, offset_str) = \
-               _format_date(t, offset, timezone, date_fmt, show_offset)
+        _format_date(t, offset, timezone, date_fmt, show_offset)
     date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
     date_str = time.strftime(date_fmt, tt)
     return date_str + offset_str
@@ -858,7 +871,7 @@ _offset_cache = {}
 
 
 def format_date_with_offset_in_original_timezone(t, offset=0,
-    _cache=_offset_cache):
+                                                 _cache=_offset_cache):
     """Return a formatted date string in the original timezone.
 
     This routine may be faster then format_date.
@@ -891,7 +904,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     :param show_offset: Whether to append the timezone.
     """
     (date_fmt, tt, offset_str) = \
-               _format_date(t, offset, timezone, date_fmt, show_offset)
+        _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
     if not isinstance(date_str, text_type):
         date_str = date_str.decode(get_user_encoding(), 'replace')
@@ -940,7 +953,7 @@ def format_delta(delta):
         delta = -delta
 
     seconds = delta
-    if seconds < 90: # print seconds up to 90 seconds
+    if seconds < 90:  # print seconds up to 90 seconds
         if seconds == 1:
             return '%d second %s' % (seconds, direction,)
         else:
@@ -952,13 +965,13 @@ def format_delta(delta):
         plural_seconds = ''
     else:
         plural_seconds = 's'
-    if minutes < 90: # print minutes, seconds up to 90 minutes
+    if minutes < 90:  # print minutes, seconds up to 90 minutes
         if minutes == 1:
             return '%d minute, %d second%s %s' % (
-                    minutes, seconds, plural_seconds, direction)
+                minutes, seconds, plural_seconds, direction)
         else:
             return '%d minutes, %d second%s %s' % (
-                    minutes, seconds, plural_seconds, direction)
+                minutes, seconds, plural_seconds, direction)
 
     hours = int(minutes / 60)
     minutes -= 60 * hours
@@ -973,12 +986,13 @@ def format_delta(delta):
     return '%d hours, %d minute%s %s' % (hours, minutes,
                                          plural_minutes, direction)
 
+
 def filesize(f):
     """Return size of given open file."""
     return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
-# Alias os.urandom to support platforms (which?) without /dev/urandom and 
+# Alias os.urandom to support platforms (which?) without /dev/urandom and
 # override if it doesn't work. Avoid checking on windows where there is
 # significant initialisation cost that can be avoided for some bzr calls.
 
@@ -999,6 +1013,8 @@ if rand_bytes.__module__ != "nt":
 
 
 ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
+
+
 def rand_chars(num):
     """Return a random string of num alphanumeric characters
 
@@ -1014,20 +1030,29 @@ def rand_chars(num):
     return s
 
 
-## TODO: We could later have path objects that remember their list
-## decomposition (might be too tricksy though.)
+# TODO: We could later have path objects that remember their list
+# decomposition (might be too tricksy though.)
 
 def splitpath(p):
     """Turn string into list of parts."""
-    # split on either delimiter because people might use either on
-    # Windows
-    ps = re.split(r'[\\/]', p)
+    if os.path.sep == '\\':
+        # split on either delimiter because people might use either on
+        # Windows
+        if isinstance(p, bytes):
+            ps = re.split(b'[\\\\/]', p)
+        else:
+            ps = re.split(r'[\\/]', p)
+    else:
+        if isinstance(p, bytes):
+            ps = p.split(b'/')
+        else:
+            ps = p.split('/')
 
     rps = []
     for f in ps:
-        if f == '..':
+        if f in ('..', b'..'):
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif (f == '.') or (f == ''):
+        elif f in ('.', '', b'.', b''):
             pass
         else:
             rps.append(f)
@@ -1110,7 +1135,7 @@ def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     # Trivially convert a fulltext into a 'chunked' representation, and let
     # chunks_to_lines do the heavy lifting.
-    if isinstance(s, str):
+    if isinstance(s, bytes):
         # chunks_to_lines only supports 8-bit strings
         return chunks_to_lines([s])
     else:
@@ -1153,7 +1178,7 @@ def delete_any(path):
     Will delete even if readonly.
     """
     try:
-       _delete_file_or_dir(path)
+        _delete_file_or_dir(path)
     except (OSError, IOError) as e:
         if e.errno in (errno.EPERM, errno.EACCES):
             # make writable and try again
@@ -1172,7 +1197,7 @@ def _delete_file_or_dir(path):
     # - root can damage a solaris file system by using unlink,
     # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
     #   EACCES, OSX: EPERM) when invoked on a directory.
-    if isdir(path): # Takes care of symlinks
+    if isdir(path):  # Takes care of symlinks
         os.rmdir(path)
     else:
         os.unlink(path)
@@ -1257,7 +1282,7 @@ def relpath(base, path):
     if len(base) < MIN_ABS_PATHLENGTH:
         # must have space for e.g. a drive letter
         raise ValueError(gettext('%r is too short to calculate a relative path')
-            % (base,))
+                         % (base,))
 
     rp = abspath(path)
 
@@ -1308,7 +1333,7 @@ def _cicp_canonical_relpath(base, path):
         lbit = bit.lower()
         try:
             next_entries = _listdir(current)
-        except OSError: # enoent, eperm, etc
+        except OSError:  # enoent, eperm, etc
             # We can't find this in the filesystem, so just append the
             # remaining bits.
             current = pathjoin(current, bit, *list(bit_iter))
@@ -1325,6 +1350,7 @@ def _cicp_canonical_relpath(base, path):
             break
     return current[len(abs_base):].lstrip('/')
 
+
 # XXX - TODO - we need better detection/integration of case-insensitive
 # file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
 # filesystems), for example, so could probably benefit from the same basic
@@ -1334,6 +1360,7 @@ if sys.platform in ('win32', 'darwin'):
     canonical_relpath = _cicp_canonical_relpath
 else:
     canonical_relpath = relpath
+
 
 def canonical_relpaths(base, paths):
     """Create an iterable to canonicalize a sequence of relative paths.
@@ -1402,7 +1429,7 @@ def safe_revision_id(unicode_or_utf8_string):
     :return: None or a utf8 revision id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == bytes):
+            or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode revision ids are no longer supported. '
                     'Revision id generators should be creating utf8 revision '
@@ -1420,7 +1447,7 @@ def safe_file_id(unicode_or_utf8_string):
     :return: None or a utf8 file id.
     """
     if (unicode_or_utf8_string is None
-        or unicode_or_utf8_string.__class__ == bytes):
+            or unicode_or_utf8_string.__class__ == bytes):
         return unicode_or_utf8_string
     raise TypeError('Unicode file ids are no longer supported. '
                     'File id generators should be creating utf8 file ids.')
@@ -1454,13 +1481,17 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFC', text_type(path)), True
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    return unicodedata.normalize('NFC', path), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFC', text_type(path))
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    normalized = unicodedata.normalize('NFC', path)
     return normalized, normalized == path
 
 
@@ -1489,7 +1520,7 @@ def set_signal_handler(signum, handler, restart_syscall=True):
     except AttributeError:
         # siginterrupt doesn't exist on this platform, or for this version
         # of Python.
-        siginterrupt = lambda signum, flag: None
+        def siginterrupt(signum, flag): return None
     if restart_syscall:
         def sig_handler(*args):
             # Python resets the siginterrupt flag when a signal is
@@ -1519,6 +1550,7 @@ terminal_width() returns None.
 # _terminal_size_state has 3 possible values: no_data, unchanged, and changed.
 _terminal_size_state = 'no_data'
 _first_terminal_size = None
+
 
 def terminal_width():
     """Return terminal width.
@@ -1606,19 +1638,23 @@ def terminal_width():
 
 
 def _win32_terminal_size(width, height):
-    width, height = win32utils.get_console_size(defaultx=width, defaulty=height)
+    width, height = win32utils.get_console_size(
+        defaultx=width, defaulty=height)
     return width, height
 
 
 def _ioctl_terminal_size(width, height):
     try:
-        import struct, fcntl, termios
+        import struct
+        import fcntl
+        import termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         height, width = struct.unpack('HHHH', x)[0:2]
     except (IOError, AttributeError):
         pass
     return width, height
+
 
 _terminal_size = None
 """Returns the terminal size as (width, height).
@@ -1685,7 +1721,8 @@ def check_legal_path(path):
         raise errors.IllegalPath(path)
 
 
-_WIN32_ERROR_DIRECTORY = 267 # Similar to errno.ENOTDIR
+_WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
+
 
 def _is_error_enotdir(e):
     """Check if this exception represents ENOTDIR.
@@ -1703,12 +1740,12 @@ def _is_error_enotdir(e):
     :return: True if this represents an ENOTDIR error. False otherwise.
     """
     en = getattr(e, 'errno', None)
-    if (en == errno.ENOTDIR
-        or (sys.platform == 'win32'
-            and (en == _WIN32_ERROR_DIRECTORY
-                 or (en == errno.EINVAL
-                     and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
-        ))):
+    if (en == errno.ENOTDIR or
+        (sys.platform == 'win32' and
+            (en == _WIN32_ERROR_DIRECTORY or
+             (en == errno.EINVAL
+              and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+             ))):
         return True
     return False
 
@@ -1741,7 +1778,7 @@ def walkdirs(top, prefix=""):
         rooted higher up.
     :return: an iterator over the dirs.
     """
-    #TODO there is a bit of a smell where the results of the directory-
+    # TODO there is a bit of a smell where the results of the directory-
     # summary in this, and the path from the root, may not agree
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
@@ -1884,6 +1921,10 @@ class UnicodeDirReader(DirReader):
         See DirReader.read_dir for details.
         """
         _utf8_encode = self._utf8_encode
+
+        def _fs_decode(s): return s.decode(_fs_enc)
+
+        def _fs_encode(s): return s.encode(_fs_enc)
         _lstat = os.lstat
         _listdir = os.listdir
         _kind_from_mode = file_kind_from_stat_mode
@@ -1896,17 +1937,18 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name in sorted(_listdir(top)):
+        for name_native in _listdir(top.encode('utf-8')):
             try:
-                name_utf8 = _utf8_encode(name)[0]
+                name = _fs_decode(name_native)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    _utf8_encode(relprefix)[0] + name, _fs_enc)
+                    relprefix + name_native, _fs_enc)
+            name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
             statvalue = _lstat(abspath)
             kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        return dirblock
+        return sorted(dirblock)
 
 
 def copy_tree(from_path, to_path, handlers={}):
@@ -1940,7 +1982,7 @@ def copy_tree(from_path, to_path, handlers={}):
     real_handlers = {'file': shutil.copy2,
                      'symlink': copy_link,
                      'directory': copy_dir,
-                    }
+                     }
     real_handlers.update(handlers)
 
     if not os.path.exists(to_path):
@@ -1961,7 +2003,7 @@ def copy_ownership_from_path(dst, src=None):
     if chown is None:
         return
 
-    if src == None:
+    if src is None:
         src = os.path.dirname(dst)
         if src == '':
             src = '.'
@@ -1969,7 +2011,7 @@ def copy_ownership_from_path(dst, src=None):
     try:
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
-    except OSError as e:
+    except OSError:
         trace.warning(
             'Unable to copy ownership from "%s" to "%s". '
             'You may want to set it manually.', src, dst)
@@ -1988,7 +2030,7 @@ def compare_paths_prefix_order(path_a, path_b):
     """Compare path_a and path_b to generate the same order walkdirs uses."""
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
-    return cmp(key_a, key_b)
+    return (key_a > key_b) - (key_a < key_b)
 
 
 _cached_user_encoding = None
@@ -2025,7 +2067,7 @@ def get_user_encoding():
                              ' unknown encoding %s.'
                              ' Continuing with ascii encoding.\n'
                              % user_encoding
-                            )
+                             )
         user_encoding = 'ascii'
     else:
         # Get 'ascii' when setlocale has not been called or LANG=C or unset.
@@ -2075,7 +2117,7 @@ del _eno
 
 
 def read_bytes_from_socket(sock, report_activity=None,
-        max_read_size=MAX_SOCKET_CHUNK):
+                           max_read_size=MAX_SOCKET_CHUNK):
     """Read up to max_read_size of bytes from sock and notify of progress.
 
     Translates "Connection reset by peer" into file-like EOF (return an
@@ -2084,21 +2126,21 @@ def read_bytes_from_socket(sock, report_activity=None,
     """
     while True:
         try:
-            bytes = sock.recv(max_read_size)
+            data = sock.recv(max_read_size)
         except socket.error as e:
             eno = e.args[0]
             if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
-                return ""
+                return b""
             elif eno == errno.EINTR:
                 # Retry the interrupted recv.
                 continue
             raise
         else:
             if report_activity is not None:
-                report_activity(len(bytes), 'read')
-            return bytes
+                report_activity(len(data), 'read')
+            return data
 
 
 def recv_all(socket, count):
@@ -2111,11 +2153,11 @@ def recv_all(socket, count):
 
     This isn't optimized and is intended mostly for use in testing.
     """
-    b = ''
+    b = b''
     while len(b) < count:
         new = read_bytes_from_socket(socket, None, count - len(b))
-        if new == '':
-            break # eof
+        if new == b'':
+            break  # eof
         b += new
     return b
 
@@ -2138,7 +2180,7 @@ def send_all(sock, bytes, report_activity=None):
     view = memoryview(bytes)
     while sent_total < byte_count:
         try:
-            sent = sock.send(view[sent_total:sent_total+MAX_SOCKET_CHUNK])
+            sent = sock.send(view[sent_total:sent_total + MAX_SOCKET_CHUNK])
         except (socket.error, IOError) as e:
             if e.args[0] in _end_of_stream_errors:
                 raise errors.ConnectionReset(
@@ -2170,7 +2212,8 @@ def connect_socket(address):
             sock.connect(sa)
             return sock
 
-        except socket.error as err:
+        except socket.error as e:
+            err = e
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()
@@ -2221,11 +2264,9 @@ def resource_string(package, resource_name):
     base = dirname(breezy.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    f = file(pathjoin(base, resource_relpath), "rU")
-    try:
+    with open(pathjoin(base, resource_relpath), "rt") as f:
         return f.read()
-    finally:
-        f.close()
+
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
@@ -2233,14 +2274,17 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from ._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError as e:
+        except ImportError:
             # This is one time where we won't warn that an extension failed to
             # load. The extension is never available on Windows anyway.
             from ._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )
     return file_kind_from_stat_mode(mode)
+
+
 file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
+
 
 def file_stat(f, _lstat=os.lstat):
     try:
@@ -2251,9 +2295,11 @@ def file_stat(f, _lstat=os.lstat):
             raise errors.NoSuchFile(f)
         raise
 
+
 def file_kind(f, _lstat=os.lstat):
     stat_value = file_stat(f, _lstat)
     return file_kind_from_stat_mode(stat_value.st_mode)
+
 
 def until_no_eintr(f, *a, **kw):
     """Run f(*a, **kw), retrying if an EINTR error occurs.
@@ -2311,7 +2357,7 @@ elif "bsd" in sys.platform:
                                 stdout=subprocess.PIPE).communicate()[0]
 elif sys.platform == 'sunos5':
     def _local_concurrency():
-        return subprocess.Popen(['psrinfo', '-p',],
+        return subprocess.Popen(['psrinfo', '-p', ],
                                 stdout=subprocess.PIPE).communicate()[0]
 elif sys.platform == "win32":
     def _local_concurrency():
@@ -2324,6 +2370,7 @@ else:
 
 
 _cached_local_concurrency = None
+
 
 def local_concurrency(use_cache=True):
     """Return how many processes can be run concurrently.
@@ -2352,7 +2399,7 @@ def local_concurrency(use_cache=True):
     except (TypeError, ValueError):
         concurrency = 1
     if use_cache:
-        _cached_concurrency = concurrency
+        _cached_local_concurrency = concurrency
     return concurrency
 
 
@@ -2369,6 +2416,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
 
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):
@@ -2403,7 +2451,7 @@ if sys.platform == 'win32':
             else:
                 flags |= os.O_WRONLY
             flags |= os.O_CREAT | os.O_APPEND
-        else: #reading
+        else:  # reading
             if updating:
                 flags |= os.O_RDWR
             else:
@@ -2449,11 +2497,11 @@ def set_fd_cloexec(fd):
 
 def find_executable_on_path(name):
     """Finds an executable on the PATH.
-    
+
     On Windows, this will try to append each extension in the PATHEXT
     environment variable to the name, if it cannot be found with the name
     as given.
-    
+
     :param name: The base name of the executable.
     :return: The path to the executable found or None.
     """
@@ -2497,12 +2545,13 @@ def _posix_is_local_pid_dead(pid):
             # exists, though not ours
             return False
         else:
-            mutter("os.kill(%d, 0) failed: %s" % (pid, e))
+            trace.mutter("os.kill(%d, 0) failed: %s" % (pid, e))
             # Don't really know.
             return False
     else:
         # Exists and our process: not dead.
         return False
+
 
 if sys.platform == "win32":
     is_local_pid_dead = win32utils.is_local_pid_dead
@@ -2516,7 +2565,7 @@ _fdatasync_ignored = [getattr(errno, name) for name in _maybe_ignored
 
 def fdatasync(fileno):
     """Flush file contents to disk if possible.
-    
+
     :param fileno: Integer OS file handle.
     :raises TransportNotPossible: If flushing to disk is not possible.
     """
@@ -2536,7 +2585,7 @@ def fdatasync(fileno):
 
 def ensure_empty_directory_exists(path, exception_class):
     """Make sure a local directory exists and is empty.
-    
+
     If it does not exist, it is created.  If it exists and is not empty, an
     instance of exception_class is raised.
     """

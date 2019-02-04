@@ -72,8 +72,9 @@ class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         if not tree.branch.repository._format.supports_ghosts:
             self.skipTest('format does not support ghosts')
-        tree.set_parent_ids(['a-ghost'], allow_leftmost_as_ghost=True)
-        self.assertRaises(errors.NoSuchRevision, tree.revision_tree, 'a-ghost')
+        tree.set_parent_ids([b'a-ghost'], allow_leftmost_as_ghost=True)
+        self.assertRaises(errors.NoSuchRevision,
+                          tree.revision_tree, b'a-ghost')
 
     def test_revision_tree_different_root_id(self):
         """A revision tree might have a very different root."""
@@ -115,7 +116,8 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         return tree, [base_revid, this_revid, other_revid]
 
     def test_kind_parent_tree(self):
-        tree, [base_revid, this_revid, other_revid] = self.make_branch_with_merged_deletions()
+        tree, [base_revid, this_revid,
+               other_revid] = self.make_branch_with_merged_deletions()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         parents = tree.get_parent_ids()

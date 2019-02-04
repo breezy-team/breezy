@@ -69,7 +69,7 @@ class BisectTestCase(TestCaseWithTransport):
         test_file_append.close()
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file_append')))
-        self.tree.commit(message = "add test files")
+        self.tree.commit(message="add test files")
 
         ControlDir.open(".").sprout("../temp-clone")
         clone_bzrdir = ControlDir.open("../temp-clone")
@@ -81,7 +81,7 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append = open("../temp-clone/test_file_append", "a")
             test_file_append.write(content + "\n")
             test_file_append.close()
-            clone_tree.commit(message = "make branch test change")
+            clone_tree.commit(message="make branch test change")
             saved_subtree_revid = clone_tree.branch.last_revision()
 
         self.tree.merge_from_branch(clone_tree.branch)
@@ -91,7 +91,7 @@ class BisectTestCase(TestCaseWithTransport):
         test_file_append = open("test_file_append", "a")
         test_file_append.write("two\n")
         test_file_append.close()
-        self.tree.commit(message = "merge external branch")
+        self.tree.commit(message="merge external branch")
         shutil.rmtree("../temp-clone")
 
         self.subtree_rev = saved_subtree_revid
@@ -104,7 +104,7 @@ class BisectTestCase(TestCaseWithTransport):
             test_file_append = open("test_file_append", "a")
             test_file_append.write(content + "\n")
             test_file_append.close()
-            self.tree.commit(message = "make test change")
+            self.tree.commit(message="make test change")
 
 
 class BisectHarnessTests(BisectTestCase):
@@ -119,18 +119,17 @@ class BisectHarnessTests(BisectTestCase):
         test_content = top_file.read().strip()
         top_file.close()
         top_revtree.unlock()
-        self.assertEqual(test_content, "five")
+        self.assertEqual(test_content, b"five")
 
     def testSubtreeRev(self):
         """Test that the last revision in a subtree is correct."""
         repo = self.tree.branch.repository
         sub_revtree = repo.revision_tree(self.subtree_rev)
         sub_revtree.lock_read()
-        sub_file = sub_revtree.get_file("test_file")
-        test_content = sub_file.read().strip()
-        sub_file.close()
+        with sub_revtree.get_file("test_file") as sub_file:
+            test_content = sub_file.read().strip()
         sub_revtree.unlock()
-        self.assertEqual(test_content, "one dot three")
+        self.assertEqual(test_content, b"one dot three")
 
 
 class BisectCurrentUnitTests(BisectTestCase):
@@ -187,21 +186,23 @@ class BisectLogUnitTests(BisectTestCase):
 
     def testLoad(self):
         """Test loading a log."""
-        preloaded_log = open(os.path.join('.bzr', bisect.BISECT_INFO_PATH), "w")
+        preloaded_log = open(os.path.join(
+            '.bzr', bisect.BISECT_INFO_PATH), "w")
         preloaded_log.write("rev1 yes\nrev2 no\nrev3 yes\n")
         preloaded_log.close()
 
         bisect_log = bisect.BisectLog(self.tree.controldir)
         self.assertEqual(len(bisect_log._items), 3)
-        self.assertEqual(bisect_log._items[0], ("rev1", "yes"))
-        self.assertEqual(bisect_log._items[1], ("rev2", "no"))
-        self.assertEqual(bisect_log._items[2], ("rev3", "yes"))
+        self.assertEqual(bisect_log._items[0], (b"rev1", "yes"))
+        self.assertEqual(bisect_log._items[1], (b"rev2", "no"))
+        self.assertEqual(bisect_log._items[2], (b"rev3", "yes"))
 
     def testSave(self):
         """Test saving the log."""
         bisect_log = bisect.BisectLog(self.tree.controldir)
-        bisect_log._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
+        bisect_log._items = [
+            (b"rev1", "yes"), (b"rev2", "no"), (b"rev3", "yes")]
         bisect_log.save()
 
-        with open(os.path.join('.bzr', bisect.BISECT_INFO_PATH)) as logfile:
-            self.assertEqual(logfile.read(), "rev1 yes\nrev2 no\nrev3 yes\n")
+        with open(os.path.join('.bzr', bisect.BISECT_INFO_PATH), 'rb') as logfile:
+            self.assertEqual(logfile.read(), b"rev1 yes\nrev2 no\nrev3 yes\n")

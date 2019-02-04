@@ -29,6 +29,9 @@
 
 #define PyInt_FromSsize_t PyLong_FromSsize_t
 
+/* On Python 3 just don't intern bytes for now */
+#define PyBytes_InternFromStringAndSize PyBytes_FromStringAndSize
+
 /* In Python 3 the Py_TPFLAGS_CHECKTYPES behaviour is on by default */
 #define Py_TPFLAGS_CHECKTYPES 0
 
@@ -46,6 +49,15 @@
 
 #define PyBytes_Type PyString_Type
 #define PyBytes_CheckExact PyString_CheckExact
+#define PyBytes_FromStringAndSize PyString_FromStringAndSize
+inline PyObject* PyBytes_InternFromStringAndSize(const char *v, Py_ssize_t len)
+{
+    PyObject *obj = PyString_FromStringAndSize(v, len);
+    if (obj != NULL) {
+        PyString_InternInPlace(&obj);
+    }
+    return obj;
+}
 
 /* Lazy hide Python 3.3 only functions, callers must avoid on 2.7 anyway */
 #define PyUnicode_AsUTF8AndSize(u, size) NULL
@@ -58,6 +70,8 @@
     } while(0)
 
 #endif
+
+#define BrzPy_EnterRecursiveCall(where) (Py_EnterRecursiveCall(where) == 0)
 
 #if defined(_WIN32) || defined(WIN32)
     /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit

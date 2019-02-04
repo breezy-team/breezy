@@ -23,8 +23,6 @@ from __future__ import absolute_import
 # needed by a command that uses it.
 
 
-import httplib2
-import os
 import re
 try:
     from urllib.parse import (
@@ -46,9 +44,6 @@ from ... import (
     transport,
     )
 from ...i18n import gettext
-from .lp_registration import (
-    InvalidLaunchpadInstance,
-    )
 
 try:
     import launchpadlib
@@ -56,15 +51,29 @@ except ImportError as e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (
-    STAGING_SERVICE_ROOT,
     Launchpad,
     )
 from launchpadlib import uris
 
 # Declare the minimum version of launchpadlib that we need in order to work.
-# 1.6.0 is the version of launchpadlib packaged in Ubuntu 10.04, the most
-# recent Ubuntu LTS release supported on the desktop at the time of writing.
-MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 0)
+MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
+
+
+# We use production as the default because edge has been deprecated circa
+# 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
+DEFAULT_INSTANCE = 'production'
+
+LAUNCHPAD_DOMAINS = {
+    'production': 'launchpad.net',
+    'staging': 'staging.launchpad.net',
+    'qastaging': 'qastaging.launchpad.net',
+    'demo': 'demo.launchpad.net',
+    'dev': 'launchpad.dev',
+    }
+
+LAUNCHPAD_BAZAAR_DOMAINS = [
+    'bazaar.%s' % domain
+    for domain in LAUNCHPAD_DOMAINS.values()]
 
 
 def get_cache_directory():
@@ -97,25 +106,6 @@ def lookup_service_root(service_root):
         return staging_root.replace('staging', 'qastaging')
 
 
-def _get_api_url(service):
-    """Return the root URL of the Launchpad API.
-
-    e.g. For the 'staging' Launchpad service, this function returns
-    launchpadlib.launchpad.STAGING_SERVICE_ROOT.
-
-    :param service: A `LaunchpadService` object.
-    :return: A URL as a string.
-    """
-    if service._lp_instance is None:
-        lp_instance = service.DEFAULT_INSTANCE
-    else:
-        lp_instance = service._lp_instance
-    try:
-        return lookup_service_root(lp_instance)
-    except ValueError:
-        raise InvalidLaunchpadInstance(lp_instance)
-
-
 class NoLaunchpadBranch(errors.BzrError):
     _fmt = 'No launchpad branch could be found for branch "%(url)s".'
 
@@ -123,22 +113,20 @@ class NoLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
-def login(service, timeout=None, proxy_info=None,
-          version=Launchpad.DEFAULT_VERSION):
+def connect_launchpad(base_url, timeout=None, proxy_info=None,
+                      version=Launchpad.DEFAULT_VERSION):
     """Log in to the Launchpad API.
 
     :return: The root `Launchpad` object from launchpadlib.
     """
     if proxy_info is None:
+        import httplib2
         proxy_info = httplib2.proxy_info_from_environment('https')
     cache_directory = get_cache_directory()
-    launchpad = Launchpad.login_with(
-        'bzr', _get_api_url(service), cache_directory, timeout=timeout,
+    return Launchpad.login_with(
+        'breezy', base_url, cache_directory, timeout=timeout,
         proxy_info=proxy_info, version=version)
-    # XXX: Work-around a minor security bug in launchpadlib < 1.6.3, which
-    # would create this directory with default umask.
-    osutils.chmod_if_possible(cache_directory, 0o700)
-    return launchpad
+
 
 
 class LaunchpadBranch(object):
@@ -182,7 +170,7 @@ class LaunchpadBranch(object):
             return False
         if url.startswith('lp:'):
             return True
-        regex = re.compile('([a-z]*\+)*(bzr\+ssh|http)'
+        regex = re.compile('([a-z]*\\+)*(bzr\\+ssh|http)'
                            '://bazaar.*.launchpad.net')
         return bool(regex.match(url))
 
@@ -207,7 +195,7 @@ class LaunchpadBranch(object):
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) == STAGING_SERVICE_ROOT:
+        if str(launchpad._root_uri) == uris.STAGING_SERVICE_ROOT:
             return url.replace('bazaar.launchpad.net',
                                'bazaar.staging.launchpad.net')
         elif str(launchpad._root_uri) == lookup_service_root('qastaging'):
@@ -244,7 +232,7 @@ class LaunchpadBranch(object):
         lp_branch = launchpad.branches.getByUrl(url=url)
         if lp_branch is None:
             raise errors.BzrError(gettext('%s is not registered on Launchpad') %
-                                                                            url)
+                                  url)
         return lp_branch
 
     def get_target(self):
@@ -254,11 +242,11 @@ class LaunchpadBranch(object):
             dev_focus = lp_branch.project.development_focus
             if dev_focus is None:
                 raise errors.BzrError(gettext('%s has no development focus.') %
-                                  lp_branch.bzr_identity)
+                                      lp_branch.bzr_identity)
             target = dev_focus.branch
             if target is None:
                 raise errors.BzrError(gettext(
-                        'development focus %s has no branch.') % dev_focus)
+                    'development focus %s has no branch.') % dev_focus)
         elif lp_branch.sourcepackage is not None:
             target = lp_branch.sourcepackage.getBranch(pocket="Release")
             if target is None:
@@ -267,8 +255,8 @@ class LaunchpadBranch(object):
                                       lp_branch.sourcepackage)
         else:
             raise errors.BzrError(gettext(
-                        '%s has no associated product or source package.') %
-                                  lp_branch.bzr_identity)
+                '%s has no associated product or source package.') %
+                lp_branch.bzr_identity)
         return LaunchpadBranch(target, target.bzr_identity)
 
     def update_lp(self):
@@ -282,7 +270,7 @@ class LaunchpadBranch(object):
                                self.lp.bzr_identity)
                     return
                 graph = self.bzr.repository.get_graph()
-                if not graph.is_ancestor(self.lp.last_scanned_id,
+                if not graph.is_ancestor(osutils.safe_utf8(self.lp.last_scanned_id),
                                          self.bzr.last_revision()):
                     raise errors.DivergedBranches(self.bzr, self.push_bzr)
                 trace.note(gettext('Pushing to %s') % self.lp.bzr_identity)

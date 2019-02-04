@@ -28,7 +28,7 @@ class TestExtract(TestCaseWithTransport):
         wt = self.make_branch_and_tree('a', format='rich-root-pack')
         wt.add(['b', 'b/c', 'd'], [b'b-id', b'c-id', b'd-id'])
         wt.commit('added files')
-        b_wt = wt.extract('b', b'b-id')
+        b_wt = wt.extract('b')
         self.assertEqual(b'b-id', b_wt.get_root_id())
         self.assertEqual(b'c-id', b_wt.path2id('c'))
         self.assertEqual('c', b_wt.id2path(b'c-id'))
@@ -43,7 +43,7 @@ class TestExtract(TestCaseWithTransport):
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d'], [b'b-id', b'c-id', b'd-id'])
         wt.commit('added files')
-        return wt.extract('b', 'b-id')
+        return wt.extract('b')
 
     def test_extract_in_checkout(self):
         a_branch = self.make_branch('branch', format='rich-root-pack')
@@ -57,9 +57,9 @@ class TestExtract(TestCaseWithTransport):
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d/', 'a/b/c/d/e'])
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], [b'b-id', b'c-id', b'd-id',
-                b'e-id'])
+                                                   b'e-id'])
         wt.commit('added files')
-        b_wt = wt.extract('b/c/d', b'd-id')
+        b_wt = wt.extract('b/c/d')
         b_branch = branch.Branch.open('branch/b/c/d')
         b_branch_ref = branch.Branch.open('a/b/c/d')
         self.assertEqual(b_branch.base, b_branch_ref.base)
@@ -73,8 +73,8 @@ class TestExtract(TestCaseWithTransport):
 
     def test_good_repo_format(self):
         repo = self.make_repository('branch', shared=True,
-            format='dirstate-with-subtree')
+                                    format='dirstate-with-subtree')
         a_branch = repo.controldir.create_branch()
         wt_b = self.extract_in_checkout(a_branch)
         self.assertEqual(wt_b.branch.repository.controldir.transport.base,
-        repo.controldir.transport.base)
+                         repo.controldir.transport.base)

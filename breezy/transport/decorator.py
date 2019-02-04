@@ -165,7 +165,7 @@ class TransportDecorator(Transport):
         self._decorated.segment_parameters = value
 
     segment_parameters = property(_get_segment_parameters,
-        _set_segment_parameters, "See Transport.segment_parameters")
+                                  _set_segment_parameters, "See Transport.segment_parameters")
 
     def stat(self, relpath):
         """See Transport.stat()."""

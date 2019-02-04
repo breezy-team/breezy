@@ -24,6 +24,7 @@ from .. import (
     registry,
     )
 
+
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
@@ -38,22 +39,26 @@ class BzrProber(controldir.Prober):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            first_line = format_string[:format_string.index(b"\n")+1]
+            first_line = format_string[:format_string.index(b"\n") + 1]
         except ValueError:
             first_line = format_string
         try:
             cls = klass.formats.get(first_line)
         except KeyError:
-            raise errors.UnknownFormatError(format=first_line, kind='bzrdir')
+            if first_line.endswith(b"\r\n"):
+                raise errors.LineEndingError(file=".bzr/branch-format")
+            else:
+                raise errors.UnknownFormatError(
+                    format=first_line, kind='bzrdir')
         return cls.from_string(format_string)
 
     @classmethod
     def known_formats(cls):
-        result = set()
+        result = []
         for name, format in cls.formats.items():
             if callable(format):
                 format = format()
-            result.add(format)
+            result.append(format)
         return result
 
 
@@ -91,7 +96,7 @@ class RemoteBzrProber(controldir.Prober):
     @classmethod
     def known_formats(cls):
         from .remote import RemoteBzrDirFormat
-        return {RemoteBzrDirFormat()}
+        return [RemoteBzrDirFormat()]
 
 
 controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)
@@ -106,12 +111,12 @@ BzrProber.formats.register_lazy(
 
 
 def register_metadir(registry, key,
-         repository_format, help, native=True, deprecated=False,
-         branch_format=None,
-         tree_format=None,
-         hidden=False,
-         experimental=False,
-         alias=False, bzrdir_format=None):
+                     repository_format, help, native=True, deprecated=False,
+                     branch_format=None,
+                     tree_format=None,
+                     hidden=False,
+                     experimental=False,
+                     bzrdir_format=None):
     """Register a metadir subformat.
 
     These all use a meta bzrdir, but can be parameterized by the
@@ -128,6 +133,7 @@ def register_metadir(registry, key,
         bzrdir_format = 'breezy.bzr.bzrdir.BzrDirMetaFormat1'
     # This should be expanded to support setting WorkingTree and Branch
     # formats, once the API supports that.
+
     def _load(full_name):
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
@@ -136,7 +142,7 @@ def register_metadir(registry, key,
             raise ImportError('failed to load %s: %s' % (full_name, e))
         except AttributeError:
             raise AttributeError('no factory %s in module %r'
-                % (full_name, sys.modules[mod_name]))
+                                 % (full_name, sys.modules[mod_name]))
         return factory()
 
     def helper():
@@ -149,119 +155,132 @@ def register_metadir(registry, key,
             bd.repository_format = _load(repository_format)
         return bd
     registry.register(key, helper, help, native, deprecated, hidden,
-        experimental, alias)
+                      experimental)
 
-register_metadir(controldir.format_registry, 'knit',
+
+register_metadir(
+    controldir.format_registry, 'knit',
     'breezy.bzr.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
     tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
-register_metadir(controldir.format_registry, 'dirstate',
+register_metadir(
+    controldir.format_registry, 'dirstate',
     'breezy.bzr.knitrepo.RepositoryFormatKnit1',
     help='Format using dirstate for working trees. '
-        'Compatible with bzr 0.8 and '
-        'above when accessed over the network. Introduced in bzr 0.15.',
+    'Compatible with bzr 0.8 and '
+    'above when accessed over the network. Introduced in bzr 0.15.',
     branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
-register_metadir(controldir.format_registry, 'dirstate-tags',
+register_metadir(
+    controldir.format_registry, 'dirstate-tags',
     'breezy.bzr.knitrepo.RepositoryFormatKnit1',
     help='Variant of dirstate with support for tags. '
-        'Introduced in bzr 0.15.',
+    'Introduced in bzr 0.15.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
-register_metadir(controldir.format_registry, 'rich-root',
+register_metadir(
+    controldir.format_registry, 'rich-root',
     'breezy.bzr.knitrepo.RepositoryFormatKnit4',
     help='Variant of dirstate with better handling of tree roots. '
-        'Introduced in bzr 1.0',
+    'Introduced in bzr 1.0',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
-register_metadir(controldir.format_registry, 'dirstate-with-subtree',
+register_metadir(
+    controldir.format_registry, 'dirstate-with-subtree',
     'breezy.bzr.knitrepo.RepositoryFormatKnit3',
     help='Variant of dirstate with support for nested trees. '
-         'Introduced in 0.15.',
+    'Introduced in 0.15.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     experimental=True,
     hidden=True,
     )
-register_metadir(controldir.format_registry, 'pack-0.92',
+register_metadir(
+    controldir.format_registry, 'pack-0.92',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack1',
     help='Pack-based format used in 1.x series. Introduced in 0.92. '
-        'Interoperates with bzr repositories before 0.92 but cannot be '
-        'read by bzr < 0.92. '
-        ,
+    'Interoperates with bzr repositories before 0.92 but cannot be '
+    'read by bzr < 0.92. ',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     deprecated=True,
+    hidden=True,
     )
-register_metadir(controldir.format_registry, 'pack-0.92-subtree',
+register_metadir(
+    controldir.format_registry, 'pack-0.92-subtree',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack3',
     help='Pack-based format used in 1.x series, with subtree support. '
-        'Introduced in 0.92. Interoperates with '
-        'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        ,
+    'Introduced in 0.92. Interoperates with '
+    'bzr repositories before 0.92 but cannot be read by bzr < 0.92. ',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True,
     experimental=True,
     )
-register_metadir(controldir.format_registry, 'rich-root-pack',
+register_metadir(
+    controldir.format_registry, 'rich-root-pack',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack4',
     help='A variant of pack-0.92 that supports rich-root data '
-         '(needed for bzr-svn and bzr-git). Introduced in 1.0.',
+    '(needed for bzr-svn and bzr-git). Introduced in 1.0.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True,
     )
-register_metadir(controldir.format_registry, '1.6',
+register_metadir(
+    controldir.format_registry, '1.6',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack5',
     help='A format that allows a branch to indicate that there is another '
-         '(stacked) repository that should be used to access data that is '
-         'not present locally.',
+    '(stacked) repository that should be used to access data that is '
+    'not present locally.',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True,
     )
-register_metadir(controldir.format_registry, '1.6.1-rich-root',
+register_metadir(
+    controldir.format_registry, '1.6.1-rich-root',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A variant of 1.6 that supports rich-root data '
-         '(needed for bzr-svn and bzr-git).',
+    '(needed for bzr-svn and bzr-git).',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True,
     )
-register_metadir(controldir.format_registry, '1.9',
+register_metadir(
+    controldir.format_registry, '1.9',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack6',
     help='A repository format using B+tree indexes. These indexes '
-         'are smaller in size, have smarter caching and provide faster '
-         'performance for most operations.',
+    'are smaller in size, have smarter caching and provide faster '
+    'performance for most operations.',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True,
     )
-register_metadir(controldir.format_registry, '1.9-rich-root',
+register_metadir(
+    controldir.format_registry, '1.9-rich-root',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.9 that supports rich-root data '
-         '(needed for bzr-svn and bzr-git).',
+    '(needed for bzr-svn and bzr-git).',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True,
     )
-register_metadir(controldir.format_registry, '1.14',
+register_metadir(
+    controldir.format_registry, '1.14',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports content filtering.',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
@@ -269,54 +288,55 @@ register_metadir(controldir.format_registry, '1.14',
     hidden=True,
     deprecated=True,
     )
-register_metadir(controldir.format_registry, '1.14-rich-root',
+register_metadir(
+    controldir.format_registry, '1.14-rich-root',
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.14 that supports rich-root data '
-         '(needed for bzr-svn and bzr-git).',
+    '(needed for bzr-svn and bzr-git).',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat5',
     hidden=True,
     deprecated=True,
     )
 # The following un-numbered 'development' formats should always just be aliases.
-register_metadir(controldir.format_registry, 'development-subtree',
+register_metadir(
+    controldir.format_registry, 'development-subtree',
     'breezy.bzr.groupcompress_repo.RepositoryFormat2aSubtree',
     help='Current development format, subtree variant. Can convert data to and '
-        'from pack-0.92-subtree (and anything compatible with '
-        'pack-0.92-subtree) format repositories. Repositories and branches in '
-        'this format can only be read by bzr.dev. Please read '
-        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='breezy.bzr.branch.BzrBranchFormat7',
+         'from pack-0.92-subtree (and anything compatible with '
+         'pack-0.92-subtree) format repositories. Repositories and branches in '
+         'this format can only be read by bzr.dev. Please read '
+         'https://www.breezy-vcs.org/developers/development-repo.html '
+         'before use.',
+    branch_format='breezy.bzr.branch.BzrBranchFormat8',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,
-    alias=False, # Restore to being an alias when an actual development subtree format is added
-                 # This current non-alias status is simply because we did not introduce a
-                 # chk based subtree format.
     )
-register_metadir(controldir.format_registry, 'development5-subtree',
+register_metadir(
+    controldir.format_registry, 'development5-subtree',
     'breezy.bzr.knitpack_repo.RepositoryFormatPackDevelopment2Subtree',
     help='Development format, subtree variant. Can convert data to and '
-        'from pack-0.92-subtree (and anything compatible with '
-        'pack-0.92-subtree) format repositories. Repositories and branches in '
-        'this format can only be read by bzr.dev. Please read '
-        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
-        'before use.',
+    'from pack-0.92-subtree (and anything compatible with '
+    'pack-0.92-subtree) format repositories. Repositories and branches in '
+    'this format can only be read by bzr.dev. Please read '
+    'https://www.breezy-vcs.org/developers/development-repo.html '
+    'before use.',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,
-    alias=False,
     )
 
-register_metadir(controldir.format_registry, 'development-colo',
+register_metadir(
+    controldir.format_registry, 'development-colo',
     'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
     help='The 2a format with experimental support for colocated branches.\n',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     bzrdir_format='breezy.bzr.bzrdir.BzrDirMetaFormat1Colo',
+    hidden=True,
     )
 
 
@@ -324,36 +344,21 @@ register_metadir(controldir.format_registry, 'development-colo',
 
 # Finally, the current format.
 register_metadir(controldir.format_registry, '2a',
-    'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
-    help='Format for the bzr 2.0 series.\n'
-        'Uses group-compress storage.\n'
-        'Provides rich roots which are a one-way transition.\n',
-        # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
-        # 'rich roots. Supported by bzr 1.16 and later.',
-    branch_format='breezy.bzr.branch.BzrBranchFormat7',
-    tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-    experimental=False,
-    )
+                 'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
+                 help='Format for the bzr 2.0 series.\n',
+                 branch_format='breezy.bzr.branch.BzrBranchFormat7',
+                 tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
+                 experimental=False,
+                 )
 
 # The following format should be an alias for the rich root equivalent
 # of the default format
-register_metadir(controldir.format_registry, 'default-rich-root',
-    'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
-    branch_format='breezy.bzr.branch.BzrBranchFormat7',
-    tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-    alias=True,
-    hidden=True,
-    help='Same as 2a.')
 
+controldir.format_registry.register_alias(
+    'default-rich-root', '2a', hidden=True)
 
 # The following format should is just an alias for the default bzr format.
-register_metadir(controldir.format_registry, 'bzr',
-    'breezy.bzr.groupcompress_repo.RepositoryFormat2a',
-    branch_format='breezy.bzr.branch.BzrBranchFormat7',
-    tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-    alias=True,
-    hidden=True,
-    help='Default format for bzr. (currently 2a)')
+controldir.format_registry.register_alias('bzr', '2a')
 
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalStack().get('default_format')

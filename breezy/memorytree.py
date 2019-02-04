@@ -85,11 +85,11 @@ class MemoryTree(MutableInventoryTree):
         missing files, so is a no-op.
         """
 
-    def get_file(self, path, file_id=None):
+    def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         """See Tree.get_file_sha1()."""
         stream = self._file_transport.get(path)
         return sha_file(stream)
@@ -121,7 +121,7 @@ class MemoryTree(MutableInventoryTree):
             bytes = self._file_transport.get_bytes(path)
             size = len(bytes)
             executable = self._inventory[id].executable
-            sha1 = None # no stat cache
+            sha1 = None  # no stat cache
             return (kind, size, executable, sha1)
         elif kind == 'directory':
             # memory tree does not support nested trees yet.
@@ -144,12 +144,11 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.has_filename()."""
         return self._file_transport.has(filename)
 
-    def is_executable(self, path, file_id=None):
-        return self._inventory[file_id].executable
+    def is_executable(self, path):
+        return self._inventory.get_entry_by_path(path).executable
 
-    def kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
+    def kind(self, path):
+        file_id = self.path2id(path)
         return self._inventory[file_id].kind
 
     def mkdir(self, path, file_id=None):
@@ -177,7 +176,7 @@ class MemoryTree(MutableInventoryTree):
                 self._lock_mode = "r"
                 self._populate_from_branch()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -191,7 +190,7 @@ class MemoryTree(MutableInventoryTree):
                 self._populate_from_branch()
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
         return lock.LogicalLockResult(self.unlock)
@@ -207,7 +206,7 @@ class MemoryTree(MutableInventoryTree):
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -229,12 +228,12 @@ class MemoryTree(MutableInventoryTree):
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
-                self._file_transport.put_file(path,
-                    self._basis_tree.get_file(path, entry.file_id))
+                self._file_transport.put_file(
+                    path, self._basis_tree.get_file(path))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         self._file_transport.put_bytes(path, bytes)
 
@@ -256,7 +255,7 @@ class MemoryTree(MutableInventoryTree):
         else:
             self._locks -= 1
 
-    def unversion(self, paths, file_ids=None):
+    def unversion(self, paths):
         """Remove the paths from the current versioned set.
 
         When a file_id is unversioned, all of its children are automatically
@@ -269,18 +268,15 @@ class MemoryTree(MutableInventoryTree):
             # XXX: This should be in mutabletree, but the inventory-save action
             # is not relevant to memory tree. Until that is done in unlock by
             # working tree, we cannot share the implementation.
-            if file_ids is None:
-                file_ids = set()
-                for path in paths:
-                    file_id = self.path2id(path)
-                    if file_id is None:
-                        raise errors.NoSuchFile(path)
-                    file_ids.add(file_id)
+            file_ids = set()
+            for path in paths:
+                file_id = self.path2id(path)
+                if file_id is None:
+                    raise errors.NoSuchFile(path)
+                file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)
-                else:
-                    raise errors.NoSuchId(self, file_id)
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
@@ -311,15 +307,15 @@ class MemoryTree(MutableInventoryTree):
         if len(parents_list) == 0:
             self._parent_ids = []
             self._basis_tree = self.branch.repository.revision_tree(
-                                   _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
-            if parents_list[0][1] is None or parents_list[0][1] == 'null:':
+            if parents_list[0][1] is None or parents_list[0][1] == b'null:':
                 self._basis_tree = self.branch.repository.revision_tree(
-                                       _mod_revision.NULL_REVISION)
+                    _mod_revision.NULL_REVISION)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

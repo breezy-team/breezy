@@ -51,7 +51,8 @@ class TestRepository(TestCaseWithRepository):
 
     def test_attribute__fetch_order(self):
         """Test the _fetch_order attribute."""
-        self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
+        self.assertFormatAttribute(
+            '_fetch_order', ('topological', 'unordered'))
 
     def test_attribute__fetch_uses_deltas(self):
         """Test the _fetch_uses_deltas attribute."""
@@ -77,7 +78,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
         self.assertIsInstance(repo.revisions,
-            versionedfile.VersionedFiles)
+                              versionedfile.VersionedFiles)
 
     def test_attribute_revision_store_basics(self):
         """Test the basic behaviour of the revisions attribute."""
@@ -88,8 +89,8 @@ class TestRepository(TestCaseWithRepository):
             self.assertEqual(set(), set(repo.revisions.keys()))
             revid = (tree.commit("foo"),)
             self.assertEqual({revid}, set(repo.revisions.keys()))
-            self.assertEqual({revid:()},
-                repo.revisions.get_parent_map([revid]))
+            self.assertEqual({revid: ()},
+                             repo.revisions.get_parent_map([revid]))
         finally:
             repo.unlock()
         tree2 = self.make_branch_and_tree('tree2')
@@ -101,17 +102,17 @@ class TestRepository(TestCaseWithRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertEqual({revid, left_id, right_id, merge_id},
-            set(repo.revisions.keys()))
-        self.assertEqual({revid:(), left_id:(revid,), right_id:(revid,),
-             merge_id:(right_id, left_id)},
-            repo.revisions.get_parent_map(repo.revisions.keys()))
+                         set(repo.revisions.keys()))
+        self.assertEqual({revid: (), left_id: (revid,), right_id: (revid,),
+                          merge_id: (right_id, left_id)},
+                         repo.revisions.get_parent_map(repo.revisions.keys()))
 
     def test_attribute_signature_store(self):
         """Test the existence of the signatures attribute."""
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
         self.assertIsInstance(repo.signatures,
-            versionedfile.VersionedFiles)
+                              versionedfile.VersionedFiles)
 
     def test_exposed_versioned_files_are_marked_dirty(self):
         repo = self.make_repository('.')
@@ -121,17 +122,17 @@ class TestRepository(TestCaseWithRepository):
         inventories = repo.inventories
         repo.unlock()
         self.assertRaises(errors.ObjectNotLocked,
-            signatures.keys)
+                          signatures.keys)
         self.assertRaises(errors.ObjectNotLocked,
-            revisions.keys)
+                          revisions.keys)
         self.assertRaises(errors.ObjectNotLocked,
-            inventories.keys)
+                          inventories.keys)
         self.assertRaises(errors.ObjectNotLocked,
-            signatures.add_lines, ('foo',), [], [])
+                          signatures.add_lines, ('foo',), [], [])
         self.assertRaises(errors.ObjectNotLocked,
-            revisions.add_lines, ('foo',), [], [])
+                          revisions.add_lines, ('foo',), [], [])
         self.assertRaises(errors.ObjectNotLocked,
-            inventories.add_lines, ('foo',), [], [])
+                          inventories.add_lines, ('foo',), [], [])
 
     def test__get_sink(self):
         repo = self.make_repository('repo')
@@ -144,15 +145,15 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(repo._serializer.format_num, format)
 
     def test_add_revision_inventory_sha1(self):
-        inv = inventory.Inventory(revision_id='A')
-        inv.root.revision = 'A'
-        inv.root.file_id = 'fixed-root'
+        inv = inventory.Inventory(revision_id=b'A')
+        inv.root.revision = b'A'
+        inv.root.file_id = b'fixed-root'
         # Insert the inventory on its own to an identical repository, to get
         # its sha1.
         reference_repo = self.make_repository('reference_repo')
         reference_repo.lock_write()
         reference_repo.start_write_group()
-        inv_sha1 = reference_repo.add_inventory('A', inv, [])
+        inv_sha1 = reference_repo.add_inventory(b'A', inv, [])
         reference_repo.abort_write_group()
         reference_repo.unlock()
         # Now insert a revision with this inventory, and it should get the same
@@ -161,14 +162,14 @@ class TestRepository(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         root_id = inv.root.file_id
-        repo.texts.add_lines(('fixed-root', 'A'), [], [])
-        repo.add_revision('A', _mod_revision.Revision(
-                'A', committer='B', timestamp=0,
-                timezone=0, message='C'), inv=inv)
+        repo.texts.add_lines((b'fixed-root', b'A'), [], [])
+        repo.add_revision(b'A', _mod_revision.Revision(
+            b'A', committer='B', timestamp=0,
+            timezone=0, message='C'), inv=inv)
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
-        self.assertEqual(inv_sha1, repo.get_revision('A').inventory_sha1)
+        self.assertEqual(inv_sha1, repo.get_revision(b'A').inventory_sha1)
         repo.unlock()
 
     def test_install_revisions(self):
@@ -177,27 +178,27 @@ class TestRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision(b'A', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
         self.addCleanup(repo.unlock)
         repo2 = self.make_repository('repo2')
-        revision = repo.get_revision('A')
-        tree = repo.revision_tree('A')
-        signature = repo.get_signature_text('A')
+        revision = repo.get_revision(b'A')
+        tree = repo.revision_tree(b'A')
+        signature = repo.get_signature_text(b'A')
         repo2.lock_write()
         self.addCleanup(repo2.unlock)
         vf_repository.install_revisions(repo2, [(revision, tree, signature)])
-        self.assertEqual(revision, repo2.get_revision('A'))
-        self.assertEqual(signature, repo2.get_signature_text('A'))
+        self.assertEqual(revision, repo2.get_revision(b'A'))
+        self.assertEqual(signature, repo2.get_signature_text(b'A'))
 
     def test_attribute_text_store(self):
         """Test the existence of the texts attribute."""
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
         self.assertIsInstance(repo.texts,
-            versionedfile.VersionedFiles)
+                              versionedfile.VersionedFiles)
 
     def test_iter_inventories_is_ordered(self):
         # just a smoke test
@@ -216,17 +217,17 @@ class TestRepository(TestCaseWithRepository):
         # Make a repo with one revision and one versioned file.
         tree = self.make_branch_and_tree('t')
         self.build_tree(['t/foo'])
-        tree.add('foo', 'file1')
+        tree.add('foo', b'file1')
         tree.commit('message', rev_id=b'rev_id')
         repo = tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
         try:
-            repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
+            repo.sign_revision(b'rev_id', gpg.LoopbackGPGStrategy(None))
         except errors.UnsupportedOperation:
             signature_texts = []
         else:
-            signature_texts = ['rev_id']
+            signature_texts = [b'rev_id']
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -239,11 +240,11 @@ class TestRepository(TestCaseWithRepository):
         #   * signatures
         #   * revisions
         expected_item_keys = [
-            ('file', 'file1', ['rev_id']),
-            ('inventory', None, ['rev_id']),
+            ('file', b'file1', [b'rev_id']),
+            ('inventory', None, [b'rev_id']),
             ('signatures', None, signature_texts),
-            ('revisions', None, ['rev_id'])]
-        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+            ('revisions', None, [b'rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by([b'rev_id']))
         item_keys = [
             (kind, file_id, list(versions))
             for (kind, file_id, versions) in item_keys]
@@ -254,9 +255,9 @@ class TestRepository(TestCaseWithRepository):
             # expected_record_names.
             # Note that the file keys can be in any order, so this test is
             # written to allow that.
-            inv = repo.get_inventory('rev_id')
-            root_item_key = ('file', inv.root.file_id, ['rev_id'])
-            self.assertTrue(root_item_key in item_keys)
+            inv = repo.get_inventory(b'rev_id')
+            root_item_key = ('file', inv.root.file_id, [b'rev_id'])
+            self.assertIn(root_item_key, item_keys)
             item_keys.remove(root_item_key)
 
         self.assertEqual(expected_item_keys, item_keys)
@@ -265,13 +266,13 @@ class TestRepository(TestCaseWithRepository):
         """Test the basic behaviour of the text store."""
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
-        file_id = "Foo:Bar"
+        file_id = b"Foo:Bar"
         file_key = (file_id,)
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             self.assertEqual(set(), set(repo.texts.keys()))
             tree.add(['foo'], [file_id], ['file'])
-            tree.put_file_bytes_non_atomic('foo', 'content\n', file_id=file_id)
+            tree.put_file_bytes_non_atomic(
+                'foo', b'content\n')
             try:
                 rev_key = (tree.commit("foo"),)
             except errors.IllegalPath:
@@ -281,7 +282,7 @@ class TestRepository(TestCaseWithRepository):
             if repo._format.rich_root_data:
                 root_commit = (tree.get_root_id(),) + rev_key
                 keys = {root_commit}
-                parents = {root_commit:()}
+                parents = {root_commit: ()}
             else:
                 keys = set()
                 parents = {}
@@ -289,21 +290,19 @@ class TestRepository(TestCaseWithRepository):
             parents[file_key + rev_key] = ()
             self.assertEqual(keys, set(repo.texts.keys()))
             self.assertEqual(parents,
-                repo.texts.get_parent_map(repo.texts.keys()))
-        finally:
-            tree.unlock()
+                             repo.texts.get_parent_map(repo.texts.keys()))
         tree2 = self.make_branch_and_tree('tree2')
         tree2.pull(tree.branch)
-        tree2.put_file_bytes_non_atomic('foo', 'right\n', file_id='Foo:Bar')
+        tree2.put_file_bytes_non_atomic('foo', b'right\n')
         right_key = (tree2.commit('right'),)
         keys.add(file_key + right_key)
         parents[file_key + right_key] = (file_key + rev_key,)
-        tree.put_file_bytes_non_atomic('foo', 'left\n', file_id='Foo:Bar')
+        tree.put_file_bytes_non_atomic('foo', b'left\n')
         left_key = (tree.commit('left'),)
         keys.add(file_key + left_key)
         parents[file_key + left_key] = (file_key + rev_key,)
         tree.merge_from_branch(tree2.branch)
-        tree.put_file_bytes_non_atomic('foo', 'merged\n', file_id='Foo:Bar')
+        tree.put_file_bytes_non_atomic('foo', b'merged\n')
         try:
             tree.auto_resolve()
         except errors.UnsupportedOperation:
@@ -333,7 +332,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
             tree_a.branch.repository.start_write_group()
             try:
                 inv_file = tree_a.branch.repository.inventories
-                inv_file.add_lines(('orphan',), [], [])
+                inv_file.add_lines((b'orphan',), [], [])
             except:
                 tree_a.branch.repository.commit_write_group()
                 raise
@@ -346,19 +345,19 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id=b'rev2', allow_pointless=True)
         # add a reference to a ghost
-        tree_a.add_parent_tree_id('ghost1')
+        tree_a.add_parent_tree_id(b'ghost1')
         try:
             tree_a.commit('rev3', rev_id=b'rev3', allow_pointless=True)
         except errors.RevisionNotPresent:
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format.")
         # add another reference to a ghost, and a second ghost.
-        tree_a.add_parent_tree_id('ghost1')
-        tree_a.add_parent_tree_id('ghost2')
+        tree_a.add_parent_tree_id(b'ghost1')
+        tree_a.add_parent_tree_id(b'ghost2')
         tree_a.commit('rev4', rev_id=b'rev4', allow_pointless=True)
 
     def test_revision_trees(self):
-        revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
+        revision_ids = [b'rev1', b'rev2', b'rev3', b'rev4']
         repository = self.controldir.open_repository()
         repository.lock_read()
         self.addCleanup(repository.unlock)
@@ -373,7 +372,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repository.lock_read()
         self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in
-                     ['rev1', 'rev2', 'rev3', 'rev4']]
+                     [b'rev1', b'rev2', b'rev3', b'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
         deltas2 = [repository.get_revision_delta(r.revision_id) for r in
                    revisions]
@@ -381,8 +380,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual({'rev1', 'rev2', 'rev3', 'rev4'},
-            set(self.controldir.open_repository().all_revision_ids()))
+        self.assertEqual({b'rev1', b'rev2', b'rev3', b'rev4'},
+                         set(self.controldir.open_repository().all_revision_ids()))
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')
@@ -390,11 +389,11 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repo.start_write_group()
         try:
             self.assertRaises(errors.ReservedId, repo.add_inventory,
-                'reserved:', None, None)
+                              b'reserved:', None, None)
             self.assertRaises(errors.ReservedId, repo.add_inventory_by_delta,
-                "foo", [], 'reserved:', None)
+                              "foo", [], b'reserved:', None)
             self.assertRaises(errors.ReservedId, repo.add_revision,
-                'reserved:', None)
+                              b'reserved:', None)
         finally:
             repo.abort_write_group()
             repo.unlock()
@@ -411,57 +410,58 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo = self.make_repository('inventory_with_unnecessary_ghost')
         repo.lock_write()
         repo.start_write_group()
-        inv = inventory.Inventory(revision_id = 'ghost')
-        inv.root.revision = 'ghost'
+        inv = inventory.Inventory(revision_id=b'ghost')
+        inv.root.revision = b'ghost'
         if repo.supports_rich_root():
             root_id = inv.root.file_id
-            repo.texts.add_lines((root_id, 'ghost'), [], [])
-        sha1 = repo.add_inventory('ghost', inv, [])
+            repo.texts.add_lines((root_id, b'ghost'), [], [])
+        sha1 = repo.add_inventory(b'ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
-            message="Message", inventory_sha1=sha1, revision_id='ghost')
-        rev.parent_ids = ['the_ghost']
+            message="Message", inventory_sha1=sha1, revision_id=b'ghost')
+        rev.parent_ids = [b'the_ghost']
         try:
-            repo.add_revision('ghost', rev)
+            repo.add_revision(b'ghost', rev)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             raise tests.TestNotApplicable(
                 "Cannot test with ghosts for this format.")
 
-        inv = inventory.Inventory(revision_id = 'the_ghost')
-        inv.root.revision = 'the_ghost'
+        inv = inventory.Inventory(revision_id=b'the_ghost')
+        inv.root.revision = b'the_ghost'
         if repo.supports_rich_root():
             root_id = inv.root.file_id
-            repo.texts.add_lines((root_id, 'the_ghost'), [], [])
-        sha1 = repo.add_inventory('the_ghost', inv, [])
+            repo.texts.add_lines((root_id, b'the_ghost'), [], [])
+        sha1 = repo.add_inventory(b'the_ghost', inv, [])
         rev = _mod_revision.Revision(
             timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
-            message="Message", inventory_sha1=sha1, revision_id='the_ghost')
+            message="Message", inventory_sha1=sha1, revision_id=b'the_ghost')
         rev.parent_ids = []
-        repo.add_revision('the_ghost', rev)
+        repo.add_revision(b'the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.inventories
-        possible_parents = (None, (('ghost',),))
-        self.assertSubset(inv_weave.get_parent_map([('ghost',)])[('ghost',)],
-            possible_parents)
+        possible_parents = (None, ((b'ghost',),))
+        self.assertSubset(inv_weave.get_parent_map([(b'ghost',)])[(b'ghost',)],
+                          possible_parents)
         repo.commit_write_group()
         repo.unlock()
 
     def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
         repo = _mod_repository.Repository.open(repo_url)
-        m = MatchesAncestry(repo, 'ghost')
+        m = MatchesAncestry(repo, b'ghost')
         reported_wrong = False
         try:
-            if m.match(['the_ghost', 'ghost']) is not None:
+            if m.match([b'the_ghost', b'ghost']) is not None:
                 reported_wrong = True
         except errors.CorruptRepository:
             # caught the bad data:
             return
         if not reported_wrong:
             return
-        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+        self.assertRaises(errors.CorruptRepository,
+                          repo.get_revision, b'ghost')
 
     def test_corrupt_revision_get_revision_reconcile(self):
         repo_url = self.get_url('inventory_with_unnecessary_ghost')
         repo = _mod_repository.Repository.open(repo_url)
-        repo.get_revision_reconcile('ghost')
+        repo.get_revision_reconcile(b'ghost')

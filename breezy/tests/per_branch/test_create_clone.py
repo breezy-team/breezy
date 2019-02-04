@@ -35,7 +35,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         source = tree.branch
         target_transport = self.get_transport('subdir').clone('target')
         self.assertRaises(errors.NoSuchFile,
-            tree.branch.create_clone_on_transport, target_transport)
+                          tree.branch.create_clone_on_transport, target_transport)
         self.assertFalse(self.get_transport('.').has('subdir'))
 
     def test_create_clone_on_transport_missing_parent_dir_create(self):
@@ -44,10 +44,10 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         source = tree.branch
         target_transport = self.get_transport('subdir').clone('target')
         result = tree.branch.create_clone_on_transport(target_transport,
-            create_prefix=True)
+                                                       create_prefix=True)
         self.assertEqual(source.last_revision(), result.last_revision())
         self.assertEqual(target_transport.base,
-            result.controldir.root_transport.base)
+                         result.controldir.root_transport.base)
 
     def test_create_clone_on_transport_use_existing_dir_false(self):
         tree = self.make_branch_and_tree('source')
@@ -56,7 +56,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         target_transport = self.get_transport('target')
         target_transport.create_prefix()
         self.assertRaises(errors.FileExists,
-            tree.branch.create_clone_on_transport, target_transport)
+                          tree.branch.create_clone_on_transport, target_transport)
         self.assertFalse(target_transport.has(".bzr"))
 
     def test_create_clone_on_transport_use_existing_dir_true(self):
@@ -66,7 +66,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         target_transport = self.get_transport('target')
         target_transport.create_prefix()
         result = tree.branch.create_clone_on_transport(target_transport,
-            use_existing_dir=True)
+                                                       use_existing_dir=True)
         self.assertEqual(source.last_revision(), result.last_revision())
 
     def test_create_clone_on_transport_no_revision_id(self):
@@ -84,7 +84,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         source = tree.branch
         target_transport = self.get_transport('target')
         result = tree.branch.create_clone_on_transport(target_transport,
-            revision_id=old_revid)
+                                                       revision_id=old_revid)
         self.assertEqual(old_revid, result.last_revision())
         result.lock_read()
         self.addCleanup(result.unlock)
@@ -100,7 +100,7 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         target_transport = self.get_transport('target')
         try:
             result = tree.branch.create_clone_on_transport(target_transport,
-                stacked_on=trunk.base)
+                                                           stacked_on=trunk.base)
         except branch.UnstackableBranchFormat:
             if not trunk.repository._format.supports_full_versioned_files:
                 raise tests.TestNotApplicable("can not stack on format")
@@ -140,8 +140,8 @@ class TestCreateClone(per_branch.TestCaseWithBranch):
         branch.Branch.hooks.install_named_hook(
             'pre_change_branch_tip', self.assertBranchHookBranchIsStacked, None)
         try:
-            result = tree.branch.create_clone_on_transport(target_transport,
-                stacked_on=trunk.base)
+            result = tree.branch.create_clone_on_transport(
+                target_transport, stacked_on=trunk.base)
         except branch.UnstackableBranchFormat:
             if not trunk.repository._format.supports_full_versioned_files:
                 raise tests.TestNotApplicable("can not stack on format")

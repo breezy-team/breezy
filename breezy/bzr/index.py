@@ -43,8 +43,10 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    bytesintern,
     viewvalues,
     viewitems,
+    zip,
     )
 from ..static_tuple import StaticTuple
 
@@ -246,7 +248,7 @@ class GraphIndexBuilder(object):
         :param value: The value associate with this key. Must not contain
             newlines or null characters.
         :return: (node_refs, absent_references)
-        
+
             * node_refs: basically a packed form of 'references' where all
               iterables are tuples
             * absent_references: reference keys that are not in self._nodes.
@@ -286,15 +288,15 @@ class GraphIndexBuilder(object):
         """
         (node_refs,
          absent_references) = self._check_key_ref_value(key, references, value)
-        if key in self._nodes and self._nodes[key][0] != 'a':
+        if key in self._nodes and self._nodes[key][0] != b'a':
             raise BadIndexDuplicateKey(key, self)
         for reference in absent_references:
             # There may be duplicates, but I don't think it is worth worrying
             # about
-            self._nodes[reference] = ('a', (), '')
+            self._nodes[reference] = (b'a', (), b'')
         self._absent_keys.update(absent_references)
         self._absent_keys.discard(key)
-        self._nodes[key] = ('', node_refs, value)
+        self._nodes[key] = (b'', node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
@@ -304,11 +306,11 @@ class GraphIndexBuilder(object):
         This is a no-op, but we need the api to conform to a generic 'Index'
         abstraction.
         """
-        
+
     def finish(self):
         """Finish the index.
 
-        :returns: cBytesIO holding the full context of the index as it 
+        :returns: cBytesIO holding the full context of the index as it
         should be written to disk.
         """
         lines = [_SIGNATURE]
@@ -368,15 +370,15 @@ class GraphIndexBuilder(object):
                             non_ref_bytes += len(ref_list) - 1
             # how many digits are needed to represent the total byte count?
             digits = 1
-            possible_total_bytes = non_ref_bytes + total_references*digits
+            possible_total_bytes = non_ref_bytes + total_references * digits
             while 10 ** digits < possible_total_bytes:
                 digits += 1
-                possible_total_bytes = non_ref_bytes + total_references*digits
-            expected_bytes = possible_total_bytes + 1 # terminating newline
+                possible_total_bytes = non_ref_bytes + total_references * digits
+            expected_bytes = possible_total_bytes + 1  # terminating newline
             # resolve key addresses.
             key_addresses = {}
             for key, non_ref_bytes, total_references in key_offset_info:
-                key_addresses[key] = non_ref_bytes + total_references*digits
+                key_addresses[key] = non_ref_bytes + total_references * digits
             # serialise
             format_string = b'%%0%dd' % digits
         for key, (absent, references, value) in nodes:
@@ -384,17 +386,18 @@ class GraphIndexBuilder(object):
             for ref_list in references:
                 ref_addresses = []
                 for reference in ref_list:
-                    ref_addresses.append(format_string % key_addresses[reference])
+                    ref_addresses.append(format_string %
+                                         key_addresses[reference])
                 flattened_references.append(b'\r'.join(ref_addresses))
             string_key = b'\x00'.join(key)
             lines.append(b"%s\x00%s\x00%s\x00%s\n" % (string_key, absent,
-                b'\t'.join(flattened_references), value))
+                                                      b'\t'.join(flattened_references), value))
         lines.append(b'\n')
         result = BytesIO(b''.join(lines))
         if expected_bytes and len(result.getvalue()) != expected_bytes:
             raise errors.BzrError('Failed index creation. Internal error:'
-                ' mismatched output length and expected length: %d %d' %
-                (len(result.getvalue()), expected_bytes))
+                                  ' mismatched output length and expected length: %d %d' %
+                                  (len(result.getvalue()), expected_bytes))
         return result
 
     def set_optimize(self, for_size=None, combine_backing_indices=None):
@@ -499,9 +502,19 @@ class GraphIndex(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __lt__(self, other):
+        # We don't really care about the order, just that there is an order.
+        if (not isinstance(other, GraphIndex) and
+                not isinstance(other, InMemoryGraphIndex)):
+            raise TypeError(other)
+        return hash(self) < hash(other)
+
+    def __hash__(self):
+        return hash((type(self), self._transport, self._name, self._size))
+
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__,
-            self._transport.abspath(self._name))
+                           self._transport.abspath(self._name))
 
     def _buffer_all(self, stream=None):
         """Buffer all the index data.
@@ -513,26 +526,27 @@ class GraphIndex(object):
             return
         if 'index' in debug.debug_flags:
             trace.mutter('Reading entire index %s',
-                          self._transport.abspath(self._name))
+                         self._transport.abspath(self._name))
         if stream is None:
             stream = self._transport.get(self._name)
             if self._base_offset != 0:
                 # This is wasteful, but it is better than dealing with
                 # adjusting all the offsets, etc.
                 stream = BytesIO(stream.read()[self._base_offset:])
-        self._read_prefix(stream)
-        self._expected_elements = 3 + self._key_length
-        line_count = 0
-        # raw data keyed by offset
-        self._keys_by_offset = {}
-        # ready-to-return key:value or key:value, node_ref_lists
-        self._nodes = {}
-        self._nodes_by_key = None
-        trailers = 0
-        pos = stream.tell()
-        lines = stream.read().split(b'\n')
-        # GZ 2009-09-20: Should really use a try/finally block to ensure close
-        stream.close()
+        try:
+            self._read_prefix(stream)
+            self._expected_elements = 3 + self._key_length
+            line_count = 0
+            # raw data keyed by offset
+            self._keys_by_offset = {}
+            # ready-to-return key:value or key:value, node_ref_lists
+            self._nodes = {}
+            self._nodes_by_key = None
+            trailers = 0
+            pos = stream.tell()
+            lines = stream.read().split(b'\n')
+        finally:
+            stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in viewvalues(self._keys_by_offset):
@@ -563,7 +577,7 @@ class GraphIndex(object):
         self._buffer_all()
         if ref_list_num + 1 > self.node_ref_lists:
             raise ValueError('No ref list %d, index has %d ref lists'
-                % (ref_list_num, self.node_ref_lists))
+                             % (ref_list_num, self.node_ref_lists))
         refs = set()
         nodes = self._nodes
         for key, (value, ref_lists) in viewitems(nodes):
@@ -600,7 +614,7 @@ class GraphIndex(object):
         """
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(3,
-                "iter_all_entries scales with size of history.")
+                                  "iter_all_entries scales with size of history.")
         if self._nodes is None:
             self._buffer_all()
         if self.node_ref_lists:
@@ -648,10 +662,12 @@ class GraphIndex(object):
         """
         node_refs = []
         for ref_list in references:
-            node_refs.append(tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
+            node_refs.append(
+                tuple([self._keys_by_offset[ref][0] for ref in ref_list]))
         return tuple(node_refs)
 
-    def _find_index(self, range_map, key):
+    @staticmethod
+    def _find_index(range_map, key):
         """Helper for the _parsed_*_index calls.
 
         Given a range map - [(start, end), ...], finds the index of the range
@@ -689,7 +705,7 @@ class GraphIndex(object):
         asking for 'b' will return 1
         asking for 'e' will return 1
         """
-        search_key = (key, None)
+        search_key = (key, b'')
         return self._find_index(self._parsed_key_map, search_key)
 
     def _is_parsed(self, offset):
@@ -852,7 +868,7 @@ class GraphIndex(object):
             index = self._parsed_byte_index(location)
             if (len(self._parsed_byte_map) and
                 self._parsed_byte_map[index][0] <= location and
-                self._parsed_byte_map[index][1] > location):
+                    self._parsed_byte_map[index][1] > location):
                 # the byte region has been parsed, so no read is needed.
                 continue
             length = 800
@@ -870,15 +886,15 @@ class GraphIndex(object):
             # _read_and_parse triggered a _buffer_all because we requested the
             # whole data range
             for location, key in location_keys:
-                if key not in self._nodes: # not present
+                if key not in self._nodes:  # not present
                     result.append(((location, key), False))
                 elif self.node_ref_lists:
                     value, refs = self._nodes[key]
                     result.append(((location, key),
-                        (self, key, value, refs)))
+                                   (self, key, value, refs)))
                 else:
                     result.append(((location, key),
-                        (self, key, self._nodes[key])))
+                                   (self, key, self._nodes[key])))
             return result
         # generate results:
         #  - figure out <, >, missing, present
@@ -903,10 +919,10 @@ class GraphIndex(object):
                         pending_references.append((location, key))
                         continue
                     result.append(((location, key), (self, key,
-                        value, self._resolve_references(refs))))
+                                                     value, self._resolve_references(refs))))
                 else:
                     result.append(((location, key),
-                        (self, key, self._bisect_nodes[key])))
+                                   (self, key, self._bisect_nodes[key])))
                 continue
             else:
                 # has the region the key should be in, been parsed?
@@ -949,7 +965,7 @@ class GraphIndex(object):
             # answer key references we had to look-up-late.
             value, refs = self._bisect_nodes[key]
             result.append(((location, key), (self, key,
-                value, self._resolve_references(refs))))
+                                             value, self._resolve_references(refs))))
         return result
 
     def _parse_header_from_bytes(self, bytes):
@@ -986,8 +1002,8 @@ class GraphIndex(object):
             raise BadIndexOptions(self)
         # calculate the bytes we have processed
         header_end = (len(signature) + len(lines[0]) + len(lines[1]) +
-            len(lines[2]) + 3)
-        self._parsed_bytes(0, None, header_end, None)
+                      len(lines[2]) + 3)
+        self._parsed_bytes(0, (), header_end, ())
         # setup parsing state
         self._expected_elements = 3 + self._key_length
         # raw data keyed by offset
@@ -1093,18 +1109,18 @@ class GraphIndex(object):
         if not start_adjacent:
             # work around python bug in rfind
             if trim_start is None:
-                trim_start = data.find('\n') + 1
+                trim_start = data.find(b'\n') + 1
             else:
-                trim_start = data.find('\n', trim_start) + 1
+                trim_start = data.find(b'\n', trim_start) + 1
             if not (trim_start != 0):
                 raise AssertionError('no \n was present')
             # print 'removing start', offset, trim_start, repr(data[:trim_start])
         if not end_adjacent:
             # work around python bug in rfind
             if trim_end is None:
-                trim_end = data.rfind('\n') + 1
+                trim_end = data.rfind(b'\n') + 1
             else:
-                trim_end = data.rfind('\n', None, trim_end) + 1
+                trim_end = data.rfind(b'\n', None, trim_end) + 1
             if not (trim_end != 0):
                 raise AssertionError('no \n was present')
             # print 'removing end', offset, trim_end, repr(data[trim_end:])
@@ -1112,19 +1128,19 @@ class GraphIndex(object):
         trimmed_data = data[trim_start:trim_end]
         if not (trimmed_data):
             raise AssertionError('read unneeded data [%d:%d] from [%d:%d]'
-                % (trim_start, trim_end, offset, offset + len(data)))
+                                 % (trim_start, trim_end, offset, offset + len(data)))
         if trim_start:
             offset += trim_start
         # print "parsing", repr(trimmed_data)
         # splitlines mangles the \r delimiters.. don't use it.
-        lines = trimmed_data.split('\n')
+        lines = trimmed_data.split(b'\n')
         del lines[-1]
         pos = offset
         first_key, last_key, nodes, _ = self._parse_lines(lines, pos)
         for key, value in nodes:
             self._bisect_nodes[key] = value
         self._parsed_bytes(offset, first_key,
-            offset + len(trimmed_data), last_key)
+                           offset + len(trimmed_data), last_key)
         return offset + len(trimmed_data), last_segment
 
     def _parse_lines(self, lines, pos):
@@ -1133,7 +1149,7 @@ class GraphIndex(object):
         trailers = 0
         nodes = []
         for line in lines:
-            if line == '':
+            if line == b'':
                 # must be at the end
                 if self._size:
                     if not (self._size == pos + 1):
@@ -1145,18 +1161,19 @@ class GraphIndex(object):
                 raise BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple([intern(element) for element in elements[:self._key_length]])
+            key = tuple([bytesintern(element)
+                         for element in elements[:self._key_length]])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]
             ref_lists = []
-            for ref_string in references.split('\t'):
+            for ref_string in references.split(b'\t'):
                 ref_lists.append(tuple([
-                    int(ref) for ref in ref_string.split('\r') if ref
+                    int(ref) for ref in ref_string.split(b'\r') if ref
                     ]))
             ref_lists = tuple(ref_lists)
             self._keys_by_offset[pos] = (key, absent, ref_lists, value)
-            pos += len(line) + 1 # +1 for the \n
+            pos += len(line) + 1  # +1 for the \n
             if absent:
                 continue
             if self.node_ref_lists:
@@ -1191,12 +1208,12 @@ class GraphIndex(object):
         # combine two regions
         if (index + 1 < len(self._parsed_byte_map) and
             self._parsed_byte_map[index][1] == start and
-            self._parsed_byte_map[index + 1][0] == end):
+                self._parsed_byte_map[index + 1][0] == end):
             # combine two regions
             self._parsed_byte_map[index] = (self._parsed_byte_map[index][0],
-                self._parsed_byte_map[index + 1][1])
+                                            self._parsed_byte_map[index + 1][1])
             self._parsed_key_map[index] = (self._parsed_key_map[index][0],
-                self._parsed_key_map[index + 1][1])
+                                           self._parsed_key_map[index + 1][1])
             del self._parsed_byte_map[index + 1]
             del self._parsed_key_map[index + 1]
         elif self._parsed_byte_map[index][1] == start:
@@ -1206,7 +1223,7 @@ class GraphIndex(object):
             self._parsed_key_map[index] = (
                 self._parsed_key_map[index][0], end_key)
         elif (index + 1 < len(self._parsed_byte_map) and
-            self._parsed_byte_map[index + 1][0] == end):
+              self._parsed_byte_map[index + 1][0] == end):
             # extend the higher entry
             self._parsed_byte_map[index + 1] = (
                 start, self._parsed_byte_map[index + 1][1])
@@ -1233,10 +1250,10 @@ class GraphIndex(object):
         base_offset = self._base_offset
         if base_offset != 0:
             # Rewrite the ranges for the offset
-            readv_ranges = [(start+base_offset, size)
+            readv_ranges = [(start + base_offset, size)
                             for start, size in readv_ranges]
         readv_data = self._transport.readv(self._name, readv_ranges, True,
-            self._size + self._base_offset)
+                                           self._size + self._base_offset)
         # parse
         for offset, data in readv_data:
             offset -= base_offset
@@ -1282,7 +1299,7 @@ class CombinedGraphIndex(object):
     performance significantly. For example, if one index is on local disk and a
     second on a remote server, the local disk index should be before the other
     in the index list.
-    
+
     Also, queries tend to need results from the same indices as previous
     queries.  So the indices will be reordered after every query to put the
     indices that had the result(s) of that query first (while otherwise
@@ -1309,8 +1326,8 @@ class CombinedGraphIndex(object):
 
     def __repr__(self):
         return "%s(%s)" % (
-                self.__class__.__name__,
-                ', '.join(map(repr, self._indices)))
+            self.__class__.__name__,
+            ', '.join(map(repr, self._indices)))
 
     def clear_cache(self):
         """See GraphIndex.clear_cache()"""
@@ -1322,7 +1339,7 @@ class CombinedGraphIndex(object):
         search_keys = set(keys)
         if _mod_revision.NULL_REVISION in search_keys:
             search_keys.discard(_mod_revision.NULL_REVISION)
-            found_parents = {_mod_revision.NULL_REVISION:[]}
+            found_parents = {_mod_revision.NULL_REVISION: []}
         else:
             found_parents = {}
         for index, key, value, refs in self.iter_entries(search_keys):
@@ -1464,7 +1481,7 @@ class CombinedGraphIndex(object):
 
     def _move_to_front_by_index(self, hit_indices):
         """Core logic for _move_to_front.
-        
+
         Returns a list of names corresponding to the hit_indices param.
         """
         indices_info = zip(self._index_names, self._indices)
@@ -1484,8 +1501,8 @@ class CombinedGraphIndex(object):
                 if len(new_hit_indices) == len(hit_indices):
                     # We've found all of the hit entries, everything else is
                     # unhit
-                    unhit_names.extend(self._index_names[offset+1:])
-                    unhit_indices.extend(self._indices[offset+1:])
+                    unhit_names.extend(self._index_names[offset + 1:])
+                    unhit_indices.extend(self._indices[offset + 1:])
                     break
             else:
                 unhit_names.append(name)
@@ -1553,7 +1570,7 @@ class CombinedGraphIndex(object):
                     #       CombinedGraphIndex does not know what the ref lists
                     #       mean.
                     search_keys = index._find_ancestors(search_keys,
-                        ref_list_num, parent_map, index_missing_keys)
+                                                        ref_list_num, parent_map, index_missing_keys)
                     # print '    \t  \t%2d\t%4d\t%5d\t%5d' % (
                     #     sub_generation, len(search_keys),
                     #     len(parent_map), len(index_missing_keys))
@@ -1599,7 +1616,8 @@ class CombinedGraphIndex(object):
         """
         if self._reload_func is None:
             return False
-        trace.mutter('Trying to reload after getting exception: %s', error)
+        trace.mutter(
+            'Trying to reload after getting exception: %s', str(error))
         if not self._reload_func():
             # We tried to reload, but nothing changed, so we fail anyway
             trace.mutter('_reload_func indicated nothing has changed.'
@@ -1653,7 +1671,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
         """
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(3,
-                "iter_all_entries scales with size of history.")
+                                  "iter_all_entries scales with size of history.")
         if self.reference_lists:
             for key, (absent, references, value) in viewitems(self._nodes):
                 if not absent:
@@ -1731,6 +1749,13 @@ class InMemoryGraphIndex(GraphIndexBuilder):
     def validate(self):
         """In memory index's have no known corruption at the moment."""
 
+    def __lt__(self, other):
+        # We don't really care about the order, just that there is an order.
+        if (not isinstance(other, GraphIndex) and
+                not isinstance(other, InMemoryGraphIndex)):
+            raise TypeError(other)
+        return hash(self) < hash(other)
+
 
 class GraphIndexPrefixAdapter(object):
     """An adapter between GraphIndex with different key lengths.
@@ -1743,10 +1768,10 @@ class GraphIndexPrefixAdapter(object):
     """
 
     def __init__(self, adapted, prefix, missing_key_length,
-        add_nodes_callback=None):
+                 add_nodes_callback=None):
         """Construct an adapter against adapted with prefix."""
         self.adapted = adapted
-        self.prefix_key = prefix + (None,)*missing_key_length
+        self.prefix_key = prefix + (None,) * missing_key_length
         self.prefix = prefix
         self.prefix_len = len(prefix)
         self.add_nodes_callback = add_nodes_callback
@@ -1765,9 +1790,9 @@ class GraphIndexPrefixAdapter(object):
             for (key, value, node_refs) in nodes:
                 adjusted_references = (
                     tuple(tuple(self.prefix + ref_node for ref_node in ref_list)
-                        for ref_list in node_refs))
+                          for ref_list in node_refs))
                 translated_nodes.append((self.prefix + key, value,
-                    adjusted_references))
+                                         adjusted_references))
         except ValueError:
             # XXX: TODO add an explicit interface for getting the reference list
             # status, to handle this bit of user-friendliness in the API more
@@ -1801,7 +1826,7 @@ class GraphIndexPrefixAdapter(object):
                         raise BadIndexData(self)
             yield node[0], node[1][self.prefix_len:], node[2], (
                 tuple(tuple(ref_node[self.prefix_len:] for ref_node in ref_list)
-                for ref_list in node[3]))
+                      for ref_list in node[3]))
 
     def iter_all_entries(self):
         """Iterate over all keys within the index

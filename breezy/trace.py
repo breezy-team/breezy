@@ -64,7 +64,6 @@ import time
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import locale
 import tempfile
 import traceback
 """)
@@ -81,7 +80,6 @@ from breezy import (
 """)
 
 from .sixish import (
-    BytesIO,
     PY3,
     StringIO,
     text_type,
@@ -138,6 +136,16 @@ def show_error(*args, **kwargs):
     _brz_logger.error(*args, **kwargs)
 
 
+class _Bytes(str):
+    """Compat class for displaying bytes on Python 2."""
+
+    def __repr__(self):
+        return 'b' + str.__repr__(self)
+
+    def __unicode__(self):
+        return self.decode('ascii', 'replace')
+
+
 def mutter(fmt, *args):
     if _trace_file is None:
         return
@@ -146,24 +154,20 @@ def mutter(fmt, *args):
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
-    if isinstance(fmt, text_type):
-        fmt = fmt.encode('utf8')
+    # Let format strings be specified as ascii bytes to help Python 2
+    if isinstance(fmt, bytes):
+        fmt = fmt.decode('ascii', 'replace')
 
-    if len(args) > 0:
-        # It seems that if we do ascii % (unicode, ascii) we can
-        # get a unicode cannot encode ascii error, so make sure that "fmt"
-        # is a unicode string
-        real_args = []
-        for arg in args:
-            if isinstance(arg, text_type):
-                arg = arg.encode('utf8')
-            real_args.append(arg)
-        out = fmt % tuple(real_args)
+    if args:
+        if not PY3:
+            args = tuple(
+                _Bytes(arg) if isinstance(arg, bytes) else arg for arg in args)
+        out = fmt % args
     else:
         out = fmt
     now = time.time()
-    out = b'%0.3f  %s\n' % (now - _brz_log_start_time, out)
-    _trace_file.write(out)
+    out = '%0.3f  %s\n' % (now - _brz_log_start_time, out)
+    _trace_file.write(out.encode('utf-8'))
     # there's no explicit flushing; the file is typically line buffered.
 
 
@@ -245,8 +249,7 @@ def _open_brz_log():
             else:
                 osutils.copy_ownership_from_path(filename)
                 break
-        return os.fdopen(fd, 'ab', 0) # unbuffered
-
+        return os.fdopen(fd, 'ab', 0)  # unbuffered
 
     _brz_log_filename = _get_brz_log_filename()
     _rollover_trace_maybe(_brz_log_filename)
@@ -254,9 +257,12 @@ def _open_brz_log():
         brz_log_file = _open_or_create_log_file(_brz_log_filename)
         brz_log_file.write(b'\n')
         if brz_log_file.tell() <= 2:
-            brz_log_file.write(b"this is a debug log for diagnosing/reporting problems in brz\n")
-            brz_log_file.write(b"you can delete or truncate this file, or include sections in\n")
-            brz_log_file.write(b"bug reports to https://bugs.launchpad.net/brz/+filebug\n\n")
+            brz_log_file.write(
+                b"this is a debug log for diagnosing/reporting problems in brz\n")
+            brz_log_file.write(
+                b"you can delete or truncate this file, or include sections in\n")
+            brz_log_file.write(
+                b"bug reports to https://bugs.launchpad.net/brz/+filebug\n\n")
 
         return brz_log_file
 
@@ -291,13 +297,18 @@ def enable_default_logging():
     brz_log_file = _open_brz_log()
     if brz_log_file is not None:
         brz_log_file.write(start_time.encode('utf-8') + b'\n')
-    memento = push_log_file(brz_log_file,
+    memento = push_log_file(
+        brz_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    stderr_handler = EncodedStreamHandler(sys.stderr,
-        osutils.get_terminal_encoding(), 'replace', level=logging.INFO)
+    if sys.version_info[0] == 2:
+        stderr_handler = EncodedStreamHandler(
+            sys.stderr, osutils.get_terminal_encoding(), 'replace',
+            level=logging.INFO)
+    else:
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 
@@ -333,7 +344,6 @@ def push_log_file(to_file, log_format=None, date_format=None):
     old_trace_file = _trace_file
     # send traces to the new one
     _trace_file = to_file
-    result = new_handler, _trace_file
     return ('log_memento', old_handlers, new_handler, old_trace_file, to_file)
 
 
@@ -422,9 +432,10 @@ def debug_memory(message='', short=True):
 
 _short_fields = ('VmPeak', 'VmSize', 'VmRSS')
 
+
 def _debug_memory_proc(message='', short=True):
     try:
-        status_file = file('/proc/%s/status' % os.getpid(), 'rb')
+        status_file = open('/proc/%s/status' % os.getpid(), 'rb')
     except IOError:
         return
     try:
@@ -442,6 +453,7 @@ def _debug_memory_proc(message='', short=True):
                     note(line)
                     break
 
+
 def _dump_memory_usage(err_file):
     try:
         try:
@@ -453,7 +465,7 @@ def _dump_memory_usage(err_file):
         except ImportError:
             err_file.write("Dumping memory requires meliae module.\n")
             log_exception_quietly()
-        except:
+        except BaseException:
             err_file.write("Exception while dumping memory.\n")
             log_exception_quietly()
     finally:
@@ -501,8 +513,9 @@ def report_exception(exc_info, err_file):
             err_file.write("Use -Dmem_dump to dump memory to a file.\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
-        and str(exc_object).startswith("No module named "):
-        report_user_error(exc_info, err_file,
+            and str(exc_object).startswith("No module named "):
+        report_user_error(
+            exc_info, err_file,
             'You may need to install this Python library separately.')
         return errors.EXIT_ERROR
     elif not getattr(exc_object, 'internal_error', True):
@@ -539,9 +552,9 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    err_file.write("brz: ERROR: %s\n" % (exc_info[1],))
+    err_file.write(("brz: ERROR: %s\n" % (str(exc_info[1]),)))
     if advice:
-        err_file.write("%s\n" % advice)
+        err_file.write(("%s\n" % advice))
 
 
 def report_bug(exc_info, err_file):
@@ -555,7 +568,7 @@ def _flush_stdout_stderr():
     try:
         sys.stdout.flush()
         sys.stderr.flush()
-    except ValueError as e:
+    except ValueError:
         # On Windows, I get ValueError calling stdout.flush() on a closed
         # handle
         pass
@@ -612,8 +625,8 @@ class EncodedStreamHandler(logging.Handler):
             # Try saving the details that would have been logged in some form
             msg = args = "<Unformattable>"
             try:
-                msg = repr(record.msg).encode("ascii", "backslashescape")
-                args = repr(record.args).encode("ascii", "backslashescape")
+                msg = repr(record.msg)
+                args = repr(record.args)
             except Exception:
                 pass
             # Using mutter() bypasses the logging module and writes directly
@@ -630,10 +643,10 @@ class Config(object):
     """
 
     def __enter__(self):
-        return self # This is bound to the 'as' clause in a with statement.
+        return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return False # propogate exceptions.
+        return False  # propogate exceptions.
 
 
 class DefaultConfig(Config):
@@ -645,10 +658,10 @@ class DefaultConfig(Config):
     def __enter__(self):
         self._original_filename = _brz_log_filename
         self._original_state = enable_default_logging()
-        return self # This is bound to the 'as' clause in a with statement.
+        return self  # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pop_log_file(self._original_state)
         global _brz_log_filename
         _brz_log_filename = self._original_filename
-        return False # propogate exceptions.
+        return False  # propogate exceptions.

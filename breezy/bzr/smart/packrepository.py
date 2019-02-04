@@ -19,7 +19,6 @@ from __future__ import absolute_import
 """Server-side pack repository related request implmentations."""
 
 from .request import (
-    FailedSmartServerResponse,
     SuccessfulSmartServerResponse,
     )
 
@@ -36,12 +35,7 @@ class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
         if pack_collection is None:
             # This is a not a pack repo, so asking for an autopack is just a
             # no-op.
-            return SuccessfulSmartServerResponse(('ok',))
-        repository.lock_write()
-        try:
+            return SuccessfulSmartServerResponse((b'ok',))
+        with repository.lock_write():
             repository._pack_collection.autopack()
-        finally:
-            repository.unlock()
-        return SuccessfulSmartServerResponse(('ok',))
-
-
+        return SuccessfulSmartServerResponse((b'ok',))

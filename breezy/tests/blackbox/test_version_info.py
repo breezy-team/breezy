@@ -18,6 +18,7 @@
 
 import os
 
+from breezy.sixish import PY3
 from breezy.tests import TestCaseWithTransport
 from breezy.version_info_formats import VersionInfoBuilder
 
@@ -46,7 +47,8 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
+        self.assertContainsRe(txt, 'revision-id: ' +
+                              wt.branch.last_revision().decode('utf-8'))
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
@@ -54,11 +56,12 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = self.run_bzr('version-info branch --all')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
-        self.assertContainsRe(txt, 'revision-id: ' + wt.branch.last_revision())
+        self.assertContainsRe(txt, 'revision-id: ' +
+                              wt.branch.last_revision().decode('utf-8'))
         self.assertContainsRe(txt, 'clean: True')
         self.assertContainsRe(txt, 'revisions:')
         for rev_id in wt.branch.repository.all_revision_ids():
-            self.assertContainsRe(txt, 'id: ' + rev_id)
+            self.assertContainsRe(txt, 'id: ' + rev_id.decode('utf-8'))
         self.assertContainsRe(txt, 'message: adding a')
         self.assertContainsRe(txt, 'message: adding b')
         self.assertContainsRe(txt, 'file-revisions:')
@@ -142,22 +145,24 @@ class TestVersionInfo(TestCaseWithTransport):
     def test_custom_implies_all(self):
         self.create_tree()
         out, err = self.run_bzr('version-info --custom --template='
-            '"{revno} {branch_nick} {clean}\n" branch')
+                                '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 1\n", out)
         self.assertEqual("", err)
         self.build_tree_contents([('branch/c', b'now unclean\n')])
         out, err = self.run_bzr('version-info --custom --template='
-            '"{revno} {branch_nick} {clean}\n" branch')
+                                '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 0\n", out)
         self.assertEqual("", err)
 
     def test_custom_no_clean_in_template(self):
         def should_not_be_called(self):
-            raise AssertionError("Method on %r should not have been used" % (self,))
+            raise AssertionError(
+                "Method on %r should not have been used" % (self,))
         self.overrideAttr(VersionInfoBuilder, "_extract_file_revisions",
                           should_not_be_called)
         self.create_tree()
-        out, err = self.run_bzr('version-info --custom --template=r{revno} branch')
+        out, err = self.run_bzr(
+            'version-info --custom --template=r{revno} branch')
         self.assertEqual("r2", out)
         self.assertEqual("", err)
 
@@ -170,10 +175,11 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(['a_file'])
         tree.add('a_file')
         tree.commit(commit_message)
-        out, err = self.run_bzr(
+        out, err = self.run_bzr_raw(
             ['version-info', '--include-history'], encoding='latin-1')
 
-        self.assertContainsString(out, commit_message.encode('utf-8'))
+        commit_message = commit_message.encode('latin-1', 'replace')
+        self.assertContainsString(out, commit_message)
 
     def test_revision(self):
         tree = self.create_tree()

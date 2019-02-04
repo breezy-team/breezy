@@ -32,7 +32,8 @@ class TestAdded(TestCaseWithTransport):
 
     def test_added_with_spaces(self):
         """Test that 'added' command reports added files with spaces in their names quoted"""
-        self._test_added('a filename with spaces', '"a filename with spaces"\n')
+        self._test_added('a filename with spaces',
+                         '"a filename with spaces"\n')
 
     def test_added_null_separator(self):
         """Test that added uses its null operator properly"""
@@ -55,7 +56,8 @@ class TestAdded(TestCaseWithTransport):
         check_added('')
 
         # with unknown file, still nothing added
-        self.build_tree_contents([(name, b'contents of %s\n' % (name))])
+        self.build_tree_contents(
+            [(name, b'contents of %s\n' % (name.encode('utf-8'),))])
         check_added('')
 
         # after add, shows up in list

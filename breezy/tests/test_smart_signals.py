@@ -41,12 +41,14 @@ class TestSignalHandlers(tests.TestCase):
         #       that we need it for signal handling.
         orig = signals._setup_on_hangup_dict()
         self.assertIs(None, orig)
+
         def cleanup():
             signals._on_sighup = None
         self.addCleanup(cleanup)
 
     def test_registered_callback_gets_called(self):
         calls = []
+
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', call_me)
@@ -59,13 +61,16 @@ class TestSignalHandlers(tests.TestCase):
         # that shouldn't interrupt other flow.
         signals.unregister_on_hangup('no-such-id')
         log = self.get_log()
-        self.assertContainsRe(log, 'Error occurred during unregister_on_hangup:')
+        self.assertContainsRe(
+            log, 'Error occurred during unregister_on_hangup:')
         self.assertContainsRe(log, '(?s)Traceback.*KeyError')
 
     def test_failing_callback(self):
         calls = []
+
         def call_me():
             calls.append('called')
+
         def fail_me():
             raise RuntimeError('something bad happened')
         signals.register_on_hangup('myid', call_me)
@@ -82,9 +87,11 @@ class TestSignalHandlers(tests.TestCase):
         # _sighup_handler should handle if some callbacks actually remove
         # themselves while running.
         calls = []
+
         def call_me_and_unregister():
             signals.unregister_on_hangup('myid')
             calls.append('called_and_unregistered')
+
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', call_me_and_unregister)
@@ -110,6 +117,7 @@ class TestSignalHandlers(tests.TestCase):
         self.assertIsInstance(signals._on_sighup,
                               weakref.WeakValueDictionary)
         calls = []
+
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', call_me)
@@ -123,6 +131,7 @@ class TestSignalHandlers(tests.TestCase):
         # then _on_sighup should be None, and all the calls become no-ops.
         signals._on_sighup = None
         calls = []
+
         def call_me():
             calls.append('called')
         signals.register_on_hangup('myid', calls)
@@ -154,7 +163,7 @@ class TestInetServer(tests.TestCase):
 
     def test_inet_server_responds_to_sighup(self):
         t = transport.get_transport('memory:///')
-        content = 'a'*1024*1024
+        content = b'a' * 1024 * 1024
         t.put_bytes('bigfile', content)
         factory = server.BzrServerFactory()
         # Override stdin/stdout so that we can inject our own handles
@@ -165,6 +174,7 @@ class TestInetServer(tests.TestCase):
         self.addCleanup(factory.tear_down)
         started = threading.Event()
         stopped = threading.Event()
+
         def serving():
             started.set()
             factory.smart_server.serve()
@@ -173,10 +183,10 @@ class TestInetServer(tests.TestCase):
         server_thread.start()
         started.wait()
         client_medium = medium.SmartSimplePipesClientMedium(client_read,
-                            client_write, 'base')
+                                                            client_write, 'base')
         client_client = client._SmartClient(client_medium)
-        resp, response_handler = client_client.call_expecting_body('get',
-            'bigfile')
+        resp, response_handler = client_client.call_expecting_body(b'get',
+                                                                   b'bigfile')
         signals._sighup_handler(SIGHUP, None)
         self.assertTrue(factory.smart_server.finished)
         # We can still finish reading the file content, but more than that, and
@@ -186,4 +196,3 @@ class TestInetServer(tests.TestCase):
             self.fail('Got the wrong content back, expected 1M "a"')
         stopped.wait()
         server_thread.join()
-

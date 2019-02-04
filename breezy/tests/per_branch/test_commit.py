@@ -50,7 +50,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         super(TestCommitHook, self).setUp()
 
     def capture_post_commit_hook(self, local, master, old_revno,
-        old_revid, new_revno, new_revid):
+                                 old_revid, new_revno, new_revid):
         """Capture post commit hook calls to self.hook_calls.
 
         The call is logged, as is some state of the two branches.
@@ -150,7 +150,12 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         tree.lock_write()
         tree.add('')
         root_delta.added = [('', tree.path2id(''), 'directory')]
-        class PreCommitException(Exception): pass
+
+        class PreCommitException(Exception):
+
+            def __init__(self, revid):
+                self.revid = revid
+
         def hook_func(local, master,
                       old_revno, old_revid, new_revno, new_revid,
                       tree_delta, future_tree):
@@ -163,7 +168,7 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         # so the commit is rolled back and revno unchanged
         err = self.assertRaises(PreCommitException, tree.commit, 'message')
         # we have to record the revid to use in assertEqual later
-        revids[0] = str(err)
+        revids[0] = err.revid
         # unregister all pre_commit hooks
         branch.Branch.hooks["pre_commit"] = []
         # and re-register the capture hook
@@ -173,8 +178,10 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
         for i in range(1, 3):
             revids[i] = tree.commit('message')
         self.assertEqual([
-            ('pre_commit', 0, revision.NULL_REVISION, 1, revids[0], root_delta),
-            ('pre_commit', 0, revision.NULL_REVISION, 1, revids[1], root_delta),
+            ('pre_commit', 0, revision.NULL_REVISION,
+             1, revids[0], root_delta),
+            ('pre_commit', 0, revision.NULL_REVISION,
+             1, revids[1], root_delta),
             ('pre_commit', 1, revids[1], 2, revids[2], empty_delta)
             ],
             self.hook_calls)
@@ -189,20 +196,20 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
             # setting up a playground
             tree.add('rootfile')
             rootfile_id = tree.path2id('rootfile')
-            tree.put_file_bytes_non_atomic('rootfile', 'abc')
+            tree.put_file_bytes_non_atomic('rootfile', b'abc')
             tree.add('dir')
             dir_id = tree.path2id('dir')
             tree.add('dir/subfile')
             dir_subfile_id = tree.path2id('dir/subfile')
-            tree.put_file_bytes_non_atomic('to_be_unversioned', 'blah')
+            tree.put_file_bytes_non_atomic('to_be_unversioned', b'blah')
             tree.add(['to_be_unversioned'])
             to_be_unversioned_id = tree.path2id('to_be_unversioned')
-            tree.put_file_bytes_non_atomic('dir/subfile', 'def')
+            tree.put_file_bytes_non_atomic('dir/subfile', b'def')
             revid1 = tree.commit('first revision')
 
         with tree.lock_write():
             # making changes
-            tree.put_file_bytes_non_atomic('rootfile', 'jkl')
+            tree.put_file_bytes_non_atomic('rootfile', b'jkl')
             tree.rename_one('dir/subfile', 'dir/subfile_renamed')
             tree.unversion(['to_be_unversioned'])
             tree.mkdir('added_dir')
@@ -214,7 +221,8 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
 
         expected_delta = delta.TreeDelta()
         if tree.has_versioned_directories():
-            expected_delta.added.append(('added_dir', added_dir_id, 'directory'))
+            expected_delta.added.append(
+                ('added_dir', added_dir_id, 'directory'))
         if tree.supports_rename_tracking():
             expected_delta.removed = [('to_be_unversioned',
                                        to_be_unversioned_id, 'file')]
@@ -222,11 +230,11 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
                                        dir_subfile_id, 'file', False, False)]
         else:
             expected_delta.added.append(('dir/subfile_renamed',
-                                        tree.path2id('dir/subfile_renamed'), 'file'))
+                                         tree.path2id('dir/subfile_renamed'), 'file'))
             expected_delta.removed = [
-                    ('dir/subfile', dir_subfile_id, 'file'),
-                    ('to_be_unversioned', to_be_unversioned_id, 'file')]
-        expected_delta.modified=[('rootfile', rootfile_id, 'file', True,
-                                  False)]
+                ('dir/subfile', dir_subfile_id, 'file'),
+                ('to_be_unversioned', to_be_unversioned_id, 'file')]
+        expected_delta.modified = [('rootfile', rootfile_id, 'file', True,
+                                    False)]
         self.assertEqual([('pre_commit', 1, revid1, 2, revid2,
                            expected_delta)], self.hook_calls)

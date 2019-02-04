@@ -42,7 +42,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         # Remove a local branch.
         tree = self.example_tree('a')
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
-            'rmbranch a')
+                           'rmbranch a')
         self.run_bzr('rmbranch --force a')
         dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
@@ -52,8 +52,7 @@ class TestRemoveBranch(TestCaseWithTransport):
     def test_no_branch(self):
         # No branch in the current directory.
         self.make_repository('a')
-        self.run_bzr_error(['Not a branch'],
-            'rmbranch a')
+        self.run_bzr_error(['Not a branch'], 'rmbranch a')
 
     def test_no_tree(self):
         # removing the active branch is possible if there is no tree
@@ -67,7 +66,7 @@ class TestRemoveBranch(TestCaseWithTransport):
         # location argument defaults to current directory
         self.example_tree('a')
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
-            'rmbranch a')
+                           'rmbranch a')
         self.run_bzr('rmbranch --force', working_dir='a')
         dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch())
@@ -77,7 +76,8 @@ class TestRemoveBranch(TestCaseWithTransport):
         tree = self.example_tree('a')
         tree.controldir.create_branch(name="otherbranch")
         self.assertTrue(tree.controldir.has_branch('otherbranch'))
-        self.run_bzr('rmbranch %s,branch=otherbranch' % tree.controldir.user_url)
+        self.run_bzr('rmbranch %s,branch=otherbranch' %
+                     tree.controldir.user_url)
         dir = controldir.ControlDir.open('a')
         self.assertFalse(dir.has_branch('otherbranch'))
         self.assertTrue(dir.has_branch())
@@ -98,9 +98,10 @@ class TestRemoveBranch(TestCaseWithTransport):
         branch = dir.create_branch('otherbranch')
         branch.create_checkout('a')
         self.run_bzr_error(['Branch is active. Use --force to remove it.\n'],
-            'rmbranch otherbranch -d %s' % branch.controldir.user_url)
+                           'rmbranch otherbranch -d %s' % branch.controldir.user_url)
         self.assertTrue(dir.has_branch('otherbranch'))
-        self.run_bzr('rmbranch --force otherbranch -d %s' % branch.controldir.user_url)
+        self.run_bzr('rmbranch --force otherbranch -d %s' %
+                     branch.controldir.user_url)
         self.assertFalse(dir.has_branch('otherbranch'))
 
 

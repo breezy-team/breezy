@@ -58,12 +58,11 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         result = base_transport.readv('foo', [(0, 10)])
         # sadly there's no types.IteratorType, and GeneratorType is too
         # specific
-        self.assertTrue(getattr(result, 'next'))
+        next(result)
 
         result = logging_transport.readv('foo', [(0, 10)])
-        self.assertTrue(getattr(result, 'next'))
         self.assertEqual(list(result),
-            [(0, 'abcdefghij')])
+                         [(0, 'abcdefghij')])
 
 
 class DummyReadvTransport(object):

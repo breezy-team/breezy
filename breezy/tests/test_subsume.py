@@ -34,7 +34,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree.add('file', b'file-id')
         base_tree.commit('first commit', rev_id=b'tree-1')
         sub_tree = self.make_branch_and_tree('tree/subtree',
-            format='development-subtree')
+                                             format='development-subtree')
         if same_root is True:
             sub_tree.set_root_id(base_tree.get_root_id())
         sub_tree.add('file2', b'file2-id')
@@ -66,17 +66,14 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         # it is correct.
         self.assertPathExists('tree/subtree/.bzr')
         base_tree.subsume(sub_tree)
-        self.assertEqual(['tree-1', 'subtree-1'], base_tree.get_parent_ids())
+        self.assertEqual([b'tree-1', b'subtree-1'], base_tree.get_parent_ids())
         self.assertEqual(sub_root_id, base_tree.path2id('subtree'))
-        self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
+        self.assertEqual(b'file2-id', base_tree.path2id('subtree/file2'))
         # subsuming the tree removes the control directory, so you can't open
         # it.
         self.assertPathDoesNotExist('tree/subtree/.bzr')
-        file2 = open('tree/subtree/file2', 'rb')
-        try:
+        with open('tree/subtree/file2', 'rb') as file2:
             file2_contents = file2.read()
-        finally:
-            file2.close()
         base_tree = workingtree.WorkingTree.open('tree')
         base_tree.commit('combined', rev_id=b'combined-1')
         self.assertEqual(b'file2-id', base_tree.path2id('subtree/file2'))
@@ -90,16 +87,15 @@ class TestWorkingTree(tests.TestCaseWithTransport):
                              base_tree.get_file_text('subtree/file2'))
         self.assertEqualDiff(file2_contents,
                              basis_tree.get_file_text('subtree/file2'))
-        self.assertEqual('subtree-1',
+        self.assertEqual(b'subtree-1',
                          basis_tree.get_file_revision('subtree/file2'))
-        self.assertEqual('combined-1',
-                         basis_tree.get_file_revision('subtree', sub_root_id))
+        self.assertEqual(b'combined-1',
+                         basis_tree.get_file_revision('subtree'))
 
     def test_subsume_failure(self):
         base_tree, sub_tree = self.make_trees()
         if base_tree.get_root_id() == sub_tree.get_root_id():
             raise tests.TestSkipped('This test requires unique roots')
-        sub_root_id = sub_tree.get_root_id()
         self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           base_tree)
         self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,

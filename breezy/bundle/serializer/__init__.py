@@ -24,7 +24,7 @@ import re
 
 from ... import (
     errors,
-    pyutils,
+    registry,
     )
 from ...diff import internal_diff
 from ...revision import NULL_REVISION
@@ -43,12 +43,12 @@ CHANGESET_OLD_HEADER_RE = re.compile(
     br'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 
 
-_serializers = {}
+serializer_registry = registry.Registry()
 
-v4_string = '4'
 
 def _get_bundle_header(version):
-    return '%s%s\n' % (BUNDLE_HEADER, version)
+    return b''.join([BUNDLE_HEADER, version.encode('ascii'), b'\n'])
+
 
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')
@@ -64,7 +64,7 @@ def read_bundle(f):
     for line in f:
         m = BUNDLE_HEADER_RE.match(line)
         if m:
-            if m.group('lineending') != '':
+            if m.group('lineending') != b'':
                 raise errors.UnsupportedEOLMarker()
             version = m.group('version')
             break
@@ -75,26 +75,22 @@ def read_bundle(f):
         if m:
             version = m.group('version')
             raise errors.BundleNotSupported(version,
-                'old format bundles not supported')
+                                            'old format bundles not supported')
 
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
 
-    # Now we have a version, to figure out how to read the bundle
-    if version not in _serializers:
-        raise errors.BundleNotSupported(version,
-            'version not listed in known versions')
-
-    serializer = _serializers[version](version)
-
-    return serializer.read(f)
+    return get_serializer(version.decode('ascii')).read(f)
 
 
 def get_serializer(version):
     try:
-        return _serializers[version](version)
+        serializer = serializer_registry.get(version)
     except KeyError:
-        raise errors.BundleNotSupported(version, 'unknown bundle format')
+        raise errors.BundleNotSupported(version,
+                                        'unknown bundle format')
+
+    return serializer(version)
 
 
 def write(source, revision_ids, f, version=None, forced_bases={}):
@@ -119,6 +115,7 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
     :param base_revision_id: Revision assumed to be present in repositories
          applying the bundle.
     :param out: Output file.
+    :return: List of revision ids written
     """
     with repository.lock_read():
         return get_serializer(format).write_bundle(repository, revision_id,
@@ -130,6 +127,7 @@ class BundleSerializer(object):
 
     Common functionality should be included here.
     """
+
     def __init__(self, version):
         self.version = version
 
@@ -149,51 +147,9 @@ class BundleSerializer(object):
         :param base: The most recent of ancestor of the revision that does not
             need to be included in the bundle
         :param fileobj: The file to output to
+        :return: List of revision ids written
         """
         raise NotImplementedError
-
-    def _write_bundle(self, repository, revision_id, base_revision_id, out):
-        """Helper function for translating write_bundle to write"""
-        forced_bases = {revision_id:base_revision_id}
-        if base_revision_id is NULL_REVISION:
-            base_revision_id = None
-        graph = repository.get_graph()
-        revision_ids = graph.find_unique_ancestors(revision_id,
-            [base_revision_id])
-        revision_ids = list(repository.get_graph().iter_topo_order(
-            revision_ids))
-        revision_ids.reverse()
-        self.write(repository, revision_ids, forced_bases, out)
-        return revision_ids
-
-
-def register(version, klass, overwrite=False):
-    """Register a BundleSerializer version.
-
-    :param version: The version associated with this format
-    :param klass: The class to instantiate, which must take a version argument
-    """
-    global _serializers
-    if overwrite:
-        _serializers[version] = klass
-        return
-
-    if version not in _serializers:
-        _serializers[version] = klass
-
-
-def register_lazy(version, module, classname, overwrite=False):
-    """Register lazy-loaded bundle serializer.
-
-    :param version: The version associated with this reader
-    :param module: String indicating what module should be loaded
-    :param classname: Name of the class that will be instantiated
-    :param overwrite: Should this version override a default
-    """
-    def _loader(version):
-        klass = pyutils.get_named_object(module, classname)
-        return klass(version)
-    register(version, _loader, overwrite=overwrite)
 
 
 def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
@@ -202,11 +158,13 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
                   allow_binary=True)
     temp.seek(0)
     base64.encode(temp, to_file)
-    to_file.write('\n')
+    to_file.write(b'\n')
 
-register_lazy('0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
-register_lazy('0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')
-register_lazy(v4_string, 'breezy.bundle.serializer.v4',
-              'BundleSerializerV4')
-register_lazy(None, 'breezy.bundle.serializer.v4', 'BundleSerializerV4')
 
+serializer_registry.register_lazy(
+    '0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
+serializer_registry.register_lazy(
+    '0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')
+serializer_registry.register_lazy('4', 'breezy.bundle.serializer.v4',
+                                  'BundleSerializerV4')
+serializer_registry.default_key = '4'

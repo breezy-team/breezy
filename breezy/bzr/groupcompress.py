@@ -27,7 +27,6 @@ from breezy import (
     annotate,
     config,
     debug,
-    graph as _mod_graph,
     osutils,
     static_tuple,
     trace,
@@ -66,8 +65,9 @@ from .versionedfile import (
 # groupcompress blocks.
 BATCH_SIZE = 2**16
 
-# osutils.sha_string('')
+# osutils.sha_string(b'')
 _null_sha1 = b'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+
 
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
@@ -111,7 +111,8 @@ class DecompressCorruption(errors.BzrError):
 # The max zlib window size is 32kB, so if we set 'max_size' output of the
 # decompressor to the requested bytes + 32kB, then we should guarantee
 # num_bytes coming out.
-_ZLIB_DECOMP_WINDOW = 32*1024
+_ZLIB_DECOMP_WINDOW = 32 * 1024
+
 
 class GroupCompressBlock(object):
     """An object which maintains the internal structure of the compressed data.
@@ -290,11 +291,11 @@ class GroupCompressBlock(object):
                                  % (c,))
             type = 'delta'
         content_len, len_len = decode_base128_int(
-                            self._content[start + 1:start + 6])
+            self._content[start + 1:start + 6])
         content_start = start + 1 + len_len
         if end != content_start + content_len:
             raise ValueError('end != len according to field header'
-                ' %s != %s' % (end, content_start + content_len))
+                             ' %s != %s' % (end, content_start + content_len))
         if c == b'f':
             return self._content[content_start:end]
         # Must be type delta as checked above
@@ -343,7 +344,7 @@ class GroupCompressBlock(object):
         header = self.GCB_HEADER
         chunks = [b'%s%d\n%d\n'
                   % (header, self._z_content_length, self._content_length),
-                 ]
+                  ]
         chunks.extend(self._z_content_chunks)
         total_len = sum(map(len, chunks))
         return total_len, chunks
@@ -372,19 +373,19 @@ class GroupCompressBlock(object):
             if kind not in (b'f', b'd'):
                 raise ValueError('invalid kind character: %r' % (kind,))
             content_len, len_len = decode_base128_int(
-                                self._content[pos:pos + 5])
+                self._content[pos:pos + 5])
             pos += len_len
             if content_len + pos > self._content_length:
                 raise ValueError('invalid content_len %d for record @ pos %d'
                                  % (content_len, pos - len_len - 1))
-            if kind == b'f': # Fulltext
+            if kind == b'f':  # Fulltext
                 if include_text:
-                    text = self._content[pos:pos+content_len]
+                    text = self._content[pos:pos + content_len]
                     result.append((b'f', content_len, text))
                 else:
                     result.append((b'f', content_len))
-            elif kind == b'd': # Delta
-                delta_content = self._content[pos:pos+content_len]
+            elif kind == b'd':  # Delta
+                delta_content = self._content[pos:pos + content_len]
                 delta_info = []
                 # The first entry in a delta is the decompressed length
                 decomp_len, delta_pos = decode_base128_int(delta_content)
@@ -393,19 +394,19 @@ class GroupCompressBlock(object):
                 while delta_pos < content_len:
                     c = indexbytes(delta_content, delta_pos)
                     delta_pos += 1
-                    if c & 0x80: # Copy
+                    if c & 0x80:  # Copy
                         (offset, length,
                          delta_pos) = decode_copy_instruction(delta_content, c,
                                                               delta_pos)
                         if include_text:
-                            text = self._content[offset:offset+length]
+                            text = self._content[offset:offset + length]
                             delta_info.append((b'c', offset, length, text))
                         else:
                             delta_info.append((b'c', offset, length))
                         measured_len += length
-                    else: # Insert
+                    else:  # Insert
                         if include_text:
-                            txt = delta_content[delta_pos:delta_pos+c]
+                            txt = delta_content[delta_pos:delta_pos + c]
                         else:
                             txt = b''
                         delta_info.append((b'i', c, txt))
@@ -456,7 +457,7 @@ class _LazyGroupCompressFactory(object):
 
     def __repr__(self):
         return '%s(%s, first=%s)' % (self.__class__.__name__,
-            self.key, self._first)
+                                     self.key, self._first)
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
@@ -490,13 +491,13 @@ class _LazyGroupCompressFactory(object):
 class _LazyGroupContentManager(object):
     """This manages a group of _LazyGroupCompressFactory objects."""
 
-    _max_cut_fraction = 0.75 # We allow a block to be trimmed to 75% of
-                             # current size, and still be considered
-                             # resuable
-    _full_block_size = 4*1024*1024
-    _full_mixed_block_size = 2*1024*1024
-    _full_enough_block_size = 3*1024*1024 # size at which we won't repack
-    _full_enough_mixed_block_size = 2*768*1024 # 1.5MB
+    _max_cut_fraction = 0.75  # We allow a block to be trimmed to 75% of
+    # current size, and still be considered
+    # resuable
+    _full_block_size = 4 * 1024 * 1024
+    _full_mixed_block_size = 2 * 1024 * 1024
+    _full_enough_block_size = 3 * 1024 * 1024  # size at which we won't repack
+    _full_enough_mixed_block_size = 2 * 768 * 1024  # 1.5MB
 
     def __init__(self, block, get_compressor_settings=None):
         self._block = block
@@ -525,7 +526,7 @@ class _LazyGroupContentManager(object):
             first = False
         # Note that this creates a reference cycle....
         factory = _LazyGroupCompressFactory(key, parents, self,
-            start, end, first=first)
+                                            start, end, first=first)
         # max() works here, but as a function call, doing a compare seems to be
         # significantly faster, timeit says 250ms for max() and 100ms for the
         # comparison
@@ -789,15 +790,15 @@ class _LazyGroupContentManager(object):
         for start in range(0, len(header_lines), 4):
             # intern()?
             key = tuple(header_lines[start].split(b'\x00'))
-            parents_line = header_lines[start+1]
+            parents_line = header_lines[start + 1]
             if parents_line == b'None:':
                 parents = None
             else:
                 parents = tuple([tuple(segment.split(b'\x00'))
                                  for segment in parents_line.split(b'\t')
-                                  if segment])
-            start_offset = int(header_lines[start+2])
-            end_offset = int(header_lines[start+3])
+                                 if segment])
+            start_offset = int(header_lines[start + 2])
+            end_offset = int(header_lines[start + 3])
             result.add_factory(key, parents, start_offset, end_offset)
         return result
 
@@ -818,7 +819,7 @@ class _CommonGroupCompressor(object):
         self.endpoint = 0
         self.input_bytes = 0
         self.labels_deltas = {}
-        self._delta_index = None # Set by the children
+        self._delta_index = None  # Set by the children
         self._block = GroupCompressBlock()
         if settings is None:
             self._settings = {}
@@ -830,7 +831,7 @@ class _CommonGroupCompressor(object):
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
-            element is 'None' it is replaced with the sha1 of the text -
+            element is b'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
         :param bytes: The bytes to be compressed
         :param expected_sha: If non-None, the sha the lines are believed to
@@ -846,7 +847,7 @@ class _CommonGroupCompressor(object):
 
         :seealso VersionedFiles.add_lines:
         """
-        if not bytes: # empty, like a dir entry, etc
+        if not bytes:  # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
                 raise errors.ExistingContent()
             return _null_sha1, 0, 0, 'fulltext'
@@ -889,14 +890,15 @@ class _CommonGroupCompressor(object):
         :param key: The key to extract.
         :return: An iterable over bytes and the sha1.
         """
-        (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
+        (start_byte, start_chunk, end_byte,
+         end_chunk) = self.labels_deltas[key]
         delta_chunks = self.chunks[start_chunk:end_chunk]
         stored_bytes = b''.join(delta_chunks)
         kind = stored_bytes[:1]
         if kind == b'f':
             fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
             data_len = fulltext_len + 1 + offset
-            if  data_len != len(stored_bytes):
+            if data_len != len(stored_bytes):
                 raise ValueError('Index claimed fulltext len, but stored bytes'
                                  ' claim %s != %s'
                                  % (len(stored_bytes), data_len))
@@ -1023,8 +1025,8 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         # new_chunks = ['label:%s\nsha1:%s\n' % (label, sha1)]
         if self._delta_index._source_offset != self.endpoint:
             raise AssertionError('_source_offset != endpoint'
-                ' somehow the DeltaIndex got out of sync with'
-                ' the output lines')
+                                 ' somehow the DeltaIndex got out of sync with'
+                                 ' the output lines')
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
             type = 'fulltext'
@@ -1049,8 +1051,8 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                    self.endpoint, chunk_end)
         if not self._delta_index._source_offset == self.endpoint:
             raise AssertionError('the delta index is out of sync'
-                'with the output lines %s != %s'
-                % (self._delta_index._source_offset, self.endpoint))
+                                 'with the output lines %s != %s'
+                                 % (self._delta_index._source_offset, self.endpoint))
         return start, self.endpoint, type
 
     def _output_chunks(self, new_chunks):
@@ -1081,13 +1083,13 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         if graph:
             ref_length = 1
         graph_index = BTreeBuilder(reference_lists=ref_length,
-            key_elements=keylength)
+                                   key_elements=keylength)
         stream = transport.open_write_stream('newpack')
         writer = pack.ContainerWriter(stream.write)
         writer.begin()
-        index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
-            add_callback=graph_index.add_nodes,
-            inconsistency_fatal=inconsistency_fatal)
+        index = _GCGraphIndex(graph_index, lambda: True, parents=parents,
+                              add_callback=graph_index.add_nodes,
+                              inconsistency_fatal=inconsistency_fatal)
         access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
@@ -1199,7 +1201,7 @@ class _BatchingBlockFetcher(object):
                 else:
                     block = self.batch_memos[read_memo]
                 self.manager = _LazyGroupContentManager(block,
-                    get_compressor_settings=self._get_compressor_settings)
+                                                        get_compressor_settings=self._get_compressor_settings)
                 self.last_read_memo = read_memo
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
@@ -1225,7 +1227,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     # gives 100% sampling of a 1MB file.
     _DEFAULT_MAX_BYTES_TO_INDEX = 1024 * 1024
     _DEFAULT_COMPRESSOR_SETTINGS = {'max_bytes_to_index':
-                                     _DEFAULT_MAX_BYTES_TO_INDEX}
+                                    _DEFAULT_MAX_BYTES_TO_INDEX}
 
     def __init__(self, index, access, delta=True, _unadded_refs=None,
                  _group_cache=None):
@@ -1244,7 +1246,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             _unadded_refs = {}
         self._unadded_refs = _unadded_refs
         if _group_cache is None:
-            _group_cache = LRUSizeCache(max_size=50*1024*1024)
+            _group_cache = LRUSizeCache(max_size=50 * 1024 * 1024)
         self._group_cache = _group_cache
         self._immediate_fallback_vfs = []
         self._max_bytes_to_index = None
@@ -1252,12 +1254,13 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         return GroupCompressVersionedFiles(self._index, self._access,
-            self._delta, _unadded_refs=dict(self._unadded_refs),
-            _group_cache=self._group_cache)
+                                           self._delta, _unadded_refs=dict(
+                                               self._unadded_refs),
+                                           _group_cache=self._group_cache)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
-        left_matching_blocks=None, nostore_sha=None, random_id=False,
-        check_content=True):
+                  left_matching_blocks=None, nostore_sha=None, random_id=False,
+                  check_content=True):
         """Add a text to the store.
 
         :param key: The key tuple of the text to add.
@@ -1447,7 +1450,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if not keys:
             return
         if (not self._index.has_graph
-            and ordering in ('topological', 'groupcompress')):
+                and ordering in ('topological', 'groupcompress')):
             # Cannot topological order when no graph has been stored.
             # but we allow 'as-requested' or 'unordered'
             ordering = 'unordered'
@@ -1457,7 +1460,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             try:
                 keys = set(remaining_keys)
                 for content_factory in self._get_remaining_record_stream(keys,
-                        orig_keys, ordering, include_delta_closure):
+                                                                         orig_keys, ordering, include_delta_closure):
                     remaining_keys.discard(content_factory.key)
                     yield content_factory
                 return
@@ -1527,7 +1530,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 source = self
             elif key in key_to_source_map:
                 source = key_to_source_map[key]
-            else: # absent
+            else:  # absent
                 continue
             if source is not current_source:
                 source_keys.append((source, []))
@@ -1574,7 +1577,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
-                viewitems(locations))
+                              viewitems(locations))
             for key in unadded_keys:
                 parent_map[key] = self._unadded_refs[key]
             parent_map.update(fallback_parent_map)
@@ -1582,12 +1585,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                                                         key_to_source_map)
         elif ordering == 'as-requested':
             source_keys = self._get_as_requested_source_keys(orig_keys,
-                locations, unadded_keys, key_to_source_map)
+                                                             locations, unadded_keys, key_to_source_map)
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance
             source_keys = self._get_io_ordered_source_keys(locations,
-                unadded_keys, source_result)
+                                                           unadded_keys, source_result)
         for key in missing:
             yield AbsentContentFactory(key)
         # Batch up as many keys as we can until either:
@@ -1595,7 +1598,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         #  - we run out of keys, or
         #  - the total bytes to retrieve for this batch > BATCH_SIZE
         batcher = _BatchingBlockFetcher(self, locations,
-            get_compressor_settings=self._get_compressor_settings)
+                                        get_compressor_settings=self._get_compressor_settings)
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
@@ -1625,7 +1628,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         """See VersionedFiles.get_sha1s()."""
         result = {}
         for record in self.get_record_stream(keys, 'unordered', True):
-            if record.sha1 != None:
+            if record.sha1 is not None:
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
@@ -1689,6 +1692,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :seealso add_lines:
         """
         adapters = {}
+
         def get_adapter(adapter_key):
             try:
                 return adapters[adapter_key]
@@ -1702,6 +1706,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         self._compressor = self._make_group_compressor()
         self._unadded_refs = {}
         keys_to_add = []
+
         def flush():
             bytes_len, chunks = self._compressor.flush().to_chunks()
             self._compressor = self._make_group_compressor()
@@ -1741,7 +1746,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if random_id:
                 if record.key in inserted_keys:
                     trace.note(gettext('Insert claimed random_id=True,'
-                               ' but then inserted %r two times'), record.key)
+                                       ' but then inserted %r two times'), record.key)
                     continue
                 inserted_keys.add(record.key)
             if reuse_blocks:
@@ -1773,11 +1778,11 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                         raise AssertionError('No insert_manager set')
                     if insert_manager is not record._manager:
                         raise AssertionError('insert_manager does not match'
-                            ' the current record, we cannot be positive'
-                            ' that the appropriate content was inserted.'
-                            )
+                                             ' the current record, we cannot be positive'
+                                             ' that the appropriate content was inserted.'
+                                             )
                     value = b"%d %d %d %d" % (block_start, block_length,
-                                             record._start, record._end)
+                                              record._start, record._end)
                     nodes = [(record.key, value, (record.parents,))]
                     # TODO: Consider buffering up many nodes to be added, not
                     #       sure how much overhead this has, but we're seeing
@@ -1806,14 +1811,14 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # delta_ratio = float(len(bytes)) / (end_point - start_point)
             # Check if we want to continue to include that text
             if (prefix == max_fulltext_prefix
-                and end_point < 2 * max_fulltext_len):
+                    and end_point < 2 * max_fulltext_len):
                 # As long as we are on the same file_id, we will fill at least
                 # 2 * max_fulltext_len
                 start_new_block = False
-            elif end_point > 4*1024*1024:
+            elif end_point > 4 * 1024 * 1024:
                 start_new_block = True
             elif (prefix is not None and prefix != last_prefix
-                  and end_point > 2*1024*1024):
+                  and end_point > 2 * 1024 * 1024):
                 start_new_block = True
             else:
                 start_new_block = False
@@ -1870,7 +1875,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         # but we need to setup a list of records to visit.
         # we need key, position, length
         for key_idx, record in enumerate(self.get_record_stream(keys,
-            'unordered', True)):
+                                                                'unordered', True)):
             # XXX: todo - optimise to use less than full texts.
             key = record.key
             if pb is not None:
@@ -1914,7 +1919,7 @@ class _GCBuildDetails(object):
 
     def __repr__(self):
         return '%s(%s, %s)' % (self.__class__.__name__,
-            self.index_memo, self._parents)
+                               self.index_memo, self._parents)
 
     @property
     def index_memo(self):
@@ -1930,14 +1935,14 @@ class _GCBuildDetails(object):
         if offset == 0:
             return self.index_memo
         elif offset == 1:
-            return self.compression_parent # Always None
+            return self.compression_parent  # Always None
         elif offset == 2:
             return self._parents
         elif offset == 3:
             return self.record_details
         else:
             raise IndexError('offset out of range')
-            
+
     def __len__(self):
         return 4
 
@@ -1946,8 +1951,8 @@ class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
     def __init__(self, graph_index, is_locked, parents=True,
-        add_callback=None, track_external_parent_refs=False,
-        inconsistency_fatal=True, track_new_keys=False):
+                 add_callback=None, track_external_parent_refs=False,
+                 inconsistency_fatal=True, track_new_keys=False):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of breezy.index.GraphIndex.
@@ -2007,8 +2012,8 @@ class _GCGraphIndex(object):
                     for ref in refs:
                         if ref:
                             raise knit.KnitCorrupt(self,
-                                "attempt to add node with parents "
-                                "in parentless index.")
+                                                   "attempt to add node with parents "
+                                                   "in parentless index.")
                     refs = ()
                     changed = True
             keys[key] = (value, refs)
@@ -2023,8 +2028,8 @@ class _GCGraphIndex(object):
                     details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
                         raise knit.KnitCorrupt(self, "inconsistent details"
-                                                 " in add_records: %s" %
-                                                 details)
+                                               " in add_records: %s" %
+                                               details)
                     else:
                         trace.warning("inconsistent details in skipped"
                                       " record: %s", details)
@@ -2213,4 +2218,3 @@ try:
 except ImportError as e:
     osutils.failed_to_load_extension(e)
     GroupCompressor = PythonGroupCompressor
-

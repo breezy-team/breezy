@@ -50,7 +50,6 @@ from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
-    VersionedFileRootCommitBuilder,
     )
 
 
@@ -122,8 +121,9 @@ class KnitRepository(MetaDirVersionedFileRepository):
     _serializer = None
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-        _serializer):
-        super(KnitRepository, self).__init__(_format, a_controldir, control_files)
+                 _serializer):
+        super(KnitRepository, self).__init__(
+            _format, a_controldir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
@@ -178,11 +178,11 @@ class KnitRepository(MetaDirVersionedFileRepository):
 
     def _temp_inventories(self):
         result = self._format._get_inventories(self._transport, self,
-            'inventory.new')
+                                               'inventory.new')
         # Reconciling when the output has no revisions would result in no
         # writes - but we want to ensure there is an inventory for
         # compatibility with older clients that don't lazy-load.
-        result.get_parent_map([('A',)])
+        result.get_parent_map([(b'A',)])
         return result
 
     def get_revision(self, revision_id):
@@ -206,11 +206,10 @@ class KnitRepository(MetaDirVersionedFileRepository):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from breezy.reconcile import KnitReconciler
+        from .reconcile import KnitReconciler
         with self.lock_write():
             reconciler = KnitReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+            return reconciler.reconcile()
 
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
@@ -239,6 +238,7 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     _commit_builder_class = None
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -259,34 +259,34 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         index = _mod_knit._KndxIndex(repo_transport, mapper,
-            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+                                     repo.get_transaction, repo.is_write_locked, repo.is_locked)
         access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
         return _mod_knit.KnitVersionedFiles(index, access, annotated=False)
 
     def _get_revisions(self, repo_transport, repo):
         mapper = versionedfile.ConstantMapper('revisions')
         index = _mod_knit._KndxIndex(repo_transport, mapper,
-            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+                                     repo.get_transaction, repo.is_write_locked, repo.is_locked)
         access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
         return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=0,
-            annotated=False)
+                                            annotated=False)
 
     def _get_signatures(self, repo_transport, repo):
         mapper = versionedfile.ConstantMapper('signatures')
         index = _mod_knit._KndxIndex(repo_transport, mapper,
-            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+                                     repo.get_transaction, repo.is_write_locked, repo.is_locked)
         access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
         return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=0,
-            annotated=False)
+                                            annotated=False)
 
     def _get_texts(self, repo_transport, repo):
         mapper = versionedfile.HashEscapedPrefixMapper()
         base_transport = repo_transport.clone('knits')
         index = _mod_knit._KndxIndex(base_transport, mapper,
-            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+                                     repo.get_transaction, repo.is_write_locked, repo.is_locked)
         access = _mod_knit._KnitKeyAccess(base_transport, mapper)
         return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=200,
-            annotated=True)
+                                            annotated=True)
 
     def initialize(self, a_controldir, shared=False):
         """Create a knit format 1 repository.
@@ -301,18 +301,19 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         files = []
         utf8_files = [('format', self.get_format_string())]
 
-        self._upload_blank_content(a_controldir, dirs, files, utf8_files, shared)
+        self._upload_blank_content(
+            a_controldir, dirs, files, utf8_files, shared)
         repo_transport = a_controldir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+                                                     'lock', lockdir.LockDir)
         transaction = transactions.WriteTransaction()
         result = self.open(a_controldir=a_controldir, _found=True)
         result.lock_write()
         # the revision id here is irrelevant: it will not be stored, and cannot
         # already exist, we do this to create files on disk for older clients.
-        result.inventories.get_parent_map([('A',)])
-        result.revisions.get_parent_map([('A',)])
-        result.signatures.get_parent_map([('A',)])
+        result.inventories.get_parent_map([(b'A',)])
+        result.revisions.get_parent_map([(b'A',)])
+        result.signatures.get_parent_map([(b'A',)])
         result.unlock()
         self._run_post_repo_init_hooks(result, a_controldir, shared)
         return result
@@ -331,12 +332,12 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
         else:
             repo_transport = a_controldir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
-                                'lock', lockdir.LockDir)
+                                                     'lock', lockdir.LockDir)
         repo = self.repository_class(_format=self,
-                              a_controldir=a_controldir,
-                              control_files=control_files,
-                              _commit_builder_class=self._commit_builder_class,
-                              _serializer=self._serializer)
+                                     a_controldir=a_controldir,
+                                     control_files=control_files,
+                                     _commit_builder_class=self._commit_builder_class,
+                                     _serializer=self._serializer)
         repo.revisions = self._get_revisions(repo_transport, repo)
         repo.signatures = self._get_signatures(repo_transport, repo)
         repo.inventories = self._get_inventories(repo_transport, repo)
@@ -364,6 +365,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     repository_class = KnitRepository
     _commit_builder_class = VersionedFileCommitBuilder
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -398,10 +400,11 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = VersionedFileRootCommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
+
     @property
     def _serializer(self):
         return xml7.serializer_v7
@@ -412,7 +415,8 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(
+        _get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -441,9 +445,10 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = VersionedFileRootCommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
+
     @property
     def _serializer(self):
         return xml6.serializer_v6
@@ -454,7 +459,8 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(
+        _get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -482,15 +488,15 @@ class InterKnitRepo(InterSameDataRepository):
         overly general.
         """
         try:
-            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
-                isinstance(target._format, RepositoryFormatKnit))
+            are_knits = (isinstance(source._format, RepositoryFormatKnit)
+                         and isinstance(target._format, RepositoryFormatKnit))
         except AttributeError:
             return False
         return are_knits and InterRepository._same_model(source, target)
 
     def search_missing_revision_ids(self,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
+                                    find_ghosts=True, revision_ids=None, if_present_ids=None,
+                                    limit=None):
         """See InterRepository.search_missing_revision_ids()."""
         with self.lock_read():
             source_ids_set = self._present_source_revisions_for(
@@ -500,10 +506,12 @@ class InterKnitRepo(InterSameDataRepository):
             # have in target, but don't try to check for existence where we know
             # we do not have a revision as that would be pointless.
             target_ids = set(self.target.all_revision_ids())
-            possibly_present_revisions = target_ids.intersection(source_ids_set)
+            possibly_present_revisions = target_ids.intersection(
+                source_ids_set)
             actually_present_revisions = set(
                 self.target._eliminate_revisions_not_present(possibly_present_revisions))
-            required_revisions = source_ids_set.difference(actually_present_revisions)
+            required_revisions = source_ids_set.difference(
+                actually_present_revisions)
             if revision_ids is not None:
                 # we used get_ancestry to determine source_ids then we are assured all
                 # revisions referenced are present as they are installed in topological order.

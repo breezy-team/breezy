@@ -33,8 +33,8 @@ _translations = None
 
 
 def gettext(message):
-    """Translate message. 
-    
+    """Translate message.
+
     :returns: translated message as unicode.
     """
     install()
@@ -99,7 +99,7 @@ def install(lang=None):
 
 def install_translations(lang=None, domain='brz', locale_base=None):
     """Create a gettext translation object.
-    
+
     :param lang: language to install.
     :param domain: translation domain to install.
     :param locale_base: plugins can specify their own directory.
@@ -113,10 +113,10 @@ def install_translations(lang=None, domain='brz', locale_base=None):
     else:
         languages = None
     translation = _gettext.translation(
-            domain,
-            localedir=_get_locale_dir(locale_base),
-            languages=languages,
-            fallback=True)
+        domain,
+        localedir=_get_locale_dir(locale_base),
+        languages=languages,
+        fallback=True)
     return translation
 
 
@@ -145,6 +145,7 @@ def _get_locale_dir(base):
         decode_path = str
     else:
         fs_enc = sys.getfilesystemencoding()
+
         def decode_path(path):
             return path.decode(fs_enc)
     if getattr(sys, 'frozen', False):
@@ -208,9 +209,8 @@ def load_plugin_translations(domain):
 
     :param domain: Gettext domain name (usually 'brz-PLUGINNAME')
     """
-    locale_base = os.path.dirname(
-        unicode(__file__, sys.getfilesystemencoding()))
+    locale_base = os.path.dirname(__file__)
     translation = install_translations(domain=domain,
-        locale_base=locale_base)
+                                       locale_base=locale_base)
     add_fallback(translation)
     return translation

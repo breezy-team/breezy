@@ -41,7 +41,7 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
                 rev = tree.branch.repository.get_revision(revid)
                 repo.texts.add_lines((inv.root.file_id, revid), [], [])
                 repo.add_revision(revid, rev, inv=inv)
-                repo.add_signature_text(revid, "text")
+                repo.add_signature_text(revid, b"text")
                 repo.commit_write_group()
             except:
                 repo.abort_write_group()
@@ -50,4 +50,4 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
             repo.unlock()
         repo.get_signature_text(revid)
         self.assertRaises(errors.NoSuchRevision, base.get_signature_text,
-            revid)
+                          revid)

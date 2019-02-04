@@ -68,16 +68,16 @@ class TestPush(tests.TestCaseWithTransport):
         # If there is no parent location set, :parent isn't mentioned.
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-                ('', 'brz: ERROR: No push location known or specified.\n'))
+                         ('', 'brz: ERROR: No push location known or specified.\n'))
 
         # If there is a parent location set, the error suggests :parent.
         tree_a.branch.set_parent(tree_b.branch.base)
         out = self.run_bzr('push', working_dir='a', retcode=3)
         self.assertEqual(out,
-            ('', 'brz: ERROR: No push location known or specified. '
-                'To push to the parent branch '
-                '(at %s), use \'brz push :parent\'.\n' %
-                urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
+                         ('', 'brz: ERROR: No push location known or specified. '
+                          'To push to the parent branch '
+                          '(at %s), use \'brz push :parent\'.\n' %
+                          urlutils.unescape_for_display(tree_b.branch.base, 'utf-8')))
 
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""
@@ -103,26 +103,26 @@ class TestPush(tests.TestCaseWithTransport):
         # test push for failure without push location set
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('', 'brz: ERROR: No push location known or specified.\n'))
+                         ('', 'brz: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
         self.run_bzr('push path/which/doesnt/exist',
                      working_dir='branch_a', retcode=3)
         out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEqual(
-                ('', 'brz: ERROR: No push location known or specified.\n'),
-                out)
+            ('', 'brz: ERROR: No push location known or specified.\n'),
+            out)
 
         # test implicit --remember when no push location set, push fails
         out = self.run_bzr('push ../branch_b',
                            working_dir='branch_a', retcode=3)
         self.assertEqual(out,
-                ('', 'brz: ERROR: These branches have diverged.  '
-                 'See "brz help diverged-branches" for more information.\n'))
+                         ('', 'brz: ERROR: These branches have diverged.  '
+                          'See "brz help diverged-branches" for more information.\n'))
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.controldir.open_branch()
         self.assertEqual(osutils.abspath(branch_a.get_push_location()),
-                          osutils.abspath(branch_b.controldir.root_transport.base))
+                         osutils.abspath(branch_b.controldir.root_transport.base))
 
         # test implicit --remember after resolving previous failure
         uncommit.uncommit(branch=branch_b, tree=tree_b)
@@ -143,7 +143,7 @@ class TestPush(tests.TestCaseWithTransport):
         # Refresh the branch as 'push' modified it
         branch_a = branch_a.controldir.open_branch()
         self.assertEqual(branch_a.get_push_location(),
-                          branch_c.controldir.root_transport.base)
+                         branch_c.controldir.root_transport.base)
 
     def test_push_without_tree(self):
         # brz push from a branch that does not have a checkout should work.
@@ -210,7 +210,7 @@ class TestPush(tests.TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('commit a-1', rev_id=b'a-1')
         f = open('repo/a/file', 'ab')
-        f.write('more stuff\n')
+        f.write(b'more stuff\n')
         f.close()
         tree_a.commit('commit a-2', rev_id=b'a-2')
 
@@ -219,34 +219,34 @@ class TestPush(tests.TestCaseWithTransport):
         tree_b.add('file')
         tree_b.commit('commit b-1', rev_id=b'b-1')
 
-        self.assertTrue(shared_repo.has_revision('a-1'))
-        self.assertTrue(shared_repo.has_revision('a-2'))
-        self.assertTrue(shared_repo.has_revision('b-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-1'))
+        self.assertTrue(shared_repo.has_revision(b'a-2'))
+        self.assertTrue(shared_repo.has_revision(b'b-1'))
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'push'
         self.run_bzr('push ../../push-b', working_dir='repo/b')
         pushed_tree = workingtree.WorkingTree.open('push-b')
         pushed_repo = pushed_tree.branch.repository
-        self.assertFalse(pushed_repo.has_revision('a-1'))
-        self.assertFalse(pushed_repo.has_revision('a-2'))
-        self.assertTrue(pushed_repo.has_revision('b-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-1'))
+        self.assertFalse(pushed_repo.has_revision(b'a-2'))
+        self.assertTrue(pushed_repo.has_revision(b'b-1'))
 
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
-        t.add('filename', 'funky-chars<>%&;"\'')
+        t.add('filename', b'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push -d tree new-tree')
 
     def test_push_dash_d(self):
         t = self.make_branch_and_tree('from')
         t.commit(allow_pointless=True,
-                message='first commit')
+                 message='first commit')
         self.run_bzr('push -d from to-one')
         self.assertPathExists('to-one')
         self.run_bzr('push -d %s %s'
-            % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
+                     % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.assertPathExists('to-two')
 
     def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
@@ -255,16 +255,17 @@ class TestPush(tests.TestCaseWithTransport):
         source = self.make_branch_builder('source')
         source.start_series()
         source.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A')
-        source.build_snapshot(['A'], [], revision_id=b'B')
-        source.build_snapshot(['A'], [], revision_id=b'C')
+        source.build_snapshot([b'A'], [], revision_id=b'B')
+        source.build_snapshot([b'A'], [], revision_id=b'C')
         source.finish_series()
         self.run_bzr('push target -d source')
         self.addCleanup(target_repo.lock_read().unlock)
         # We should have pushed 'C', but not 'B', since it isn't in the
         # ancestry
-        self.assertEqual([('A',), ('C',)], sorted(target_repo.revisions.keys()))
+        self.assertEqual([(b'A',), (b'C',)], sorted(
+            target_repo.revisions.keys()))
 
     def test_push_smart_non_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -289,7 +290,7 @@ class TestPush(tests.TestCaseWithTransport):
         local.commit(message='local commit')
         self.reset_smart_call_log()
         self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
-            self.get_url('public')], working_dir='local')
+                      self.get_url('public')], working_dir='local')
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -390,7 +391,7 @@ class TestPush(tests.TestCaseWithTransport):
 
         self.run_bzr_error(['Target directory ../target already exists',
                             'Supply --use-existing-dir',
-                           ],
+                            ],
                            'push ../target', working_dir='tree')
 
         self.run_bzr('push --use-existing-dir ../target',
@@ -439,22 +440,22 @@ class TestPush(tests.TestCaseWithTransport):
         a_controldir = self.make_controldir('dir')
 
         self.run_bzr_error(['At ../dir you have a valid .bzr control'],
-                'push ../dir',
-                working_dir='tree')
+                           'push ../dir',
+                           working_dir='tree')
 
     def test_push_with_revisionspec(self):
         """We should be able to push a revision older than the tip."""
         tree_from = self.make_branch_and_tree('from')
-        tree_from.commit("One.", rev_id="from-1")
-        tree_from.commit("Two.", rev_id="from-2")
+        tree_from.commit("One.", rev_id=b"from-1")
+        tree_from.commit("Two.", rev_id=b"from-2")
 
         self.run_bzr('push -r1 ../to', working_dir='from')
 
         tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision('from-1'))
-        self.assertFalse(repo_to.has_revision('from-2'))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertTrue(repo_to.has_revision(b'from-1'))
+        self.assertFalse(repo_to.has_revision(b'from-2'))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], b'from-1')
         self.assertFalse(
             tree_to.changes_from(tree_to.basis_tree()).has_changed())
 
@@ -466,11 +467,11 @@ class TestPush(tests.TestCaseWithTransport):
     def create_trunk_and_feature_branch(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='1.9')
+                                               format='1.9')
         trunk_tree.commit('mainline')
         # and a branch from it
         branch_tree = self.make_branch_and_tree('branch',
-            format='1.9')
+                                                format='1.9')
         branch_tree.pull(trunk_tree.branch)
         branch_tree.branch.set_parent(trunk_tree.branch.base)
         # with some work on it
@@ -490,12 +491,12 @@ class TestPush(tests.TestCaseWithTransport):
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # we publish branch_tree with a reference to the mainline.
         out, err = self.run_bzr(['push', '--stacked-on', trunk_tree.branch.base,
-            self.get_url('published')], working_dir='branch')
+                                 self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, err)
+                         trunk_tree.branch.base, err)
         self.assertPublished(branch_tree.last_revision(),
-            trunk_tree.branch.base)
+                             trunk_tree.branch.base)
 
     def test_push_new_branch_stacked_uses_parent_when_no_public_url(self):
         """When the parent has no public url the parent is used as-is."""
@@ -503,10 +504,10 @@ class TestPush(tests.TestCaseWithTransport):
         # now we do a stacked push, which should determine the public location
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
-            self.get_url('published')], working_dir='branch')
+                                 self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, err)
+                         trunk_tree.branch.base, err)
         self.assertPublished(branch_tree.last_revision(),
                              trunk_tree.branch.base)
 
@@ -523,10 +524,10 @@ class TestPush(tests.TestCaseWithTransport):
         # now we do a stacked push, which should determine the public location
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
-            self.get_url('published')], working_dir='branch')
+                                 self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_public_url, err)
+                         trunk_public_url, err)
         self.assertPublished(branch_tree.last_revision(), trunk_public_url)
 
     def test_push_new_branch_stacked_no_parent(self):
@@ -536,7 +537,7 @@ class TestPush(tests.TestCaseWithTransport):
         # cannot be determined.
         out, err = self.run_bzr_error(
             ['Could not determine branch to refer to\\.'], ['push', '--stacked',
-            self.get_url('published')], working_dir='branch')
+                                                            self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
         self.assertFalse(self.get_transport('published').has('.'))
 
@@ -576,13 +577,13 @@ class TestPush(tests.TestCaseWithTransport):
         builder = self.make_branch_builder('repo/local', format='pack-0.92')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', '')),
+            ('add', ('filename', b'f-id', 'file', b'content\n'))],
             revision_id=b'rev-1')
         builder.build_snapshot([b'rev-1'], [], revision_id=b'rev-2')
         builder.build_snapshot([b'rev-2'],
-            [('modify', ('filename', b'new-content\n'))],
-            revision_id=b'rev-3')
+                               [('modify', ('filename', b'new-content\n'))],
+                               revision_id=b'rev-3')
         builder.finish_series()
         branch = builder.get_branch()
         # Push rev-1 to "trunk", so that we can stack on it.
@@ -614,7 +615,7 @@ class TestPush(tests.TestCaseWithTransport):
     def test_push_from_subdir(self):
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
-        t.add('dir', 'dir/file')
+        t.add(['dir', 'dir/file'])
         t.commit('r1')
         out, err = self.run_bzr('push ../../pushloc', working_dir='tree/dir')
         self.assertEqual('', out)
@@ -623,17 +624,17 @@ class TestPush(tests.TestCaseWithTransport):
     def test_overwrite_tags(self):
         """--overwrite-tags only overwrites tags, not revisions."""
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['push', '-d', 'from', 'to'])
         self.assertEqual(out,
-            ('Conflicting tags:\n    mytag\n', 'No new revisions to push.\n'))
+                         ('Conflicting tags:\n    mytag\n', 'No new revisions to push.\n'))
         out = self.run_bzr(['push', '-d', 'from', '--overwrite-tags', 'to'])
         self.assertEqual(out, ('', '1 tag updated.\n'))
         self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
-                          'somerevid')
+                         b'somerevid')
         self.assertEqual(to_tree.branch.last_revision(), revid1)
 
 
@@ -740,10 +741,9 @@ class TestPushStrictMixin(object):
     _default_command = ['push', '../to']
     _default_wd = 'local'
     _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \\(See brz status\\)\\.',]
+                       'changes \\(See brz status\\)\\.', ]
     _default_additional_error = 'Use --no-strict to force the push.\n'
     _default_additional_warning = 'Uncommitted changes will not be pushed.'
-
 
     def assertPushFails(self, args):
         out, err = self.run_bzr_error(self._default_errors,
@@ -770,7 +770,6 @@ class TestPushStrictMixin(object):
         repo_to = branch_to.repository
         self.assertTrue(repo_to.has_revision(revid_to_push))
         self.assertEqual(revid_to_push, branch_to.last_revision())
-
 
 
 class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
@@ -800,19 +799,19 @@ class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
 
 strict_push_change_scenarios = [
     ('uncommitted',
-        dict(_changes_type= '_uncommitted_changes')),
+        dict(_changes_type='_uncommitted_changes')),
     ('pending-merges',
-        dict(_changes_type= '_pending_merges')),
+        dict(_changes_type='_pending_merges')),
     ('out-of-sync-trees',
-        dict(_changes_type= '_out_of_sync_trees')),
+        dict(_changes_type='_out_of_sync_trees')),
     ]
 
 
 class TestPushStrictWithChanges(tests.TestCaseWithTransport,
                                 TestPushStrictMixin):
 
-    scenarios = strict_push_change_scenarios 
-    _changes_type = None # Set by load_tests
+    scenarios = strict_push_change_scenarios
+    _changes_type = None  # Set by load_tests
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
@@ -846,13 +845,13 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         # Exercise commands from the checkout directory
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
-                                " 'brz update'\\.",]
+                                " 'brz update'\\.", ]
 
     def test_push_default(self):
         self.assertPushSucceeds([], with_warning=True)
 
     def test_push_with_revision(self):
-        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push='added')
+        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push=b'added')
 
     def test_push_no_strict(self):
         self.assertPushSucceeds(['--no-strict'])
@@ -889,9 +888,9 @@ class TestPushForeign(tests.TestCaseWithTransport):
         builder = self.make_branch_builder(
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
         builder.build_snapshot(None,
-            [('add', ('', b'TREE_ROOT', 'directory', None)),
-             ('add', ('foo', b'fooid', 'file', 'bar'))],
-            revision_id=b'revid')
+                               [('add', ('', b'TREE_ROOT', 'directory', None)),
+                                ('add', ('foo', b'fooid', 'file', b'bar'))],
+                               revision_id=b'revid')
         return builder
 
     def test_no_roundtripping(self):
@@ -899,8 +898,10 @@ class TestPushForeign(tests.TestCaseWithTransport):
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("push -d dc dp", retcode=3)
         self.assertEqual("", output)
-        self.assertEqual(error, "brz: ERROR: It is not possible to losslessly"
-            " push to dummy. You may want to use dpush instead.\n")
+        self.assertEqual(
+            error,
+            "brz: ERROR: It is not possible to losslessly"
+            " push to dummy. You may want to use --lossy.\n")
 
 
 class TestPushOutput(script.TestCaseWithTransportAndScript):

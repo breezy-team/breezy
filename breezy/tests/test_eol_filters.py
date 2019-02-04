@@ -29,18 +29,18 @@ from . import TestCase
 
 
 # Sample files
-_sample_file1 = """hello\nworld\r\n"""
+_sample_file1 = b"""hello\nworld\r\n"""
 
 
 class TestEolFilters(TestCase):
 
     def test_to_lf(self):
         result = _to_lf_converter([_sample_file1])
-        self.assertEqual(["hello\nworld\n"], result)
+        self.assertEqual([b"hello\nworld\n"], result)
 
     def test_to_crlf(self):
         result = _to_crlf_converter([_sample_file1])
-        self.assertEqual(["hello\r\nworld\r\n"], result)
+        self.assertEqual([b"hello\r\nworld\r\n"], result)
 
 
 class TestEolRulesSpecifications(TestCase):
@@ -53,8 +53,8 @@ class TestEolRulesSpecifications(TestCase):
     def test_other_known_values(self):
         """These known eol values have corresponding filters."""
         known_values = ('lf', 'crlf', 'native',
-            'native-with-crlf-in-repo', 'lf-with-crlf-in-repo',
-            'crlf-with-crlf-in-repo')
+                        'native-with-crlf-in-repo', 'lf-with-crlf-in-repo',
+                        'crlf-with-crlf-in-repo')
         for value in known_values:
             prefs = (('eol', value),)
             self.assertNotEqual([], _get_filter_stack_for(prefs))
@@ -64,7 +64,7 @@ class TestEolRulesSpecifications(TestCase):
         Unknown eol values should raise an error.
         """
         prefs = (('eol', 'unknown-value'),)
-        self.assertRaises(errors.BzrError, _get_filter_stack_for,  prefs)
+        self.assertRaises(errors.BzrError, _get_filter_stack_for, prefs)
 
     def test_eol_missing_altogether_is_ok(self):
         """

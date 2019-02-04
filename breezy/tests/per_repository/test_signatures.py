@@ -23,8 +23,9 @@ from breezy import (
     urlutils,
     )
 
-from breezy.testament import Testament
+from breezy.bzr.testament import Testament
 from breezy.tests import per_repository
+
 
 class TestSignatures(per_repository.TestCaseWithRepository):
 
@@ -48,10 +49,10 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo,
-                         a).as_short_text() +
-                         '-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo,
+                                                   a).as_short_text() +
+                         b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
 
     def test_store_signature(self):
@@ -62,7 +63,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
             branch.repository.start_write_group()
             try:
                 branch.repository.store_revision_signature(
-                    gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+                    gpg.LoopbackGPGStrategy(None), b'FOO', b'A')
             except errors.NoSuchRevision:
                 branch.repository.abort_write_group()
                 raise tests.TestNotApplicable(
@@ -78,12 +79,12 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
-                          'A')
+                          b'A')
         if wt.branch.repository._format.supports_setting_revision_ids:
             wt.commit("base", rev_id=b'A', allow_pointless=True)
-            self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
-                             'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
-                             branch.repository.get_signature_text('A'))
+            self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                             b'FOO-----END PSEUDO-SIGNED CONTENT-----\n',
+                             branch.repository.get_signature_text(b'A'))
 
     def test_clone_preserves_signatures(self):
         wt = self.make_branch_and_tree('source')
@@ -94,7 +95,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
-        #FIXME: clone should work to urls,
+        # FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
         d2 = repo.controldir.clone(urlutils.local_path_to_url('target'))
@@ -118,9 +119,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo, a).as_short_text() +
-                         '-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo, a).as_short_text()
+                         + b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
             (gpg.SIGNATURE_VALID, None),
@@ -136,9 +137,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual('-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo, a).as_short_text() +
-                         '-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo, a).as_short_text()
+                         + b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
             [(a, gpg.SIGNATURE_VALID, None),
@@ -158,5 +159,5 @@ class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         self.assertRaises(errors.UnsupportedOperation,
-            repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
+                          repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()

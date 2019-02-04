@@ -16,14 +16,13 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from .. import (
     cache_utf8,
     lazy_regex,
     revision as _mod_revision,
     trace,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from .xml_serializer import (
     Element,
@@ -37,15 +36,16 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
+from ..sixish import unichr
 from ..errors import BzrError
 
 
 _xml_unescape_map = {
-    'apos':"'",
-    'quot':'"',
-    'amp':'&',
-    'lt':'<',
-    'gt':'>'
+    b'apos': b"'",
+    b'quot': b'"',
+    b'amp': b'&',
+    b'lt': b'<',
+    b'gt': b'>'
 }
 
 
@@ -54,12 +54,13 @@ def _unescaper(match, _map=_xml_unescape_map):
     try:
         return _map[code]
     except KeyError:
-        if not code.startswith('#'):
+        if not code.startswith(b'#'):
             raise
         return unichr(int(code[1:])).encode('utf8')
 
 
-_unescape_re = lazy_regex.lazy_compile('\\&([^;]*);')
+_unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
+
 
 def _unescape_xml(data):
     """Unescape predefined XML entities in a string of data."""
@@ -80,14 +81,14 @@ class Serializer_v8(XMLSerializer):
     # of the versionedfile, without doing XML parsing.
 
     supported_kinds = {'file', 'directory', 'symlink'}
-    format_num = '8'
+    format_num = b'8'
     revision_format_num = None
 
     # The search regex used by xml based repositories to determine what things
     # where changed in a single commit.
     _file_ids_altered_regex = lazy_regex.lazy_compile(
-        r'file_id="(?P<file_id>[^"]+)"'
-        r'.* revision="(?P<revision_id>[^"]+)"'
+        b'file_id="(?P<file_id>[^"]+)"'
+        b'.* revision="(?P<revision_id>[^"]+)"'
         )
 
     def _check_revisions(self, inv):
@@ -157,12 +158,12 @@ class Serializer_v8(XMLSerializer):
         append = output.append
         self._append_inventory_root(append, inv)
         serialize_inventory_flat(inv, append,
-            self.root_id, self.supported_kinds, working)
+                                 self.root_id, self.supported_kinds, working)
         if f is not None:
             f.writelines(output)
         # Just to keep the cache from growing without bounds
         # but we may actually not want to do clear the cache
-        #_clear_cache()
+        # _clear_cache()
         return output
 
     def _append_inventory_root(self, append, inv):
@@ -187,17 +188,15 @@ class Serializer_v8(XMLSerializer):
         # them.
         decode_utf8 = cache_utf8.decode
         revision_id = rev.revision_id
-        if isinstance(revision_id, str):
-            revision_id = decode_utf8(revision_id)
         format_num = self.format_num
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         root = Element('revision',
-                       committer = rev.committer,
-                       timestamp = '%.3f' % rev.timestamp,
-                       revision_id = revision_id,
-                       inventory_sha1 = rev.inventory_sha1,
-                       format=format_num,
+                       committer=rev.committer,
+                       timestamp='%.3f' % rev.timestamp,
+                       revision_id=decode_utf8(revision_id),
+                       inventory_sha1=rev.inventory_sha1.decode('ascii'),
+                       format=format_num.decode(),
                        )
         if rev.timezone is not None:
             root.set('timezone', str(rev.timezone))
@@ -212,9 +211,7 @@ class Serializer_v8(XMLSerializer):
                 _mod_revision.check_not_reserved_id(parent_id)
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                if isinstance(parent_id, str):
-                    parent_id = decode_utf8(parent_id)
-                p.set('revision_id', parent_id)
+                p.set('revision_id', decode_utf8(parent_id))
         if rev.properties:
             self._pack_revision_properties(rev, root)
         return root
@@ -231,13 +228,13 @@ class Serializer_v8(XMLSerializer):
     def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         # This is here because it's overridden by xml7
         return unpack_inventory_entry(elt, entry_cache,
-                return_from_cache)
+                                      return_from_cache)
 
     def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
                           return_from_cache=False):
         """Construct from XML Element"""
         inv = unpack_inventory_flat(elt, self.format_num, self._unpack_entry,
-            entry_cache, return_from_cache)
+                                    entry_cache, return_from_cache)
         self._check_cache_size(len(inv), entry_cache)
         return inv
 
@@ -248,14 +245,14 @@ class Serializer_v8(XMLSerializer):
         if self.revision_format_num is not None:
             format_num = self.revision_format_num
         if format is not None:
-            if format != format_num:
+            if format.encode() != format_num:
                 raise BzrError("invalid format version %r on revision"
-                                % format)
+                               % format)
         get_cached = get_utf8_or_ascii
-        rev = Revision(committer = elt.get('committer'),
-                       timestamp = float(elt.get('timestamp')),
-                       revision_id = get_cached(elt.get('revision_id')),
-                       inventory_sha1 = elt.get('inventory_sha1')
+        rev = Revision(committer=elt.get('committer'),
+                       timestamp=float(elt.get('timestamp')),
+                       revision_id=get_cached(elt.get('revision_id')),
+                       inventory_sha1=elt.get('inventory_sha1').encode('ascii')
                        )
         parents = elt.find('parents') or []
         for p in parents:
@@ -266,13 +263,13 @@ class Serializer_v8(XMLSerializer):
             rev.timezone = 0
         else:
             rev.timezone = int(v)
-        rev.message = elt.findtext('message') # text of <message>
+        rev.message = elt.findtext('message')  # text of <message>
         return rev
 
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""
         props_elt = elt.find('properties')
-        if not props_elt:
+        if props_elt is None:
             return
         for prop_elt in props_elt:
             if prop_elt.tag != 'property':

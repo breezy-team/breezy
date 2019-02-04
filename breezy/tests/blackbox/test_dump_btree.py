@@ -33,9 +33,12 @@ class TestDumpBtree(tests.TestCaseWithTransport):
     def create_sample_btree_index(self):
         builder = btree_index.BTreeBuilder(
             reference_lists=1, key_elements=2)
-        builder.add_node(('test', 'key1'), 'value', ((('ref', 'entry'),),))
-        builder.add_node(('test', 'key2'), 'value2', ((('ref', 'entry2'),),))
-        builder.add_node(('test2', 'key3'), 'value3', ((('ref', 'entry3'),),))
+        builder.add_node((b'test', b'key1'), b'value',
+                         (((b'ref', b'entry'),),))
+        builder.add_node((b'test', b'key2'), b'value2',
+                         (((b'ref', b'entry2'),),))
+        builder.add_node((b'test2', b'key3'), b'value3',
+                         (((b'ref', b'entry3'),),))
         out_f = builder.finish()
         try:
             self.build_tree_contents([('test.btree', out_f.read())])
@@ -86,7 +89,7 @@ class TestDumpBtree(tests.TestCaseWithTransport):
         # errors.
         builder = btree_index.BTreeBuilder(
             reference_lists=0, key_elements=2)
-        builder.add_node(('test', 'key1'), 'value')
+        builder.add_node((b'test', b'key1'), b'value')
         out_f = builder.finish()
         try:
             self.build_tree_contents([('test.btree', out_f.read())])
@@ -129,4 +132,3 @@ class TestDumpBtree(tests.TestCaseWithTransport):
             'Page 0\n'
             '(empty)\n',
             out)
-

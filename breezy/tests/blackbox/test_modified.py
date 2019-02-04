@@ -23,6 +23,7 @@ import os
 from breezy.branch import Branch
 from breezy.tests import TestCaseWithTransport
 
+
 class TestModified(TestCaseWithTransport):
 
     def test_modified(self):
@@ -31,7 +32,8 @@ class TestModified(TestCaseWithTransport):
 
     def test_modified_with_spaces(self):
         """Test that 'modified' command reports modified files with spaces in their names quoted"""
-        self._test_modified('a filename with spaces', '"a filename with spaces"')
+        self._test_modified('a filename with spaces',
+                            '"a filename with spaces"')
 
     def _test_modified(self, name, output):
 
@@ -48,7 +50,8 @@ class TestModified(TestCaseWithTransport):
         check_modified('')
 
         # with unknown file, still nothing modified
-        self.build_tree_contents([(name, b'contents of %s\n' % (name))])
+        self.build_tree_contents(
+            [(name, b'contents of %s\n' % (name.encode('utf-8')))])
         check_modified('')
 
         # after add, not modified
@@ -67,7 +70,7 @@ class TestModified(TestCaseWithTransport):
         check_modified(name + '\0', null=True)
 
         # now commit the file and it's no longer modified
-        tree.commit(message='modified %s' %(name))
+        tree.commit(message='modified %s' % (name))
         check_modified('')
 
     def test_modified_directory(self):

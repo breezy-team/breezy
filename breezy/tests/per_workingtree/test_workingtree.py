@@ -41,14 +41,14 @@ from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
 from ...osutils import pathjoin, getcwd, has_symlinks
 from ...sixish import (
-    BytesIO,
+    StringIO,
     )
 from .. import (
     features,
     TestSkipped,
     TestNotApplicable,
     )
-from .  import TestCaseWithWorkingTree
+from . import TestCaseWithWorkingTree
 from ...bzr.workingtree import (
     InventoryWorkingTree,
     )
@@ -72,7 +72,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             # if there is a working tree now, this is not supported.
             test_branch.controldir.open_workingtree()
             raise TestNotApplicable("only on trees that can be separate"
-                " from their branch.")
+                                    " from their branch.")
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
 
@@ -89,20 +89,21 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         files = list(tree.list_files())
         tree.unlock()
-        self.assertEqual(files.pop(0), ('dir', '?', 'directory', None, TreeDirectory()))
-        self.assertEqual(files.pop(0), ('file', '?', 'file', None, TreeFile()))
+        self.assertEqual(
+            files.pop(0), ('dir', '?', 'directory', TreeDirectory()))
+        self.assertEqual(files.pop(0), ('file', '?', 'file', TreeFile()))
         if has_symlinks():
-            self.assertEqual(files.pop(0), ('symlink', '?', 'symlink', None, TreeLink()))
+            self.assertEqual(
+                files.pop(0), ('symlink', '?', 'symlink', TreeLink()))
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'file', 'dir/file', 'dir/b',
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])
-        tree.lock_read()
-        files = [(path, kind) for (path, v, kind, file_id, entry)
-                               in tree.list_files()]
-        tree.unlock()
+        with tree.lock_read():
+            files = [(path, kind) for (path, v, kind, entry)
+                     in tree.list_files()]
         self.assertEqual([
             ('a', 'file'),
             ('dir', 'directory'),
@@ -113,8 +114,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             if tree.has_versioned_directories():
                 tree.add(['dir', 'zz_dir'])
-                files = [(path, kind) for (path, v, kind, file_id, entry)
-                                       in tree.list_files()]
+                files = [(path, kind) for (path, v, kind, entry)
+                         in tree.list_files()]
                 self.assertEqual([
                     ('a', 'file'),
                     ('dir', 'directory'),
@@ -128,8 +129,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     ], files)
             else:
                 tree.add(['dir/b'])
-                files = [(path, kind) for (path, v, kind, file_id, entry)
-                                       in tree.list_files()]
+                files = [(path, kind) for (path, v, kind, entry)
+                         in tree.list_files()]
                 self.assertEqual([
                     ('a', 'file'),
                     ('dir', 'directory'),
@@ -153,12 +154,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(1, len(result))
         if tree.has_versioned_directories():
             self.assertEqual(
-                    ('filename', 'V', 'directory', tree.path2id('filename')),
-                    result[0][:4])
+                ('filename', 'V', 'directory', tree.path2id('filename')),
+                (result[0][0], result[0][1], result[0][2],
+                    getattr(result[0][3], 'file_id', None)))
         else:
             self.assertEqual(
-                    ('filename', '?', 'directory', None),
-                    result[0][:4])
+                ('filename', '?', 'directory', None),
+                (result[0][0], result[0][1], result[0][2],
+                    getattr(result[0][3], 'file_id', None)))
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config
@@ -196,7 +199,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # can even be a url: finds '.' and relpath of 'foo'
         wt, relpath = WorkingTree.open_containing('./foo')
         wt, relpath = WorkingTree.open_containing(
-                    urlutils.local_path_to_url(getcwd() + '/foo'))
+            urlutils.local_path_to_url(getcwd() + '/foo'))
         self.assertEqual('foo', relpath)
         self.assertEqual(wt.basedir + '/', local_base)
 
@@ -223,38 +226,42 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
-        with file('hello.txt', 'w') as f: f.write('initial hello')
+        with open('hello.txt', 'w') as f:
+            f.write('initial hello')
 
         self.assertRaises(PathsNotVersionedError,
                           tree.revert, ['hello.txt'])
         tree.add(['hello.txt'])
         tree.commit('create initial hello.txt')
 
-        self.check_file_contents('hello.txt', 'initial hello')
-        with file('hello.txt', 'w') as f: f.write('new hello')
-        self.check_file_contents('hello.txt', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        with open('hello.txt', 'w') as f:
+            f.write('new hello')
+        self.check_file_contents('hello.txt', b'new hello')
 
         # revert file modified since last revision
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # reverting again does not clobber the backup
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
 
         # backup files are numbered
-        with file('hello.txt', 'w') as f: f.write('new hello2')
+        with open('hello.txt', 'w') as f:
+            f.write('new hello2')
         tree.revert(['hello.txt'])
-        self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt.~1~', 'new hello')
-        self.check_file_contents('hello.txt.~2~', 'new hello2')
+        self.check_file_contents('hello.txt', b'initial hello')
+        self.check_file_contents('hello.txt.~1~', b'new hello')
+        self.check_file_contents('hello.txt.~2~', b'new hello2')
 
     def test_revert_missing(self):
         # Revert a file that has been deleted since last commit
         tree = self.make_branch_and_tree('.')
-        with file('hello.txt', 'w') as f: f.write('initial hello')
+        with open('hello.txt', 'w') as f:
+            f.write('initial hello')
         tree.add('hello.txt')
         tree.commit('added hello.txt')
         os.unlink('hello.txt')
@@ -267,7 +274,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello.txt'])
         tree.add('hello.txt')
         self.assertEqual(list(tree.unknowns()),
-                          [])
+                         [])
 
     def test_unknowns(self):
         tree = self.make_branch_and_tree('.')
@@ -276,7 +283,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree_contents([('.bzrignore', b'*.~*\n')])
         tree.add('.bzrignore')
         self.assertEqual(list(tree.unknowns()),
-                          ['hello.txt'])
+                         ['hello.txt'])
+
+    def test_unknowns_empty_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['subdir/', 'subdir/somefile'])
+        if tree.has_versioned_directories():
+            self.assertEqual(list(tree.unknowns()), ['subdir'])
+        else:
+            self.assertEqual(list(tree.unknowns()), ['subdir/somefile'])
 
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
@@ -309,12 +324,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         wt.lock_read()
         self.check_tree_shape(wt,
-                                   ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
+                              ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
         wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
         wt.lock_read()
         self.check_tree_shape(wt, ['newdir/', 'newdir/newsub/',
-                                    'newdir/newsub/file'])
+                                   'newdir/newsub/file'])
         wt.unlock()
 
     def test_add_in_unversioned(self):
@@ -340,14 +355,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertRaises(errors.NoSuchFile, wt.add, 'fpp')
 
     def test_remove_verbose(self):
-        #FIXME the remove api should not print or otherwise depend on the
+        # FIXME the remove api should not print or otherwise depend on the
         # text UI - RBC 20060124
         wt = self.make_branch_and_tree('.')
         self.build_tree(['hello'])
         wt.add(['hello'])
         wt.commit(message='add hello')
-        stdout = BytesIO()
-        stderr = BytesIO()
+        stdout = StringIO()
+        stderr = StringIO()
         self.assertEqual(None, self.apply_redirected(None, stdout, stderr,
                                                      wt.remove,
                                                      ['hello'],
@@ -363,7 +378,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_clone_empty(self):
         wt = self.make_branch_and_tree('source')
-        cloned_dir = wt.controldir.clone('target', revision_id=_mod_revision.NULL_REVISION)
+        cloned_dir = wt.controldir.clone(
+            'target', revision_id=_mod_revision.NULL_REVISION)
         cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
@@ -374,19 +390,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         parent_ids = wt.get_parent_ids()
         self.assertEqual([a], parent_ids)
         for parent_id in parent_ids:
-            self.assertIsInstance(parent_id, str)
+            self.assertIsInstance(parent_id, bytes)
 
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
         # set last-revision to one not in the history
         if wt.branch.repository._format.supports_ghosts:
-            wt.set_last_revision('A')
+            wt.set_last_revision(b'A')
         # set it back to None for an empty tree.
-        wt.set_last_revision('null:')
+        wt.set_last_revision(b'null:')
         a = wt.commit('A', allow_pointless=True)
         self.assertEqual([a], wt.get_parent_ids())
         # null: is aways in the branch
-        wt.set_last_revision('null:')
+        wt.set_last_revision(b'null:')
         self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
@@ -394,10 +410,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if getattr(wt.branch, "_set_revision_history", None) is None:
             raise TestSkipped("Branch format does not permit arbitrary"
                               " history")
-        wt.branch._set_revision_history([a, 'B'])
+        wt.branch._set_revision_history([a, b'B'])
         wt.set_last_revision(a)
         self.assertEqual([a], wt.get_parent_ids())
-        self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
+        self.assertRaises(errors.ReservedId, wt.set_last_revision, b'A:')
 
     def test_set_last_revision_different_to_branch(self):
         # working tree formats from the meta-dir format and newer support
@@ -489,11 +505,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
         made_tree = self.workingtree_format.initialize(made_control,
-            revision_id=a)
+                                                       revision_id=a)
         self.assertEqual([a], made_tree.get_parent_ids())
 
     def test_post_build_tree_hook(self):
         calls = []
+
         def track_post_build_tree(tree):
             calls.append(tree.last_revision())
         source = self.make_branch_and_tree('source')
@@ -504,9 +521,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
         MutableTree.hooks.install_named_hook("post_build_tree",
-            track_post_build_tree, "Test")
+                                             track_post_build_tree, "Test")
         made_tree = self.workingtree_format.initialize(made_control,
-            revision_id=a)
+                                                       revision_id=a)
         self.assertEqual([a], calls)
 
     def test_update_sets_last_revision(self):
@@ -560,19 +577,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('tree')
         if not wt._format.supports_setting_file_ids:
             self.assertRaises(SettingFileIdUnsupported, wt.set_root_id,
-                    'first_root_id')
+                              'first_root_id')
             return
         wt.set_root_id(b'first_root_id')
-        self.assertEqual('first_root_id', wt.get_root_id())
+        self.assertEqual(b'first_root_id', wt.get_root_id())
         self.build_tree(['tree/file'])
         wt.add(['file'])
         wt.commit('first')
         co = wt.branch.create_checkout('checkout')
         wt.set_root_id(b'second_root_id')
         wt.commit('second')
-        self.assertEqual('second_root_id', wt.get_root_id())
+        self.assertEqual(b'second_root_id', wt.get_root_id())
         self.assertEqual(0, co.update())
-        self.assertEqual('second_root_id', co.get_root_id())
+        self.assertEqual(b'second_root_id', co.get_root_id())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
@@ -604,16 +621,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_merge_revert(self):
         from breezy.merge import merge_inner
         this = self.make_branch_and_tree('b1')
-        self.build_tree_contents([('b1/a', b'a test\n'), ('b1/b', b'b test\n')])
+        self.build_tree_contents(
+            [('b1/a', b'a test\n'), ('b1/b', b'b test\n')])
         this.add(['a', 'b'])
         this.commit(message='')
         base = this.controldir.clone('b2').open_workingtree()
         self.build_tree_contents([('b2/a', b'b test\n')])
         other = this.controldir.clone('b3').open_workingtree()
-        self.build_tree_contents([('b3/a', b'c test\n'), ('b3/c', b'c test\n')])
+        self.build_tree_contents(
+            [('b3/a', b'c test\n'), ('b3/c', b'c test\n')])
         other.add('c')
 
-        self.build_tree_contents([('b1/b', b'q test\n'), ('b1/d', b'd test\n')])
+        self.build_tree_contents(
+            [('b1/b', b'q test\n'), ('b1/d', b'd test\n')])
         # Note: If we don't lock this before calling merge_inner, then we get a
         #       lock-contention failure. This probably indicates something
         #       weird going on inside merge_inner. Probably something about
@@ -623,16 +643,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         this.lock_write()
         self.addCleanup(this.unlock)
         merge_inner(this.branch, other, base, this_tree=this)
-        a = open('b1/a', 'rb')
-        try:
+        with open('b1/a', 'rb') as a:
             self.assertNotEqual(a.read(), 'a test\n')
-        finally:
-            a.close()
         this.revert()
-        self.assertFileEqual('a test\n', 'b1/a')
+        self.assertFileEqual(b'a test\n', 'b1/a')
         self.assertPathExists('b1/b.~1~')
-        self.assertPathDoesNotExist('b1/c')
-        self.assertPathDoesNotExist('b1/a.~1~')
+        if this.supports_merge_modified():
+            self.assertPathDoesNotExist('b1/c')
+            self.assertPathDoesNotExist('b1/a.~1~')
+        else:
+            self.assertPathExists('b1/c')
+            self.assertPathExists('b1/a.~1~')
         self.assertPathExists('b1/d')
 
     def test_update_updates_bound_branch_no_local_commits(self):
@@ -691,7 +712,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # when adding 'update -r' we should make sure all wt formats support
         # it
         conflicts = wt.update(revision=rev1)
-        self.assertFileEqual('old content', 'wt/a')
+        self.assertFileEqual(b'old content', 'wt/a')
         self.assertEqual([rev1], wt.get_parent_ids())
 
     def test_merge_modified_detects_corruption(self):
@@ -700,8 +721,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('master')
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable("merge-hashes is specific to bzr "
-                "working trees")
-        tree._transport.put_bytes('merge-hashes', 'asdfasdf')
+                                    "working trees")
+        tree._transport.put_bytes('merge-hashes', b'asdfasdf')
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
     def test_merge_modified(self):
@@ -738,26 +759,30 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
-        tree2._transport.put_bytes('conflicts', '')
+        tree2._transport.put_bytes('conflicts', b'')
         self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
-        tree2._transport.put_bytes('conflicts', 'a')
+        tree2._transport.put_bytes('conflicts', b'a')
         self.assertRaises(errors.ConflictFormatError,
                           tree2.conflicts)
 
     def make_merge_conflicts(self):
         from breezy.merge import merge_inner
         tree = self.make_branch_and_tree('mine')
-        with file('mine/bloo', 'wb') as f: f.write('one')
-        with file('mine/blo', 'wb') as f: f.write('on')
+        with open('mine/bloo', 'wb') as f:
+            f.write(b'one')
+        with open('mine/blo', 'wb') as f:
+            f.write(b'on')
         tree.add(['bloo', 'blo'])
         tree.commit("blah", allow_pointless=False)
         base = tree.branch.repository.revision_tree(tree.last_revision())
         controldir.ControlDir.open("mine").sprout("other")
-        with file('other/bloo', 'wb') as f: f.write('two')
+        with open('other/bloo', 'wb') as f:
+            f.write(b'two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)
-        with file('mine/bloo', 'wb') as f: f.write('three')
+        with open('mine/bloo', 'wb') as f:
+            f.write(b'three')
         tree.commit("blah", allow_pointless=False)
         merge_inner(tree.branch, othertree, base, this_tree=tree)
         return tree
@@ -818,12 +843,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_format_leftmost_parent_id_as_ghost(self):
         tree = self.make_branch_and_tree('tree')
         self.assertIn(
-                tree._format.supports_leftmost_parent_id_as_ghost, (True, False))
+            tree._format.supports_leftmost_parent_id_as_ghost, (True, False))
 
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a
         # configurable attribute
         tree = self.make_branch_and_tree('tree')
+
         def set_branch():
             tree.branch = tree.branch
         self.assertRaises(AttributeError, set_branch)
@@ -839,8 +865,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         files = sorted(list(tree.list_files()))
         tree.unlock()
-        self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
-        self.assertEqual((u'foo.pyc', 'V', 'file', anid), files[1][:-1])
+        self.assertEqual(
+            (u'.bzrignore', '?', 'file', None),
+            (files[0][0], files[0][1], files[0][2],
+                getattr(files[0][3], 'file_id', None)))
+        self.assertEqual(
+            (u'foo.pyc', 'V', 'file', anid),
+            (files[1][0], files[1][1], files[1][2], files[1][3].file_id))
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
@@ -853,11 +884,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             tree.add([u'a\u030a'])
-            tree.lock_read()
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path, ie in
-                                tree.iter_entries_by_dir()])
-            tree.unlock()
+            with tree.lock_read():
+                self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                                 [(path, ie.kind) for path, ie in
+                                  tree.iter_entries_by_dir()])
         finally:
             osutils.normalized_filename = orig
 
@@ -871,41 +901,40 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
         try:
             self.assertRaises(errors.InvalidNormalization,
-                tree.add, [u'a\u030a'])
+                              tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
 
     def test__write_inventory(self):
-        # The private interface _write_inventory is currently used by transform.
+        # The private interface _write_inventory is currently used by
+        # transform.
         tree = self.make_branch_and_tree('.')
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable("_write_inventory does not exist on "
-                "non-inventory working trees")
+                                    "non-inventory working trees")
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
         inventory = Inventory(tree.get_root_id())
-        inventory.add_path('missing', 'file', 'missing-id')
-        inventory.add_path('present', 'file', 'present-id')
+        inventory.add_path('missing', 'file', b'missing-id')
+        inventory.add_path('present', 'file', b'present-id')
         # there is no point in being able to write an inventory to an unlocked
         # tree object - its a low level api not a convenience api.
         tree.lock_write()
         tree._write_inventory(inventory)
         tree.unlock()
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
                 (('', tree.get_root_id()),
-                 [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
-                  ('present', 'present', 'file', present_stat, 'present-id', 'file'),
+                 [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
+                  ('present', 'present', 'file',
+                   present_stat, b'present-id', 'file'),
                   ('unknown', 'unknown', 'file', unknown_stat, None, None),
-                 ]
-                )]
+                  ]
+                 )]
             self.assertEqual(expected_results, list(tree.walkdirs()))
-        finally:
-            tree.unlock()
 
     def test_path2id(self):
         # smoke test for path2id
@@ -929,9 +958,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # smoke test for filter_unversioned_files
         tree = self.make_branch_and_tree('.')
         paths = ['here-and-versioned', 'here-and-not-versioned',
-            'not-here-and-versioned', 'not-here-and-not-versioned']
+                 'not-here-and-versioned', 'not-here-and-not-versioned']
         tree.add(['here-and-versioned', 'not-here-and-versioned'],
-            kinds=['file', 'file'])
+                 kinds=['file', 'file'])
         self.build_tree(['here-and-versioned', 'here-and-not-versioned'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -960,11 +989,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # move them around so the names no longer correspond to the types
         os.rename(names[0], 'tmp')
         for i in range(1, len(names)):
-            os.rename(names[i], names[i-1])
+            os.rename(names[i], names[i - 1])
         os.rename('tmp', names[-1])
         # now look and expect to see the correct types again
         for i in range(len(names)):
-            actual_kind = tree.kind(names[i-1])
+            actual_kind = tree.kind(names[i - 1])
             expected_kind = names[i]
             self.assertEqual(expected_kind, actual_kind)
 
@@ -1057,9 +1086,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'])
         os.unlink('tree/a')
-        self.assertEqual(
+        try:
+            self.assertEqual(
                 {'a', 'b', ''},
                 set(tree.all_versioned_paths()))
+        except errors.UnsupportedOperation:
+            raise TestNotApplicable('tree does not support all_file_ids')
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)
@@ -1069,6 +1101,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['source/file'])
         source.add('file')
         source.commit('added file')
+
         def fake_link(source, target):
             raise OSError(errno.EPERM, 'Operation not permitted')
         os.link = fake_link
@@ -1078,7 +1111,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             # HardLinkNotSupported
             try:
                 source.controldir.sprout('target', accelerator_tree=source,
-                                     hardlink=True)
+                                         hardlink=True)
             except errors.HardLinkNotSupported:
                 pass
         finally:
@@ -1110,17 +1143,17 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         revids['1'] = builder.build_snapshot(
             None,
             [('add', ('', None, 'directory', '')),
-             ('add', ('file1', None, 'file', 'file1 content\n'))])
+             ('add', ('file1', None, 'file', b'file1 content\n'))])
         # branch
         revids['2'] = builder.build_snapshot([revids['1']], [])
         revids['4'] = builder.build_snapshot(
             [revids['1']],
-            [('add', ('file4', None, 'file', 'file4 content\n'))])
+            [('add', ('file4', None, 'file', b'file4 content\n'))])
         # master
         revids['3'] = builder.build_snapshot([revids['1']], [])
         revids['5'] = builder.build_snapshot(
             [revids['3']],
-            [('add', ('file5', None, 'file', 'file5 content\n'))])
+            [('add', ('file5', None, 'file', b'file5 content\n'))])
         builder.finish_series()
         return (builder, builder._branch.last_revision(), revids)
 
@@ -1134,11 +1167,12 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         final_branch = builder.get_branch()
         # The master branch
         master = final_branch.controldir.sprout(master_path,
-                                            master_revid).open_branch()
+                                                master_revid).open_branch()
         # The checkout
         wt = self.make_branch_and_tree(wt_path)
         wt.pull(final_branch, stop_revision=wt_revid)
-        wt.branch.pull(final_branch, stop_revision=branch_revid, overwrite=True)
+        wt.branch.pull(
+            final_branch, stop_revision=branch_revid, overwrite=True)
         try:
             wt.branch.bind(master)
         except errors.UpgradeRequired:
@@ -1206,11 +1240,8 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         self.build_tree(['tree/subdir/', 'tree/subdir/somefile'])
         tree.add(['subdir', 'subdir/somefile'])
 
-        f = open('tree/subdir/m\xb5', 'wb')
-        try:
-            f.write('trivial\n')
-        finally:
-            f.close()
+        with open(b'tree/subdir/m\xb5', 'wb') as f:
+            f.write(b'trivial\n')
 
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -1222,7 +1253,7 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
                                   tree.iter_changes, tree.basis_tree(),
                                   want_unversioned=True)
         # We should display the relative path
-        self.assertEqual('subdir/m\xb5', e.filename)
+        self.assertEqual(b'subdir/m\xb5', e.filename)
         self.assertEqual(osutils._fs_enc, e.fs_encoding)
 
 
@@ -1268,14 +1299,15 @@ class TestWorthSavingLimit(TestCaseWithWorkingTree):
         conf.set('bzr.workingtree.worth_saving_limit', 'a')
         # If the config entry is invalid, default to 10
         warnings = []
+
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
         self.assertEqual(10, wt._worth_saving_limit())
         self.assertLength(1, warnings)
         self.assertEqual('Value "a" is not valid for'
-                          ' "bzr.workingtree.worth_saving_limit"',
-                          warnings[0])
+                         ' "bzr.workingtree.worth_saving_limit"',
+                         warnings[0])
 
 
 class TestFormatAttributes(TestCaseWithWorkingTree):

@@ -21,6 +21,7 @@
 import os
 
 from breezy import tests
+from breezy.errors import NoSuchRevision
 from breezy.tests.matchers import ContainsNoVfsCalls
 
 
@@ -36,7 +37,8 @@ class TestRevno(tests.TestCaseWithTransport):
         bzr('init')
         self.assertEqual(int(bzr('revno')), 0)
 
-        with open('foo', 'wb') as f: f.write('foo\n')
+        with open('foo', 'wb') as f:
+            f.write(b'foo\n')
         bzr('add foo')
         bzr('commit -m foo')
         self.assertEqual(int(bzr('revno')), 1)
@@ -78,17 +80,17 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno --tree branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
-            err)
+                         err)
 
     def test_dotted_revno_tree(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id', 'B-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id', b'B-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         co_b = b.create_checkout('checkout_b', lightweight=True,
@@ -105,10 +107,10 @@ class TestRevno(tests.TestCaseWithTransport):
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None)),
-            ('add', ('file', b'file-id', 'file', 'content\n'))],
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
             revision_id=b'A-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'B-id')
-        builder.build_snapshot(['A-id'], [], revision_id=b'C-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.finish_series()
         b = builder.get_branch()
         # The branch is now at "C-id", but the checkout is still at "B-id"
@@ -122,6 +124,24 @@ class TestRevno(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('???\n', out)
 
+    def test_revno_ghost(self):
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        revid = builder.build_snapshot([b'aghost'], [
+            ('add', ('', b'root-id', 'directory', None)),
+            ('add', ('file', b'file-id', 'file', b'content\n'))],
+            revision_id=b'A-id', allow_leftmost_as_ghost=True)
+        builder.finish_series()
+        b = builder.get_branch()
+
+        def revision_id_to_revno(s, r):
+            raise NoSuchRevision(s, r)
+        self.overrideAttr(type(b), 'revision_id_to_dotted_revno', revision_id_to_revno)
+        self.overrideAttr(type(b), 'revision_id_to_revno', revision_id_to_revno)
+        out, err = self.run_bzr('revno branch')
+        self.assertEqual('', err)
+        self.assertEqual('???\n', out)
+
     def test_revno_with_revision(self):
         wt = self.make_branch_and_tree('.')
         revid1 = wt.commit('rev1')
@@ -130,7 +150,7 @@ class TestRevno(tests.TestCaseWithTransport):
         out, err = self.run_bzr('revno -r-2 .')
         self.assertEqual('1\n', out)
 
-        out, err = self.run_bzr('revno -rrevid:%s .' % revid1)
+        out, err = self.run_bzr('revno -rrevid:%s .' % revid1.decode('utf-8'))
         self.assertEqual('1\n', out)
 
     def test_revno_and_tree_mutually_exclusive(self):
@@ -169,8 +189,8 @@ class TestSmartServerRevno(tests.TestCaseWithTransport):
         revid1 = t.commit("message")
         revid2 = t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['revno', '-rrevid:' + revid1,
-            self.get_url('branch')])
+        out, err = self.run_bzr(['revno', '-rrevid:' + revid1.decode('utf-8'),
+                                 self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

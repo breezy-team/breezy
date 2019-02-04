@@ -93,7 +93,7 @@ class TestDiff(DiffBase):
         # There was an error in error reporting for this option
         out, err = self.run_bzr('diff --prefix old/', retcode=3)
         self.assertContainsRe(err,
-            '--prefix expects two values separated by a colon')
+                              '--prefix expects two values separated by a colon')
 
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
@@ -132,30 +132,30 @@ class TestDiff(DiffBase):
         # (Malone #3619)
         self.make_example_branch()
         out, err = self.run_bzr('diff does-not-exist', retcode=3,
-            error_regexes=('not versioned.*does-not-exist',))
+                                error_regexes=('not versioned.*does-not-exist',))
 
     def test_diff_illegal_revision_specifiers(self):
         out, err = self.run_bzr('diff -r 1..23..123', retcode=3,
-            error_regexes=('one or two revision specifiers',))
+                                error_regexes=('one or two revision specifiers',))
 
     def test_diff_using_and_format(self):
         out, err = self.run_bzr('diff --format=default --using=mydi', retcode=3,
-            error_regexes=('are mutually exclusive',))
+                                error_regexes=('are mutually exclusive',))
 
     def test_diff_nonexistent_revision(self):
         out, err = self.run_bzr('diff -r 123', retcode=3,
-            error_regexes=("Requested revision: '123' does not "
-                "exist in branch:",))
+                                error_regexes=("Requested revision: '123' does not "
+                                               "exist in branch:",))
 
     def test_diff_nonexistent_dotted_revision(self):
         out, err = self.run_bzr('diff -r 1.1', retcode=3)
         self.assertContainsRe(err,
-            "Requested revision: '1.1' does not exist in branch:")
+                              "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_nonexistent_dotted_revision_change(self):
         out, err = self.run_bzr('diff -c 1.1', retcode=3)
         self.assertContainsRe(err,
-            "Requested revision: '1.1' does not exist in branch:")
+                              "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
@@ -174,7 +174,8 @@ class TestDiff(DiffBase):
         branch1_tree.add('file')
         branch1_tree.add('file2')
         branch1_tree.commit(message='add file and file2')
-        branch2_tree = branch1_tree.controldir.sprout('branch2').open_workingtree()
+        branch2_tree = branch1_tree.controldir.sprout(
+            'branch2').open_workingtree()
         self.build_tree_contents([('branch2/file', b'new content\n')])
         branch2_tree.commit(message='update file')
         return branch1_tree, branch2_tree
@@ -184,24 +185,24 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqual("=== modified file 'file'\n"
-                          "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                          "@@ -1,1 +1,1 @@\n"
-                          "-new content\n"
-                          "+contents of branch1/file\n"
-                          "\n", subst_dates(out))
+                         "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                         "@@ -1,1 +1,1 @@\n"
+                         "-new content\n"
+                         "+contents of branch1/file\n"
+                         "\n", subst_dates(out))
 
     def check_b1_vs_b2(self, cmd):
         # Compare branch1 vs branch2 using cmd and check the result
         out, err = self.run_bzr(cmd, retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-contents of branch1/file\n"
-                              "+new content\n"
-                              "\n", subst_dates(out))
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-contents of branch1/file\n"
+                             "+new content\n"
+                             "\n", subst_dates(out))
 
     def check_no_diffs(self, cmd):
         # Check that running cmd returns an empty diff
@@ -261,12 +262,12 @@ class TestDiff(DiffBase):
                                 retcode=1)
         self.assertEqual('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
-                              "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", subst_dates(out))
+                             "--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                             "@@ -1,1 +1,1 @@\n"
+                             "-new content\n"
+                             "+contents of branch1/file\n"
+                             "\n", subst_dates(out))
 
     def example_branch2(self):
         branch1_tree = self.make_branch_and_tree('branch1')
@@ -313,7 +314,7 @@ class TestDiff(DiffBase):
             def show_diff(self, specific_files, extra_trees=None):
                 self.to_file.write("BOO!\n")
                 return super(BooDiffTree, self).show_diff(specific_files,
-                    extra_trees)
+                                                          extra_trees)
 
         diff_format_registry.register("boo", BooDiffTree, "Scary diff format")
         self.addCleanup(diff_format_registry.remove, "boo")
@@ -392,18 +393,18 @@ class TestExternalDiff(DiffBase):
             'diff -Oprogress_bar=none -r 1 --diff-options -ub',
             universal_newlines=True,
             retcode=None)
-        if 'Diff is not installed on this machine' in err:
+        if b'Diff is not installed on this machine' in err:
             raise tests.TestSkipped("No external 'diff' is available")
-        self.assertEqual('', err)
+        self.assertEqual(b'', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()
         self.assertStartsWith(
             out,
-            "=== added file 'goodbye'\n"
-            "--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
-            "+++ new/goodbye\t")
-        self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
-                                 "+baz\n\n")
+            b"=== added file 'goodbye'\n"
+            b"--- old/goodbye\t1970-01-01 00:00:00 +0000\n"
+            b"+++ new/goodbye\t")
+        self.assertEndsWith(out, b"\n@@ -0,0 +1 @@\n"
+                                 b"+baz\n\n")
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process"""
@@ -411,7 +412,7 @@ class TestExternalDiff(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', b'Foo\n')])
         out, err = self.run_bzr('diff --diff-options -i --using diff',
-                                    retcode=1)
+                                retcode=1)
         self.assertEqual("=== modified file 'hello'\n", out)
         self.assertEqual('', err)
 
@@ -423,4 +424,4 @@ class TestDiffOutput(DiffBase):
         self.make_example_branch()
         self.build_tree_contents([('hello', b'hello world!\n')])
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
-        self.assertTrue('\n+hello world!\n' in output)
+        self.assertTrue(b'\n+hello world!\n' in output)

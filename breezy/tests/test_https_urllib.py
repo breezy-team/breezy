@@ -65,15 +65,15 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
 class CertReqsConfigTests(tests.TestCaseInTempDir):
 
     def test_default(self):
-        stack = config.MemoryStack("")
+        stack = config.MemoryStack(b"")
         self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
 
     def test_from_string(self):
-        stack = config.MemoryStack("ssl.cert_reqs = none\n")
+        stack = config.MemoryStack(b"ssl.cert_reqs = none\n")
         self.assertEqual(ssl.CERT_NONE, stack.get("ssl.cert_reqs"))
-        stack = config.MemoryStack("ssl.cert_reqs = required\n")
+        stack = config.MemoryStack(b"ssl.cert_reqs = required\n")
         self.assertEqual(ssl.CERT_REQUIRED, stack.get("ssl.cert_reqs"))
-        stack = config.MemoryStack("ssl.cert_reqs = invalid\n")
+        stack = config.MemoryStack(b"ssl.cert_reqs = invalid\n")
         self.assertRaises(config.ConfigOptionValueError, stack.get,
                           "ssl.cert_reqs")
 
@@ -102,7 +102,12 @@ class MatchHostnameTests(tests.TestCase):
 
         # Python Issue #17980: avoid denials of service by refusing more than
         # one wildcard per fragment.
-        ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
+        if sys.version_info[:2] >= (3, 7):
+            # Python 3.7 dropped support for partial wildcards, see
+            # https://docs.python.org/3/whatsnew/3.7.html#ssl
+            not_ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
+        else:
+            ok({'subject': ((('commonName', 'a*b.com'),),)}, 'axxb.com')
         not_ok({'subject': ((('commonName', 'a*b.co*'),),)}, 'axxb.com')
         not_ok({'subject': ((('commonName', 'a*b*.com'),),)}, 'axxbxxc.com')
 

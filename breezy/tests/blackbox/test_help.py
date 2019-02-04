@@ -66,11 +66,9 @@ class TestHelp(tests.TestCaseWithTransport):
     def test_help_urlspec(self):
         """Smoke test for 'brz help urlspec'"""
         out, err = self.run_bzr('help urlspec')
-        self.assertContainsRe(out, 'aftp://')
         self.assertContainsRe(out, 'bzr://')
-        self.assertContainsRe(out, 'bzr\+ssh://')
+        self.assertContainsRe(out, 'bzr\\+ssh://')
         self.assertContainsRe(out, 'file://')
-        self.assertContainsRe(out, 'ftp://')
         self.assertContainsRe(out, 'http://')
         self.assertContainsRe(out, 'https://')
         self.assertContainsRe(out, 'sftp://')
@@ -97,10 +95,10 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertEqual(expected, out)
 
     def test_help_commands(self):
-        dash_help  = self.run_bzr('--help commands')[0]
-        commands   = self.run_bzr('help commands')[0]
+        dash_help = self.run_bzr('--help commands')[0]
+        commands = self.run_bzr('help commands')[0]
         hidden = self.run_bzr('help hidden-commands')[0]
-        long_help  = self.run_bzr('help --long')[0]
+        long_help = self.run_bzr('help --long')[0]
         qmark_long = self.run_bzr('? --long')[0]
         qmark_cmds = self.run_bzr('? commands')[0]
         self.assertEqual(dash_help, commands)
@@ -123,7 +121,7 @@ class TestHelp(tests.TestCaseWithTransport):
             cmds = []
             for line in help_output.split('\n'):
                 if line.startswith(' '):
-                    continue # help on more than one line
+                    continue  # help on more than one line
                 cmd = line.split(' ')[0]
                 if line:
                     cmds.append(cmd)
@@ -136,8 +134,8 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertTrue('rocks' not in commands)
 
     def test_help_detail(self):
-        dash_h  = self.run_bzr('diff -h')[0]
-        help_x  = self.run_bzr('help diff')[0]
+        dash_h = self.run_bzr('diff -h')[0]
+        help_x = self.run_bzr('help diff')[0]
         self.assertEqual(dash_h, help_x)
         self.assertContainsRe(help_x, "Purpose:")
         self.assertContainsRe(help_x, "Usage:")
@@ -148,7 +146,7 @@ class TestHelp(tests.TestCaseWithTransport):
         self.assertContainsRe(help_x, "Aliases:")
 
     def test_help_usage(self):
-        usage  = self.run_bzr('diff --usage')[0]
+        usage = self.run_bzr('diff --usage')[0]
         self.assertContainsRe(usage, "Purpose:")
         self.assertContainsRe(usage, "Usage:")
         self.assertContainsRe(usage, "Options:")
@@ -164,7 +162,7 @@ class TestHelp(tests.TestCaseWithTransport):
         for line in help.split('\n'):
             if '--long' in line:
                 self.assertContainsRe(line,
-                    r'Show help on all commands\.')
+                                      r'Show help on all commands\.')
 
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
@@ -189,17 +187,17 @@ class TestTranslatedHelp(tests.TestCaseWithTransport):
         self.overrideAttr(i18n, '_translations', ZzzTranslations())
 
     def test_help_command_utf8(self):
-        out, err = self.run_bzr(["help", "push"], encoding="utf-8")
-        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+        out, err = self.run_bzr_raw(["help", "push"], encoding="utf-8")
+        self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_switch_utf8(self):
-        out, err = self.run_bzr(["push", "--help"], encoding="utf-8")
-        self.assertContainsRe(out, "zz\xc3\xa5{{:See also:")
+        out, err = self.run_bzr_raw(["push", "--help"], encoding="utf-8")
+        self.assertContainsRe(out, b"zz\xc3\xa5{{:See also:")
 
     def test_help_command_ascii(self):
-        out, err = self.run_bzr(["help", "push"], encoding="ascii")
-        self.assertContainsRe(out, "zz\\?{{:See also:")
+        out, err = self.run_bzr_raw(["help", "push"], encoding="ascii")
+        self.assertContainsRe(out, b"zz\\?{{:See also:")
 
     def test_help_switch_ascii(self):
-        out, err = self.run_bzr(["push", "--help"], encoding="ascii")
-        self.assertContainsRe(out, "zz\\?{{:See also:")
+        out, err = self.run_bzr_raw(["push", "--help"], encoding="ascii")
+        self.assertContainsRe(out, b"zz\\?{{:See also:")

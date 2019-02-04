@@ -2,12 +2,12 @@
 
 
 # \subsection{Example usage}
-# 
-# \textbf{XXX:} Move these to object serialization code. 
+#
+# \textbf{XXX:} Move these to object serialization code.
 
 def write_revision(writer, revision):
     s = Stanza(revision=revision.revision_id,
-               committer=revision.committer, 
+               committer=revision.committer,
                timezone=long(revision.timezone),
                timestamp=long(revision.timestamp),
                inventory_sha1=revision.inventory_sha1,
@@ -17,6 +17,7 @@ def write_revision(writer, revision):
     for prop_name, prop_value in revision.properties.items():
         s.add(prop_name, prop_value)
     writer.write_stanza(s)
+
 
 def write_inventory(writer, inventory):
     s = Stanza(inventory_version=7)
@@ -32,7 +33,7 @@ def write_inventory(writer, inventory):
             attr_val = getattr(ie, attr, None)
             if attr == 'executable' and attr_val == 0:
                 continue
-            if attr == 'parent_id' and attr_val == 'TREE_ROOT':
+            if attr == 'parent_id' and attr_val == b'TREE_ROOT':
                 continue
             if attr_val is not None:
                 s.add(attr, attr_val)

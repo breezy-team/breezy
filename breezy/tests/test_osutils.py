@@ -20,7 +20,6 @@ from __future__ import absolute_import, division
 
 import errno
 import os
-import re
 import select
 import socket
 import sys
@@ -29,15 +28,15 @@ import time
 
 from .. import (
     errors,
-    lazy_regex,
     osutils,
-    symbol_versioning,
     tests,
     trace,
     win32utils,
     )
 from ..sixish import (
     BytesIO,
+    PY3,
+    text_type,
     )
 from . import (
     features,
@@ -57,6 +56,7 @@ class _UTF8DirReaderFeature(features.ModuleAvailableFeature):
             return True
         except ImportError:
             return False
+
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature('breezy._readdir_pyx')
 
@@ -136,24 +136,24 @@ class TestRename(tests.TestCaseInTempDir):
 
     def test_fancy_rename(self):
         # This should work everywhere
-        self.create_file('a', 'something in a\n')
+        self.create_file('a', b'something in a\n')
         self._fancy_rename('a', 'b')
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
-        self.check_file_contents('b', 'something in a\n')
+        self.check_file_contents('b', b'something in a\n')
 
-        self.create_file('a', 'new something in a\n')
+        self.create_file('a', b'new something in a\n')
         self._fancy_rename('b', 'a')
 
-        self.check_file_contents('a', 'something in a\n')
+        self.check_file_contents('a', b'something in a\n')
 
     def test_fancy_rename_fails_source_missing(self):
         # An exception should be raised, and the target should be left in place
-        self.create_file('target', 'data in target\n')
+        self.create_file('target', b'data in target\n')
         self.assertRaises((IOError, OSError), self._fancy_rename,
                           'missingsource', 'target')
         self.assertPathExists('target')
-        self.check_file_contents('target', 'data in target\n')
+        self.check_file_contents('target', b'data in target\n')
 
     def test_fancy_rename_fails_if_source_and_target_missing(self):
         self.assertRaises((IOError, OSError), self._fancy_rename,
@@ -161,16 +161,16 @@ class TestRename(tests.TestCaseInTempDir):
 
     def test_rename(self):
         # Rename should be semi-atomic on all platforms
-        self.create_file('a', 'something in a\n')
+        self.create_file('a', b'something in a\n')
         osutils.rename('a', 'b')
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
-        self.check_file_contents('b', 'something in a\n')
+        self.check_file_contents('b', b'something in a\n')
 
-        self.create_file('a', 'new something in a\n')
+        self.create_file('a', b'new something in a\n')
         osutils.rename('b', 'a')
 
-        self.check_file_contents('a', 'something in a\n')
+        self.check_file_contents('a', b'something in a\n')
 
     # TODO: test fancy_rename using a MemoryTransport
 
@@ -255,12 +255,11 @@ class TestLstat(tests.TestCaseInTempDir):
             # Without it, we may end up re-reading content when we don't have
             # to, but otherwise it doesn't effect correctness.
             self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
-        f = open('test-file.txt', 'wb')
-        self.addCleanup(f.close)
-        f.write('some content\n')
-        f.flush()
-        self.assertEqualStat(osutils.fstat(f.fileno()),
-                             osutils.lstat('test-file.txt'))
+        with open('test-file.txt', 'wb') as f:
+            f.write(b'some content\n')
+            f.flush()
+            self.assertEqualStat(osutils.fstat(f.fileno()),
+                                 osutils.lstat('test-file.txt'))
 
 
 class TestRmTree(tests.TestCaseInTempDir):
@@ -268,9 +267,8 @@ class TestRmTree(tests.TestCaseInTempDir):
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
         os.mkdir('dir')
-        f = file('dir/file', 'w')
-        f.write('spam')
-        f.close()
+        with open('dir/file', 'w') as f:
+            f.write('spam')
         # would like to also try making the directory readonly, but at the
         # moment python shutil.rmtree doesn't handle that properly - it would
         # need to chmod the directory before removing things inside it - deferred
@@ -313,7 +311,9 @@ class TestKind(tests.TestCaseInTempDir):
             if e.errno not in (errno.ENOENT,):
                 raise
         else:
-            self.assertEqual('chardev', osutils.file_kind('/dev/null'))
+            self.assertEqual(
+                'chardev',
+                osutils.file_kind(os.path.realpath('/dev/null')))
 
         mkfifo = getattr(os, 'mkfifo', None)
         if mkfifo:
@@ -403,9 +403,9 @@ class TestDateTime(tests.TestCase):
 
     def test_format_date(self):
         self.assertRaises(osutils.UnsupportedTimezoneFormat,
-            osutils.format_date, 0, timezone='foo')
+                          osutils.format_date, 0, timezone='foo')
         self.assertIsInstance(osutils.format_date(0), str)
-        self.assertIsInstance(osutils.format_local_date(0), unicode)
+        self.assertIsInstance(osutils.format_local_date(0), text_type)
         # Testing for the actual value of the local weekday without
         # duplicating the code from format_date is difficult.
         # Instead blackbox.test_locale should check for localized
@@ -413,11 +413,11 @@ class TestDateTime(tests.TestCase):
 
     def test_format_date_with_offset_in_original_timezone(self):
         self.assertEqual("Thu 1970-01-01 00:00:00 +0000",
-            osutils.format_date_with_offset_in_original_timezone(0))
+                         osutils.format_date_with_offset_in_original_timezone(0))
         self.assertEqual("Fri 1970-01-02 03:46:40 +0000",
-            osutils.format_date_with_offset_in_original_timezone(100000))
+                         osutils.format_date_with_offset_in_original_timezone(100000))
         self.assertEqual("Fri 1970-01-02 05:46:40 +0200",
-            osutils.format_date_with_offset_in_original_timezone(100000, 7200))
+                         osutils.format_date_with_offset_in_original_timezone(100000, 7200))
 
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
@@ -512,9 +512,8 @@ class TestLinks(tests.TestCaseInTempDir):
         self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
     def test_changing_access(self):
-        f = file('file', 'w')
-        f.write('monkey')
-        f.close()
+        with open('file', 'w') as f:
+            f.write('monkey')
 
         # Make a file readonly
         osutils.make_readonly('file')
@@ -541,7 +540,7 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
     _test_needs_features = [features.CaseInsCasePresFilenameFeature]
 
     def test_canonical_relpath_simple(self):
-        f = file('MixedCaseName', 'w')
+        f = open('MixedCaseName', 'w')
         f.close()
         actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
         self.assertEqual('work/MixedCaseName', actual)
@@ -618,27 +617,31 @@ class TestPumpFile(tests.TestCase):
 
         # read (max // 2) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size // 2
-        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file,
+                         num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
 
         # read (max) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size
         from_file.reset_read_count()
-        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file,
+                         num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
 
         # read (max + 1) bytes and verify read size was limited
         num_bytes_to_read = self.block_size + 1
         from_file.reset_read_count()
-        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file,
+                         num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), self.block_size)
         self.assertEqual(from_file.get_read_count(), 2)
 
         # finish reading the rest of the data
         num_bytes_to_read = self.test_data_len - to_file.tell()
-        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file,
+                         num_bytes_to_read, self.block_size)
 
         # report error if the data wasn't equal (we only report the size due
         # to the length of the data)
@@ -711,6 +714,7 @@ class TestPumpFile(tests.TestCase):
 
     def test_report_activity(self):
         activity = []
+
         def log_activity(length, direction):
             activity.append((length, direction))
         from_file = BytesIO(self.test_data)
@@ -734,8 +738,8 @@ class TestPumpFile(tests.TestCase):
         del activity[:]
         osutils.pumpfile(from_file, to_file, buff_size=500, read_length=1028,
                          report_activity=log_activity, direction='read')
-        self.assertEqual([(500, 'read'), (500, 'read'), (28, 'read')], activity)
-
+        self.assertEqual(
+            [(500, 'read'), (500, 'read'), (28, 'read')], activity)
 
 
 class TestPumpStringFile(tests.TestCase):
@@ -783,7 +787,7 @@ class TestRelpath(tests.TestCase):
 class TestSafeUnicode(tests.TestCase):
 
     def test_from_ascii_string(self):
-        self.assertEqual(u'foobar', osutils.safe_unicode('foobar'))
+        self.assertEqual(u'foobar', osutils.safe_unicode(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
         self.assertEqual(u'bargam', osutils.safe_unicode(u'bargam'))
@@ -792,39 +796,39 @@ class TestSafeUnicode(tests.TestCase):
         self.assertEqual(u'bargam\xae', osutils.safe_unicode(u'bargam\xae'))
 
     def test_from_utf8_string(self):
-        self.assertEqual(u'foo\xae', osutils.safe_unicode('foo\xc2\xae'))
+        self.assertEqual(u'foo\xae', osutils.safe_unicode(b'foo\xc2\xae'))
 
     def test_bad_utf8_string(self):
         self.assertRaises(errors.BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
-                          '\xbb\xbb')
+                          b'\xbb\xbb')
 
 
 class TestSafeUtf8(tests.TestCase):
 
     def test_from_ascii_string(self):
-        f = 'foobar'
-        self.assertEqual('foobar', osutils.safe_utf8(f))
+        f = b'foobar'
+        self.assertEqual(b'foobar', osutils.safe_utf8(f))
 
     def test_from_unicode_string_ascii_contents(self):
-        self.assertEqual('bargam', osutils.safe_utf8(u'bargam'))
+        self.assertEqual(b'bargam', osutils.safe_utf8(u'bargam'))
 
     def test_from_unicode_string_unicode_contents(self):
-        self.assertEqual('bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
+        self.assertEqual(b'bargam\xc2\xae', osutils.safe_utf8(u'bargam\xae'))
 
     def test_from_utf8_string(self):
-        self.assertEqual('foo\xc2\xae', osutils.safe_utf8('foo\xc2\xae'))
+        self.assertEqual(b'foo\xc2\xae', osutils.safe_utf8(b'foo\xc2\xae'))
 
     def test_bad_utf8_string(self):
         self.assertRaises(errors.BzrBadParameterNotUnicode,
-                          osutils.safe_utf8, '\xbb\xbb')
+                          osutils.safe_utf8, b'\xbb\xbb')
 
 
 class TestSafeRevisionId(tests.TestCase):
 
     def test_from_ascii_string(self):
         # this shouldn't give a warning because it's getting an ascii string
-        self.assertEqual('foobar', osutils.safe_revision_id('foobar'))
+        self.assertEqual(b'foobar', osutils.safe_revision_id(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
         self.assertRaises(TypeError,
@@ -832,11 +836,11 @@ class TestSafeRevisionId(tests.TestCase):
 
     def test_from_unicode_string_unicode_contents(self):
         self.assertRaises(TypeError,
-                         osutils.safe_revision_id, u'bargam\xae')
+                          osutils.safe_revision_id, u'bargam\xae')
 
     def test_from_utf8_string(self):
-        self.assertEqual('foo\xc2\xae',
-                         osutils.safe_revision_id('foo\xc2\xae'))
+        self.assertEqual(b'foo\xc2\xae',
+                         osutils.safe_revision_id(b'foo\xc2\xae'))
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -846,7 +850,7 @@ class TestSafeRevisionId(tests.TestCase):
 class TestSafeFileId(tests.TestCase):
 
     def test_from_ascii_string(self):
-        self.assertEqual('foobar', osutils.safe_file_id('foobar'))
+        self.assertEqual(b'foobar', osutils.safe_file_id(b'foobar'))
 
     def test_from_unicode_string_ascii_contents(self):
         self.assertRaises(TypeError, osutils.safe_file_id, u'bargam')
@@ -856,8 +860,8 @@ class TestSafeFileId(tests.TestCase):
                           osutils.safe_file_id, u'bargam\xae')
 
     def test_from_utf8_string(self):
-        self.assertEqual('foo\xc2\xae',
-                         osutils.safe_file_id('foo\xc2\xae'))
+        self.assertEqual(b'foo\xc2\xae',
+                         osutils.safe_file_id(b'foo\xc2\xae'))
 
     def test_none(self):
         """Currently, None is a valid revision_id"""
@@ -870,8 +874,10 @@ class TestSendAll(tests.TestCase):
         class DisconnectedSocket(object):
             def __init__(self, err):
                 self.err = err
+
             def send(self, content):
                 raise self.err
+
             def close(self):
                 pass
         # All of these should be treated as ConnectionReset
@@ -882,7 +888,7 @@ class TestSendAll(tests.TestCase):
         for err in errs:
             sock = DisconnectedSocket(err)
             self.assertRaises(errors.ConnectionReset,
-                osutils.send_all, sock, b'some more content')
+                              osutils.send_all, sock, b'some more content')
 
     def test_send_with_no_progress(self):
         # See https://bugs.launchpad.net/bzr/+bug/1047309
@@ -891,6 +897,7 @@ class TestSendAll(tests.TestCase):
         class NoSendingSocket(object):
             def __init__(self):
                 self.call_count = 0
+
             def send(self, bytes):
                 self.call_count += 1
                 if self.call_count > 100:
@@ -909,8 +916,10 @@ class TestPosixFuncs(tests.TestCase):
 
     def test_normpath(self):
         self.assertEqual('/etc/shadow', osutils._posix_normpath('/etc/shadow'))
-        self.assertEqual('/etc/shadow', osutils._posix_normpath('//etc/shadow'))
-        self.assertEqual('/etc/shadow', osutils._posix_normpath('///etc/shadow'))
+        self.assertEqual(
+            '/etc/shadow', osutils._posix_normpath('//etc/shadow'))
+        self.assertEqual(
+            '/etc/shadow', osutils._posix_normpath('///etc/shadow'))
 
 
 class TestWin32Funcs(tests.TestCase):
@@ -985,45 +994,42 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
 
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
-            osutils.minimum_path_selection([]))
+                         osutils.minimum_path_selection([]))
         self.assertEqual({'a'},
-            osutils.minimum_path_selection(['a']))
+                         osutils.minimum_path_selection(['a']))
         self.assertEqual({'a', 'b'},
-            osutils.minimum_path_selection(['a', 'b']))
+                         osutils.minimum_path_selection(['a', 'b']))
         self.assertEqual({'a/', 'b'},
-            osutils.minimum_path_selection(['a/', 'b']))
+                         osutils.minimum_path_selection(['a/', 'b']))
         self.assertEqual({'a/', 'b'},
-            osutils.minimum_path_selection(['a/c', 'a/', 'b']))
+                         osutils.minimum_path_selection(['a/c', 'a/', 'b']))
         self.assertEqual({'a-b', 'a', 'a0b'},
-            osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
+                         osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
         self.assertFalse('\\' in tmpdir)
 
     def test_rename(self):
-        a = open('a', 'wb')
-        a.write('foo\n')
-        a.close()
-        b = open('b', 'wb')
-        b.write('baz\n')
-        b.close()
+        with open('a', 'wb') as a:
+            a.write(b'foo\n')
+        with open('b', 'wb') as b:
+            b.write(b'baz\n')
 
         osutils._win32_rename('b', 'a')
         self.assertPathExists('a')
         self.assertPathDoesNotExist('b')
-        self.assertFileEqual('baz\n', 'a')
+        self.assertFileEqual(b'baz\n', 'a')
 
     def test_rename_missing_file(self):
-        a = open('a', 'wb')
-        a.write('foo\n')
-        a.close()
+        with open('a', 'wb') as a:
+            a.write(b'foo\n')
 
         try:
             osutils._win32_rename('b', 'a')
         except (IOError, OSError) as e:
             self.assertEqual(errno.ENOENT, e.errno)
-        self.assertFileEqual('foo\n', 'a')
+        self.assertFileEqual(b'foo\n', 'a')
 
     def test_rename_missing_dir(self):
         os.mkdir('a')
@@ -1052,7 +1058,10 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         check(['a', 'b'], 'a/b')
         check(['a', 'b'], 'a/./b')
         check(['a', '.b'], 'a/.b')
-        check(['a', '.b'], 'a\\.b')
+        if os.path.sep == '\\':
+            check(['a', '.b'], 'a\\.b')
+        else:
+            check(['a\\.b'], 'a\\.b')
 
         self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
 
@@ -1086,10 +1095,10 @@ class TestMacFuncsDirs(tests.TestCaseInTempDir):
 class TestChunksToLines(tests.TestCase):
 
     def test_smoketest(self):
-        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
-                         osutils.chunks_to_lines(['foo\nbar', '\nbaz\n']))
-        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
-                         osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
+        self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
+                         osutils.chunks_to_lines([b'foo\nbar', b'\nbaz\n']))
+        self.assertEqual([b'foo\n', b'bar\n', b'baz\n'],
+                         osutils.chunks_to_lines([b'foo\n', b'bar\n', b'baz\n']))
 
     def test_osutils_binding(self):
         from . import test__chunks_to_lines
@@ -1109,8 +1118,8 @@ class TestSplitLines(tests.TestCase):
                          osutils.split_lines(u'foo\nbar\xae\n'))
 
     def test_split_with_carriage_returns(self):
-        self.assertEqual(['foo\rbar\n'],
-                         osutils.split_lines('foo\rbar\n'))
+        self.assertEqual([b'foo\rbar\n'],
+                         osutils.split_lines(b'foo\rbar\n'))
 
 
 class TestWalkDirs(tests.TestCaseInTempDir):
@@ -1131,21 +1140,21 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-                (('', '.'),
-                 [('0file', '0file', 'file'),
-                  ('1dir', '1dir', 'directory'),
-                  ('2file', '2file', 'file'),
-                 ]
-                ),
-                (('1dir', './1dir'),
-                 [('1dir/0file', '0file', 'file'),
-                  ('1dir/1dir', '1dir', 'directory'),
-                 ]
-                ),
-                (('1dir/1dir', './1dir/1dir'),
-                 [
-                 ]
-                ),
+            (('', '.'),
+             [('0file', '0file', 'file'),
+              ('1dir', '1dir', 'directory'),
+              ('2file', '2file', 'file'),
+              ]
+             ),
+            (('1dir', './1dir'),
+             [('1dir/0file', '0file', 'file'),
+              ('1dir/1dir', '1dir', 'directory'),
+              ]
+             ),
+            (('1dir/1dir', './1dir/1dir'),
+             [
+                ]
+             ),
             ]
         result = []
         found_bzrdir = False
@@ -1180,11 +1189,10 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
-        self.assertEqual('./test-unreadable', e.filename)
+        self.assertEqual('./test-unreadable', osutils.safe_unicode(e.filename))
         self.assertEqual(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\\./test-unreadable")
-
 
     def test_walkdirs_encoding_error(self):
         # <https://bugs.launchpad.net/bzr/+bug/488519>
@@ -1206,8 +1214,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.build_tree(tree)
 
         # rename the 1file to a latin-1 filename
-        os.rename("./1file", "\xe8file")
-        if "\xe8file" not in os.listdir("."):
+        os.rename(b"./1file", b"\xe8file")
+        if b"\xe8file" not in os.listdir("."):
             self.skipTest("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
@@ -1215,7 +1223,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # this should raise on error
         def attempt():
-            for dirdetail, dirblock in osutils.walkdirs('.'):
+            for dirdetail, dirblock in osutils.walkdirs(b'.'):
                 pass
 
         self.assertRaises(errors.BadFilenameEncoding, attempt)
@@ -1231,29 +1239,34 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-                (('', '.'),
-                 [('0file', '0file', 'file'),
-                  ('1dir', '1dir', 'directory'),
-                  ('2file', '2file', 'file'),
-                 ]
-                ),
-                (('1dir', './1dir'),
-                 [('1dir/0file', '0file', 'file'),
-                  ('1dir/1dir', '1dir', 'directory'),
-                 ]
-                ),
-                (('1dir/1dir', './1dir/1dir'),
-                 [
-                 ]
-                ),
+            (('', '.'),
+             [('0file', '0file', 'file'),
+              ('1dir', '1dir', 'directory'),
+              ('2file', '2file', 'file'),
+              ]
+             ),
+            (('1dir', './1dir'),
+             [('1dir/0file', '0file', 'file'),
+              ('1dir/1dir', '1dir', 'directory'),
+              ]
+             ),
+            (('1dir/1dir', './1dir/1dir'),
+             [
+                ]
+             ),
             ]
         result = []
         found_bzrdir = False
-        for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
-            if len(dirblock) and dirblock[0][1] == '.bzr':
+        for dirdetail, dirblock in osutils._walkdirs_utf8(b'.'):
+            if len(dirblock) and dirblock[0][1] == b'.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
+            dirdetail = (dirdetail[0].decode('utf-8'),
+                         osutils.safe_unicode(dirdetail[1]))
+            dirblock = [
+                (entry[0].decode('utf-8'), entry[1].decode('utf-8'), entry[2])
+                for entry in dirblock]
             result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
@@ -1278,39 +1291,38 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.overrideAttr(osutils, '_fs_enc')
         self.overrideAttr(osutils, '_selected_dir_reader')
 
-    def assertDirReaderIs(self, expected):
+    def assertDirReaderIs(self, expected, top):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
         # Force it to redetect
         osutils._selected_dir_reader = None
         # Nothing to list, but should still trigger the selection logic
-        self.assertEqual([(('', '.'), [])], list(osutils._walkdirs_utf8('.')))
+        self.assertEqual([((b'', top), [])], list(osutils._walkdirs_utf8('.')))
         self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         osutils._fs_enc = 'utf-8'
-        self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader)
+        self.assertDirReaderIs(UTF8DirReaderFeature.module.UTF8DirReader, b".")
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         osutils._fs_enc = 'ascii'
         self.assertDirReaderIs(
-            UTF8DirReaderFeature.module.UTF8DirReader)
+            UTF8DirReaderFeature.module.UTF8DirReader, b".")
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         osutils._fs_enc = 'iso-8859-1'
-        self.assertDirReaderIs(osutils.UnicodeDirReader)
+        self.assertDirReaderIs(osutils.UnicodeDirReader, ".")
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
         self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         from .._walkdirs_win32 import Win32ReadDir
-        self.assertDirReaderIs(Win32ReadDir)
+        self.assertDirReaderIs(Win32ReadDir, ".")
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
@@ -1327,28 +1339,28 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-                ((u'', u'.'),
-                 [(name0, name0, 'file', './' + name0),
-                  (name1, name1, 'directory', './' + name1),
-                  (name2, name2, 'file', './' + name2),
-                 ]
-                ),
-                ((name1, './' + name1),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1
-                                                        + '/' + name0),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1
-                                                            + '/' + name1),
-                 ]
-                ),
-                ((name1 + '/' + name1, './' + name1 + '/' + name1),
-                 [
-                 ]
-                ),
+            ((u'', u'.'),
+             [(name0, name0, 'file', './' + name0),
+              (name1, name1, 'directory', './' + name1),
+              (name2, name2, 'file', './' + name2),
+              ]
+             ),
+            ((name1, './' + name1),
+             [(name1 + '/' + name0, name0, 'file', './' + name1
+               + '/' + name0),
+              (name1 + '/' + name1, name1, 'directory', './' + name1
+               + '/' + name1),
+              ]
+             ),
+            ((name1 + '/' + name1, './' + name1 + '/' + name1),
+             [
+                ]
+             ),
             ]
         result = list(osutils.walkdirs('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
-        result = list(osutils.walkdirs(u'./'+name1, name1))
+        result = list(osutils.walkdirs(u'./' + name1, name1))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks[1:], result)
 
@@ -1374,40 +1386,40 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         name2 = name2.encode('utf8')
 
         expected_dirblocks = [
-                (('', '.'),
-                 [(name0, name0, 'file', './' + name0),
-                  (name1, name1, 'directory', './' + name1),
-                  (name2, name2, 'file', './' + name2),
-                 ]
-                ),
-                ((name1, './' + name1),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1
-                                                        + '/' + name0),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1
-                                                            + '/' + name1),
-                 ]
-                ),
-                ((name1 + '/' + name1, './' + name1 + '/' + name1),
-                 [
-                 ]
-                ),
+            ((b'', b'.'),
+             [(name0, name0, 'file', b'./' + name0),
+              (name1, name1, 'directory', b'./' + name1),
+              (name2, name2, 'file', b'./' + name2),
+              ]
+             ),
+            ((name1, b'./' + name1),
+             [(name1 + b'/' + name0, name0, 'file', b'./' + name1
+               + b'/' + name0),
+              (name1 + b'/' + name1, name1, 'directory', b'./' + name1
+               + b'/' + name1),
+              ]
+             ),
+            ((name1 + b'/' + name1, b'./' + name1 + b'/' + name1),
+             [
+                ]
+             ),
             ]
         result = []
         # For ease in testing, if walkdirs_utf8 returns Unicode, assert that
         # all abspaths are Unicode, and encode them back into utf8.
         for dirdetail, dirblock in osutils._walkdirs_utf8('.'):
-            self.assertIsInstance(dirdetail[0], str)
-            if isinstance(dirdetail[1], unicode):
+            self.assertIsInstance(dirdetail[0], bytes)
+            if isinstance(dirdetail[1], text_type):
                 dirdetail = (dirdetail[0], dirdetail[1].encode('utf8'))
                 dirblock = [list(info) for info in dirblock]
                 for info in dirblock:
-                    self.assertIsInstance(info[4], unicode)
+                    self.assertIsInstance(info[4], text_type)
                     info[4] = info[4].encode('utf8')
             new_dirblock = []
             for info in dirblock:
-                self.assertIsInstance(info[0], str)
-                self.assertIsInstance(info[1], str)
-                self.assertIsInstance(info[4], str)
+                self.assertIsInstance(info[0], bytes)
+                self.assertIsInstance(info[1], bytes)
+                self.assertIsInstance(info[4], bytes)
                 # Remove the stat information
                 new_dirblock.append((info[0], info[1], info[2], info[4]))
             result.append((dirdetail, new_dirblock))
@@ -1441,23 +1453,23 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # All of the abspaths should be in unicode, all of the relative paths
         # should be in utf8
         expected_dirblocks = [
-                (('', '.'),
-                 [(name0, name0, 'file', './' + name0u),
-                  (name1, name1, 'directory', './' + name1u),
-                  (name2, name2, 'file', './' + name2u),
-                 ]
-                ),
-                ((name1, './' + name1u),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1u
-                                                        + '/' + name0u),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1u
-                                                            + '/' + name1u),
-                 ]
-                ),
-                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
-                 [
-                 ]
-                ),
+            ((b'', '.'),
+             [(name0, name0, 'file', './' + name0u),
+              (name1, name1, 'directory', './' + name1u),
+              (name2, name2, 'file', './' + name2u),
+              ]
+             ),
+            ((name1, './' + name1u),
+             [(name1 + b'/' + name0, name0, 'file', './' + name1u
+               + '/' + name0u),
+              (name1 + b'/' + name1, name1, 'directory', './' + name1u
+               + '/' + name1u),
+              ]
+             ),
+            ((name1 + b'/' + name1, './' + name1u + '/' + name1u),
+             [
+                ]
+             ),
             ]
         result = list(osutils._walkdirs_utf8('.'))
         self._filter_out_stat(result)
@@ -1487,23 +1499,23 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # All of the abspaths should be in unicode, all of the relative paths
         # should be in utf8
         expected_dirblocks = [
-                (('', '.'),
-                 [(name0, name0, 'file', './' + name0u),
-                  (name1, name1, 'directory', './' + name1u),
-                  (name2, name2, 'file', './' + name2u),
-                 ]
-                ),
-                ((name1, './' + name1u),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1u
-                                                        + '/' + name0u),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1u
-                                                            + '/' + name1u),
-                 ]
-                ),
-                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
-                 [
-                 ]
-                ),
+            (('', '.'),
+             [(name0, name0, 'file', './' + name0u),
+              (name1, name1, 'directory', './' + name1u),
+              (name2, name2, 'file', './' + name2u),
+              ]
+             ),
+            ((name1, './' + name1u),
+             [(name1 + '/' + name0, name0, 'file', './' + name1u
+               + '/' + name0u),
+              (name1 + '/' + name1, name1, 'directory', './' + name1u
+               + '/' + name1u),
+              ]
+             ),
+            ((name1 + '/' + name1, './' + name1u + '/' + name1u),
+             [
+                ]
+             ),
             ]
         result = list(osutils._walkdirs_utf8(u'.'))
         self._filter_out_stat(result)
@@ -1530,11 +1542,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # I hate to sleep() here, but I'm trying to make the ctime different
         # from the mtime
         time.sleep(2)
-        f = open(name0u, 'ab')
-        try:
-            f.write('just a small update')
-        finally:
-            f.close()
+        with open(name0u, 'ab') as f:
+            f.write(b'just a small update')
 
         result = Win32ReadDir().read_dir('', u'.')
         entry = result[0]
@@ -1633,7 +1642,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # using the comparison routine shoudl work too:
         self.assertEqual(
             dir_sorted_paths,
-            sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
+            sorted(original_paths, key=osutils.path_prefix_key))
 
 
 class TestCopyTree(tests.TestCaseInTempDir):
@@ -1662,16 +1671,19 @@ class TestCopyTree(tests.TestCaseInTempDir):
     def test_copy_tree_handlers(self):
         processed_files = []
         processed_links = []
+
         def file_handler(from_path, to_path):
             processed_files.append(('f', from_path, to_path))
+
         def dir_handler(from_path, to_path):
             processed_files.append(('d', from_path, to_path))
+
         def link_handler(from_path, to_path):
             processed_links.append((from_path, to_path))
         handlers = {'file': file_handler,
                     'directory': dir_handler,
                     'symlink': link_handler,
-                   }
+                    }
 
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         if osutils.has_symlinks():
@@ -1682,7 +1694,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('f', 'source/a', 'target/a'),
                           ('d', 'source/b', 'target/b'),
                           ('f', 'source/b/c', 'target/b/c'),
-                         ], processed_files)
+                          ], processed_files)
         self.assertPathDoesNotExist('target')
         if osutils.has_symlinks():
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
@@ -1697,6 +1709,7 @@ class TestSetUnsetEnv(tests.TestCase):
         self.assertEqual(None, os.environ.get('BRZ_TEST_ENV_VAR'),
                          'Environment was not cleaned up properly.'
                          ' Variable BRZ_TEST_ENV_VAR should not exist.')
+
         def cleanup():
             if 'BRZ_TEST_ENV_VAR' in os.environ:
                 del os.environ['BRZ_TEST_ENV_VAR']
@@ -1726,8 +1739,11 @@ class TestSetUnsetEnv(tests.TestCase):
                 'Cannot find a unicode character that works in encoding %s'
                 % (osutils.get_user_encoding(),))
 
-        old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
-        self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', uni_val)
+        if PY3:
+            self.assertEqual(uni_val, os.environ.get('BRZ_TEST_ENV_VAR'))
+        else:
+            self.assertEqual(env_val, os.environ.get('BRZ_TEST_ENV_VAR'))
 
     def test_unset(self):
         """Test that passing None will remove the env var"""
@@ -1735,14 +1751,14 @@ class TestSetUnsetEnv(tests.TestCase):
         old = osutils.set_or_unset_env('BRZ_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
         self.assertEqual(None, os.environ.get('BRZ_TEST_ENV_VAR'))
-        self.assertFalse('BRZ_TEST_ENV_VAR' in os.environ)
+        self.assertNotIn('BRZ_TEST_ENV_VAR', os.environ)
 
 
 class TestSizeShaFile(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
         self.build_tree_contents([('foo', b'')])
-        expected_sha = osutils.sha_string('')
+        expected_sha = osutils.sha_string(b'')
         f = open('foo')
         self.addCleanup(f.close)
         size, sha = osutils.size_sha_file(f)
@@ -1764,7 +1780,7 @@ class TestShaFileByName(tests.TestCaseInTempDir):
 
     def test_sha_empty(self):
         self.build_tree_contents([('foo', b'')])
-        expected_sha = osutils.sha_string('')
+        expected_sha = osutils.sha_string(b'')
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
     def test_sha_mixed_endings(self):
@@ -1785,7 +1801,7 @@ class TestResourceLoading(tests.TestCaseInTempDir):
         self.assertContainsRe(text, "class TextUIFactory")
         # test unsupported package
         self.assertRaises(errors.BzrError, osutils.resource_string, 'zzzz',
-            'yyy.xx')
+                          'yyy.xx')
         # test unknown resource
         self.assertRaises(IOError, osutils.resource_string, 'breezy', 'yyy.xx')
 
@@ -1812,21 +1828,21 @@ class TestDirReader(tests.TestCaseInTempDir):
             '2file'
             ]
         expected_dirblocks = [
-                (('', '.'),
-                 [('0file', '0file', 'file'),
-                  ('1dir', '1dir', 'directory'),
-                  ('2file', '2file', 'file'),
-                 ]
-                ),
-                (('1dir', './1dir'),
-                 [('1dir/0file', '0file', 'file'),
-                  ('1dir/1dir', '1dir', 'directory'),
-                 ]
-                ),
-                (('1dir/1dir', './1dir/1dir'),
-                 [
-                 ]
-                ),
+            ((b'', '.'),
+             [(b'0file', b'0file', 'file', './0file'),
+              (b'1dir', b'1dir', 'directory', './1dir'),
+              (b'2file', b'2file', 'file', './2file'),
+              ]
+             ),
+            ((b'1dir', './1dir'),
+             [(b'1dir/0file', b'0file', 'file', './1dir/0file'),
+              (b'1dir/1dir', b'1dir', 'directory', './1dir/1dir'),
+              ]
+             ),
+            ((b'1dir/1dir', './1dir/1dir'),
+             [
+                ]
+             ),
             ]
         return tree, expected_dirblocks
 
@@ -1836,18 +1852,16 @@ class TestDirReader(tests.TestCaseInTempDir):
         result = list(osutils._walkdirs_utf8('.'))
         # Filter out stat and abspath
         self.assertEqual(expected_dirblocks,
-                         [(dirinfo, [line[0:3] for line in block])
-                          for dirinfo, block in result])
+                         self._filter_out(result))
 
     def test_walk_sub_dir(self):
         tree, expected_dirblocks = self._get_ascii_tree()
         self.build_tree(tree)
         # you can search a subdir only, with a supplied prefix.
-        result = list(osutils._walkdirs_utf8('./1dir', '1dir'))
+        result = list(osutils._walkdirs_utf8(b'./1dir', b'1dir'))
         # Filter out stat and abspath
         self.assertEqual(expected_dirblocks[1:],
-                         [(dirinfo, [line[0:3] for line in block])
-                          for dirinfo, block in result])
+                         self._filter_out(result))
 
     def _get_unicode_tree(self):
         name0u = u'0file-\xb6'
@@ -1864,23 +1878,23 @@ class TestDirReader(tests.TestCaseInTempDir):
         name1 = name1u.encode('UTF-8')
         name2 = name2u.encode('UTF-8')
         expected_dirblocks = [
-                (('', '.'),
-                 [(name0, name0, 'file', './' + name0u),
-                  (name1, name1, 'directory', './' + name1u),
-                  (name2, name2, 'file', './' + name2u),
-                 ]
-                ),
-                ((name1, './' + name1u),
-                 [(name1 + '/' + name0, name0, 'file', './' + name1u
-                                                        + '/' + name0u),
-                  (name1 + '/' + name1, name1, 'directory', './' + name1u
-                                                            + '/' + name1u),
-                 ]
-                ),
-                ((name1 + '/' + name1, './' + name1u + '/' + name1u),
-                 [
-                 ]
-                ),
+            ((b'', '.'),
+             [(name0, name0, 'file', './' + name0u),
+              (name1, name1, 'directory', './' + name1u),
+              (name2, name2, 'file', './' + name2u),
+              ]
+             ),
+            ((name1, './' + name1u),
+             [(name1 + b'/' + name0, name0, 'file', './' + name1u
+               + '/' + name0u),
+              (name1 + b'/' + name1, name1, 'directory', './' + name1u
+               + '/' + name1u),
+              ]
+             ),
+            ((name1 + b'/' + name1, './' + name1u + '/' + name1u),
+             [
+                ]
+             ),
             ]
         return tree, expected_dirblocks
 
@@ -1894,7 +1908,8 @@ class TestDirReader(tests.TestCaseInTempDir):
             dirinfo = (dirinfo[0], self._native_to_unicode(dirinfo[1]))
             details = []
             for line in block:
-                details.append(line[0:3] + (self._native_to_unicode(line[4]), ))
+                details.append(
+                    line[0:3] + (self._native_to_unicode(line[4]), ))
             filtered_dirblocks.append((dirinfo, details))
         return filtered_dirblocks
 
@@ -1911,13 +1926,12 @@ class TestDirReader(tests.TestCaseInTempDir):
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
-        target_utf8 = target.encode('UTF-8')
         link_name_utf8 = link_name.encode('UTF-8')
         expected_dirblocks = [
-                (('', '.'),
-                 [(link_name_utf8, link_name_utf8,
-                   'symlink', './' + link_name),],
-                 )]
+            ((b'', '.'),
+             [(link_name_utf8, link_name_utf8,
+               'symlink', './' + link_name), ],
+             )]
         result = list(osutils._walkdirs_utf8('.'))
         self.assertEqual(expected_dirblocks, self._filter_out(result))
 
@@ -1931,7 +1945,8 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-    _test_needs_features = [features.SymlinkFeature, features.UnicodeFilenameFeature]
+    _test_needs_features = [features.SymlinkFeature,
+                            features.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
@@ -1940,11 +1955,11 @@ class TestReadLink(tests.TestCaseInTempDir):
         os.symlink(self.target, self.link)
 
     def test_os_readlink_link_encoding(self):
-        self.assertEqual(self.target,  os.readlink(self.link))
+        self.assertEqual(self.target, os.readlink(self.link))
 
     def test_os_readlink_link_decoding(self):
         self.assertEqual(self.target.encode(osutils._fs_enc),
-                          os.readlink(self.link.encode(osutils._fs_enc)))
+                         os.readlink(self.link.encode(osutils._fs_enc)))
 
 
 class TestConcurrency(tests.TestCase):
@@ -1977,7 +1992,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def _try_loading(self):
         try:
-            import breezy._fictional_extension_py
+            import breezy._fictional_extension_py  # noqa: F401
         except ImportError as e:
             osutils.failed_to_load_extension(e)
             return True
@@ -1989,12 +2004,18 @@ class TestFailedToLoadExtension(tests.TestCase):
     def test_failure_to_load(self):
         self._try_loading()
         self.assertLength(1, osutils._extension_load_failures)
-        self.assertEqual(osutils._extension_load_failures[0],
-            "No module named _fictional_extension_py")
+        if PY3:
+            self.assertEqual(
+                osutils._extension_load_failures[0],
+                "No module named 'breezy._fictional_extension_py'")
+        else:
+            self.assertEqual(osutils._extension_load_failures[0],
+                             "No module named _fictional_extension_py")
 
     def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
-        warnings, result = self.callCatchWarnings(osutils.report_extension_load_failures)
+        warnings, result = self.callCatchWarnings(
+            osutils.report_extension_load_failures)
         # it used to give a Python warning; it no longer does
         self.assertLength(0, warnings)
 
@@ -2005,8 +2026,8 @@ class TestFailedToLoadExtension(tests.TestCase):
         osutils.report_extension_load_failures()
         self.assertContainsRe(
             log.getvalue(),
-            r"brz: warning: some compiled extensions could not be loaded; "
-            "see ``brz help missing-extensions``\n"
+            br"brz: warning: some compiled extensions could not be loaded; "
+            b"see ``brz help missing-extensions``\n"
             )
 
 
@@ -2083,7 +2104,7 @@ class TestTerminalWidth(tests.TestCase):
         termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
-            orig = termios.TIOCGWINSZ
+            termios.TIOCGWINSZ
         except AttributeError:
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
@@ -2112,7 +2133,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
     def test_copy_ownership_from_path(self):
         """copy_ownership_from_path test with specified src."""
         ownsrc = '/'
-        f = open('test_file', 'wt')
+        open('test_file', 'wt').close()
         osutils.copy_ownership_from_path('test_file', ownsrc)
 
         s = os.stat(ownsrc)
@@ -2122,7 +2143,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_copy_ownership_nonesrc(self):
         """copy_ownership_from_path test with src=None."""
-        f = open('test_file', 'wt')
+        open('test_file', 'wt').close()
         # should use parent dir for permissions
         osutils.copy_ownership_from_path('test_file')
 
@@ -2137,13 +2158,13 @@ class TestPathFromEnviron(tests.TestCase):
     def test_is_unicode(self):
         self.overrideEnv('BRZ_TEST_PATH', './anywhere at all/')
         path = osutils.path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(path, unicode)
+        self.assertIsInstance(path, text_type)
         self.assertEqual(u'./anywhere at all/', path)
 
     def test_posix_path_env_ascii(self):
         self.overrideEnv('BRZ_TEST_PATH', '/tmp')
         home = osutils._posix_path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
         self.assertEqual(u'/tmp', home)
 
     def test_posix_path_env_unicode(self):
@@ -2151,30 +2172,36 @@ class TestPathFromEnviron(tests.TestCase):
         self.overrideEnv('BRZ_TEST_PATH', '/home/\xa7test')
         self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
         self.assertEqual(u'/home/\xa7test',
-            osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+                         osutils._posix_path_from_environ('BRZ_TEST_PATH'))
         osutils._fs_enc = "iso8859-5"
-        self.assertEqual(u'/home/\u0407test',
-            osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-        osutils._fs_enc = "utf-8"
-        self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
+        if PY3:
+            # In Python 3, os.environ returns unicode.
+            self.assertEqual(u'/home/\xa7test',
+                             osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+        else:
+            self.assertEqual(u'/home/\u0407test',
+                             osutils._posix_path_from_environ('BRZ_TEST_PATH'))
+            osutils._fs_enc = "utf-8"
+            self.assertRaises(
+                errors.BadFilenameEncoding,
+                osutils._posix_path_from_environ, 'BRZ_TEST_PATH')
 
 
 class TestGetHomeDir(tests.TestCase):
 
     def test_is_unicode(self):
         home = osutils._get_home_dir()
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
 
     def test_posix_homeless(self):
         self.overrideEnv('HOME', None)
         home = osutils._get_home_dir()
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
 
     def test_posix_home_ascii(self):
         self.overrideEnv('HOME', '/home/test')
         home = osutils._posix_get_home_dir()
-        self.assertIsInstance(home, unicode)
+        self.assertIsInstance(home, text_type)
         self.assertEqual(u'/home/test', home)
 
     def test_posix_home_unicode(self):
@@ -2183,24 +2210,29 @@ class TestGetHomeDir(tests.TestCase):
         self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
         self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
         osutils._fs_enc = "iso8859-5"
-        self.assertEqual(u'/home/\u0407test', osutils._posix_get_home_dir())
-        osutils._fs_enc = "utf-8"
-        self.assertRaises(errors.BadFilenameEncoding,
-            osutils._posix_get_home_dir)
+        if PY3:
+            # In python 3, os.environ returns unicode
+            self.assertEqual(u'/home/\xa7test', osutils._posix_get_home_dir())
+        else:
+            self.assertEqual(u'/home/\u0407test',
+                             osutils._posix_get_home_dir())
+            osutils._fs_enc = "utf-8"
+            self.assertRaises(errors.BadFilenameEncoding,
+                              osutils._posix_get_home_dir)
 
 
 class TestGetuserUnicode(tests.TestCase):
 
     def test_is_unicode(self):
         user = osutils.getuser_unicode()
-        self.assertIsInstance(user, unicode)
+        self.assertIsInstance(user, text_type)
 
     def envvar_to_override(self):
         if sys.platform == "win32":
             # Disable use of platform calls on windows so envvar is used
             self.overrideAttr(win32utils, 'has_ctypes', False)
-            return 'USERNAME' # only variable used on windows
-        return 'LOGNAME' # first variable checked by getpass.getuser()
+            return 'USERNAME'  # only variable used on windows
+        return 'LOGNAME'  # first variable checked by getpass.getuser()
 
     def test_ascii_user(self):
         self.overrideEnv(self.envvar_to_override(), 'jrandom')
@@ -2215,7 +2247,10 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        self.overrideEnv(self.envvar_to_override(), encoded_username)
+        if PY3:
+            self.overrideEnv(self.envvar_to_override(), uni_username)
+        else:
+            self.overrideEnv(self.envvar_to_override(), encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
 
 
@@ -2254,7 +2289,8 @@ class TestFindExecutableInPath(tests.TestCase):
     def test_windows(self):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
-        self.assertTrue(osutils.find_executable_on_path('explorer') is not None)
+        self.assertTrue(osutils.find_executable_on_path(
+            'explorer') is not None)
         self.assertTrue(
             osutils.find_executable_on_path('explorer.exe') is not None)
         self.assertTrue(
@@ -2262,14 +2298,15 @@ class TestFindExecutableInPath(tests.TestCase):
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
         self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
-        
+
     def test_windows_app_path(self):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
         # Override PATH env var so that exe can only be found on App Path
         self.overrideEnv('PATH', '')
         # Internt Explorer is always registered in the App Path
-        self.assertTrue(osutils.find_executable_on_path('iexplore') is not None)
+        self.assertTrue(osutils.find_executable_on_path(
+            'iexplore') is not None)
 
     def test_other(self):
         if sys.platform == 'win32':

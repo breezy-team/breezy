@@ -50,7 +50,7 @@ class DoUnexpectedErrorRequest(request.SmartServerRequest):
 
 class ChunkErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do_chunk()."""
-    
+
     def do(self):
         """No-op."""
         pass
@@ -61,7 +61,7 @@ class ChunkErrorRequest(request.SmartServerRequest):
 
 class EndErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do_end()."""
-    
+
     def do(self):
         """No-op."""
         pass
@@ -69,7 +69,7 @@ class EndErrorRequest(request.SmartServerRequest):
     def do_chunk(self, bytes):
         """No-op."""
         pass
-        
+
     def do_end(self):
         raise errors.NoSuchFile('xyzzy')
 
@@ -107,19 +107,19 @@ class TestSmartRequest(TestCase):
         # Create a SmartServerRequestHandler with a SmartServerRequest subclass
         # that does not implement do_body.
         handler = request.SmartServerRequestHandler(
-            None, {'foo': NoBodyRequest}, '/')
+            None, {b'foo': NoBodyRequest}, '/')
         # Emulate a request with no body (i.e. just args).
-        handler.args_received(('foo',))
+        handler.args_received((b'foo',))
         handler.end_received()
         # Request done, no exception was raised.
 
     def test_only_request_code_is_jailed(self):
         transport = 'dummy transport'
         handler = request.SmartServerRequestHandler(
-            transport, {'foo': CheckJailRequest}, '/')
-        handler.args_received(('foo',))
+            transport, {b'foo': CheckJailRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertEqual(None, request.jail_info.transports)
-        handler.accept_body('bytes')
+        handler.accept_body(b'bytes')
         self.assertEqual(None, request.jail_info.transports)
         handler.end_received()
         self.assertEqual(None, request.jail_info.transports)
@@ -135,7 +135,7 @@ class TestSmartRequest(TestCase):
                 unclassified_requests.append(key)
         if unclassified_requests:
             self.fail('These requests were not categorized as safe/unsafe'
-                      ' to retry: %s'  % (unclassified_requests,))
+                      ' to retry: %s' % (unclassified_requests,))
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):
@@ -147,39 +147,39 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
         self.assertEqual(None, handler.response)
 
     def assertResponseIsTranslatedError(self, handler):
-        expected_translation = ('NoSuchFile', 'xyzzy')
+        expected_translation = (b'NoSuchFile', b'xyzzy')
         self.assertEqual(
             request.FailedSmartServerResponse(expected_translation),
             handler.response)
 
     def test_error_translation_from_args_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': DoErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': DoErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertResponseIsTranslatedError(handler)
 
     def test_error_translation_from_chunk_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': ChunkErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': ChunkErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertNoResponse(handler)
-        handler.accept_body('bytes')
+        handler.accept_body(b'bytes')
         self.assertResponseIsTranslatedError(handler)
 
     def test_error_translation_from_end_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': EndErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': EndErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertNoResponse(handler)
         handler.end_received()
         self.assertResponseIsTranslatedError(handler)
 
     def test_unexpected_error_translation(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': DoUnexpectedErrorRequest}, '/')
-        handler.args_received(('foo',))
+            None, {b'foo': DoUnexpectedErrorRequest}, '/')
+        handler.args_received((b'foo',))
         self.assertEqual(
-            request.FailedSmartServerResponse(('error', 'KeyError', "1")),
+            request.FailedSmartServerResponse((b'error', b'KeyError', b"1")),
             handler.response)
 
 
@@ -191,36 +191,41 @@ class TestRequestHanderErrorTranslation(TestCase):
 
     def test_NoSuchFile(self):
         self.assertTranslationEqual(
-            ('NoSuchFile', 'path'), errors.NoSuchFile('path'))
+            (b'NoSuchFile', b'path'), errors.NoSuchFile('path'))
 
     def test_LockContention(self):
         # For now, LockContentions are always transmitted with no details.
         # Eventually they should include a relpath or url or something else to
         # identify which lock is busy.
         self.assertTranslationEqual(
-            ('LockContention',), errors.LockContention('lock', 'msg'))
+            (b'LockContention',), errors.LockContention('lock', 'msg'))
 
     def test_TokenMismatch(self):
         self.assertTranslationEqual(
-            ('TokenMismatch', 'some-token', 'actual-token'),
-            errors.TokenMismatch('some-token', 'actual-token'))
+            (b'TokenMismatch', b'some-token', b'actual-token'),
+            errors.TokenMismatch(b'some-token', b'actual-token'))
 
     def test_MemoryError(self):
-        self.assertTranslationEqual(("MemoryError",), MemoryError())
+        self.assertTranslationEqual((b"MemoryError",), MemoryError())
+
+    def test_GhostRevisionsHaveNoRevno(self):
+        self.assertTranslationEqual(
+            (b"GhostRevisionsHaveNoRevno", b'revid1', b'revid2'),
+            errors.GhostRevisionsHaveNoRevno(b'revid1', b'revid2'))
 
     def test_generic_Exception(self):
-        self.assertTranslationEqual(('error', 'Exception', ""),
-            Exception())
+        self.assertTranslationEqual((b'error', b'Exception', b""),
+                                    Exception())
 
     def test_generic_BzrError(self):
-        self.assertTranslationEqual(('error', 'BzrError', "some text"),
-            errors.BzrError(msg="some text"))
+        self.assertTranslationEqual((b'error', b'BzrError', b"some text"),
+                                    errors.BzrError(msg="some text"))
 
     def test_generic_zlib_error(self):
         from zlib import error
         msg = "Error -3 while decompressing data: incorrect data check"
-        self.assertTranslationEqual(('error', 'zlib.error', msg),
-            error(msg))
+        self.assertTranslationEqual((b'error', b'zlib.error', msg.encode('utf-8')),
+                                    error(msg))
 
 
 class TestRequestJail(TestCaseWithMemoryTransport):
@@ -239,6 +244,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
 
     def setUp(self):
         super(TestJailHook, self).setUp()
+
         def clear_jail_info():
             request.jail_info.transports = None
         self.addCleanup(clear_jail_info)
@@ -262,7 +268,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
 
     def test_open_bzrdir_in_non_main_thread(self):
         """Opening a bzrdir in a non-main thread should work ok.
-        
+
         This makes sure that the globally-installed
         breezy.bzr.smart.request._pre_open_hook, which uses a threading.local(),
         works in a newly created thread.
@@ -270,6 +276,7 @@ class TestJailHook(TestCaseWithMemoryTransport):
         bzrdir = self.make_controldir('.')
         transport = bzrdir.root_transport
         thread_result = []
+
         def t():
             BzrDir.open_from_transport(transport)
             thread_result.append('ok')
@@ -277,4 +284,3 @@ class TestJailHook(TestCaseWithMemoryTransport):
         thread.start()
         thread.join()
         self.assertEqual(['ok'], thread_result)
-

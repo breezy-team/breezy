@@ -2,7 +2,7 @@
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; version 3 of the License or 
+# the Free Software Foundation; version 3 of the License or
 # (at your option) a later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -80,7 +80,7 @@ class DarcsProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([DarcsDirFormat()])
+        return [DarcsDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(DarcsProber)

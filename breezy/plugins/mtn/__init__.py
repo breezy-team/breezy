@@ -2,7 +2,7 @@
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; version 3 of the License or 
+# the Free Software Foundation; version 3 of the License or
 # (at your option) a later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -21,7 +21,7 @@ Currently only tells the user that Monotone is not supported.
 
 from __future__ import absolute_import
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     controldir,
@@ -55,7 +55,7 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
         return False
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-           basedir=None):
+                             basedir=None):
         raise MonotoneUnsupportedError(self)
 
     def open(self, transport):
@@ -75,7 +75,7 @@ class MonotoneProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([MonotoneDirFormat()])
+        return [MonotoneDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(MonotoneProber)

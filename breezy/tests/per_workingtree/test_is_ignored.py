@@ -52,17 +52,17 @@ class TestIsIgnored(TestCaseWithWorkingTree):
                            b'path/from/ro?t\n'
                            b'**/piffle.py\n'
                            b'!b/piffle.py\n'
-                           b'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
+                           b'unicode\xc2\xb5\n'  # u'\xb5'.encode('utf8')
                            b'dos\r\n'
-                           b'\n' # empty line
+                           b'\n'  # empty line
                            b'#comment\n'
-                           b' xx \n' # whitespace
-            )])
+                           b' xx \n'  # whitespace
+             )])
         # We set user ignore file to contain '' to avoid patterns from
         # user ignore being used instead of bzrignore. For .e.g. If we
         # don't do this 'foo.~1~' will match '*~' default user ignore
         # pattern instead of '*.~*' from bzr ignore as we expect below.
-        self._set_user_ignore_content('')
+        self._set_user_ignore_content(b'')
         # is_ignored returns the matching ignore regex when a path is ignored.
         # we check some expected matches for each rule, and one or more
         # relevant not-matches that look plausible as cases for bugs.
@@ -82,12 +82,13 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         self.assertEqual('**/piffle.py', tree.is_ignored('piffle.py'))
         self.assertEqual('**/piffle.py', tree.is_ignored('a/piffle.py'))
-        self.assertEqual(None, tree.is_ignored('b/piffle.py')) # exclusion
+        self.assertEqual(None, tree.is_ignored('b/piffle.py'))  # exclusion
         self.assertEqual('**/piffle.py', tree.is_ignored('foo/bar/piffle.py'))
         self.assertEqual(None, tree.is_ignored('p/iffle.py'))
 
         self.assertEqual(u'unicode\xb5', tree.is_ignored(u'unicode\xb5'))
-        self.assertEqual(u'unicode\xb5', tree.is_ignored(u'subdir/unicode\xb5'))
+        self.assertEqual(
+            u'unicode\xb5', tree.is_ignored(u'subdir/unicode\xb5'))
         self.assertEqual(None, tree.is_ignored(u'unicode\xe5'))
         self.assertEqual(None, tree.is_ignored(u'unicode'))
         self.assertEqual(None, tree.is_ignored(u'\xb5'))
@@ -100,7 +101,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*bar', tree.is_ignored('bar'))
         self.assertEqual('*bar', tree.is_ignored('.bar'))
 
-        self.assertEqual(None, tree.is_ignored('bazbar')) # exclusion
+        self.assertEqual(None, tree.is_ignored('bazbar'))  # exclusion
 
         self.assertEqual('?foo', tree.is_ignored('afoo'))
         self.assertEqual('?foo', tree.is_ignored('.foo'))
@@ -114,7 +115,8 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
 
-        self.assertEqual('RE:dir2/.*\.wombat', tree.is_ignored('dir2/foo.wombat'))
+        self.assertEqual('RE:dir2/.*\\.wombat',
+                         tree.is_ignored('dir2/foo.wombat'))
         self.assertEqual(None, tree.is_ignored('dir2/foo'))
 
         # Blank lines and comments should be ignored
@@ -137,14 +139,14 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         config.ensure_config_dir_exists()
         user_ignore_file = config.user_ignore_config_filename()
         self._set_user_ignore_content(
-            '*.py[co]\n'
-            './.shelf\n'
-            '# comment line\n'
-            '\n' #Blank line
-            '\r\n' #Blank dos line
-            ' * \n' #Trailing and suffix spaces
-            'crlf\r\n' # dos style line
-            '*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
+            b'*.py[co]\n'
+            b'./.shelf\n'
+            b'# comment line\n'
+            b'\n'  # Blank line
+            b'\r\n'  # Blank dos line
+            b' * \n'  # Trailing and suffix spaces
+            b'crlf\r\n'  # dos style line
+            b'*\xc3\xa5*\n'  # u'\xe5'.encode('utf8')
             )
 
         # Rooted

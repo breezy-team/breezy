@@ -19,7 +19,7 @@ from __future__ import absolute_import
 
 from ... import controldir
 from ...commands import Command
-from ...option import Option, ListOption, RegistryOption
+from ...option import Option, RegistryOption
 from ...sixish import (
     text_type,
     )
@@ -85,7 +85,7 @@ class cmd_fast_import(Command):
       bzr fast-import project.fi project.bzr
 
     Numerous commands are provided for generating a fast-import file
-    to use as input. 
+    to use as input.
     To specify standard input as the input stream, use a
     source name of '-' (instead of project.fi). If the source name
     ends in '.gz', it is assumed to be compressed in gzip format.
@@ -242,53 +242,55 @@ class cmd_fast_import(Command):
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
     takes_args = ['source', 'destination?']
     takes_options = ['verbose',
-                    Option('user-map', type=text_type,
-                        help="Path to file containing a map of user-ids.",
-                        ),
-                    Option('info', type=text_type,
-                        help="Path to file containing caching hints.",
-                        ),
-                    Option('trees',
-                        help="Update all working trees, not just trunk's.",
-                        ),
-                    Option('count', type=int,
-                        help="Import this many revisions then exit.",
-                        ),
-                    Option('checkpoint', type=int,
-                        help="Checkpoint automatically every N revisions."
-                             " The default is 10000.",
-                        ),
-                    Option('autopack', type=int,
-                        help="Pack every N checkpoints. The default is 4.",
-                        ),
-                    Option('inv-cache', type=int,
-                        help="Number of inventories to cache.",
-                        ),
-                    RegistryOption.from_kwargs('mode',
-                        'The import algorithm to use.',
-                        title='Import Algorithm',
-                        default='Use the preferred algorithm (inventory deltas).',
-                        classic="Use the original algorithm (mutable inventories).",
-                        experimental="Enable experimental features.",
-                        value_switches=True, enum_switch=False,
-                        ),
-                    Option('import-marks', type=text_type,
-                        help="Import marks from file."
-                        ),
-                    Option('export-marks', type=text_type,
-                        help="Export marks to file."
-                        ),
-                    RegistryOption('format',
-                            help='Specify a format for the created repository. See'
-                                 ' "bzr help formats" for details.',
-                            lazy_registry=('breezy.controldir', 'format_registry'),
-                            converter=lambda name: controldir.format_registry.make_controldir(name),
-                            value_switches=False, title='Repository format'),
+                     Option('user-map', type=text_type,
+                            help="Path to file containing a map of user-ids.",
+                            ),
+                     Option('info', type=text_type,
+                            help="Path to file containing caching hints.",
+                            ),
+                     Option('trees',
+                            help="Update all working trees, not just trunk's.",
+                            ),
+                     Option('count', type=int,
+                            help="Import this many revisions then exit.",
+                            ),
+                     Option('checkpoint', type=int,
+                            help="Checkpoint automatically every N revisions."
+                            " The default is 10000.",
+                            ),
+                     Option('autopack', type=int,
+                            help="Pack every N checkpoints. The default is 4.",
+                            ),
+                     Option('inv-cache', type=int,
+                            help="Number of inventories to cache.",
+                            ),
+                     RegistryOption.from_kwargs('mode',
+                                                'The import algorithm to use.',
+                                                title='Import Algorithm',
+                                                default='Use the preferred algorithm (inventory deltas).',
+                                                experimental="Enable experimental features.",
+                                                value_switches=True, enum_switch=False,
+                                                ),
+                     Option('import-marks', type=text_type,
+                            help="Import marks from file."
+                            ),
+                     Option('export-marks', type=text_type,
+                            help="Export marks to file."
+                            ),
+                     RegistryOption('format',
+                                    help='Specify a format for the created repository. See'
+                                    ' "bzr help formats" for details.',
+                                    lazy_registry=(
+                                        'breezy.controldir', 'format_registry'),
+                                    converter=lambda name: controldir.format_registry.make_controldir(
+                                        name),
+                                    value_switches=False, title='Repository format'),
                      ]
+
     def run(self, source, destination='.', verbose=False, info=None,
-        trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
-        mode=None, import_marks=None, export_marks=None, format=None,
-        user_map=None):
+            trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
+            mode=None, import_marks=None, export_marks=None, format=None,
+            user_map=None):
         load_fastimport()
         from .processors import generic_processor
         from .helpers import (
@@ -316,15 +318,15 @@ class cmd_fast_import(Command):
             'export-marks': export_marks,
             }
         return _run(source, generic_processor.GenericProcessor,
-                bzrdir=control, params=params, verbose=verbose,
-                user_map=user_map)
+                    bzrdir=control, params=params, verbose=verbose,
+                    user_map=user_map)
 
     def _generate_info(self, source):
         from ...sixish import StringIO
         from fastimport import parser
         from fastimport.errors import ParsingError
         from ...errors import BzrCommandError
-        from .processors import info_processor
+        from fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:
@@ -339,230 +341,6 @@ class cmd_fast_import(Command):
             output.close()
             stream.seek(0)
         return lines
-
-
-class cmd_fast_import_filter(Command):
-    """Filter a fast-import stream to include/exclude files & directories.
-
-    This command is useful for splitting a subdirectory or bunch of
-    files out from a project to create a new project complete with history
-    for just those files. It can also be used to create a new project
-    repository that removes all references to files that should not have
-    been committed, e.g. security-related information (like passwords),
-    commercially sensitive material, files with an incompatible license or
-    large binary files like CD images.
-
-    To specify standard input as the input stream, use a source name
-    of '-'. If the source name ends in '.gz', it is assumed to be
-    compressed in gzip format.
-
-    :File/directory filtering:
-
-     This is supported by the -i and -x options. Excludes take precedence
-     over includes.
-
-     When filtering out a subdirectory (or file), the new stream uses the
-     subdirectory (or subdirectory containing the file) as the root. As
-     fast-import doesn't know in advance whether a path is a file or
-     directory in the stream, you need to specify a trailing '/' on
-     directories passed to the `--includes option`. If multiple files or
-     directories are given, the new root is the deepest common directory.
-
-     Note: If a path has been renamed, take care to specify the *original*
-     path name, not the final name that it ends up with.
-
-    :User mapping:
-
-     Some source repositories store just the user name while Bazaar
-     prefers a full email address. You can adjust user-ids
-     by using the --user-map option. The argument is a
-     text file with lines in the format::
-
-       old-id = new-id
-
-     Blank lines and lines beginning with # are ignored.
-     If old-id has the special value '@', then users without an
-     email address will get one created by using the matching new-id
-     as the domain, unless a more explicit address is given for them.
-     For example, given the user-map of::
-
-       @ = example.com
-       bill = William Jones <bill@example.com>
-
-     then user-ids are mapped as follows::
-
-      maria => maria <maria@example.com>
-      bill => William Jones <bill@example.com>
-
-     .. note::
-
-        User mapping is supported by both the fast-import and
-        fast-import-filter commands.
-
-    :History rewriting:
-
-     By default fast-import-filter does quite aggressive history rewriting.
-     Empty commits (or commits which had all their content filtered out) will
-     be removed, and so are the references to commits not included in the stream.
-
-     Flag --dont-squash-empty-commits reverses this behavior and makes it possible to
-     use fast-import-filter on incremental streams.
-
-    :Examples:
-
-     Create a new project from a library (note the trailing / on the
-     directory name of the library)::
-
-       front-end | bzr fast-import-filter -i lib/xxx/ > xxx.fi
-       bzr fast-import xxx.fi mylibrary.bzr
-       (lib/xxx/foo is now foo)
-
-     Create a new repository without a sensitive file::
-
-       front-end | bzr fast-import-filter -x missile-codes.txt > clean.fi
-       bzr fast-import clean.fi clean.bzr
-    """
-    hidden = False
-    _see_also = ['fast-import']
-    takes_args = ['source?']
-    takes_options = ['verbose',
-                    ListOption('include_paths', short_name='i', type=text_type,
-                        help="Only include commits affecting these paths."
-                             " Directories should have a trailing /."
-                        ),
-                    ListOption('exclude_paths', short_name='x', type=text_type,
-                        help="Exclude these paths from commits."
-                        ),
-                    Option('user-map', type=text_type,
-                        help="Path to file containing a map of user-ids.",
-                        ),
-                    Option('dont-squash-empty-commits',
-                        help="Preserve all commits and links between them"
-                        ),
-                     ]
-    encoding_type = 'exact'
-    def run(self, source=None, verbose=False, include_paths=None,
-        exclude_paths=None, user_map=None, dont_squash_empty_commits=False):
-        from ...errors import BzrCommandError
-        load_fastimport()
-        from fastimport.processors import filter_processor
-        params = {
-            'include_paths': include_paths,
-            'exclude_paths': exclude_paths,
-            }
-        if ('squash_empty_commits' in
-                filter_processor.FilterProcessor.known_params):
-            params['squash_empty_commits'] = (not dont_squash_empty_commits)
-        else:
-            if dont_squash_empty_commits:
-                raise BzrCommandError("installed python-fastimport does not "
-                    "support not squashing empty commits. Please install "
-                    " a newer python-fastimport to use "
-                    "--dont-squash-empty-commits")
-
-        from fastimport.errors import ParsingError
-        from fastimport import parser
-        stream = _get_source_stream(source)
-        user_mapper = _get_user_mapper(user_map)
-        proc = filter_processor.FilterProcessor(params=params, verbose=verbose)
-        p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
-        try:
-            return proc.process(p.iter_commands)
-        except ParsingError as e:
-            raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
-
-
-class cmd_fast_import_info(Command):
-    """Output information about a fast-import stream.
-
-    This command reads a fast-import stream and outputs
-    statistics and interesting properties about what it finds.
-    When run in verbose mode, the information is output as a
-    configuration file that can be passed to fast-import to
-    assist it in intelligently caching objects.
-
-    To specify standard input as the input stream, use a source name
-    of '-'. If the source name ends in '.gz', it is assumed to be
-    compressed in gzip format.
-
-    :Examples:
-
-     Display statistics about the import stream produced by front-end::
-
-      front-end | bzr fast-import-info -
-
-     Create a hints file for running fast-import on a large repository::
-
-       front-end | bzr fast-import-info -v - > front-end.cfg
-    """
-    hidden = False
-    _see_also = ['fast-import']
-    takes_args = ['source']
-    takes_options = ['verbose']
-    def run(self, source, verbose=False):
-        load_fastimport()
-        from .processors import info_processor
-        return _run(source, info_processor.InfoProcessor, verbose=verbose)
-
-
-class cmd_fast_import_query(Command):
-    """Query a fast-import stream displaying selected commands.
-
-    To specify standard input as the input stream, use a source name
-    of '-'. If the source name ends in '.gz', it is assumed to be
-    compressed in gzip format.
-
-    To specify a commit to display, give its mark using the
-    --commit-mark option. The commit will be displayed with
-    file-commands included but with inline blobs hidden.
-
-    To specify the commands to display, use the -C option one or
-    more times. To specify just some fields for a command, use the
-    syntax::
-
-      command=field1,...
-
-    By default, the nominated fields for the nominated commands
-    are displayed tab separated. To see the information in
-    a name:value format, use verbose mode.
-
-    Note: Binary fields (e.g. data for blobs) are masked out
-    so it is generally safe to view the output in a terminal.
-
-    :Examples:
-
-     Show the commit with mark 429::
-
-      bzr fast-import-query xxx.fi -m429
-
-     Show all the fields of the reset and tag commands::
-
-      bzr fast-import-query xxx.fi -Creset -Ctag
-
-     Show the mark and merge fields of the commit commands::
-
-      bzr fast-import-query xxx.fi -Ccommit=mark,merge
-    """
-    hidden = True
-    _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source']
-    takes_options = ['verbose',
-                    Option('commit-mark', short_name='m', type=text_type,
-                        help="Mark of the commit to display."
-                        ),
-                    ListOption('commands', short_name='C', type=text_type,
-                        help="Display fields for these commands."
-                        ),
-                     ]
-    def run(self, source, verbose=False, commands=None, commit_mark=None):
-        load_fastimport()
-        from fastimport.processors import query_processor
-        from . import helpers
-        params = helpers.defines_to_dict(commands) or {}
-        if commit_mark:
-            params['commit-mark'] = commit_mark
-        return _run(source, query_processor.QueryProcessor, params=params,
-            verbose=verbose)
 
 
 class cmd_fast_export(Command):
@@ -670,42 +448,43 @@ class cmd_fast_export(Command):
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source?', 'destination?']
     takes_options = ['verbose', 'revision',
-                    Option('git-branch', short_name='b', type=text_type,
-                        argname='FILE',
-                        help='Name of the git branch to create (default=master).'
-                        ),
-                    Option('checkpoint', type=int, argname='N',
-                        help="Checkpoint every N revisions (default=10000)."
-                        ),
-                    Option('marks', type=text_type, argname='FILE',
-                        help="Import marks from and export marks to file."
-                        ),
-                    Option('import-marks', type=text_type, argname='FILE',
-                        help="Import marks from file."
-                        ),
-                    Option('export-marks', type=text_type, argname='FILE',
-                        help="Export marks to file."
-                        ),
-                    Option('plain',
-                        help="Exclude metadata to maximise interoperability."
-                        ),
-                    Option('rewrite-tag-names',
-                        help="Replace characters invalid in git with '_'"
-                             " (plain mode only).",
-                        ),
-                    Option('baseline',
-                        help="Export an 'absolute' baseline commit prior to"
-                             "the first relative commit",
-                        ),
-                    Option('no-tags',
-                        help="Don't export tags"
-                        ),
+                     Option('git-branch', short_name='b', type=text_type,
+                            argname='FILE',
+                            help='Name of the git branch to create (default=master).'
+                            ),
+                     Option('checkpoint', type=int, argname='N',
+                            help="Checkpoint every N revisions (default=10000)."
+                            ),
+                     Option('marks', type=text_type, argname='FILE',
+                            help="Import marks from and export marks to file."
+                            ),
+                     Option('import-marks', type=text_type, argname='FILE',
+                            help="Import marks from file."
+                            ),
+                     Option('export-marks', type=text_type, argname='FILE',
+                            help="Export marks to file."
+                            ),
+                     Option('plain',
+                            help="Exclude metadata to maximise interoperability."
+                            ),
+                     Option('rewrite-tag-names',
+                            help="Replace characters invalid in git with '_'"
+                            " (plain mode only).",
+                            ),
+                     Option('baseline',
+                            help="Export an 'absolute' baseline commit prior to"
+                            "the first relative commit",
+                            ),
+                     Option('no-tags',
+                            help="Don't export tags"
+                            ),
                      ]
     encoding_type = 'exact'
+
     def run(self, source=None, destination=None, verbose=False,
-        git_branch="master", checkpoint=10000, marks=None,
-        import_marks=None, export_marks=None, revision=None,
-        plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
+            git_branch="master", checkpoint=10000, marks=None,
+            import_marks=None, export_marks=None, revision=None,
+            plain=True, rewrite_tag_names=False, no_tags=False, baseline=False):
         load_fastimport()
         from ...branch import Branch
         from . import exporter
@@ -718,9 +497,11 @@ class cmd_fast_export(Command):
             source = "."
         branch = Branch.open_containing(source)[0]
         outf = exporter._get_output_stream(destination)
-        exporter = exporter.BzrFastExporter(branch,
-            outf=outf, ref="refs/heads/%s" % git_branch, checkpoint=checkpoint,
-            import_marks_file=import_marks, export_marks_file=export_marks,
-            revision=revision, verbose=verbose, plain_format=plain,
-            rewrite_tags=rewrite_tag_names, no_tags=no_tags, baseline=baseline)
+        exporter = exporter.BzrFastExporter(
+            branch,
+            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'),
+            checkpoint=checkpoint, import_marks_file=import_marks,
+            export_marks_file=export_marks, revision=revision, verbose=verbose,
+            plain_format=plain, rewrite_tags=rewrite_tag_names,
+            no_tags=no_tags, baseline=baseline)
         return exporter.run()

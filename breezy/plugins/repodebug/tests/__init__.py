@@ -46,8 +46,8 @@ class SmokeTests(TestCaseWithTransport):
         tree.add('foo')
         revid = tree.commit('a commit')
         out, err = self.run_bzr(
-                'file-refs ' + tree.path2id('foo') + ' ' + revid)
-        self.assertEqual(out, revid + '\n')
+            'file-refs ' + tree.path2id('foo').decode() + ' ' + revid.decode())
+        self.assertEqual(out, revid.decode('utf-8') + '\n')
         self.assertEqual(err, '')
 
     def test_fix_missing_keys_for_stacking(self):

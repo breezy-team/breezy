@@ -28,7 +28,6 @@ from .. import (
     transport,
     urlutils,
     )
-from ..directory_service import directories
 from ..sixish import (
     BytesIO,
     )
@@ -37,7 +36,6 @@ from ..transport import (
     fakenfs,
     http,
     local,
-    location_to_url,
     memory,
     pathfilter,
     readonly,
@@ -73,16 +71,16 @@ class TestTransport(tests.TestCase):
         transport._clear_protocol_handlers()
         transport.register_transport_proto('foo')
         transport.register_lazy_transport('foo',
-                                            'breezy.tests.test_transport',
-                                            'TestTransport.SampleHandler')
+                                          'breezy.tests.test_transport',
+                                          'TestTransport.SampleHandler')
         transport.register_transport_proto('bar')
         transport.register_lazy_transport('bar',
-                                            'breezy.tests.test_transport',
-                                            'TestTransport.SampleHandler')
+                                          'breezy.tests.test_transport',
+                                          'TestTransport.SampleHandler')
         self.assertEqual([SampleHandler.__module__,
-                            'breezy.transport.chroot',
-                            'breezy.transport.pathfilter'],
-                            transport._get_transport_modules())
+                          'breezy.transport.chroot',
+                          'breezy.transport.pathfilter'],
+                         transport._get_transport_modules())
 
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
@@ -96,11 +94,10 @@ class TestTransport(tests.TestCase):
         try:
             transport.get_transport_from_url('foo://fooserver/foo')
         except errors.UnsupportedProtocol as e:
-            e_str = str(e)
             self.assertEqual('Unsupported protocol'
-                                ' for url "foo://fooserver/foo":'
-                                ' Unable to import library "some_lib":'
-                                ' testing missing dependency', str(e))
+                             ' for url "foo://fooserver/foo":'
+                             ' Unable to import library "some_lib":'
+                             ' testing missing dependency', str(e))
         else:
             self.fail('Did not raise UnsupportedProtocol')
 
@@ -122,12 +119,11 @@ class TestTransport(tests.TestCase):
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
         except errors.UnsupportedProtocol as e:
-            e_str = str(e)
             self.assertEqual('Unsupported protocol'
-                              ' for url "ssh://fooserver/foo":'
-                              ' bzr supports bzr+ssh to operate over ssh,'
-                              ' use "bzr+ssh://fooserver/foo".',
-                              str(e))
+                             ' for url "ssh://fooserver/foo":'
+                             ' bzr supports bzr+ssh to operate over ssh,'
+                             ' use "bzr+ssh://fooserver/foo".',
+                             str(e))
         else:
             self.fail('Did not raise UnsupportedProtocol')
 
@@ -166,12 +162,12 @@ class TestCoalesceOffsets(tests.TestCase):
     def test_coalesce_unrelated(self):
         self.check([(0, 10, [(0, 10)]),
                     (20, 10, [(0, 10)]),
-                   ], [(0, 10), (20, 10)])
+                    ], [(0, 10), (20, 10)])
 
     def test_coalesce_unsorted(self):
         self.check([(20, 10, [(0, 10)]),
                     (0, 10, [(0, 10)]),
-                   ], [(20, 10), (0, 10)])
+                    ], [(20, 10), (0, 10)])
 
     def test_coalesce_nearby(self):
         self.check([(0, 20, [(0, 10), (10, 10)])],
@@ -179,32 +175,32 @@ class TestCoalesceOffsets(tests.TestCase):
 
     def test_coalesce_overlapped(self):
         self.assertRaises(ValueError,
-            self.check, [(0, 15, [(0, 10), (5, 10)])],
-                        [(0, 10), (5, 10)])
+                          self.check, [(0, 15, [(0, 10), (5, 10)])],
+                          [(0, 10), (5, 10)])
 
     def test_coalesce_limit(self):
         self.check([(10, 50, [(0, 10), (10, 10), (20, 10),
                               (30, 10), (40, 10)]),
                     (60, 50, [(0, 10), (10, 10), (20, 10),
                               (30, 10), (40, 10)]),
-                   ], [(10, 10), (20, 10), (30, 10), (40, 10),
-                       (50, 10), (60, 10), (70, 10), (80, 10),
-                       (90, 10), (100, 10)],
-                    limit=5)
+                    ], [(10, 10), (20, 10), (30, 10), (40, 10),
+                        (50, 10), (60, 10), (70, 10), (80, 10),
+                        (90, 10), (100, 10)],
+                   limit=5)
 
     def test_coalesce_no_limit(self):
         self.check([(10, 100, [(0, 10), (10, 10), (20, 10),
                                (30, 10), (40, 10), (50, 10),
                                (60, 10), (70, 10), (80, 10),
                                (90, 10)]),
-                   ], [(10, 10), (20, 10), (30, 10), (40, 10),
-                       (50, 10), (60, 10), (70, 10), (80, 10),
-                       (90, 10), (100, 10)])
+                    ], [(10, 10), (20, 10), (30, 10), (40, 10),
+                        (50, 10), (60, 10), (70, 10), (80, 10),
+                        (90, 10), (100, 10)])
 
     def test_coalesce_fudge(self):
         self.check([(10, 30, [(0, 10), (20, 10)]),
                     (100, 10, [(0, 10)]),
-                   ], [(10, 10), (30, 10), (100, 10)],
+                    ], [(10, 10), (30, 10), (100, 10)],
                    fudge=10)
 
     def test_coalesce_max_size(self):
@@ -212,24 +208,26 @@ class TestCoalesceOffsets(tests.TestCase):
                     (30, 50, [(0, 50)]),
                     # If one range is above max_size, it gets its own coalesced
                     # offset
-                    (100, 80, [(0, 80)]),],
+                    (100, 80, [(0, 80)]), ],
                    [(10, 10), (20, 10), (30, 50), (100, 80)],
                    max_size=50)
 
     def test_coalesce_no_max_size(self):
         self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)])],
                    [(10, 10), (20, 10), (30, 50), (80, 100)],
-                  )
+                   )
 
     def test_coalesce_default_limit(self):
         # By default we use a 100MB max size.
         ten_mb = 10 * 1024 * 1024
-        self.check([(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
-                    (10*ten_mb, ten_mb, [(0, ten_mb)])],
-                   [(i*ten_mb, ten_mb) for i in range(11)])
-        self.check([(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
-                   [(i * ten_mb, ten_mb) for i in range(11)],
-                   max_size=1*1024*1024*1024)
+        self.check(
+            [(0, 10 * ten_mb, [(i * ten_mb, ten_mb) for i in range(10)]),
+             (10 * ten_mb, ten_mb, [(0, ten_mb)])],
+            [(i * ten_mb, ten_mb) for i in range(11)])
+        self.check(
+            [(0, 11 * ten_mb, [(i * ten_mb, ten_mb) for i in range(11)])],
+            [(i * ten_mb, ten_mb) for i in range(11)],
+            max_size=1 * 1024 * 1024 * 1024)
 
 
 class TestMemoryServer(tests.TestCase):
@@ -272,22 +270,23 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_append_and_get(self):
         t = memory.MemoryTransport()
-        t.append_bytes('path', 'content')
-        self.assertEqual(t.get('path').read(), 'content')
+        t.append_bytes('path', b'content')
+        self.assertEqual(t.get('path').read(), b'content')
         t.append_file('path', BytesIO(b'content'))
-        self.assertEqual(t.get('path').read(), 'contentcontent')
+        with t.get('path') as f:
+            self.assertEqual(f.read(), b'contentcontent')
 
     def test_put_and_get(self):
         t = memory.MemoryTransport()
         t.put_file('path', BytesIO(b'content'))
-        self.assertEqual(t.get('path').read(), 'content')
-        t.put_bytes('path', 'content')
-        self.assertEqual(t.get('path').read(), 'content')
+        self.assertEqual(t.get('path').read(), b'content')
+        t.put_bytes('path', b'content')
+        self.assertEqual(t.get('path').read(), b'content')
 
     def test_append_without_dir_fails(self):
         t = memory.MemoryTransport()
         self.assertRaises(errors.NoSuchFile,
-                          t.append_bytes, 'dir/path', 'content')
+                          t.append_bytes, 'dir/path', b'content')
 
     def test_put_without_dir_fails(self):
         t = memory.MemoryTransport()
@@ -304,15 +303,15 @@ class TestMemoryTransport(tests.TestCase):
 
     def test_has_present(self):
         t = memory.MemoryTransport()
-        t.append_bytes('foo', 'content')
+        t.append_bytes('foo', b'content')
         self.assertEqual(True, t.has('foo'))
 
     def test_list_dir(self):
         t = memory.MemoryTransport()
-        t.put_bytes('foo', 'content')
+        t.put_bytes('foo', b'content')
         t.mkdir('dir')
-        t.put_bytes('dir/subfoo', 'content')
-        t.put_bytes('dirlike', 'content')
+        t.put_bytes('dir/subfoo', b'content')
+        t.put_bytes('dirlike', b'content')
 
         self.assertEqual(['dir', 'dirlike', 'foo'], sorted(t.list_dir('.')))
         self.assertEqual(['subfoo'], sorted(t.list_dir('dir')))
@@ -320,8 +319,9 @@ class TestMemoryTransport(tests.TestCase):
     def test_mkdir(self):
         t = memory.MemoryTransport()
         t.mkdir('dir')
-        t.append_bytes('dir/path', 'content')
-        self.assertEqual(t.get('dir/path').read(), 'content')
+        t.append_bytes('dir/path', b'content')
+        with t.get('dir/path') as f:
+            self.assertEqual(f.read(), b'content')
 
     def test_mkdir_missing_parent(self):
         t = memory.MemoryTransport()
@@ -340,16 +340,16 @@ class TestMemoryTransport(tests.TestCase):
     def test_iter_files_recursive(self):
         t = memory.MemoryTransport()
         t.mkdir('dir')
-        t.put_bytes('dir/foo', 'content')
-        t.put_bytes('dir/bar', 'content')
-        t.put_bytes('bar', 'content')
+        t.put_bytes('dir/foo', b'content')
+        t.put_bytes('dir/bar', b'content')
+        t.put_bytes('bar', b'content')
         paths = set(t.iter_files_recursive())
         self.assertEqual({'dir/foo', 'dir/bar', 'bar'}, paths)
 
     def test_stat(self):
         t = memory.MemoryTransport()
-        t.put_bytes('foo', 'content')
-        t.put_bytes('bar', 'phowar')
+        t.put_bytes('foo', b'content')
+        t.put_bytes('bar', b'phowar')
         self.assertEqual(7, t.stat('foo').st_size)
         self.assertEqual(6, t.stat('bar').st_size)
 
@@ -455,13 +455,13 @@ class TestHooks(tests.TestCase):
         """Check all expected transport hook points are set up"""
         hookpoint = transport.TransportHooks()
         self.assertTrue("post_connect" in hookpoint,
-            "post_connect not in %s" % (hookpoint,))
+                        "post_connect not in %s" % (hookpoint,))
 
     def test_post_connect(self):
         """Ensure the post_connect hook is called when _set_transport is"""
         calls = []
         transport.Transport.hooks.install_named_hook("post_connect",
-            calls.append, None)
+                                                     calls.append, None)
         t = self._get_connected_transport()
         self.assertLength(0, calls)
         t._set_connection("connection", "auth")
@@ -490,9 +490,11 @@ class PathFilteringDecoratorTransportTest(tests.TestCase):
         :param filter_func: by default this will be a no-op function.  Use this
             parameter to override it."""
         if filter_func is None:
-            filter_func = lambda x: x
+            def filter_func(x):
+                return x
         server = pathfilter.PathFilteringServer(
-            transport.get_transport_from_url('memory:///foo/bar/'), filter_func)
+            transport.get_transport_from_url('memory:///foo/bar/'),
+            filter_func)
         server.start_server()
         self.addCleanup(server.stop_server)
         return transport.get_transport_from_url(server.get_url())
@@ -706,12 +708,13 @@ class TestTransportFromPath(tests.TestCaseInTempDir):
         t = transport.get_transport_from_path(self.test_dir)
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base.rstrip("/"),
-            urlutils.local_path_to_url(self.test_dir))
+                         urlutils.local_path_to_url(self.test_dir))
 
     def test_with_url(self):
         t = transport.get_transport_from_path("file:")
         self.assertIsInstance(t, local.LocalTransport)
-        self.assertEqual(t.base.rstrip("/"),
+        self.assertEqual(
+            t.base.rstrip("/"),
             urlutils.local_path_to_url(os.path.join(self.test_dir, "file:")))
 
 
@@ -719,7 +722,7 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
 
     def test_with_path(self):
         self.assertRaises(urlutils.InvalidURL, transport.get_transport_from_url,
-            self.test_dir)
+                          self.test_dir)
 
     def test_with_url(self):
         url = urlutils.local_path_to_url(self.test_dir)
@@ -728,7 +731,7 @@ class TestTransportFromUrl(tests.TestCaseInTempDir):
         self.assertEqual(t.base.rstrip("/"), url)
 
     def test_with_url_and_segment_parameters(self):
-        url = urlutils.local_path_to_url(self.test_dir)+",branch=foo"
+        url = urlutils.local_path_to_url(self.test_dir) + ",branch=foo"
         t = transport.get_transport_from_url(url)
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base.rstrip("/"), url)
@@ -746,7 +749,6 @@ class TestLocalTransports(tests.TestCase):
         self.assertEqual(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
-        here = osutils.abspath('.')
         t = transport.get_transport('.')
         self.assertIsInstance(t, local.LocalTransport)
         self.assertEqual(t.base, urlutils.local_path_to_url('.') + '/')
@@ -776,6 +778,7 @@ class TestLocalTransportMutation(tests.TestCaseInTempDir):
         # See https://bugs.launchpad.net/bzr/+bug/606537
         here = osutils.abspath('.')
         t = transport.get_transport(here)
+
         def fake_chmod(path, mode):
             e = OSError('permission denied')
             e.errno = errno.EPERM
@@ -791,7 +794,7 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
 
     def test_local_fdatasync_calls_fdatasync(self):
         """Check fdatasync on a stream tries to flush the data to the OS.
-        
+
         We can't easily observe the external effect but we can at least see
         it's called.
         """
@@ -802,11 +805,11 @@ class TestLocalTransportWriteStream(tests.TestCaseWithTransport):
         t = self.get_transport('.')
         calls = self.recordCalls(os, 'fdatasync')
         w = t.open_write_stream('out')
-        w.write('foo')
+        w.write(b'foo')
         w.fdatasync()
         with open('out', 'rb') as f:
             # Should have been flushed.
-            self.assertEqual(f.read(), 'foo')
+            self.assertEqual(f.read(), b'foo')
         self.assertEqual(len(calls), 1, calls)
 
     def test_missing_directory(self):
@@ -870,7 +873,7 @@ class TestConnectedTransport(tests.TestCase):
         t = transport.ConnectedTransport('sftp://user@host.com/abs/path')
 
         self.assertEqual(t.relpath('sftp://user@host.com/abs/path/sub'),
-            'sub')
+                         'sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
                           'http://user@host.com/abs/path/sub')
         self.assertRaises(errors.PathNotChild, t.relpath,
@@ -920,28 +923,28 @@ class TestReusedTransports(tests.TestCase):
 
     def test_reuse_same_transport(self):
         possible_transports = []
-        t1 = transport.get_transport_from_url('http://foo/',
-                                     possible_transports=possible_transports)
+        t1 = transport.get_transport_from_url(
+            'http://foo/', possible_transports=possible_transports)
         self.assertEqual([t1], possible_transports)
         t2 = transport.get_transport_from_url('http://foo/',
-                                     possible_transports=[t1])
+                                              possible_transports=[t1])
         self.assertIs(t1, t2)
 
         # Also check that final '/' are handled correctly
         t3 = transport.get_transport_from_url('http://foo/path/')
         t4 = transport.get_transport_from_url('http://foo/path',
-                                     possible_transports=[t3])
+                                              possible_transports=[t3])
         self.assertIs(t3, t4)
 
         t5 = transport.get_transport_from_url('http://foo/path')
         t6 = transport.get_transport_from_url('http://foo/path/',
-                                     possible_transports=[t5])
+                                              possible_transports=[t5])
         self.assertIs(t5, t6)
 
     def test_don_t_reuse_different_transport(self):
         t1 = transport.get_transport_from_url('http://foo/path')
         t2 = transport.get_transport_from_url('http://bar/path',
-                                     possible_transports=[t1])
+                                              possible_transports=[t1])
         self.assertIsNot(t1, t2)
 
 
@@ -964,7 +967,7 @@ class TestTransportTrace(tests.TestCase):
     # changes; so there is little return doing that.
     def test_get(self):
         t = transport.get_transport_from_url('trace+memory:///')
-        t.put_bytes('foo', 'barish')
+        t.put_bytes('foo', b'barish')
         t.get('foo')
         expected_result = []
         # put_bytes records the bytes, not the content to avoid memory
@@ -976,7 +979,7 @@ class TestTransportTrace(tests.TestCase):
 
     def test_readv(self):
         t = transport.get_transport_from_url('trace+memory:///')
-        t.put_bytes('foo', 'barish')
+        t.put_bytes('foo', b'barish')
         list(t.readv('foo', [(0, 1), (3, 2)],
                      adjust_for_latency=True, upper_limit=6))
         expected_result = []
@@ -1022,7 +1025,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                 self.test.command_executed.append(command)
                 proc = subprocess.Popen(
                     command, shell=True, stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    bufsize=0)
 
                 # XXX: horribly inefficient, not to mention ugly.
                 # Start a thread for each of stdin/out/err, and relay bytes
@@ -1030,7 +1034,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                 def ferry_bytes(read, write, close):
                     while True:
                         bytes = read(1)
-                        if bytes == '':
+                        if bytes == b'':
                             close()
                             break
                         write(bytes)
@@ -1077,7 +1081,8 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         t.mkdir('foo')
 
         self.assertEqual(
-            ['%s serve --inet --directory=/ --allow-writes' % bzr_remote_path],
+            [b'%s serve --inet --directory=/ --allow-writes' %
+                bzr_remote_path.encode()],
             self.command_executed)
         # Make sure to disconnect, so that the remote process can stop, and we
         # can cleanup. Then pause the test until everything is shutdown
@@ -1100,51 +1105,3 @@ class TestUnhtml(tests.TestCase):
         result = http.unhtml_roughly(fake_html)
         self.assertEqual(len(result), 1000)
         self.assertStartsWith(result, " something!")
-
-
-class SomeDirectory(object):
-
-    def look_up(self, name, url):
-        return "http://bar"
-
-
-class TestLocationToUrl(tests.TestCase):
-
-    def get_base_location(self):
-        path = osutils.abspath('/foo/bar')
-        if path.startswith('/'):
-            url = 'file://%s' % (path,)
-        else:
-            # On Windows, abspaths start with the drive letter, so we have to
-            # add in the extra '/'
-            url = 'file:///%s' % (path,)
-        return path, url
-
-    def test_regular_url(self):
-        self.assertEqual("file://foo", location_to_url("file://foo"))
-
-    def test_directory(self):
-        directories.register("bar:", SomeDirectory, "Dummy directory")
-        self.addCleanup(directories.remove, "bar:")
-        self.assertEqual("http://bar", location_to_url("bar:"))
-
-    def test_unicode_url(self):
-        self.assertRaises(urlutils.InvalidURL, location_to_url,
-            "http://fo/\xc3\xaf".decode("utf-8"))
-
-    def test_unicode_path(self):
-        path, url = self.get_base_location()
-        location = path + "\xc3\xaf".decode("utf-8")
-        url += '%C3%AF'
-        self.assertEqual(url, location_to_url(location))
-
-    def test_path(self):
-        path, url = self.get_base_location()
-        self.assertEqual(url, location_to_url(path))
-
-    def test_relative_file_url(self):
-        self.assertEqual(urlutils.local_path_to_url(".") + "/bar",
-            location_to_url("file:bar"))
-
-    def test_absolute_file_url(self):
-        self.assertEqual("file:///bar", location_to_url("file:/bar"))

@@ -26,6 +26,7 @@ import posixpath
 import random
 import re
 import socket
+import sys
 try:
     from urlparse import urlparse
 except ImportError:
@@ -101,7 +102,7 @@ Message: %(message)s.
     def send_error(self, code, message=None):
         """Send and log an error reply.
 
-        We redefine the python-provided version to be able to set a 
+        We redefine the python-provided version to be able to set a
         ``Content-Length`` header as some http/1.1 clients complain otherwise
         (see bug #568421).
 
@@ -125,7 +126,7 @@ Message: %(message)s.
         self.send_header('Connection', 'close')
         self.end_headers()
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content)
+            self.wfile.write(content.encode('utf-8'))
 
     def _handle_one_request(self):
         http_server.SimpleHTTPRequestHandler.handle_one_request(self)
@@ -232,7 +233,7 @@ Message: %(message)s.
         boundary = '%d' % random.randint(0, 0x7FFFFFFF)
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = '--%s\r\n' % boundary
+        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
         for (start, end) in ranges:
@@ -241,7 +242,7 @@ Message: %(message)s.
                 'Content-type', 'application/octet-stream')
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
-            content_length += len('\r\n') # end headers
+            content_length += len('\r\n')  # end headers
             content_length += end - start + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
@@ -339,14 +340,16 @@ Message: %(message)s.
         # abandon query parameters
         path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
-        path = path.decode('utf-8')
+        if sys.version_info[0] == 2:
+            path = path.decode('utf-8')
         words = path.split('/')
         path = self._cwd
         for num, word in enumerate(w for w in words if w):
             if num == 0:
                 drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
-            if word in (os.curdir, os.pardir): continue
+            if word in (os.curdir, os.pardir):
+                continue
             path = os.path.join(path, word)
         return path
 
@@ -379,6 +382,7 @@ class TestingThreadingHTTPServer(test_server.TestingThreadingTCPServer,
     server, we need an independent connection for each of them. We achieve that
     by spawning a new thread for each connection.
     """
+
     def __init__(self, server_address, request_handler_class,
                  test_case_server):
         test_server.TestingThreadingTCPServer.__init__(self, server_address,
@@ -446,7 +450,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         path_parts = path.split(os.path.sep)
         if os.path.isabs(path):
             if path_parts[:len(self._local_path_parts)] != \
-                   self._local_path_parts:
+                    self._local_path_parts:
                 raise BadWebserverPath(path, self.test_dir)
             remote_path = '/'.join(path_parts[len(self._local_path_parts):])
         else:
@@ -490,14 +494,3 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return self._url_protocol + '://127.0.0.1:1/'
-
-
-class HttpServer_urllib(HttpServer):
-    """Subclass of HttpServer that gives http+urllib urls.
-
-    This is for use in testing: connections to this server will always go
-    through urllib where possible.
-    """
-
-    # urls returned by this server should require the urllib client impl
-    _url_protocol = 'http+urllib'

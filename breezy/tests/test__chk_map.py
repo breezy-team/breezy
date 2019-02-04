@@ -22,19 +22,20 @@ from .. import (
 from ..bzr import (
     chk_map,
     )
+from ..sixish import int2byte
 from ..static_tuple import StaticTuple
 stuple = StaticTuple
 
 
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'breezy.bzr._chk_map_py', 'breezy.bzr._chk_map_pyx')
+                                                 'breezy.bzr._chk_map_py', 'breezy.bzr._chk_map_pyx')
     return suite
 
 
 class TestSearchKeys(tests.TestCase):
 
-    module = None # Filled in by test parameterization
+    module = None  # Filled in by test parameterization
 
     def assertSearchKey16(self, expected, key):
         self.assertEqual(expected, self.module._search_key_16(key))
@@ -44,29 +45,31 @@ class TestSearchKeys(tests.TestCase):
         self.assertEqual(expected, actual, 'actual: %r' % (actual,))
 
     def test_simple_16(self):
-        self.assertSearchKey16(b'8C736521', stuple('foo',))
-        self.assertSearchKey16(b'8C736521\x008C736521', stuple('foo', 'foo'))
-        self.assertSearchKey16(b'8C736521\x0076FF8CAA', stuple('foo', 'bar'))
-        self.assertSearchKey16(b'ED82CD11', stuple('abcd',))
+        self.assertSearchKey16(b'8C736521', stuple(b'foo',))
+        self.assertSearchKey16(b'8C736521\x008C736521', stuple(b'foo', b'foo'))
+        self.assertSearchKey16(b'8C736521\x0076FF8CAA', stuple(b'foo', b'bar'))
+        self.assertSearchKey16(b'ED82CD11', stuple(b'abcd',))
 
     def test_simple_255(self):
-        self.assertSearchKey255(b'\x8cse!', stuple('foo',))
-        self.assertSearchKey255(b'\x8cse!\x00\x8cse!', stuple('foo', 'foo'))
-        self.assertSearchKey255(b'\x8cse!\x00v\xff\x8c\xaa', stuple('foo', 'bar'))
+        self.assertSearchKey255(b'\x8cse!', stuple(b'foo',))
+        self.assertSearchKey255(b'\x8cse!\x00\x8cse!', stuple(b'foo', b'foo'))
+        self.assertSearchKey255(
+            b'\x8cse!\x00v\xff\x8c\xaa', stuple(b'foo', b'bar'))
         # The standard mapping for these would include '\n', so it should be
         # mapped to '_'
-        self.assertSearchKey255(b'\xfdm\x93_\x00P_\x1bL', stuple('<', 'V'))
+        self.assertSearchKey255(b'\xfdm\x93_\x00P_\x1bL', stuple(b'<', b'V'))
 
     def test_255_does_not_include_newline(self):
         # When mapping via _search_key_255, we should never have the '\n'
         # character, but all other 255 values should be present
         chars_used = set()
         for char_in in range(256):
-            search_key = self.module._search_key_255(stuple(chr(char_in),))
-            chars_used.update(search_key)
-        all_chars = {chr(x) for x in range(256)}
+            search_key = self.module._search_key_255(
+                stuple(int2byte(char_in),))
+            chars_used.update(map(int2byte, bytearray(search_key)))
+        all_chars = {int2byte(x) for x in range(256)}
         unused_chars = all_chars.symmetric_difference(chars_used)
-        self.assertEqual(set(b'\n'), unused_chars)
+        self.assertEqual({b'\n'}, unused_chars)
 
 
 class TestDeserialiseLeafNode(tests.TestCase):
@@ -75,7 +78,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
 
     def assertDeserialiseErrors(self, text):
         self.assertRaises((ValueError, IndexError),
-            self.module._deserialise_leaf_node, text, b'not-a-real-sha')
+                          self.module._deserialise_leaf_node, text, b'not-a-real-sha')
 
     def test_raises_on_non_leaf(self):
         self.assertDeserialiseErrors(b'')
@@ -104,7 +107,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
             (b"sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([((b"foo bar",), b"baz"), ((b"quux",), b"blarh")],
-            sorted(node.iteritems(None)))
+                         sorted(node.iteritems(None)))
 
     def test_deserialise_item_with_null_width_1(self):
         node = self.module._deserialise_leaf_node(
@@ -112,7 +115,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
             (b"sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([((b"foo",), b"bar\x00baz"), ((b"quux",), b"blarh")],
-            sorted(node.iteritems(None)))
+                         sorted(node.iteritems(None)))
 
     def test_deserialise_item_with_null_width_2(self):
         node = self.module._deserialise_leaf_node(
@@ -120,8 +123,8 @@ class TestDeserialiseLeafNode(tests.TestCase):
             b"quux\x00\x001\nblarh\n",
             (b"sha1:1234",))
         self.assertEqual(2, len(node))
-        self.assertEqual([((b"foo", "1"), b"bar\x00baz"), ((b"quux", ""), b"blarh")],
-            sorted(node.iteritems(None)))
+        self.assertEqual([((b"foo", b"1"), b"bar\x00baz"), ((b"quux", b""), b"blarh")],
+                         sorted(node.iteritems(None)))
 
     def test_iteritems_selected_one_of_two_items(self):
         node = self.module._deserialise_leaf_node(
@@ -129,7 +132,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
             (b"sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([((b"quux",), b"blarh")],
-            sorted(node.iteritems(None, [(b"quux",), (b"qaz",)])))
+                         sorted(node.iteritems(None, [(b"quux",), (b"qaz",)])))
 
     def test_deserialise_item_with_common_prefix(self):
         node = self.module._deserialise_leaf_node(
@@ -137,7 +140,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
             (b"sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([((b"foo", b"1"), b"bar\x00baz"), ((b"foo", b"2"), b"blarh")],
-            sorted(node.iteritems(None)))
+                         sorted(node.iteritems(None)))
         self.assertIs(chk_map._unknown, node._search_prefix)
         self.assertEqual(b'foo\x00', node._common_serialised_prefix)
 
@@ -148,7 +151,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
         self.assertEqual(2, len(node))
         self.assertEqual([((b"foo", b"1"), b"bar\nbaz"),
                           ((b"foo", b"2"), b"blarh\n"),
-                         ], sorted(node.iteritems(None)))
+                          ], sorted(node.iteritems(None)))
         self.assertIs(chk_map._unknown, node._search_prefix)
         self.assertEqual(b'foo\x00', node._common_serialised_prefix)
 
@@ -172,8 +175,8 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
     def assertDeserialiseErrors(self, text):
         self.assertRaises((ValueError, IndexError),
-            self.module._deserialise_internal_node, text,
-                stuple(b'not-a-real-sha',))
+                          self.module._deserialise_internal_node, text,
+                          stuple(b'not-a-real-sha',))
 
     def test_raises_on_non_internal(self):
         self.assertDeserialiseErrors(b'')
@@ -256,18 +259,18 @@ class Test_BytesToTextKey(tests.TestCase):
 
     def test_file(self):
         self.assertBytesToTextKey((b'file-id', b'revision-id'),
-                 b'file: file-id\nparent-id\nname\nrevision-id\n'
-                 b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+                                  b'file: file-id\nparent-id\nname\nrevision-id\n'
+                                  b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
 
     def test_invalid_no_kind(self):
         self.assertBytesToTextKeyRaises(
-                 b'file  file-id\nparent-id\nname\nrevision-id\n'
-                 b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+            b'file  file-id\nparent-id\nname\nrevision-id\n'
+            b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
 
     def test_invalid_no_space(self):
         self.assertBytesToTextKeyRaises(
-                 b'file:file-id\nparent-id\nname\nrevision-id\n'
-                 b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+            b'file:file-id\nparent-id\nname\nrevision-id\n'
+            b'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
 
     def test_invalid_too_short_file_id(self):
         self.assertBytesToTextKeyRaises(b'file:file-id')
@@ -280,4 +283,4 @@ class Test_BytesToTextKey(tests.TestCase):
 
     def test_dir(self):
         self.assertBytesToTextKey((b'dir-id', b'revision-id'),
-                 b'dir: dir-id\nparent-id\nname\nrevision-id')
+                                  b'dir: dir-id\nparent-id\nname\nrevision-id')

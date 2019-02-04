@@ -66,13 +66,13 @@ compiled_known_graph_feature = features.ModuleAvailableFeature(
 #  c |
 #   \|
 #    d
-alt_merge = {'a': [], 'b': ['a'], 'c': ['b'], 'd': ['a', 'c']}
+alt_merge = {b'a': [], b'b': [b'a'], b'c': [b'b'], b'd': [b'a', b'c']}
 
 
 class TestCaseWithKnownGraph(tests.TestCase):
 
     scenarios = caching_scenarios()
-    module = None # Set by load_tests
+    module = None  # Set by load_tests
 
     def make_known_graph(self, ancestry):
         return self.module.KnownGraph(ancestry, do_cache=self.do_cache)
@@ -86,242 +86,242 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
     def test_children_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(['rev1'], graph.get_child_keys(NULL_REVISION))
-        self.assertEqual(['rev2a', 'rev2b'],
-                         sorted(graph.get_child_keys('rev1')))
-        self.assertEqual(['rev3'], graph.get_child_keys('rev2a'))
-        self.assertEqual(['rev4'], graph.get_child_keys('rev3'))
-        self.assertEqual(['rev4'], graph.get_child_keys('rev2b'))
-        self.assertRaises(KeyError, graph.get_child_keys, 'not_in_graph')
+        self.assertEqual([b'rev1'], graph.get_child_keys(NULL_REVISION))
+        self.assertEqual([b'rev2a', b'rev2b'],
+                         sorted(graph.get_child_keys(b'rev1')))
+        self.assertEqual([b'rev3'], graph.get_child_keys(b'rev2a'))
+        self.assertEqual([b'rev4'], graph.get_child_keys(b'rev3'))
+        self.assertEqual([b'rev4'], graph.get_child_keys(b'rev2b'))
+        self.assertRaises(KeyError, graph.get_child_keys, b'not_in_graph')
 
     def test_parent_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual([NULL_REVISION], graph.get_parent_keys('rev1'))
-        self.assertEqual(['rev1'], graph.get_parent_keys('rev2a'))
-        self.assertEqual(['rev1'], graph.get_parent_keys('rev2b'))
-        self.assertEqual(['rev2a'], graph.get_parent_keys('rev3'))
-        self.assertEqual(['rev2b', 'rev3'],
-                         sorted(graph.get_parent_keys('rev4')))
-        self.assertRaises(KeyError, graph.get_child_keys, 'not_in_graph')
-    
+        self.assertEqual([NULL_REVISION], graph.get_parent_keys(b'rev1'))
+        self.assertEqual([b'rev1'], graph.get_parent_keys(b'rev2a'))
+        self.assertEqual([b'rev1'], graph.get_parent_keys(b'rev2b'))
+        self.assertEqual([b'rev2a'], graph.get_parent_keys(b'rev3'))
+        self.assertEqual([b'rev2b', b'rev3'],
+                         sorted(graph.get_parent_keys(b'rev4')))
+        self.assertRaises(KeyError, graph.get_child_keys, b'not_in_graph')
+
     def test_parent_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
-        self.assertEqual(None, graph.get_parent_keys('g'))
+        self.assertEqual(None, graph.get_parent_keys(b'g'))
 
     def test_gdfo_ancestry_1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertGDFO(graph, 'rev1', 2)
-        self.assertGDFO(graph, 'rev2b', 3)
-        self.assertGDFO(graph, 'rev2a', 3)
-        self.assertGDFO(graph, 'rev3', 4)
-        self.assertGDFO(graph, 'rev4', 5)
+        self.assertGDFO(graph, b'rev1', 2)
+        self.assertGDFO(graph, b'rev2b', 3)
+        self.assertGDFO(graph, b'rev2a', 3)
+        self.assertGDFO(graph, b'rev3', 4)
+        self.assertGDFO(graph, b'rev4', 5)
 
     def test_gdfo_feature_branch(self):
         graph = self.make_known_graph(test_graph.feature_branch)
-        self.assertGDFO(graph, 'rev1', 2)
-        self.assertGDFO(graph, 'rev2b', 3)
-        self.assertGDFO(graph, 'rev3b', 4)
+        self.assertGDFO(graph, b'rev1', 2)
+        self.assertGDFO(graph, b'rev2b', 3)
+        self.assertGDFO(graph, b'rev3b', 4)
 
     def test_gdfo_extended_history_shortcut(self):
         graph = self.make_known_graph(test_graph.extended_history_shortcut)
-        self.assertGDFO(graph, 'a', 2)
-        self.assertGDFO(graph, 'b', 3)
-        self.assertGDFO(graph, 'c', 4)
-        self.assertGDFO(graph, 'd', 5)
-        self.assertGDFO(graph, 'e', 6)
-        self.assertGDFO(graph, 'f', 6)
+        self.assertGDFO(graph, b'a', 2)
+        self.assertGDFO(graph, b'b', 3)
+        self.assertGDFO(graph, b'c', 4)
+        self.assertGDFO(graph, b'd', 5)
+        self.assertGDFO(graph, b'e', 6)
+        self.assertGDFO(graph, b'f', 6)
 
     def test_gdfo_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
-        self.assertGDFO(graph, 'f', 2)
-        self.assertGDFO(graph, 'e', 3)
-        self.assertGDFO(graph, 'g', 1)
-        self.assertGDFO(graph, 'b', 4)
-        self.assertGDFO(graph, 'd', 4)
-        self.assertGDFO(graph, 'a', 5)
-        self.assertGDFO(graph, 'c', 5)
+        self.assertGDFO(graph, b'f', 2)
+        self.assertGDFO(graph, b'e', 3)
+        self.assertGDFO(graph, b'g', 1)
+        self.assertGDFO(graph, b'b', 4)
+        self.assertGDFO(graph, b'd', 4)
+        self.assertGDFO(graph, b'a', 5)
+        self.assertGDFO(graph, b'c', 5)
 
     def test_add_existing_node(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
         # Add a node that already exists with identical content
         # This is a 'no-op'
-        self.assertGDFO(graph, 'rev4', 5)
-        graph.add_node('rev4', ['rev3', 'rev2b'])
-        self.assertGDFO(graph, 'rev4', 5)
+        self.assertGDFO(graph, b'rev4', 5)
+        graph.add_node(b'rev4', [b'rev3', b'rev2b'])
+        self.assertGDFO(graph, b'rev4', 5)
         # This also works if we use a tuple rather than a list
-        graph.add_node('rev4', ('rev3', 'rev2b'))
+        graph.add_node(b'rev4', (b'rev3', b'rev2b'))
 
     def test_add_existing_node_mismatched_parents(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertRaises(ValueError, graph.add_node, 'rev4',
-                          ['rev2b', 'rev3'])
+        self.assertRaises(ValueError, graph.add_node, b'rev4',
+                          [b'rev2b', b'rev3'])
 
     def test_add_node_with_ghost_parent(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        graph.add_node('rev5', ['rev2b', 'revGhost'])
-        self.assertGDFO(graph, 'rev5', 4)
-        self.assertGDFO(graph, 'revGhost', 1)
+        graph.add_node(b'rev5', [b'rev2b', b'revGhost'])
+        self.assertGDFO(graph, b'rev5', 4)
+        self.assertGDFO(graph, b'revGhost', 1)
 
     def test_add_new_root(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        graph.add_node('rev5', [])
-        self.assertGDFO(graph, 'rev5', 1)
+        graph.add_node(b'rev5', [])
+        self.assertGDFO(graph, b'rev5', 1)
 
     def test_add_with_all_ghost_parents(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        graph.add_node('rev5', ['ghost'])
-        self.assertGDFO(graph, 'rev5', 2)
-        self.assertGDFO(graph, 'ghost', 1)
+        graph.add_node(b'rev5', [b'ghost'])
+        self.assertGDFO(graph, b'rev5', 2)
+        self.assertGDFO(graph, b'ghost', 1)
 
     def test_gdfo_after_add_node(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual([], graph.get_child_keys('rev4'))
-        graph.add_node('rev5', ['rev4'])
-        self.assertEqual(['rev4'], graph.get_parent_keys('rev5'))
-        self.assertEqual(['rev5'], graph.get_child_keys('rev4'))
-        self.assertEqual([], graph.get_child_keys('rev5'))
-        self.assertGDFO(graph, 'rev5', 6)
-        graph.add_node('rev6', ['rev2b'])
-        graph.add_node('rev7', ['rev6'])
-        graph.add_node('rev8', ['rev7', 'rev5'])
-        self.assertGDFO(graph, 'rev5', 6)
-        self.assertGDFO(graph, 'rev6', 4)
-        self.assertGDFO(graph, 'rev7', 5)
-        self.assertGDFO(graph, 'rev8', 7)
+        self.assertEqual([], graph.get_child_keys(b'rev4'))
+        graph.add_node(b'rev5', [b'rev4'])
+        self.assertEqual([b'rev4'], graph.get_parent_keys(b'rev5'))
+        self.assertEqual([b'rev5'], graph.get_child_keys(b'rev4'))
+        self.assertEqual([], graph.get_child_keys(b'rev5'))
+        self.assertGDFO(graph, b'rev5', 6)
+        graph.add_node(b'rev6', [b'rev2b'])
+        graph.add_node(b'rev7', [b'rev6'])
+        graph.add_node(b'rev8', [b'rev7', b'rev5'])
+        self.assertGDFO(graph, b'rev5', 6)
+        self.assertGDFO(graph, b'rev6', 4)
+        self.assertGDFO(graph, b'rev7', 5)
+        self.assertGDFO(graph, b'rev8', 7)
 
     def test_fill_in_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
         # Add in a couple nodes and then fill in the 'ghost' so that it should
         # cause renumbering of children nodes
-        graph.add_node('x', [])
-        graph.add_node('y', ['x'])
-        graph.add_node('z', ['y'])
-        graph.add_node('g', ['z'])
-        self.assertGDFO(graph, 'f', 2)
-        self.assertGDFO(graph, 'e', 3)
-        self.assertGDFO(graph, 'x', 1)
-        self.assertGDFO(graph, 'y', 2)
-        self.assertGDFO(graph, 'z', 3)
-        self.assertGDFO(graph, 'g', 4)
-        self.assertGDFO(graph, 'b', 4)
-        self.assertGDFO(graph, 'd', 5)
-        self.assertGDFO(graph, 'a', 5)
-        self.assertGDFO(graph, 'c', 6)
+        graph.add_node(b'x', [])
+        graph.add_node(b'y', [b'x'])
+        graph.add_node(b'z', [b'y'])
+        graph.add_node(b'g', [b'z'])
+        self.assertGDFO(graph, b'f', 2)
+        self.assertGDFO(graph, b'e', 3)
+        self.assertGDFO(graph, b'x', 1)
+        self.assertGDFO(graph, b'y', 2)
+        self.assertGDFO(graph, b'z', 3)
+        self.assertGDFO(graph, b'g', 4)
+        self.assertGDFO(graph, b'b', 4)
+        self.assertGDFO(graph, b'd', 5)
+        self.assertGDFO(graph, b'a', 5)
+        self.assertGDFO(graph, b'c', 6)
 
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
 
     scenarios = caching_scenarios() + non_caching_scenarios()
-    do_cache = None # Set by load_tests
+    do_cache = None  # Set by load_tests
 
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual({'null:'}, graph.heads(['null:']))
-        self.assertEqual({'rev1'}, graph.heads(['null:', 'rev1']))
-        self.assertEqual({'rev1'}, graph.heads(['rev1', 'null:']))
-        self.assertEqual({'rev1'}, graph.heads({'rev1', 'null:'}))
-        self.assertEqual({'rev1'}, graph.heads(('rev1', 'null:')))
+        self.assertEqual({b'null:'}, graph.heads([b'null:']))
+        self.assertEqual({b'rev1'}, graph.heads([b'null:', b'rev1']))
+        self.assertEqual({b'rev1'}, graph.heads([b'rev1', b'null:']))
+        self.assertEqual({b'rev1'}, graph.heads({b'rev1', b'null:'}))
+        self.assertEqual({b'rev1'}, graph.heads((b'rev1', b'null:')))
 
     def test_heads_one(self):
         # A single node will always be a head
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual({'null:'}, graph.heads(['null:']))
-        self.assertEqual({'rev1'}, graph.heads(['rev1']))
-        self.assertEqual({'rev2a'}, graph.heads(['rev2a']))
-        self.assertEqual({'rev2b'}, graph.heads(['rev2b']))
-        self.assertEqual({'rev3'}, graph.heads(['rev3']))
-        self.assertEqual({'rev4'}, graph.heads(['rev4']))
+        self.assertEqual({b'null:'}, graph.heads([b'null:']))
+        self.assertEqual({b'rev1'}, graph.heads([b'rev1']))
+        self.assertEqual({b'rev2a'}, graph.heads([b'rev2a']))
+        self.assertEqual({b'rev2b'}, graph.heads([b'rev2b']))
+        self.assertEqual({b'rev3'}, graph.heads([b'rev3']))
+        self.assertEqual({b'rev4'}, graph.heads([b'rev4']))
 
     def test_heads_single(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual({'rev4'}, graph.heads(['null:', 'rev4']))
-        self.assertEqual({'rev2a'}, graph.heads(['rev1', 'rev2a']))
-        self.assertEqual({'rev2b'}, graph.heads(['rev1', 'rev2b']))
-        self.assertEqual({'rev3'}, graph.heads(['rev1', 'rev3']))
-        self.assertEqual({'rev3'}, graph.heads(['rev3', 'rev2a']))
-        self.assertEqual({'rev4'}, graph.heads(['rev1', 'rev4']))
-        self.assertEqual({'rev4'}, graph.heads(['rev2a', 'rev4']))
-        self.assertEqual({'rev4'}, graph.heads(['rev2b', 'rev4']))
-        self.assertEqual({'rev4'}, graph.heads(['rev3', 'rev4']))
+        self.assertEqual({b'rev4'}, graph.heads([b'null:', b'rev4']))
+        self.assertEqual({b'rev2a'}, graph.heads([b'rev1', b'rev2a']))
+        self.assertEqual({b'rev2b'}, graph.heads([b'rev1', b'rev2b']))
+        self.assertEqual({b'rev3'}, graph.heads([b'rev1', b'rev3']))
+        self.assertEqual({b'rev3'}, graph.heads([b'rev3', b'rev2a']))
+        self.assertEqual({b'rev4'}, graph.heads([b'rev1', b'rev4']))
+        self.assertEqual({b'rev4'}, graph.heads([b'rev2a', b'rev4']))
+        self.assertEqual({b'rev4'}, graph.heads([b'rev2b', b'rev4']))
+        self.assertEqual({b'rev4'}, graph.heads([b'rev3', b'rev4']))
 
     def test_heads_two_heads(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual({'rev2a', 'rev2b'},
-                         graph.heads(['rev2a', 'rev2b']))
-        self.assertEqual({'rev3', 'rev2b'},
-                         graph.heads(['rev3', 'rev2b']))
+        self.assertEqual({b'rev2a', b'rev2b'},
+                         graph.heads([b'rev2a', b'rev2b']))
+        self.assertEqual({b'rev3', b'rev2b'},
+                         graph.heads([b'rev3', b'rev2b']))
 
     def test_heads_criss_cross(self):
         graph = self.make_known_graph(test_graph.criss_cross)
-        self.assertEqual({'rev2a'},
-                         graph.heads(['rev2a', 'rev1']))
-        self.assertEqual({'rev2b'},
-                         graph.heads(['rev2b', 'rev1']))
-        self.assertEqual({'rev3a'},
-                         graph.heads(['rev3a', 'rev1']))
-        self.assertEqual({'rev3b'},
-                         graph.heads(['rev3b', 'rev1']))
-        self.assertEqual({'rev2a', 'rev2b'},
-                         graph.heads(['rev2a', 'rev2b']))
-        self.assertEqual({'rev3a'},
-                         graph.heads(['rev3a', 'rev2a']))
-        self.assertEqual({'rev3a'},
-                         graph.heads(['rev3a', 'rev2b']))
-        self.assertEqual({'rev3a'},
-                         graph.heads(['rev3a', 'rev2a', 'rev2b']))
-        self.assertEqual({'rev3b'},
-                         graph.heads(['rev3b', 'rev2a']))
-        self.assertEqual({'rev3b'},
-                         graph.heads(['rev3b', 'rev2b']))
-        self.assertEqual({'rev3b'},
-                         graph.heads(['rev3b', 'rev2a', 'rev2b']))
-        self.assertEqual({'rev3a', 'rev3b'},
-                         graph.heads(['rev3a', 'rev3b']))
-        self.assertEqual({'rev3a', 'rev3b'},
-                         graph.heads(['rev3a', 'rev3b', 'rev2a', 'rev2b']))
+        self.assertEqual({b'rev2a'},
+                         graph.heads([b'rev2a', b'rev1']))
+        self.assertEqual({b'rev2b'},
+                         graph.heads([b'rev2b', b'rev1']))
+        self.assertEqual({b'rev3a'},
+                         graph.heads([b'rev3a', b'rev1']))
+        self.assertEqual({b'rev3b'},
+                         graph.heads([b'rev3b', b'rev1']))
+        self.assertEqual({b'rev2a', b'rev2b'},
+                         graph.heads([b'rev2a', b'rev2b']))
+        self.assertEqual({b'rev3a'},
+                         graph.heads([b'rev3a', b'rev2a']))
+        self.assertEqual({b'rev3a'},
+                         graph.heads([b'rev3a', b'rev2b']))
+        self.assertEqual({b'rev3a'},
+                         graph.heads([b'rev3a', b'rev2a', b'rev2b']))
+        self.assertEqual({b'rev3b'},
+                         graph.heads([b'rev3b', b'rev2a']))
+        self.assertEqual({b'rev3b'},
+                         graph.heads([b'rev3b', b'rev2b']))
+        self.assertEqual({b'rev3b'},
+                         graph.heads([b'rev3b', b'rev2a', b'rev2b']))
+        self.assertEqual({b'rev3a', b'rev3b'},
+                         graph.heads([b'rev3a', b'rev3b']))
+        self.assertEqual({b'rev3a', b'rev3b'},
+                         graph.heads([b'rev3a', b'rev3b', b'rev2a', b'rev2b']))
 
     def test_heads_shortcut(self):
         graph = self.make_known_graph(test_graph.history_shortcut)
-        self.assertEqual({'rev2a', 'rev2b', 'rev2c'},
-                         graph.heads(['rev2a', 'rev2b', 'rev2c']))
-        self.assertEqual({'rev3a', 'rev3b'},
-                         graph.heads(['rev3a', 'rev3b']))
-        self.assertEqual({'rev3a', 'rev3b'},
-                         graph.heads(['rev2a', 'rev3a', 'rev3b']))
-        self.assertEqual({'rev2a', 'rev3b'},
-                         graph.heads(['rev2a', 'rev3b']))
-        self.assertEqual({'rev2c', 'rev3a'},
-                         graph.heads(['rev2c', 'rev3a']))
+        self.assertEqual({b'rev2a', b'rev2b', b'rev2c'},
+                         graph.heads([b'rev2a', b'rev2b', b'rev2c']))
+        self.assertEqual({b'rev3a', b'rev3b'},
+                         graph.heads([b'rev3a', b'rev3b']))
+        self.assertEqual({b'rev3a', b'rev3b'},
+                         graph.heads([b'rev2a', b'rev3a', b'rev3b']))
+        self.assertEqual({b'rev2a', b'rev3b'},
+                         graph.heads([b'rev2a', b'rev3b']))
+        self.assertEqual({b'rev2c', b'rev3a'},
+                         graph.heads([b'rev2c', b'rev3a']))
 
     def test_heads_linear(self):
         graph = self.make_known_graph(test_graph.racing_shortcuts)
-        self.assertEqual({'w'}, graph.heads(['w', 's']))
-        self.assertEqual({'z'}, graph.heads(['w', 's', 'z']))
-        self.assertEqual({'w', 'q'}, graph.heads(['w', 's', 'q']))
-        self.assertEqual({'z'}, graph.heads(['s', 'z']))
+        self.assertEqual({b'w'}, graph.heads([b'w', b's']))
+        self.assertEqual({b'z'}, graph.heads([b'w', b's', b'z']))
+        self.assertEqual({b'w', b'q'}, graph.heads([b'w', b's', b'q']))
+        self.assertEqual({b'z'}, graph.heads([b's', b'z']))
 
     def test_heads_alt_merge(self):
         graph = self.make_known_graph(alt_merge)
-        self.assertEqual({'c'}, graph.heads(['a', 'c']))
+        self.assertEqual({b'c'}, graph.heads([b'a', b'c']))
 
     def test_heads_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
-        self.assertEqual({'e', 'g'}, graph.heads(['e', 'g']))
-        self.assertEqual({'a', 'c'}, graph.heads(['a', 'c']))
-        self.assertEqual({'a', 'g'}, graph.heads(['a', 'g']))
-        self.assertEqual({'f', 'g'}, graph.heads(['f', 'g']))
-        self.assertEqual({'c'}, graph.heads(['c', 'g']))
-        self.assertEqual({'c'}, graph.heads(['c', 'b', 'd', 'g']))
-        self.assertEqual({'a', 'c'}, graph.heads(['a', 'c', 'e', 'g']))
-        self.assertEqual({'a', 'c'}, graph.heads(['a', 'c', 'f']))
+        self.assertEqual({b'e', b'g'}, graph.heads([b'e', b'g']))
+        self.assertEqual({b'a', b'c'}, graph.heads([b'a', b'c']))
+        self.assertEqual({b'a', b'g'}, graph.heads([b'a', b'g']))
+        self.assertEqual({b'f', b'g'}, graph.heads([b'f', b'g']))
+        self.assertEqual({b'c'}, graph.heads([b'c', b'g']))
+        self.assertEqual({b'c'}, graph.heads([b'c', b'b', b'd', b'g']))
+        self.assertEqual({b'a', b'c'}, graph.heads([b'a', b'c', b'e', b'g']))
+        self.assertEqual({b'a', b'c'}, graph.heads([b'a', b'c', b'f']))
 
     def test_filling_in_ghosts_resets_head_cache(self):
         graph = self.make_known_graph(test_graph.with_ghost)
-        self.assertEqual({'e', 'g'}, graph.heads(['e', 'g']))
+        self.assertEqual({b'e', b'g'}, graph.heads([b'e', b'g']))
         # 'g' is filled in, and decends from 'e', so the heads result is now
         # different
-        graph.add_node('g', ['e'])
-        self.assertEqual({'g'}, graph.heads(['e', 'g']))
+        graph.add_node(b'g', [b'e'])
+        self.assertEqual({b'g'}, graph.heads([b'e', b'g']))
 
 
 class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
@@ -359,7 +359,7 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
     def test_topo_sort_cycle(self):
         """TopoSort traps graph with cycles"""
         g = self.make_known_graph({0: [1],
-                                  1: [0]})
+                                   1: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_2(self):
@@ -484,12 +484,12 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
                  'F': ['B', 'D'],
                  }
         self.assertSortAndIterate(graph, 'F',
-            [('F', 0, (3,), False),
-             ('D', 1, (2, 2, 1), False),
-             ('C', 2, (2, 1, 1), True),
-             ('B', 0, (2,), False),
-             ('A', 0, (1,), True),
-             ])
+                                  [('F', 0, (3,), False),
+                                   ('D', 1, (2, 2, 1), False),
+                                      ('C', 2, (2, 1, 1), True),
+                                      ('B', 0, (2,), False),
+                                      ('A', 0, (1,), True),
+                                   ])
         # A
         # |
         # B-.
@@ -507,13 +507,13 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
                  'F': ['B', 'D'],
                  }
         self.assertSortAndIterate(graph, 'F',
-            [('F', 0, (3,), False),
-             ('D', 1, (2, 1, 2), False),
-             ('C', 2, (2, 2, 1), True),
-             ('X', 1, (2, 1, 1), True),
-             ('B', 0, (2,), False),
-             ('A', 0, (1,), True),
-             ])
+                                  [('F', 0, (3,), False),
+                                   ('D', 1, (2, 1, 2), False),
+                                      ('C', 2, (2, 2, 1), True),
+                                      ('X', 1, (2, 1, 1), True),
+                                      ('B', 0, (2,), False),
+                                      ('A', 0, (1,), True),
+                                   ])
 
     def test_merge_depth_with_nested_merges(self):
         # the merge depth marker should reflect the depth of the revision
@@ -538,7 +538,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'H': []
              },
             'A',
-            [('A', 0, (3,),  False),
+            [('A', 0, (3,), False),
              ('B', 1, (1, 3, 2), False),
              ('C', 1, (1, 3, 1), True),
              ('D', 0, (2,), False),
@@ -574,7 +574,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'J': ['G', 'H'],
              'K': ['I'],
              'L': ['J', 'K'],
-            },
+             },
             'L',
             [('L', 0, (6,), False),
              ('K', 1, (1, 3, 2), False),
@@ -587,7 +587,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              ('C', 1, (1, 1, 1), True),
              ('D', 0, (3,), False),
              ('B', 0, (2,), False),
-             ('A', 0, (1,),  True),
+             ('A', 0, (1,), True),
              ],
             )
         # Adding a shortcut from the first revision should not change any of
@@ -607,7 +607,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'L': ['J', 'K'],
              'M': ['A'],
              'N': ['L', 'M'],
-            },
+             },
             'N',
             [('N', 0, (7,), False),
              ('M', 1, (1, 4, 1), True),
@@ -622,7 +622,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              ('C', 1, (1, 1, 1), True),
              ('D', 0, (3,), False),
              ('B', 0, (2,), False),
-             ('A', 0, (1,),  True),
+             ('A', 0, (1,), True),
              ],
             )
 
@@ -709,7 +709,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         # root: A: []
         self.assertSortAndIterate(
             {'J': ['G', 'I'],
-             'I': ['H',],
+             'I': ['H', ],
              'H': ['A'],
              'G': ['D', 'F'],
              'F': ['E'],
@@ -768,7 +768,7 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              'P': ['N'],
              'Q': ['O', 'P'],
              'R': ['J', 'Q'],
-            },
+             },
             'R',
             [('R', 0, (6,), False),
              ('Q', 1, (0, 4, 5), False),
@@ -802,12 +802,12 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
             {'A': [],
              'B': ['A'],
              'C': ['B', 'ghost'],
-            },
+             },
             'C',
             [('C', 0, (3,), False),
              ('B', 0, (2,), False),
              ('A', 0, (1,), True),
-            ])
+             ])
 
     def test_lefthand_ghost(self):
         # ghost
@@ -818,10 +818,10 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         self.assertSortAndIterate(
             {'A': ['ghost'],
              'B': ['A'],
-            }, 'B',
+             }, 'B',
             [('B', 0, (2,), False),
              ('A', 0, (1,), True),
-            ])
+             ])
 
     def test_graph_cycle(self):
         # merge_sort should fail with a simple error when a graph cycle is
@@ -837,15 +837,15 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         # |'-'
         # E
         self.assertRaises(errors.GraphCycleError,
-            self.assertSortAndIterate,
-                {'A': [],
-                 'B': ['D'],
-                 'C': ['B'],
-                 'D': ['C'],
-                 'E': ['D'],
-                },
-                'E',
-                [])
+                          self.assertSortAndIterate,
+                          {'A': [],
+                           'B': ['D'],
+                              'C': ['B'],
+                              'D': ['C'],
+                              'E': ['D'],
+                           },
+                          'E',
+                          [])
 
 
 class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
@@ -862,16 +862,16 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
         self.assertSorted([], {})
 
     def test_single(self):
-        self.assertSorted(['a'], {'a':()})
-        self.assertSorted([('a',)], {('a',):()})
-        self.assertSorted([('F', 'a')], {('F', 'a'):()})
+        self.assertSorted(['a'], {'a': ()})
+        self.assertSorted([('a',)], {('a',): ()})
+        self.assertSorted([('F', 'a')], {('F', 'a'): ()})
 
     def test_linear(self):
-        self.assertSorted(['c', 'b', 'a'], {'a':(), 'b':('a',), 'c':('b',)})
+        self.assertSorted(['c', 'b', 'a'], {'a': (), 'b': ('a',), 'c': ('b',)})
         self.assertSorted([('c',), ('b',), ('a',)],
-                          {('a',):(), ('b',): (('a',),), ('c',): (('b',),)})
+                          {('a',): (), ('b',): (('a',),), ('c',): (('b',),)})
         self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a')],
-                          {('F', 'a'):(), ('F', 'b'): (('F', 'a'),),
+                          {('F', 'a'): (), ('F', 'b'): (('F', 'a'),),
                            ('F', 'c'): (('F', 'b'),)})
 
     def test_mixed_ancestries(self):
@@ -879,26 +879,26 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
         self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a'),
                            ('G', 'c'), ('G', 'b'), ('G', 'a'),
                            ('Q', 'c'), ('Q', 'b'), ('Q', 'a'),
-                          ],
+                           ],
                           {('F', 'a'): (), ('F', 'b'): (('F', 'a'),),
                            ('F', 'c'): (('F', 'b'),),
                            ('G', 'a'): (), ('G', 'b'): (('G', 'a'),),
                            ('G', 'c'): (('G', 'b'),),
                            ('Q', 'a'): (), ('Q', 'b'): (('Q', 'a'),),
                            ('Q', 'c'): (('Q', 'b'),),
-                          })
+                           })
 
     def test_stable_sorting(self):
         # the sort order should be stable even when extra nodes are added
         self.assertSorted(['b', 'c', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',)})
         self.assertSorted(['b', 'c', 'd', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',)})
         self.assertSorted(['b', 'c', 'd', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',)})
         self.assertSorted(['Z', 'b', 'c', 'd', 'a'],
-                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',),
-                           'Z':('a',)})
+                          {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',),
+                           'Z': ('a',)})
         self.assertSorted(['e', 'b', 'c', 'f', 'Z', 'd', 'a'],
                           {'a': (), 'b': ('a',), 'c': ('a',), 'd': ('a',),
                            'Z': ('a',),
@@ -908,8 +908,8 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
 
     def test_skip_ghost(self):
         self.assertSorted(['b', 'c', 'a'],
-                          {'a':(), 'b':('a', 'ghost'), 'c':('a',)})
+                          {'a': (), 'b': ('a', 'ghost'), 'c': ('a',)})
 
     def test_skip_mainline_ghost(self):
         self.assertSorted(['b', 'c', 'a'],
-                          {'a':(), 'b':('ghost', 'a'), 'c':('a',)})
+                          {'a': (), 'b': ('ghost', 'a'), 'c': ('a',)})

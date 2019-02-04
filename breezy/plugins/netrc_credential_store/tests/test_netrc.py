@@ -40,7 +40,7 @@ class TestNetrcCS(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestNetrcCS, self).setUp()
         # Create a .netrc file
-        netrc_content = """
+        netrc_content = b"""
 machine host login joe password secret
 default login anonymous password joe@home
 """
@@ -52,7 +52,7 @@ default login anonymous password joe@home
         osutils.chmod_if_possible(netrc_path, 0o600)
 
     def _get_netrc_cs(self):
-        return  config.credential_store_registry.get_credential_store('netrc')
+        return config.credential_store_registry.get_credential_store('netrc')
 
     def test_not_matching_user(self):
         cs = self._get_netrc_cs()
@@ -76,7 +76,7 @@ default login anonymous password joe@home
 
     def test_get_netrc_credentials_via_auth_config(self):
         # Create a test AuthenticationConfig object
-        ac_content = """
+        ac_content = b"""
 [host1]
 host = host
 user = joe

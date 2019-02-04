@@ -142,12 +142,13 @@ class TestBzrDir(TestCaseWithBzrDir):
             # revs
             all_revs = left_repo.all_revision_ids()
             self.assertEqual(left_repo.all_revision_ids(),
-                right_repo.all_revision_ids())
+                             right_repo.all_revision_ids())
             for rev_id in left_repo.all_revision_ids():
                 self.assertEqual(left_repo.get_revision(rev_id),
-                    right_repo.get_revision(rev_id))
+                                 right_repo.get_revision(rev_id))
             # Assert the revision trees (and thus the inventories) are equal
-            sort_key = lambda rev_tree: rev_tree.get_revision_id()
+
+            def sort_key(rev_tree): return rev_tree.get_revision_id()
             rev_trees_a = sorted(
                 left_repo.revision_trees(all_revs), key=sort_key)
             rev_trees_b = sorted(
@@ -157,17 +158,17 @@ class TestBzrDir(TestCaseWithBzrDir):
             # texts
             text_index = left_repo._generate_text_key_index()
             self.assertEqual(text_index,
-                right_repo._generate_text_key_index())
+                             right_repo._generate_text_key_index())
             desired_files = []
             for file_id, revision_id in text_index:
                 desired_files.append(
                     (file_id, revision_id, (file_id, revision_id)))
-            left_texts = [(identifier, "".join(bytes_iterator)) for
-                    (identifier, bytes_iterator) in
-                    left_repo.iter_files_bytes(desired_files)]
-            right_texts = [(identifier, "".join(bytes_iterator)) for
-                    (identifier, bytes_iterator) in
-                    right_repo.iter_files_bytes(desired_files)]
+            left_texts = [(identifier, b"".join(bytes_iterator)) for
+                          (identifier, bytes_iterator) in
+                          left_repo.iter_files_bytes(desired_files)]
+            right_texts = [(identifier, b"".join(bytes_iterator)) for
+                           (identifier, bytes_iterator) in
+                           right_repo.iter_files_bytes(desired_files)]
             left_texts.sort()
             right_texts.sort()
             self.assertEqual(left_texts, right_texts)
@@ -236,7 +237,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
-        self.assertTrue(repo.has_revision('1'))
+        self.assertTrue(repo.has_revision(b'1'))
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -261,11 +262,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/basis-inventory-cache',
-                                     './.bzr/checkout/stat-cache',
-                                     './.bzr/merge-hashes',
-                                     './.bzr/repository',
-                                     './.bzr/stat-cache',
+                                        './.bzr/basis-inventory-cache',
+                                        './.bzr/checkout/stat-cache',
+                                        './.bzr/merge-hashes',
+                                        './.bzr/repository',
+                                        './.bzr/stat-cache',
                                     ])
         self.assertRepositoryHasSameItems(
             tree.branch.repository, target.open_repository())
@@ -296,22 +297,23 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_clone_bzrdir_repository(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
+        self.build_tree(
+            ['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
         tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
-        self.assertTrue(repo.has_revision('1'))
+        self.assertTrue(repo.has_revision(b'1'))
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/merge-hashes',
-                                     './.bzr/repository',
-                                     ])
+                                        './.bzr/merge-hashes',
+                                        './.bzr/repository',
+                                        ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_repository())
+                                          target.open_repository())
 
     def test_clone_bzrdir_tree_branch_repo(self):
         tree = self.make_branch_and_tree('source')
@@ -331,7 +333,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_branch().repository)
+                                          target.open_branch().repository)
         target.open_workingtree().revert()
 
     def test_revert_inventory(self):
@@ -351,7 +353,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_branch().repository)
+                                          target.open_branch().repository)
 
         target.open_workingtree().revert()
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
@@ -363,7 +365,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository',
                                      ])
         self.assertRepositoryHasSameItems(tree.branch.repository,
-            target.open_branch().repository)
+                                          target.open_branch().repository)
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout)
@@ -424,17 +426,18 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_sprout_bzrdir_repository(self):
         tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
+        self.build_tree(
+            ['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
         tree.commit('revision 1', rev_id=b'1')
         dir = self.make_controldir('source')
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
-        self.assertTrue(repo.has_revision('1'))
+        self.assertTrue(repo.has_revision(b'1'))
         try:
             self.assertTrue(
                 _mod_revision.is_null(_mod_revision.ensure_null(
-                dir.open_branch().last_revision())))
+                    dir.open_branch().last_revision())))
         except errors.NotBranchError:
             pass
         target = dir.sprout(self.get_url('target'))
@@ -442,12 +445,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         # testing inventory isn't reasonable for repositories
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/branch',
-                                     './.bzr/checkout',
-                                     './.bzr/inventory',
-                                     './.bzr/parent',
-                                     './.bzr/repository/inventory.knit',
-                                     ])
+                                        './.bzr/branch',
+                                        './.bzr/checkout',
+                                        './.bzr/inventory',
+                                        './.bzr/parent',
+                                        './.bzr/repository/inventory.knit',
+                                        ])
         try:
             local_inventory = dir.transport.local_abspath('inventory')
         except errors.NotLocalUrl:
@@ -455,10 +458,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             # If we happen to have a tree, we'll guarantee everything
             # except for the tree root is the same.
-            inventory_f = file(local_inventory, 'rb')
-            self.addCleanup(inventory_f.close)
-            self.assertContainsRe(inventory_f.read(),
-                                  '<inventory format="5">\n</inventory>\n')
+            with open(local_inventory, 'rb') as inventory_f:
+                self.assertContainsRe(inventory_f.read(),
+                                      b'<inventory format="5">\n</inventory>\n')
         except IOError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -478,22 +480,23 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertRepositoryHasSameItems(source.repository, target_repo)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/basis-inventory-cache',
-                                     './.bzr/branch/branch.conf',
-                                     './.bzr/branch/parent',
-                                     './.bzr/checkout',
-                                     './.bzr/checkout/inventory',
-                                     './.bzr/checkout/stat-cache',
-                                     './.bzr/inventory',
-                                     './.bzr/parent',
-                                     './.bzr/repository',
-                                     './.bzr/stat-cache',
-                                     './foo',
-                                     ])
+                                        './.bzr/basis-inventory-cache',
+                                        './.bzr/branch/branch.conf',
+                                        './.bzr/branch/parent',
+                                        './.bzr/checkout',
+                                        './.bzr/checkout/inventory',
+                                        './.bzr/checkout/stat-cache',
+                                        './.bzr/inventory',
+                                        './.bzr/parent',
+                                        './.bzr/repository',
+                                        './.bzr/stat-cache',
+                                        './foo',
+                                        ])
 
     def test_sprout_bzrdir_tree_branch_repo(self):
         tree = self.make_branch_and_tree('source')
-        self.build_tree(['foo'], transport=tree.controldir.transport.clone('..'))
+        self.build_tree(
+            ['foo'], transport=tree.controldir.transport.clone('..'))
         tree.add('foo')
         tree.commit('revision 1')
         dir = tree.controldir
@@ -501,25 +504,24 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
-                                     './.bzr/branch',
-                                     './.bzr/checkout/dirstate',
-                                     './.bzr/checkout/stat-cache',
-                                     './.bzr/checkout/inventory',
-                                     './.bzr/inventory',
-                                     './.bzr/parent',
-                                     './.bzr/repository',
-                                     './.bzr/stat-cache',
-                                     ])
+                                        './.bzr/branch',
+                                        './.bzr/checkout/dirstate',
+                                        './.bzr/checkout/stat-cache',
+                                        './.bzr/checkout/inventory',
+                                        './.bzr/inventory',
+                                        './.bzr/parent',
+                                        './.bzr/repository',
+                                        './.bzr/stat-cache',
+                                        ])
         self.assertRepositoryHasSameItems(
             tree.branch.repository, target.open_repository())
-
 
     def test_retire_bzrdir(self):
         bd = self.make_controldir('.')
         transport = bd.root_transport
         # must not overwrite existing directories
-        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
-            transport=transport)
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk', ],
+                        transport=transport)
         self.assertTrue(transport.has('.bzr'))
         bd.retire_bzrdir()
         self.assertFalse(transport.has('.bzr'))
@@ -529,11 +531,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         bd = self.make_controldir('.')
         transport = bd.root_transport
         # must not overwrite existing directories
-        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk',],
-            transport=transport)
+        self.build_tree(['.bzr.retired.0/', '.bzr.retired.0/junk', ],
+                        transport=transport)
         self.assertTrue(transport.has('.bzr'))
         self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
-            bd.retire_bzrdir, limit=0)
+                          bd.retire_bzrdir, limit=0)
 
     def test_get_branch_transport(self):
         dir = self.make_controldir('.')
@@ -593,7 +595,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                               dir.get_workingtree_transport,
                               identifiable_format)
         except errors.IncompatibleFormat:
-            found_transport = dir.get_workingtree_transport(identifiable_format)
+            found_transport = dir.get_workingtree_transport(
+                identifiable_format)
         self.assertTrue(isinstance(found_transport, transport.Transport))
         # and the dir which has been initialized for us must exist.
         found_transport.list_dir('.')
@@ -611,7 +614,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         """
         if not self.bzrdir_format.is_initializable():
             raise TestNotApplicable("control dir format is not "
-                "initializable")
+                                    "initializable")
         repo, control, require_stacking, repo_policy = \
             self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
         if repo is not None:
@@ -627,9 +630,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             expected_format = bzrdir.BzrDirMetaFormat1()
         if not isinstance(expected_format, RemoteBzrDirFormat):
             self.assertEqual(control._format.network_name(),
-                expected_format.network_name())
+                             expected_format.network_name())
             self.assertEqual(control._format.network_name(),
-                opened._format.network_name())
+                             opened._format.network_name())
         self.assertEqual(control.__class__, opened.__class__)
         return repo, control
 

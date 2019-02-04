@@ -68,8 +68,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.unversion(['a'])
         tree.add(['b'], [file_id])
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b', 'a')])
 
     def test_add_one_list(self):
         tree = self.make_branch_and_tree('.')
@@ -105,9 +105,9 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.add(['dir/subdir/foo'], [b'foo-id'])
         root_id = tree.get_root_id()
 
-        self.assertTreeLayout([('', root_id), ('dir/', 'dir-id'),
-                               ('dir/subdir/', 'subdir-id'),
-                               ('dir/subdir/foo', 'foo-id')], tree)
+        self.assertTreeLayout([('', root_id), ('dir/', b'dir-id'),
+                               ('dir/subdir/', b'subdir-id'),
+                               ('dir/subdir/foo', b'foo-id')], tree)
 
     def test_add_subdir(self):
         tree = self.make_branch_and_tree('.')
@@ -134,11 +134,11 @@ class TestAdd(TestCaseWithWorkingTree):
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b', 'dir/', 'dir/subdir/', 'dir/subdir/foo'])
         tree.add(['a', 'b', 'dir', 'dir/subdir', 'dir/subdir/foo'],
-                 ['a-id', 'b-id', 'dir-id', 'subdir-id', 'foo-id'])
+                 [b'a-id', b'b-id', b'dir-id', b'subdir-id', b'foo-id'])
 
-        self.assertTreeLayout([('', tree.get_root_id()), ('a', 'a-id'), ('b', 'b-id'),
-                               ('dir/', 'dir-id'), ('dir/subdir/', 'subdir-id'),
-                               ('dir/subdir/foo', 'foo-id')], tree)
+        self.assertTreeLayout([('', tree.get_root_id()), ('a', b'a-id'), ('b', b'b-id'),
+                               ('dir/', b'dir-id'), ('dir/subdir/', b'subdir-id'),
+                               ('dir/subdir/foo', b'foo-id')], tree)
 
     def test_add_invalid(self):
         tree = self.make_branch_and_tree('.')

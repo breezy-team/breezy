@@ -32,6 +32,7 @@ from breezy import (
     ui,
     )
 """)
+from .i18n import gettext
 from .sixish import (
     BytesIO,
     range,
@@ -44,15 +45,18 @@ def topo_iter_keys(vf, keys=None):
     parents = vf.get_parent_map(keys)
     return _topo_iter(parents, keys)
 
+
 def topo_iter(vf, versions=None):
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
     return _topo_iter(parents, versions)
 
+
 def _topo_iter(parents, versions):
     seen = set()
     descendants = {}
+
     def pending_parents(version):
         if parents[version] is None:
             return []
@@ -116,6 +120,7 @@ class MultiParent(object):
         parent_text = []
         block_iter = [iter(i) for i in parent_comparisons]
         diff = MultiParent([])
+
         def next_block(p):
             try:
                 return next(block_iter[p])
@@ -186,7 +191,7 @@ class MultiParent(object):
                 yield line
 
     def patch_len(self):
-        return len(''.join(self.to_patch()))
+        return len(b''.join(self.to_patch()))
 
     def zipped_patch_len(self):
         return len(gzip_string(self.to_patch()))
@@ -202,23 +207,24 @@ class MultiParent(object):
         line_iter = iter(lines)
         hunks = []
         cur_line = None
-        while(True):
+        while True:
             try:
                 cur_line = next(line_iter)
             except StopIteration:
                 break
-            if cur_line[0] == 'i':
-                num_lines = int(cur_line.split(' ')[1])
+            first_char = cur_line[0:1]
+            if first_char == b'i':
+                num_lines = int(cur_line.split(b' ')[1])
                 hunk_lines = [next(line_iter) for _ in range(num_lines)]
                 hunk_lines[-1] = hunk_lines[-1][:-1]
                 hunks.append(NewText(hunk_lines))
-            elif cur_line[0] == '\n':
-                hunks[-1].lines[-1] += '\n'
+            elif first_char == b'\n':
+                hunks[-1].lines[-1] += b'\n'
             else:
-                if not (cur_line[0] == 'c'):
-                    raise AssertionError(cur_line[0])
+                if not (first_char == b'c'):
+                    raise AssertionError(first_char)
                 parent, parent_pos, child_pos, num_lines =\
-                    [int(v) for v in cur_line.split(' ')[1:]]
+                    [int(v) for v in cur_line.split(b' ')[1:]]
                 hunks.append(ParentText(parent, parent_pos, child_pos,
                                         num_lines))
         return MultiParent(hunks)
@@ -251,7 +257,7 @@ class MultiParent(object):
         extra_n = 0
         for hunk in reversed(self.hunks):
             if isinstance(hunk, ParentText):
-               return hunk.child_pos + hunk.num_lines + extra_n
+                return hunk.child_pos + hunk.num_lines + extra_n
             extra_n += len(hunk.lines)
         return extra_n
 
@@ -279,10 +285,10 @@ class NewText(object):
         return 'NewText(%r)' % self.lines
 
     def to_patch(self):
-        yield 'i %d\n' % len(self.lines)
+        yield b'i %d\n' % len(self.lines)
         for line in self.lines:
             yield line
-        yield '\n'
+        yield b'\n'
 
 
 class ParentText(object):
@@ -297,8 +303,10 @@ class ParentText(object):
         self.num_lines = num_lines
 
     def _as_dict(self):
-        return dict(parent=self.parent, parent_pos=self.parent_pos,
-                    child_pos=self.child_pos, num_lines=self.num_lines)
+        return {b'parent': self.parent,
+                b'parent_pos': self.parent_pos,
+                b'child_pos': self.child_pos,
+                b'num_lines': self.num_lines}
 
     def __repr__(self):
         return ('ParentText(%(parent)r, %(parent_pos)r, %(child_pos)r,'
@@ -310,7 +318,7 @@ class ParentText(object):
         return self._as_dict() == other._as_dict()
 
     def to_patch(self):
-        yield ('c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'
+        yield (b'c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'
                % self._as_dict())
 
 
@@ -335,7 +343,7 @@ class BaseVersionedFile(object):
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\
-            len(self._snapshots) == self.max_snapshots:
+                len(self._snapshots) == self.max_snapshots:
             return False
         if len(parent_ids) == 0:
             return True
@@ -410,7 +418,7 @@ class BaseVersionedFile(object):
                     parents = vf.get_parents(revision)
                     if [p for p in parents if p not in self._parents] != []:
                         continue
-                    lines = [a + ' ' + l for a, l in
+                    lines = [a + b' ' + l for a, l in
                              vf.annotate(revision)]
                     if snapshots is None:
                         force_snapshot = None
@@ -433,7 +441,6 @@ class BaseVersionedFile(object):
     def select_snapshots(self, vf):
         """Determine which versions to add as snapshots"""
         build_ancestors = {}
-        descendants = {}
         snapshots = set()
         for version_id in topo_iter(vf):
             potential_build_ancestors = set(vf.get_parents(version_id))
@@ -460,7 +467,6 @@ class BaseVersionedFile(object):
     def get_size_ranking(self):
         """Get versions ranked by size"""
         versions = []
-        new_snapshots = set()
         for version_id in self.versions():
             if version_id in self._snapshots:
                 continue
@@ -494,8 +500,8 @@ class BaseVersionedFile(object):
         ranking = []
         while len(available_versions) > 0:
             available_versions.sort(key=lambda x:
-                len(could_avoid[x]) *
-                len(referenced_by.get(x, [])))
+                                    len(could_avoid[x]) *
+                                    len(referenced_by.get(x, [])))
             selected = available_versions.pop()
             ranking.append(selected)
             for version_id in referenced_by[selected]:
@@ -557,37 +563,25 @@ class MultiVersionedFile(BaseVersionedFile):
 
     def get_diff(self, version_id):
         start, count = self._diff_offset[version_id]
-        infile = open(self._filename + '.mpknit', 'rb')
-        try:
+        with open(self._filename + '.mpknit', 'rb') as infile:
             infile.seek(start)
             sio = BytesIO(infile.read(count))
-        finally:
-            infile.close()
-        zip_file = gzip.GzipFile(None, mode='rb', fileobj=sio)
-        try:
+        with gzip.GzipFile(None, mode='rb', fileobj=sio) as zip_file:
             file_version_id = zip_file.readline()
             content = zip_file.read()
             return MultiParent.from_patch(content)
-        finally:
-            zip_file.close()
 
     def add_diff(self, diff, version_id, parent_ids):
-        outfile = open(self._filename + '.mpknit', 'ab')
-        try:
+        with open(self._filename + '.mpknit', 'ab') as outfile:
             outfile.seek(0, 2)      # workaround for windows bug:
-                                    # .tell() for files opened in 'ab' mode
-                                    # before any write returns 0
+            # .tell() for files opened in 'ab' mode
+            # before any write returns 0
             start = outfile.tell()
-            try:
-                zipfile = gzip.GzipFile(None, mode='ab', fileobj=outfile)
+            with gzip.GzipFile(None, mode='ab', fileobj=outfile) as zipfile:
                 zipfile.writelines(itertools.chain(
-                    ['version %s\n' % version_id], diff.to_patch()))
-            finally:
-                zipfile.close()
+                    [b'version %s\n' % version_id], diff.to_patch()))
             end = outfile.tell()
-        finally:
-            outfile.close()
-        self._diff_offset[version_id] = (start, end-start)
+        self._diff_offset[version_id] = (start, end - start)
         self._parents[version_id] = parent_ids
 
     def destroy(self):
@@ -676,7 +670,6 @@ class _Reconstructor(object):
 
 def gzip_string(lines):
     sio = BytesIO()
-    data_file = gzip.GzipFile(None, mode='wb', fileobj=sio)
-    data_file.writelines(lines)
-    data_file.close()
+    with gzip.GzipFile(None, mode='wb', fileobj=sio) as data_file:
+        data_file.writelines(lines)
     return sio.getvalue()

@@ -32,7 +32,6 @@ class TestRenameMap(TestCaseWithTransport):
     a_lines = b'a\nb\nc\n'.splitlines(True)
     b_lines = b'b\nc\nd\n'.splitlines(True)
 
-
     def test_add_edge_hashes(self):
         rn = RenameMap(None)
         rn.add_edge_hashes(self.a_lines, 'a')
@@ -45,9 +44,9 @@ class TestRenameMap(TestCaseWithTransport):
         self.build_tree_contents([('tree/a', b''.join(self.a_lines))])
         tree.add('a', b'a')
         rn = RenameMap(tree)
-        rn.add_file_edge_hashes(tree, ['a'])
-        self.assertEqual({'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
-        self.assertEqual({'a'}, rn.edge_hashes[myhash(('b\n', 'c\n'))])
+        rn.add_file_edge_hashes(tree, [b'a'])
+        self.assertEqual({b'a'}, rn.edge_hashes[myhash(('a\n', 'b\n'))])
+        self.assertEqual({b'a'}, rn.edge_hashes[myhash(('b\n', 'c\n'))])
         self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_hitcounts(self):
@@ -63,8 +62,8 @@ class TestRenameMap(TestCaseWithTransport):
         rn = RenameMap(tree)
         rn.add_edge_hashes(self.a_lines, 'aid')
         rn.add_edge_hashes(self.b_lines, 'bid')
-        self.build_tree_contents([('tree/a', ''.join(self.a_lines))])
-        self.build_tree_contents([('tree/b', ''.join(self.b_lines))])
+        self.build_tree_contents([('tree/a', b''.join(self.a_lines))])
+        self.build_tree_contents([('tree/b', b''.join(self.b_lines))])
         self.assertEqual({'a': 'aid', 'b': 'bid'},
                          rn.file_match(['a', 'b']))
 
@@ -175,6 +174,7 @@ class TestRenameMap(TestCaseWithTransport):
     @staticmethod
     def captureNotes(cmd, *args, **kwargs):
         notes = []
+
         def my_note(fmt, *args):
             notes.append(fmt % args)
         old_note = trace.note
@@ -195,25 +195,25 @@ class TestRenameMap(TestCaseWithTransport):
         tree.commit('Added file')
         os.rename('tree/file', 'tree/file2')
         notes = self.captureNotes(
-                RenameMap.guess_renames, tree.basis_tree(), tree,
-                dry_run=True)[0]
+            RenameMap.guess_renames, tree.basis_tree(), tree,
+            dry_run=True)[0]
         self.assertEqual('file => file2', ''.join(notes))
         notes = self.captureNotes(RenameMap.guess_renames, tree.basis_tree(),
-                tree, dry_run=False)[0]
+                                  tree, dry_run=False)[0]
         self.assertEqual('file => file2', ''.join(notes))
 
     def test_guess_rename_handles_new_directories(self):
         """When a file was moved into a new directory."""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
-        #self.addCleanup(tree.unlock)
+        # self.addCleanup(tree.unlock)
         self.build_tree(['file'])
         tree.add('file', b'file-id')
         tree.commit('Added file')
         os.mkdir('folder')
         os.rename('file', 'folder/file2')
         notes = self.captureNotes(
-                RenameMap.guess_renames, tree.basis_tree(), tree)[0]
+            RenameMap.guess_renames, tree.basis_tree(), tree)[0]
         self.assertEqual('file => folder/file2', ''.join(notes))
 
         tree.unlock()

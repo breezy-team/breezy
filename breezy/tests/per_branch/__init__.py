@@ -36,7 +36,7 @@ from breezy.transport import memory
 
 
 def make_scenarios(transport_server, transport_readonly_server,
-    formats, vfs_transport_factory=None, name_suffix=''):
+                   formats, vfs_transport_factory=None, name_suffix=''):
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of (branch_format, bzrdir_format).
@@ -46,14 +46,14 @@ def make_scenarios(transport_server, transport_readonly_server,
         # some branches don't have separate format objects.
         # so we have a conditional here to handle them.
         scenario_name = getattr(branch_format, '__name__',
-            branch_format.__class__.__name__)
+                                branch_format.__class__.__name__)
         scenario_name += name_suffix
         scenario = (scenario_name, {
             "transport_server": transport_server,
             "transport_readonly_server": transport_readonly_server,
             "bzrdir_format": bzrdir_format,
             "branch_format": branch_format,
-                })
+            })
         result.append(scenario)
     return result
 
@@ -99,8 +99,7 @@ class TestCaseWithBranch(TestCaseWithControlDir):
         """
         revmap = {}
         tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add('')
             revmap['1'] = tree.commit('first')
             revmap['1.1.1'] = tree.commit('second')
@@ -110,8 +109,6 @@ class TestCaseWithBranch(TestCaseWithControlDir):
             revmap['2'] = tree.commit('alt-second')
             tree.set_parent_ids([revmap['2'], revmap['1.1.1']])
             revmap['3'] = tree.commit('third')
-        finally:
-            tree.unlock()
 
         return tree, revmap
 
@@ -121,7 +118,7 @@ def branch_scenarios():
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingcontroldir) for format in
-         format_registry._get_all()]
+                    format_registry._get_all()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,

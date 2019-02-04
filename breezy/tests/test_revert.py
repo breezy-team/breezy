@@ -26,7 +26,8 @@ class TestRevert(tests.TestCaseWithTransport):
         """Reverting a merge that adds a directory deletes the directory"""
         source_tree = self.make_branch_and_tree('source')
         source_tree.commit('empty tree')
-        target_tree = source_tree.controldir.sprout('target').open_workingtree()
+        target_tree = source_tree.controldir.sprout(
+            'target').open_workingtree()
         self.build_tree(['source/dir/', 'source/dir/contents'])
         source_tree.add(['dir', 'dir/contents'], [b'dir-id', b'contents-id'])
         source_tree.commit('added dir')
@@ -53,7 +54,8 @@ class TestRevert(tests.TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('tree')
         tree.commit('empty tree')
-        merge_target = tree.controldir.sprout('merge_target').open_workingtree()
+        merge_target = tree.controldir.sprout(
+            'merge_target').open_workingtree()
         self.build_tree(['tree/new_file'])
 
         # newly-added files should not be deleted
@@ -84,14 +86,11 @@ class TestRevert(tests.TestCaseWithTransport):
     def tree_with_executable(self):
         tree = self.make_branch_and_tree('tree')
         tt = transform.TreeTransform(tree)
-        tt.new_file('newfile', tt.root, 'helooo!', 'newfile-id', True)
+        tt.new_file('newfile', tt.root, [b'helooo!'], b'newfile-id', True)
         tt.apply()
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             self.assertTrue(tree.is_executable('newfile'))
             tree.commit('added newfile')
-        finally:
-            tree.unlock()
         return tree
 
     def test_preserve_execute(self):
@@ -99,14 +98,15 @@ class TestRevert(tests.TestCaseWithTransport):
         tt = transform.TreeTransform(tree)
         newfile = tt.trans_id_tree_path('newfile')
         tt.delete_contents(newfile)
-        tt.create_file('Woooorld!', newfile)
+        tt.create_file([b'Woooorld!'], newfile)
         tt.apply()
         tree = workingtree.WorkingTree.open('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.assertTrue(tree.is_executable('newfile'))
         transform.revert(tree, tree.basis_tree(), None, backups=True)
-        self.assertEqual('helooo!', tree.get_file('newfile').read())
+        with tree.get_file('newfile', 'rb') as f:
+            self.assertEqual(b'helooo!', f.read())
         self.assertTrue(tree.is_executable('newfile'))
 
     def test_revert_executable(self):
@@ -128,7 +128,7 @@ class TestRevert(tests.TestCaseWithTransport):
         os.unlink('file')
         tree.commit('removed file')
         self.assertPathDoesNotExist('file')
-        tree.revert(old_tree=tree.branch.repository.revision_tree('rev1'))
+        tree.revert(old_tree=tree.branch.repository.revision_tree(b'rev1'))
         self.assertPathExists('file')
         tree.revert()
         self.assertPathDoesNotExist('file')
@@ -138,7 +138,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/file1', 'dir/file2'])
         tree.add(['dir', 'dir/file1', 'dir/file2'],
-                 ['dir-id', 'file1-id', 'file2-id'])
+                 [b'dir-id', b'file1-id', b'file2-id'])
         tree.commit("Added files")
         os.unlink('dir/file1')
         os.unlink('dir/file2')
@@ -147,7 +147,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.revert(['dir/file1'])
         self.assertPathExists('dir/file1')
         self.assertPathDoesNotExist('dir/file2')
-        self.assertEqual('dir-id', tree.path2id('dir'))
+        self.assertEqual(b'dir-id', tree.path2id('dir'))
 
     def test_revert_root_id_change(self):
         tree = self.make_branch_and_tree('.')
@@ -156,6 +156,6 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.add(['file1'])
         tree.commit('first')
         tree.set_root_id(b'temp-root-id')
-        self.assertEqual('temp-root-id', tree.get_root_id())
+        self.assertEqual(b'temp-root-id', tree.get_root_id())
         tree.revert()
-        self.assertEqual('initial-root-id', tree.get_root_id())
+        self.assertEqual(b'initial-root-id', tree.get_root_id())

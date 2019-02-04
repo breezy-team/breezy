@@ -26,6 +26,7 @@ from ..bzr.index import GraphIndex
 from .. import (
     controldir,
     errors,
+    gpg,
     osutils,
     repository,
     revision as _mod_revision,
@@ -96,7 +97,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def check_format(self, t):
         self.assertEqualDiff(
-            self.format_string, # from scenario
+            self.format_string.encode('ascii'),  # from scenario
             t.get('format').read())
 
     def assertHasNoKndx(self, t, knit_name):
@@ -120,7 +121,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertFalse(t.has('knits'))
         # revision-indexes file-container directory
         self.assertEqual([],
-            list(self.index_class(t, 'pack-names', None).iter_all_entries()))
+                         list(self.index_class(t, 'pack-names', None).iter_all_entries()))
         self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
         self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
         self.assertTrue(S_ISDIR(t.stat('indices').st_mode))
@@ -135,7 +136,8 @@ class TestPackRepository(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         # We should have a 'shared-storage' marker file.
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         self.check_databases(t)
 
     def test_shared_no_tree_disk_layout(self):
@@ -148,9 +150,11 @@ class TestPackRepository(TestCaseWithTransport):
         # XXX: no locks left when unlocked at the moment
         # self.assertEqualDiff('', t.get('lock').read())
         # We should have a 'shared-storage' marker file.
-        self.assertEqualDiff('', t.get('shared-storage').read())
+        with t.get('shared-storage') as f:
+            self.assertEqualDiff(b'', f.read())
         # We should have a marker for the no-working-trees flag.
-        self.assertEqualDiff('', t.get('no-working-trees').read())
+        with t.get('no-working-trees') as f:
+            self.assertEqualDiff(b'', f.read())
         # The marker should go when we toggle the setting.
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
@@ -159,9 +163,10 @@ class TestPackRepository(TestCaseWithTransport):
     def test_adding_revision_creates_pack_indices(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.controldir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
         self.assertEqual([],
-            list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
+                         list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
         tree.commit('foobarbaz')
         index = self.index_class(trans, 'pack-names', None)
         index_nodes = list(index.iter_all_entries())
@@ -170,9 +175,9 @@ class TestPackRepository(TestCaseWithTransport):
         name = node[1][0]
         # the pack sizes should be listed in the index
         pack_value = node[2]
-        sizes = [int(digits) for digits in pack_value.split(' ')]
+        sizes = [int(digits) for digits in pack_value.split(b' ')]
         for size, suffix in zip(sizes, ['.rix', '.iix', '.tix', '.six']):
-            stat = trans.stat('indices/%s%s' % (name, suffix))
+            stat = trans.stat('indices/%s%s' % (name.decode('ascii'), suffix))
             self.assertEqual(size, stat.st_size)
 
     def test_pulling_nothing_leads_to_no_new_names(self):
@@ -180,14 +185,16 @@ class TestPackRepository(TestCaseWithTransport):
         tree1 = self.make_branch_and_tree('1', format=format)
         tree2 = self.make_branch_and_tree('2', format=format)
         tree1.branch.repository.fetch(tree2.branch.repository)
-        trans = tree1.branch.repository.controldir.get_repository_transport(None)
+        trans = tree1.branch.repository.controldir.get_repository_transport(
+            None)
         self.assertEqual([],
-            list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
+                         list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
 
     def test_commit_across_pack_shape_boundary_autopacks(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.controldir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
         # This test could be a little cheaper by replacing the packs
         # attribute on the repository to allow a different pack distribution
         # and max packs policy - so we are checking the policy is honoured
@@ -199,8 +206,8 @@ class TestPackRepository(TestCaseWithTransport):
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # insert some files in obsolete_packs which should be removed by pack.
-        trans.put_bytes('obsolete_packs/foo', '123')
-        trans.put_bytes('obsolete_packs/bar', '321')
+        trans.put_bytes('obsolete_packs/foo', b'123')
+        trans.put_bytes('obsolete_packs/bar', b'321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
         index = self.index_class(trans, 'pack-names', None)
@@ -209,9 +216,9 @@ class TestPackRepository(TestCaseWithTransport):
         tree = tree.controldir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
-        nb_files = 5 # .pack, .rix, .iix, .tix, .six
+        nb_files = 5  # .pack, .rix, .iix, .tix, .six
         if tree.branch.repository._format.supports_chks:
-            nb_files += 1 # .cix
+            nb_files += 1  # .cix
         # We should have 10 x nb_files files in the obsolete_packs directory.
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
@@ -232,23 +239,22 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         format = self.get_format()
         repo = self.make_repository('foo', format=format)
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             # All current pack repository styles autopack at 10 revisions; and
             # autopack as well as regular commit write group needs to return
             # the new pack name. Looping is a little ugly, but we don't have a
             # clean way to test both the autopack logic and the normal code
             # path without doing this loop.
             for pos in range(10):
-                revid = str(pos)
+                revid = b'%d' % pos
                 repo.start_write_group()
                 try:
                     inv = inventory.Inventory(revision_id=revid)
                     inv.root.revision = revid
                     repo.texts.add_lines((inv.root.file_id, revid), [], [])
                     rev = _mod_revision.Revision(timestamp=0, timezone=None,
-                        committer="Foo Bar <foo@example.com>", message="Message",
-                        revision_id=revid)
+                                                 committer="Foo Bar <foo@example.com>", message="Message",
+                                                 revision_id=revid)
                     rev.parent_ids = ()
                     repo.add_revision(revid, rev, inv=inv)
                 except:
@@ -261,8 +267,6 @@ class TestPackRepository(TestCaseWithTransport):
                     # In this test, len(result) is always 1, so unordered is ok
                     new_names = list(cur_names - old_names)
                     self.assertEqual(new_names, result)
-        finally:
-            repo.unlock()
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
@@ -275,7 +279,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))
         # these files are in use by another client and typically can't be deleted
-        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
+        repo_transport.put_bytes('obsolete_packs/.nfsblahblah', b'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
 
@@ -287,7 +291,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo')
         pack_coll = repo._pack_collection
         indices = {pack_coll.revision_index, pack_coll.inventory_index,
-                pack_coll.text_index, pack_coll.signature_index}
+                   pack_coll.text_index, pack_coll.signature_index}
         if pack_coll.chk_index is not None:
             indices.add(pack_coll.chk_index)
         combined_indices = set(idx.combined_index for idx in indices)
@@ -296,10 +300,33 @@ class TestPackRepository(TestCaseWithTransport):
                 combined_indices.difference([combined_index]),
                 combined_index._sibling_indices)
 
+    def test_pack_with_signatures(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
+        revid1 = tree.commit('start')
+        revid2 = tree.commit('more work')
+        strategy = gpg.LoopbackGPGStrategy(None)
+        repo = tree.branch.repository
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        repo.sign_revision(revid1, strategy)
+        repo.commit_write_group()
+        repo.start_write_group()
+        repo.sign_revision(revid2, strategy)
+        repo.commit_write_group()
+        tree.branch.repository.pack()
+        # there should be 1 pack:
+        index = self.index_class(trans, 'pack-names', None)
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
+
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.controldir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
         tree.commit('start')
         tree.commit('more work')
         tree.branch.repository.pack()
@@ -318,10 +345,10 @@ class TestPackRepository(TestCaseWithTransport):
         builder = self.make_branch_builder('source', format=format)
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
         builder.build_snapshot(None, [
-            ('add', ('file', 'file-id', 'file', 'B content\n'))],
+            ('add', ('file', b'file-id', 'file', b'B content\n'))],
             revision_id=b'B-id')
         builder.build_snapshot(None, [
             ('modify', ('file', b'C content\n'))],
@@ -334,24 +361,25 @@ class TestPackRepository(TestCaseWithTransport):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(b.repository, revision_id=b'B-id')
-        inv = next(b.repository.iter_inventories(['C-id']))
+        inv = next(b.repository.iter_inventories([b'C-id']))
         repo.start_write_group()
-        repo.add_inventory('C-id', inv, ['B-id'])
+        repo.add_inventory(b'C-id', inv, [b'B-id'])
         repo.commit_write_group()
-        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+        self.assertEqual([(b'A-id',), (b'B-id',), (b'C-id',)],
                          sorted(repo.inventories.keys()))
         repo.pack()
-        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+        self.assertEqual([(b'A-id',), (b'B-id',), (b'C-id',)],
                          sorted(repo.inventories.keys()))
         # Content should be preserved as well
-        self.assertEqual(inv, next(repo.iter_inventories(['C-id'])))
+        self.assertEqual(inv, next(repo.iter_inventories([b'C-id'])))
 
     def test_pack_layout(self):
         # Test that the ordering of revisions in pack repositories is
         # tip->ancestor
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)
-        trans = tree.branch.repository.controldir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
         tree.commit('start', rev_id=b'1')
         tree.commit('more work', rev_id=b'2')
         tree.branch.repository.pack()
@@ -361,6 +389,7 @@ class TestPackRepository(TestCaseWithTransport):
             tree.branch.repository._pack_collection.names()[0])
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
+        pos_1 = pos_2 = None
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if isinstance(format.repository_format, RepositoryFormat2a):
                 # group_start, group_len, internal_start, internal_len
@@ -368,7 +397,7 @@ class TestPackRepository(TestCaseWithTransport):
             else:
                 # eol_flag, start, len
                 pos = int(val[1:].split()[0])
-            if key == ('1',):
+            if key == (b'1',):
                 pos_1 = pos
             else:
                 pos_2 = pos
@@ -387,8 +416,8 @@ class TestPackRepository(TestCaseWithTransport):
 
     def _add_text(self, repo, fileid):
         """Add a text to the repository within a write group."""
-        repo.texts.add_lines((fileid, 'samplerev+'+fileid), [],
-            ['smaplerev+'+fileid])
+        repo.texts.add_lines((fileid, b'samplerev+' + fileid), [],
+                             [b'smaplerev+' + fileid])
 
     def test_concurrent_writers_merge_new_packs(self):
         format = self.get_format()
@@ -407,8 +436,8 @@ class TestPackRepository(TestCaseWithTransport):
                 try:
                     r2.start_write_group()
                     try:
-                        self._add_text(r1, 'fileidr1')
-                        self._add_text(r2, 'fileidr2')
+                        self._add_text(r1, b'fileidr1')
+                        self._add_text(r2, b'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
@@ -430,7 +459,8 @@ class TestPackRepository(TestCaseWithTransport):
                 # Now both repositories should know about both names
                 r1._pack_collection.ensure_loaded()
                 r2._pack_collection.ensure_loaded()
-                self.assertEqual(r1._pack_collection.names(), r2._pack_collection.names())
+                self.assertEqual(r1._pack_collection.names(),
+                                 r2._pack_collection.names())
                 self.assertEqual(2, len(r1._pack_collection.names()))
             finally:
                 r2.unlock()
@@ -447,7 +477,7 @@ class TestPackRepository(TestCaseWithTransport):
         try:
             r1.start_write_group()
             try:
-                self._add_text(r1, 'fileidr1')
+                self._add_text(r1, b'fileidr1')
             except:
                 r1.abort_write_group()
                 raise
@@ -473,7 +503,7 @@ class TestPackRepository(TestCaseWithTransport):
                         r1._pack_collection._remove_pack_from_memory(
                             r1._pack_collection.get_pack_by_name(name_to_drop))
                         # in r2, add a pack
-                        self._add_text(r2, 'fileidr2')
+                        self._add_text(r2, b'fileidr2')
                     except:
                         r2.abort_write_group()
                         raise
@@ -499,7 +529,8 @@ class TestPackRepository(TestCaseWithTransport):
                 # Now both repositories should now about just one name.
                 r1._pack_collection.ensure_loaded()
                 r2._pack_collection.ensure_loaded()
-                self.assertEqual(r1._pack_collection.names(), r2._pack_collection.names())
+                self.assertEqual(r1._pack_collection.names(),
+                                 r2._pack_collection.names())
                 self.assertEqual(1, len(r1._pack_collection.names()))
                 self.assertFalse(name_to_drop in r1._pack_collection.names())
             finally:
@@ -520,7 +551,7 @@ class TestPackRepository(TestCaseWithTransport):
                 # Now r2 has read the pack-names file, but will need to reload
                 # it after r1 has repacked
                 tree.branch.repository.pack()
-                self.assertEqual({rev2:(rev1,)}, r2.get_parent_map([rev2]))
+                self.assertEqual({rev2: (rev1,)}, r2.get_parent_map([rev2]))
             finally:
                 r2.unlock()
         finally:
@@ -541,7 +572,7 @@ class TestPackRepository(TestCaseWithTransport):
                 packed = False
                 result = {}
                 record_stream = r2.revisions.get_record_stream(keys,
-                                    'unordered', False)
+                                                               'unordered', False)
                 for record in record_stream:
                     result[record.key] = record
                     if not packed:
@@ -572,6 +603,7 @@ class TestPackRepository(TestCaseWithTransport):
                 autopack_count = [0]
                 r1 = tree.branch.repository
                 orig = r1._pack_collection.pack_distribution
+
                 def trigger_during_auto(*args, **kwargs):
                     ret = orig(*args, **kwargs)
                     if not autopack_count[0]:
@@ -620,7 +652,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo2 = repository.Repository.open('.')
         self.prepare_for_break_lock()
         repo2.break_lock()
-        self.assertRaises(errors.LockBroken, repo._pack_collection._unlock_names)
+        self.assertRaises(errors.LockBroken,
+                          repo._pack_collection._unlock_names)
 
     def test_fetch_without_find_ghosts_ignores_ghosts(self):
         # we want two repositories at this point:
@@ -630,14 +663,14 @@ class TestPackRepository(TestCaseWithTransport):
         # 'references' is present in both repositories, and 'tip' is present
         # just in has_ghost.
         # has_ghost       missing_ghost
-        #------------------------------
+        # ------------------------------
         # 'ghost'             -
         # 'references'    'references'
         # 'tip'               -
         # In this test we fetch 'tip' which should not fetch 'ghost'
         has_ghost = self.make_repository('has_ghost', format=self.get_format())
         missing_ghost = self.make_repository('missing_ghost',
-            format=self.get_format())
+                                             format=self.get_format())
 
         def add_commit(repo, revision_id, parent_ids):
             repo.lock_write()
@@ -657,18 +690,18 @@ class TestPackRepository(TestCaseWithTransport):
             repo.add_revision(revision_id, rev)
             repo.commit_write_group()
             repo.unlock()
-        add_commit(has_ghost, 'ghost', [])
-        add_commit(has_ghost, 'references', ['ghost'])
-        add_commit(missing_ghost, 'references', ['ghost'])
-        add_commit(has_ghost, 'tip', ['references'])
-        missing_ghost.fetch(has_ghost, 'tip')
+        add_commit(has_ghost, b'ghost', [])
+        add_commit(has_ghost, b'references', [b'ghost'])
+        add_commit(missing_ghost, b'references', [b'ghost'])
+        add_commit(has_ghost, b'tip', [b'references'])
+        missing_ghost.fetch(has_ghost, b'tip')
         # missing ghost now has tip and not ghost.
-        rev = missing_ghost.get_revision('tip')
-        inv = missing_ghost.get_inventory('tip')
+        rev = missing_ghost.get_revision(b'tip')
+        inv = missing_ghost.get_inventory(b'tip')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_revision, 'ghost')
+                          missing_ghost.get_revision, b'ghost')
         self.assertRaises(errors.NoSuchRevision,
-            missing_ghost.get_inventory, 'ghost')
+                          missing_ghost.get_inventory, b'ghost')
 
     def make_write_ready_repo(self):
         format = self.get_format()
@@ -712,11 +745,11 @@ class TestPackRepository(TestCaseWithTransport):
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())
         self.assertEqual(self.format_supports_external_lookups,
-            repo._format.supports_external_lookups)
+                         repo._format.supports_external_lookups)
 
     def _lock_write(self, write_lockable):
         """Lock write_lockable, add a cleanup and return the result.
-        
+
         :param write_lockable: An object with a lock_write method.
         :return: The result of write_lockable.lock_write().
         """
@@ -761,11 +794,11 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        repo.texts.add_lines((b'file-id', b'revid'), (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         expected_pack_name = wg_tokens[0] + '.pack'
         expected_names = [wg_tokens[0] + ext for ext in
-                            ('.rix', '.iix', '.tix', '.six')]
+                          ('.rix', '.iix', '.tix', '.six')]
         if repo.chk_bytes is not None:
             expected_names.append(wg_tokens[0] + '.cix')
         expected_names.append(expected_pack_name)
@@ -782,8 +815,8 @@ class TestPackRepository(TestCaseWithTransport):
             raise TestNotApplicable('no chk_bytes for this repository')
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text = 'a bit of text\n'
-        key = ('sha1:' + osutils.sha_string(text),)
+        text = b'a bit of text\n'
+        key = (b'sha1:' + osutils.sha_string(text),)
         repo.chk_bytes.add_lines(key, (), [text])
         wg_tokens = repo.suspend_write_group()
         same_repo = repo.controldir.open_repository()
@@ -792,8 +825,8 @@ class TestPackRepository(TestCaseWithTransport):
         same_repo.resume_write_group(wg_tokens)
         self.assertEqual([key], list(same_repo.chk_bytes.keys()))
         self.assertEqual(
-            text, same_repo.chk_bytes.get_record_stream([key],
-                'unordered', True).next().get_bytes_as('fulltext'))
+            text, next(same_repo.chk_bytes.get_record_stream([key],
+                                                             'unordered', True)).get_bytes_as('fulltext'))
         same_repo.abort_write_group()
         self.assertEqual([], list(same_repo.chk_bytes.keys()))
 
@@ -803,8 +836,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
         same_repo = repo.controldir.open_repository()
@@ -823,8 +856,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Get a fresh repository object for the repo on the filesystem.
         same_repo = repo.controldir.open_repository()
@@ -835,7 +868,7 @@ class TestPackRepository(TestCaseWithTransport):
         same_repo.commit_write_group()
         expected_pack_name = wg_tokens[0] + '.pack'
         expected_names = [wg_tokens[0] + ext for ext in
-                            ('.rix', '.iix', '.tix', '.six')]
+                          ('.rix', '.iix', '.tix', '.six')]
         if repo.chk_bytes is not None:
             expected_names.append(wg_tokens[0] + '.cix')
         self.assertEqual(
@@ -851,8 +884,8 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         token = self._lock_write(repo).repository_token
         repo.start_write_group()
-        text_key = ('file-id', 'revid')
-        repo.texts.add_lines(text_key, (), ['lines'])
+        text_key = (b'file-id', b'revid')
+        repo.texts.add_lines(text_key, (), [b'lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())
@@ -871,7 +904,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
     def setUp(self):
         if not self.format_supports_external_lookups:
             raise TestNotApplicable("%r doesn't support stacking"
-                % (self.format_name,))
+                                    % (self.format_name,))
         super(TestPackRepositoryStacking, self).setUp()
 
     def get_format(self):
@@ -908,13 +941,13 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         repo.add_fallback_repository(base)
         # you can't stack on something with incompatible data
         bad_repo = self.make_repository('mismatch',
-            format=mismatching_format_name)
+                                        format=mismatching_format_name)
         e = self.assertRaises(errors.IncompatibleRepositories,
-            repo.add_fallback_repository, bad_repo)
+                              repo.add_fallback_repository, bad_repo)
         self.assertContainsRe(str(e),
-            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
-            r'.*Repository.*/repo/.*\n'
-            r'different rich-root support')
+                              r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+                              r'.*Repository.*/repo/.*\n'
+                              r'different rich-root support')
 
     def test_stack_checks_serializers_compatibility(self):
         repo = self.make_repository('repo', format=self.get_format())
@@ -932,24 +965,26 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
                 mismatching_format_name = 'pack-0.92-subtree'
             else:
                 raise TestNotApplicable('No formats use non-v5 serializer'
-                    ' without having rich-root also set')
+                                        ' without having rich-root also set')
         base = self.make_repository('base', format=matching_format_name)
         repo.add_fallback_repository(base)
         # you can't stack on something with incompatible data
         bad_repo = self.make_repository('mismatch',
-            format=mismatching_format_name)
+                                        format=mismatching_format_name)
         e = self.assertRaises(errors.IncompatibleRepositories,
-            repo.add_fallback_repository, bad_repo)
+                              repo.add_fallback_repository, bad_repo)
         self.assertContainsRe(str(e),
-            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
-            r'.*Repository.*/repo/.*\n'
-            r'different serializers')
+                              r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+                              r'.*Repository.*/repo/.*\n'
+                              r'different serializers')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
         base.commit('foo')
-        referencing = self.make_branch_and_tree('repo', format=self.get_format())
-        referencing.branch.repository.add_fallback_repository(base.branch.repository)
+        referencing = self.make_branch_and_tree(
+            'repo', format=self.get_format())
+        referencing.branch.repository.add_fallback_repository(
+            base.branch.repository)
         local_tree = referencing.branch.create_checkout('local')
         local_tree.commit('bar')
         new_instance = referencing.controldir.open_repository()
@@ -964,7 +999,8 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         base.commit('foo')
         tree = self.make_branch_and_tree('repo', format=format)
         tree.branch.repository.add_fallback_repository(base.branch.repository)
-        trans = tree.branch.repository.controldir.get_repository_transport(None)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
         # This test could be a little cheaper by replacing the packs
         # attribute on the repository to allow a different pack distribution
         # and max packs policy - so we are checking the policy is honoured
@@ -984,9 +1020,9 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         tree = tree.controldir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
-        nb_files = 5 # .pack, .rix, .iix, .tix, .six
+        nb_files = 5  # .pack, .rix, .iix, .tix, .six
         if tree.branch.repository._format.supports_chks:
-            nb_files += 1 # .cix
+            nb_files += 1  # .cix
         # We should have 10 x nb_files files in the obsolete_packs directory.
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
@@ -1012,11 +1048,11 @@ class TestKeyDependencies(TestCaseWithTransport):
         builder = self.make_branch_builder('source', format=self.get_format())
         builder.start_series()
         builder.build_snapshot(None, [
-            ('add', ('', 'root-id', 'directory', None))],
+            ('add', ('', b'root-id', 'directory', None))],
             revision_id=b'A-id')
         builder.build_snapshot(
-                ['A-id', 'ghost-id'], [],
-                revision_id=b'B-id', )
+            [b'A-id', b'ghost-id'], [],
+            revision_id=b'B-id', )
         builder.finish_series()
         repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()
@@ -1030,11 +1066,11 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
+            stream = source_repo.revisions.get_record_stream([(b'B-id',)],
                                                              'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
-            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+            self.assertEqual([(b'B-id',)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.abort_write_group()
         self.assertEqual([], sorted(key_refs.get_referrers()))
@@ -1043,11 +1079,11 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
+            stream = source_repo.revisions.get_record_stream([(b'B-id',)],
                                                              'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
-            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+            self.assertEqual([(b'B-id',)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.suspend_write_group()
         self.assertEqual([], sorted(key_refs.get_referrers()))
@@ -1068,10 +1104,10 @@ class TestKeyDependencies(TestCaseWithTransport):
                 target_vf.insert_record_stream(stream)
             # Copy just revision B-id
             stream = source_repo.revisions.get_record_stream(
-                [('B-id',)], 'unordered', True)
+                [(b'B-id',)], 'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
-            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+            self.assertEqual([(b'B-id',)], sorted(key_refs.get_referrers()))
         finally:
             target_repo.commit_write_group()
         self.assertEqual([], sorted(key_refs.get_referrers()))
@@ -1102,7 +1138,8 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         tree = self.make_branch_and_tree('local', format=format)
         self.make_branch_and_tree('remote', format=format)
         remote_branch_url = self.smart_server.get_url() + 'remote'
-        remote_branch = controldir.ControlDir.open(remote_branch_url).open_branch()
+        remote_branch = controldir.ControlDir.open(
+            remote_branch_url).open_branch()
         # Make 9 local revisions, and push them one at a time to the remote
         # repo to produce 9 pack files.
         for x in range(9):
@@ -1112,10 +1149,10 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls = []
         tree.commit('commit triggering pack')
         tree.branch.push(remote_branch)
-        autopack_calls = len([call for call in self.hpss_calls if call ==
-            'PackRepository.autopack'])
+        autopack_calls = len([call for call in self.hpss_calls if call
+                              == b'PackRepository.autopack'])
         streaming_calls = len([call for call in self.hpss_calls if call in
-            ('Repository.insert_stream', 'Repository.insert_stream_1.19')])
+                               (b'Repository.insert_stream', b'Repository.insert_stream_1.19')])
         if autopack_calls:
             # Non streaming server
             self.assertEqual(1, autopack_calls)
@@ -1133,39 +1170,39 @@ def load_tests(loader, basic_tests, pattern):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
-         dict(format_name='pack-0.92',
-              format_string="Bazaar pack repository format 1 (needs bzr 0.92)\n",
-              format_supports_external_lookups=False,
-              index_class=GraphIndex),
-         dict(format_name='pack-0.92-subtree',
-              format_string="Bazaar pack repository format 1 "
-              "with subtree support (needs bzr 0.92)\n",
-              format_supports_external_lookups=False,
-              index_class=GraphIndex),
-         dict(format_name='1.6',
-              format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
-              format_supports_external_lookups=True,
-              index_class=GraphIndex),
-         dict(format_name='1.6.1-rich-root',
-              format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
-                  "(bzr 1.6.1)\n",
-              format_supports_external_lookups=True,
-              index_class=GraphIndex),
-         dict(format_name='1.9',
-              format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
-              format_supports_external_lookups=True,
-              index_class=BTreeGraphIndex),
-         dict(format_name='1.9-rich-root',
-              format_string="Bazaar RepositoryFormatKnitPack6RichRoot "
-                  "(bzr 1.9)\n",
-              format_supports_external_lookups=True,
-              index_class=BTreeGraphIndex),
-         dict(format_name='2a',
-              format_string="Bazaar repository format 2a "
-                "(needs bzr 1.16 or later)\n",
-              format_supports_external_lookups=True,
-              index_class=BTreeGraphIndex),
-         ]
+        dict(format_name='pack-0.92',
+             format_string="Bazaar pack repository format 1 (needs bzr 0.92)\n",
+             format_supports_external_lookups=False,
+             index_class=GraphIndex),
+        dict(format_name='pack-0.92-subtree',
+             format_string="Bazaar pack repository format 1 "
+             "with subtree support (needs bzr 0.92)\n",
+             format_supports_external_lookups=False,
+             index_class=GraphIndex),
+        dict(format_name='1.6',
+             format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
+             format_supports_external_lookups=True,
+             index_class=GraphIndex),
+        dict(format_name='1.6.1-rich-root',
+             format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
+             "(bzr 1.6.1)\n",
+             format_supports_external_lookups=True,
+             index_class=GraphIndex),
+        dict(format_name='1.9',
+             format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
+             format_supports_external_lookups=True,
+             index_class=BTreeGraphIndex),
+        dict(format_name='1.9-rich-root',
+             format_string="Bazaar RepositoryFormatKnitPack6RichRoot "
+             "(bzr 1.9)\n",
+             format_supports_external_lookups=True,
+             index_class=BTreeGraphIndex),
+        dict(format_name='2a',
+             format_string="Bazaar repository format 2a "
+             "(needs bzr 1.16 or later)\n",
+             format_supports_external_lookups=True,
+             index_class=BTreeGraphIndex),
+        ]
     # name of the scenario is the format name
     scenarios = [(s['format_name'], s) for s in scenarios_params]
     return tests.multiply_tests(basic_tests, scenarios, loader.suiteClass())

@@ -38,7 +38,6 @@ from breezy.tests import (
     TestSkipped,
     )
 from breezy.tests.http_server import HttpServer
-import breezy.transport.http
 
 if features.paramiko.available():
     from breezy.transport import sftp as _mod_sftp
@@ -81,7 +80,8 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         l.unlock()
         self.assertFalse(lexists('bogus.write-lock'))
 
-        with open('something.write-lock', 'wb') as f: f.write('fake lock\n')
+        with open('something.write-lock', 'wb') as f:
+            f.write(b'fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
         os.remove('something.write-lock')
 
@@ -126,7 +126,7 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
         self.assertIsSameRealPath(root_parent + '/sibling',
                                   t._remote_path('../sibling'))
         # /  should be illegal ?
-        ### FIXME decide and then test for all transports. RBC20051208
+        # FIXME decide and then test for all transports. RBC20051208
 
 
 class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
@@ -200,13 +200,14 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b2 = controldir.ControlDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), 'a1')
+        self.assertEqual(b2.last_revision(), b'a1')
 
-        with open('a/foo', 'wt') as f: f.write('something new in foo\n')
+        with open('a/foo', 'wt') as f:
+            f.write('something new in foo\n')
         t.commit('new', rev_id=b'a2')
         b2.pull(b)
 
-        self.assertEqual(b2.last_revision(), 'a2')
+        self.assertEqual(b2.last_revision(), b'a2')
 
 
 class SSHVendorConnection(TestCaseWithSFTPServer):
@@ -218,8 +219,8 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
       'loopback': Doesn't use ssh, just uses a local socket. Most tests are
                   done this way to save the handshaking time, so it is not
                   tested again here
-      'none':     This uses paramiko's built-in ssh client and server, and layers
-                  sftp on top of it.
+      'none':     This uses paramiko's built-in ssh client and server, and
+                  layers sftp on top of it.
       None:       If 'ssh' exists on the machine, then it will be spawned as a
                   child process.
     """
@@ -250,7 +251,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         from breezy.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
         t = self.get_transport()
-        self.assertEqual('foobar\n', t.get('a_file').read())
+        self.assertEqual(b'foobar\n', t.get('a_file').read())
 
     def test_connection_vendor(self):
         raise TestSkipped("We don't test spawning real ssh,"
@@ -259,7 +260,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
                           " how to prevent this.")
         self.set_vendor(None)
         t = self.get_transport()
-        self.assertEqual('foobar\n', t.get('a_file').read())
+        self.assertEqual(b'foobar\n', t.get('a_file').read())
 
 
 class SSHVendorBadConnection(TestCaseWithTransport):
@@ -282,10 +283,11 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def set_vendor(self, vendor, subprocess_stderr=None):
         from breezy.transport import ssh
-        self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
+        self.overrideAttr(ssh._ssh_vendor_manager,
+                          '_cached_ssh_vendor', vendor)
         if subprocess_stderr is not None:
             self.overrideAttr(ssh.SubprocessVendor, "_stderr_target",
-                subprocess_stderr)
+                              subprocess_stderr)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
@@ -317,7 +319,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         start_time = time.time()
         self.get_server().add_latency = 0.5
         transport = self.get_transport()
-        transport.has('not me') # Force connection by issuing a request
+        transport.has('not me')  # Force connection by issuing a request
         with_latency_knob_time = time.time() - start_time
         self.assertTrue(with_latency_knob_time > 0.4)
 
@@ -327,7 +329,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         raise TestSkipped('Timing-sensitive test')
         start_time = time.time()
         transport = self.get_transport()
-        transport.has('not me') # Force connection by issuing a request
+        transport.has('not me')  # Force connection by issuing a request
         regular_time = time.time() - start_time
         self.assertTrue(regular_time < 0.5)
 
@@ -392,8 +394,8 @@ class TestSocketDelay(TestCase):
 
     def test_bandwidth(self):
         sending = FakeSocket()
-        receiving = stub_sftp.SocketDelay(sending, 0, bandwidth=8.0/(1024*1024),
-                                          really_sleep=False)
+        receiving = stub_sftp.SocketDelay(
+            sending, 0, bandwidth=8.0 / (1024 * 1024), really_sleep=False)
         # check that simulated time is charged only per round-trip:
         t1 = stub_sftp.SocketDelay.simulated_time
         receiving.send("connect")
@@ -412,7 +414,7 @@ class ReadvFile(object):
 
     def readv(self, requests):
         for start, length in requests:
-            yield self._data[start:start+length]
+            yield self._data[start:start + length]
 
     def close(self):
         pass
@@ -427,7 +429,7 @@ class Test_SFTPReadvHelper(tests.TestCase):
     def checkGetRequests(self, expected_requests, offsets):
         self.requireFeature(features.paramiko)
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
-            _null_report_activity)
+                                            _null_report_activity)
         self.assertEqual(expected_requests, helper._get_requests())
 
     def test__get_requests(self):
@@ -447,23 +449,24 @@ class Test_SFTPReadvHelper(tests.TestCase):
     def checkRequestAndYield(self, expected, data, offsets):
         self.requireFeature(features.paramiko)
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
-            _null_report_activity)
+                                            _null_report_activity)
         data_f = ReadvFile(data)
         result = list(helper.request_and_yield_offsets(data_f))
         self.assertEqual(expected, result)
 
     def test_request_and_yield_offsets(self):
-        data = 'abcdefghijklmnopqrstuvwxyz'
-        self.checkRequestAndYield([(0, 'a'), (5, 'f'), (10, 'klm')], data,
+        data = b'abcdefghijklmnopqrstuvwxyz'
+        self.checkRequestAndYield([(0, b'a'), (5, b'f'), (10, b'klm')], data,
                                   [(0, 1), (5, 1), (10, 3)])
         # Should combine requests, and split them again
-        self.checkRequestAndYield([(0, 'a'), (1, 'b'), (10, 'klm')], data,
+        self.checkRequestAndYield([(0, b'a'), (1, b'b'), (10, b'klm')], data,
                                   [(0, 1), (1, 1), (10, 3)])
         # Out of order requests. The requests should get combined, but then be
         # yielded out-of-order. We also need one that is at the end of a
         # previous range. See bug #293746
-        self.checkRequestAndYield([(0, 'a'), (10, 'k'), (4, 'efg'), (1, 'bcd')],
-                                  data, [(0, 1), (10, 1), (4, 3), (1, 3)])
+        self.checkRequestAndYield(
+            [(0, b'a'), (10, b'k'), (4, b'efg'), (1, b'bcd')],
+            data, [(0, 1), (10, 1), (4, 3), (1, 3)])
 
 
 class TestUsesAuthConfig(TestCaseWithSFTPServer):

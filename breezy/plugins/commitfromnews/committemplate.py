@@ -59,17 +59,16 @@ class CommitTemplate(object):
             _, new_chunks = list(
                 self.commit.builder.repository.iter_files_bytes(
                     [(found_entry.file_id, found_entry.revision, None)]))[0]
-            content = ''.join(new_chunks)
+            content = b''.join(new_chunks).decode('utf-8')
             return self.merge_message(content)
         else:
             # Get a diff. XXX Is this hookable? I thought it was, can't find it
-            # though.... add DiffTree.diff_factories. Sadly thats not at the 
+            # though.... add DiffTree.diff_factories. Sadly thats not at the
             # right level: we want to identify the changed lines, not have the
-            # final diff: because we want to grab the sections for regions 
+            # final diff: because we want to grab the sections for regions
             # changed in new version of the file. So for now a direct diff
             # using patiencediff is done.
-            old_revision = self.commit.basis_tree.get_file_revision(
-                old_path, found_entry.file_id)
+            old_revision = self.commit.basis_tree.get_file_revision(old_path)
             needed = [(found_entry.file_id, found_entry.revision, 'new'),
                       (found_entry.file_id, old_revision, 'old')]
             contents = self.commit.builder.repository.iter_files_bytes(needed)
@@ -86,7 +85,7 @@ class CommitTemplate(object):
                     continue
                 if tag == 'delete':
                     continue
-                new_lines.extend(new[j1:j2])
+                new_lines.extend([l.decode('utf-8') for l in new[j1:j2]])
             if not self.commit.revprops.get('bugs'):
                 # TODO: Allow the user to configure the bug tracker to use
                 # rather than hardcoding Launchpad.
@@ -96,7 +95,8 @@ class CommitTemplate(object):
                     bugids.extend(_BUG_MATCH.findall(line))
                 self.commit.revprops['bugs'] = \
                     bugtracker.encode_fixes_bug_urls(
-                        [bt.get_bug_url(bugid) for bugid in bugids])
+                        [(bt.get_bug_url(bugid), bugtracker.FIXED)
+                         for bugid in bugids])
             return self.merge_message(''.join(new_lines))
 
     def merge_message(self, new_message):

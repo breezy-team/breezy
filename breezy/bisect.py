@@ -49,7 +49,7 @@ class BisectCurrent(object):
     def _save(self):
         """Save the current revision."""
         self._controldir.control_transport.put_bytes(
-            self._filename, self._revid + "\n")
+            self._filename, self._revid + b"\n")
 
     def get_current_revid(self):
         """Return the current revision id."""
@@ -57,8 +57,7 @@ class BisectCurrent(object):
 
     def get_current_revno(self):
         """Return the current revision number as a tuple."""
-        revdict = self._branch.get_revision_id_to_revno_map()
-        return revdict[self.get_current_revid()]
+        return self._branch.revision_id_to_dotted_revno(self._revid)
 
     def get_parent_revids(self):
         """Return the IDs of the current revision's predecessors."""
@@ -126,7 +125,7 @@ class BisectLog(object):
         if not self._branch:
             self._branch = self._controldir.open_branch()
 
-    def _find_range_and_middle(self, branch_last_rev = None):
+    def _find_range_and_middle(self, branch_last_rev=None):
         """Find the current revision range, and the midpoint."""
         self._load_tree()
         self._middle_revid = None
@@ -139,8 +138,8 @@ class BisectLog(object):
         repo = self._branch.repository
         with repo.lock_read():
             graph = repo.get_graph()
-            rev_sequence = graph.iter_lefthand_ancestry(last_revid,
-                (_mod_revision.NULL_REVISION,))
+            rev_sequence = graph.iter_lefthand_ancestry(
+                last_revid, (_mod_revision.NULL_REVISION,))
             high_revid = None
             low_revid = None
             between_revs = []
@@ -173,7 +172,7 @@ class BisectLog(object):
         if spread < 2:
             middle_index = 0
         else:
-            middle_index = (spread / 2) - 1
+            middle_index = (spread // 2) - 1
 
         if len(between_revs) > 0:
             self._middle_revid = between_revs[middle_index]
@@ -207,12 +206,12 @@ class BisectLog(object):
             revlog = self._open_for_read()
             for line in revlog:
                 (revid, status) = line.split()
-                self._items.append((revid, status))
+                self._items.append((revid, status.decode('ascii')))
 
     def save(self):
         """Save the bisection log."""
-        contents = ''.join(
-            ("%s %s\n" % (revid, status))
+        contents = b''.join(
+            (b"%s %s\n" % (revid, status.encode('ascii')))
             for (revid, status) in self._items)
         if self._filename:
             self._controldir.control_transport.put_bytes(
@@ -248,9 +247,9 @@ class BisectLog(object):
         self._find_range_and_middle()
         # If we've found the "final" revision, check for a
         # merge point.
-        while ((self._middle_revid == self._high_revid
-                or self._middle_revid == self._low_revid)
-                and self.is_merge_point(self._middle_revid)):
+        while ((self._middle_revid == self._high_revid or
+                self._middle_revid == self._low_revid) and
+                self.is_merge_point(self._middle_revid)):
             for parent in self.get_parent_revids(self._middle_revid):
                 if parent == self._low_revid:
                     continue
@@ -341,7 +340,8 @@ class cmd_bisect(Command):
         bisect_log.save()
         return False
 
-    def run(self, subcommand, args_list, directory='.', revision=None, output=None):
+    def run(self, subcommand, args_list, directory='.', revision=None,
+            output=None):
         """Handle the bisect command."""
 
         log_fn = None
@@ -402,7 +402,7 @@ class cmd_bisect(Command):
         self._set_state(controldir, revspec, "yes")
 
     def no(self, controldir, revspec):
-        """Mark that a given revision does not have the state we're looking for."""
+        """Mark a given revision as wrong."""
         self._set_state(controldir, revspec, "no")
 
     def move(self, controldir, revspec):

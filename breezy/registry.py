@@ -20,6 +20,8 @@ from __future__ import absolute_import
 
 from .pyutils import get_named_object
 
+from .sixish import viewitems
+
 
 class _ObjectGetter(object):
     """Maintain a reference to an object, and return the object on request.
@@ -102,8 +104,19 @@ class Registry(object):
         self._default_key = None
         # Map from key => (is_lazy, info)
         self._dict = {}
+        self._aliases = {}
         self._help_dict = {}
         self._info_dict = {}
+
+    def aliases(self):
+        """Return a set of the format names which are aliases."""
+        return dict(viewitems(self._aliases))
+
+    def alias_map(self):
+        ret = {}
+        for alias, target in viewitems(self._aliases):
+            ret.setdefault(target, []).append(alias)
+        return ret
 
     def register(self, key, obj, help=None, info=None,
                  override_existing=False):
@@ -151,6 +164,20 @@ class Registry(object):
                 raise KeyError('Key %r already registered' % key)
         self._dict[key] = _LazyObjectGetter(module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
+
+    def register_alias(self, key, target, info=None):
+        """Register an alias.
+
+        :param key: Alias name
+        :param target: Target key name
+        """
+        if key in self._dict and key not in self._aliases:
+            raise KeyError('Key %r already registered and not an alias' % key)
+        self._dict[key] = self._dict[target]
+        self._aliases[key] = target
+        if info is None:
+            info = self._info_dict[target]
+        self._add_help_and_info(key, help=self._help_dict[target], info=info)
 
     def _add_help_and_info(self, key, help=None, info=None):
         """Add the help and information about this key"""
@@ -248,8 +275,8 @@ class Registry(object):
         return self._default_key
 
     default_key = property(_get_default_key, _set_default_key,
-                            doc="Current value of the default key."
-                                " Can be set to any existing key.")
+                           doc="Current value of the default key."
+                           " Can be set to any existing key.")
 
 
 class FormatRegistry(Registry):
@@ -262,10 +289,10 @@ class FormatRegistry(Registry):
     def register(self, key, obj, help=None, info=None,
                  override_existing=False):
         Registry.register(self, key, obj, help=help, info=info,
-            override_existing=override_existing)
+                          override_existing=override_existing)
         if self._other_registry is not None:
             self._other_registry.register(key, obj, help=help,
-                info=info, override_existing=override_existing)
+                                          info=info, override_existing=override_existing)
 
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
@@ -273,10 +300,10 @@ class FormatRegistry(Registry):
         # Overridden to allow capturing registrations to two seperate
         # registries in a single call.
         Registry.register_lazy(self, key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
+                               help=help, info=info, override_existing=override_existing)
         if self._other_registry is not None:
             self._other_registry.register_lazy(key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
+                                               help=help, info=info, override_existing=override_existing)
 
     def remove(self, key):
         Registry.remove(self, key)

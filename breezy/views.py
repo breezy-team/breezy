@@ -32,8 +32,8 @@ from . import (
     )
 
 
-_VIEWS_FORMAT_MARKER_RE = re.compile(r'Bazaar views format (\d+)')
-_VIEWS_FORMAT1_MARKER = "Bazaar views format 1\n"
+_VIEWS_FORMAT_MARKER_RE = re.compile(b'Bazaar views format (\\d+)')
+_VIEWS_FORMAT1_MARKER = b"Bazaar views format 1\n"
 
 
 class NoSuchView(errors.BzrError):
@@ -127,13 +127,10 @@ class PathBasedViews(_Views):
         """
         if current is not None and current not in views:
             raise NoSuchView(current)
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             self._current = current
             self._views = views
             self._save_view_info()
-        finally:
-            self.tree.unlock()
 
     def lookup_view(self, view_name=None):
         """Return the contents of a view.
@@ -159,23 +156,19 @@ class PathBasedViews(_Views):
         :param view_files: the list of files/directories in the view
         :param make_current: make this view the current one or not
         """
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             self._load_view_info()
             self._views[view_name] = view_files
             if make_current:
                 self._current = view_name
             self._save_view_info()
-        finally:
-            self.tree.unlock()
 
     def delete_view(self, view_name):
         """Delete a view definition.
 
         If the view deleted is the current one, the current view is reset.
         """
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             self._load_view_info()
             try:
                 del self._views[view_name]
@@ -184,8 +177,6 @@ class PathBasedViews(_Views):
             if view_name == self._current:
                 self._current = None
             self._save_view_info()
-        finally:
-            self.tree.unlock()
 
     def _save_view_info(self):
         """Save the current view and all view definitions.
@@ -193,16 +184,13 @@ class PathBasedViews(_Views):
         Be sure to have initialised self._current and self._views before
         calling this method.
         """
-        self.tree.lock_write()
-        try:
+        with self.tree.lock_write():
             if self._current is None:
                 keywords = {}
             else:
                 keywords = {'current': self._current}
-            self.tree._transport.put_bytes('views',
-                self._serialize_view_content(keywords, self._views))
-        finally:
-            self.tree.unlock()
+            self.tree._transport.put_bytes(
+                'views', self._serialize_view_content(keywords, self._views))
 
     def _load_view_info(self):
         """Load the current view and dictionary of view definitions."""
@@ -210,7 +198,7 @@ class PathBasedViews(_Views):
             with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes('views')
-                except errors.NoSuchFile as e:
+                except errors.NoSuchFile:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = \
@@ -229,20 +217,20 @@ class PathBasedViews(_Views):
             for view in sorted(view_dict):
                 view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
                 lines.append(view_data.encode('utf-8'))
-        return "".join(lines)
+        return b"".join(lines)
 
     def _deserialize_view_content(self, view_content):
         """Convert a stream into view keywords and a dictionary of views."""
         # as a special case to make initialization easy, an empty definition
         # maps to no current view and an empty view dictionary
-        if view_content == '':
+        if view_content == b'':
             return {}, {}
         lines = view_content.splitlines()
         match = _VIEWS_FORMAT_MARKER_RE.match(lines[0])
         if not match:
             raise ValueError(
                 "format marker missing from top of views file")
-        elif match.group(1) != '1':
+        elif match.group(1) != b'1':
             raise ValueError(
                 "cannot decode views format %s" % match.group(1))
         try:
@@ -264,11 +252,11 @@ class PathBasedViews(_Views):
                     keywords[keyword] = value
                 else:
                     raise ValueError("failed to deserialize views line %s",
-                        text)
+                                     text)
             return keywords, views
         except ValueError as e:
             raise ValueError("failed to deserialize views content %r: %s"
-                % (view_content, e))
+                             % (view_content, e))
 
 
 class DisabledViews(_Views):
@@ -309,5 +297,5 @@ def check_path_in_view(tree, relpath):
     """If a working tree has a view enabled, check the path is within it."""
     if tree.supports_views():
         view_files = tree.views.lookup_view()
-        if  view_files and not osutils.is_inside_any(view_files, relpath):
+        if view_files and not osutils.is_inside_any(view_files, relpath):
             raise FileOutsideView(relpath, view_files)

@@ -43,7 +43,7 @@ def group_compress_implementation_scenarios():
         ]
     if compiled_groupcompress_feature.available():
         scenarios.append(('C',
-            {'compressor': groupcompress.PyrexGroupCompressor}))
+                          {'compressor': groupcompress.PyrexGroupCompressor}))
     return scenarios
 
 
@@ -72,7 +72,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
     """Tests for GroupCompressor"""
 
     scenarios = group_compress_implementation_scenarios()
-    compressor = None # Set by scenario
+    compressor = None  # Set by scenario
 
     def test_empty_delta(self):
         compressor = self.compressor()
@@ -82,7 +82,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         # diff against NUKK
         compressor = self.compressor()
         sha1, start_point, end_point, _ = compressor.compress(('label',),
-            b'strange\ncommon\n', None)
+                                                              b'strange\ncommon\n', None)
         self.assertEqual(sha_string(b'strange\ncommon\n'), sha1)
         expected_lines = b'f\x0fstrange\ncommon\n'
         self.assertEqual(expected_lines, b''.join(compressor.chunks))
@@ -115,10 +115,10 @@ class TestAllGroupCompressors(TestGroupCompressor):
         # reading something that is in the compressor stream already.
         compressor = self.compressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
-            b'strange\ncommon long line\nthat needs a 16 byte match\n', None)
+                                              b'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.chunks)
         sha1_2, _, end_point, _ = compressor.compress(('newlabel',),
-            b'common long line\nthat needs a 16 byte match\ndifferent\n', None)
+                                                      b'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         # get the first out
         self.assertEqual((b'strange\ncommon long line\n'
                           b'that needs a 16 byte match\n', sha1_1),
@@ -131,10 +131,10 @@ class TestAllGroupCompressors(TestGroupCompressor):
     def test_pop_last(self):
         compressor = self.compressor()
         _, _, _, _ = compressor.compress(('key1',),
-            b'some text\nfor the first entry\n', None)
+                                         b'some text\nfor the first entry\n', None)
         expected_lines = list(compressor.chunks)
         _, _, _, _ = compressor.compress(('key2',),
-            b'some text\nfor the second entry\n', None)
+                                         b'some text\nfor the second entry\n', None)
         compressor.pop_last()
         self.assertEqual(expected_lines, compressor.chunks)
 
@@ -166,10 +166,10 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
     def test_two_nosha_delta(self):
         compressor = self.compressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
-            b'strange\ncommon long line\nthat needs a 16 byte match\n', None)
+                                              b'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.chunks)
         sha1_2, start_point, end_point, _ = compressor.compress(('newlabel',),
-            b'common long line\nthat needs a 16 byte match\ndifferent\n', None)
+                                                                b'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         self.assertEqual(sha_string(b'common long line\n'
                                     b'that needs a 16 byte match\n'
                                     b'different\n'), sha1_2)
@@ -179,9 +179,9 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
             # source and target length
             b'\x36',
             # copy the line common
-            b'\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
+            b'\x91\x0a\x2c',  # copy, offset 0x0a, len 0x2c
             # add the line different, and the trailing newline
-            b'\x0adifferent\n', # insert 10 bytes
+            b'\x0adifferent\n',  # insert 10 bytes
             ])
         self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -191,14 +191,14 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
         # both parents.
         compressor = self.compressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
-            b'strange\ncommon very very long line\nwith some extra text\n', None)
+                                              b'strange\ncommon very very long line\nwith some extra text\n', None)
         sha1_2, _, _, _ = compressor.compress(('newlabel',),
-            b'different\nmoredifferent\nand then some more\n', None)
+                                              b'different\nmoredifferent\nand then some more\n', None)
         expected_lines = list(compressor.chunks)
         sha1_3, start_point, end_point, _ = compressor.compress(('label3',),
-            b'new\ncommon very very long line\nwith some extra text\n'
-            b'different\nmoredifferent\nand then some more\n',
-            None)
+                                                                b'new\ncommon very very long line\nwith some extra text\n'
+                                                                b'different\nmoredifferent\nand then some more\n',
+                                                                None)
         self.assertEqual(
             sha_string(b'new\ncommon very very long line\nwith some extra text\n'
                        b'different\nmoredifferent\nand then some more\n'),
@@ -211,9 +211,9 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
             # insert new
             b'\x03new',
             # Copy of first parent 'common' range
-            b'\x91\x09\x31' # copy, offset 0x09, 0x31 bytes
+            b'\x91\x09\x31'  # copy, offset 0x09, 0x31 bytes
             # Copy of second parent 'different' range
-            b'\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
+            b'\x91\x3c\x2b'  # copy, offset 0x3c, 0x2b bytes
             ])
         self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -245,10 +245,10 @@ class TestPythonGroupCompressor(TestGroupCompressor):
     def test_two_nosha_delta(self):
         compressor = self.compressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
-            b'strange\ncommon long line\nthat needs a 16 byte match\n', None)
+                                              b'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.chunks)
         sha1_2, start_point, end_point, _ = compressor.compress(('newlabel',),
-            b'common long line\nthat needs a 16 byte match\ndifferent\n', None)
+                                                                b'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         self.assertEqual(sha_string(b'common long line\n'
                                     b'that needs a 16 byte match\n'
                                     b'different\n'), sha1_2)
@@ -258,9 +258,9 @@ class TestPythonGroupCompressor(TestGroupCompressor):
             # target length
             b'\x36',
             # copy the line common
-            b'\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
+            b'\x91\x0a\x2c',  # copy, offset 0x0a, len 0x2c
             # add the line different, and the trailing newline
-            b'\x0adifferent\n', # insert 10 bytes
+            b'\x0adifferent\n',  # insert 10 bytes
             ])
         self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -270,14 +270,14 @@ class TestPythonGroupCompressor(TestGroupCompressor):
         # both parents.
         compressor = self.compressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
-            b'strange\ncommon very very long line\nwith some extra text\n', None)
+                                              b'strange\ncommon very very long line\nwith some extra text\n', None)
         sha1_2, _, _, _ = compressor.compress(('newlabel',),
-            b'different\nmoredifferent\nand then some more\n', None)
+                                              b'different\nmoredifferent\nand then some more\n', None)
         expected_lines = list(compressor.chunks)
         sha1_3, start_point, end_point, _ = compressor.compress(('label3',),
-            b'new\ncommon very very long line\nwith some extra text\n'
-            b'different\nmoredifferent\nand then some more\n',
-            None)
+                                                                b'new\ncommon very very long line\nwith some extra text\n'
+                                                                b'different\nmoredifferent\nand then some more\n',
+                                                                None)
         self.assertEqual(
             sha_string(b'new\ncommon very very long line\nwith some extra text\n'
                        b'different\nmoredifferent\nand then some more\n'),
@@ -290,9 +290,9 @@ class TestPythonGroupCompressor(TestGroupCompressor):
             # insert new
             b'\x04new\n',
             # Copy of first parent 'common' range
-            b'\x91\x0a\x30' # copy, offset 0x0a, 0x30 bytes
+            b'\x91\x0a\x30'  # copy, offset 0x0a, 0x30 bytes
             # Copy of second parent 'different' range
-            b'\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
+            b'\x91\x3c\x2b'  # copy, offset 0x3c, 0x2b bytes
             ])
         self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -327,7 +327,7 @@ class TestGroupCompressBlock(tests.TestCase):
         block._ensure_content()
         self.assertEqual(b'', block._content)
         self.assertEqual(b'', block._z_content)
-        block._ensure_content() # Ensure content is safe to call 2x
+        block._ensure_content()  # Ensure content is safe to call 2x
 
     def test_from_invalid(self):
         self.assertRaises(ValueError,
@@ -338,9 +338,9 @@ class TestGroupCompressBlock(tests.TestCase):
         content = (b'a tiny bit of content\n')
         z_content = zlib.compress(content)
         z_bytes = (
-            b'gcb1z\n' # group compress block v1 plain
-            b'%d\n' # Length of compressed content
-            b'%d\n' # Length of uncompressed content
+            b'gcb1z\n'  # group compress block v1 plain
+            b'%d\n'  # Length of compressed content
+            b'%d\n'  # Length of uncompressed content
             b'%s'   # Compressed content
             ) % (len(z_content), len(content), z_content)
         block = groupcompress.GroupCompressBlock.from_bytes(
@@ -365,10 +365,10 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(gcb._z_content_length, len(gcb._z_content))
         self.assertEqual(total_len, len(block_bytes))
         self.assertEqual(gcb._content_length, content_len)
-        expected_header =(b'gcb1z\n' # group compress block v1 zlib
-                          b'%d\n' # Length of compressed content
-                          b'%d\n' # Length of uncompressed content
-                         ) % (gcb._z_content_length, gcb._content_length)
+        expected_header = (b'gcb1z\n'  # group compress block v1 zlib
+                           b'%d\n'  # Length of compressed content
+                           b'%d\n'  # Length of uncompressed content
+                           ) % (gcb._z_content_length, gcb._content_length)
         # The first chunk should be the header chunk. It is small, fixed size,
         # and there is no compelling reason to split it up
         self.assertEqual(expected_header, block_chunks[0])
@@ -385,10 +385,10 @@ class TestGroupCompressBlock(tests.TestCase):
         data = gcb.to_bytes()
         self.assertEqual(gcb._z_content_length, len(gcb._z_content))
         self.assertEqual(gcb._content_length, len(content))
-        expected_header =(b'gcb1z\n' # group compress block v1 zlib
-                          b'%d\n' # Length of compressed content
-                          b'%d\n' # Length of uncompressed content
-                         ) % (gcb._z_content_length, gcb._content_length)
+        expected_header = (b'gcb1z\n'  # group compress block v1 zlib
+                           b'%d\n'  # Length of compressed content
+                           b'%d\n'  # Length of uncompressed content
+                           ) % (gcb._z_content_length, gcb._content_length)
         self.assertStartsWith(data, expected_header)
         remaining_bytes = data[len(expected_header):]
         raw_bytes = zlib.decompress(remaining_bytes)
@@ -398,7 +398,7 @@ class TestGroupCompressBlock(tests.TestCase):
         gcb = groupcompress.GroupCompressBlock()
         gcb.set_chunked_content([b'this is some content\n'
                                  b'this content will be compressed\n'],
-                                 len(content))
+                                len(content))
         old_data = data
         data = gcb.to_bytes()
         self.assertEqual(old_data, data)
@@ -485,8 +485,8 @@ class TestGroupCompressBlock(tests.TestCase):
                           (b'd', 21, len(key_to_text[(b'2',)]),
                            [(b'c', 2, len(dup_content)),
                             (b'i', len(b'2 extra special\n'), b'')
-                           ]),
-                         ], block._dump())
+                            ]),
+                          ], block._dump())
 
 
 class TestCaseWithGroupCompressVersionedFiles(
@@ -497,8 +497,8 @@ class TestCaseWithGroupCompressVersionedFiles(
         t = self.get_transport(dir)
         t.ensure_base()
         vf = groupcompress.make_pack_factory(graph=create_graph,
-            delta=False, keylength=keylength,
-            inconsistency_fatal=inconsistency_fatal)(t)
+                                             delta=False, keylength=keylength,
+                                             inconsistency_fatal=inconsistency_fatal)(t)
         if do_cleanup:
             self.addCleanup(groupcompress.cleanup_pack_group, vf)
         return vf
@@ -516,11 +516,11 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         return btree_index.BTreeGraphIndex(trans, name, size)
 
     def make_g_index_missing_parent(self):
-        graph_index = self.make_g_index(b'missing_parent', 1,
-            [((b'parent', ), b'2 78 2 10', ([],)),
-             ((b'tip', ), b'2 78 2 10',
-              ([(b'parent', ), (b'missing-parent', )],)),
-              ])
+        graph_index = self.make_g_index('missing_parent', 1,
+                                        [((b'parent', ), b'2 78 2 10', ([],)),
+                                         ((b'tip', ), b'2 78 2 10',
+                                            ([(b'parent', ), (b'missing-parent', )],)),
+                                         ])
         return graph_index
 
     def test_get_record_stream_as_requested(self):
@@ -533,27 +533,27 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf.add_lines((b'd',), (), [b'lines\n'])
         vf.writer.end()
         keys = [record.key for record in vf.get_record_stream(
-                    [(b'a',), (b'b',), (b'c',), (b'd',)],
-                    'as-requested', False)]
+            [(b'a',), (b'b',), (b'c',), (b'd',)],
+            'as-requested', False)]
         self.assertEqual([(b'a',), (b'b',), (b'c',), (b'd',)], keys)
         keys = [record.key for record in vf.get_record_stream(
-                    [(b'b',), (b'a',), (b'd',), (b'c',)],
-                    'as-requested', False)]
+            [(b'b',), (b'a',), (b'd',), (b'c',)],
+            'as-requested', False)]
         self.assertEqual([(b'b',), (b'a',), (b'd',), (b'c',)], keys)
 
         # It should work even after being repacked into another VF
         vf2 = self.make_test_vf(False, dir='target')
         vf2.insert_record_stream(vf.get_record_stream(
-                    [(b'b',), (b'a',), (b'd',), (b'c',)], 'as-requested', False))
+            [(b'b',), (b'a',), (b'd',), (b'c',)], 'as-requested', False))
         vf2.writer.end()
 
         keys = [record.key for record in vf2.get_record_stream(
-                    [(b'a',), (b'b',), (b'c',), (b'd',)],
-                    'as-requested', False)]
+            [(b'a',), (b'b',), (b'c',), (b'd',)],
+            'as-requested', False)]
         self.assertEqual([(b'a',), (b'b',), (b'c',), (b'd',)], keys)
         keys = [record.key for record in vf2.get_record_stream(
-                    [(b'b',), (b'a',), (b'd',), (b'c',)],
-                    'as-requested', False)]
+            [(b'b',), (b'a',), (b'd',), (b'c',)],
+            'as-requested', False)]
         self.assertEqual([(b'b',), (b'a',), (b'd',), (b'c',)], keys)
 
     def test_get_record_stream_max_bytes_to_index_default(self):
@@ -620,6 +620,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         keys = [(r.encode(),) for r in 'abcdefgh']
         # ordering in 'groupcompress' order, should actually swap the groups in
         # the target vf, but the groups themselves should not be disturbed.
+
         def small_size_stream():
             for record in vf.get_record_stream(keys, 'groupcompress', False):
                 record._manager._full_enough_block_size = \
@@ -697,8 +698,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         unvalidated = self.make_g_index_missing_parent()
         combined = _mod_index.CombinedGraphIndex([unvalidated])
         index = groupcompress._GCGraphIndex(combined,
-            is_locked=lambda: True, parents=True,
-            track_external_parent_refs=True)
+                                            is_locked=lambda: True, parents=True,
+                                            track_external_parent_refs=True)
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(
             frozenset([(b'missing-parent',)]), index.get_missing_parents())
@@ -708,9 +709,9 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         mod_index = btree_index.BTreeBuilder(1, 1)
         combined = _mod_index.CombinedGraphIndex([g_index, mod_index])
         index = groupcompress._GCGraphIndex(combined,
-            is_locked=lambda: True, parents=True,
-            add_callback=mod_index.add_nodes,
-            track_external_parent_refs=True)
+                                            is_locked=lambda: True, parents=True,
+                                            add_callback=mod_index.add_nodes,
+                                            track_external_parent_refs=True)
         index.add_records([
             ((b'new-key',), b'2 10 2 10', [((b'parent-1',), (b'parent-2',))])])
         self.assertEqual(
@@ -731,13 +732,14 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         target = self.make_test_vf(True, dir='target',
                                    inconsistency_fatal=inconsistency_fatal)
         for x in range(2):
-            source = self.make_source_with_b(x==1, 'source%s' % x)
+            source = self.make_source_with_b(x == 1, 'source%s' % x)
             target.insert_record_stream(source.get_record_stream(
                 [(b'b',)], 'unordered', False))
 
     def test_inconsistent_redundant_inserts_warn(self):
         """Should not insert a record that is already present."""
         warnings = []
+
         def warning(template, args):
             warnings.append(template % args)
         _trace_warning = trace.warning
@@ -777,7 +779,7 @@ class TestGroupCompressConfig(tests.TestCaseWithTransport):
         t = self.get_transport('.')
         t.ensure_base()
         factory = groupcompress.make_pack_factory(graph=True,
-            delta=False, keylength=1, inconsistency_fatal=True)
+                                                  delta=False, keylength=1, inconsistency_fatal=True)
         vf = factory(t)
         self.addCleanup(groupcompress.cleanup_pack_group, vf)
         return vf
@@ -818,13 +820,14 @@ class StubGCVF(object):
     def __init__(self, canned_get_blocks=None):
         self._group_cache = {}
         self._canned_get_blocks = canned_get_blocks or []
+
     def _get_blocks(self, read_memos):
         return iter(self._canned_get_blocks)
-    
+
 
 class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
     """Simple whitebox unit tests for _BatchingBlockFetcher."""
-    
+
     def test_add_key_new_read_memo(self):
         """Adding a key with an uncached read_memo new to this batch adds that
         read_memo to the list of memos to fetch.
@@ -923,20 +926,21 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
     _texts = {
         (b'key1',): b"this is a text\n"
-                   b"with a reasonable amount of compressible bytes\n"
-                   b"which can be shared between various other texts\n",
+        b"with a reasonable amount of compressible bytes\n"
+        b"which can be shared between various other texts\n",
         (b'key2',): b"another text\n"
-                   b"with a reasonable amount of compressible bytes\n"
-                   b"which can be shared between various other texts\n",
+        b"with a reasonable amount of compressible bytes\n"
+        b"which can be shared between various other texts\n",
         (b'key3',): b"yet another text which won't be extracted\n"
-                   b"with a reasonable amount of compressible bytes\n"
-                   b"which can be shared between various other texts\n",
+        b"with a reasonable amount of compressible bytes\n"
+        b"which can be shared between various other texts\n",
         (b'key4',): b"this will be extracted\n"
-                   b"but references most of its bytes from\n"
-                   b"yet another text which won't be extracted\n"
-                   b"with a reasonable amount of compressible bytes\n"
-                   b"which can be shared between various other texts\n",
+        b"but references most of its bytes from\n"
+        b"yet another text which won't be extracted\n"
+        b"with a reasonable amount of compressible bytes\n"
+        b"which can be shared between various other texts\n",
     }
+
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
         compressor = groupcompress.GroupCompressor()
@@ -994,9 +998,9 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertTrue(block_length > len(stripped_block))
         empty_z_header = zlib.compress(b'')
         self.assertEqual(b'groupcompress-block\n'
-                         b'8\n' # len(compress(''))
-                         b'0\n' # len('')
-                         b'%d\n'# compressed block len
+                         b'8\n'  # len(compress(''))
+                         b'0\n'  # len('')
+                         b'%d\n'  # compressed block len
                          b'%s'  # zheader
                          b'%s'  # block
                          % (len(stripped_block), empty_z_header,
@@ -1026,15 +1030,15 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         entry4 = locations[(b'key4',)]
         self.assertEqualDiff(b'key1\n'
                              b'\n'  # no parents
-                             b'%d\n' # start offset
-                             b'%d\n' # end offset
+                             b'%d\n'  # start offset
+                             b'%d\n'  # end offset
                              b'key4\n'
                              b'\n'
                              b'%d\n'
                              b'%d\n'
                              % (entry1[0], entry1[1],
                                 entry4[0], entry4[1]),
-                            header)
+                             header)
         z_block = rest[z_header_len:]
         self.assertEqual(block_bytes, z_block)
 
@@ -1101,11 +1105,12 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
     def test_manager_custom_compressor_settings(self):
         locations, old_block = self.make_block(self._texts)
         called = []
+
         def compressor_settings():
             called.append('called')
             return (10,)
         manager = groupcompress._LazyGroupContentManager(old_block,
-            get_compressor_settings=compressor_settings)
+                                                         get_compressor_settings=compressor_settings)
         gcvf = groupcompress.GroupCompressVersionedFiles
         # It doesn't greedily evaluate compressor_settings
         self.assertIs(None, manager._compressor_settings)
@@ -1119,10 +1124,10 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         if not isinstance(groupcompress.GroupCompressor,
                           groupcompress.PyrexGroupCompressor):
             raise tests.TestNotApplicable('pure-python compressor'
-                ' does not handle compressor_settings')
+                                          ' does not handle compressor_settings')
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(old_block,
-            get_compressor_settings=lambda: dict(max_bytes_to_index=32))
+                                                         get_compressor_settings=lambda: dict(max_bytes_to_index=32))
         gc = manager._make_group_compressor()
         self.assertEqual(32, gc._delta_index._max_bytes_to_index)
         self.add_key_to_manager((b'key3',), locations, old_block, manager)
@@ -1191,16 +1196,16 @@ class Test_GCBuildDetails(tests.TestCase):
         # _GCBuildDetails inlines some of the data that used to be spread out
         # across a bunch of tuples
         bd = groupcompress._GCBuildDetails((('parent1',), ('parent2',)),
-            ('INDEX', 10, 20, 0, 5))
+                                           ('INDEX', 10, 20, 0, 5))
         self.assertEqual(4, len(bd))
         self.assertEqual(('INDEX', 10, 20, 0, 5), bd[0])
-        self.assertEqual(None, bd[1]) # Compression Parent is always None
+        self.assertEqual(None, bd[1])  # Compression Parent is always None
         self.assertEqual((('parent1',), ('parent2',)), bd[2])
-        self.assertEqual(('group', None), bd[3]) # Record details
+        self.assertEqual(('group', None), bd[3])  # Record details
 
     def test__repr__(self):
         bd = groupcompress._GCBuildDetails((('parent1',), ('parent2',)),
-            ('INDEX', 10, 20, 0, 5))
+                                           ('INDEX', 10, 20, 0, 5))
         self.assertEqual("_GCBuildDetails(('INDEX', 10, 20, 0, 5),"
                          " (('parent1',), ('parent2',)))",
                          repr(bd))

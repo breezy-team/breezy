@@ -50,7 +50,7 @@ from .pack_repo import (
     Pack,
     NewPack,
     PackRepository,
-    PackRootCommitBuilder,
+    PackCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
     ResumedPack,
@@ -91,22 +91,22 @@ class GCPack(NewPack):
         else:
             chk_index = None
         Pack.__init__(self,
-            # Revisions: parents list, no text compression.
-            index_builder_class(reference_lists=1),
-            # Inventory: We want to map compression only, but currently the
-            # knit code hasn't been updated enough to understand that, so we
-            # have a regular 2-list index giving parents and compression
-            # source.
-            index_builder_class(reference_lists=1),
-            # Texts: per file graph, for all fileids - so one reference list
-            # and two elements in the key tuple.
-            index_builder_class(reference_lists=1, key_elements=2),
-            # Signatures: Just blobs to store, no compression, no parents
-            # listing.
-            index_builder_class(reference_lists=0),
-            # CHK based storage - just blobs, no compression or parents.
-            chk_index=chk_index
-            )
+                      # Revisions: parents list, no text compression.
+                      index_builder_class(reference_lists=1),
+                      # Inventory: We want to map compression only, but currently the
+                      # knit code hasn't been updated enough to understand that, so we
+                      # have a regular 2-list index giving parents and compression
+                      # source.
+                      index_builder_class(reference_lists=1),
+                      # Texts: per file graph, for all fileids - so one reference list
+                      # and two elements in the key tuple.
+                      index_builder_class(reference_lists=1, key_elements=2),
+                      # Signatures: Just blobs to store, no compression, no parents
+                      # listing.
+                      index_builder_class(reference_lists=0),
+                      # CHK based storage - just blobs, no compression or parents.
+                      chk_index=chk_index
+                      )
         self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
         self.index_class = pack_collection._index_class
@@ -137,8 +137,8 @@ class GCPack(NewPack):
             self.random_name, mode=self._file_mode)
         if 'pack' in debug.debug_flags:
             trace.mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
-                time.ctime(), self.upload_transport.base, self.random_name,
-                time.time() - self.start_time)
+                         time.ctime(), self.upload_transport.base, self.random_name,
+                         time.time() - self.start_time)
         # A list of byte sequences to be written to the new pack, and the
         # aggregate size of them.  Stored as a list rather than separate
         # variables so that the _write_data closure below can update them.
@@ -148,8 +148,9 @@ class GCPack(NewPack):
         # robertc says- this is a closure rather than a method on the object
         # so that the variables are locals, and faster than accessing object
         # members.
+
         def _write_data(data, flush=False, _buffer=self._buffer,
-            _write=self.write_stream.write, _update=self._hash.update):
+                        _write=self.write_stream.write, _update=self._hash.update):
             _buffer[0].append(data)
             _buffer[1] += len(data)
             # buffer cap
@@ -204,7 +205,8 @@ class GCCHKPacker(Packer):
         self._pack_collection = pack_collection
         # ATM, We only support this for GCCHK repositories
         if pack_collection.chk_index is None:
-            raise AssertionError('pack_collection.chk_index should not be None')
+            raise AssertionError(
+                'pack_collection.chk_index should not be None')
         self._gather_text_refs = False
         self._chk_id_roots = []
         self._chk_p_id_roots = []
@@ -214,7 +216,8 @@ class GCCHKPacker(Packer):
 
     def _get_progress_stream(self, source_vf, keys, message, pb):
         def pb_stream():
-            substream = source_vf.get_record_stream(keys, 'groupcompress', True)
+            substream = source_vf.get_record_stream(
+                keys, 'groupcompress', True)
             for idx, record in enumerate(substream):
                 if pb is not None:
                     pb.update(message, idx + 1, len(keys))
@@ -224,6 +227,7 @@ class GCCHKPacker(Packer):
     def _get_filtered_inv_stream(self, source_vf, keys, message, pb=None):
         """Filter the texts of inventories, to find the chk pages."""
         total_keys = len(keys)
+
         def _filtered_inv_stream():
             id_roots_set = set()
             p_id_roots_set = set()
@@ -274,12 +278,14 @@ class GCCHKPacker(Packer):
         counter = [0]
         if self._gather_text_refs:
             self._text_refs = set()
+
         def _get_referenced_stream(root_keys, parse_leaf_nodes=False):
             cur_keys = root_keys
             while cur_keys:
                 keys_by_search_prefix = {}
                 remaining_keys.difference_update(cur_keys)
                 next_keys = set()
+
                 def handle_internal_node(node):
                     for prefix, value in viewitems(node._items):
                         # We don't want to request the same key twice, and we
@@ -293,13 +299,15 @@ class GCCHKPacker(Packer):
                         #       always fill them in for stacked branches
                         if value not in next_keys and value in remaining_keys:
                             keys_by_search_prefix.setdefault(prefix,
-                                []).append(value)
+                                                             []).append(value)
                             next_keys.add(value)
+
                 def handle_leaf_node(node):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
                     for file_id, bytes in node.iteritems(None):
                         self._text_refs.add(chk_map._bytes_to_text_key(bytes))
+
                 def next_stream():
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
@@ -425,7 +433,8 @@ class GCCHKPacker(Packer):
         # get_parent_map(self.revision_keys), but that shouldn't be any faster
         # than this.
         inventory_keys = source_vf.keys()
-        missing_inventories = set(self.revision_keys).difference(inventory_keys)
+        missing_inventories = set(
+            self.revision_keys).difference(inventory_keys)
         if missing_inventories:
             # Go back to the original repo, to see if these are really missing
             # https://bugs.launchpad.net/bzr/+bug/437003
@@ -438,7 +447,7 @@ class GCCHKPacker(Packer):
             if really_missing:
                 missing_inventories = sorted(really_missing)
                 raise ValueError('We are missing inventories for revisions: %s'
-                    % (missing_inventories,))
+                                 % (missing_inventories,))
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
@@ -485,7 +494,7 @@ class GCCHKPacker(Packer):
         self.pb.update('repacking', 0, 7)
         self.new_pack = self.open_pack()
         # Is this necessary for GC ?
-        self.new_pack.set_write_cache_size(1024*1024)
+        self.new_pack.set_write_cache_size(1024 * 1024)
         self._copy_revision_texts()
         self._copy_inventory_texts()
         self._copy_chk_texts()
@@ -501,7 +510,7 @@ class GCCHKPacker(Packer):
             if old_pack.name == self.new_pack._hash.hexdigest():
                 # The single old pack was already optimally packed.
                 trace.mutter('single pack %s was already optimally packed',
-                    old_pack.name)
+                             old_pack.name)
                 self.new_pack.abort()
                 return None
         self.pb.update('finishing repack', 6, 7)
@@ -551,7 +560,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
         # 2) generate a keys list that contains all the entries that can
         #    be used as-is, with corrected parents.
         ok_keys = []
-        new_parent_keys = {} # (key, parent_keys)
+        new_parent_keys = {}  # (key, parent_keys)
         discarded_keys = []
         NULL_REVISION = _mod_revision.NULL_REVISION
         for key in self._text_refs:
@@ -581,9 +590,10 @@ class GCCHKReconcilePacker(GCCHKPacker):
         del ideal_index
         del file_id_parent_map
         # 3) bulk copy the data, updating records than need it
+
         def _update_parents_for_texts():
             stream = source_vf.get_record_stream(self._text_refs,
-                'groupcompress', False)
+                                                 'groupcompress', False)
             for record in stream:
                 if record.key in new_parent_keys:
                     record.parents = new_parent_keys[record.key]
@@ -597,7 +607,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
 
 class GCCHKCanonicalizingPacker(GCCHKPacker):
     """A packer that ensures inventories have canonical-form CHK maps.
-    
+
     Ideally this would be part of reconcile, but it's very slow and rarely
     needed.  (It repairs repositories affected by
     https://bugs.launchpad.net/bzr/+bug/522637).
@@ -623,13 +633,14 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         # First, copy the existing CHKs on the assumption that most of them
         # will be correct.  This will save us from having to reinsert (and
         # recompress) these records later at the cost of perhaps preserving a
-        # few unused CHKs. 
+        # few unused CHKs.
         # (Iterate but don't insert _get_filtered_inv_stream to populate the
         # variables needed by GCCHKPacker._copy_chk_texts.)
         self._exhaust_stream(source_vf, inventory_keys, 'inventories',
-                self._get_filtered_inv_stream, 2)
+                             self._get_filtered_inv_stream, 2)
         GCCHKPacker._copy_chk_texts(self)
         # Now copy and fix the inventories, and any regenerated CHKs.
+
         def chk_canonicalizing_inv_stream(source_vf, keys, message, pb=None):
             return self._get_filtered_canonicalizing_inv_stream(
                 source_vf, keys, message, pb, source_chk_vf, target_chk_vf)
@@ -641,12 +652,13 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         pass
 
     def _get_filtered_canonicalizing_inv_stream(self, source_vf, keys, message,
-            pb=None, source_chk_vf=None, target_chk_vf=None):
+                                                pb=None, source_chk_vf=None, target_chk_vf=None):
         """Filter the texts of inventories, regenerating CHKs to make sure they
         are canonical.
         """
         total_keys = len(keys)
         target_chk_vf = versionedfile.NoDupeAddLinesDecorator(target_chk_vf)
+
         def _filtered_inv_stream():
             stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             search_key_name = None
@@ -672,8 +684,9 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                     trace.mutter(
                         'Non-canonical CHK map for id_to_entry of inv: %s '
                         '(root is %s, should be %s)' % (chk_inv.revision_id,
-                        chk_inv.id_to_entry.key()[0],
-                        canonical_inv.id_to_entry.key()[0]))
+                                                        chk_inv.id_to_entry.key()[
+                                                            0],
+                                                        canonical_inv.id_to_entry.key()[0]))
                     self._data_changed = True
                 p_id_map = chk_inv.parent_id_basename_to_file_id
                 p_id_map._ensure_root()
@@ -686,8 +699,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                            canon_p_id_map.key()[0]))
                     self._data_changed = True
                 yield versionedfile.ChunkedContentFactory(record.key,
-                        record.parents, record.sha1,
-                        canonical_inv.to_lines())
+                                                          record.parents, record.sha1,
+                                                          canonical_inv.to_lines())
             # We have finished processing all of the inventory records, we
             # don't need these sets anymore
         return _filtered_inv_stream()
@@ -731,7 +744,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
             problems.append("inventories missing for revisions %s" %
-                (sorted(missing_corresponding),))
+                            (sorted(missing_corresponding),))
             return problems
         # Are any chk root entries missing for any inventories?  This includes
         # any present parent inventories, which may be used when calculating
@@ -790,7 +803,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_text_keys = text_keys.difference(present_text_keys)
         if missing_text_keys:
             problems.append("missing text keys: %r"
-                % (sorted(missing_text_keys),))
+                            % (sorted(missing_text_keys),))
         return problems
 
 
@@ -798,51 +811,53 @@ class CHKInventoryRepository(PackRepository):
     """subclass of PackRepository that uses CHK based inventories."""
 
     def __init__(self, _format, a_controldir, control_files, _commit_builder_class,
-        _serializer):
+                 _serializer):
         """Overridden to change pack collection class."""
         super(CHKInventoryRepository, self).__init__(_format, a_controldir,
-            control_files, _commit_builder_class, _serializer)
+                                                     control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
-            self._transport, index_transport,
-            self._transport.clone('upload'),
-            self._transport.clone('packs'),
-            _format.index_builder_class,
-            _format.index_class,
-            use_chk_index=self._format.supports_chks,
-            )
+                                                           self._transport, index_transport,
+                                                           self._transport.clone(
+                                                               'upload'),
+                                                           self._transport.clone(
+                                                               'packs'),
+                                                           _format.index_builder_class,
+                                                           _format.index_class,
+                                                           use_chk_index=self._format.supports_chks,
+                                                           )
         self.inventories = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
-                add_callback=self._pack_collection.inventory_index.add_callback,
-                parents=True, is_locked=self.is_locked,
-                inconsistency_fatal=False),
+                          add_callback=self._pack_collection.inventory_index.add_callback,
+                          parents=True, is_locked=self.is_locked,
+                          inconsistency_fatal=False),
             access=self._pack_collection.inventory_index.data_access)
         self.revisions = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
-                add_callback=self._pack_collection.revision_index.add_callback,
-                parents=True, is_locked=self.is_locked,
-                track_external_parent_refs=True, track_new_keys=True),
+                          add_callback=self._pack_collection.revision_index.add_callback,
+                          parents=True, is_locked=self.is_locked,
+                          track_external_parent_refs=True, track_new_keys=True),
             access=self._pack_collection.revision_index.data_access,
             delta=False)
         self.signatures = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.signature_index.combined_index,
-                add_callback=self._pack_collection.signature_index.add_callback,
-                parents=False, is_locked=self.is_locked,
-                inconsistency_fatal=False),
+                          add_callback=self._pack_collection.signature_index.add_callback,
+                          parents=False, is_locked=self.is_locked,
+                          inconsistency_fatal=False),
             access=self._pack_collection.signature_index.data_access,
             delta=False)
         self.texts = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.text_index.combined_index,
-                add_callback=self._pack_collection.text_index.add_callback,
-                parents=True, is_locked=self.is_locked,
-                inconsistency_fatal=False),
+                          add_callback=self._pack_collection.text_index.add_callback,
+                          parents=True, is_locked=self.is_locked,
+                          inconsistency_fatal=False),
             access=self._pack_collection.text_index.data_access)
         # No parents, individual CHK pages don't have specific ancestry
         self.chk_bytes = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.chk_index.combined_index,
-                add_callback=self._pack_collection.chk_index.add_callback,
-                parents=False, is_locked=self.is_locked,
-                inconsistency_fatal=False),
+                          add_callback=self._pack_collection.chk_index.add_callback,
+                          parents=False, is_locked=self.is_locked,
+                          inconsistency_fatal=False),
             access=self._pack_collection.chk_index.data_access)
         search_key_name = self._format._serializer.search_key_name
         search_key_func = chk_map.search_key_registry.get(search_key_name)
@@ -869,11 +884,11 @@ class CHKInventoryRepository(PackRepository):
         # make inventory
         serializer = self._format._serializer
         result = inventory.CHKInventory.from_inventory(self.chk_bytes, inv,
-            maximum_size=serializer.maximum_size,
-            search_key_name=serializer.search_key_name)
+                                                       maximum_size=serializer.maximum_size,
+                                                       search_key_name=serializer.search_key_name)
         inv_lines = result.to_lines()
         return self._inventory_add_lines(revision_id, parents,
-            inv_lines, check_content=False)
+                                         inv_lines, check_content=False)
 
     def _create_inv_from_null(self, delta, revision_id):
         """This will mutate new_inv directly.
@@ -910,7 +925,7 @@ class CHKInventoryRepository(PackRepository):
             parent_id_basename_dict[parent_id_basename_key] = file_id
 
         new_inv._populate_from_dicts(self.chk_bytes, id_to_entry_dict,
-            parent_id_basename_dict, maximum_size=serializer.maximum_size)
+                                     parent_id_basename_dict, maximum_size=serializer.maximum_size)
         return new_inv
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
@@ -942,31 +957,31 @@ class CHKInventoryRepository(PackRepository):
             raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(new_revision_id)
         basis_tree = None
-        if basis_inv is None:
+        if basis_inv is None or not isinstance(basis_inv, inventory.CHKInventory):
             if basis_revision_id == _mod_revision.NULL_REVISION:
                 new_inv = self._create_inv_from_null(delta, new_revision_id)
                 if new_inv.root_id is None:
                     raise errors.RootMissing()
                 inv_lines = new_inv.to_lines()
                 return self._inventory_add_lines(new_revision_id, parents,
-                    inv_lines, check_content=False), new_inv
+                                                 inv_lines, check_content=False), new_inv
             else:
                 basis_tree = self.revision_tree(basis_revision_id)
                 basis_tree.lock_read()
                 basis_inv = basis_tree.root_inventory
         try:
             result = basis_inv.create_by_apply_delta(delta, new_revision_id,
-                propagate_caches=propagate_caches)
+                                                     propagate_caches=propagate_caches)
             inv_lines = result.to_lines()
             return self._inventory_add_lines(new_revision_id, parents,
-                inv_lines, check_content=False), result
+                                             inv_lines, check_content=False), result
         finally:
             if basis_tree is not None:
                 basis_tree.unlock()
 
     def _deserialise_inventory(self, revision_id, bytes):
         return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
-            (revision_id,))
+                                                  (revision_id,))
 
     def _iter_inventories(self, revision_ids, ordering):
         """Iterate over many inventory objects."""
@@ -1024,7 +1039,7 @@ class CHKInventoryRepository(PackRepository):
             #       However, we only want to tolerate missing parent
             #       inventories, not missing inventories for revision_ids
             present_parent_inv_keys = self._find_present_inventory_keys(
-                                        parent_keys)
+                parent_keys)
             present_parent_inv_ids = {k[-1] for k in present_parent_inv_keys}
             inventories_to_read = set(revision_ids)
             inventories_to_read.update(present_parent_inv_ids)
@@ -1034,8 +1049,8 @@ class CHKInventoryRepository(PackRepository):
             uninteresting_root_keys = root_key_info.uninteresting_root_keys
             chk_bytes = self.chk_bytes
             for record, items in chk_map.iter_interesting_nodes(chk_bytes,
-                        interesting_root_keys, uninteresting_root_keys,
-                        pb=pb):
+                                                                interesting_root_keys, uninteresting_root_keys,
+                                                                pb=pb):
                 for name, bytes in items:
                     (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
                     # TODO: consider interning file_id, revision_id here, or
@@ -1083,11 +1098,11 @@ class CHKInventoryRepository(PackRepository):
         """Reconcile this repository to make sure all CHKs are in canonical
         form.
         """
-        from breezy.reconcile import PackReconciler
+        from .reconcile import PackReconciler
         with self.lock_write():
-            reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
-            reconciler.reconcile()
-            return reconciler
+            reconciler = PackReconciler(
+                self, thorough=True, canonicalize_chks=True)
+            return reconciler.reconcile()
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)
@@ -1126,11 +1141,11 @@ class CHKInventoryRepository(PackRepository):
                 pass
             parent_map = vf.get_parent_map([(revid,)])
             parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[(revid,)])
+                                               parent_map[(revid,)])
             parents_according_to_revision = tuple(revision.parent_ids)
             if parents_according_to_index != parents_according_to_revision:
                 yield (revid, parents_according_to_index,
-                    parents_according_to_revision)
+                       parents_according_to_revision)
 
     def _check_for_inconsistent_revision_parents(self):
         inconsistencies = list(self._find_inconsistent_revision_parents())
@@ -1159,6 +1174,7 @@ class GroupCHKStreamSource(StreamSource):
         """
         self._chk_id_roots = []
         self._chk_p_id_roots = []
+
         def _filtered_inv_stream():
             id_roots_set = set()
             p_id_roots_set = set()
@@ -1204,7 +1220,7 @@ class GroupCHKStreamSource(StreamSource):
             # TODO: Update Repository.iter_inventories() to add
             #       ignore_missing=True
             present_keys = self.from_repository._find_present_inventory_keys(
-                            excluded_revision_keys)
+                excluded_revision_keys)
             present_ids = [k[-1] for k in present_keys]
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
@@ -1213,19 +1229,21 @@ class GroupCHKStreamSource(StreamSource):
                 uninteresting_pid_root_keys.add(
                     inv.parent_id_basename_to_file_id.key())
         chk_bytes = self.from_repository.chk_bytes
+
         def _filter_id_to_entry():
             interesting_nodes = chk_map.iter_interesting_nodes(chk_bytes,
-                        self._chk_id_roots, uninteresting_root_keys)
+                                                               self._chk_id_roots, uninteresting_root_keys)
             for record in _filter_text_keys(interesting_nodes, self._text_keys,
-                    chk_map._bytes_to_text_key):
+                                            chk_map._bytes_to_text_key):
                 if record is not None:
                     yield record
             # Consumed
             self._chk_id_roots = None
         yield 'chk_bytes', _filter_id_to_entry()
+
         def _get_parent_id_basename_to_file_id_pages():
             for record, items in chk_map.iter_interesting_nodes(chk_bytes,
-                        self._chk_p_id_roots, uninteresting_pid_root_keys):
+                                                                self._chk_p_id_roots, uninteresting_pid_root_keys):
                 if record is not None:
                     yield record
             # Consumed
@@ -1236,7 +1254,7 @@ class GroupCHKStreamSource(StreamSource):
         # Note: We know we don't have to handle adding root keys, because both
         # the source and target are the identical network name.
         text_stream = self.from_repository.texts.get_record_stream(
-                        self._text_keys, self._text_fetch_order, False)
+            self._text_keys, self._text_fetch_order, False)
         return ('texts', text_stream)
 
     def get_stream(self, search):
@@ -1257,14 +1275,14 @@ class GroupCHKStreamSource(StreamSource):
         self._record_counter.setup(len(revision_ids))
         for stream_info in self._fetch_revision_texts(revision_ids):
             yield (stream_info[0],
-                wrap_and_count(pb, rc, stream_info[1]))
+                   wrap_and_count(pb, rc, stream_info[1]))
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
         from_repo = self.from_repository
         parent_keys = from_repo._find_parent_keys_of_revisions(
-                        self._revision_keys)
+            self._revision_keys)
         self.from_repository.revisions.clear_cache()
         self.from_repository.signatures.clear_cache()
         # Clear the repo's get_parent_map cache too.
@@ -1290,12 +1308,12 @@ class GroupCHKStreamSource(StreamSource):
         for key in missing_keys:
             if key[0] != 'inventories':
                 raise AssertionError('The only missing keys we should'
-                    ' be filling in are inventory keys, not %s'
-                    % (key[0],))
+                                     ' be filling in are inventory keys, not %s'
+                                     % (key[0],))
             missing_inventory_keys.add(key[1:])
         if self._chk_id_roots or self._chk_p_id_roots:
             raise AssertionError('Cannot call get_stream_for_missing_keys'
-                ' until all of get_stream() has been consumed.')
+                                 ' until all of get_stream() has been consumed.')
         # Yield the inventory stream, so we can find the chk stream
         # Some of the missing_keys will be missing because they are ghosts.
         # As such, we can ignore them. The Sink is required to verify there are
@@ -1356,7 +1374,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    _commit_builder_class = PackRootCommitBuilder
+    _commit_builder_class = PackCommitBuilder
     rich_root_data = True
     _serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True
@@ -1370,7 +1388,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     # multiple in-a-row (and sharing strings). Topological is better
     # for remote, because we access less data.
     _fetch_order = 'unordered'
-    _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
+    # essentially ignored by the groupcompress code.
+    _fetch_uses_deltas = False
     fast_deltas = True
     pack_compresses = True
 
@@ -1380,7 +1399,8 @@ class RepositoryFormat2a(RepositoryFormatPack):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(
+        _get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):
@@ -1389,7 +1409,7 @@ class RepositoryFormat2a(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return ("Repository format 2a - rich roots, group compression"
-            " and chk inventories")
+                " and chk inventories")
 
 
 class RepositoryFormat2aSubtree(RepositoryFormat2a):
@@ -1403,7 +1423,8 @@ class RepositoryFormat2aSubtree(RepositoryFormat2a):
     def _ignore_setting_bzrdir(self, format):
         pass
 
-    _matchingcontroldir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+    _matchingcontroldir = property(
+        _get_matching_bzrdir, _ignore_setting_bzrdir)
 
     @classmethod
     def get_format_string(cls):

@@ -92,7 +92,7 @@ class TestContainerWriter(tests.TestCase):
         This uses None as the output stream to show that the constructor
         doesn't try to use the output stream.
         """
-        writer = pack.ContainerWriter(None)
+        pack.ContainerWriter(None)
 
     def test_begin(self):
         """The begin() method writes the container format marker line."""
@@ -246,7 +246,7 @@ class TestContainerReader(tests.TestCase):
         This uses None as the output stream to show that the constructor
         doesn't try to use the input stream.
         """
-        reader = pack.ContainerReader(None)
+        pack.ContainerReader(None)
 
     def test_empty_container(self):
         """Read an empty container."""
@@ -342,7 +342,8 @@ class TestContainerReader(tests.TestCase):
 
     def test_validate_no_end_marker(self):
         """validate raises UnexpectedEndOfContainerError if there's no end of
-        container marker, even if the container up to this point has been valid.
+        container marker, even if the container up to this point has been
+        valid.
         """
         reader = self.get_reader_for(
             b"Bazaar pack format 1 (introduced in 0.18)\n")
@@ -544,9 +545,9 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         memos.append(writer.add_bytes_record(b'jkl', names=[]))
         writer.end()
         transport = self.get_transport()
-        transport.put_bytes(b'mypack', pack_data.getvalue())
+        transport.put_bytes('mypack', pack_data.getvalue())
         requested_records = [memos[0], memos[2]]
-        reader = pack.make_readv_reader(transport, b'mypack', requested_records)
+        reader = pack.make_readv_reader(transport, 'mypack', requested_records)
         result = []
         for names, reader_func in reader.iter_records():
             result.append((names, reader_func(None)))
@@ -564,8 +565,9 @@ class TestReadvFile(tests.TestCaseWithTransport):
     def test_read_bytes(self):
         """Test reading of both single bytes and all bytes in a hunk."""
         transport = self.get_transport()
-        transport.put_bytes(b'sample', b'0123456789')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
+        transport.put_bytes('sample', b'0123456789')
+        f = pack.ReadVFile(transport.readv(
+            'sample', [(0, 1), (1, 2), (4, 1), (6, 2)]))
         results = []
         results.append(f.read(1))
         results.append(f.read(2))
@@ -580,8 +582,8 @@ class TestReadvFile(tests.TestCaseWithTransport):
         This is always within a readv hunk, never across it.
         """
         transport = self.get_transport()
-        transport.put_bytes(b'sample', b'0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0, 2), (2, 4)]))
+        transport.put_bytes('sample', b'0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 2), (2, 4)]))
         results = []
         results.append(f.readline())
         results.append(f.readline())
@@ -591,8 +593,8 @@ class TestReadvFile(tests.TestCaseWithTransport):
     def test_readline_and_read(self):
         """Test exercising one byte reads, readline, and then read again."""
         transport = self.get_transport()
-        transport.put_bytes(b'sample', b'0\n2\n4\n')
-        f = pack.ReadVFile(transport.readv(b'sample', [(0, 6)]))
+        transport.put_bytes('sample', b'0\n2\n4\n')
+        f = pack.ReadVFile(transport.readv('sample', [(0, 6)]))
         results = []
         results.append(f.read(1))
         results.append(f.readline())

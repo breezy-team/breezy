@@ -88,8 +88,8 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
             BadUrl, opener.check_and_follow_branch_reference, 'a')
 
     def test_not_reference(self):
-        # When branch references are forbidden, check_and_follow_branch_reference
-        # does not raise on non-references.
+        # When branch references are forbidden,
+        # check_and_follow_branch_reference does not raise on non-references.
         opener = self.make_branch_opener(False, ['a', None])
         self.assertEqual(
             'a', opener.check_and_follow_branch_reference('a'))
@@ -106,17 +106,17 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
         self.assertEqual(['a'], opener.follow_reference_calls)
 
     def test_allowed_reference(self):
-        # check_and_follow_branch_reference does not raise if following references
-        # is allowed and the source URL points to a branch reference to a
-        # permitted location.
+        # check_and_follow_branch_reference does not raise if following
+        # references is allowed and the source URL points to a branch reference
+        # to a permitted location.
         opener = self.make_branch_opener(True, ['a', 'b', None])
         self.assertEqual(
             'b', opener.check_and_follow_branch_reference('a'))
         self.assertEqual(['a', 'b'], opener.follow_reference_calls)
 
     def test_check_referenced_urls(self):
-        # check_and_follow_branch_reference checks if the URL a reference points
-        # to is safe.
+        # check_and_follow_branch_reference checks if the URL a reference
+        # points to is safe.
         opener = self.make_branch_opener(
             True, ['a', 'b', None], unsafe_urls=set('b'))
         self.assertRaises(
@@ -186,8 +186,8 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
         self.assertRaises(NotBranchError, opener.open, ".")
         self.assertEqual(1, len(TrackingProber.seen_urls))
         TrackingProber.seen_urls = []
-        # And make sure it's registered in such a way that ControlDir.open would
-        # use it.
+        # And make sure it's registered in such a way that ControlDir.open
+        # would use it.
         self.assertRaises(NotBranchError, ControlDir.open, ".")
         self.assertEqual(1, len(TrackingProber.seen_urls))
 
@@ -334,7 +334,8 @@ class TestOpenOnlyScheme(TestCaseWithTransport):
         def get_url(relpath):
             return chroot_server.get_url() + relpath
 
-        return urlutils.URL.from_string(chroot_server.get_url()).scheme, get_url
+        return (urlutils.URL.from_string(chroot_server.get_url()).scheme,
+                get_url)
 
     def test_stacked_within_scheme(self):
         # A branch that is stacked on a URL of the same scheme is safe to

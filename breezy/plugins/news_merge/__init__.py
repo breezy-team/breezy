@@ -34,7 +34,7 @@ Limitations:
 """
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info
+from ... import version_info  # noqa: F401
 from ...hooks import install_lazy_named_hook
 
 
@@ -45,14 +45,9 @@ def news_merge_hook(merger):
 
 
 install_lazy_named_hook("breezy.merge", "Merger.hooks", "merge_file_content",
-    news_merge_hook, "NEWS file merge")
+                        news_merge_hook, "NEWS file merge")
 
 
-def load_tests(loader, basic_tests, pattern):
-    testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return basic_tests
-
+def test_suite():
+    from . import tests
+    return tests.test_suite()

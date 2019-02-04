@@ -44,7 +44,7 @@ from .helpers import (
 
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,
-    'squashes_xml_invalid_characters')
+                                       'squashes_xml_invalid_characters')
 
 
 def copy_inventory(inv):
@@ -55,12 +55,12 @@ def copy_inventory(inv):
     return inv
 
 
-class GenericCommitHandler(processor.CommitHandler):
+class CommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
     def __init__(self, command, cache_mgr, rev_store, verbose=False,
-        prune_empty_dirs=True):
-        super(GenericCommitHandler, self).__init__(command)
+                 prune_empty_dirs=True):
+        super(CommitHandler, self).__init__(command)
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
         self.verbose = verbose
@@ -106,7 +106,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
         self.data_for_commit = {}
-        #if self.rev_store.expects_rich_root():
+        # if self.rev_store.expects_rich_root():
         self.data_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
@@ -115,17 +115,17 @@ class GenericCommitHandler(processor.CommitHandler):
         # Convert the parent commit-ids to bzr revision-ids
         if parents:
             self.parents = [self.cache_mgr.lookup_committish(p)
-                for p in parents]
+                            for p in parents]
         else:
             self.parents = []
         self.debug("%s id: %s, parents: %s", self.command.id,
-            self.revision_id, str(self.parents))
+                   self.revision_id, str(self.parents))
 
         # Tell the RevisionStore we're starting a new commit
         self.revision = self.build_revision()
         self.parent_invs = [self.get_inventory(p) for p in self.parents]
         self.rev_store.start_new_revision(self.revision, self.parents,
-            self.parent_invs)
+                                          self.parent_invs)
 
         # cache of per-file parents for this commit, indexed by file-id
         self.per_file_parents_for_commit = {}
@@ -144,6 +144,23 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = {}
+
+        self._dirs_that_might_become_empty = set()
+
+        # A given file-id can only appear once so we accumulate
+        # the entries in a dict then build the actual delta at the end
+        self._delta_entries_by_fileid = {}
+        if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
+            if self.parents:
+                old_path = ''
+            else:
+                old_path = None
+            # Need to explicitly add the root entry for the first revision
+            # and for non rich-root inventories
+            root_id = inventory.ROOT_ID
+            root_ie = inventory.InventoryDirectory(root_id, u'', None)
+            root_ie.revision = self.revision_id
+            self._add_entry((old_path, '', root_id, root_ie))
 
     def _init_inventory(self):
         return self.rev_store.init_inventory(self.revision_id)
@@ -174,7 +191,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _get_inventories(self, revision_ids):
         """Get the inventories for revision-ids.
-        
+
         This is a callback used by the RepositoryStore to
         speed up inventory reconstruction.
         """
@@ -201,7 +218,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def bzr_file_id_and_new(self, path):
         """Get a Bazaar file identifier and new flag for a path.
-        
+
         :return: file_id, is_new where
           is_new = True if the file_id is newly created
         """
@@ -215,7 +232,7 @@ class GenericCommitHandler(processor.CommitHandler):
             id = self.basis_inventory.path2id(path)
             if id is not None:
                 return id, False
-            
+
             # Try the other inventories
             if len(self.parents) > 1:
                 for inv in self.parent_invs[1:]:
@@ -227,7 +244,7 @@ class GenericCommitHandler(processor.CommitHandler):
         dirname, basename = osutils.split(path)
         id = generate_ids.gen_file_id(basename)
         self.debug("Generated new file id %s for '%s' in revision-id '%s'",
-            id, path, self.revision_id)
+                   id, path, self.revision_id)
         self._new_file_ids[path] = id
         return id, True
 
@@ -242,7 +259,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
             self.warning("%s not in utf8 - replacing unknown "
-                "characters" % (field,))
+                         "characters" % (field,))
             return value.decode('utf-8', 'replace')
 
     def _decode_path(self, path):
@@ -252,7 +269,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # The spec says fields are *typically* utf8 encoded
             # but that isn't enforced by git-fast-export (at least)
             self.warning("path %r not in utf8 - replacing unknown "
-                "characters" % (path,))
+                         "characters" % (path,))
             return path.decode('utf-8', 'replace')
 
     def _format_name_email(self, section, name, email):
@@ -279,9 +296,9 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def build_revision(self):
         rev_props = self._legal_revision_properties(self.command.properties)
-        if 'branch-nick' not in rev_props:
-            rev_props['branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
-                    self.branch_ref)
+        if u'branch-nick' not in rev_props:
+            rev_props[u'branch-nick'] = self.cache_mgr.branch_mapper.git_to_bzr(
+                self.branch_ref)
         self._save_author_info(rev_props)
         committer = self.command.committer
         who = self._format_name_email("committer", committer[0], committer[1])
@@ -296,13 +313,13 @@ class GenericCommitHandler(processor.CommitHandler):
             # We need to assume the bad ol' days
             message = helpers.escape_commit_message(message)
         return revision.Revision(
-           timestamp=committer[2],
-           timezone=committer[3],
-           committer=who,
-           message=message,
-           revision_id=self.revision_id,
-           properties=rev_props,
-           parent_ids=self.parents)
+            timestamp=committer[2],
+            timezone=committer[3],
+            committer=who,
+            message=message,
+            revision_id=self.revision_id,
+            properties=rev_props,
+            parent_ids=self.parents)
 
     def _legal_revision_properties(self, props):
         """Clean-up any revision properties we can't handle."""
@@ -325,13 +342,15 @@ class GenericCommitHandler(processor.CommitHandler):
             return
         if self.command.more_authors:
             authors = [author] + self.command.more_authors
-            author_ids = [self._format_name_email("author", a[0], a[1]) for a in authors]
+            author_ids = [self._format_name_email(
+                "author", a[0], a[1]) for a in authors]
         elif author != self.command.committer:
-            author_ids = [self._format_name_email("author", author[0], author[1])]
+            author_ids = [self._format_name_email(
+                "author", author[0], author[1])]
         else:
             return
         # If we reach here, there are authors worth storing
-        rev_props['authors'] = "\n".join(author_ids)
+        rev_props[u'authors'] = "\n".join(author_ids)
 
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
@@ -345,7 +364,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # to be created already by a previous rename
             if kind != 'directory':
                 self.warning("%s already added in this commit - ignoring" %
-                    (path,))
+                             (path,))
             return
 
         # Create the new InventoryEntry
@@ -363,15 +382,15 @@ class GenericCommitHandler(processor.CommitHandler):
             self.directory_entries[path] = ie
             # There are no lines stored for a directory so
             # make sure the cache used by get_lines knows that
-            self.data_for_commit[file_id] = ''
+            self.data_for_commit[file_id] = b''
         elif kind == 'symlink':
             ie.symlink_target = self._decode_path(data)
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
-            self.data_for_commit[file_id] = ''
+            self.data_for_commit[file_id] = b''
         else:
             self.warning("Cannot import items of kind '%s' yet - ignoring '%s'"
-                % (kind, path))
+                         % (kind, path))
             return
         # Record it
         try:
@@ -380,9 +399,10 @@ class GenericCommitHandler(processor.CommitHandler):
             try:
                 self.record_new(path, ie)
             except:
-                print("failed to add path '%s' with entry '%s' in command %s" \
-                    % (path, ie, self.command.id))
-                print("parent's children are:\n%r\n" % (ie.parent_id.children,))
+                print("failed to add path '%s' with entry '%s' in command %s"
+                      % (path, ie, self.command.id))
+                print("parent's children are:\n%r\n" %
+                      (ie.parent_id.children,))
                 raise
         else:
             if old_ie.kind == 'directory':
@@ -408,12 +428,12 @@ class GenericCommitHandler(processor.CommitHandler):
         dir_basename, parent_id = self._ensure_directory(dirname, inv)
         dir_file_id = self.bzr_file_id(dirname)
         ie = inventory.entry_factory['directory'](dir_file_id,
-            dir_basename, parent_id)
+                                                  dir_basename, parent_id)
         ie.revision = self.revision_id
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that
-        self.data_for_commit[dir_file_id] = ''
+        self.data_for_commit[dir_file_id] = b''
 
         # It's possible that a file or symlink with that file-id
         # already exists. If it does, we need to delete it.
@@ -424,7 +444,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _get_directory_entry(self, inv, dirname):
         """Get the inventory entry for a directory.
-        
+
         Raises KeyError if dirname is not a directory in inv.
         """
         result = self.directory_entries.get(dirname)
@@ -477,7 +497,7 @@ class GenericCommitHandler(processor.CommitHandler):
             file_id = inv.path2id(src_path)
             if file_id is None:
                 self.warning("ignoring copy of %s to %s - source does not exist",
-                    src_path, dest_path)
+                             src_path, dest_path)
                 return
             ie = inv.get_entry(file_id)
         kind = ie.kind
@@ -485,14 +505,15 @@ class GenericCommitHandler(processor.CommitHandler):
             if newly_changed:
                 content = self.data_for_commit[file_id]
             else:
-                content = self.rev_store.get_file_text(self.parents[0], file_id)
+                content = self.rev_store.get_file_text(
+                    self.parents[0], file_id)
             self._modify_item(dest_path, kind, ie.executable, content, inv)
         elif kind == 'symlink':
             self._modify_item(dest_path, kind, False,
-                ie.symlink_target.encode("utf-8"), inv)
+                              ie.symlink_target.encode("utf-8"), inv)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
-                kind, dest_path)
+                         kind, dest_path)
 
     def _rename_item(self, old_path, new_path, inv):
         existing = self._new_file_ids.get(old_path) or \
@@ -520,7 +541,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # that means the loader then needs to know what the "new" text is.
         # We therefore must go back to the revision store to get it.
         lines = self.rev_store.get_file_lines(rev_id, file_id)
-        self.data_for_commit[file_id] = ''.join(lines)
+        self.data_for_commit[file_id] = b''.join(lines)
 
     def _delete_all_items(self, inv):
         if len(inv) == 0:
@@ -535,147 +556,19 @@ class GenericCommitHandler(processor.CommitHandler):
         for parent in self.parents[1:]:
             if fileid in self.get_inventory(parent):
                 return
-        self.warning("ignoring delete of %s as not in parent inventories", path)
-
-
-class InventoryCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves Inventory objects."""
-
-    def pre_process_files(self):
-        super(InventoryCommitHandler, self).pre_process_files()
-
-        # Seed the inventory from the previous one. Note that
-        # the parent class version of pre_process_files() has
-        # already set the right basis_inventory for this branch
-        # but we need to copy it in order to mutate it safely
-        # without corrupting the cached inventory value.
-        if len(self.parents) == 0:
-            self.inventory = self.basis_inventory
-        else:
-            self.inventory = copy_inventory(self.basis_inventory)
-        self.inventory_root = self.inventory.root
-
-        # directory-path -> inventory-entry for current inventory
-        self.directory_entries = dict(self.inventory.directories())
-
-        # Initialise the inventory revision info as required
-        if self.rev_store.expects_rich_root():
-            self.inventory.revision_id = self.revision_id
-        else:
-            # In this revision store, root entries have no knit or weave.
-            # When serializing out to disk and back in, root.revision is
-            # always the new revision_id.
-            self.inventory.root.revision = self.revision_id
-
-    def post_process_files(self):
-        """Save the revision."""
-        self.cache_mgr.inventories[self.revision_id] = self.inventory
-        self.rev_store.load(self.revision, self.inventory, None,
-            lambda file_id: self._get_data(file_id),
-            lambda file_id: self._get_per_file_parents(file_id),
-            lambda revision_ids: self._get_inventories(revision_ids))
-
-    def record_new(self, path, ie):
-        try:
-            # If this is a merge, the file was most likely added already.
-            # The per-file parent(s) must therefore be calculated and
-            # we can't assume there are none.
-            per_file_parents, ie.revision = \
-                self.rev_store.get_parents_and_revision_for_entry(ie)
-            self.per_file_parents_for_commit[ie.file_id] = per_file_parents
-            self.inventory.add(ie)
-        except errors.DuplicateFileId:
-            # Directory already exists as a file or symlink
-            del self.inventory[ie.file_id]
-            # Try again
-            self.inventory.add(ie)
-
-    def record_changed(self, path, ie, parent_id):
-        # HACK: no API for this (del+add does more than it needs to)
-        per_file_parents, ie.revision = \
-            self.rev_store.get_parents_and_revision_for_entry(ie)
-        self.per_file_parents_for_commit[ie.file_id] = per_file_parents
-        self.inventory._byid[ie.file_id] = ie
-        parent_ie = self.inventory._byid[parent_id]
-        parent_ie.children[ie.name] = ie
-
-    def record_delete(self, path, ie):
-        self.inventory.remove_recursive_id(ie.file_id)
-
-    def record_rename(self, old_path, new_path, file_id, ie):
-        # For a rename, the revision-id is always the new one so
-        # no need to change/set it here
-        ie.revision = self.revision_id
-        per_file_parents, _ = \
-            self.rev_store.get_parents_and_revision_for_entry(ie)
-        self.per_file_parents_for_commit[file_id] = per_file_parents
-        new_basename, new_parent_id = self._ensure_directory(new_path,
-            self.inventory)
-        self.inventory.rename(file_id, new_parent_id, new_basename)
-
-    def modify_handler(self, filecmd):
-        if filecmd.dataref is not None:
-            data = self.cache_mgr.fetch_blob(filecmd.dataref)
-        else:
-            data = filecmd.data
-        self.debug("modifying %s", filecmd.path)
-        (kind, is_executable) = mode_to_kind(filecmd.mode)
-        self._modify_item(self._decode_path(filecmd.path), kind,
-            is_executable, data, self.inventory)
-
-    def delete_handler(self, filecmd):
-        self.debug("deleting %s", filecmd.path)
-        self._delete_item(self._decode_path(filecmd.path), self.inventory)
-
-    def copy_handler(self, filecmd):
-        src_path = self._decode_path(filecmd.src_path)
-        dest_path = self._decode_path(filecmd.dest_path)
-        self.debug("copying %s to %s", src_path, dest_path)
-        self._copy_item(src_path, dest_path, self.inventory)
-
-    def rename_handler(self, filecmd):
-        old_path = self._decode_path(filecmd.old_path)
-        new_path = self._decode_path(filecmd.new_path)
-        self.debug("renaming %s to %s", old_path, new_path)
-        self._rename_item(old_path, new_path, self.inventory)
-
-    def deleteall_handler(self, filecmd):
-        self.debug("deleting all files (and also all directories)")
-        self._delete_all_items(self.inventory)
-
-
-class InventoryDeltaCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds Inventories by applying a delta."""
-
-    def pre_process_files(self):
-        super(InventoryDeltaCommitHandler, self).pre_process_files()
-        self._dirs_that_might_become_empty = set()
-
-        # A given file-id can only appear once so we accumulate
-        # the entries in a dict then build the actual delta at the end
-        self._delta_entries_by_fileid = {}
-        if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
-            if self.parents:
-                old_path = ''
-            else:
-                old_path = None
-            # Need to explicitly add the root entry for the first revision
-            # and for non rich-root inventories
-            root_id = inventory.ROOT_ID
-            root_ie = inventory.InventoryDirectory(root_id, u'', None)
-            root_ie.revision = self.revision_id
-            self._add_entry((old_path, '', root_id, root_ie))
+        self.warning(
+            "ignoring delete of %s as not in parent inventories", path)
 
     def post_process_files(self):
         """Save the revision."""
         delta = self._get_final_delta()
         inv = self.rev_store.load_using_delta(self.revision,
-            self.basis_inventory, delta, None,
-            self._get_data,
-            self._get_per_file_parents,
-            self._get_inventories)
+                                              self.basis_inventory, delta, None,
+                                              self._get_data,
+                                              self._get_per_file_parents,
+                                              self._get_inventories)
         self.cache_mgr.inventories[self.revision_id] = inv
-        #print "committed %s" % self.revision_id
+        # print "committed %s" % self.revision_id
 
     def _get_final_delta(self):
         """Generate the final delta.
@@ -730,7 +623,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             # used. However, it is cheaper than having to create a full copy of
             # the inventory for every commit.
             new_inv = self.basis_inventory.create_by_apply_delta(delta,
-                'not-a-valid-revision-id:')
+                                                                 b'not-a-valid-revision-id:')
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
@@ -738,7 +631,8 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             try:
                 new_inv.apply_delta(delta)
             except errors.InconsistentDelta:
-                self.mutter("INCONSISTENT DELTA IS:\n%s" % "\n".join([str(de) for de in delta]))
+                self.mutter("INCONSISTENT DELTA IS:\n%s" %
+                            "\n".join([str(de) for de in delta]))
                 raise
         return new_inv
 
@@ -772,7 +666,8 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             # This is a delete cancelling a previous add
             del self._delta_entries_by_fileid[file_id]
             parent_dir = osutils.dirname(existing[1])
-            self.mutter("cancelling add of %s with parent %s" % (existing[1], parent_dir))
+            self.mutter("cancelling add of %s with parent %s" %
+                        (existing[1], parent_dir))
             if parent_dir:
                 self._dirs_that_might_become_empty.add(parent_dir)
             return
@@ -833,21 +728,22 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
                 del self.directory_entries[path]
             except KeyError:
                 pass
-            for child_relpath, entry in \
-                self.basis_inventory.iter_entries_by_dir(from_dir=ie):
-                child_path = osutils.pathjoin(path, child_relpath)
-                self._add_entry((child_path, None, entry.file_id, None))
-                self._paths_deleted_this_commit.add(child_path)
-                if entry.kind == 'directory':
-                    try:
-                        del self.directory_entries[child_path]
-                    except KeyError:
-                        pass
+            if self.basis_inventory.get_entry(ie.file_id).kind == 'directory':
+                for child_relpath, entry in \
+                        self.basis_inventory.iter_entries_by_dir(from_dir=ie.file_id):
+                    child_path = osutils.pathjoin(path, child_relpath)
+                    self._add_entry((child_path, None, entry.file_id, None))
+                    self._paths_deleted_this_commit.add(child_path)
+                    if entry.kind == 'directory':
+                        try:
+                            del self.directory_entries[child_path]
+                        except KeyError:
+                            pass
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
         new_ie = old_ie.copy()
         new_basename, new_parent_id = self._ensure_directory(new_path,
-            self.basis_inventory)
+                                                             self.basis_inventory)
         new_ie.name = new_basename
         new_ie.parent_id = new_parent_id
         new_ie.revision = self.revision_id
@@ -876,7 +772,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         # Create the new InventoryEntry
         kind = old_ie.kind
         basename, parent_id = self._ensure_directory(new_path,
-            self.basis_inventory)
+                                                     self.basis_inventory)
         ie = inventory.make_entry(kind, basename, parent_id, file_id)
         ie.revision = self.revision_id
         if kind == 'file':
@@ -903,7 +799,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         self.debug("modifying %s", filecmd.path)
         decoded_path = self._decode_path(filecmd.path)
         self._modify_item(decoded_path, kind,
-            executable, data, self.basis_inventory)
+                          executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)

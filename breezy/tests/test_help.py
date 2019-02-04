@@ -39,8 +39,8 @@ class TestErrors(tests.TestCase):
     def test_no_help_topic(self):
         error = help.NoHelpTopic("topic")
         self.assertEqualDiff("No help could be found for 'topic'. "
-            "Please use 'brz help topics' to obtain a list of topics.",
-            str(error))
+                             "Please use 'brz help topics' to obtain a list of topics.",
+                             str(error))
 
 
 class TestCommandHelp(tests.TestCase):
@@ -58,10 +58,10 @@ Purpose: A sample command.
 Usage:   brz WithSeeAlso
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 See also: bar, foo
 ''',
@@ -76,20 +76,20 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 ''',
                            cmd_Demo())
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext,
-            'Purpose: A sample command.\n'
-            'Usage:   brz Demo')
+                              'Purpose: A sample command.\n'
+                              'Usage:   brz Demo')
         self.assertEndsWith(helptext,
-            '  -h, --help     Show help message.\n\n')
+                            '  -v, --verbose  Display more information.\n\n')
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
@@ -99,9 +99,10 @@ Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -q, --quiet    Only display errors and warnings.\n'
-            '  -v, --verbose  Display more information.\n'
             '  -h, --help     Show help message.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
             '\n'
             'See also: bar, foo, gam\n')
 
@@ -112,9 +113,7 @@ Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext,
-            '  -q, --quiet    Only display errors and warnings.\n'
             '  -v, --verbose  Display more information.\n'
-            '  -h, --help     Show help message.\n'
             '\n'
             'See also: gam\n')
 
@@ -152,10 +151,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Examples:
     Example 1:
@@ -171,17 +170,17 @@ Examples:
         brz Demo something
 
 ''',
-                                         helptext)
+                             helptext)
         helptext = cmd.get_help_text(plain=False)
         self.assertEqualDiff('''\
 :Purpose: A sample command.
 :Usage:   brz Demo
 
 :Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 :Examples:
     Example 1::
@@ -205,12 +204,12 @@ Examples:
         """Concise help text excludes the descriptive sections."""
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
- 
+
             Blah blah blah.
 
             :Examples:
                 Example 1::
- 
+
                     cmd arg1
             """
         cmd = cmd_Demo()
@@ -220,10 +219,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Description:
   Blah blah blah.
@@ -241,10 +240,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 See brz help Demo for more details and examples.
 
@@ -277,10 +276,10 @@ Purpose: A sample command.
 Usage:   brz Demo
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Description:
   Blah blah blah.
@@ -322,10 +321,10 @@ Usage:
 
 
 Options:
-  --usage        Show usage message and options.
-  -q, --quiet    Only display errors and warnings.
-  -v, --verbose  Display more information.
   -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
 
 Description:
   Blah blah blah.
@@ -367,10 +366,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz WithSeeAlso
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: bar, foo}}
 ''',
@@ -385,10 +384,10 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz Demo
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 ''',
                            cmd_Demo())
@@ -401,9 +400,10 @@ zz{{:Options:
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
             helptext, '''\
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: bar, foo, gam}}
 ''')
@@ -416,21 +416,20 @@ zz{{:See also: bar, foo, gam}}
         self.assertEndsWith(
             helptext, '''\
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 zz{{:See also: gam}}
 ''')
-
 
     def test_help_custom_section_ordering(self):
         """Custom descriptive sections should remain in the order given."""
         # The help formatter expect the class name to start with 'cmd_'
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
- 
+
             Blah blah blah.
 
             :Formats:
@@ -438,7 +437,7 @@ zz{{:See also: gam}}
 
             :Examples:
               Example 1::
- 
+
                 cmd arg1
 
             :Tips:
@@ -449,25 +448,25 @@ zz{{:Purpose: zz{{A sample command.}}
 }}zz{{:Usage:   brz Demo
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 Description:
   zz{{zz{{Blah blah blah.}}
- 
+
 }}:Formats:
   zz{{Interesting stuff about formats.}}
- 
+
 Examples:
   zz{{Example 1::}}
- 
+
     zz{{cmd arg1}}
- 
+
 Tips:
   zz{{Clever things to keep in mind.}}
- 
+
 ''',
                            cmd_Demo())
 
@@ -492,10 +491,10 @@ zz{{:Purpose: zz{{A sample command.}}
 
 }}
 zz{{:Options:
-  --usage        zz{{Show usage message and options.}}
-  -q, --quiet    zz{{Only display errors and warnings.}}
-  -v, --verbose  zz{{Display more information.}}
   -h, --help     zz{{Show help message.}}
+  -q, --quiet    zz{{Only display errors and warnings.}}
+  --usage        zz{{Show usage message and options.}}
+  -v, --verbose  zz{{Display more information.}}
 }}
 Description:
   zz{{zz{{Blah blah blah.}}
@@ -539,9 +538,9 @@ class TestRegisteredTopic(TestHelp):
         # Pick a known topic stored in an external file
         topic = help_topics.RegisteredTopic('authentication')
         self.assertStartsWith(topic.get_help_text(),
-            'Authentication Settings\n'
-            '=======================\n'
-            '\n')
+                              'Authentication Settings\n'
+                              '=======================\n'
+                              '\n')
 
     def test_get_help_topic(self):
         """The help topic for RegisteredTopic is its topic from construction."""
@@ -675,9 +674,11 @@ class TestHelpIndices(tests.TestCase):
     def test_search_calls_get_topic(self):
         """Searching should call get_topics in all indexes in order."""
         calls = []
+
         class RecordingIndex(object):
             def __init__(self, name):
                 self.prefix = name
+
             def get_topics(self, topic):
                 calls.append(('get_topics', self.prefix, topic))
                 return ['something']
@@ -705,6 +706,7 @@ class TestHelpIndices(tests.TestCase):
             def __init__(self, prefix, search_result):
                 self.prefix = prefix
                 self.result = search_result
+
             def get_topics(self, topic):
                 return self.result
         index = help.HelpIndices()
@@ -712,11 +714,11 @@ class TestHelpIndices(tests.TestCase):
         index_two = CannedIndex('2', ['b', 'c'])
         index.search_path = [index_one, index_two]
         self.assertEqual([(index_one, 'a'), (index_two, 'b'), (index_two, 'c')],
-            index.search(None))
+                         index.search(None))
 
     def test_search_checks_for_duplicate_prefixes(self):
         """Its an error when there are multiple indices with the same prefix."""
         indices = help.HelpIndices()
         indices.search_path = [help_topics.HelpTopicIndex(),
-            help_topics.HelpTopicIndex()]
+                               help_topics.HelpTopicIndex()]
         self.assertRaises(errors.DuplicateHelpPrefix, indices.search, None)

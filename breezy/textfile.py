@@ -30,7 +30,7 @@ def text_file(input):
     BinaryFile is raised if the file contains a NUL in the first 1024 bytes.
     """
     first_chunk = input.read(1024)
-    if '\x00' in first_chunk:
+    if b'\x00' in first_chunk:
         raise BinaryFile()
     return IterableFile(chain((first_chunk,), file_iterator(input)))
 
@@ -40,7 +40,7 @@ def check_text_lines(lines):
     Only the first 1024 characters are checked.
     """
     f = IterableFile(lines)
-    if '\x00' in f.read(1024):
+    if b'\x00' in f.read(1024):
         raise BinaryFile()
 
 

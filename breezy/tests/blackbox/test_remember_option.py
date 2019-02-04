@@ -75,8 +75,8 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
                        TestRememberMixin):
 
     working_dir = 'work'
-    command = ['send', '-o-',]
-    first_use_args = ['../parent', '../grand_parent',]
+    command = ['send', '-o-', ]
+    first_use_args = ['../parent', '../grand_parent', ]
     next_uses_args = ['../new_parent', '../new_grand_parent']
 
     def setUp(self):
@@ -99,7 +99,7 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
             $ brz commit -m '%(working_dir)s'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
-                        null_output_matches_anything=True)
+            null_output_matches_anything=True)
 
     def setup_next_uses(self):
         # Do a first send that remembers the locations
@@ -125,8 +125,8 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
                        TestRememberMixin):
 
     working_dir = 'work'
-    command = ['push',]
-    first_use_args = ['../target',]
+    command = ['push', ]
+    first_use_args = ['../target', ]
     next_uses_args = ['../new_target']
 
     def setUp(self):
@@ -139,7 +139,7 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
             $ brz commit -m 'initial commit'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
-                        null_output_matches_anything=True)
+            null_output_matches_anything=True)
 
     def setup_next_uses(self):
         # Do a first push that remembers the location
@@ -151,7 +151,7 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
             $ brz commit -m 'new content'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
-                        null_output_matches_anything=True)
+            null_output_matches_anything=True)
 
     def assertLocations(self, expected_locations):
         br, _ = branch.Branch.open_containing(self.working_dir)
@@ -168,8 +168,8 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
                        TestRememberMixin):
 
     working_dir = 'work'
-    command = ['pull',]
-    first_use_args = ['../parent',]
+    command = ['pull', ]
+    first_use_args = ['../parent', ]
     next_uses_args = ['../new_parent']
 
     def setUp(self):
@@ -183,7 +183,7 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
             $ cd ..
             $ brz init %(working_dir)s
             ''' % {'working_dir': self.working_dir},
-                        null_output_matches_anything=True)
+            null_output_matches_anything=True)
 
     def setup_next_uses(self):
         # Do a first push that remembers the location
@@ -196,7 +196,7 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
             $ brz commit -m 'new parent'
             $ cd ..
             ''' % {'working_dir': self.working_dir},
-                        null_output_matches_anything=True)
+            null_output_matches_anything=True)
 
     def assertLocations(self, expected_locations):
         br, _ = branch.Branch.open_containing(self.working_dir)

@@ -24,6 +24,7 @@ from ... import (
     revision as _mod_revision,
     )
 from ...controldir import ControlDir
+from ...sixish import text_type
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -67,15 +68,9 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
         processed.  The physical lock state won't be changed.
         """
         # XXX: write a test for LockContention
-        branch.repository.lock_write(token=repo_token)
-        try:
-            branch.lock_write(token=branch_token)
-            try:
-                return self.do_with_locked_branch(branch, *args)
-            finally:
-                branch.unlock()
-        finally:
-            branch.repository.unlock()
+        with branch.repository.lock_write(token=repo_token), \
+                branch.lock_write(token=branch_token):
+            return self.do_with_locked_branch(branch, *args)
 
 
 class SmartServerBranchBreakLock(SmartServerBranchRequest):
@@ -84,7 +79,7 @@ class SmartServerBranchBreakLock(SmartServerBranchRequest):
         """Break a branch lock.
         """
         branch.break_lock()
-        return SuccessfulSmartServerResponse(('ok', ), )
+        return SuccessfulSmartServerResponse((b'ok', ), )
 
 
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
@@ -97,8 +92,8 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         try:
             content = branch.control_transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
-            content = ''
-        return SuccessfulSmartServerResponse( ('ok', ), content)
+            content = b''
+        return SuccessfulSmartServerResponse((b'ok', ), content)
 
 
 class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
@@ -119,17 +114,11 @@ class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
         return None
 
     def do_body(self, body_bytes):
-        self._branch.repository.lock_write(token=self._repo_token)
-        try:
-            self._branch.lock_write(token=self._branch_token)
-            try:
-                self._branch.control_transport.put_bytes(
-                    'branch.conf', body_bytes)
-            finally:
-                self._branch.unlock()
-        finally:
-            self._branch.repository.unlock()
-        return SuccessfulSmartServerResponse(('ok', ))
+        with self._branch.repository.lock_write(token=self._repo_token), \
+                self._branch.lock_write(token=self._branch_token):
+            self._branch.control_transport.put_bytes(
+                'branch.conf', body_bytes)
+        return SuccessfulSmartServerResponse((b'ok', ))
 
 
 class SmartServerBranchGetParent(SmartServerBranchRequest):
@@ -137,7 +126,7 @@ class SmartServerBranchGetParent(SmartServerBranchRequest):
     def do_with_branch(self, branch):
         """Return the parent of branch."""
         parent = branch._get_parent_location() or ''
-        return SuccessfulSmartServerResponse((parent,))
+        return SuccessfulSmartServerResponse((parent.encode('utf-8'),))
 
 
 class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
@@ -154,7 +143,7 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
         SmartServerLockedBranchRequest.__init__(
             self, backing_transport, root_client_path, jail_root)
         self.locked = False
-        
+
     def do_with_locked_branch(self, branch):
         """Call _set_tags_bytes for a branch.
 
@@ -188,7 +177,7 @@ class SmartServerBranchHeadsToFetch(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
         """Return the heads-to-fetch for a Branch as two bencoded lists.
-        
+
         See Branch.heads_to_fetch.
 
         New in 2.4.
@@ -202,7 +191,7 @@ class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
         stacked_on_url = branch.get_stacked_on_url()
-        return SuccessfulSmartServerResponse(('ok', stacked_on_url))
+        return SuccessfulSmartServerResponse((b'ok', stacked_on_url.encode('ascii')))
 
 
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
@@ -219,7 +208,7 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
             history = list(graph.iter_lefthand_ancestry(
                 branch.last_revision(), stop_revisions))
         return SuccessfulSmartServerResponse(
-            ('ok', ), ('\x00'.join(reversed(history))))
+            (b'ok', ), (b'\x00'.join(reversed(history))))
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
@@ -230,7 +219,8 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         The revno is encoded in decimal, the revision_id is encoded as utf8.
         """
         revno, last_revision = branch.last_revision_info()
-        return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
+        return SuccessfulSmartServerResponse(
+            (b'ok', str(revno).encode('ascii'), last_revision))
 
 
 class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
@@ -245,9 +235,9 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
         try:
             dotted_revno = branch.revision_id_to_dotted_revno(revid)
         except errors.NoSuchRevision:
-            return FailedSmartServerResponse(('NoSuchRevision', revid))
+            return FailedSmartServerResponse((b'NoSuchRevision', revid))
         return SuccessfulSmartServerResponse(
-            ('ok', ) + tuple(map(str, dotted_revno)))
+            (b'ok', ) + tuple([b'%d' % x for x in dotted_revno]))
 
 
 class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
@@ -260,9 +250,9 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             return self.do_tip_change_with_locked_branch(branch, *args)
         except errors.TipChangeRejected as e:
             msg = e.msg
-            if isinstance(msg, unicode):
+            if isinstance(msg, text_type):
                 msg = msg.encode('utf-8')
-            return FailedSmartServerResponse(('TipChangeRejected', msg))
+            return FailedSmartServerResponse((b'TipChangeRejected', msg))
 
 
 class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
@@ -271,13 +261,15 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
     def do_with_locked_branch(self, branch, value, name, section):
         if not section:
             section = None
-        branch._get_config().set_option(value.decode('utf8'), name, section)
+        branch._get_config().set_option(
+            value.decode('utf-8'), name.decode('utf-8'),
+            section.decode('utf-8') if section is not None else None)
         return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest):
     """Set an option in the branch configuration.
-    
+
     New in 2.2.
     """
 
@@ -288,27 +280,29 @@ class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest
             value_dict[key.decode('utf8')] = value.decode('utf8')
         if not section:
             section = None
-        branch._get_config().set_option(value_dict, name, section)
+        else:
+            section = section.decode('utf-8')
+        branch._get_config().set_option(value_dict, name.decode('utf-8'), section)
         return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
-        if new_last_revision_id == 'null:':
+        if new_last_revision_id == b'null:':
             branch.set_last_revision_info(0, new_last_revision_id)
         else:
             if not branch.repository.has_revision(new_last_revision_id):
                 return FailedSmartServerResponse(
-                    ('NoSuchRevision', new_last_revision_id))
+                    (b'NoSuchRevision', new_last_revision_id))
             branch.generate_revision_history(new_last_revision_id, None, None)
-        return SuccessfulSmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse((b'ok',))
 
 
 class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id,
-            allow_divergence, allow_overwrite_descendant):
+                                         allow_divergence, allow_overwrite_descendant):
         """Set the last revision of the branch.
 
         New in 1.6.
@@ -339,18 +333,18 @@ class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
                 relation = branch._revision_relations(
                     last_rev, new_last_revision_id, graph)
                 if relation == 'diverged' and not allow_divergence:
-                    return FailedSmartServerResponse(('Diverged',))
+                    return FailedSmartServerResponse((b'Diverged',))
                 if relation == 'a_descends_from_b' and do_not_overwrite_descendant:
                     return SuccessfulSmartServerResponse(
-                        ('ok', last_revno, last_rev))
+                        (b'ok', last_revno, last_rev))
             new_revno = graph.find_distance_to_null(
                 new_last_revision_id, [(last_rev, last_revno)])
             branch.set_last_revision_info(new_revno, new_last_revision_id)
         except errors.GhostRevisionsHaveNoRevno:
             return FailedSmartServerResponse(
-                ('NoSuchRevision', new_last_revision_id))
+                (b'NoSuchRevision', new_last_revision_id))
         return SuccessfulSmartServerResponse(
-            ('ok', new_revno, new_last_revision_id))
+            (b'ok', new_revno, new_last_revision_id))
 
 
 class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
@@ -361,32 +355,32 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
     """
 
     def do_tip_change_with_locked_branch(self, branch, new_revno,
-            new_last_revision_id):
+                                         new_last_revision_id):
         try:
             branch.set_last_revision_info(int(new_revno), new_last_revision_id)
         except errors.NoSuchRevision:
             return FailedSmartServerResponse(
-                ('NoSuchRevision', new_last_revision_id))
-        return SuccessfulSmartServerResponse(('ok',))
+                (b'NoSuchRevision', new_last_revision_id))
+        return SuccessfulSmartServerResponse((b'ok',))
 
 
 class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
     """Set the parent location for a branch.
-    
+
     Takes a location to set, which must be utf8 encoded.
     """
 
     def do_with_locked_branch(self, branch, location):
-        branch._set_parent_location(location)
+        branch._set_parent_location(location.decode('utf-8'))
         return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
 
-    def do_with_branch(self, branch, branch_token='', repo_token=''):
-        if branch_token == '':
+    def do_with_branch(self, branch, branch_token=b'', repo_token=b''):
+        if branch_token == b'':
             branch_token = None
-        if repo_token == '':
+        if repo_token == b'':
             repo_token = None
         try:
             repo_token = branch.repository.lock_write(
@@ -398,38 +392,36 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
                 # this leaves the repository with 1 lock
                 branch.repository.unlock()
         except errors.LockContention:
-            return FailedSmartServerResponse(('LockContention',))
+            return FailedSmartServerResponse((b'LockContention',))
         except errors.TokenMismatch:
-            return FailedSmartServerResponse(('TokenMismatch',))
+            return FailedSmartServerResponse((b'TokenMismatch',))
         except errors.UnlockableTransport:
-            return FailedSmartServerResponse(('UnlockableTransport',))
+            return FailedSmartServerResponse((b'UnlockableTransport',))
         except errors.LockFailed as e:
-            return FailedSmartServerResponse(('LockFailed', str(e.lock), str(e.why)))
+            return FailedSmartServerResponse((b'LockFailed',
+                                              str(e.lock).encode('utf-8'), str(e.why).encode('utf-8')))
         if repo_token is None:
-            repo_token = ''
+            repo_token = b''
         else:
             branch.repository.leave_lock_in_place()
         branch.leave_lock_in_place()
         branch.unlock()
-        return SuccessfulSmartServerResponse(('ok', branch_token, repo_token))
+        return SuccessfulSmartServerResponse((b'ok', branch_token, repo_token))
 
 
 class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
 
     def do_with_branch(self, branch, branch_token, repo_token):
         try:
-            branch.repository.lock_write(token=repo_token)
-            try:
+            with branch.repository.lock_write(token=repo_token):
                 branch.lock_write(token=branch_token)
-            finally:
-                branch.repository.unlock()
         except errors.TokenMismatch:
-            return FailedSmartServerResponse(('TokenMismatch',))
+            return FailedSmartServerResponse((b'TokenMismatch',))
         if repo_token:
             branch.repository.dont_leave_lock_in_place()
         branch.dont_leave_lock_in_place()
         branch.unlock()
-        return SuccessfulSmartServerResponse(('ok',))
+        return SuccessfulSmartServerResponse((b'ok',))
 
 
 class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
@@ -440,6 +432,6 @@ class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
         if branch.get_physical_lock_status():
-            return SuccessfulSmartServerResponse(('yes',))
+            return SuccessfulSmartServerResponse((b'yes',))
         else:
-            return SuccessfulSmartServerResponse(('no',))
+            return SuccessfulSmartServerResponse((b'no',))

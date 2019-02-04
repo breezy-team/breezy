@@ -53,8 +53,8 @@ class TestFilenameSubstitution(tests.TestCaseInTempDir):
 
     def test_spaces_and_quotes(self):
         cmd_list = ['kdiff3', '{base}', '{this}', '{other}', '-o', '{result}']
-        args, tmpfile = mergetools._subst_filename(cmd_list,
-            'file with "space and quotes".txt')
+        args, tmpfile = mergetools._subst_filename(
+            cmd_list, 'file with "space and quotes".txt')
         self.assertEqual(
             ['kdiff3',
              'file with "space and quotes".txt.BASE',
@@ -77,9 +77,6 @@ class TestCheckAvailability(tests.TestCaseInTempDir):
 
     def test_full_path(self):
         self.assertTrue(mergetools.check_availability(sys.executable))
-
-    def test_exe_on_path(self):
-        self.assertTrue(mergetools.check_availability('python'))
 
     def test_nonexistent(self):
         self.assertFalse(mergetools.check_availability('DOES NOT EXIST'))
@@ -108,6 +105,7 @@ class TestInvoke(tests.TestCaseInTempDir):
 
     def test_invoke_expands_exe_path(self):
         self.overrideEnv('PATH', os.path.dirname(sys.executable))
+
         def dummy_invoker(exe, args, cleanup):
             self._exe = exe
             self._args = args
@@ -146,9 +144,8 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._exe = exe
             self._args = args
             self.assertPathExists(args[0])
-            f = open(args[0], 'wt')
-            f.write('temp stuff')
-            f.close()
+            with open(args[0], 'wt') as f:
+                f.write('temp stuff')
             cleanup(0)
             return 0
         retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
@@ -156,7 +153,7 @@ class TestInvoke(tests.TestCaseInTempDir):
         self.assertEqual(0, retcode)
         self.assertEqual('tool', self._exe)
         self.assertPathDoesNotExist(self._args[0])
-        self.assertFileEqual('temp stuff', 'test.txt')
+        self.assertFileEqual(b'temp stuff', 'test.txt')
 
     def test_failure_tempfile(self):
         def dummy_invoker(exe, args, cleanup):
@@ -164,14 +161,13 @@ class TestInvoke(tests.TestCaseInTempDir):
             self._args = args
             self.assertPathExists(args[0])
             self.log(repr(args))
-            f = open(args[0], 'wt')
-            self.log(repr(f))
-            f.write('temp stuff')
-            f.close()
+            with open(args[0], 'wt') as f:
+                self.log(repr(f))
+                f.write('temp stuff')
             cleanup(1)
             return 1
         retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
                                     dummy_invoker)
         self.assertEqual(1, retcode)
         self.assertEqual('tool', self._exe)
-        self.assertFileEqual('stuff', 'test.txt')
+        self.assertFileEqual(b'stuff', 'test.txt')

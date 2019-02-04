@@ -25,13 +25,13 @@
 
 from __future__ import absolute_import
 
-import sys
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
 from . import osutils
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
+
 
 class UTextWrapper(textwrap.TextWrapper):
     """
@@ -60,7 +60,7 @@ class UTextWrapper(textwrap.TextWrapper):
     def __init__(self, width=None, **kwargs):
         if width is None:
             width = (osutils.terminal_width() or
-                        osutils.default_terminal_width) - 1
+                     osutils.default_terminal_width) - 1
 
         ambi_width = kwargs.pop('ambiguous_width', 1)
         if ambi_width == 1:
@@ -70,6 +70,7 @@ class UTextWrapper(textwrap.TextWrapper):
         else:
             raise ValueError("ambiguous_width should be 1 or 2")
 
+        self.max_lines = kwargs.get('max_lines', None)
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _unicode_char_width(self, uc):
@@ -117,11 +118,11 @@ class UTextWrapper(textwrap.TextWrapper):
         to use unicode always.
         """
         i = 0
-        L = len(chunks)-1
+        L = len(chunks) - 1
         patsearch = self.sentence_end_re.search
         while i < L:
-            if chunks[i+1] == u" " and patsearch(chunks[i]):
-                chunks[i+1] = u"  "
+            if chunks[i + 1] == u" " and patsearch(chunks[i]):
+                chunks[i + 1] = u"  "
                 i += 2
             else:
                 i += 1
@@ -160,6 +161,13 @@ class UTextWrapper(textwrap.TextWrapper):
         lines = []
         if self.width <= 0:
             raise ValueError("invalid width %r (must be > 0)" % self.width)
+        if self.max_lines is not None:
+            if self.max_lines > 1:
+                indent = self.subsequent_indent
+            else:
+                indent = self.initial_indent
+            if self._width(indent) + self._width(self.placeholder.lstrip()) > self.width:
+                raise ValueError("placeholder too large for max width")
 
         # Arrange in reverse order so items can be efficiently popped
         # from a stack of chucks.
@@ -203,6 +211,7 @@ class UTextWrapper(textwrap.TextWrapper):
             # fit on *any* line (not just this one).
             if chunks and self._width(chunks[-1]) > width:
                 self._handle_long_word(chunks, cur_line, cur_len, width)
+                cur_len = sum(map(len, cur_line))
 
             # If the last chunk on this line is all whitespace, drop it.
             if self.drop_whitespace and cur_line and not cur_line[-1].strip():
@@ -211,12 +220,38 @@ class UTextWrapper(textwrap.TextWrapper):
             # Convert current line back to a string and store it in list
             # of all lines (return value).
             if cur_line:
-                lines.append(indent + u''.join(cur_line))
+                if (self.max_lines is None or
+                    len(lines) + 1 < self.max_lines or
+                    (not chunks or
+                        self.drop_whitespace and
+                     len(chunks) == 1 and
+                     not chunks[0].strip()) and cur_len <= width):
+                    # Convert current line back to a string and store it in
+                    # list of all lines (return value).
+                    lines.append(indent + u''.join(cur_line))
+                else:
+                    while cur_line:
+                        if (cur_line[-1].strip() and
+                                cur_len + self._width(self.placeholder) <= width):
+                            cur_line.append(self.placeholder)
+                            lines.append(indent + ''.join(cur_line))
+                            break
+                        cur_len -= self._width(cur_line[-1])
+                        del cur_line[-1]
+                    else:
+                        if lines:
+                            prev_line = lines[-1].rstrip()
+                            if (self._width(prev_line) + self._width(self.placeholder) <=
+                                    self.width):
+                                lines[-1] = prev_line + self.placeholder
+                                break
+                        lines.append(indent + self.placeholder.lstrip())
+                    break
 
         return lines
 
     def _split(self, text):
-        chunks = textwrap.TextWrapper._split(self, unicode(text))
+        chunks = textwrap.TextWrapper._split(self, osutils.safe_unicode(text))
         cjk_split_chunks = []
         for chunk in chunks:
             prev_pos = 0
@@ -225,16 +260,17 @@ class UTextWrapper(textwrap.TextWrapper):
                     if prev_pos < pos:
                         cjk_split_chunks.append(chunk[prev_pos:pos])
                     cjk_split_chunks.append(char)
-                    prev_pos = pos+1
+                    prev_pos = pos + 1
             if prev_pos < len(chunk):
                 cjk_split_chunks.append(chunk[prev_pos:])
         return cjk_split_chunks
 
     def wrap(self, text):
         # ensure text is unicode
-        return textwrap.TextWrapper.wrap(self, unicode(text))
+        return textwrap.TextWrapper.wrap(self, osutils.safe_unicode(text))
 
 # -- Convenience interface ---------------------------------------------
+
 
 def wrap(text, width=None, **kwargs):
     """Wrap a single paragraph of text, returning a list of wrapped lines.
@@ -248,6 +284,7 @@ def wrap(text, width=None, **kwargs):
     """
     return UTextWrapper(width=width, **kwargs).wrap(text)
 
+
 def fill(text, width=None, **kwargs):
     """Fill a single paragraph of text, returning a new string.
 
@@ -258,4 +295,3 @@ def fill(text, width=None, **kwargs):
     available keyword args to customize wrapping behaviour.
     """
     return UTextWrapper(width=width, **kwargs).fill(text)
-

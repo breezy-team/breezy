@@ -45,7 +45,7 @@ class TestPull(tests.TestCaseWithTransport):
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (osutils.pathjoin(path, 'hello'),   b'foo'),
+            (osutils.pathjoin(path, 'hello'), b'foo'),
             (osutils.pathjoin(path, 'goodbye'), b'baz')])
         tree.add('hello')
         tree.commit(message='setup')
@@ -120,7 +120,7 @@ class TestPull(tests.TestCaseWithTransport):
         """Pull some changes from one branch to another."""
         a_tree = self.example_branch('a')
         self.build_tree_contents([
-            ('a/hello2',   b'foo'),
+            ('a/hello2', b'foo'),
             ('a/goodbye2', b'baz')])
         a_tree.add('hello2')
         a_tree.commit(message="setup")
@@ -128,7 +128,7 @@ class TestPull(tests.TestCaseWithTransport):
         a_tree.commit(message="setup")
 
         b_tree = a_tree.controldir.sprout(
-                'b', revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
+            'b', revision_id=a_tree.branch.get_rev_id(1)).open_workingtree()
         self.run_bzr('pull -r 2', working_dir='b')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
@@ -145,7 +145,8 @@ class TestPull(tests.TestCaseWithTransport):
         """
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
+            builder)
         source.get_config_stack().set('branch.fetch_tags', True)
         target_bzrdir = source.controldir.sprout('target')
         source.tags.set_tag('tag-a', rev2)
@@ -244,7 +245,7 @@ class TestPull(tests.TestCaseWithTransport):
         # test pull for failure without parent set
         out = self.run_bzr('pull', retcode=3, working_dir='branch_b')
         self.assertEqual(out,
-                ('', 'brz: ERROR: No pull location known or specified.\n'))
+                         ('', 'brz: ERROR: No pull location known or specified.\n'))
         # test implicit --remember when no parent set, this pull conflicts
         self.build_tree(['branch_b/d'])
         tree_b.add('d')
@@ -252,9 +253,9 @@ class TestPull(tests.TestCaseWithTransport):
         out = self.run_bzr('pull ../branch_a', retcode=3,
                            working_dir='branch_b')
         self.assertEqual(out,
-                ('', 'brz: ERROR: These branches have diverged.'
-                    ' Use the missing command to see how.\n'
-                    'Use the merge command to reconcile them.\n'))
+                         ('', 'brz: ERROR: These branches have diverged.'
+                          ' Use the missing command to see how.\n'
+                          'Use the merge command to reconcile them.\n'))
         tree_b = tree_b.controldir.open_workingtree()
         branch_b = tree_b.branch
         self.assertEqual(parent, branch_b.get_parent())
@@ -273,11 +274,11 @@ class TestPull(tests.TestCaseWithTransport):
                          branch_b.get_parent())
 
     def test_pull_bundle(self):
-        from breezy.testament import Testament
+        from breezy.bzr.testament import Testament
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
         with open('branch_a/a', 'wb') as f:
-            f.write('hello')
+            f.write(b'hello')
         tree_a.add('a')
         tree_a.commit('message')
 
@@ -285,7 +286,7 @@ class TestPull(tests.TestCaseWithTransport):
 
         # Make a change to 'a' that 'b' can pull
         with open('branch_a/a', 'wb') as f:
-            f.write('hey there')
+            f.write(b'hey there')
         tree_a.commit('message')
 
         # Create the bundle for 'b' to pull
@@ -295,7 +296,7 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertEqual(out,
                          'Now on revision 2.\n')
         self.assertEqual(err,
-                ' M  a\nAll changes applied successfully.\n')
+                         ' M  a\nAll changes applied successfully.\n')
 
         self.assertEqualDiff(tree_a.branch.last_revision(),
                              tree_b.branch.last_revision())
@@ -348,6 +349,7 @@ class TestPull(tests.TestCaseWithTransport):
         source.commit('commit 1')
         target = source.controldir.sprout('target').open_workingtree()
         source_last = source.commit('commit 2')
+
         class FooService(object):
             """A directory service that always returns source"""
 
@@ -405,7 +407,7 @@ class TestPull(tests.TestCaseWithTransport):
         empty = self.make_branch_and_tree('empty', format='1.9')
         self.reset_smart_call_log()
         self.run_bzr(['pull', '-r', '1', self.get_url('stacked')],
-            working_dir='empty')
+                     working_dir='empty')
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -425,7 +427,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            "(?m)Doing on-the-fly conversion")
+                              "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_warning_no_IDS(self):
         """You get a warning for probably slow cross-format pulls.
@@ -441,7 +443,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            "(?m)Doing on-the-fly conversion")
+                              "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_from_network(self):
         self.setup_smart_server_with_call_log()
@@ -450,19 +452,20 @@ class TestPull(tests.TestCaseWithTransport):
         self.assertIsInstance(from_tree.branch, remote.RemoteBranch)
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to',
-            from_tree.branch.controldir.root_transport.base])
+                                 from_tree.branch.controldir.root_transport.base])
         self.assertContainsRe(err,
-            "(?m)Doing on-the-fly conversion")
+                              "(?m)Doing on-the-fly conversion")
 
     def test_pull_to_experimental_format_warning(self):
         """You get a warning for pulling into experimental formats.
         """
-        from_tree = self.make_branch_and_tree('from', format='development-subtree')
+        from_tree = self.make_branch_and_tree(
+            'from', format='development-subtree')
         to_tree = self.make_branch_and_tree('to', format='development-subtree')
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            "(?m)Fetching into experimental format")
+                              "(?m)Fetching into experimental format")
 
     def test_pull_cross_to_experimental_format_warning(self):
         """You get a warning for pulling into experimental formats.
@@ -472,7 +475,7 @@ class TestPull(tests.TestCaseWithTransport):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            "(?m)Fetching into experimental format")
+                              "(?m)Fetching into experimental format")
 
     def test_pull_show_base(self):
         """brz pull supports --show-base
@@ -490,7 +493,7 @@ class TestPull(tests.TestCaseWithTransport):
         with open(osutils.pathjoin('b', 'hello'), 'wt') as f:
             f.write('fie')
 
-        out, err=self.run_bzr(['pull', '-d', 'b', 'a', '--show-base'])
+        out, err = self.run_bzr(['pull', '-d', 'b', 'a', '--show-base'])
 
         # check for message here
         self.assertEqual(
@@ -517,50 +520,50 @@ class TestPull(tests.TestCaseWithTransport):
         """pulling tags with conflicts will change the exit code"""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
         self.assertEqual(out,
-            ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
+                         ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
 
     def test_pull_tag_notification(self):
         """pulling tags with conflicts will change the exit code"""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
         out = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertEqual(out,
-            ('1 tag(s) updated.\n', ''))
+                         ('1 tag(s) updated.\n', ''))
 
     def test_overwrite_tags(self):
         """--overwrite-tags only overwrites tags, not revisions."""
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        to_tree.branch.tags.set_tag("mytag", b"anotherrevid")
         revid1 = to_tree.commit('my commit')
         out = self.run_bzr(['pull', '-d', 'to', 'from'], retcode=1)
         self.assertEqual(out,
-            ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
+                         ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))
         out = self.run_bzr(['pull', '-d', 'to', '--overwrite-tags', 'from'])
         self.assertEqual(out, ('1 tag(s) updated.\n', ''))
 
         self.assertEqual(to_tree.branch.tags.lookup_tag('mytag'),
-                          'somerevid')
+                         b'somerevid')
         self.assertEqual(to_tree.branch.last_revision(), revid1)
 
     def test_pull_tag_overwrite(self):
         """pulling tags with --overwrite only reports changed tags."""
         # create a branch, see that --show-base fails
         from_tree = self.make_branch_and_tree('from')
-        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        from_tree.branch.tags.set_tag("mytag", b"somerevid")
         to_tree = self.make_branch_and_tree('to')
-        to_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree.branch.tags.set_tag("mytag", b"somerevid")
         out = self.run_bzr(['pull', '--overwrite', '-d', 'to', 'from'])
         self.assertEqual(out,
-            ('No revisions or tags to pull.\n', ''))
+                         ('No revisions or tags to pull.\n', ''))
 
 
 class TestPullOutput(script.TestCaseWithTransportAndScript):

@@ -24,6 +24,7 @@ from breezy import (
     errors,
     tests,
     )
+from breezy.sixish import PY3
 
 
 class TestWhoami(tests.TestCaseWithTransport):
@@ -33,6 +34,8 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
+        if PY3 and isinstance(expected, bytes):
+            expected = expected.decode(kwargs.get('encoding', 'ascii'))
         self.assertEqual(expected, lines[0].rstrip())
 
     def test_whoami_no_args_no_conf(self):
@@ -72,7 +75,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         """verify that an identity can be in utf-8."""
         self.run_bzr(['whoami', u'Branch Identity \u20ac <branch@identi.ty>'],
                      encoding='utf-8')
-        self.assertWhoAmI('Branch Identity \xe2\x82\xac <branch@identi.ty>',
+        self.assertWhoAmI(b'Branch Identity \xe2\x82\xac <branch@identi.ty>',
                           encoding='utf-8')
         self.assertWhoAmI('branch@identi.ty', '--email')
 
@@ -94,8 +97,8 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.make_branch_and_tree('.')
         display = self.run_bzr(['whoami', 'Branch Identity'])[1]
         self.assertEqual('"Branch Identity" does not seem to contain an '
-                          'email address.  This is allowed, but not '
-                          'recommended.\n', display)
+                         'email address.  This is allowed, but not '
+                         'recommended.\n', display)
 
     def test_whoami_not_set(self):
         """Ensure whoami error if username is not set and not inferred.
@@ -119,7 +122,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         wt = wt.controldir.open_workingtree()
         c = wt.branch.get_config_stack()
         self.assertEqual('Changed Identity <changed@identi.ty>',
-                          c.get('email'))
+                         c.get('email'))
 
     def test_whoami_remote_directory(self):
         """Test --directory option with a remote directory."""
@@ -135,7 +138,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         # config)
         c = branch.Branch.open(url).get_config_stack()
         self.assertEqual('Changed Identity <changed@identi.ty>',
-                          c.get('email'))
+                         c.get('email'))
         # Ensuring that the value does not come from the breezy.conf file
         # itself requires some isolation setup
         self.overrideEnv('BRZ_EMAIL', None)

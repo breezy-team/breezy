@@ -25,7 +25,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         builder = self.make_branch_builder('branch')
         revid = builder.build_snapshot(None, [
             ('add', ('', None, 'directory', None)),
-            ('add', ('file', None, 'file', 'initial content\n')),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         b = builder.get_branch()
         tree = b.create_checkout('tree', lightweight=True)
@@ -36,7 +36,7 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
     def test_annotate_same_as_parent(self):
         tree, revid = self.make_single_rev_tree()
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid, 'initial content\n')],
+        self.assertEqual([(revid, b'initial content\n')],
                          annotations)
 
     def test_annotate_mod_from_parent(self):
@@ -44,9 +44,9 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid, 'initial content\n'),
-                          (b'current:', 'new content\n'),
-                         ], annotations)
+        self.assertEqual([(revid, b'initial content\n'),
+                          (b'current:', b'new content\n'),
+                          ], annotations)
 
     def test_annotate_merge_parents(self):
         builder = self.make_branch_builder('branch')
@@ -71,11 +71,11 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
                                    b'initial content\ncontent in 2\n'
                                    b'content in 3\nnew content\n')])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid1, 'initial content\n'),
-                          (revid2, 'content in 2\n'),
-                          (revid3, 'content in 3\n'),
-                          (b'current:', 'new content\n'),
-                         ], annotations)
+        self.assertEqual([(revid1, b'initial content\n'),
+                          (revid2, b'content in 2\n'),
+                          (revid3, b'content in 3\n'),
+                          (b'current:', b'new content\n'),
+                          ], annotations)
 
     def test_annotate_merge_parent_no_file(self):
         builder = self.make_branch_builder('branch')
@@ -96,9 +96,9 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid2, 'initial content\n'),
-                          (b'current:', 'new content\n'),
-                         ], annotations)
+        self.assertEqual([(revid2, b'initial content\n'),
+                          (b'current:', b'new content\n'),
+                          ], annotations)
 
     def test_annotate_merge_parent_was_directory(self):
         builder = self.make_branch_builder('branch')
@@ -121,9 +121,9 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    b'initial content\nnew content\n')])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid2, 'initial content\n'),
-                          (b'current:', 'new content\n'),
-                         ], annotations)
+        self.assertEqual([(revid2, b'initial content\n'),
+                          (b'current:', b'new content\n'),
+                          ], annotations)
 
     def test_annotate_same_as_merge_parent(self):
         builder = self.make_branch_builder('branch')
@@ -146,25 +146,25 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/file',
                                    b'initial content\ncontent in 3\n')])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid1, 'initial content\n'),
-                          (revid3, 'content in 3\n'),
-                         ], annotations)
+        self.assertEqual([(revid1, b'initial content\n'),
+                          (revid3, b'content in 3\n'),
+                          ], annotations)
 
     def test_annotate_same_as_merge_parent_supersedes(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         revid1 = builder.build_snapshot(None, [
             ('add', ('', None, 'directory', None)),
-            ('add', ('file', None, 'file', 'initial content\n')),
+            ('add', ('file', None, 'file', b'initial content\n')),
             ])
         revid2 = builder.build_snapshot([revid1], [
-            ('modify', ('file', 'initial content\nnew content\n')),
+            ('modify', ('file', b'initial content\nnew content\n')),
             ])
         revid3 = builder.build_snapshot([revid2], [
-            ('modify', ('file', 'initial content\ncontent in 3\n')),
+            ('modify', ('file', b'initial content\ncontent in 3\n')),
             ])
         revid4 = builder.build_snapshot([revid3], [
-            ('modify', ('file', 'initial content\nnew content\n')),
+            ('modify', ('file', b'initial content\nnew content\n')),
             ])
         # In this case, the content locally is the same as content in basis
         # tree, but the merge revision states that *it* should win
@@ -175,7 +175,6 @@ class TestAnnotateIter(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         tree.set_parent_ids([revid2, revid4])
         annotations = tree.annotate_iter('file')
-        self.assertEqual([(revid1, 'initial content\n'),
-                          (revid4, 'new content\n'),
-                         ], annotations)
-
+        self.assertEqual([(revid1, b'initial content\n'),
+                          (revid4, b'new content\n'),
+                          ], annotations)

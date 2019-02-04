@@ -16,6 +16,8 @@
 
 """Tests for bzrdir implementations - push."""
 
+from ...errors import LossyPushToSameVCS
+
 from breezy.tests.per_controldir import (
     TestCaseWithControlDir,
     )
@@ -37,7 +39,13 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(tree.branch, result.source_branch)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
         self.assertEqual(dir.open_branch().base,
-            tree.branch.get_push_location())
+                         tree.branch.get_push_location())
+
+    def test_push_new_branch_lossy(self):
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
+        self.assertRaises(LossyPushToSameVCS, dir.push_branch,
+                          tree.branch, lossy=True)
 
     def test_push_new_empty(self):
         tree = self.make_branch_and_tree('tree')
@@ -45,7 +53,7 @@ class TestPush(TestCaseWithControlDir):
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.branch.base, result.source_branch.base)
         self.assertEqual(dir.open_branch().base,
-            result.target_branch.base)
+                         result.target_branch.base)
 
     def test_push_incremental(self):
         tree, rev1 = self.create_simple_tree()
@@ -56,7 +64,7 @@ class TestPush(TestCaseWithControlDir):
         rev_2 = tree.commit('two')
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.last_revision(),
-            result.branch_push_result.new_revid)
+                         result.branch_push_result.new_revid)
         self.assertEqual(2, result.branch_push_result.new_revno)
         self.assertEqual(tree.branch.base, result.source_branch.base)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)

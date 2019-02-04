@@ -36,7 +36,7 @@ class TransportTraceDecorator(decorator.TransportDecorator):
     operation please add a test to the tests of this transport, for the logging
     of the operation you want logged.
 
-    See also TransportLogDecorator, that records a machine-readable log in 
+    See also TransportLogDecorator, that records a machine-readable log in
     memory for eg testing.
     """
 
@@ -110,12 +110,12 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         return self._decorated.put_bytes(relpath, bytes, mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
-        create_parent_dir=False, dir_mode=None):
+                             create_parent_dir=False, dir_mode=None):
         """See Transport.put_bytes_non_atomic."""
         self._trace(('put_bytes_non_atomic', relpath, len(bytes), mode,
-            create_parent_dir, dir_mode))
+                     create_parent_dir, dir_mode))
         return self._decorated.put_bytes_non_atomic(relpath, bytes, mode=mode,
-            create_parent_dir=create_parent_dir, dir_mode=dir_mode)
+                                                    create_parent_dir=create_parent_dir, dir_mode=dir_mode)
 
     def listable(self):
         """See Transport.listable."""
@@ -130,13 +130,13 @@ class TransportTraceDecorator(decorator.TransportDecorator):
         return self._decorated.list_dir(relpath)
 
     def readv(self, relpath, offsets, adjust_for_latency=False,
-        upper_limit=None):
+              upper_limit=None):
         # we override at the readv() level rather than _readv() so that any
         # latency adjustments will be done by the underlying transport
         self._trace(('readv', relpath, offsets, adjust_for_latency,
-            upper_limit))
+                     upper_limit))
         return self._decorated.readv(relpath, offsets, adjust_for_latency,
-            upper_limit)
+                                     upper_limit)
 
     def recommended_page_size(self):
         """See Transport.recommended_page_size()."""

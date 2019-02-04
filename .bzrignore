@@ -71,6 +71,6 @@ breezy/_*.so
 breezy/_*.pyd
 ./.ccache
 .testrepository
-python3.passing.old
-python3.passing.new
 selftest.log
+.coverage
+doc/developers/api/*.txt

@@ -23,7 +23,6 @@ from breezy import (
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-
 class TestCaseWithState(TestCaseWithWorkingTree):
 
     def make_tree_with_broken_dirstate(self, path):
@@ -50,7 +49,7 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         else:
             f = open(dirstate_path, 'ab')
         try:
-            f.write('garbage-at-end-of-file\n')
+            f.write(b'garbage-at-end-of-file\n')
         finally:
             f.close()
 

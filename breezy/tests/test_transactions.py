@@ -17,7 +17,7 @@
 
 """Tests for the behaviour of the Transaction concept in bzr."""
 
-#import breezy specific imports here
+# import breezy specific imports here
 import breezy.errors as errors
 from breezy.tests import TestCase
 import breezy.transactions as transactions
@@ -35,6 +35,9 @@ class DummyWeave(object):
             return False
         return self._message == other._message
 
+    def __hash__(self):
+        return hash((type(self), self._message))
+
     def transaction_finished(self):
         self.finished = True
 
@@ -42,8 +45,8 @@ class DummyWeave(object):
 class TestSymbols(TestCase):
 
     def test_public_symbols(self):
-        from breezy.transactions import ReadOnlyTransaction
-        from breezy.transactions import PassThroughTransaction
+        from breezy.transactions import ReadOnlyTransaction  # noqa: F401
+        from breezy.transactions import PassThroughTransaction  # noqa: F401
 
 
 class TestReadOnlyTransaction(TestCase):
@@ -99,7 +102,7 @@ class TestReadOnlyTransaction(TestCase):
     def test_small_cache(self):
         self.transaction.set_cache_size(1)
         # add an object, should not fall right out if there are no references
-        #sys.getrefcounts(foo)
+        # sys.getrefcounts(foo)
         self.transaction.map.add_weave("id", DummyWeave("a weave"))
         self.transaction.register_clean(self.transaction.map.find_weave("id"))
         self.assertEqual(DummyWeave("a weave"),
@@ -259,7 +262,7 @@ class TestWriteTransaction(TestCase):
     def test_small_cache(self):
         self.transaction.set_cache_size(1)
         # add an object, should not fall right out if there are no references
-        #sys.getrefcounts(foo)
+        # sys.getrefcounts(foo)
         self.transaction.map.add_weave("id", DummyWeave("a weave"))
         self.transaction.register_clean(self.transaction.map.find_weave("id"))
         self.assertEqual(DummyWeave("a weave"),

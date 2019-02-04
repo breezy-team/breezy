@@ -1,0 +1,44 @@
+Mapping between Git and Bazaar is generally straightforward.
+
+Mapping version 1
+=================
+
+All revision ids created in this mapping format are prefixed with "git-v1:". 
+This mapping format does not support roundtripped revisions from Bazaar; 
+pushing or pulling from Bazaar into Git is not possible. dpush is possible 
+and more or less does the opposite of the mapping described in this section.
+
+Commits
+-------
+
+Git commits are mapped to Bazaar revisions. 
+
+Bazaar revision ids are created by prefixing the (hex format) of git commit 
+sha with "git-v1:". 
+
+Commit properties are as follows:
+
+ * git committer string: mapped to the Bazaar committer string
+ * git committer timestamp: mapped to the Bazaar commit timestamp
+ * git author string: mapped to the Bazaar 'author' revision property, if it 
+   is different from the committer string
+ * git author timestamp: ignored
+ * git commit message: mapped to Bazaar commit message
+
+The git committer string, author string and commit message are assumed to 
+be encoded in UTF-8. Any utf-8-invalid characters are ignored.
+
+Trees and blobs
+---------------
+Git trees are generally converted to Bazaar directories, Git blobs are 
+generally converted to Bazaar files and symlinks.
+
+Since all git trees are mapped *including* the root tree, it is only possible 
+to create mapped rich-root revisions.
+
+File ids for all objects are simply created by taking their path and 
+escaping invalid characters in them:
+
+ * _ is mapped to __
+ * spaces are mapped to _s
+ * \x0c is mapped to _c

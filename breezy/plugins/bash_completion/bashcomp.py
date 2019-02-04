@@ -60,7 +60,7 @@ class BashCodeGen(object):
 shopt -s progcomp
 %(function)s
 complete -F %(function_name)s -o default brz
-"""     % {
+""" % {
             "function_name": self.function_name,
             "function": self.function(),
             "brz_version": self.brz_version(),
@@ -70,94 +70,94 @@ complete -F %(function_name)s -o default brz
         return ("""\
 %(function_name)s ()
 {
-	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
-	local curOpt optEnums
-	local IFS=$' \\n'
+    local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
+    local curOpt optEnums
+    local IFS=$' \\n'
 
-	COMPREPLY=()
-	cur=${COMP_WORDS[COMP_CWORD]}
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
 
-	cmds='%(cmds)s'
-	globalOpts=( %(global_options)s )
+    cmds='%(cmds)s'
+    globalOpts=( %(global_options)s )
 
-	# do ordinary expansion if we are anywhere after a -- argument
-	for ((i = 1; i < COMP_CWORD; ++i)); do
-		[[ ${COMP_WORDS[i]} == "--" ]] && return 0
-	done
+    # do ordinary expansion if we are anywhere after a -- argument
+    for ((i = 1; i < COMP_CWORD; ++i)); do
+        [[ ${COMP_WORDS[i]} == "--" ]] && return 0
+    done
 
-	# find the command; it's the first word not starting in -
-	cmd=
-	for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
-		if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
-			cmd=${COMP_WORDS[cmdIdx]}
-			break
-		fi
-	done
+    # find the command; it's the first word not starting in -
+    cmd=
+    for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
+        if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
+            cmd=${COMP_WORDS[cmdIdx]}
+            break
+        fi
+    done
 
-	# complete command name if we are not already past the command
-	if [[ $COMP_CWORD -le cmdIdx ]]; then
-		COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
-		return 0
-	fi
+    # complete command name if we are not already past the command
+    if [[ $COMP_CWORD -le cmdIdx ]]; then
+        COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
+        return 0
+    fi
 
-	# find the option for which we want to complete a value
-	curOpt=
-	if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
-		curOpt=${COMP_WORDS[COMP_CWORD - 1]}
-		if [[ $curOpt == = ]]; then
-			curOpt=${COMP_WORDS[COMP_CWORD - 2]}
-		elif [[ $cur == : ]]; then
-			cur=
-			curOpt="$curOpt:"
-		elif [[ $curOpt == : ]]; then
-			curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
-		fi
-	fi
+    # find the option for which we want to complete a value
+    curOpt=
+    if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
+        curOpt=${COMP_WORDS[COMP_CWORD - 1]}
+        if [[ $curOpt == = ]]; then
+            curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+        elif [[ $cur == : ]]; then
+            cur=
+            curOpt="$curOpt:"
+        elif [[ $curOpt == : ]]; then
+            curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
+        fi
+    fi
 %(debug)s
-	cmdOpts=( )
-	optEnums=( )
-	fixedWords=( )
-	case $cmd in
+    cmdOpts=( )
+    optEnums=( )
+    fixedWords=( )
+    case $cmd in
 %(cases)s\
-	*)
-		cmdOpts=(--help -h)
-		;;
-	esac
+    *)
+        cmdOpts=(--help -h)
+        ;;
+    esac
 
-	IFS=$'\\n'
-	if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
-		case $curOpt in
-			tag:|*..tag:)
-				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
-				;;
-		esac
-		case $cur in
-			[\\"\\']tag:*)
-				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
-				;;
-			[\\"\\']*..tag:*)
-				fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
-				fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
-				;;
-		esac
-	elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
-		# complete directly after "--option=", list all enum values
-		COMPREPLY=( "${optEnums[@]}" )
-		return 0
-	else
-		fixedWords=( "${cmdOpts[@]}"
-		             "${globalOpts[@]}"
-		             "${optEnums[@]}"
-		             "${fixedWords[@]}" )
-	fi
+    IFS=$'\\n'
+    if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
+        case $curOpt in
+            tag:|*..tag:)
+                fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
+                ;;
+        esac
+        case $cur in
+            [\\"\\']tag:*)
+                fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
+                ;;
+            [\\"\\']*..tag:*)
+                fixedWords=( $(brz tags 2>/dev/null | sed 's/  *[^ ]*$//') )
+                fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
+                ;;
+        esac
+    elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
+        # complete directly after "--option=", list all enum values
+        COMPREPLY=( "${optEnums[@]}" )
+        return 0
+    else
+        fixedWords=( "${cmdOpts[@]}"
+                     "${globalOpts[@]}"
+                     "${optEnums[@]}"
+                     "${fixedWords[@]}" )
+    fi
 
-	if [[ ${#fixedWords[@]} -gt 0 ]]; then
-		COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
-	fi
+    if [[ ${#fixedWords[@]} -gt 0 ]]; then
+        COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
+    fi
 
-	return 0
+    return 0
 }
-"""     % {
+""" % {
             "cmds": self.command_names(),
             "function_name": self.function_name,
             "cases": self.command_cases(),
@@ -174,16 +174,16 @@ complete -F %(function_name)s -o default brz
             return ''
         else:
             return (r"""
-	# Debugging code enabled using the --debug command line switch.
-	# Will dump some variables to the top portion of the terminal.
-	echo -ne '\e[s\e[H'
-	for (( i=0; i < ${#COMP_WORDS[@]}; ++i)); do
-		echo "\$COMP_WORDS[$i]='${COMP_WORDS[i]}'"$'\e[K'
-	done
-	for i in COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY cur curOpt; do
-		echo "\$${i}=\"${!i}\""$'\e[K'
-	done
-	echo -ne '---\e[K\e[u'
+    # Debugging code enabled using the --debug command line switch.
+    # Will dump some variables to the top portion of the terminal.
+    echo -ne '\e[s\e[H'
+    for (( i=0; i < ${#COMP_WORDS[@]}; ++i)); do
+        echo "\$COMP_WORDS[$i]='${COMP_WORDS[i]}'"$'\e[K'
+    done
+    for i in COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY cur curOpt; do
+        echo "\$${i}=\"${!i}\""$'\e[K'
+    done
+    echo -ne '---\e[K\e[u'
 """)
 
     def brz_version(self):
@@ -288,6 +288,9 @@ class OptionData(object):
     def __cmp__(self, other):
         return cmp(self.name, other.name)
 
+    def __lt__(self, other):
+        return self.name < other.name
+
 
 class DataCollector(object):
 
@@ -300,7 +303,7 @@ class DataCollector(object):
             self.selected_plugins = None
         else:
             self.selected_plugins = {x.replace('-', '_')
-                                         for x in selected_plugins}
+                                     for x in selected_plugins}
 
     def collect(self):
         self.global_options()
@@ -334,7 +337,7 @@ class DataCollector(object):
         plugin_name = cmd.plugin_name()
         if plugin_name is not None:
             if (self.selected_plugins is not None and
-                plugin not in self.selected_plugins):
+                    plugin not in self.selected_plugins):
                 return None
             plugin_data = self.data.plugins.get(plugin_name)
             if plugin_data is None:
@@ -349,10 +352,10 @@ class DataCollector(object):
         # ones while maintaining the actual command name unchanged.
         cmd_data.aliases.extend(cmd.aliases)
         cmd_data.aliases.extend(sorted([useralias
-            for cmdalias in cmd_data.aliases
-            if cmdalias in self.user_aliases
-            for useralias in self.user_aliases[cmdalias]
-            if useralias not in cmd_data.aliases]))
+                                        for cmdalias in cmd_data.aliases
+                                        if cmdalias in self.user_aliases
+                                        for useralias in self.user_aliases[cmdalias]
+                                        if useralias not in cmd_data.aliases]))
 
         opts = cmd.options()
         for optname, opt in sorted(opts.items()):
@@ -360,13 +363,13 @@ class DataCollector(object):
 
         if 'help' == name or 'help' in cmd.aliases:
             cmd_data.fixed_words = ('($cmds %s)' %
-                " ".join(sorted(help_topics.topic_registry.keys())))
+                                    " ".join(sorted(help_topics.topic_registry.keys())))
 
         return cmd_data
 
     def option(self, opt):
         optswitches = {}
-        parser = option.get_optparser({opt.name: opt})
+        parser = option.get_optparser([opt])
         parser = self.wrap_parser(optswitches, parser)
         optswitches.clear()
         opt.add_option(parser, opt.short_name())
@@ -391,9 +394,10 @@ class DataCollector(object):
 
     def wrap_parser(self, optswitches, parser):
         orig_add_option_group = parser.add_option_group
+
         def tweaked_add_option_group(*opts, **attrs):
             return self.wrap_container(optswitches,
-                orig_add_option_group(*opts, **attrs))
+                                       orig_add_option_group(*opts, **attrs))
         parser.add_option_group = tweaked_add_option_group
         return self.wrap_container(optswitches, parser)
 
@@ -401,7 +405,8 @@ class DataCollector(object):
 def bash_completion_function(out, function_name="_brz", function_only=False,
                              debug=False,
                              no_plugins=False, selected_plugins=None):
-    dc = DataCollector(no_plugins=no_plugins, selected_plugins=selected_plugins)
+    dc = DataCollector(no_plugins=no_plugins,
+                       selected_plugins=selected_plugins)
     data = dc.collect()
     cg = BashCodeGen(data, function_name=function_name, debug=debug)
     if function_only:
@@ -417,22 +422,22 @@ class cmd_bash_completion(commands.Command):
     This command generates a shell function which can be used by bash to
     automatically complete the currently typed command when the user presses
     the completion key (usually tab).
-    
+
     Commonly used like this:
         eval "`brz bash-completion`"
     """
 
     takes_options = [
         option.Option("function-name", short_name="f", type=text_type, argname="name",
-               help="Name of the generated function (default: _brz)"),
+                      help="Name of the generated function (default: _brz)"),
         option.Option("function-only", short_name="o", type=None,
-               help="Generate only the shell function, don't enable it"),
+                      help="Generate only the shell function, don't enable it"),
         option.Option("debug", type=None, hidden=True,
-               help="Enable shell code useful for debugging"),
+                      help="Enable shell code useful for debugging"),
         option.ListOption("plugin", type=text_type, argname="name",
-                # param_name="selected_plugins", # doesn't work, bug #387117
-                help="Enable completions for the selected plugin"
-                + " (default: all plugins)"),
+                          # param_name="selected_plugins", # doesn't work, bug #387117
+                          help="Enable completions for the selected plugin"
+                          + " (default: all plugins)"),
         ]
 
     def run(self, **kwargs):

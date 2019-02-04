@@ -23,7 +23,7 @@ and produce non-empty output.
 
 import breezy.commands
 from ..sixish import (
-    BytesIO,
+    StringIO,
     )
 from . import TestCase
 
@@ -37,7 +37,7 @@ class TestGenerateDocs(TestCase):
 
     def setUp(self):
         super(TestGenerateDocs, self).setUp()
-        self.sio = BytesIO()
+        self.sio = StringIO()
         self.options = Options()
         self.options.brz_name = 'brz'
         breezy.commands.install_bzr_command_hooks()

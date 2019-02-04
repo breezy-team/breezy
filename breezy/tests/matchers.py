@@ -41,7 +41,7 @@ from .. import (
     )
 from .. import lazy_import
 lazy_import.lazy_import(globals(),
-"""
+                        """
 from breezy.bzr.smart.request import request_handlers as smart_request_handlers
 from breezy.bzr.smart import vfs
 """)
@@ -69,7 +69,7 @@ class ReturnsUnlockable(Matcher):
 
     def __str__(self):
         return ('ReturnsUnlockable(lockable_thing=%s)' %
-            self.lockable_thing)
+                self.lockable_thing)
 
     def match(self, lock_method):
         lock_method().unlock()
@@ -125,7 +125,7 @@ class MatchesAncestry(Matcher):
                 got.remove(_mod_revision.NULL_REVISION)
         if sorted(got) != sorted(expected):
             return _AncestryMismatch(self.revision_id, sorted(got),
-                sorted(expected))
+                                     sorted(expected))
 
 
 class HasLayout(Matcher):
@@ -138,14 +138,16 @@ class HasLayout(Matcher):
         Matcher.__init__(self)
         self.entries = entries
 
-    def get_tree_layout(self, tree):
+    def get_tree_layout(self, tree, include_file_ids):
         """Get the (path, file_id) pairs for the current tree."""
         with tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
-                if ie.parent_id is None:
-                    yield (u"", ie.file_id)
+                if path != u'':
+                    path += ie.kind_character()
+                if include_file_ids:
+                    yield (path, ie.file_id)
                 else:
-                    yield (path+ie.kind_character(), ie.file_id)
+                    yield path
 
     @staticmethod
     def _strip_unreferenced_directories(entries):
@@ -174,9 +176,10 @@ class HasLayout(Matcher):
         return 'HasLayout(%r)' % self.entries
 
     def match(self, tree):
-        actual = list(self.get_tree_layout(tree))
-        if self.entries and isinstance(self.entries[0], (str, text_type)):
-            actual = [path for (path, fileid) in actual]
+        include_file_ids = self.entries and not isinstance(
+            self.entries[0], (str, text_type))
+        actual = list(self.get_tree_layout(
+            tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
             entries = list(self._strip_unreferenced_directories(self.entries))
         else:
@@ -201,7 +204,8 @@ class HasPathRelations(Matcher):
         with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 if tree.supports_rename_tracking():
-                    previous_path = find_previous_path(tree, self.previous_tree, path)
+                    previous_path = find_previous_path(
+                        tree, self.previous_tree, path)
                 else:
                     if self.previous_tree.is_versioned(path):
                         previous_path = path
@@ -211,10 +215,10 @@ class HasPathRelations(Matcher):
                     kind = self.previous_tree.kind(previous_path)
                     if kind == 'directory':
                         previous_path += '/'
-                if ie.parent_id is None:
+                if path == u'':
                     yield (u"", previous_path)
                 else:
-                    yield (path+ie.kind_character(), previous_path)
+                    yield (path + ie.kind_character(), previous_path)
 
     @staticmethod
     def _strip_unreferenced_directories(entries):
@@ -243,7 +247,8 @@ class HasPathRelations(Matcher):
     def match(self, tree):
         actual = list(self.get_path_map(tree))
         if not tree.has_versioned_directories():
-            entries = list(self._strip_unreferenced_directories(self.previous_entries))
+            entries = list(self._strip_unreferenced_directories(
+                self.previous_entries))
         else:
             entries = self.previous_entries
         if not tree.supports_rename_tracking():
@@ -284,7 +289,7 @@ class _NoVfsCallsMismatch(Mismatch):
     def describe(self):
         return "no VFS calls expected, got: %s" % ",".join([
             "%s(%s)" % (c.method,
-                ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
+                        ", ".join([repr(a) for a in c.args])) for c in self.vfs_calls])
 
 
 class ContainsNoVfsCalls(Matcher):

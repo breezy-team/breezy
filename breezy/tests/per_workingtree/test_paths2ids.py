@@ -45,19 +45,19 @@ from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 class TestPaths2Ids(TestCaseWithWorkingTree):
 
     def assertExpectedIds(self, ids, tree, paths, trees=None,
-        require_versioned=True):
+                          require_versioned=True):
         """Run paths2ids for tree, and check the result."""
         tree.lock_read()
         if trees:
             for t in trees:
                 t.lock_read()
             result = tree.paths2ids(paths, trees,
-                require_versioned=require_versioned)
+                                    require_versioned=require_versioned)
             for t in trees:
                 t.unlock()
         else:
             result = tree.paths2ids(paths,
-                require_versioned=require_versioned)
+                                    require_versioned=require_versioned)
         self.assertEqual(set(ids), result)
         tree.unlock()
 
@@ -77,7 +77,6 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "test not applicable on non-inventory tests")
 
-
         self.assertExpectedIds([tree.path2id('')], tree, [''])
 
     def test_find_tree_and_clone_roots(self):
@@ -86,14 +85,14 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "test not applicable on non-inventory tests")
 
-
         clone = tree.controldir.clone('clone').open_workingtree()
         clone.lock_tree_write()
-        clone_root_id = 'new-id'
+        clone_root_id = b'new-id'
         clone.set_root_id(clone_root_id)
         tree_root_id = tree.path2id('')
         clone.unlock()
-        self.assertExpectedIds([tree_root_id, clone_root_id], tree, [''], [clone])
+        self.assertExpectedIds(
+            [tree_root_id, clone_root_id], tree, [''], [clone])
 
     def test_find_tree_basis_roots(self):
         tree = self.make_branch_and_tree('tree')
@@ -104,10 +103,11 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         basis = tree.basis_tree()
         basis_root_id = basis.path2id('')
         tree.lock_tree_write()
-        tree_root_id = 'new-id'
+        tree_root_id = b'new-id'
         tree.set_root_id(tree_root_id)
         tree.unlock()
-        self.assertExpectedIds([tree_root_id, basis_root_id], tree, [''], [basis])
+        self.assertExpectedIds(
+            [tree_root_id, basis_root_id], tree, [''], [basis])
 
     def test_find_children_of_moved_directories(self):
         """Check the basic nasty corner case that path2ids should handle.
@@ -155,28 +155,27 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "test not applicable on non-inventory tests")
 
-
         self.build_tree(
             ['tree/dir/', 'tree/dir/child-moves', 'tree/dir/child-stays',
              'tree/dir/child-goes'])
         tree.add(['dir', 'dir/child-moves', 'dir/child-stays', 'dir/child-goes'],
-                 ['dir', 'child-moves', 'child-stays', 'child-goes'])
+                 [b'dir', b'child-moves', b'child-stays', b'child-goes'])
         tree.commit('create basis')
         basis = tree.basis_tree()
         tree.unversion(['dir/child-goes'])
         tree.rename_one('dir/child-moves', 'child-moves')
         self.build_tree(['tree/newdir/'])
-        tree.add(['newdir'], ['newdir'])
+        tree.add(['newdir'], [b'newdir'])
         tree.rename_one('dir/child-stays', 'child-stays')
         tree.rename_one('dir', 'newdir/dir')
         tree.rename_one('child-stays', 'newdir/dir/child-stays')
         self.build_tree(['tree/newdir/dir/new-child'])
-        tree.add(['newdir/dir/new-child'], ['new-child'])
+        tree.add(['newdir/dir/new-child'], [b'new-child'])
         self.assertExpectedIds(
-            ['newdir', 'dir', 'child-moves', 'child-stays', 'child-goes',
-             'new-child'], tree, ['newdir'], [basis])
+            [b'newdir', b'dir', b'child-moves', b'child-stays', b'child-goes',
+             b'new-child'], tree, ['newdir'], [basis])
         self.assertExpectedIds(
-            ['dir', 'child-moves', 'child-stays', 'child-goes', 'new-child'],
+            [b'dir', b'child-moves', b'child-stays', b'child-goes', b'new-child'],
             tree, ['dir'], [basis])
 
     def test_unversioned_one_tree(self):
@@ -185,11 +184,12 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
             raise TestNotApplicable(
                 "test not applicable on non-inventory tests")
 
-
         self.build_tree(['tree/unversioned'])
-        self.assertExpectedIds([], tree, ['unversioned'], require_versioned=False)
+        self.assertExpectedIds([], tree, ['unversioned'],
+                               require_versioned=False)
         tree.lock_read()
-        self.assertRaises(errors.PathsNotVersionedError, tree.paths2ids, ['unversioned'])
+        self.assertRaises(errors.PathsNotVersionedError,
+                          tree.paths2ids, ['unversioned'])
         tree.unlock()
 
     def test_unversioned_in_one_of_multiple_trees(self):
@@ -206,8 +206,8 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.build_tree(['tree/in-one'])
-        tree.add(['in-one'], ['in-one'])
-        self.assertExpectedIds(['in-one'], tree, ['in-one'], [basis])
+        tree.add(['in-one'], [b'in-one'])
+        self.assertExpectedIds([b'in-one'], tree, ['in-one'], [basis])
 
     def test_unversioned_all_of_multiple_trees(self):
         # in this test, the path is unversioned in every tree, and thus
@@ -221,13 +221,13 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         tree.commit('make basis')
         basis = tree.basis_tree()
         self.assertExpectedIds([], tree, ['unversioned'], [basis],
-            require_versioned=False)
+                               require_versioned=False)
         tree.lock_read()
         basis.lock_read()
         self.assertRaises(errors.PathsNotVersionedError, tree.paths2ids,
-            ['unversioned'], [basis])
+                          ['unversioned'], [basis])
         self.assertRaises(errors.PathsNotVersionedError, basis.paths2ids,
-            ['unversioned'], [tree])
+                          ['unversioned'], [tree])
         basis.unlock()
         tree.unlock()
 
@@ -242,5 +242,5 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         self.assertExpectedIds([], tree, [u"\xa7"], require_versioned=False)
         self.addCleanup(tree.lock_read().unlock)
         e = self.assertRaises(errors.PathsNotVersionedError,
-            tree.paths2ids, [u"\xa7"])
+                              tree.paths2ids, [u"\xa7"])
         self.assertEqual([u"\xa7"], e.paths)

@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Command which looks for unsigned commits by the current user, and signs them.
-"""
+"""Command that signs unsigned commits by the current user. """
 
 from __future__ import absolute_import
 
@@ -44,10 +43,10 @@ class cmd_sign_my_commits(Command):
     # repository
 
     takes_options = [
-            Option('dry-run',
-                   help='Don\'t actually sign anything, just print'
-                        ' the revisions that would be signed.'),
-            ]
+        Option('dry-run',
+               help='Don\'t actually sign anything, just print'
+               ' the revisions that would be signed.'),
+        ]
     takes_args = ['location?', 'committer?']
 
     def run(self, location=None, committer=None, dry_run=False):
@@ -65,8 +64,7 @@ class cmd_sign_my_commits(Command):
         gpg_strategy = gpg.GPGStrategy(branch_config)
 
         count = 0
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             graph = repo.get_graph()
             repo.start_write_group()
             try:
@@ -88,16 +86,14 @@ class cmd_sign_my_commits(Command):
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)
-            except:
+            except BaseException:
                 repo.abort_write_group()
                 raise
             else:
                 repo.commit_write_group()
-        finally:
-            repo.unlock()
         self.outf.write(
-            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n', count) %
-            count)
+            ngettext('Signed %d revision.\n', 'Signed %d revisions.\n',
+                     count) % count)
 
 
 class cmd_verify_signatures(Command):
@@ -107,18 +103,18 @@ class cmd_verify_signatures(Command):
     """
 
     takes_options = [
-            Option('acceptable-keys',
-                   help='Comma separated list of GPG key patterns which are'
-                        ' acceptable for verification.',
-                   short_name='k',
-                   type=text_type,),
-            'revision',
-            'verbose',
-          ]
+        Option('acceptable-keys',
+               help='Comma separated list of GPG key patterns which are'
+               ' acceptable for verification.',
+               short_name='k',
+               type=text_type,),
+        'revision',
+        'verbose',
+        ]
     takes_args = ['location?']
 
     def run(self, acceptable_keys=None, revision=None, verbose=None,
-                                                            location=u'.'):
+            location=u'.'):
         bzrdir = controldir.ControlDir.open_containing(location)[0]
         branch = bzrdir.open_branch()
         repo = branch.repository
@@ -129,11 +125,12 @@ class cmd_verify_signatures(Command):
 
         def write(string):
             self.outf.write(string + "\n")
+
         def write_verbose(string):
             self.outf.write("  " + string + "\n")
 
         self.add_cleanup(repo.lock_read().unlock)
-        #get our list of revisions
+        # get our list of revisions
         revisions = []
         if revision is not None:
             if len(revision) == 1:
@@ -145,12 +142,13 @@ class cmd_verify_signatures(Command):
                 if to_revid is None:
                     to_revno = branch.revno()
                 if from_revno is None or to_revno is None:
-                    raise errors.BzrCommandError(gettext(
-                    'Cannot verify a range of non-revision-history revisions'))
+                    raise errors.BzrCommandError(
+                        gettext('Cannot verify a range of non-revision-history'
+                                ' revisions'))
                 for revno in range(from_revno, to_revno + 1):
                     revisions.append(branch.get_rev_id(revno))
         else:
-            #all revisions by default including merges
+            # all revisions by default including merges
             graph = repo.get_graph()
             revisions = []
             for rev_id, parents in graph.iter_ancestry(
@@ -164,20 +162,20 @@ class cmd_verify_signatures(Command):
         count, result, all_verifiable = gpg.bulk_verify_signatures(
             repo, revisions, gpg_strategy)
         if all_verifiable:
-               write(gettext("All commits signed with verifiable keys"))
-               if verbose:
-                   for message in gpg.verbose_valid_message(result):
-                       write_verbose(message)
-               return 0
+            write(gettext("All commits signed with verifiable keys"))
+            if verbose:
+                for message in gpg.verbose_valid_message(result):
+                    write_verbose(message)
+            return 0
         else:
             write(gpg.valid_commits_message(count))
             if verbose:
-               for message in gpg.verbose_valid_message(result):
-                   write_verbose(message)
+                for message in gpg.verbose_valid_message(result):
+                    write_verbose(message)
             write(gpg.expired_commit_message(count))
             if verbose:
-               for message in gpg.verbose_expired_key_message(result, repo):
-                   write_verbose(message)
+                for message in gpg.verbose_expired_key_message(result, repo):
+                    write_verbose(message)
             write(gpg.unknown_key_message(count))
             if verbose:
                 for message in gpg.verbose_missing_key_message(result):
@@ -185,7 +183,7 @@ class cmd_verify_signatures(Command):
             write(gpg.commit_not_valid_message(count))
             if verbose:
                 for message in gpg.verbose_not_valid_message(result, repo):
-                   write_verbose(message)
+                    write_verbose(message)
             write(gpg.commit_not_signed_message(count))
             if verbose:
                 for message in gpg.verbose_not_signed_message(result, repo):

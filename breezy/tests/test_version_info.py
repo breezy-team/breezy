@@ -17,7 +17,6 @@
 """Tests for version_info"""
 
 import os
-import sys
 
 from .. import (
     registry,
@@ -26,9 +25,10 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    StringIO,
     )
 from . import TestCaseWithTransport
-from ..rio import read_stanzas
+from ..rio import read_stanzas, read_stanzas_unicode
 
 from ..version_info_formats.format_custom import (
     CustomVersionInfoBuilder,
@@ -72,7 +72,7 @@ class VersionInfoTestCase(TestCaseWithTransport):
         self.run_bzr('merge ../other')
         wt.commit('merge', rev_id=b'merge')
 
-        wt.update(revision='o2')
+        wt.update(revision=b'o2')
 
         return wt
 
@@ -82,7 +82,7 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_rio_null(self):
         wt = self.make_branch_and_tree('branch')
 
-        sio = BytesIO()
+        sio = StringIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
@@ -92,14 +92,14 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_rio_dotted_revno(self):
         wt = self.create_tree_with_dotted_revno()
 
-        sio = BytesIO()
+        sio = StringIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
         self.assertContainsRe(val, 'revno: 1.1.1')
 
     def regen_text(self, wt, **kwargs):
-        sio = BytesIO()
+        sio = StringIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(sio)
         val = sio.getvalue()
@@ -134,14 +134,14 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.assertContainsRe(val, 'id: r2')
         self.assertContainsRe(val, 'message: b')
         self.assertContainsRe(val, 'id: r3')
-        self.assertContainsRe(val, 'message: \xc3\xa52') # utf8 encoding '\xe5'
+        self.assertContainsRe(val, 'message: \xe5')
 
     def regen(self, wt, **kwargs):
-        sio = BytesIO()
+        sio = StringIO()
         builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, **kwargs)
         builder.generate(sio)
         sio.seek(0)
-        stanzas = list(read_stanzas(sio))
+        stanzas = list(read_stanzas_unicode(sio))
         self.assertEqual(1, len(stanzas))
         return stanzas[0]
 
@@ -171,26 +171,29 @@ class TestVersionInfoRio(VersionInfoTestCase):
     def test_not_clean(self):
         wt = self.create_branch()
         self.build_tree(['branch/c'])
-        stanza = self.regen(wt, check_for_clean=True, include_file_revisions=True)
+        stanza = self.regen(wt, check_for_clean=True,
+                            include_file_revisions=True)
         self.assertEqual(['False'], stanza.get_all('clean'))
 
     def test_file_revisions(self):
         wt = self.create_branch()
         self.build_tree(['branch/c'])
-        stanza = self.regen(wt, check_for_clean=True, include_file_revisions=True)
+        stanza = self.regen(wt, check_for_clean=True,
+                            include_file_revisions=True)
         # This assumes it's being run against a tree that does not update the
         # root revision on every commit.
         file_rev_stanza = self.get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r1', 'r3', 'r2', 'unversioned'],
-            file_rev_stanza.get_all('revision'))
+                         file_rev_stanza.get_all('revision'))
 
     def test_revision_history(self):
         wt = self.create_branch()
         stanza = self.regen(wt, include_revision_history=True)
         revision_stanza = self.get_one_stanza(stanza, 'revisions')
         self.assertEqual(['r1', 'r2', 'r3'], revision_stanza.get_all('id'))
-        self.assertEqual(['a', 'b', u'\xe52'], revision_stanza.get_all('message'))
+        self.assertEqual(['a', 'b', u'\xe52'],
+                         revision_stanza.get_all('message'))
         self.assertEqual(3, len(revision_stanza.get_all('date')))
 
     def test_file_revisions_with_rename(self):
@@ -199,10 +202,11 @@ class TestVersionInfoRio(VersionInfoTestCase):
         self.build_tree(['branch/a', 'branch/c'])
         wt.add('c')
         wt.rename_one('b', 'd')
-        stanza = self.regen(wt, check_for_clean=True, include_file_revisions=True)
+        stanza = self.regen(wt, check_for_clean=True,
+                            include_file_revisions=True)
         file_rev_stanza = self.get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c', 'd'],
-                          file_rev_stanza.get_all('path'))
+                         file_rev_stanza.get_all('path'))
         self.assertEqual(['r1', 'modified', 'renamed to d', 'new',
                           'renamed from b'],
                          file_rev_stanza.get_all('revision'))
@@ -217,7 +221,8 @@ class TestVersionInfoRio(VersionInfoTestCase):
 
         wt.remove(['c', 'd'])
         os.remove('branch/d')
-        stanza = self.regen(wt, check_for_clean=True, include_file_revisions=True)
+        stanza = self.regen(wt, check_for_clean=True,
+                            include_file_revisions=True)
         file_rev_stanza = self.get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'c', 'd'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r1', 'r4', 'unversioned', 'removed'],
@@ -229,8 +234,9 @@ class TestVersionInfoRio(VersionInfoTestCase):
         wt.add('c')
         wt.rename_one('b', 'd')
 
-        stanza = self.regen(wt, check_for_clean=True,
-            include_file_revisions=True, revision_id=wt.last_revision())
+        stanza = self.regen(
+            wt, check_for_clean=True, include_file_revisions=True,
+            revision_id=wt.last_revision())
         file_rev_stanza = self.get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r1', 'r3', 'r2'],
@@ -242,7 +248,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
     def test_python_null(self):
         wt = self.make_branch_and_tree('branch')
 
-        sio = BytesIO()
+        sio = StringIO()
         builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
@@ -253,7 +259,7 @@ class PythonVersionInfoTests(VersionInfoTestCase):
     def test_python_dotted_revno(self):
         wt = self.create_tree_with_dotted_revno()
 
-        sio = BytesIO()
+        sio = StringIO()
         builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
         builder.generate(sio)
         val = sio.getvalue()
@@ -261,54 +267,42 @@ class PythonVersionInfoTests(VersionInfoTestCase):
 
     def regen(self, wt, **kwargs):
         """Create a test module, import and return it"""
-        with open('test_version_information.py', 'wb') as outf:
-            builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
-                                               **kwargs)
-            builder.generate(outf)
-        import imp
-        module_info = imp.find_module('test_version_information',
-                                      [self.test_dir])
-        tvi = imp.load_module('tvi', *module_info)
-        # Make sure the module isn't cached
-        sys.modules.pop('tvi', None)
-        sys.modules.pop('test_version_information', None)
-        # Delete the compiled versions, because we are generating
-        # a new file fast enough that python doesn't detect it
-        # needs to recompile, and using sleep() just makes the
-        # test slow
-        if os.path.exists('test_version_information.pyc'):
-            os.remove('test_version_information.pyc')
-        if os.path.exists('test_version_information.pyo'):
-            os.remove('test_version_information.pyo')
-        return tvi
+        builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
+                                           **kwargs)
+        outf = StringIO()
+        builder.generate(outf)
+        local_vars = {}
+        exec(outf.getvalue(), {}, local_vars)
+        return local_vars
 
     def test_python_version(self):
         wt = self.create_branch()
 
         tvi = self.regen(wt)
-        self.assertEqual('3', tvi.version_info['revno'])
-        self.assertEqual('r3', tvi.version_info['revision_id'])
-        self.assertTrue('date' in tvi.version_info)
-        self.assertEqual(None, tvi.version_info['clean'])
+        self.assertEqual('3', tvi['version_info']['revno'])
+        self.assertEqual(b'r3', tvi['version_info']['revision_id'])
+        self.assertTrue('date' in tvi['version_info'])
+        self.assertEqual(None, tvi['version_info']['clean'])
 
         tvi = self.regen(wt, check_for_clean=True)
-        self.assertEqual(True, tvi.version_info['clean'])
+        self.assertTrue(tvi['version_info']['clean'])
 
         self.build_tree(['branch/c'])
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
-        self.assertEqual(False, tvi.version_info['clean'])
+        self.assertFalse(tvi['version_info']['clean'])
         self.assertEqual(['', 'a', 'b', 'c'],
-                         sorted(tvi.file_revisions.keys()))
-        self.assertEqual('r3', tvi.file_revisions['a'])
-        self.assertEqual('r2', tvi.file_revisions['b'])
-        self.assertEqual('unversioned', tvi.file_revisions['c'])
+                         sorted(tvi['file_revisions'].keys()))
+        self.assertEqual(b'r3', tvi['file_revisions']['a'])
+        self.assertEqual(b'r2', tvi['file_revisions']['b'])
+        self.assertEqual('unversioned', tvi['file_revisions']['c'])
         os.remove('branch/c')
 
         tvi = self.regen(wt, include_revision_history=True)
 
         rev_info = [(rev, message) for rev, message, timestamp, timezone
-                                   in tvi.revisions]
-        self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', u'\xe52')], rev_info)
+                    in tvi['revisions']]
+        self.assertEqual([(b'r1', 'a'), (b'r2', 'b'),
+                          (b'r3', u'\xe52')], rev_info)
 
         # a was modified, so it should show up modified again
         self.build_tree(['branch/a', 'branch/c'])
@@ -316,48 +310,50 @@ class PythonVersionInfoTests(VersionInfoTestCase):
         wt.rename_one('b', 'd')
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['', 'a', 'b', 'c', 'd'],
-                          sorted(tvi.file_revisions.keys()))
-        self.assertEqual('modified', tvi.file_revisions['a'])
-        self.assertEqual('renamed to d', tvi.file_revisions['b'])
-        self.assertEqual('new', tvi.file_revisions['c'])
-        self.assertEqual('renamed from b', tvi.file_revisions['d'])
+                         sorted(tvi['file_revisions'].keys()))
+        self.assertEqual('modified', tvi['file_revisions']['a'])
+        self.assertEqual('renamed to d', tvi['file_revisions']['b'])
+        self.assertEqual('new', tvi['file_revisions']['c'])
+        self.assertEqual('renamed from b', tvi['file_revisions']['d'])
 
         wt.commit('modified', rev_id=b'r4')
         wt.remove(['c', 'd'])
         os.remove('branch/d')
         tvi = self.regen(wt, check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['', 'a', 'c', 'd'],
-                          sorted(tvi.file_revisions.keys()))
-        self.assertEqual('r4', tvi.file_revisions['a'])
-        self.assertEqual('unversioned', tvi.file_revisions['c'])
-        self.assertEqual('removed', tvi.file_revisions['d'])
+                         sorted(tvi['file_revisions'].keys()))
+        self.assertEqual(b'r4', tvi['file_revisions']['a'])
+        self.assertEqual('unversioned', tvi['file_revisions']['c'])
+        self.assertEqual('removed', tvi['file_revisions']['d'])
 
 
 class CustomVersionInfoTests(VersionInfoTestCase):
 
     def test_custom_null(self):
-        sio = BytesIO()
+        sio = StringIO()
         wt = self.make_branch_and_tree('branch')
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
-            template='revno: {revno}')
+                                           template='revno: {revno}')
         builder.generate(sio)
         self.assertEqual("revno: 0", sio.getvalue())
 
-        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
+        builder = CustomVersionInfoBuilder(
+            wt.branch, working_tree=wt,
             template='{revno} revid: {revision_id}')
         # revision_id is not available yet
         self.assertRaises(MissingTemplateVariable, builder.generate, sio)
 
     def test_custom_dotted_revno(self):
-        sio = BytesIO()
+        sio = StringIO()
         wt = self.create_tree_with_dotted_revno()
-        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
+        builder = CustomVersionInfoBuilder(
+            wt.branch, working_tree=wt,
             template='{revno} revid: {revision_id}')
         builder.generate(sio)
         self.assertEqual("1.1.1 revid: o2", sio.getvalue())
 
     def regen(self, wt, tpl, **kwargs):
-        sio = BytesIO()
+        sio = StringIO()
         builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
                                            template=tpl, **kwargs)
         builder.generate(sio)
@@ -396,7 +392,7 @@ class CustomVersionInfoTests(VersionInfoTestCase):
 
     def test_custom_without_template(self):
         builder = CustomVersionInfoBuilder(None)
-        sio = BytesIO()
+        sio = StringIO()
         self.assertRaises(NoTemplate, builder.generate, sio)
 
 
@@ -414,7 +410,7 @@ class TestVersionInfoFormatRegistry(tests.TestCase):
     def test_register_remove(self):
         registry = version_info_formats.format_registry
         registry.register('testbuilder',
-            TestBuilder, 'a simple test builder')
+                          TestBuilder, 'a simple test builder')
         self.assertIs(TestBuilder, registry.get('testbuilder'))
         self.assertEqual('a simple test builder',
                          registry.get_help('testbuilder'))

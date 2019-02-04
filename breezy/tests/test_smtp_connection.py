@@ -41,6 +41,7 @@ def connection_refuser():
 
 class StubSMTPFactory(object):
     """A fake SMTP connection to test the connection setup."""
+
     def __init__(self, fail_on=None, smtp_features=None):
         self._fail_on = fail_on or []
         self._calls = []
@@ -97,43 +98,44 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
             my_config, _smtp_factory=smtp_factory)
 
     def test_defaults(self):
-        conn = self.get_connection('')
+        conn = self.get_connection(b'')
         self.assertEqual('localhost', conn._smtp_server)
         self.assertEqual(None, conn._smtp_username)
         self.assertEqual(None, conn._smtp_password)
 
     def test_smtp_server(self):
-        conn = self.get_connection('smtp_server=host:10')
+        conn = self.get_connection(b'smtp_server=host:10')
         self.assertEqual('host:10', conn._smtp_server)
 
     def test_missing_server(self):
-        conn = self.get_connection('', smtp_factory=connection_refuser)
+        conn = self.get_connection(b'', smtp_factory=connection_refuser)
         self.assertRaises(smtp_connection.DefaultSMTPConnectionRefused,
                           conn._connect)
-        conn = self.get_connection('smtp_server=smtp.example.com',
+        conn = self.get_connection(b'smtp_server=smtp.example.com',
                                    smtp_factory=connection_refuser)
         self.assertRaises(smtp_connection.SMTPConnectionRefused, conn._connect)
 
     def test_smtp_username(self):
-        conn = self.get_connection('')
+        conn = self.get_connection(b'')
         self.assertIs(None, conn._smtp_username)
 
-        conn = self.get_connection('smtp_username=joebody')
+        conn = self.get_connection(b'smtp_username=joebody')
         self.assertEqual(u'joebody', conn._smtp_username)
 
     def test_smtp_password_from_config(self):
-        conn = self.get_connection('')
+        conn = self.get_connection(b'')
         self.assertIs(None, conn._smtp_password)
 
-        conn = self.get_connection('smtp_password=mypass')
+        conn = self.get_connection(b'smtp_password=mypass')
         self.assertEqual(u'mypass', conn._smtp_password)
 
     def test_smtp_password_from_user(self):
         user = 'joe'
         password = 'hispass'
         factory = WideOpenSMTPFactory()
-        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=factory)
+        conn = self.get_connection(
+            b'[DEFAULT]\nsmtp_username=%s\n' % user.encode('ascii'),
+            smtp_factory=factory)
         self.assertIs(None, conn._smtp_password)
 
         ui.ui_factory = ui.CannedInputUIFactory([password])
@@ -144,27 +146,28 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         user = 'joe'
         password = 'hispass'
         factory = WideOpenSMTPFactory()
-        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
-                                   smtp_factory=factory)
+        conn = self.get_connection(
+            b'[DEFAULT]\nsmtp_username=%s\n' % user.encode('ascii'),
+            smtp_factory=factory)
         self.assertEqual(user, conn._smtp_username)
         self.assertIs(None, conn._smtp_password)
         # Create a config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update({'smtptest':
-                                       {'scheme': 'smtp', 'user':user,
-                                        'password': password}})
+                                   {'scheme': 'smtp', 'user': user,
+                                    'password': password}})
         conf._save()
 
         conn._connect()
         self.assertEqual(password, conn._smtp_password)
 
     def test_authenticate_with_byte_strings(self):
-        user = 'joe'
+        user = b'joe'
         unicode_pass = u'h\xECspass'
         utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
-            '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
+            b'[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
             % (user, utf8_pass), smtp_factory=factory)
         self.assertEqual(unicode_pass, conn._smtp_password)
         conn._connect()
@@ -173,12 +176,12 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
                           ('has_extn', 'starttls'),
                           ('login', user, utf8_pass)], factory._calls)
         smtp_username, smtp_password = factory._calls[-1][1:]
-        self.assertIsInstance(smtp_username, str)
-        self.assertIsInstance(smtp_password, str)
+        self.assertIsInstance(smtp_username, bytes)
+        self.assertIsInstance(smtp_password, bytes)
 
     def test_create_connection(self):
         factory = StubSMTPFactory()
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -187,7 +190,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_create_connection_ehlo_fails(self):
         # Check that we call HELO if EHLO failed.
         factory = StubSMTPFactory(fail_on=['ehlo'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -197,7 +200,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
     def test_create_connection_ehlo_helo_fails(self):
         # Check that we raise an exception if both EHLO and HELO fail.
         factory = StubSMTPFactory(fail_on=['ehlo', 'helo'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -207,7 +210,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         # Check that STARTTLS plus a second EHLO are called if the
         # server says it supports the feature.
         factory = StubSMTPFactory(smtp_features=['starttls'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         conn._create_connection()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -220,7 +223,7 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         # support STARTTLS, but then fails when we try to activate it.
         factory = StubSMTPFactory(fail_on=['starttls'],
                                   smtp_features=['starttls'])
-        conn = self.get_connection('', smtp_factory=factory)
+        conn = self.get_connection(b'', smtp_factory=factory)
         self.assertRaises(smtp_connection.SMTPError, conn._create_connection)
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
@@ -242,36 +245,36 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
-            'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+                                 'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
         # now with breezy's EmailMessage
         msg = email_message.EmailMessage(
             '"J. Random Developer" <jrandom@example.com>',
             ['John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
-             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost' ],
+             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost'],
             'subject')
 
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
-            'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+                                 'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
     def test_destination_address_required(self):
         msg = Message()
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
         self.assertRaises(
             smtp_connection.NoDestinationAddress,
-            smtp_connection.SMTPConnection(config.MemoryStack("")
+            smtp_connection.SMTPConnection(config.MemoryStack(b"")
                                            ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', '', 'subject')
         self.assertRaises(
             smtp_connection.NoDestinationAddress,
-            smtp_connection.SMTPConnection(config.MemoryStack("")
+            smtp_connection.SMTPConnection(config.MemoryStack(b"")
                                            ).send_email, msg)
 
         msg = email_message.EmailMessage('from@from.com', [], 'subject')
         self.assertRaises(
             smtp_connection.NoDestinationAddress,
-            smtp_connection.SMTPConnection(config.MemoryStack("")
+            smtp_connection.SMTPConnection(config.MemoryStack(b"")
                                            ).send_email, msg)

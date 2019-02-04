@@ -28,6 +28,7 @@ from breezy import (
     repository,
     tests,
     )
+from breezy.sixish import PY3
 from breezy.bzr.groupcompress_repo import RepositoryFormat2a
 
 
@@ -37,11 +38,12 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
         out, err = self.run_bzr_subprocess(['assert-fail'],
-            universal_newlines=True,
-            retcode=errors.EXIT_INTERNAL_ERROR)
+                                           universal_newlines=True,
+                                           retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
-        self.assertContainsRe(err, r'\nAssertionError: always fails\n')
-        self.assertContainsRe(err, r'Bazaar has encountered an internal error')
+        self.assertContainsRe(err, br'\nAssertionError: always fails\n')
+        self.assertContainsRe(
+            err, br'Bazaar has encountered an internal error')
 
     def test_undecodable_argv(self):
         """A user error must be reported if argv is not in the locale encoding
@@ -51,29 +53,36 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         """
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
-        out, err = self.run_bzr_subprocess(["\xa0"],
-            env_changes={"LANG": "C", "LC_ALL": "C"},
-            universal_newlines=True,
-            retcode=errors.EXIT_ERROR)
-        self.assertContainsRe(err, r"^brz: ERROR: .*'\\xa0'.* unsupported",
-            flags=re.MULTILINE)
-        self.assertEqual(out, "")
+        if PY3:
+            raise tests.TestNotApplicable(
+                "Unable to pass argv to subprocess as bytes")
+        out, err = self.run_bzr_subprocess([b"\xa0"],
+                                           env_changes={
+                                               "LANG": "C", "LC_ALL": "C"},
+                                           universal_newlines=True,
+                                           retcode=errors.EXIT_ERROR)
+        self.assertContainsRe(err, br"^brz: ERROR: .*'\\xa0'.* unsupported",
+                              flags=re.MULTILINE)
+        self.assertEqual(out, b"")
 
     def test_utf8_default_fs_enc(self):
         """In the C locale brz treats a posix filesystem as UTF-8 encoded"""
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_bzr_subprocess(["init", "file:%C2%A7"],
-            env_changes={"LANG": "C", "LC_ALL": "C"})
-        self.assertContainsRe(out, "^Created a standalone tree .*$")
+                                           env_changes={"LANG": "C", "LC_ALL": "C"})
+        self.assertContainsRe(out, b"^Created a standalone tree .*$")
 
 
 class TestOptParseBugHandling(tests.TestCase):
     "Test that we handle http://bugs.python.org/issue2931"
 
     def test_nonascii_optparse(self):
-        """Reasonable error raised when non-ascii in option name"""
-        error_re = 'Only ASCII permitted in option names'
+        """Reasonable error raised when non-ascii in option name on Python 2"""
+        if PY3:
+            error_re = u'no such option: -\xe4'
+        else:
+            error_re = 'Only ASCII permitted in option names'
         out = self.run_bzr_error([error_re], ['st', u'-\xe4'])
 
 
@@ -99,15 +108,15 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestDeprecationWarning, self).setUp()
         self.addCleanup(repository.format_registry.remove,
-            TestObsoleteRepoFormat)
+                        TestObsoleteRepoFormat)
         repository.format_registry.register(TestObsoleteRepoFormat)
         self.addCleanup(controldir.format_registry.remove, "testobsolete")
         bzr.register_metadir(controldir.format_registry, "testobsolete",
-            "breezy.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
-            branch_format='breezy.bzr.branch.BzrBranchFormat7',
-            tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-            deprecated=True,
-            help='Same as 2a, but with an obsolete repo format.')
+                             "breezy.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
+                             branch_format='breezy.bzr.branch.BzrBranchFormat7',
+                             tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
+                             deprecated=True,
+                             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):
