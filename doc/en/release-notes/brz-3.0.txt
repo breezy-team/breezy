@@ -224,6 +224,9 @@ Bug Fixes
   needed for backwards compatibility with Bazaar.
   (Jelmer Vernooĳ, #1803845)
 
+* Don't report .git files as unknown files.
+  (Jelmer Vernooĳ, Debian Bug #921240)
+
 Documentation
 *************
 
