@@ -73,6 +73,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         self.assertIn(getattr(repo._format, attribute), allowed_values)
 
+    def assertRepositoryAttribute(self, attribute, allowed_values):
+        """Assert that the repo has an attribute 'attribute'."""
+        repo = self.make_repository('repo')
+        self.assertIn(getattr(repo, attribute), allowed_values)
+
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
         self.assertFormatAttribute('fast_deltas', (True, False))
@@ -116,6 +121,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_attribute_format_revision_graph_can_have_wrong_parents(self):
         self.assertFormatAttribute('revision_graph_can_have_wrong_parents',
                                    (True, False))
+
+    def test_attribute_format_supports_random_access(self):
+        self.assertRepositoryAttribute('supports_random_access', (True, False))
 
     def test_attribute_format_supports_setting_revision_ids(self):
         self.assertFormatAttribute('supports_setting_revision_ids',

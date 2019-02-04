@@ -151,6 +151,9 @@ Improvements
    ``RevisionTree.annotate_iter`` have been added. (Jelmer Vernooĳ,
    #897781)
 
+ * New ``lp+bzr://`` URL scheme for Bazaar-only branches on Launchpad.
+   (Jelmer Vernooĳ)
+
  * Report colocated branch information in ``brz info``.
    (Jelmer Vernooĳ, #1803846)
 

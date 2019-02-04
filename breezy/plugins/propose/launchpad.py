@@ -141,6 +141,9 @@ class LaunchpadMergeProposal(MergeProposal):
     def set_description(self, description):
         self._mp.description = description
 
+    def close(self):
+        self._mp.setStatus(status='Rejected')
+
 
 class Launchpad(Hoster):
     """The Launchpad hosting service."""
@@ -157,6 +160,11 @@ class Launchpad(Hoster):
         else:
             lp_base_url = uris.LPNET_SERVICE_ROOT
         self.launchpad = lp_api.connect_launchpad(lp_base_url)
+
+    @property
+    def base_url(self):
+        return lp_api.uris.web_root_for_service_root(
+            str(self.launchpad._root_uri))
 
     def __repr__(self):
         return "Launchpad(staging=%s)" % self._staging

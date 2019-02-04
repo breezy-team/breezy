@@ -73,6 +73,9 @@ def _register_directory():
     directories.register_lazy('lp:', 'breezy.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
                               'Launchpad-based directory service',)
+    directories.register_lazy('lp+bzr:', 'breezy.plugins.launchpad.lp_directory',
+                              'LaunchpadDirectory',
+                              'Bazaar-specific Launchpad directory service',)
     directories.register_lazy(
         'debianlp:', 'breezy.plugins.launchpad.lp_directory',
         'LaunchpadDirectory',
