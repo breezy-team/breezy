@@ -51,6 +51,7 @@ from .account import get_lp_login
 # is counted as a netloc protocol.
 transport.register_urlparse_netloc_protocol('bzr+ssh')
 transport.register_urlparse_netloc_protocol('lp')
+transport.register_urlparse_netloc_protocol('lp+bzr')
 
 
 def _requires_launchpad_login(scheme, netloc, path, query,
@@ -109,6 +110,8 @@ def _update_url_scheme(url):
             series=series,
             project=project)
         scheme, netloc, path, query, fragment = urlsplit(url)
+    elif scheme == 'lp+bzr':
+        scheme = 'lp'
     return url, path
 
 
