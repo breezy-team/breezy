@@ -539,7 +539,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if self.mapping.is_special_file(name):
                     continue
                 if self.controldir.is_control_filename(
-                    name.decode(osutils._fs_enc)):
+                        name.decode(osutils._fs_enc, 'replace')):
                     continue
                 yp = os.path.join(dir_relpath, name)
                 try:
