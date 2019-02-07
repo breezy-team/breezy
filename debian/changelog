@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7268-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7268-1) unstable; urgency=medium
 
   * Add patch 11_git_wt_reference. Necessary for #921240 in lintian-
     brush.
