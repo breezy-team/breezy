@@ -5,6 +5,8 @@ breezy (3.0.0~bzr7265-1) UNRELEASED; urgency=medium
     brush.
   * Add patch 13_dulwich_compat: fix compatibility with newer versions
     of Dulwich.
+  * Add patch 14_fix_fastexport: Fix some fastexport operations.
+  * Add patch 15_git_wt_reference: Do not consider .git files unknown.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Feb 2019 17:28:37 +0000
 
