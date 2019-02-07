@@ -3,3 +3,4 @@
 08_disable_sphinx_epytext
 11_git_wt_reference
 12_diff_tree_reference
+13_dulwich_compat
