@@ -46,12 +46,14 @@ from breezy import (
     controldir,
     errors,
     filters as _mod_filters,
-    generate_ids,
     merge,
     revision as _mod_revision,
     transform,
     transport,
     views,
+    )
+from breezy.bzr import (
+    generate_ids,
     )
 """)
 
