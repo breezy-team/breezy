@@ -1,8 +1,9 @@
-Origin: commit, revision id: jelmer@jelmer.uk-20190204171325-044rrb3o4sesamc4
+Origin: commit, https://code.launchpad.net/~jelmer/brz/git-wt-reference, revision: 7268
 Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
 Bug-Debian: http://bugs.debian.org/921240
-Last-Update: 2019-02-04
-X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204171325-044rrb3o4sesamc4
+Last-Update: 2019-02-05
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190205040002-ndgkx17tef7uhdg8
 
 === modified file 'breezy/git/tests/test_workingtree.py'
 --- old/breezy/git/tests/test_workingtree.py	2018-11-17 16:19:11 +0000
@@ -40,7 +41,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204171325-044rrb3o4sesamc4
 
 === modified file 'breezy/git/workingtree.py'
 --- old/breezy/git/workingtree.py	2018-11-21 03:20:30 +0000
-+++ new/breezy/git/workingtree.py	2019-02-04 17:10:54 +0000
++++ new/breezy/git/workingtree.py	2019-02-05 04:00:02 +0000
 @@ -536,13 +536,17 @@
                      if not self._has_dir(relpath):
                          dirnames.remove(name)
@@ -55,7 +56,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204171325-044rrb3o4sesamc4
 +                if self.mapping.is_special_file(name):
 +                    continue
 +                if self.controldir.is_control_filename(
-+                    name.decode(osutils._fs_enc)):
++                        name.decode(osutils._fs_enc, 'replace')):
 +                    continue
 +                yp = os.path.join(dir_relpath, name)
 +                try:
