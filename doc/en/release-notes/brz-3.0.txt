@@ -93,6 +93,9 @@ New Features
  * The 'fastimport' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
+ * The ``grep`` plugin has been merged into Breezy.
+   (Parth Malwankar, Martin Packman, Jelmer Vernooĳ)
+
  * The 'stats' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 

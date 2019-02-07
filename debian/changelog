@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7265-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7268-1) UNRELEASED; urgency=medium
 
   * New upstream snapshot.
   * Add patch 11_git_wt_reference. Necessary for #921240 in lintian-
@@ -7,8 +7,9 @@ breezy (3.0.0~bzr7265-1) UNRELEASED; urgency=medium
     of Dulwich.
   * Add patch 14_fix_fastexport: Fix some fastexport operations.
   * Add patch 15_git_wt_reference: Do not consider .git files unknown.
+  * New upstream snapshot.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 04 Feb 2019 17:28:37 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 07 Feb 2019 05:26:11 +0000
 
 breezy (3.0.0~bzr7260-1) unstable; urgency=medium
 
