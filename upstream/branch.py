@@ -279,6 +279,16 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             self.upstream_revision_map = upstream_revision_map
 
+    @classmethod
+    def from_branch(cls, upstream_branch, upstream_revision_map=None,
+                    config=None, local_dir=None):
+        """Create a new upstream branch source from a branch.
+
+        This will optionally fetch into a local directory.
+        """
+        return cls(upstream_branch,
+                   upstream_revision_map=upstream_revision_map, config=config)
+
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]

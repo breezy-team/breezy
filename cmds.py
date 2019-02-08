@@ -794,15 +794,16 @@ class cmd_merge_upstream(Command):
                 upstream_branch = None
 
             if upstream_branch is not None:
-                upstream_branch_source = UpstreamBranchSource(
-                    upstream_branch, config=config)
+                upstream_branch_source = UpstreamBranchSource.from_branch(
+                    upstream_branch, config=config, local_dir=tree.controldir)
             else:
                 upstream_branch_source = None
 
             if location is not None:
                 try:
-                    primary_upstream_source = UpstreamBranchSource(
-                        Branch.open(location), config=config)
+                    primary_upstream_source = UpstreamBranchSource.from_branch(
+                        Branch.open(location), config=config,
+                        local_dir=tree.controldir)
                 except NotBranchError:
                     primary_upstream_source = TarfileSource(location, version)
             else:
