@@ -31,6 +31,7 @@ from dulwich.walk import Walker
 from .. import config, trace, ui
 from ..errors import (
     DivergedBranches,
+    FetchDepthUnsupported,
     FetchLimitUnsupported,
     InvalidRevisionId,
     LossyPushToSameVCS,
@@ -96,7 +97,12 @@ class InterToGitRepository(InterRepository):
         raise NotImplementedError(self.fetch_refs)
 
     def search_missing_revision_ids(
-        self, find_ghosts=True, revision_ids=None, if_present_ids=None, limit=None
+        self,
+        find_ghosts=True,
+        revision_ids=None,
+        if_present_ids=None,
+        limit=None,
+        depth=None,
     ):
         """Search for missing revision ids in the target repository.
 
@@ -105,6 +111,7 @@ class InterToGitRepository(InterRepository):
             revision_ids: Specific revision ids to search for.
             if_present_ids: Revision ids to search for if present.
             limit: Maximum number of revisions to search for.
+            depth: Optional revision depth.
 
         Returns:
             SearchResult object containing missing revision ids.
@@ -306,13 +313,16 @@ class InterToLocalGitRepository(InterToGitRepository):
                     )
         return revidmap, old_refs, result_refs
 
-    def fetch_revs(self, revs, lossy: bool, limit: int | None = None) -> RevidMap:
+    def fetch_revs(
+        self, revs, lossy: bool, limit: int | None = None, depth: int | None = None
+    ) -> RevidMap:
         """Fetch revisions from source to target repository.
 
         Args:
             revs: List of revisions to fetch as (git_sha, bzr_revid) tuples.
             lossy: Whether to allow lossy conversion.
             limit: Maximum number of revisions to fetch.
+            depth: Optional revision depth.
 
         Returns:
             Dictionary mapping old revision ids to (git_sha, new_revid) tuples.
@@ -326,7 +336,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         self.source, self.target, self.mapping, bzr_revid
                     )
         with self.source_store.lock_read():
-            todo = list(self.missing_revisions(revs))[:limit]
+            todo = list(self.missing_revisions(revs, depth=depth))[:limit]
             revidmap = {}
             with ui.ui_factory.nested_progress_bar() as pb:
                 object_generator = MissingObjectsIterator(
@@ -346,7 +356,12 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return revidmap
 
     def fetch(
-        self, revision_id=None, find_ghosts: bool = False, lossy=False, fetch_spec=None
+        self,
+        revision_id=None,
+        find_ghosts: bool = False,
+        lossy=False,
+        fetch_spec=None,
+        depth=None,
     ) -> FetchResult:
         """Fetch revisions from source to target repository.
 
@@ -355,6 +370,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             find_ghosts: Whether to find ghost revisions.
             lossy: Whether to allow lossy conversion.
             fetch_spec: Specification of what to fetch.
+            depth: Optional revision depth.
 
         Returns:
             FetchResult object.
@@ -371,7 +387,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self._warn_slow()
         try:
-            revidmap = self.fetch_revs(stop_revisions, lossy=lossy)
+            revidmap = self.fetch_revs(stop_revisions, lossy=lossy, depth=depth)
         except NoPushSupport as err:
             raise NoRoundtrippingSupport(self.source, self.target) from err
         return FetchResult(revidmap)
@@ -608,7 +624,9 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 "For better performance, fetch into a Git repository."
             )
 
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
+    def fetch_objects(
+        self, determine_wants, mapping, limit=None, lossy=False, depth=None
+    ):
         """Fetch objects from a remote server.
 
         :param determine_wants: determine_wants callback
@@ -648,6 +666,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
         fetch_spec=None,
         include_tags=False,
         lossy=False,
+        depth=None,
     ):
         """Fetch revisions from source to target repository.
 
@@ -658,6 +677,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             fetch_spec: Specification of what to fetch.
             include_tags: Whether to include tags.
             lossy: Whether to allow lossy conversion.
+            depth: Optional revision depth.
 
         Returns:
             FetchResult object.
@@ -683,7 +703,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             determine_wants = self.determine_wants_all
 
         (pack_hint, _, remote_refs) = self.fetch_objects(
-            determine_wants, mapping, lossy=lossy
+            determine_wants, mapping, lossy=lossy, depth=depth
         )
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
@@ -711,7 +731,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             all_parents.update(values)
         return set(all_revs) - all_parents
 
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
+    def fetch_objects(
+        self, determine_wants, mapping, limit=None, lossy=False, depth=None
+    ):
         """See `InterGitNonGitRepository`."""
         self._warn_slow()
         store = get_object_store(self.target, mapping)
@@ -725,7 +747,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
 
             with ui.ui_factory.nested_progress_bar() as pb:
                 objects_iter = self.source.fetch_objects(
-                    wants_recorder, graph_walker, store.get_raw
+                    wants_recorder, graph_walker, store.get_raw, depth=depth
                 )
                 trace.mutter("Importing %d new revisions", len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(
@@ -756,8 +778,12 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     repository.
     """
 
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
+    def fetch_objects(
+        self, determine_wants, mapping, limit=None, lossy=False, depth=None
+    ):
         """See `InterGitNonGitRepository`."""
+        if depth is not None:
+            raise FetchDepthUnsupported(self)
         self._warn_slow()
         remote_refs = self.source.controldir.get_refs_container().as_dict()
         wants = determine_wants(remote_refs)
@@ -840,7 +866,9 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.controldir.get_refs_container()
         return {}, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None, lossy=False):
+    def fetch_objects(
+        self, determine_wants, limit=None, mapping=None, lossy=False, depth=None
+    ):
         """Fetch objects from source repository.
 
         Args:
@@ -848,6 +876,7 @@ class InterGitGitRepository(InterFromGitRepository):
             limit: Maximum number of objects to fetch.
             mapping: Git mapping to use.
             lossy: Whether to allow lossy conversion.
+            depth: Optional revision depth.
 
         Returns:
             Pack hint, last revision, and remote refs.
@@ -874,6 +903,7 @@ class InterGitGitRepository(InterFromGitRepository):
         limit=None,
         include_tags=False,
         lossy=False,
+        depth=None,
     ):
         """Fetch revisions from source to target Git repository.
 
@@ -885,6 +915,7 @@ class InterGitGitRepository(InterFromGitRepository):
             limit: Maximum number of revisions to fetch.
             include_tags: Whether to include tags.
             lossy: Whether to allow lossy conversion.
+            depth: Optional revision depth.
 
         Returns:
             FetchResult object.
@@ -911,7 +942,7 @@ class InterGitGitRepository(InterFromGitRepository):
                 args, include_tags=include_tags
             )
         wants_recorder = DetermineWantsRecorder(determine_wants)
-        self.fetch_objects(wants_recorder, limit=limit)
+        self.fetch_objects(wants_recorder, limit=limit, depth=depth)
         result = FetchResult()
         result.refs = wants_recorder.remote_refs
         return result
@@ -988,7 +1019,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
     target: LocalGitRepository
 
     def fetch_objects(
-        self, determine_wants, limit=None, mapping=None, lossy: bool = False
+        self, determine_wants, limit=None, mapping=None, lossy: bool = False, depth=None
     ):
         """Fetch objects between local Git repositories.
 
@@ -997,6 +1028,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
             limit: Maximum number of objects to fetch.
             mapping: Git mapping to use.
             lossy: Whether to allow lossy conversion.
+            depth: Optional revision depth.
 
         Returns:
             Pack hint, last revision, and remote refs.
@@ -1010,7 +1042,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
         with ui.ui_factory.nested_progress_bar() as pb:
             progress = DefaultProgressReporter(pb).progress
             refs = self.source._git.fetch(
-                self.target._git, determine_wants, progress=progress
+                self.target._git, determine_wants, progress=progress, depth=depth
             )
         return (None, None, refs)
 
@@ -1025,13 +1057,14 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
 class InterRemoteGitLocalGitRepository(InterGitGitRepository):
     """InterRepository that copies from a remote Git to a local Git repository."""
 
-    def fetch_objects(self, determine_wants, limit=None, mapping=None):
+    def fetch_objects(self, determine_wants, limit=None, mapping=None, depth=None):
         """Fetch objects from remote Git to local Git repository.
 
         Args:
             determine_wants: Function to determine what objects to fetch.
             limit: Maximum number of objects to fetch.
             mapping: Git mapping to use.
+            depth: Optional revision depth.
 
         Returns:
             Pack hint, last revision, and remote refs.
@@ -1060,11 +1093,14 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
         else:
             f, commit, abort = self.target._git.object_store.add_pack()
         try:
-            refs = self.source.controldir.fetch_pack(
-                determine_wants, graphwalker, f.write
+            fetch_result = self.source.controldir.fetch_pack(
+                determine_wants, graphwalker, f.write, depth=depth
             )
             commit()
-            return (None, None, refs)
+            self.target._git.update_shallow(
+                fetch_result.new_shallow, fetch_result.new_unshallow
+            )
+            return (None, None, fetch_result.refs)
         except BaseException:
             abort()
             raise
