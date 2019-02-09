@@ -69,6 +69,36 @@ class TestDirectoryLookup(TestCase):
                          transport.get_transport('foo:bar').base)
 
 
+class OldService(object):
+    """A directory service that maps the name to a FILE url"""
+
+    # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
+    base = urlutils.local_path_to_url('/foo')
+
+    def look_up(self, name, url):
+        return self.base + name
+
+
+class TestOldDirectoryLookup(TestCase):
+    """Test compatibility with older implementations of Directory
+    that don't support the purpose argument."""
+
+    def setUp(self):
+        super(TestOldDirectoryLookup, self).setUp()
+        self.registry = DirectoryServiceRegistry()
+        self.registry.register('old:', OldService, 'Map foo URLs to http urls')
+
+    def test_dereference(self):
+        self.assertEqual(OldService.base + 'bar',
+                         self.registry.dereference('old:bar'))
+        self.assertEqual(OldService.base + 'bar',
+                         self.registry.dereference('old:bar', purpose='push'))
+        self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
+        self.assertEqual(
+            'baz:qux',
+            self.registry.dereference('baz:qux', purpose='push'))
+
+
 class TestAliasDirectory(TestCaseWithTransport):
 
     def setUp(self):

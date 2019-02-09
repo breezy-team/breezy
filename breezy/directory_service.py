@@ -84,7 +84,12 @@ class DirectoryServiceRegistry(registry.Registry):
         if match is None:
             return url
         service, name = match
-        return service().look_up(name, url, purpose=purpose)
+        directory = service()
+        try:
+            return directory.look_up(name, url, purpose=purpose)
+        except TypeError:
+            # Compatibility for plugins written for Breezy < 3.0.0
+            return directory.look_up(name, url)
 
 
 directories = DirectoryServiceRegistry()
