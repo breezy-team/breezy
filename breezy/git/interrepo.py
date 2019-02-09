@@ -39,6 +39,7 @@ from dulwich.walk import Walker
 
 from ..errors import (
     DivergedBranches,
+    FetchDepthUnsupported,
     FetchLimitUnsupported,
     InvalidRevisionId,
     LossyPushToSameVCS,
@@ -127,7 +128,7 @@ class InterToGitRepository(InterRepository):
 
     def search_missing_revision_ids(self,
             find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
+            limit=None, depth=None):
         if limit is not None:
             raise FetchLimitUnsupported(self)
         git_shas = []
@@ -283,14 +284,14 @@ class InterToLocalGitRepository(InterToGitRepository):
                         self.target_refs.set_if_equals(name, old_git_id, gitid)
         return revidmap, old_refs, new_refs
 
-    def fetch_objects(self, revs, lossy, limit=None):
+    def fetch_objects(self, revs, lossy, limit=None, depth=None):
         if not lossy and not self.mapping.roundtripping:
             for git_sha, bzr_revid in revs:
                 if bzr_revid is not None and needs_roundtripping(self.source, bzr_revid):
                     raise NoPushSupport(self.source, self.target, self.mapping,
                                         bzr_revid)
         with self.source_store.lock_read():
-            todo = list(self.missing_revisions(revs))[:limit]
+            todo = list(self.missing_revisions(revs, depth=depth))[:limit]
             revidmap = {}
             pb = ui.ui_factory.nested_progress_bar()
             try:
@@ -314,7 +315,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 pb.finished()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None, mapped_refs=None):
+            fetch_spec=None, mapped_refs=None, depth=None):
         if mapped_refs is not None:
             stop_revisions = mapped_refs
         elif revision_id is not None:
@@ -329,7 +330,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self._warn_slow()
         try:
-            self.fetch_objects(stop_revisions, lossy=False)
+            self.fetch_objects(stop_revisions, lossy=False, depth=depth)
         except NoPushSupport:
             raise NoRoundtrippingSupport(self.source, self.target)
 
@@ -493,7 +494,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
                 'Fetching from Git to Bazaar repository. '
                 'For better performance, fetch into a Git repository.')
 
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False,
+                      depth=None):
         """Fetch objects from a remote server.
 
         :param determine_wants: determine_wants callback
@@ -513,7 +515,8 @@ class InterGitNonGitRepository(InterFromGitRepository):
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, include_tags=False):
+              mapping=None, fetch_spec=None, include_tags=False,
+              depth=None):
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -535,7 +538,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
             determine_wants = self.determine_wants_all
 
         (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants,
-            mapping)
+            mapping, depth=depth)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
         return remote_refs
@@ -554,7 +557,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             all_parents.update(values)
         return set(all_revs) - all_parents
 
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False,
+                      depth=None):
         """See `InterGitNonGitRepository`."""
         self._warn_slow()
         store = get_object_store(self.target, mapping)
@@ -568,7 +572,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 objects_iter = self.source.fetch_objects(
-                    wants_recorder, graph_walker, store.get_raw)
+                    wants_recorder, graph_walker, store.get_raw,
+                    depth=depth)
                 trace.mutter("Importing %d new revisions",
                              len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target,
@@ -596,8 +601,11 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
     repository."""
 
-    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping, limit=None, lossy=False,
+                      depth=None):
         """See `InterGitNonGitRepository`."""
+        if depth is not None:
+            raise FetchDepthUnsupported(self)
         self._warn_slow()
         remote_refs = self.source.controldir.get_refs_container().as_dict()
         wants = determine_wants(remote_refs)
@@ -605,14 +613,11 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = get_object_store(self.target, mapping)
         try:
-            target_git_object_retriever.lock_write()
-            try:
+            with target_git_object_retriever.lock_write():
                 (pack_hint, last_rev) = import_git_objects(self.target,
                     mapping, self.source._git.object_store,
                     target_git_object_retriever, wants, pb, limit)
                 return (pack_hint, last_rev, remote_refs)
-            finally:
-                target_git_object_retriever.unlock()
         finally:
             pb.finished()
 
@@ -649,14 +654,16 @@ class InterGitGitRepository(InterFromGitRepository):
         new_refs = self.target.controldir.get_refs_container()
         return None, old_refs, new_refs
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False,
+                      depth=None):
         raise NotImplementedError(self.fetch_objects)
 
     def _target_has_shas(self, shas):
         return set([sha for sha in shas if sha in self.target._git.object_store])
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, branches=None, limit=None, include_tags=False):
+              mapping=None, fetch_spec=None, branches=None, limit=None,
+              include_tags=False, depth=None):
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -684,7 +691,7 @@ class InterGitGitRepository(InterFromGitRepository):
         else:
             determine_wants = self.get_determine_wants_revids(args, include_tags=include_tags)
         wants_recorder = DetermineWantsRecorder(determine_wants)
-        self.fetch_objects(wants_recorder, mapping, limit=limit)
+        self.fetch_objects(wants_recorder, mapping, limit=limit, depth=depth)
         return wants_recorder.remote_refs
 
     def get_determine_wants_revids(self, revids, include_tags=False):
@@ -705,7 +712,8 @@ class InterGitGitRepository(InterFromGitRepository):
 
 class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False,
+                      depth=None):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
@@ -716,7 +724,7 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
         try:
             refs = self.source._git.fetch(
                     self.target._git, determine_wants,
-                    progress=progress)
+                    progress=progress, depth=depth)
         finally:
             pb.finished()
         return (None, None, refs)
@@ -730,7 +738,8 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
 
 class InterRemoteGitLocalGitRepository(InterGitGitRepository):
 
-    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False):
+    def fetch_objects(self, determine_wants, mapping=None, limit=None, lossy=False,
+                      depth=None):
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
@@ -751,10 +760,12 @@ class InterRemoteGitLocalGitRepository(InterGitGitRepository):
         else:
             f, commit, abort = self.target._git.object_store.add_pack()
         try:
-            refs = self.source.controldir.fetch_pack(
-                determine_wants, graphwalker, f.write)
+            fetch_result = self.source.controldir.fetch_pack(
+                determine_wants, graphwalker, f.write, depth=depth)
             commit()
-            return (None, None, refs)
+            self.target._git.update_shallow(
+                fetch_result.new_shallow, fetch_result.new_unshallow)
+            return (None, None, fetch_result.refs)
         except BaseException:
             abort()
             raise

@@ -611,9 +611,9 @@ class LocalGitBranch(GitBranch):
     def break_lock(self):
         self.repository._git.refs.unlock_ref(self.ref)
 
-    def fetch(self, from_branch, last_revision=None, limit=None):
+    def fetch(self, from_branch, last_revision=None, limit=None, depth=None):
         return branch.InterBranch.get(from_branch, self).fetch(
-            stop_revision=last_revision, limit=limit)
+            stop_revision=last_revision, limit=limit, depth=depth)
 
     def _gen_revision_history(self):
         if self.head is None:
@@ -837,10 +837,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return False
         return True
 
-    def fetch(self, stop_revision=None, fetch_tags=None, limit=None):
-        self.fetch_objects(stop_revision, fetch_tags=fetch_tags, limit=limit)
+    def fetch(self, stop_revision=None, fetch_tags=None, limit=None, depth=None):
+        self.fetch_objects(stop_revision, fetch_tags=fetch_tags, limit=limit, depth=depth)
 
-    def fetch_objects(self, stop_revision, fetch_tags, limit=None):
+    def fetch_objects(self, stop_revision, fetch_tags, limit=None, depth=None):
         interrepo = self._get_interrepo(self.source, self.target)
         if fetch_tags is None:
             c = self.source.get_config_stack()
@@ -859,7 +859,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 [self._last_revid], include_tags=fetch_tags)
             return real(heads)
         pack_hint, head, refs = interrepo.fetch_objects(
-            determine_wants, self.source.mapping, limit=limit)
+            determine_wants, self.source.mapping, limit=limit, depth=depth)
         if (pack_hint is not None and
             self.target.repository._format.pack_compresses):
             self.target.repository.pack(hint=pack_hint)
@@ -982,7 +982,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
 class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
-    def fetch(self, stop_revision=None, fetch_tags=None, limit=None):
+    def fetch(self, stop_revision=None, fetch_tags=None, limit=None, depth=None):
         raise NotImplementedError(self.fetch)
 
 
@@ -1042,14 +1042,14 @@ class InterGitLocalGitBranch(InterGitBranch):
         return (isinstance(source, GitBranch) and
                 isinstance(target, LocalGitBranch))
 
-    def fetch(self, stop_revision=None, fetch_tags=None, limit=None):
+    def fetch(self, stop_revision=None, fetch_tags=None, limit=None, depth=None):
         interrepo = _mod_repository.InterRepository.get(self.source.repository,
             self.target.repository)
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags)
-        interrepo.fetch_objects(determine_wants, limit=limit)
+        interrepo.fetch_objects(determine_wants, limit=limit, depth=depth)
 
     def _basic_push(self, overwrite=False, stop_revision=None):
         if overwrite is True:
@@ -1231,7 +1231,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                     ret[ref] = (git_sha, revid)
         return ret
 
-    def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None):
+    def fetch(self, stop_revision=None, fetch_tags=None, lossy=False, limit=None, depth=None):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         ret = []
@@ -1240,7 +1240,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 ret.append((None, v))
         ret.append((None, stop_revision))
         try:
-            self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit)
+            self.interrepo.fetch_objects(ret, lossy=lossy, limit=limit, depth=depth)
         except NoPushSupport:
             raise errors.NoRoundtrippingSupport(self.source, self.target)
 
