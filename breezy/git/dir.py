@@ -149,7 +149,7 @@ class GitDir(ControlDir):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True, depth=None):
+               source_branch=None, create_tree_if_local=True):
         from ..repository import InterRepository
         from ..transport.local import LocalTransport
         from ..transport import get_transport
@@ -178,10 +178,9 @@ class GitDir(ControlDir):
         else:
             determine_wants = interrepo.determine_wants_all
         interrepo.fetch_objects(determine_wants=determine_wants,
-                                mapping=source_branch.mapping, depth=depth)
+                                mapping=source_branch.mapping)
         result_branch = source_branch.sprout(
-            result, revision_id=revision_id, repository=result_repo,
-            depth=depth)
+            result, revision_id=revision_id, repository=result_repo)
         if (create_tree_if_local and
             isinstance(target_transport, LocalTransport) and
                 (result_repo is None or result_repo.make_working_trees())):

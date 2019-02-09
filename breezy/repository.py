@@ -260,6 +260,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     # items in the tree, or just bulk fetching/pushing of data?
     supports_random_access = True
 
+    # Does this repository implementation support fetching with
+    # a certain graph depth?
+    supports_fetch_depth = False
+
     def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 
