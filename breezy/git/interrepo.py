@@ -1041,6 +1041,8 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
             raise FetchLimitUnsupported(self)
         if lossy:
             raise LossyPushToSameVCS(self.source, self.target)
+        if depth is not None:
+            raise FetchDepthUnsupported(self)
         from .remote import DefaultProgressReporter
 
         with ui.ui_factory.nested_progress_bar() as pb:
