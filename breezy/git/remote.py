@@ -713,7 +713,9 @@ class RemoteGitDir(GitDir):
             if pb is not None:
                 pb.finished()
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+    def fetch_pack(
+        self, determine_wants, graph_walker, pack_data, progress=None, depth=None
+    ):
         """Fetch a pack from the remote repository.
 
         Args:
@@ -721,6 +723,7 @@ class RemoteGitDir(GitDir):
             graph_walker: Graph walker for traversing object relationships.
             pack_data: Callback to receive pack data.
             progress: Optional progress reporter.
+            depth: Optional revision depth.
 
         Returns:
             FetchPackResult containing fetched data and refs.
@@ -736,7 +739,12 @@ class RemoteGitDir(GitDir):
             pb = None
         try:
             result = self._client.fetch_pack(
-                self._client_path, determine_wants, graph_walker, pack_data, progress
+                self._client_path,
+                determine_wants,
+                graph_walker,
+                pack_data,
+                progress,
+                depth=depth,
             )
             if result.refs is None:
                 result.refs = {}
@@ -1017,7 +1025,11 @@ class RemoteGitDir(GitDir):
         if self._refs is not None:
             return self._refs
         result = self.fetch_pack(
-            lambda x: None, None, lambda x: None, lambda x: trace.mutter(f"git: {x}")
+            lambda x: None,
+            None,
+            lambda x: None,
+            lambda x: trace.mutter(f"git: {x}"),
+            depth=None,
         )
         self._refs = remote_refs_dict_to_container(result.refs, result.symrefs)
         return self._refs
@@ -1641,7 +1653,9 @@ class RemoteGitRepository(GitRepository):
         """
         return self.controldir.archive(*args, **kwargs)
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+    def fetch_pack(
+        self, determine_wants, graph_walker, pack_data, progress=None, depth=None
+    ):
         """Fetch a pack from the repository.
 
         Delegates to the control directory's fetch_pack method.
@@ -1651,12 +1665,13 @@ class RemoteGitRepository(GitRepository):
             graph_walker: Graph walker for object traversal.
             pack_data: Callback to receive pack data.
             progress: Optional progress reporter.
+            depth: Optional revision depth.
 
         Returns:
             Fetch result.
         """
         return self.controldir.fetch_pack(
-            determine_wants, graph_walker, pack_data, progress
+            determine_wants, graph_walker, pack_data, progress, depth=depth
         )
 
     def send_pack(self, get_changed_refs, generate_pack_data):
@@ -1674,7 +1689,7 @@ class RemoteGitRepository(GitRepository):
         return self.controldir.send_pack(get_changed_refs, generate_pack_data)
 
     def fetch_objects(
-        self, determine_wants, graph_walker, resolve_ext_ref, progress=None
+        self, determine_wants, graph_walker, resolve_ext_ref, progress=None, depth=None
     ):
         """Fetch objects from the repository into a temporary pack.
 
@@ -1683,6 +1698,7 @@ class RemoteGitRepository(GitRepository):
             graph_walker: Graph walker for object traversal.
             resolve_ext_ref: Function to resolve external references.
             progress: Optional progress reporter.
+            depth: Optional revision depth.
 
         Returns:
             Object store iterator for the fetched objects.
@@ -1692,7 +1708,11 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
             result = self.fetch_pack(
-                determine_wants, graph_walker, lambda x: os.write(fd, x), progress
+                determine_wants,
+                graph_walker,
+                lambda x: os.write(fd, x),
+                progress,
+                depth=depth,
             )
         finally:
             os.close(fd)

@@ -290,6 +290,7 @@ class GitDir(ControlDir):
         stacked=False,
         source_branch=None,
         create_tree_if_local=True,
+        depth=None,
     ):
         """Create a copy of this repository and branch at the specified URL.
 
@@ -304,6 +305,7 @@ class GitDir(ControlDir):
             stacked: Whether to create a stacked branch (not supported for Git).
             source_branch: Specific branch to sprout from.
             create_tree_if_local: Whether to create a working tree for local URLs.
+            depth: Optional revision depth to fetch.
 
         Returns:
             ControlDir: The newly created control directory.
@@ -342,10 +344,12 @@ class GitDir(ControlDir):
         else:
             determine_wants = interrepo.determine_wants_all
         interrepo.fetch_objects(
-            determine_wants=determine_wants, mapping=source_branch.mapping
+            determine_wants=determine_wants,
+            mapping=source_branch.mapping,
+            depth=depth,
         )
         result_branch = source_branch.sprout(
-            result, revision_id=revision_id, repository=result_repo
+            result, revision_id=revision_id, repository=result_repo, depth=depth
         )
         if (
             create_tree_if_local
