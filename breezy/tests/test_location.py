@@ -30,7 +30,7 @@ from ..location import (
 
 class SomeDirectory(object):
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         return "http://bar"
 
 
@@ -78,7 +78,7 @@ class TestLocationToUrl(tests.TestCase):
     def test_rewrite_hook(self):
         self.assertEqual(
             'http://foo.example.com/blah', location_to_url('http://foo.example.com/blah'))
-        def rewrite_url(url):
+        def rewrite_url(url, purpose=None):
             return url.replace('foo', 'bar')
         self.addCleanup(location_hooks.uninstall_named_hook, 'rewrite_url', 'test')
         location_hooks.install_named_hook('rewrite_url', rewrite_url, 'test')

@@ -36,7 +36,7 @@ class FooService(object):
     # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
     base = urlutils.local_path_to_url('/foo')
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         return self.base + name
 
 
@@ -55,7 +55,12 @@ class TestDirectoryLookup(TestCase):
     def test_dereference(self):
         self.assertEqual(FooService.base + 'bar',
                          self.registry.dereference('foo:bar'))
+        self.assertEqual(FooService.base + 'bar',
+                         self.registry.dereference('foo:bar', purpose='push'))
         self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
+        self.assertEqual(
+            'baz:qux',
+            self.registry.dereference('baz:qux', purpose='push'))
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
