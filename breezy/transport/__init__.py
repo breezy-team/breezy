@@ -1562,7 +1562,7 @@ def get_transport(base, possible_transports=None, purpose=None):
         transports will be added to the list.
 
     :param purpose: Purpose for which the transport will be used
-        (e.g. 'push', 'pull' or None)
+        (e.g. 'read', 'write' or None)
 
     :return: A new transport optionally sharing its connection with one of
         possible_transports.

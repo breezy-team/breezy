@@ -77,7 +77,7 @@ class DirectoryServiceRegistry(registry.Registry):
         requires further dereferencing.
 
         :param url: The URL to dereference
-        :param purpose: Purpose of the URL ('push', 'pull' or None - if not declared)
+        :param purpose: Purpose of the URL ('read', 'write' or None - if not declared)
         :return: The dereferenced URL if applicable, the input URL otherwise.
         """
         match = self.get_prefix(url)
@@ -103,7 +103,7 @@ class Directory(object):
 
         :param name: Directory name
         :param url: The URL to dereference
-        :param purpose: Purpose of the URL ('push', 'pull' or None - if not declared)
+        :param purpose: Purpose of the URL ('read', 'write' or None - if not declared)
         :return: The dereferenced URL if applicable, the input URL otherwise.
         """
         raise NotImplementedError(self.look_up)

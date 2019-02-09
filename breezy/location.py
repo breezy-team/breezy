@@ -51,7 +51,7 @@ def location_to_url(location, purpose=None):
     will also lookup the location in directories.
 
     :param location: Unicode or byte string object with a location
-    :param purpose: Intended method of access (None, 'pull' or 'push')
+    :param purpose: Intended method of access (None, 'read' or 'write')
     :raise InvalidURL: If the location is already a URL, but not valid.
     :return: Byte string with resulting URL
     """
