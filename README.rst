@@ -1,17 +1,16 @@
 Breezy (``brz``) is a decentralized revision control system, designed to be
 easy for developers and end users alike.
 
+By default, Breezy provides support for both the `Bazaar
+<https://www.bazaar-vcs.org>`_ and `Git <https://www.git-scm.com/>`_ file
+formats.
+
 You can install from source by following the instructions in the INSTALL file.
 At the moment of writing there are no binary packages available.
 
 To learn how to use Breezy, see the official documentation in the `doc`
 directory or refer to the Bazaar documentation at
-<https://doc.bazaar.canonical.com/en/>.
-
-For additional training materials including screencasts and slides,
-visit the Bazaar community wiki documentation page at:
-
-    http://wiki.bazaar.canonical.com/Documentation/
+<https://www.breezy-vcs.org/doc/en/>.
 
 Breezy is Free Software, and is released under the GNU General Public License,
 version 2 or later.
@@ -19,7 +18,6 @@ version 2 or later.
 Breezy is a friendly fork of the Bazaar (``bzr``) project, hosted on
 http://bazaar.canonical.com/. It is backwards compatibility with
 Bazaar's disk format and protocols.
-
 
 Breezy highlights
 =================

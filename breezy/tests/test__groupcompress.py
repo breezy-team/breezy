@@ -16,6 +16,8 @@
 
 """Tests for the python and pyrex extensions of groupcompress"""
 
+import sys
+
 from .. import (
     tests,
     )
@@ -40,7 +42,7 @@ def module_scenarios():
     if compiled_groupcompress_feature.available():
         gc_module = compiled_groupcompress_feature.module
         scenarios.append(('C',
-            {'_gc_module': gc_module}))
+                          {'_gc_module': gc_module}))
     return scenarios
 
 
@@ -129,7 +131,7 @@ same rabin hash
 class TestMakeAndApplyDelta(tests.TestCase):
 
     scenarios = module_scenarios()
-    _gc_module = None # Set by load_tests
+    _gc_module = None  # Set by load_tests
 
     def setUp(self):
         super(TestMakeAndApplyDelta, self).setUp()
@@ -195,7 +197,7 @@ class TestMakeAndApplyDelta(tests.TestCase):
             b'\xdc\x86\x0a'      # Encoding the length of the uncompressed text
             b'\x80'              # Copy 64kB, starting at byte 0
             b'\x84\x01'          # and another 64kB starting at 64kB
-            b'\xb4\x02\x5c\x83', # And the bit of tail.
+            b'\xb4\x02\x5c\x83',  # And the bit of tail.
             None,   # Both implementations should be identical
             delta)
 
@@ -209,40 +211,40 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
     def test_apply_delta(self):
         target = self.apply_delta(_text1,
-                    b'N\x90/\x1fdiffer from\nagainst other text\n')
+                                  b'N\x90/\x1fdiffer from\nagainst other text\n')
         self.assertEqual(_text2, target)
         target = self.apply_delta(_text2,
-                    b'M\x90/\x1ebe matched\nagainst other text\n')
+                                  b'M\x90/\x1ebe matched\nagainst other text\n')
         self.assertEqual(_text1, target)
 
     def test_apply_delta_to_source_is_safe(self):
         self.assertRaises(TypeError,
-            self.apply_delta_to_source, object(), 0, 1)
+                          self.apply_delta_to_source, object(), 0, 1)
         self.assertRaises(TypeError,
-            self.apply_delta_to_source, u'unicode str', 0, 1)
+                          self.apply_delta_to_source, u'unicode str', 0, 1)
         # end > length
         self.assertRaises(ValueError,
-            self.apply_delta_to_source, b'foo', 1, 4)
+                          self.apply_delta_to_source, b'foo', 1, 4)
         # start > length
         self.assertRaises(ValueError,
-            self.apply_delta_to_source, b'foo', 5, 3)
+                          self.apply_delta_to_source, b'foo', 5, 3)
         # start > end
         self.assertRaises(ValueError,
-            self.apply_delta_to_source, b'foo', 3, 2)
+                          self.apply_delta_to_source, b'foo', 3, 2)
 
     def test_apply_delta_to_source(self):
         source_and_delta = (_text1
                             + b'N\x90/\x1fdiffer from\nagainst other text\n')
         self.assertEqual(_text2, self.apply_delta_to_source(source_and_delta,
-                                    len(_text1), len(source_and_delta)))
+                                                            len(_text1), len(source_and_delta)))
 
 
 class TestMakeAndApplyCompatible(tests.TestCase):
 
     scenarios = two_way_scenarios()
 
-    make_delta = None # Set by load_tests
-    apply_delta = None # Set by load_tests
+    make_delta = None  # Set by load_tests
+    apply_delta = None  # Set by load_tests
 
     def assertMakeAndApply(self, source, target):
         """Assert that generating a delta and applying gives success."""
@@ -273,6 +275,13 @@ class TestDeltaIndex(tests.TestCase):
         di = self._gc_module.DeltaIndex(b'test text\n')
         self.assertEqual('DeltaIndex(1, 10)', repr(di))
 
+    def test_sizeof(self):
+        di = self._gc_module.DeltaIndex()
+        # Exact value will depend on platform but should include sources
+        # source_info is a pointer and two longs so at least 12 bytes
+        lower_bound = di._max_num_sources * 12
+        self.assertGreater(sys.getsizeof(di), lower_bound)
+
     def test__dump_no_index(self):
         di = self._gc_module.DeltaIndex()
         self.assertEqual(None, di._dump_index())
@@ -289,14 +298,14 @@ class TestDeltaIndex(tests.TestCase):
         self.assertEqual(68, len(entry_list))
         just_entries = [(idx, text_offset, hash_val)
                         for idx, (text_offset, hash_val)
-                         in enumerate(entry_list)
-                         if text_offset != 0 or hash_val != 0]
+                        in enumerate(entry_list)
+                        if text_offset != 0 or hash_val != 0]
         rabin_hash = self._gc_module._rabin_hash
         self.assertEqual([(8, 16, rabin_hash(_text1[1:17])),
                           (25, 48, rabin_hash(_text1[33:49])),
                           (34, 32, rabin_hash(_text1[17:33])),
                           (47, 64, rabin_hash(_text1[49:65])),
-                         ], just_entries)
+                          ], just_entries)
         # This ensures that the hash map points to the location we expect it to
         for entry_idx, text_offset, hash_val in just_entries:
             self.assertEqual(entry_idx, hash_list[hash_val & 0xf])
@@ -312,23 +321,23 @@ class TestDeltaIndex(tests.TestCase):
         self.assertEqual(68, len(entry_list))
         just_entries = [(idx, text_offset, hash_val)
                         for idx, (text_offset, hash_val)
-                         in enumerate(entry_list)
-                         if text_offset != 0 or hash_val != 0]
+                        in enumerate(entry_list)
+                        if text_offset != 0 or hash_val != 0]
         rabin_hash = self._gc_module._rabin_hash
         self.assertEqual([(8, 16, rabin_hash(_text1[1:17])),
-                          (9, start2+16, rabin_hash(_text2[1:17])),
+                          (9, start2 + 16, rabin_hash(_text2[1:17])),
                           (25, 48, rabin_hash(_text1[33:49])),
-                          (30, start2+64, rabin_hash(_text2[49:65])),
+                          (30, start2 + 64, rabin_hash(_text2[49:65])),
                           (34, 32, rabin_hash(_text1[17:33])),
-                          (35, start2+32, rabin_hash(_text2[17:33])),
-                          (43, start2+48, rabin_hash(_text2[33:49])),
+                          (35, start2 + 32, rabin_hash(_text2[17:33])),
+                          (43, start2 + 48, rabin_hash(_text2[33:49])),
                           (47, 64, rabin_hash(_text1[49:65])),
-                         ], just_entries)
+                          ], just_entries)
         # Each entry should be in the appropriate hash bucket.
         for entry_idx, text_offset, hash_val in just_entries:
             hash_idx = hash_val & 0xf
             self.assertTrue(
-                hash_list[hash_idx] <= entry_idx < hash_list[hash_idx+1])
+                hash_list[hash_idx] <= entry_idx < hash_list[hash_idx + 1])
 
     def test_first_add_source_doesnt_index_until_make_delta(self):
         di = self._gc_module.DeltaIndex()
@@ -343,24 +352,24 @@ class TestDeltaIndex(tests.TestCase):
 
     def test_add_source_max_bytes_to_index(self):
         di = self._gc_module.DeltaIndex()
-        di._max_bytes_to_index = 3*16
-        di.add_source(_text1, 0) # (77 bytes -1) // 3 = 25 byte stride
-        di.add_source(_text3, 3) # (135 bytes -1) // 3 = 44 byte stride
+        di._max_bytes_to_index = 3 * 16
+        di.add_source(_text1, 0)  # (77 bytes -1) // 3 = 25 byte stride
+        di.add_source(_text3, 3)  # (135 bytes -1) // 3 = 44 byte stride
         start2 = len(_text1) + 3
         hash_list, entry_list = di._dump_index()
         self.assertEqual(16, len(hash_list))
         self.assertEqual(67, len(entry_list))
         just_entries = sorted([(text_offset, hash_val)
                                for text_offset, hash_val in entry_list
-                                if text_offset != 0 or hash_val != 0])
+                               if text_offset != 0 or hash_val != 0])
         rabin_hash = self._gc_module._rabin_hash
         self.assertEqual([(25, rabin_hash(_text1[10:26])),
                           (50, rabin_hash(_text1[35:51])),
                           (75, rabin_hash(_text1[60:76])),
-                          (start2+44, rabin_hash(_text3[29:45])),
-                          (start2+88, rabin_hash(_text3[73:89])),
-                          (start2+132, rabin_hash(_text3[117:133])),
-                         ], just_entries)
+                          (start2 + 44, rabin_hash(_text3[29:45])),
+                          (start2 + 88, rabin_hash(_text3[73:89])),
+                          (start2 + 132, rabin_hash(_text3[117:133])),
+                          ], just_entries)
 
     def test_second_add_source_triggers_make_index(self):
         di = self._gc_module.DeltaIndex()
@@ -467,18 +476,18 @@ class TestCopyInstruction(tests.TestCase):
         self.assertEqual((exp_offset, exp_length, exp_newpos), out)
 
     def test_encode_no_length(self):
-        self.assertEncode(b'\x80', 0, 64*1024)
-        self.assertEncode(b'\x81\x01', 1, 64*1024)
-        self.assertEncode(b'\x81\x0a', 10, 64*1024)
-        self.assertEncode(b'\x81\xff', 255, 64*1024)
-        self.assertEncode(b'\x82\x01', 256, 64*1024)
-        self.assertEncode(b'\x83\x01\x01', 257, 64*1024)
-        self.assertEncode(b'\x8F\xff\xff\xff\xff', 0xFFFFFFFF, 64*1024)
-        self.assertEncode(b'\x8E\xff\xff\xff', 0xFFFFFF00, 64*1024)
-        self.assertEncode(b'\x8D\xff\xff\xff', 0xFFFF00FF, 64*1024)
-        self.assertEncode(b'\x8B\xff\xff\xff', 0xFF00FFFF, 64*1024)
-        self.assertEncode(b'\x87\xff\xff\xff', 0x00FFFFFF, 64*1024)
-        self.assertEncode(b'\x8F\x04\x03\x02\x01', 0x01020304, 64*1024)
+        self.assertEncode(b'\x80', 0, 64 * 1024)
+        self.assertEncode(b'\x81\x01', 1, 64 * 1024)
+        self.assertEncode(b'\x81\x0a', 10, 64 * 1024)
+        self.assertEncode(b'\x81\xff', 255, 64 * 1024)
+        self.assertEncode(b'\x82\x01', 256, 64 * 1024)
+        self.assertEncode(b'\x83\x01\x01', 257, 64 * 1024)
+        self.assertEncode(b'\x8F\xff\xff\xff\xff', 0xFFFFFFFF, 64 * 1024)
+        self.assertEncode(b'\x8E\xff\xff\xff', 0xFFFFFF00, 64 * 1024)
+        self.assertEncode(b'\x8D\xff\xff\xff', 0xFFFF00FF, 64 * 1024)
+        self.assertEncode(b'\x8B\xff\xff\xff', 0xFF00FFFF, 64 * 1024)
+        self.assertEncode(b'\x87\xff\xff\xff', 0x00FFFFFF, 64 * 1024)
+        self.assertEncode(b'\x8F\x04\x03\x02\x01', 0x01020304, 64 * 1024)
 
     def test_encode_no_offset(self):
         self.assertEncode(b'\x90\x01', 0, 1)
@@ -490,7 +499,7 @@ class TestCopyInstruction(tests.TestCase):
         # Special case, if copy == 64KiB, then we store exactly 0
         # Note that this puns with a copy of exactly 0 bytes, but we don't care
         # about that, as we would never actually copy 0 bytes
-        self.assertEncode(b'\x80', 0, 64*1024)
+        self.assertEncode(b'\x80', 0, 64 * 1024)
 
     def test_encode(self):
         self.assertEncode(b'\x91\x01\x01', 1, 1)
@@ -502,7 +511,7 @@ class TestCopyInstruction(tests.TestCase):
         # Special case, if copy == 64KiB, then we store exactly 0
         # Note that this puns with a copy of exactly 0 bytes, but we don't care
         # about that, as we would never actually copy 0 bytes
-        self.assertEncode(b'\x81\x0a', 10, 64*1024)
+        self.assertEncode(b'\x81\x0a', 10, 64 * 1024)
 
     def test_decode_no_length(self):
         # If length is 0, it is interpreted as 64KiB
@@ -550,7 +559,7 @@ class TestBase128Int(tests.TestCase):
 
     scenarios = module_scenarios()
 
-    _gc_module = None # Set by load_tests
+    _gc_module = None  # Set by load_tests
 
     def assertEqualEncode(self, bytes, val):
         self.assertEqual(bytes, self._gc_module.encode_base128_int(val))
@@ -582,5 +591,3 @@ class TestBase128Int(tests.TestCase):
         self.assertEqualDecode(127, 1, b'\x7f\x01')
         self.assertEqualDecode(128, 2, b'\x80\x01abcdef')
         self.assertEqualDecode(255, 2, b'\xff\x01\xff')
-
-

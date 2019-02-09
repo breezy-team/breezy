@@ -76,7 +76,7 @@ class TestAliasDirectory(TestCaseWithTransport):
 
     def test_lookup_parent(self):
         self.assertAliasFromBranch(self.branch.set_parent, 'http://a',
-                                  ':parent')
+                                   ':parent')
 
     def test_lookup_submit(self):
         self.assertAliasFromBranch(self.branch.set_submit_branch, 'http://b',
@@ -115,7 +115,7 @@ class TestAliasDirectory(TestCaseWithTransport):
     def test_register_location_alias(self):
         self.addCleanup(AliasDirectory.branch_aliases.remove, "booga")
         AliasDirectory.branch_aliases.register("booga",
-            lambda b: "UHH?", help="Nobody knows")
+                                               lambda b: "UHH?", help="Nobody knows")
         self.assertEqual("UHH?", directories.dereference(":booga"))
 
 
@@ -124,17 +124,18 @@ class TestColocatedDirectory(TestCaseWithTransport):
     def test_lookup_non_default(self):
         default = self.make_branch('.')
         non_default = default.controldir.create_branch(name='nondefault')
-        self.assertEqual(non_default.base, directories.dereference('co:nondefault'))
+        self.assertEqual(non_default.base,
+                         directories.dereference('co:nondefault'))
 
     def test_lookup_default(self):
         default = self.make_branch('.')
         non_default = default.controldir.create_branch(name='nondefault')
         self.assertEqual(urlutils.join_segment_parameters(default.controldir.user_url,
-            {"branch": ""}), directories.dereference('co:'))
+                                                          {"branch": ""}), directories.dereference('co:'))
 
     def test_no_such_branch(self):
         # No error is raised in this case, that is up to the code that actually
         # opens the branch.
         default = self.make_branch('.')
         self.assertEqual(urlutils.join_segment_parameters(default.controldir.user_url,
-            {"branch": "foo"}), directories.dereference('co:foo'))
+                                                          {"branch": "foo"}), directories.dereference('co:foo'))

@@ -80,7 +80,7 @@ class PathFilteringTransport(Transport):
         if not base.endswith('/'):
             base += '/'
         Transport.__init__(self, base)
-        self.base_path = self.base[len(self.server.scheme)-1:]
+        self.base_path = self.base[len(self.server.scheme) - 1:]
         self.scheme = self.server.scheme
 
     def _relpath_from_server_root(self, relpath):

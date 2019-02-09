@@ -243,7 +243,8 @@ class TestTransportStore(TestCase):
     def test__relpath_unregister_suffixes(self):
         my_store = TransportStore(MockTransport())
         self.assertRaises(ValueError, my_store._relpath, b'foo', [b'gz'])
-        self.assertRaises(ValueError, my_store._relpath, b'foo', [b'dsc', b'gz'])
+        self.assertRaises(ValueError, my_store._relpath,
+                          b'foo', [b'dsc', b'gz'])
 
     def test__relpath_simple(self):
         my_store = TransportStore(MockTransport())
@@ -258,7 +259,8 @@ class TestTransportStore(TestCase):
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
         self.assertEqual('foo.baz', my_store._relpath(b'foo', ['baz']))
-        self.assertEqual('foo.bar.baz', my_store._relpath(b'foo', ['bar', 'baz']))
+        self.assertEqual('foo.bar.baz', my_store._relpath(
+            b'foo', ['bar', 'baz']))
 
     def test__relpath_prefixed_suffixed(self):
         my_store = TransportStore(MockTransport(), True)
@@ -295,7 +297,7 @@ class TestTransportStore(TestCase):
         self.assertEqual([("_add", "45/foo.dsc", stream)], my_store._calls)
 
     def get_populated_store(self, prefixed=False,
-            store_class=TextStore, compressed=False):
+                            store_class=TextStore, compressed=False):
         my_store = store_class(MemoryTransport(), prefixed,
                                compressed=compressed)
         my_store.register_suffix('sig')
@@ -377,7 +379,7 @@ class TestTransportStore(TestCase):
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
         my_store = TransportStore(MemoryTransport(), prefixed=True,
-            escaped=True)
+                                  escaped=True)
         # a particularly perverse file-id! :-)
         self.assertEqual(my_store._relpath(b'C:<>'), 'be/%2543%253a%253c%253e')
 
@@ -390,7 +392,7 @@ class TestVersionFileStore(TestCaseWithTransport):
     def setUp(self):
         super(TestVersionFileStore, self).setUp()
         self.vfstore = VersionedFileStore(MemoryTransport(),
-            versionedfile_class=WeaveFile)
+                                          versionedfile_class=WeaveFile)
         self.vfstore.get_scope = self.get_scope
         self._transaction = None
 
@@ -399,12 +401,14 @@ class TestVersionFileStore(TestCaseWithTransport):
         vf = self.vfstore.get_weave_or_empty(b'id', self._transaction)
         self._transaction.finish()
         self._transaction = None
-        self.assertRaises(errors.OutSideTransaction, vf.add_lines, b'b', [], [])
+        self.assertRaises(errors.OutSideTransaction,
+                          vf.add_lines, b'b', [], [])
         self._transaction = transactions.WriteTransaction()
         vf = self.vfstore.get_weave(b'id', self._transaction)
         self._transaction.finish()
         self._transaction = None
-        self.assertRaises(errors.OutSideTransaction, vf.add_lines, b'b', [], [])
+        self.assertRaises(errors.OutSideTransaction,
+                          vf.add_lines, b'b', [], [])
 
     def test_get_weave_readonly_cant_write(self):
         self._transaction = transactions.WriteTransaction()
@@ -416,7 +420,7 @@ class TestVersionFileStore(TestCaseWithTransport):
 
     def test___iter__escaped(self):
         self.vfstore = VersionedFileStore(MemoryTransport(),
-            prefixed=True, escaped=True, versionedfile_class=WeaveFile)
+                                          prefixed=True, escaped=True, versionedfile_class=WeaveFile)
         self.vfstore.get_scope = self.get_scope
         self._transaction = transactions.WriteTransaction()
         vf = self.vfstore.get_weave_or_empty(b' ', self._transaction)

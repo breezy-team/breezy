@@ -58,7 +58,6 @@ class TestParent(TestCaseWithTransport):
         self.assertEqual('../yanb', b._get_parent_location())
         self.assertEqual(path, b.get_parent())
 
-
         self.assertRaises(urlutils.InvalidURL, b.set_parent, u'\xb5')
         b.set_parent(urlutils.escape(u'\xb5'))
         self.assertEqual('%C2%B5', b._get_parent_location())
@@ -84,7 +83,7 @@ class TestParent(TestCaseWithTransport):
 
         # Force the relative path to be something invalid
         # This should attempt to go outside the filesystem
-        path = ('../'*(n_dirs+5)) + 'foo'
+        path = ('../' * (n_dirs + 5)) + 'foo'
         b.lock_write()
         b._set_parent_location(path)
         b.unlock()

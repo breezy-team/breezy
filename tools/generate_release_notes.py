@@ -35,7 +35,7 @@ from optparse import OptionParser
 
 preamble_plain = """\
 ####################
-Bazaar Release Notes
+Breezy Release Notes
 ####################
 
 
@@ -46,7 +46,7 @@ Bazaar Release Notes
 
 preamble_sphinx = """\
 ####################
-Bazaar Release Notes
+Breezy Release Notes
 ####################
 
 
@@ -58,7 +58,7 @@ Bazaar Release Notes
 
 def natural_sort_key(file_name):
     """Split 'aaa-N.MMbbb' into ('aaa-', N, '.' MM, 'bbb')
-    
+
     e.g. 1.10b1 will sort as greater than 1.2::
 
         >>> natural_sort_key('brz-1.10b1.txt') > natural_sort_key('brz-1.2.txt')
@@ -92,7 +92,7 @@ def output_news_file_plain(out_file, news_file_name):
     for line in lines:
         if line == '####################\n':
             line = '#' * len(title) + '\n'
-        elif line == 'Bazaar Release Notes\n':
+        elif line == 'Breezy Release Notes\n':
             line = title + '\n'
         elif line == '.. toctree::\n':
             continue

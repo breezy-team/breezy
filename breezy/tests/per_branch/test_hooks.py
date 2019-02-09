@@ -27,6 +27,7 @@ from breezy.bzr import (
     )
 from breezy.tests import test_server
 
+
 class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
     """Base TestCase for testing pre/post_change_branch_tip hooks."""
 
@@ -53,7 +54,7 @@ class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
         return branch
 
     def assertHookCalls(self, expected_params, branch, hook_calls=None,
-        pre=False):
+                        pre=False):
         if hook_calls is None:
             hook_calls = self.hook_calls
         if isinstance(branch, remote.RemoteBranch):
@@ -87,7 +88,7 @@ class TestOpen(tests.TestCaseWithMemoryTransport):
         if isinstance(b, remote.RemoteBranch):
             # RemoteBranch creation:
             if (self.transport_readonly_server
-                == test_server.ReadonlySmartTCPServer_for_testing_v2_only):
+                    == test_server.ReadonlySmartTCPServer_for_testing_v2_only):
                 # Older servers:
                 self.assertEqual(3, len(self.hook_calls))
                 # creates the branch via the VFS (for older servers)
@@ -138,6 +139,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         """The hook runs *before* the branch's last_revision_info has changed.
         """
         branch = self.make_branch_with_revision_ids(b'revid-one')
+
         def assertBranchAtRevision1(params):
             self.assertEqual(
                 (1, b'revid-one'), params.branch.last_revision_info())
@@ -149,8 +151,10 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         """If a hook raises an exception, the change does not take effect."""
         branch = self.make_branch_with_revision_ids(
             b'one-\xc2\xb5', b'two-\xc2\xb5')
+
         class PearShapedError(Exception):
             pass
+
         def hook_that_raises(params):
             raise PearShapedError()
         _mod_branch.Branch.hooks.install_named_hook(
@@ -183,6 +187,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_branch_is_locked(self):
         branch = self.make_branch('source')
+
         def assertBranchIsLocked(params):
             self.assertTrue(params.branch.is_locked())
         _mod_branch.Branch.hooks.install_named_hook(
@@ -213,6 +218,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         """
         branch = self.make_branch_with_revision_ids(
             b'one-\xc2\xb5', b'two-\xc2\xb5')
+
         def hook_that_rejects(params):
             raise errors.TipChangeRejected('rejection message')
         _mod_branch.Branch.hooks.install_named_hook(
@@ -235,6 +241,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         """The hook runs *after* the branch's last_revision_info has changed.
         """
         branch = self.make_branch_with_revision_ids(b'revid-one')
+
         def assertBranchAtRevision1(params):
             self.assertEqual(
                 (0, revision.NULL_REVISION), params.branch.last_revision_info())
@@ -265,6 +272,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     def test_branch_is_locked(self):
         """The branch passed to the hook is locked."""
         branch = self.make_branch('source')
+
         def assertBranchIsLocked(params):
             self.assertTrue(params.branch.is_locked())
         _mod_branch.Branch.hooks.install_named_hook(

@@ -58,7 +58,7 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
     def test_fetch_revisions_limit(self):
         """Test fetch-revision operation."""
         builder = self.make_branch_builder('b1',
-            format=self.branch_format_from._matchingcontroldir)
+                                           format=self.branch_format_from._matchingcontroldir)
         builder.start_series()
         rev1 = builder.build_commit()
         rev2 = builder.build_commit()
@@ -69,7 +69,8 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         try:
             b2.fetch(b1, limit=1)
         except FetchLimitUnsupported:
-            raise TestNotApplicable('interbranch does not support fetch limits')
+            raise TestNotApplicable(
+                'interbranch does not support fetch limits')
         except NoRoundtrippingSupport:
             raise TestNotApplicable(
                 'lossless cross-vcs fetch %r to %r not supported' %

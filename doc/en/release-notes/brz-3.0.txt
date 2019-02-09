@@ -67,6 +67,24 @@ External Compatibility Breaks
    has been renamed to ``transform.orphan_policy``.
    (Jelmer Vernooĳ)
 
+ * Backslash (\) is no longer accepted as a path separator
+   on platforms where it is not the default path separator,
+   e.g. POSIX systems. This is so that filenames with backslashes
+   in their name can be added explicitly. (#176263, #165151)
+
+ * One-letter shortcuts for Ubuntu releases are no
+   longer supported after 'ubuntu:'. Bazaar's mapping for
+   one-letter distroseries had not been updated since natty.
+   (Jelmer Vernooĳ)
+
+ * The ``brz lp-mirror-branch`` subcommand has been removed.
+   Please use the ``lp-force-branch-mirror`` command from
+   the lptools package instead. (Jelmer Vernooĳ, #518807)
+
+ * Up-to-date checking for Bazaar packaging branches is no
+   longer performed, since there are no longer
+   any automated imports. (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -74,6 +92,9 @@ New Features
 
  * The 'fastimport' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
+
+ * The ``grep`` plugin has been merged into Breezy.
+   (Parth Malwankar, Martin Packman, Jelmer Vernooĳ)
 
  * The 'stats' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
@@ -113,6 +134,9 @@ New Features
  * New ``lp-logout`` command to unset launchpad username.
    (Jelmer Vernooĳ, #349143)
 
+ * Plugins can now be registered using the 'entrypoints' mechanism in
+   setuptools. (Jelmer Vernooĳ, #1802647)
+
 Improvements
 ************
 
@@ -129,6 +153,12 @@ Improvements
  * HPSS calls for ``RevisionTree.archive`` and
    ``RevisionTree.annotate_iter`` have been added. (Jelmer Vernooĳ,
    #897781)
+
+ * New ``lp+bzr://`` URL scheme for Bazaar-only branches on Launchpad.
+   (Jelmer Vernooĳ)
+
+ * Report colocated branch information in ``brz info``.
+   (Jelmer Vernooĳ, #1803846)
 
 Bug Fixes
 *********
@@ -171,6 +201,32 @@ Bug Fixes
 
 * Support '0' markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)
 
+* Support adding/removing filenames that consist of just
+  backslashes in where backslash is not the path separator.
+  (Jelmer Vernooĳ, #176263, #165151)
+
+* Report correct path in output of ``brz add``.
+  (Brian de Alwis, Jelmer Vernooĳ, #1799482)
+
+* Don't report empty directories in git trees as changes.
+  (Jelmer Vernooĳ, #1804072)
+
+* Fix support for 'brz ignore' in Git trees.
+  (Jelmer Vernooĳ, #1804053)
+
+* Print a clearer error when GPG can't be found.
+  (Jelmer Vernooĳ, #1803898)
+
+* Fix a corner case when moving files.
+  (Jelmer Vernooĳ, #533152)
+
+* Fix fastexport output to standard output when
+  running under Python 3. (Jelmer Vernooĳ, #1805172)
+
+* Restore absolute URLs in branch reference URLs. This is
+  needed for backwards compatibility with Bazaar.
+  (Jelmer Vernooĳ, #1803845)
+
 Documentation
 *************
 
@@ -180,6 +236,9 @@ Documentation
  * Documentation translations into Japanese, Spanish and Russian have been
    removed since there are no current translators to update them.
    (Jelmer Vernooĳ)
+
+ * A quick introduction about using Breezy with GitHub has been added.
+   (Jelmer Vernooĳ, #1803867)
 
 API Changes
 ***********
@@ -294,6 +353,12 @@ Testing
  * Set the ``GPGHOME`` environment variable during testing, to prevent
    e.g. leaking keys into the users' GNUPG directory.
    (Jelmer Vernooĳ, #843885)
+
+ * Allow some slack when comparing times.
+   (Jelmer Vernooĳ, #1804121)
+
+ * Fix a spuriously failing fastexport test due to dictionary
+   ordering. (Jelmer Vernooĳ, #1808630)
 
 ..
    vim: tw=74 ft=rst ff=unix

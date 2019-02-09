@@ -54,24 +54,24 @@ class FormatTests(TestCase):
         metadata = CommitSupplement()
         metadata.revision_id = b"bla"
         self.assertEqual(b"revision-id: bla\n",
-            generate_roundtripping_metadata(metadata, "utf-8"))
+                         generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_parent_ids(self):
         metadata = CommitSupplement()
         metadata.explicit_parent_ids = (b"foo", b"bar")
         self.assertEqual(b"parent-ids: foo bar\n",
-            generate_roundtripping_metadata(metadata, "utf-8"))
+                         generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_properties(self):
         metadata = CommitSupplement()
         metadata.properties = {b"foo": b"bar"}
         self.assertEqual(b"property-foo: bar\n",
-            generate_roundtripping_metadata(metadata, "utf-8"))
+                         generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_empty(self):
         metadata = CommitSupplement()
         self.assertEqual(b"",
-            generate_roundtripping_metadata(metadata, "utf-8"))
+                         generate_roundtripping_metadata(metadata, "utf-8"))
 
 
 class ExtractMetadataTests(TestCase):
@@ -106,9 +106,8 @@ class FileIdRoundTripTests(TestCase):
 
     def test_deserialize(self):
         self.assertEqual({"bar/bla": b"fid"},
-            deserialize_fileid_map(b"bar/bla\0fid\n"))
+                         deserialize_fileid_map(b"bar/bla\0fid\n"))
 
     def test_serialize(self):
         self.assertEqual([b"bar/bla\0fid\n"],
-            serialize_fileid_map({"bar/bla": b"fid"}))
-
+                         serialize_fileid_map({"bar/bla": b"fid"}))

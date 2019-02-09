@@ -41,6 +41,7 @@ def connection_refuser():
 
 class StubSMTPFactory(object):
     """A fake SMTP connection to test the connection setup."""
+
     def __init__(self, fail_on=None, smtp_features=None):
         self._fail_on = fail_on or []
         self._calls = []
@@ -133,8 +134,8 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         password = 'hispass'
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
-                b'[DEFAULT]\nsmtp_username=%s\n' % user.encode('ascii'),
-                smtp_factory=factory)
+            b'[DEFAULT]\nsmtp_username=%s\n' % user.encode('ascii'),
+            smtp_factory=factory)
         self.assertIs(None, conn._smtp_password)
 
         ui.ui_factory = ui.CannedInputUIFactory([password])
@@ -153,8 +154,8 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         # Create a config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update({'smtptest':
-                                       {'scheme': 'smtp', 'user':user,
-                                        'password': password}})
+                                   {'scheme': 'smtp', 'user': user,
+                                    'password': password}})
         conf._save()
 
         conn._connect()
@@ -244,19 +245,19 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
-            'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+                                 'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
         # now with breezy's EmailMessage
         msg = email_message.EmailMessage(
             '"J. Random Developer" <jrandom@example.com>',
             ['John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
-             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost' ],
+             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost'],
             'subject')
 
         from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
-            'pperez@ejemplo.com', 'user@localhost']), sorted(to))
+                                 'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
     def test_destination_address_required(self):
         msg = Message()

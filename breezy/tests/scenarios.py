@@ -46,7 +46,7 @@ def load_tests_apply_scenarios(loader, standard_tests, pattern):
 def multiply_tests_by_their_scenarios(some_tests, into_suite):
     """Multiply the tests in the given suite by their declared scenarios.
 
-    Each test must have a 'scenarios' attribute which is a list of 
+    Each test must have a 'scenarios' attribute which is a list of
     (name, params) pairs.
 
     :param some_tests: TestSuite or Test.

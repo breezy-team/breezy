@@ -65,4 +65,3 @@ class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
         entry = get_entry(self.tree, 'symlink')
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
-

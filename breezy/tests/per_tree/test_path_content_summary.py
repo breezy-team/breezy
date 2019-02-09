@@ -47,8 +47,8 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         # must be present and correct
         returned_size = summary[1]
         if returned_size == expected_size or (
-            tree.supports_content_filtering()
-            and returned_size is None):
+                tree.supports_content_filtering()
+                and returned_size is None):
             pass
         else:
             self.fail("invalid size in summary: %r" % (returned_size,))
@@ -100,7 +100,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(True, summary[2])
         # may have hash,
         self.assertSubset((summary[3],),
-            (None, b'0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+                          (None, b'0c352290ae1c26ca7f97d5b2906c4624784abd60'))
 
     def test_file_content_summary_not_versioned(self):
         tree = self.make_branch_and_tree('tree')
@@ -115,14 +115,14 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
             self.assertIs(None, summary[3])
         elif isinstance(tree, transform._PreviewTree):
             self.expectFailure('PreviewTree returns "missing" for unversioned'
-                'files', self.assertEqual, 'file', summary[0])
+                               'files', self.assertEqual, 'file', summary[0])
             self.assertEqual('file', summary[0])
         else:
             self.assertEqual('file', summary[0])
             self.check_content_summary_size(tree, summary, 22)
             self.assertEqual(False, summary[2])
         self.assertSubset((summary[3],),
-            (None, b'0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+                          (None, b'0c352290ae1c26ca7f97d5b2906c4624784abd60'))
 
     def test_file_content_summary_non_exec(self):
         tree = self.make_branch_and_tree('tree')
@@ -136,7 +136,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(False, summary[2])
         # may have hash,
         self.assertSubset((summary[3],),
-            (None, b'0c352290ae1c26ca7f97d5b2906c4624784abd60'))
+                          (None, b'0c352290ae1c26ca7f97d5b2906c4624784abd60'))
 
     def test_dir_content_summary(self):
         tree = self.make_branch_and_tree('tree')
