@@ -83,6 +83,14 @@ class PrerequisiteBranchUnsupported(errors.BzrError):
         self.hoster = hoster
 
 
+class HosterLoginRequired(errors.BzrError):
+    """Action requires hoster login credentials."""
+
+    def __init__(self, hoster):
+        errors.BzrError.__init__(self)
+        self.hoster = hoster
+
+
 class MergeProposal(object):
     """A merge proposal.
 
@@ -175,6 +183,8 @@ class Hoster(object):
         :param base_branch: branch to derive the new branch from
         :param new_branch: branch to publish
         :return: resulting branch, public URL
+        :raise HosterLoginRequired: Action requires a hoster login, but none is
+            known.
         """
         raise NotImplementedError(self.publish)
 
@@ -225,6 +235,8 @@ class Hoster(object):
         :param status: Only yield proposals with this status
             (one of: 'open', 'closed', 'merged', 'all')
         :return: Iterator over MergeProposal objects
+        :raise HosterLoginRequired: Action requires a hoster login, but none is
+            known.
         """
         raise NotImplementedError(self.iter_my_proposals)
 
