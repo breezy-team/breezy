@@ -194,7 +194,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return False
         return self._commit_needs_fetching(sha_id)
 
-    def missing_revisions(self, stop_revisions):
+    def _missing_revisions(self, stop_revisions, depth=None):
         """Find the revisions that are missing from the target repository.
 
         :param stop_revisions: Revisions to check for (tuples with
@@ -208,7 +208,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         for sha1, revid in stop_revisions:
             if sha1 is not None and revid is not None:
                 revid_sha_map[revid] = sha1
-                stop_revids.append(revid)
+                stop_revids.append((revid, 1))
             elif sha1 is not None:
                 if self._commit_needs_fetching(sha1):
                     for _kind, (
@@ -217,27 +217,31 @@ class InterToLocalGitRepository(InterToGitRepository):
                         _verifiers,
                     ) in self.source_store.lookup_git_sha(sha1):
                         revid_sha_map[revid] = sha1
-                        stop_revids.append(revid)
+                        stop_revids.append((revid, 1))
             else:
                 if revid is None:
                     raise AssertionError
-                stop_revids.append(revid)
+                stop_revids.append((revid, 1))
         missing = set()
         graph = self.source.get_graph()
         with ui.ui_factory.nested_progress_bar() as pb:
             while stop_revids:
-                new_stop_revids = []
-                for revid in stop_revids:
+                new_stop_revids = {}
+                for revid, revid_depth in stop_revids:
                     sha1 = revid_sha_map.get(revid)
                     if revid not in missing and self._revision_needs_fetching(
                         sha1, revid
                     ):
                         missing.add(revid)
-                        new_stop_revids.append(revid)
+                        if depth is None or revid_depth < depth:
+                            new_stop_revids[revid] = revid_depth
                 stop_revids = set()
-                parent_map = graph.get_parent_map(new_stop_revids)
-                for parent_revids in parent_map.values():
-                    stop_revids.update(parent_revids)
+                parent_map = graph.get_parent_map(new_stop_revids.keys())
+                for revid, parent_revids in parent_map.items():
+                    stop_revids.update(
+                        (parent_revid, new_stop_revids[revid] + 1)
+                        for parent_revid in parent_revids
+                    )
                 pb.update("determining revisions to fetch", len(missing))
         return graph.iter_topo_order(missing)
 
@@ -336,7 +340,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         self.source, self.target, self.mapping, bzr_revid
                     )
         with self.source_store.lock_read():
-            todo = list(self.missing_revisions(revs, depth=depth))[:limit]
+            todo = list(self._missing_revisions(revs, depth=depth))[:limit]
             revidmap = {}
             with ui.ui_factory.nested_progress_bar() as pb:
                 object_generator = MissingObjectsIterator(

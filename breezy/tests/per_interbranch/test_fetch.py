@@ -124,9 +124,11 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         b1 = builder.get_branch()
         b2 = self.make_to_branch("b2")
         try:
-            b2.fetch(b1, depth=1)
-        except FetchDepthUnsupported as e:
-            raise TestNotApplicable("interbranch does not support fetch depths") from e
+            if b2.repository.supports_fetch_depth:
+                b2.fetch(b1, depth=1)
+            else:
+                self.assertRaises(FetchDepthUnsupported, b2.fetch, b1, depth=1)
+                raise TestNotApplicable("interbranch does not support fetch depths")
         except NoRoundtrippingSupport as e:
             raise TestNotApplicable(
                 f"lossless cross-vcs fetch {b1!r} to {b2!r} not supported"
