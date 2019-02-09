@@ -22,10 +22,25 @@ from __future__ import absolute_import
 from . import (
     urlutils,
     )
+from .hooks import Hooks
 from .sixish import (
     PY3,
     string_types,
     )
+
+
+class LocationHooks(Hooks):
+    """Dictionary mapping hook name to a list of callables for location hooks.
+    """
+
+    def __init__(self):
+        Hooks.__init__(self, "breezy.location", "hooks")
+        self.add_hook(
+            'rewrite_url',
+            "Called with a URL to rewrite.", (3, 0))
+
+
+hooks = LocationHooks()
 
 
 def location_to_url(location):
@@ -60,5 +75,8 @@ def location_to_url(location):
 
     if not urlutils.is_url(location):
         return urlutils.local_path_to_url(location)
+
+    for hook in hooks['rewrite_url']:
+        location = hook(location)
 
     return location
