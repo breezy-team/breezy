@@ -86,6 +86,8 @@ class PrerequisiteBranchUnsupported(errors.BzrError):
 class HosterLoginRequired(errors.BzrError):
     """Action requires hoster login credentials."""
 
+    _fmt = "Action requires credentials for hosting site %(hoster)r."""
+
     def __init__(self, hoster):
         errors.BzrError.__init__(self)
         self.hoster = hoster
