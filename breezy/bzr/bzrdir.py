@@ -404,6 +404,7 @@ class BzrDir(controldir.ControlDir):
         source_branch=None,
         create_tree_if_local=True,
         lossy=False,
+        depth=None,
     ):
         """Create a copy of this controldir prepared for use as a new line of
         development.
@@ -428,8 +429,11 @@ class BzrDir(controldir.ControlDir):
             location of this control directory.
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
+        :param depth: Optional fetch depth
         :return: The created control directory
         """
+        if depth is not None:
+            raise errors.FetchDepthUnsupported(self)
         with contextlib.ExitStack() as stack:
             fetch_spec_factory = fetch.FetchSpecFactory()
             if revision_id is not None:

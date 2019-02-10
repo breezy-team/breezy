@@ -1288,8 +1288,11 @@ class BzrDirPreSplitOut(BzrDir):
         stacked=False,
         create_tree_if_local=True,
         source_branch=None,
+        depth=None,
     ):
         """See ControlDir.sprout()."""
+        if depth is not None:
+            raise errors.FetchDepthUnsupported(self)
         if source_branch is not None:
             my_branch = self.open_branch()
             if source_branch.base != my_branch.base:

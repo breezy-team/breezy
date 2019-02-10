@@ -370,6 +370,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         hardlink=False,
         stacked=False,
         source_branch=None,
+        depth=None,
     ):
         # dirstate doesn't cope with accelerator_trees well
         # that have a different control dir
@@ -382,6 +383,7 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
             hardlink=hardlink,
             stacked=stacked,
             source_branch=source_branch,
+            depth=depth,
         )
 
 
