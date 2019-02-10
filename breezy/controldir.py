@@ -486,6 +486,7 @@ class ControlDir(ControlComponent):
         source_branch=None,
         create_tree_if_local=True,
         lossy=False,
+        depth=None,
     ):
         """Create a copy of this controldir prepared for use as a new line of
         development.
@@ -510,6 +511,7 @@ class ControlDir(ControlComponent):
             location of this control directory.
           create_tree_if_local: If true, a working-tree will be created
             when working locally.
+          depth: Possible fetch depth
         """
         raise NotImplementedError(self.sprout)
 
