@@ -278,11 +278,11 @@ class cmd_git_apply(Command):
         exitcode = p.wait()
         if exitcode != 0:
             raise BzrCommandError(gettext("error running patch"))
-        message = c.message
+        message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: %s\n" % signed_off_by.encode('utf-8')
-        wt.commit(authors=[c.author], message=message)
+            message += "Signed-off-by: %s\n" % (signed_off_by, )
+        wt.commit(authors=[c.author.decode('utf-8')], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
         from ..errors import UncommittedChanges
