@@ -141,8 +141,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
                 'lossless cross-vcs fetch %r to %r not supported' %
                 (b1, b2))
 
-        self.assertEqual({rev3},
-                         b2.repository.has_revisions([rev1, rev2, rev3]))
+        self.assertEqual(
+            {rev3},
+            b2.repository.has_revisions([rev1, rev2, rev3]))
 
         # fetch does not update the last revision
         self.assertEqual(NULL_REVISION, b2.last_revision())

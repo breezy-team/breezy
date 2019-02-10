@@ -232,7 +232,9 @@ class InterToLocalGitRepository(InterToGitRepository):
                 stop_revids = set()
                 parent_map = graph.get_parent_map(viewkeys(new_stop_revids))
                 for revid, parent_revids in viewvalues(parent_map):
-                    stop_revids.update([(parent_revid, new_stop_revids[revid]+1) for parent_revid in parent_revids])
+                    stop_revids.update(
+                        [(parent_revid, new_stop_revids[revid] + 1)
+                         for parent_revid in parent_revids])
                 pb.update("determining revisions to fetch", len(missing))
         finally:
             pb.finished()
@@ -732,8 +734,6 @@ class InterLocalGitLocalGitRepository(InterGitGitRepository):
             raise LossyPushToSameVCS(self.source, self.target)
         if limit is not None:
             raise FetchLimitUnsupported(self)
-        if depth is not None:
-            raise FetchDepthUnsupported(self)
         from .remote import DefaultProgressReporter
         pb = ui.ui_factory.nested_progress_bar()
         progress = DefaultProgressReporter(pb).progress
