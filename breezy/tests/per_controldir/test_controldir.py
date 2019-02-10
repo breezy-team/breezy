@@ -86,7 +86,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
                      force_new_repo=False, accelerator_tree=None,
-                     create_tree_if_local=True):
+                     create_tree_if_local=True, depth=None):
         """Sprout from_bzrdir into to_url, or raise TestSkipped.
 
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
@@ -99,7 +99,8 @@ class TestControlDir(TestCaseWithControlDir):
                                     force_new_repo=force_new_repo,
                                     possible_transports=[to_transport],
                                     accelerator_tree=accelerator_tree,
-                                    create_tree_if_local=create_tree_if_local)
+                                    create_tree_if_local=create_tree_if_local,
+                                    depth=depth)
         return target
 
     def test_uninitializable(self):
@@ -1049,6 +1050,20 @@ class TestControlDir(TestCaseWithControlDir):
         repo = sprouted.open_repository()
         self.addCleanup(repo.lock_read().unlock)
         self.assertEqual(None, repo.get_parent_map([rev1]).get(rev1))
+
+    def test_sprout_with_depth(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo')
+        tree.commit('revision 1')
+        rev2 = tree.commit('revision 2', allow_pointless=True)
+        dir = tree.controldir
+        try:
+            target = self.sproutOrSkip(dir, self.get_url('target'), depth=1)
+        except errors.FetchDepthUnsupported:
+            self.assertFalse(tree.branch.repository.supports_fetch_depth)
+        else:
+            self.assertEqual({rev2}, target.open_repository().all_revision_ids())
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.

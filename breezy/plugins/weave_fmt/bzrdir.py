@@ -895,8 +895,10 @@ class BzrDirPreSplitOut(BzrDir):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
                hardlink=False, stacked=False, create_tree_if_local=True,
-               source_branch=None):
+               source_branch=None, depth=None):
         """See ControlDir.sprout()."""
+        if depth is not None:
+            raise errors.FetchDepthUnsupported(self)
         if source_branch is not None:
             my_branch = self.open_branch()
             if source_branch.base != my_branch.base:

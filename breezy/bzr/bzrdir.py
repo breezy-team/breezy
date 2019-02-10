@@ -350,7 +350,7 @@ class BzrDir(controldir.ControlDir):
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True,
-               lossy=False):
+               depth=None):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -374,6 +374,7 @@ class BzrDir(controldir.ControlDir):
             location of this control directory.
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
+        :param depth: Optional fetch depth
         :return: The created control directory
         """
         operation = cleanup.OperationWithCleanups(self._sprout)
@@ -382,12 +383,15 @@ class BzrDir(controldir.ControlDir):
             recurse=recurse, possible_transports=possible_transports,
             accelerator_tree=accelerator_tree, hardlink=hardlink,
             stacked=stacked, source_branch=source_branch,
-            create_tree_if_local=create_tree_if_local)
+            create_tree_if_local=create_tree_if_local, depth=depth)
 
     def _sprout(self, op, url, revision_id=None, force_new_repo=False,
                 recurse='down', possible_transports=None,
                 accelerator_tree=None, hardlink=False, stacked=False,
-                source_branch=None, create_tree_if_local=True, lossy=False):
+                source_branch=None, create_tree_if_local=True,
+                depth=None):
+        if depth is not None:
+            raise errors.FetchDepthUnsupported(self)
         add_cleanup = op.add_cleanup
         fetch_spec_factory = fetch.FetchSpecFactory()
         if revision_id is not None:

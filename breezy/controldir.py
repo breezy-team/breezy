@@ -373,7 +373,7 @@ class ControlDir(ControlComponent):
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True,
-               lossy=False):
+               depth=None):
         """Create a copy of this controldir prepared for use as a new line of
         development.
 
@@ -396,6 +396,7 @@ class ControlDir(ControlComponent):
             location of this control directory.
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
+        :param depth: Possible fetch depth
         """
         raise NotImplementedError(self.sprout)
 

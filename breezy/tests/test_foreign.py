@@ -339,14 +339,15 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None):
+               source_branch=None, depth=None):
         # dirstate doesn't cope with accelerator_trees well
         # that have a different control dir
         return super(DummyForeignVcsDir, self).sprout(
             url=url,
             revision_id=revision_id, force_new_repo=force_new_repo,
             recurse=recurse, possible_transports=possible_transports,
-            hardlink=hardlink, stacked=stacked, source_branch=source_branch)
+            hardlink=hardlink, stacked=stacked, source_branch=source_branch,
+            depth=depth)
 
 
 def register_dummy_foreign_for_test(testcase):
