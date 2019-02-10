@@ -174,10 +174,10 @@ class Launchpad(Hoster):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
-    def probe(cls, branch):
-        if plausible_launchpad_url(branch.user_url):
+    def probe_from_url(cls, url):
+        if plausible_launchpad_url(url):
             return Launchpad()
-        raise UnsupportedHoster(branch)
+        raise UnsupportedHoster(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
         url, params = urlutils.split_segment_parameters(branch.user_url)

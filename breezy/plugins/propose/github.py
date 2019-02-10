@@ -126,8 +126,7 @@ class GitHubMergeProposal(MergeProposal):
         self._pr.edit(state='closed')
 
 
-def parse_github_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+def parse_github_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
     if host != 'github.com':
@@ -135,6 +134,12 @@ def parse_github_url(branch):
     (owner, repo_name) = path.strip('/').split('/')
     if repo_name.endswith('.git'):
         repo_name = repo_name[:-4]
+    return owner, repo_name
+
+
+def parse_github_branch_url(branch):
+    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    owner, repo_name = parse_github_url(url)
     return owner, repo_name, branch.name
 
 
@@ -167,7 +172,7 @@ class GitHub(Hoster):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
         import github
-        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
             owner = self.gh.get_user().login
@@ -202,13 +207,13 @@ class GitHub(Hoster):
             remote_repo.html_url, name)
 
     def get_push_url(self, branch):
-        owner, project, branch_name = parse_github_url(branch)
+        owner, project, branch_name = parse_github_branch_url(branch)
         repo = self.gh.get_repo('%s/%s' % (owner, project))
         return github_url_to_bzr_url(repo.ssh_url, branch_name)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import github
-        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
             owner = self.gh.get_user().login
@@ -226,9 +231,9 @@ class GitHub(Hoster):
 
     def iter_proposals(self, source_branch, target_branch, status='open'):
         (source_owner, source_repo_name, source_branch_name) = (
-            parse_github_url(source_branch))
+            parse_github_branch_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
-            parse_github_url(target_branch))
+            parse_github_branch_url(target_branch))
         target_repo = self.gh.get_repo(
             "%s/%s" % (target_owner, target_repo_name))
         state = {
@@ -251,18 +256,18 @@ class GitHub(Hoster):
 
     def hosts(self, branch):
         try:
-            parse_github_url(branch)
+            parse_github_branch_url(branch)
         except NotGitHubUrl:
             return False
         else:
             return True
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_url(cls, url):
         try:
-            parse_github_url(branch)
+            parse_github_url(url)
         except NotGitHubUrl:
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         return cls()
 
     @classmethod
@@ -291,9 +296,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         self.source_branch = source_branch
         self.target_branch = target_branch
         (self.target_owner, self.target_repo_name, self.target_branch_name) = (
-            parse_github_url(self.target_branch))
+            parse_github_branch_url(self.target_branch))
         (self.source_owner, self.source_repo_name, self.source_branch_name) = (
-            parse_github_url(self.source_branch))
+            parse_github_branch_url(self.source_branch))
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
