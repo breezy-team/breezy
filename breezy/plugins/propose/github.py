@@ -244,6 +244,9 @@ class GitHub(Hoster):
                 continue
             if pull.head.ref != source_branch_name:
                 continue
+            if pull.head.repo is None:
+                # Repo has gone the way of the dodo
+                continue
             if (pull.head.repo.owner.login != source_owner or
                     pull.head.repo.name != source_repo_name):
                 continue
