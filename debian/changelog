@@ -1,3 +1,10 @@
+breezy (3.0.0~bzr7268-3) UNRELEASED; urgency=medium
+
+  * Add patch 16_disappearing_repo; cope with GitHub repositories with
+    missing repositories.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 21:56:25 +0000
+
 breezy (3.0.0~bzr7268-2) unstable; urgency=medium
 
   * Add missing dependency on python{3,}-launchpadlib in debian/tests.
