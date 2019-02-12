@@ -4,6 +4,8 @@ breezy (3.0.0~bzr7268-3) UNRELEASED; urgency=medium
     missing repositories.
   * Add patch 17_tolerate_unknown_fields: allow unknown HG fields in Git
     commits.
+  * Bump cython version to 0.29.1; older versions fail to generate C
+    code that works with Python 3.7.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 21:56:25 +0000
 

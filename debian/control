@@ -5,7 +5,7 @@ Maintainer: Debian Breezy Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: bash-completion,
                ca-certificates,
-               cython-dbg (>= 0.17) <!nocheck>,
+               cython-dbg (>= 0.29.1) <!nocheck>,
                dh-python,
                debhelper (>= 12),
                fdupes,
