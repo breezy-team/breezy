@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7268-2) UNRELEASED; urgency=medium
+
+  * Add missing dependency on python{3,}-launchpadlib in debian/tests.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 21:33:26 +0000
+
 breezy (3.0.0~bzr7268-1) unstable; urgency=medium
 
   * Add patch 11_git_wt_reference. Necessary for #921240 in lintian-
