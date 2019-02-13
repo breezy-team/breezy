@@ -6,6 +6,7 @@ breezy-debian (2.8.24) UNRELEASED; urgency=medium
     version.
   * Support merging from upstream branches without random access
     support, i.e. remote git repositories.
+  * Bump debhelper from old 9 to 10.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Feb 2019 15:50:52 +0000
 
