@@ -4,6 +4,8 @@ breezy-debian (2.8.24) UNRELEASED; urgency=medium
     from an upstream git repository.
   * Support finding upstream git revisions by snapshot id in upstream
     version.
+  * Support merging from upstream branches without random access
+    support, i.e. remote git repositories.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Feb 2019 15:50:52 +0000
 

@@ -500,10 +500,28 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         config = DebBuildConfig(
             [('user.conf', True), ('default.conf', False)],
             branch=self.tree.branch)
-        source = UpstreamBranchSource(self.tree.branch, {"2.1": "tag:foo"},
-            config=config)
-        self.assertRaises(PackageVersionNotPresent,
+        source = UpstreamBranchSource(
+            self.tree.branch, {"2.1": "tag:foo"}, config=config)
+        self.assertRaises(
+            PackageVersionNotPresent,
             source.version_as_revision, "foo", u"2.1")
+
+    def test_get_latest_version_no_random_access(self):
+        local_repo = self.make_repository('local')
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        self.tree.branch.repository.supports_random_access = False
+        source = UpstreamBranchSource.from_branch(
+            self.tree.branch,
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')},
+            local_dir=local_repo.controldir)
+        self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
+        self.tree.commit("msg")
+        source = UpstreamBranchSource.from_branch(
+            self.tree.branch,
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')},
+            local_dir=local_repo.controldir)
+        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
 
 
 class LazyUpstreamBranchSourceTests(TestCaseWithTransport):

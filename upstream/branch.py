@@ -21,13 +21,19 @@
 import re
 
 from .... import osutils
-from ....branch import Branch
+from ....branch import (
+    Branch,
+    BranchWriteLockResult,
+    )
+from ....bzr import branch as bzr_branch
 from ....errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
+    NoSuchRevision,
     NoSuchTag,
     UnsupportedOperation,
     )
+from ....lock import _RelockDebugMixin, LogicalLockResult
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
 from ....sixish import text_type
@@ -263,6 +269,63 @@ def guess_upstream_revspec(package, version):
     yield 'tag:v%s' % version
 
 
+# TODO(jelmer): Move this into breezy.
+class MinimalMemoryBranch(bzr_branch.Branch, _RelockDebugMixin):
+
+    def __init__(self, repository, last_revision_info, tags):
+        from ....tag import DisabledTags, MemoryTags
+        self.repository = repository
+        self._last_revision_info = last_revision_info
+        self._revision_history_cache = None
+        if tags is not None:
+            self.tags = MemoryTags(tags)
+        else:
+            self.tags = DisabledTags(self)
+        self._partial_revision_history_cache = []
+        self._last_revision_info_cache = None
+
+    def lock_read(self):
+        self.repository.lock_read()
+        return LogicalLockResult(self.unlock)
+
+    def lock_write(self, token=None):
+        self.repository.lock_write()
+        return BranchWriteLockResult(self.unlock, None)
+
+    def unlock(self):
+        self.repository.unlock()
+
+    def last_revision_info(self):
+        return self._last_revision_info
+
+    def _gen_revision_history(self):
+        """Generate the revision history from last revision
+        """
+        last_revno, last_revision = self.last_revision_info()
+        self._extend_partial_history()
+        return list(reversed(self._partial_revision_history_cache))
+
+    def get_rev_id(self, revno, history=None):
+        """Find the revision id of the specified revno."""
+        with self.lock_read():
+            if revno == 0:
+                return NULL_REVISION
+            last_revno, last_revid = self.last_revision_info()
+            if revno == last_revno:
+                return last_revid
+            if last_revno is None:
+                self._extend_partial_history()
+                return self._partial_revision_history_cache[
+                        len(self._partial_revision_history_cache) - revno]
+            else:
+                if revno <= 0 or revno > last_revno:
+                    raise NoSuchRevision(self, revno)
+                distance_from_last = last_revno - revno
+                if len(self._partial_revision_history_cache) <= distance_from_last:
+                    self._extend_partial_history(distance_from_last)
+                return self._partial_revision_history_cache[distance_from_last]
+
+
 class UpstreamBranchSource(UpstreamSource):
     """Upstream source that uses the upstream branch.
 
@@ -271,8 +334,9 @@ class UpstreamBranchSource(UpstreamSource):
     """
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
-                 config=None):
+                 config=None, actual_branch=None):
         self.upstream_branch = upstream_branch
+        self._actual_branch = actual_branch or upstream_branch
         self.config = config
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
@@ -286,14 +350,32 @@ class UpstreamBranchSource(UpstreamSource):
 
         This will optionally fetch into a local directory.
         """
-        return cls(upstream_branch,
-                   upstream_revision_map=upstream_revision_map, config=config)
+        actual_branch = upstream_branch
+        if local_dir is not None and not getattr(
+                upstream_branch.repository, 'supports_random_access', True):
+            local_repository = local_dir.find_repository()
+            try:
+                (last_revno,
+                 last_revision) = upstream_branch.last_revision_info()
+            except UnsupportedOperation:
+                last_revno = None
+                last_revision = upstream_branch.last_revision()
+            local_repository.fetch(
+                upstream_branch.repository, revision_id=last_revision)
+            upstream_branch = MinimalMemoryBranch(
+                local_repository, (last_revno, last_revision),
+                upstream_branch.tags.get_tag_dict())
+        return cls(
+            upstream_branch=upstream_branch,
+            upstream_revision_map=upstream_revision_map, config=config,
+            actual_branch=actual_branch)
 
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
             revspec = self.upstream_revision_map[version]
         else:
-            revspec = get_export_upstream_revision(self.config, version=version)
+            revspec = get_export_upstream_revision(
+                self.config, version=version)
         if revspec is not None:
             try:
                 return RevisionSpec.from_string(
@@ -318,16 +400,16 @@ class UpstreamBranchSource(UpstreamSource):
         # components
         if tarballs is not None and tarballs.keys() != [None]:
             raise MultipleUpstreamTarballsNotSupported()
-        return { None: self.version_as_revision(package, version, tarballs) }
+        return {None: self.version_as_revision(package, version, tarballs)}
 
     def get_latest_version(self, package, current_version):
-        return self.get_version(package, current_version,
-            self.upstream_branch.last_revision())
+        return self.get_version(
+            package, current_version, self.upstream_branch.last_revision())
 
     def get_version(self, package, current_version, revision):
         with self.upstream_branch.lock_read():
-            return upstream_branch_version(self.upstream_branch,
-                revision, package, current_version)
+            return upstream_branch_version(
+                self.upstream_branch, revision, package, current_version)
 
     def fetch_tarballs(self, package, version, target_dir, components=None,
                        revisions=None):
@@ -343,15 +425,16 @@ class UpstreamBranchSource(UpstreamSource):
                     raise PackageVersionNotPresent(package, version, self)
             note("Exporting upstream branch revision %s to create the tarball",
                  revid)
-            target_filename = self._tarball_path(package, version, None, target_dir)
+            target_filename = self._tarball_path(
+                package, version, None, target_dir)
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
             export(rev_tree, target_filename, 'tgz', tarball_base)
         return [target_filename]
 
     def __repr__(self):
-        return "<%s for %r>" % (self.__class__.__name__,
-            self.upstream_branch.base)
+        return "<%s for %r>" % (
+            self.__class__.__name__, self._actual_branch.base)
 
 
 class LazyUpstreamBranchSource(UpstreamBranchSource):
@@ -375,5 +458,5 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
         return self._upstream_branch
 
     def __repr__(self):
-        return "<%s for %r>" % (self.__class__.__name__,
-            self.upstream_branch_url)
+        return "<%s for %r>" % (
+            self.__class__.__name__, self.upstream_branch_url)
