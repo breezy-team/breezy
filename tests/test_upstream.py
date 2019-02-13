@@ -422,7 +422,7 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
 
     def setUp(self):
         super(UpstreamBranchSourceTests, self).setUp()
-        self.tree = self.make_branch_and_tree('.')
+        self.tree = self.make_branch_and_tree('upstream')
 
     def test_fetch_tarballs(self):
         self.tree.commit("msg")
