@@ -1,4 +1,4 @@
-breezy-debian (2.8.24) UNRELEASED; urgency=medium
+breezy-debian (2.8.24) unstable; urgency=medium
 
   * Support git snapshot id in version strings when merging a snapshot
     from an upstream git repository.
