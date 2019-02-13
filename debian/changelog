@@ -8,6 +8,7 @@ breezy (3.0.0~bzr7268-3) UNRELEASED; urgency=medium
     code that works with Python 3.7.
   * Add 18_gitlab_auth_fix: avoid reading partial authentication from
     authentication.conf.
+  * Add patch 19_probe_url: support probing based on URL.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 21:56:25 +0000
 
