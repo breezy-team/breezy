@@ -7,7 +7,7 @@ Build-Depends: debhelper (>= 10~), python3-all (>= 2.6.6-3), xz-utils, dh-python
 Build-Depends-Indep: brz (>= 3.0.0~bzr7210-1), python3-docutils, python3-debian, python3-apt, patchutils, python3-testtools, pristine-tar, devscripts (>= 2.10.59), python3-subunit, python3-breezy.tests, libalgorithm-merge-perl, python3-distro-info, quilt, python3-dulwich (>= 0.19.9), python3-yaml
 Vcs-Bzr: https://code.breezy-vcs.org/breezy-debian/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy-debian/unstable
-Standards-Version: 4.1.1
+Standards-Version: 4.3.0
 
 Package: brz-debian
 Architecture: all
