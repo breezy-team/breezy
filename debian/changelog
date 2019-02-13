@@ -8,6 +8,7 @@ breezy-debian (2.8.24) UNRELEASED; urgency=medium
     support, i.e. remote git repositories.
   * Bump debhelper from old 9 to 10.
   * Bump standards version to 4.3.0 (no changes).
+  * debian/copyright: Remove reference to removed bzrtools_bzrtools.py.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 01 Feb 2019 15:50:52 +0000
 

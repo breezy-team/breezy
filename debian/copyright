@@ -45,11 +45,3 @@ Copyright:
  2005, 2006 Canonical Limited.
  2006 Michael Ellerman.
 License: GPL-2+
-
-Files:
- bzrtools_bzrtools.py
-Comment: Imported from bzrtools
-Copyright:
- 2005, 2006, 2007 Aaron Bentley <aaron@aaronbentley.com>
- 2007 John Arbash Meinel
-License: GPL-2+
