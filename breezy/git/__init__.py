@@ -27,7 +27,7 @@ from __future__ import absolute_import
 import os
 import sys
 
-dulwich_minimum_version = (0, 19, 7)
+dulwich_minimum_version = (0, 19, 11)
 
 from .. import (  # noqa: F401
     __version__ as breezy_version,
