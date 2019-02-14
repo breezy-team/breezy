@@ -44,10 +44,10 @@ test out development formats (though we cannot guarantee bugs of course
    development version available before pulling in bzr.dev changes
    around release time, as that is when old format cleanups will occur.
 
-We cannot guarantee backwards compatability though, because some of the
+We cannot guarantee backwards compatibility though, because some of the
 planned work may be 'upgrade only'. Please see ``bzr help formats`` for
 the text of the 'development' format which will indicate its
-compatability with other formats if you need to interoperate with
+compatibility with other formats if you need to interoperate with
 users or services that do not have bzr.dev.
 
 Before converting to a development format

@@ -1,13 +1,8 @@
 01_selftest_package
 03_spurious_test_failure
 08_disable_sphinx_epytext
-11_git_wt_reference
 12_diff_tree_reference
-13_dulwich_compat
-14_fix_fastexport
 16_disappearing_repo
-17_tolerate_unknown_fields
-18_gitlab_auth_fix
 19_probe_url
 20_github_open_closed
 21_git_http_username

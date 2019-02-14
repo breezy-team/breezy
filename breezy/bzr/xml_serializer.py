@@ -84,7 +84,7 @@ class XMLSerializer(serializer.Serializer):
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
-            raise errors.UnexpectedInventoryFormat(e)
+            raise errors.UnexpectedInventoryFormat(str(e))
 
     def read_inventory(self, f, revision_id=None):
         try:
@@ -94,7 +94,7 @@ class XMLSerializer(serializer.Serializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise errors.UnexpectedInventoryFormat(e)
+            raise errors.UnexpectedInventoryFormat(str(e))
 
     def write_revision(self, rev, f):
         self._write_element(self._pack_revision(rev), f)

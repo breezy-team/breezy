@@ -1,13 +1,9 @@
-breezy (3.0.0~bzr7268-3) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7282-1) UNRELEASED; urgency=medium
 
   * Add patch 16_disappearing_repo; cope with GitHub repositories with
     missing repositories.
-  * Add patch 17_tolerate_unknown_fields: allow unknown HG fields in Git
-    commits.
   * Bump cython version to 0.29.1; older versions fail to generate C
     code that works with Python 3.7.
-  * Add 18_gitlab_auth_fix: avoid reading partial authentication from
-    authentication.conf.
   * Add patch 19_probe_url: support probing based on URL.
   * Add patch 20_github_open_closed: don't include open GitHub pull requests
     in 'closed'.
@@ -15,8 +11,12 @@ breezy (3.0.0~bzr7268-3) UNRELEASED; urgency=medium
     HTTP with basic auth.
   * Explicitly add conflicts with older versions of Dulwich, which break
     breezy.
+  * New upstream snapshot.
+  * Drop patch 11_git_wt_reference, merged upstream.
+  * Drop patch 13_dulwich_compat, merged upstream.
+  * Drop patch 14_fix_fastexport, merged upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 21:56:25 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 14 Feb 2019 19:26:18 +0000
 
 breezy (3.0.0~bzr7268-2) unstable; urgency=medium
 
