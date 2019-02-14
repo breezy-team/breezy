@@ -660,8 +660,10 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
-        super(BzrGitHttpClient, self).__init__(
-            transport.external_url(), *args, **kwargs)
+        url = urlutils.URL.from_string(transport.external_url())
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        super(BzrGitHttpClient, self).__init__(str(url), *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):

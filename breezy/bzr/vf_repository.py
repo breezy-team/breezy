@@ -39,6 +39,7 @@ from breezy import (
 from breezy.bzr import (
     fetch as _mod_fetch,
     check,
+    generate_ids,
     inventory_delta,
     inventorytree,
     versionedfile,
@@ -229,6 +230,10 @@ class VersionedFileCommitBuilder(CommitBuilder):
             basis_id, self._basis_delta, self._new_revision_id,
             self.parents)
         return self._new_revision_id
+
+    def _gen_revision_id(self):
+        """Return new revision-id."""
+        return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
     def _require_root_change(self, tree):
         """Enforce an appropriate root object change.
