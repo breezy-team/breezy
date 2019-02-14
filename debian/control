@@ -75,7 +75,7 @@ Recommends: ca-certificates,
             ssh-client | python-paramiko,
             python-dulwich (>= 0.19.11),
             python-gpg,
-Conflicts: python-paramiko (<< 1.14.1)
+Conflicts: python-paramiko (<< 1.14.1), python-dulwich (<< 0.19.11)
 Suggests: python-breezy-dbg,
           python-breezy.tests,
           python-fastimport,
@@ -104,7 +104,7 @@ Recommends: ca-certificates,
             ssh-client | python3-paramiko,
             python3-dulwich (>= 0.19.11),
             python3-gpg,
-Conflicts: python3-paramiko (<< 1.14.1)
+Conflicts: python3-paramiko (<< 1.14.1), python3-dulwich (<< 0.19.11)
 Suggests: python3-breezy-dbg,
           python3-breezy.tests,
           python3-fastimport,
