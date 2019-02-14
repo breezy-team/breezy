@@ -1,9 +1,9 @@
-breezy-debian (2.8.25) UNRELEASED; urgency=medium
+breezy-debian (2.8.25) unstable; urgency=medium
 
   * Support newer versions of Breezy where generate_ids has moved to
     breezy.bzr.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 14 Feb 2019 22:32:23 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 14 Feb 2019 22:33:59 +0000
 
 breezy-debian (2.8.24) unstable; urgency=medium
 
