@@ -5,6 +5,8 @@ breezy (3.0.0~bzr7286-1) UNRELEASED; urgency=medium
   * Add patch 19_probe_url: support probing based on URL.
   * Explicitly add conflicts with older versions of Dulwich, which break
     breezy.
+  * Add patch 16_generate_ids, which provides breezy.generate_ids
+    for backwards compatibility with older versions of brz-debian.
   * New upstream snapshot.
   * Drop patch 11_git_wt_reference, merged upstream.
   * Drop patch 13_dulwich_compat, merged upstream.
