@@ -1,0 +1,24 @@
+Description: Don't include open unmerged pull requests in 'closed'.
+Origin: commit, revision id: jelmer@jelmer.uk-20190214010237-82m7pinah5arelex
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2019-02-14
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190214010237-82m7pinah5arelex
+
+=== modified file 'breezy/plugins/propose/github.py'
+--- old/breezy/plugins/propose/github.py	2019-02-02 17:36:19 +0000
++++ new/breezy/plugins/propose/github.py	2019-02-14 01:02:37 +0000
+@@ -274,9 +274,10 @@
+         if status == 'open':
+             query.append('is:open')
+         elif status == 'closed':
+-            # Note that we don't use is:closed here, since that also includes
+-            # merged pull requests.
+             query.append('is:unmerged')
++            # Also use "is:closed" otherwise unmerged open pull requests are
++            # also included.
++            query.append('is:closed')
+         elif status == 'merged':
+             query.append('is:merged')
+         query.append('author:%s' % self.gh.get_user().login)
+
