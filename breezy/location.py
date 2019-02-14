@@ -37,26 +37,28 @@ class LocationHooks(Hooks):
         Hooks.__init__(self, "breezy.location", "hooks")
         self.add_hook(
             'rewrite_url',
-            "Called with a URL to rewrite.", (3, 0))
+            "Possibly rewrite a URL. Called with a URL to rewrite and the "
+            "purpose of the URL.", (3, 0))
 
 
 hooks = LocationHooks()
 
 
-def location_to_url(location):
+def location_to_url(location, purpose=None):
     """Determine a fully qualified URL from a location string.
 
     This will try to interpret location as both a URL and a directory path. It
     will also lookup the location in directories.
 
     :param location: Unicode or byte string object with a location
+    :param purpose: Intended method of access (None, 'read' or 'write')
     :raise InvalidURL: If the location is already a URL, but not valid.
     :return: Byte string with resulting URL
     """
     if not isinstance(location, string_types):
         raise AssertionError("location not a byte or unicode string")
     from .directory_service import directories
-    location = directories.dereference(location)
+    location = directories.dereference(location, purpose)
 
     # Catch any URLs which are passing Unicode rather than ASCII
     try:
@@ -77,6 +79,6 @@ def location_to_url(location):
         return urlutils.local_path_to_url(location)
 
     for hook in hooks['rewrite_url']:
-        location = hook(location)
+        location = hook(location, purpose=purpose)
 
     return location
