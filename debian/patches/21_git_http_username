@@ -1,0 +1,40 @@
+Origin: commit, revision id: jelmer@jelmer.uk-20190214030124-l3uwx94t8c6w4od5
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/1815828
+Last-Update: 2019-02-14
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190214030124-l3uwx94t8c6w4od5
+
+=== modified file 'breezy/git/__init__.py'
+--- old/breezy/git/__init__.py	2018-11-16 12:25:18 +0000
++++ new/breezy/git/__init__.py	2019-02-14 02:44:22 +0000
+@@ -148,7 +148,10 @@
+         from .. import urlutils
+         base_url, _ = urlutils.split_segment_parameters(
+             transport.external_url())
+-        url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
++        url = urlutils.URL.from_string(base_url)
++        url.user = url.quoted_user = None
++        url.password = url.quoted_password = None
++        url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
+         from ..transport.http import Request
+         headers = {"Content-Type": "application/x-git-upload-pack-request",
+                    "Accept": "application/x-git-upload-pack-result",
+
+=== modified file 'breezy/git/remote.py'
+--- old/breezy/git/remote.py	2019-02-01 16:56:56 +0000
++++ new/breezy/git/remote.py	2019-02-14 03:00:04 +0000
+@@ -660,8 +660,10 @@
+ 
+     def __init__(self, transport, *args, **kwargs):
+         self.transport = transport
+-        super(BzrGitHttpClient, self).__init__(
+-            transport.external_url(), *args, **kwargs)
++        url = urlutils.URL.from_string(transport.external_url())
++        url.user = url.quoted_user = None
++        url.password = url.quoted_password = None
++        super(BzrGitHttpClient, self).__init__(str(url), *args, **kwargs)
+ 
+     def _http_request(self, url, headers=None, data=None,
+                       allow_compression=False):
+

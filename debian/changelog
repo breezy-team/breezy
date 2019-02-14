@@ -11,6 +11,8 @@ breezy (3.0.0~bzr7268-3) UNRELEASED; urgency=medium
   * Add patch 19_probe_url: support probing based on URL.
   * Add patch 20_github_open_closed: don't include open GitHub pull requests
     in 'closed'.
+  * Add patch 21_git_http_username: fix access of Git repositories over
+    HTTP with basic auth.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 12 Feb 2019 21:56:25 +0000
 
