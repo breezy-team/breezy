@@ -145,10 +145,17 @@ def user_agent_for_github():
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
+        # This function intentionally doesn't use any of the support code under
+        # breezy.git, since it's called for every repository that's
+        # accessed over HTTP, whether it's Git, Bzr or something else.
+        # Importing Dulwich and the other support code adds unnecessray slowdowns.
         from .. import urlutils
         base_url, _ = urlutils.split_segment_parameters(
             transport.external_url())
-        url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
+        url = urlutils.URL.from_string(base_url)
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
         from ..transport.http import Request
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",

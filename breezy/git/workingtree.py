@@ -536,13 +536,17 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     if not self._has_dir(relpath):
                         dirnames.remove(name)
             for name in filenames:
-                if not self.mapping.is_special_file(name):
-                    yp = os.path.join(dir_relpath, name)
-                    try:
-                        yield yp.decode(osutils._fs_enc)
-                    except UnicodeDecodeError:
-                        raise errors.BadFilenameEncoding(
-                            yp, osutils._fs_enc)
+                if self.mapping.is_special_file(name):
+                    continue
+                if self.controldir.is_control_filename(
+                        name.decode(osutils._fs_enc, 'replace')):
+                    continue
+                yp = os.path.join(dir_relpath, name)
+                try:
+                    yield yp.decode(osutils._fs_enc)
+                except UnicodeDecodeError:
+                    raise errors.BadFilenameEncoding(
+                        yp, osutils._fs_enc)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.

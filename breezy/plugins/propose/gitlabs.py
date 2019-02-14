@@ -24,7 +24,6 @@ from ... import (
     errors,
     urlutils,
     )
-from ...config import AuthenticationConfig
 from ...git.urls import git_url_to_bzr_url
 from ...sixish import PY3
 
@@ -100,23 +99,15 @@ def iter_tokens():
 
 def connect_gitlab(host):
     from gitlab import Gitlab, GitlabGetError
-    auth = AuthenticationConfig()
-
     url = 'https://%s' % host
-    credentials = auth.get_credentials('https', host)
-    if credentials is None:
-        for name, section in iter_tokens():
-            if section.get('url') == url:
-                credentials = section
-                break
-        else:
-            try:
-                return Gitlab(url)
-            except GitlabGetError:
-                raise GitLabLoginMissing()
+    for name, section in iter_tokens():
+        if section.get('url') == url:
+            return Gitlab(**section)
     else:
-        credentials['url'] = url
-    return Gitlab(**credentials)
+        try:
+            return Gitlab(url)
+        except GitlabGetError:
+            raise GitLabLoginMissing()
 
 
 def parse_gitlab_url(url):
