@@ -23,7 +23,6 @@ from breezy import (
     cleanup,
     conflicts as _mod_conflicts,
     debug,
-    generate_ids,
     graph as _mod_graph,
     merge3,
     osutils,
@@ -38,6 +37,7 @@ from breezy import (
     workingtree,
     )
 from breezy.bzr import (
+    generate_ids,
     versionedfile,
     )
 from breezy.i18n import gettext
