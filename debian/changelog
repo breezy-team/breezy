@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7282-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7286-1) UNRELEASED; urgency=medium
 
   * Add patch 16_disappearing_repo; cope with GitHub repositories with
     missing repositories.
@@ -16,7 +16,7 @@ breezy (3.0.0~bzr7282-1) UNRELEASED; urgency=medium
   * Drop patch 13_dulwich_compat, merged upstream.
   * Drop patch 14_fix_fastexport, merged upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 14 Feb 2019 19:26:18 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 14 Feb 2019 22:46:48 +0000
 
 breezy (3.0.0~bzr7268-2) unstable; urgency=medium
 

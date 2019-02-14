@@ -3,9 +3,11 @@ Author: Jelmer Vernooij <jelmer@debian.org>
 Status: Not upstream, Debian-specific
 
 === modified file 'breezy/builtins.py'
---- old/breezy/builtins.py	2018-11-17 01:32:54 +0000
-+++ new/breezy/builtins.py	2018-11-17 01:39:01 +0000
-@@ -4200,7 +4200,8 @@
+Index: unstable/breezy/builtins.py
+===================================================================
+--- unstable.orig/breezy/builtins.py
++++ unstable/breezy/builtins.py
+@@ -4155,7 +4155,8 @@ class cmd_selftest(Command):
              from . import tests
          except ImportError:
              raise errors.BzrCommandError("tests not available. Install the "
@@ -15,4 +17,3 @@ Status: Not upstream, Debian-specific
  
          if testspecs_list is not None:
              pattern = '|'.join(testspecs_list)
-

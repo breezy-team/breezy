@@ -1480,7 +1480,7 @@ class cmd_branch(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = urlutils.derive_to_location(from_location)
-        to_transport = transport.get_transport(to_location)
+        to_transport = transport.get_transport(to_location, purpose='write')
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
@@ -1574,7 +1574,7 @@ class cmd_branches(Command):
 
     def run(self, location=".", recursive=False):
         if recursive:
-            t = transport.get_transport(location)
+            t = transport.get_transport(location, purpose='read')
             if not t.listable():
                 raise errors.BzrCommandError(
                     "Can't scan this type of location.")
@@ -2058,7 +2058,7 @@ class cmd_init(Command):
         if location is None:
             location = u'.'
 
-        to_transport = transport.get_transport(location)
+        to_transport = transport.get_transport(location, purpose='write')
 
         # The path has to exist to initialize a
         # branch inside of it.
@@ -2178,7 +2178,7 @@ class cmd_init_repository(Command):
         if location is None:
             location = '.'
 
-        to_transport = transport.get_transport(location)
+        to_transport = transport.get_transport(location, purpose='write')
 
         if format.fixed_components:
             repo_format_name = None

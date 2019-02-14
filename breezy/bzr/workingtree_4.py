@@ -39,7 +39,6 @@ from breezy import (
     debug,
     errors,
     filters as _mod_filters,
-    generate_ids,
     osutils,
     revision as _mod_revision,
     revisiontree,
@@ -49,6 +48,7 @@ from breezy import (
     )
 from breezy.bzr import (
     dirstate,
+    generate_ids,
     )
 """)
 

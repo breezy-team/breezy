@@ -24,7 +24,6 @@ from .. import (
     bencode,
     errors,
     filters,
-    generate_ids,
     osutils,
     revision as _mod_revision,
     rules,
@@ -32,6 +31,9 @@ from .. import (
     trace,
     transform,
     urlutils,
+    )
+from ..bzr import (
+    generate_ids,
     )
 from ..conflicts import (
     DeletingParent,

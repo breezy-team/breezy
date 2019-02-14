@@ -23,13 +23,14 @@ from .. import (
     )
 from ..directory_service import directories
 from ..location import (
+    hooks as location_hooks,
     location_to_url,
     )
 
 
 class SomeDirectory(object):
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         return "http://bar"
 
 
@@ -73,3 +74,13 @@ class TestLocationToUrl(tests.TestCase):
 
     def test_absolute_file_url(self):
         self.assertEqual("file:///bar", location_to_url("file:/bar"))
+
+    def test_rewrite_hook(self):
+        self.assertEqual(
+            'http://foo.example.com/blah', location_to_url('http://foo.example.com/blah'))
+        def rewrite_url(url, purpose=None):
+            return url.replace('foo', 'bar')
+        self.addCleanup(location_hooks.uninstall_named_hook, 'rewrite_url', 'test')
+        location_hooks.install_named_hook('rewrite_url', rewrite_url, 'test')
+        self.assertEqual(
+            'http://bar.example.com/bar', location_to_url('http://foo.example.com/foo'))
