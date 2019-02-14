@@ -56,11 +56,11 @@ class TestDirectoryLookup(TestCase):
         self.assertEqual(FooService.base + 'bar',
                          self.registry.dereference('foo:bar'))
         self.assertEqual(FooService.base + 'bar',
-                         self.registry.dereference('foo:bar', purpose='push'))
+                         self.registry.dereference('foo:bar', purpose='write'))
         self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
         self.assertEqual(
             'baz:qux',
-            self.registry.dereference('baz:qux', purpose='push'))
+            self.registry.dereference('baz:qux', purpose='write'))
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
@@ -92,11 +92,11 @@ class TestOldDirectoryLookup(TestCase):
         self.assertEqual(OldService.base + 'bar',
                          self.registry.dereference('old:bar'))
         self.assertEqual(OldService.base + 'bar',
-                         self.registry.dereference('old:bar', purpose='push'))
+                         self.registry.dereference('old:bar', purpose='write'))
         self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
         self.assertEqual(
             'baz:qux',
-            self.registry.dereference('baz:qux', purpose='push'))
+            self.registry.dereference('baz:qux', purpose='write'))
 
 
 class TestAliasDirectory(TestCaseWithTransport):
