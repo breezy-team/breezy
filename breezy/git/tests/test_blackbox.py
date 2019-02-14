@@ -387,7 +387,6 @@ class SwitchTests(ExternalBase):
 class GrepTests(ExternalBase):
 
     def test_simple_grep(self):
-        self.requireFeature(PluginLoadedFeature('grep'))
         tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'text for a\n')])
         tree.add(['a'])
