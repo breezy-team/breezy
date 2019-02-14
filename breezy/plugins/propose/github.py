@@ -274,9 +274,10 @@ class GitHub(Hoster):
         if status == 'open':
             query.append('is:open')
         elif status == 'closed':
-            # Note that we don't use is:closed here, since that also includes
-            # merged pull requests.
             query.append('is:unmerged')
+            # Also use "is:closed" otherwise unmerged open pull requests are
+            # also included.
+            query.append('is:closed')
         elif status == 'merged':
             query.append('is:merged')
         query.append('author:%s' % self.gh.get_user().login)
