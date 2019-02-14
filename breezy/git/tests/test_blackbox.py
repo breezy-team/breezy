@@ -308,6 +308,7 @@ class ShallowTests(ExternalBase):
         self.repo.stage("foo")
         self.repo.do_commit(
             b"message", committer=b"Somebody <user@example.com>",
+            author=b"Somebody <user@example.com>",
             commit_timestamp=1526330165, commit_timezone=0,
             author_timestamp=1526330165, author_timezone=0,
             merge_heads=[b'aa' * 20])
