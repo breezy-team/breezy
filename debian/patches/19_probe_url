@@ -6,9 +6,11 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
 
 === modified file 'breezy/plugins/propose/github.py'
---- old/breezy/plugins/propose/github.py	2019-02-02 17:36:19 +0000
-+++ new/breezy/plugins/propose/github.py	2019-02-10 18:37:58 +0000
-@@ -126,8 +126,7 @@
+Index: unstable/breezy/plugins/propose/github.py
+===================================================================
+--- unstable.orig/breezy/plugins/propose/github.py
++++ unstable/breezy/plugins/propose/github.py
+@@ -132,8 +132,7 @@ class GitHubMergeProposal(MergeProposal)
          self._pr.edit(state='closed')
  
  
@@ -18,7 +20,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
      (scheme, user, password, host, port, path) = urlutils.parse_url(
          url)
      if host != 'github.com':
-@@ -135,6 +134,12 @@
+@@ -141,6 +140,12 @@ def parse_github_url(branch):
      (owner, repo_name) = path.strip('/').split('/')
      if repo_name.endswith('.git'):
          repo_name = repo_name[:-4]
@@ -31,7 +33,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
      return owner, repo_name, branch.name
  
  
-@@ -167,7 +172,7 @@
+@@ -186,7 +191,7 @@ class GitHub(Hoster):
                          owner=None, revision_id=None, overwrite=False,
                          allow_lossy=True):
          import github
@@ -40,15 +42,16 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
          if owner is None:
              owner = self.gh.get_user().login
-@@ -202,13 +207,13 @@
-             remote_repo.html_url, name)
+@@ -222,14 +227,14 @@ class GitHub(Hoster):
  
+     @convert_github_error
      def get_push_url(self, branch):
 -        owner, project, branch_name = parse_github_url(branch)
 +        owner, project, branch_name = parse_github_branch_url(branch)
          repo = self.gh.get_repo('%s/%s' % (owner, project))
          return github_url_to_bzr_url(repo.ssh_url, branch_name)
  
+     @convert_github_error
      def get_derived_branch(self, base_branch, name, project=None, owner=None):
          import github
 -        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
@@ -56,8 +59,8 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
          if owner is None:
              owner = self.gh.get_user().login
-@@ -226,9 +231,9 @@
- 
+@@ -249,9 +254,9 @@ class GitHub(Hoster):
+     @convert_github_error
      def iter_proposals(self, source_branch, target_branch, status='open'):
          (source_owner, source_repo_name, source_branch_name) = (
 -            parse_github_url(source_branch))
@@ -68,7 +71,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          target_repo = self.gh.get_repo(
              "%s/%s" % (target_owner, target_repo_name))
          state = {
-@@ -251,18 +256,18 @@
+@@ -277,18 +282,18 @@ class GitHub(Hoster):
  
      def hosts(self, branch):
          try:
@@ -91,7 +94,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          return cls()
  
      @classmethod
-@@ -291,9 +296,9 @@
+@@ -319,9 +324,9 @@ class GitHubMergeProposalBuilder(MergePr
          self.source_branch = source_branch
          self.target_branch = target_branch
          (self.target_owner, self.target_repo_name, self.target_branch_name) = (
@@ -103,12 +106,12 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
  
      def get_infotext(self):
          """Determine the initial comment for the merge proposal."""
-
-=== modified file 'breezy/plugins/propose/gitlabs.py'
---- old/breezy/plugins/propose/gitlabs.py	2019-02-03 02:23:04 +0000
-+++ new/breezy/plugins/propose/gitlabs.py	2019-02-10 18:37:58 +0000
-@@ -119,17 +119,22 @@
-     return Gitlab(**credentials)
+Index: unstable/breezy/plugins/propose/gitlabs.py
+===================================================================
+--- unstable.orig/breezy/plugins/propose/gitlabs.py
++++ unstable/breezy/plugins/propose/gitlabs.py
+@@ -110,17 +110,22 @@ def connect_gitlab(host):
+             raise GitLabLoginMissing()
  
  
 -def parse_gitlab_url(branch):
@@ -134,7 +137,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
      return host, path, branch.name
  
  
-@@ -192,7 +197,7 @@
+@@ -183,7 +188,7 @@ class GitLab(Hoster):
          self.gl = gl
  
      def get_push_url(self, branch):
@@ -143,7 +146,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          project = self.gl.projects.get(project_name)
          return gitlab_url_to_bzr_url(
              project.ssh_url_to_repo, branch_name)
-@@ -201,7 +206,7 @@
+@@ -192,7 +197,7 @@ class GitLab(Hoster):
                          owner=None, revision_id=None, overwrite=False,
                          allow_lossy=True):
          import gitlab
@@ -152,7 +155,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          self.gl.auth()
          try:
              base_project = self.gl.projects.get(base_project)
-@@ -239,7 +244,7 @@
+@@ -230,7 +235,7 @@ class GitLab(Hoster):
  
      def get_derived_branch(self, base_branch, name, project=None, owner=None):
          import gitlab
@@ -161,7 +164,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          self.gl.auth()
          try:
              base_project = self.gl.projects.get(base_project)
-@@ -267,9 +272,9 @@
+@@ -258,9 +263,9 @@ class GitLab(Hoster):
      def iter_proposals(self, source_branch, target_branch, status):
          import gitlab
          (source_host, source_project_name, source_branch_name) = (
@@ -173,7 +176,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          if source_host != target_host:
              raise DifferentGitLabInstances(source_host, target_host)
          self.gl.auth()
-@@ -290,17 +295,17 @@
+@@ -281,17 +286,17 @@ class GitLab(Hoster):
  
      def hosts(self, branch):
          try:
@@ -195,7 +198,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          import gitlab
          import requests.exceptions
          try:
-@@ -308,12 +313,12 @@
+@@ -299,12 +304,12 @@ class GitLab(Hoster):
              gl.auth()
          except requests.exceptions.SSLError:
              # Well, I guess it could be..
@@ -211,7 +214,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
              else:
                  raise
          return cls(gl)
-@@ -341,10 +346,10 @@
+@@ -332,10 +337,10 @@ class GitlabMergeProposalBuilder(MergePr
          self.gl = gl
          self.source_branch = source_branch
          (self.source_host, self.source_project_name, self.source_branch_name) = (
@@ -224,11 +227,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          if self.source_host != self.target_host:
              raise DifferentGitLabInstances(self.source_host, self.target_host)
  
-
-=== modified file 'breezy/plugins/propose/launchpad.py'
---- old/breezy/plugins/propose/launchpad.py	2019-02-02 17:36:19 +0000
-+++ new/breezy/plugins/propose/launchpad.py	2019-02-10 18:37:58 +0000
-@@ -174,10 +174,10 @@
+Index: unstable/breezy/plugins/propose/launchpad.py
+===================================================================
+--- unstable.orig/breezy/plugins/propose/launchpad.py
++++ unstable/breezy/plugins/propose/launchpad.py
+@@ -174,10 +174,10 @@ class Launchpad(Hoster):
          return plausible_launchpad_url(branch.user_url)
  
      @classmethod
@@ -242,11 +245,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
  
      def _get_lp_git_ref_from_branch(self, branch):
          url, params = urlutils.split_segment_parameters(branch.user_url)
-
-=== modified file 'breezy/plugins/propose/propose.py'
---- old/breezy/plugins/propose/propose.py	2019-02-01 00:18:37 +0000
-+++ new/breezy/plugins/propose/propose.py	2019-02-10 18:37:58 +0000
-@@ -213,9 +213,15 @@
+Index: unstable/breezy/plugins/propose/propose.py
+===================================================================
+--- unstable.orig/breezy/plugins/propose/propose.py
++++ unstable/breezy/plugins/propose/propose.py
+@@ -225,9 +225,15 @@ class Hoster(object):
          raise NotImplementedError(self.hosts)
  
      @classmethod
@@ -264,7 +267,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
  
      # TODO(jelmer): Some way of cleaning up old branch proposals/branches
  
-@@ -245,7 +251,7 @@
+@@ -259,7 +265,7 @@ def get_hoster(branch, possible_hosters=
                  return hoster
      for name, hoster_cls in hosters.items():
          try:
@@ -273,4 +276,3 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190210183758-n5i17z2oeggi7rei
          except UnsupportedHoster:
              pass
          else:
-

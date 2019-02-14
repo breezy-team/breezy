@@ -5,10 +5,6 @@ breezy (3.0.0~bzr7286-1) UNRELEASED; urgency=medium
   * Bump cython version to 0.29.1; older versions fail to generate C
     code that works with Python 3.7.
   * Add patch 19_probe_url: support probing based on URL.
-  * Add patch 20_github_open_closed: don't include open GitHub pull requests
-    in 'closed'.
-  * Add patch 21_git_http_username: fix access of Git repositories over
-    HTTP with basic auth.
   * Explicitly add conflicts with older versions of Dulwich, which break
     breezy.
   * New upstream snapshot.

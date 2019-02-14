@@ -6,17 +6,3 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20190212214554-3qanxtjr2e555ndq
 
 === modified file 'breezy/plugins/propose/github.py'
-Index: unstable/breezy/plugins/propose/github.py
-===================================================================
---- unstable.orig/breezy/plugins/propose/github.py
-+++ unstable/breezy/plugins/propose/github.py
-@@ -270,6 +270,9 @@ class GitHub(Hoster):
-             if pull.head.repo is None:
-                 # Repo has gone the way of the dodo
-                 continue
-+            if pull.head.repo is None:
-+                # Repo has gone the way of the dodo
-+                continue
-             if (pull.head.repo.owner.login != source_owner or
-                     pull.head.repo.name != source_repo_name):
-                 continue
