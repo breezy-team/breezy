@@ -18,7 +18,10 @@ from ...upstream_import import (
     DirWrapper,
     ZipFileWrapper,
     )
-from ... import generate_ids
+try:
+    from ...bzr import generate_ids
+except ImportError:  # brz < 3.0.0
+    from ... import generate_ids
 from ... import urlutils
 from ...controldir import ControlDir
 from ...errors import NoSuchFile, BzrCommandError, NotBranchError
