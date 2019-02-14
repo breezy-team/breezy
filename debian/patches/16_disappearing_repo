@@ -1,8 +1,0 @@
-Description: Don't attempt to resolve None when repo has gone away.
-Origin: commit, revision id: jelmer@jelmer.uk-20190212214554-3qanxtjr2e555ndq
-Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
-Last-Update: 2019-02-12
-Applied-Upstream: no
-X-Bzr-Revision-Id: jelmer@jelmer.uk-20190212214554-3qanxtjr2e555ndq
-
-=== modified file 'breezy/plugins/propose/github.py'

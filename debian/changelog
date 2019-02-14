@@ -1,7 +1,5 @@
 breezy (3.0.0~bzr7286-1) UNRELEASED; urgency=medium
 
-  * Add patch 16_disappearing_repo; cope with GitHub repositories with
-    missing repositories.
   * Bump cython version to 0.29.1; older versions fail to generate C
     code that works with Python 3.7.
   * Add patch 19_probe_url: support probing based on URL.
