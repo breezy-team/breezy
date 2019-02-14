@@ -308,6 +308,7 @@ class ShallowTests(ExternalBase):
         self.repo.stage("foo")
         self.repo.do_commit(
             b"message", committer=b"Somebody <user@example.com>",
+            author=b"Somebody <user@example.com>",
             commit_timestamp=1526330165, commit_timezone=0,
             author_timestamp=1526330165, author_timezone=0,
             merge_heads=[b'aa' * 20])
@@ -386,7 +387,6 @@ class SwitchTests(ExternalBase):
 class GrepTests(ExternalBase):
 
     def test_simple_grep(self):
-        self.requireFeature(PluginLoadedFeature('grep'))
         tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'text for a\n')])
         tree.add(['a'])
@@ -455,3 +455,37 @@ class GitObjectsTests(ExternalBase):
 
     def test_in_bzr(self):
         self.run_simple(format='2a')
+
+
+class GitApplyTests(ExternalBase):
+
+    def test_apply(self):
+        b = self.make_branch_and_tree('.')
+
+        with open('foo.patch', 'w') as f:
+            f.write("""\
+From bdefb25fab801e6af0a70e965f60cb48f2b759fa Mon Sep 17 00:00:00 2001
+From: Dmitry Bogatov <KAction@debian.org>
+Date: Fri, 8 Feb 2019 23:28:30 +0000
+Subject: [PATCH] Add fixed for out-of-date-standards-version
+
+---
+ message           | 3 +++
+ 1 files changed, 14 insertions(+)
+ create mode 100644 message
+
+diff --git a/message b/message
+new file mode 100644
+index 0000000..05ec0b1
+--- /dev/null
++++ b/message
+@@ -0,0 +1,3 @@
++Update standards version, no changes needed.
++Certainty: certain
++Fixed-Lintian-Tags: out-of-date-standards-version
+""")
+        output, error = self.run_bzr('git-apply foo.patch')
+        self.assertContainsRe(
+            error,
+            'Committing to: .*\n'
+            'Committed revision 1.\n')

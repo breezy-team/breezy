@@ -581,8 +581,8 @@ class BzrFastExporter(object):
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if kind == 'directory' and tree_old.kind(oldpath, id_) == 'directory':
-                for p, e in tree_old.inventory.iter_entries_by_dir(from_dir=id_):
+            if kind == 'directory' and tree_old.kind(oldpath) == 'directory':
+                for p, e in tree_old.iter_entries_by_dir(specific_files=[oldpath]):
                     if e.kind == 'directory' and self.plain_format:
                         continue
                     old_child_path = osutils.pathjoin(oldpath, p)
