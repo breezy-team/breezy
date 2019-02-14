@@ -2616,10 +2616,9 @@ def cache_dir():
     if sys.platform in ("nt", "win32"):
         from bzrlib.win32utils import get_local_appdata_location
         s = get_local_appdata_location()
-        assert s is not None
         # This can return a unicode string or a plain string in
         # user encoding
-        if type(s) == str:
+        if isinstance(s, bytes):
             s = s.decode(bzrlib.user_encoding)
         cache_dir = s.encode(_fs_enc)
     else:
@@ -2629,7 +2628,7 @@ def cache_dir():
             cache_dir = os.environ.get('XDG_CACHE_DIR', None)
         else:
             cache_dir = os.path.join(xdg_cache_home, "breezy")
-        if type(cache_dir) == unicode:
+        if cache_dir is not None and not isinstance(cache_dir, text_type):
             cache_dir = cache_dir.encode(_fs_enc)
 
     if cache_dir is None:

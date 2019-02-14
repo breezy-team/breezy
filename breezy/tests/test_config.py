@@ -550,10 +550,6 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.authentication_config_filename(),
                          self.brz_home + '/authentication.conf')
 
-    def test_xdg_cache_dir(self):
-        self.assertEqual(config.xdg_cache_dir(),
-                         '/home/bogus/.cache')
-
 
 class TestConfigPathFallback(tests.TestCaseInTempDir):
 
@@ -581,10 +577,6 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
     def test_authentication_config_filename(self):
         self.assertEqual(config.authentication_config_filename(),
                          self.bzr_home + '/authentication.conf')
-
-    def test_xdg_cache_dir(self):
-        self.assertEqual(config.xdg_cache_dir(),
-                         os.path.join(self.test_dir, '.cache'))
 
 
 class TestXDGConfigDir(tests.TestCaseInTempDir):
