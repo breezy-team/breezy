@@ -755,7 +755,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                 return
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
-            # skip the root for compatability with the current apis.
+            # skip the root for compatibility with the current apis.
             next(entries)
         for path, entry in entries:
             yield path, 'V', entry.kind, entry

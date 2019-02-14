@@ -1603,7 +1603,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual([], result.failures)
 
     def test_run_disabled_unittest_result(self):
-        """Test our compatability for disabled tests with unittest results."""
+        """Test our compatibility for disabled tests with unittest results."""
         test = SampleTestCase('_test_pass')
 
         class DisabledFeature(object):
