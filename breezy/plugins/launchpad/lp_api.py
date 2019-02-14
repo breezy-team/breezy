@@ -45,10 +45,20 @@ from ... import (
     )
 from ...i18n import gettext
 
+
+class LaunchpadlibMissing(errors.DependencyNotPresent):
+
+    _fmt = ("launchpadlib is required for Launchpad API access. "
+            "Please install the launchpadlib package.")
+
+    def __init__(self, e):
+        super(LaunchpadlibMissing, self).__init__(
+            'launchpadlib', e)
+
 try:
     import launchpadlib
 except ImportError as e:
-    raise errors.DependencyNotPresent('launchpadlib', e)
+    raise LaunchpadlibMissing(e)
 
 from launchpadlib.launchpad import (
     Launchpad,
