@@ -4230,7 +4230,7 @@ class RemoteBranchConfig(RemoteConfig):
             value = str(value)
         elif isinstance(value, int):
             value = str(value)
-        elif instance(value, text_type):
+        elif isinstance(value, text_type):
             value = value.encode('utf-8')
         elif isinstance(value, bytes):
             pass
