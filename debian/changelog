@@ -1,6 +1,8 @@
 breezy (3.0.0~bzr7286-2) UNRELEASED; urgency=medium
 
   * Add patch 20_fix_stream_buffering: fix prompts.
+  * Add 22_git_push_branch_tags: fix pushing of tags to nascent git
+    branches.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 15 Feb 2019 02:09:00 +0000
 

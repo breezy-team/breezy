@@ -1,0 +1,293 @@
+Origin: commit, revision id: jelmer@jelmer.uk-20190215042401-lg12432pcwf9b6st
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/1815985
+Bug: https://launchpad.net/bugs/1815866
+Last-Update: 2019-02-15
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215042401-lg12432pcwf9b6st
+
+=== modified file 'breezy/branch.py'
+--- old/breezy/branch.py	2018-11-30 12:39:04 +0000
++++ new/breezy/branch.py	2019-02-15 03:42:06 +0000
+@@ -1495,6 +1495,7 @@
+         must_fetch = {self.last_revision()}
+         if_present_fetch = set()
+         if self.get_config_stack().get('branch.fetch_tags'):
++            import pdb; pdb.set_trace()
+             try:
+                 if_present_fetch = set(self.tags.get_reverse_tag_dict())
+             except errors.TagsNotSupported:
+
+=== modified file 'breezy/bzr/remote.py'
+--- old/breezy/bzr/remote.py	2019-01-01 23:40:59 +0000
++++ new/breezy/bzr/remote.py	2019-02-15 03:42:06 +0000
+@@ -4226,12 +4226,21 @@
+             return self._set_config_option(value, name, section)
+ 
+     def _set_config_option(self, value, name, section):
++        if isinstance(value, bool):
++            value = str(value)
++        elif isinstance(value, int):
++            value = str(value)
++        elif instance(value, text_type):
++            value = value.encode('utf-8')
++        elif isinstance(value, bytes):
++            pass
++        else:
++            raise TypeError(value)
+         try:
+             path = self._branch._remote_path()
+             response = self._branch._client.call(b'Branch.set_config_option',
+                                                  path, self._branch._lock_token, self._branch._repo_lock_token,
+-                                                 value.encode(
+-                                                     'utf8'), name.encode('utf-8'),
++                                                 value, name.encode('utf-8'),
+                                                  (section or '').encode('utf-8'))
+         except errors.UnknownSmartMethod:
+             medium = self._branch._client._medium
+
+=== modified file 'breezy/git/__init__.py'
+--- old/breezy/git/__init__.py	2019-02-14 19:10:24 +0000
++++ new/breezy/git/__init__.py	2019-02-14 23:34:23 +0000
+@@ -27,7 +27,7 @@
+ import os
+ import sys
+ 
+-dulwich_minimum_version = (0, 19, 7)
++dulwich_minimum_version = (0, 19, 11)
+ 
+ from .. import (  # noqa: F401
+     __version__ as breezy_version,
+
+=== modified file 'breezy/git/remote.py'
+--- old/breezy/git/remote.py	2019-02-14 03:00:04 +0000
++++ new/breezy/git/remote.py	2019-02-15 04:24:01 +0000
+@@ -48,7 +48,10 @@
+     UninitializableFormat,
+     )
+ from ..revisiontree import RevisionTree
+-from ..sixish import text_type
++from ..sixish import (
++    text_type,
++    viewitems,
++    )
+ from ..transport import (
+     Transport,
+     register_urlparse_netloc_protocol,
+@@ -566,27 +569,38 @@
+         if isinstance(source, GitBranch) and lossy:
+             raise errors.LossyPushToSameVCS(source.controldir, self)
+         source_store = get_object_store(source.repository)
++        fetch_tags = source.get_config_stack().get('branch.fetch_tags')
++        def get_changed_refs(refs):
++            self._refs = remote_refs_dict_to_container(refs)
++            ret = {}
++            # TODO(jelmer): Unpeel if necessary
++            push_result.new_original_revid = revision_id
++            if lossy:
++                new_sha = source_store._lookup_revision_sha1(revision_id)
++            else:
++                try:
++                    new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
++                except errors.NoSuchRevision:
++                    raise errors.NoRoundtrippingSupport(
++                        source, self.open_branch(name=name, nascent_ok=True))
++            if not overwrite:
++                if remote_divergence(ret.get(refname), new_sha,
++                                     source_store):
++                    raise DivergedBranches(
++                        source, self.open_branch(name, nascent_ok=True))
++            ret[refname] = new_sha
++            if fetch_tags:
++                for name, revid in viewitems(source.tags.get_tag_dict()):
++                    if lossy:
++                        new_sha = source_store._lookup_revision_sha1(revid)
++                    else:
++                        try:
++                            new_sha = repo.lookup_bzr_revision_id(revid)[0]
++                        except errors.NoSuchRevision:
++                            continue
++                    ret[tag_name_to_ref(name)] = new_sha
++            return ret
+         with source_store.lock_read():
+-            def get_changed_refs(refs):
+-                self._refs = remote_refs_dict_to_container(refs)
+-                ret = {}
+-                # TODO(jelmer): Unpeel if necessary
+-                push_result.new_original_revid = revision_id
+-                if lossy:
+-                    new_sha = source_store._lookup_revision_sha1(revision_id)
+-                else:
+-                    try:
+-                        new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+-                    except errors.NoSuchRevision:
+-                        raise errors.NoRoundtrippingSupport(
+-                            source, self.open_branch(name=name, nascent_ok=True))
+-                if not overwrite:
+-                    if remote_divergence(ret.get(refname), new_sha,
+-                                         source_store):
+-                        raise DivergedBranches(
+-                            source, self.open_branch(name, nascent_ok=True))
+-                ret[refname] = new_sha
+-                return ret
+             if lossy:
+                 generate_pack_data = source_store.generate_lossy_pack_data
+             else:
+
+=== modified file 'breezy/git/tests/test_remote.py'
+--- old/breezy/git/tests/test_remote.py	2018-11-17 02:16:58 +0000
++++ new/breezy/git/tests/test_remote.py	2019-02-15 04:24:01 +0000
+@@ -338,6 +338,43 @@
+              },
+             self.remote_real.get_refs())
+ 
++    def test_push_branch_new_with_tags(self):
++        remote = ControlDir.open(self.remote_url)
++        builder = self.make_branch_builder('local', format=self._from_format)
++        builder.start_series()
++        rev_1 = builder.build_snapshot(None, [
++            ('add', ('', None, 'directory', '')),
++            ('add', ('filename', None, 'file', b'content'))])
++        rev_2 = builder.build_snapshot(
++            [rev_1], [('modify', ('filename', b'new-content\n'))])
++        rev_3 = builder.build_snapshot(
++            [rev_1], [('modify', ('filename', b'new-new-content\n'))])
++        builder.finish_series()
++        branch = builder.get_branch()
++        try:
++            branch.tags.set_tag('atag', rev_2)
++        except TagsNotSupported:
++            raise TestNotApplicable('source format does not support tags')
++
++        branch.get_config_stack().set('branch.fetch_tags', True)
++        if self._from_format == 'git':
++            result = remote.push_branch(branch, name='newbranch')
++        else:
++            result = remote.push_branch(
++                branch, lossy=True, name='newbranch')
++
++        self.assertEqual(0, result.old_revno)
++        if self._from_format == 'git':
++            self.assertEqual(2, result.new_revno)
++        else:
++            self.assertIs(None, result.new_revno)
++
++        result.report(BytesIO())
++
++        self.assertEqual(
++            {b'refs/heads/newbranch', b'refs/tags/atag'},
++            set(self.remote_real.get_refs().keys()))
++
+     def test_push(self):
+         c1 = self.remote_real.do_commit(
+             message=b'message',
+
+=== modified file 'breezy/plugins/launchpad/lp_api.py'
+--- old/breezy/plugins/launchpad/lp_api.py	2019-01-28 21:00:58 +0000
++++ new/breezy/plugins/launchpad/lp_api.py	2019-02-14 18:55:19 +0000
+@@ -45,10 +45,20 @@
+     )
+ from ...i18n import gettext
+ 
++
++class LaunchpadlibMissing(errors.DependencyNotPresent):
++
++    _fmt = ("launchpadlib is required for Launchpad API access. "
++            "Please install the launchpadlib package.")
++
++    def __init__(self, e):
++        super(LaunchpadlibMissing, self).__init__(
++            'launchpadlib', e)
++
+ try:
+     import launchpadlib
+ except ImportError as e:
+-    raise errors.DependencyNotPresent('launchpadlib', e)
++    raise LaunchpadlibMissing(e)
+ 
+ from launchpadlib.launchpad import (
+     Launchpad,
+
+=== modified file 'breezy/tests/per_controldir/test_push.py'
+--- old/breezy/tests/per_controldir/test_push.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_controldir/test_push.py	2019-02-15 03:42:06 +0000
+@@ -16,7 +16,12 @@
+ 
+ """Tests for bzrdir implementations - push."""
+ 
+-from ...errors import LossyPushToSameVCS
++from ...errors import (
++    LossyPushToSameVCS,
++    TagsNotSupported,
++    )
++from ...revision import NULL_REVISION
++from .. import TestNotApplicable
+ 
+ from breezy.tests.per_controldir import (
+     TestCaseWithControlDir,
+@@ -41,6 +46,32 @@
+         self.assertEqual(dir.open_branch().base,
+                          tree.branch.get_push_location())
+ 
++    def test_push_new_branch_fetch_tags(self):
++        builder = self.make_branch_builder('from')
++        builder.start_series()
++        rev_1 = builder.build_snapshot(None, [
++            ('add', ('', None, 'directory', '')),
++            ('add', ('filename', None, 'file', b'content'))])
++        rev_2 = builder.build_snapshot(
++            [rev_1], [('modify', ('filename', b'new-content\n'))])
++        rev_3 = builder.build_snapshot(
++            [rev_1], [('modify', ('filename', b'new-new-content\n'))])
++        builder.finish_series()
++        branch = builder.get_branch()
++        try:
++            branch.tags.set_tag('atag', rev_2)
++        except TagsNotSupported:
++            raise TestNotApplicable('source format does not support tags')
++
++        dir = self.make_repository('target').controldir
++        branch.get_config().set_user_option('branch.fetch_tags', True)
++        result = dir.push_branch(branch)
++        self.assertEqual(
++            set([rev_1, rev_2, rev_3]),
++            set(result.source_branch.repository.all_revision_ids()))
++        self.assertEqual(
++            {'atag': rev_2}, result.source_branch.tags.get_tag_dict())
++
+     def test_push_new_branch_lossy(self):
+         tree, rev_1 = self.create_simple_tree()
+         dir = self.make_repository('dir').controldir
+
+=== modified file 'breezy/ui/text.py'
+--- old/breezy/ui/text.py	2018-11-16 12:37:19 +0000
++++ new/breezy/ui/text.py	2019-02-15 01:17:22 +0000
+@@ -19,6 +19,7 @@
+ from __future__ import absolute_import
+ 
+ import codecs
++import io
+ import os
+ import sys
+ import warnings
+@@ -668,9 +669,16 @@
+ def _wrap_in_stream(stream, encoding=None, errors='replace'):
+     if encoding is None:
+         encoding = _get_stream_encoding(stream)
+-    encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
+-    encoded_stream.encoding = encoding
+-    return encoded_stream
++    # Attempt to wrap using io.open if possible, since that can do
++    # line-buffering.
++    try:
++        fileno = stream.fileno()
++    except io.UnsupportedOperation:
++        encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
++        encoded_stream.encoding = encoding
++        return encoded_stream
++    else:
++        return io.open(fileno, encoding=encoding, errors=errors, mode='r', buffering=1)
+ 
+ 
+ def _wrap_out_stream(stream, encoding=None, errors='replace'):
+
