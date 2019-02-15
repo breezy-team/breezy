@@ -1,25 +1,21 @@
-Origin: commit, revision id: jelmer@jelmer.uk-20190215111949-ujixkbmfqfdm7z3q
+Origin: commit, revision id: jelmer@jelmer.uk-20190215140031-katq6gbk39qn5lgg
 Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
 Bug: https://launchpad.net/bugs/1815985
 Bug: https://launchpad.net/bugs/1815866
 Last-Update: 2019-02-15
 Applied-Upstream: no
-X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215111949-ujixkbmfqfdm7z3q
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215140031-katq6gbk39qn5lgg
 
 === modified file 'breezy/bzr/remote.py'
 --- old/breezy/bzr/remote.py	2019-01-01 23:40:59 +0000
-+++ new/breezy/bzr/remote.py	2019-02-15 11:19:49 +0000
-@@ -4226,12 +4226,21 @@
++++ new/breezy/bzr/remote.py	2019-02-15 14:00:31 +0000
+@@ -4226,12 +4226,17 @@
              return self._set_config_option(value, name, section)
  
      def _set_config_option(self, value, name, section):
-+        if isinstance(value, bool):
++        if isinstance(value, (bool, int)):
 +            value = str(value)
-+        elif isinstance(value, int):
-+            value = str(value)
-+        elif isinstance(value, text_type):
-+            value = value.encode('utf-8')
-+        elif isinstance(value, bytes):
++        elif isinstance(value, (text_type, str)):
 +            pass
 +        else:
 +            raise TypeError(value)
@@ -29,7 +25,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215111949-ujixkbmfqfdm7z3q
                                                   path, self._branch._lock_token, self._branch._repo_lock_token,
 -                                                 value.encode(
 -                                                     'utf8'), name.encode('utf-8'),
-+                                                 value, name.encode('utf-8'),
++                                                 value.encode('utf-8'), name.encode('utf-8'),
                                                   (section or '').encode('utf-8'))
          except errors.UnknownSmartMethod:
              medium = self._branch._client._medium
@@ -246,6 +242,40 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215111949-ujixkbmfqfdm7z3q
      def test_push_new_branch_lossy(self):
          tree, rev_1 = self.create_simple_tree()
          dir = self.make_repository('dir').controldir
+
+=== modified file 'breezy/tests/test_remote.py'
+--- old/breezy/tests/test_remote.py	2018-11-12 01:41:38 +0000
++++ new/breezy/tests/test_remote.py	2019-02-15 14:00:31 +0000
+@@ -2042,6 +2042,29 @@
+         branch.unlock()
+         self.assertFinished(client)
+ 
++    def test_set_option_with_bool(self):
++        client = FakeClient()
++        client.add_expected_call(
++            b'Branch.get_stacked_on_url', (b'memory:///',),
++            b'error', (b'NotStacked',),)
++        client.add_expected_call(
++            b'Branch.lock_write', (b'memory:///', b'', b''),
++            b'success', (b'ok', b'branch token', b'repo token'))
++        client.add_expected_call(
++            b'Branch.set_config_option', (b'memory:///', b'branch token',
++                                          b'repo token', b'True', b'foo', b''),
++            b'success', ())
++        client.add_expected_call(
++            b'Branch.unlock', (b'memory:///', b'branch token', b'repo token'),
++            b'success', (b'ok',))
++        transport = MemoryTransport()
++        branch = self.make_remote_branch(transport, client)
++        branch.lock_write()
++        config = branch._get_config()
++        config.set_option(True, 'foo')
++        branch.unlock()
++        self.assertFinished(client)
++
+     def test_backwards_compat_set_option(self):
+         self.setup_smart_server_with_call_log()
+         branch = self.make_branch('.')
 
 === modified file 'breezy/ui/text.py'
 --- old/breezy/ui/text.py	2018-11-16 12:37:19 +0000
