@@ -238,7 +238,7 @@ class BranchTests(tests.TestCaseInTempDir):
             self.clone_git_branch, path, "f")
         self.assertEqual({}, newbranch.tags.get_tag_dict())
         # Dulwich raises a UserWarning for tags with invalid target
-        self.assertEqual(1, len(warnings))
+        self.assertEqual(1, len(warnings), warnings)
 
     def test_interbranch_pull(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
