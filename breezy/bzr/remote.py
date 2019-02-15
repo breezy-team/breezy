@@ -1385,11 +1385,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             # ValueError instead of returning revno-outofbounds
             if len(e.error_tuple) < 3:
                 raise
-            if e.error_tuple[:2] != ('error', 'ValueError'):
+            if e.error_tuple[:2] != (b'error', b'ValueError'):
                 raise
             m = re.match(
-                r"requested revno \(([0-9]+)\) is later than given "
-                r"known revno \(([0-9]+)\)", e.error_tuple[2])
+                b"requested revno \(([0-9]+)\) is later than given "
+                b"known revno \(([0-9]+)\)", e.error_tuple[2])
             if not m:
                 raise
             raise errors.RevnoOutOfBounds(
