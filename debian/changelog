@@ -1,4 +1,4 @@
-breezy (3.0.0~bzr7286-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7286-1) unstable; urgency=medium
 
   * Bump cython version to 0.29.1; older versions fail to generate C
     code that works with Python 3.7.
@@ -12,7 +12,7 @@ breezy (3.0.0~bzr7286-1) UNRELEASED; urgency=medium
   * Drop patch 13_dulwich_compat, merged upstream.
   * Drop patch 14_fix_fastexport, merged upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 14 Feb 2019 22:46:48 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 15 Feb 2019 00:20:39 +0000
 
 breezy (3.0.0~bzr7268-2) unstable; urgency=medium
 
