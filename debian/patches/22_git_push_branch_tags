@@ -1,26 +1,14 @@
-Origin: commit, revision id: jelmer@jelmer.uk-20190215042401-lg12432pcwf9b6st
+Origin: commit, revision id: jelmer@jelmer.uk-20190215111949-ujixkbmfqfdm7z3q
 Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
 Bug: https://launchpad.net/bugs/1815985
 Bug: https://launchpad.net/bugs/1815866
 Last-Update: 2019-02-15
 Applied-Upstream: no
-X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215042401-lg12432pcwf9b6st
-
-=== modified file 'breezy/branch.py'
---- old/breezy/branch.py	2018-11-30 12:39:04 +0000
-+++ new/breezy/branch.py	2019-02-15 03:42:06 +0000
-@@ -1495,6 +1495,7 @@
-         must_fetch = {self.last_revision()}
-         if_present_fetch = set()
-         if self.get_config_stack().get('branch.fetch_tags'):
-+            import pdb; pdb.set_trace()
-             try:
-                 if_present_fetch = set(self.tags.get_reverse_tag_dict())
-             except errors.TagsNotSupported:
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215111949-ujixkbmfqfdm7z3q
 
 === modified file 'breezy/bzr/remote.py'
 --- old/breezy/bzr/remote.py	2019-01-01 23:40:59 +0000
-+++ new/breezy/bzr/remote.py	2019-02-15 03:42:06 +0000
++++ new/breezy/bzr/remote.py	2019-02-15 11:19:49 +0000
 @@ -4226,12 +4226,21 @@
              return self._set_config_option(value, name, section)
  
@@ -29,7 +17,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190215042401-lg12432pcwf9b6st
 +            value = str(value)
 +        elif isinstance(value, int):
 +            value = str(value)
-+        elif instance(value, text_type):
++        elif isinstance(value, text_type):
 +            value = value.encode('utf-8')
 +        elif isinstance(value, bytes):
 +            pass
