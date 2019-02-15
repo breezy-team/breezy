@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 import bz2
 import os
+import re
 import sys
 import zlib
 
@@ -1379,6 +1380,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         except errors.UnknownSmartMethod:
             self._client._medium._remember_remote_is_before((1, 17))
             return self._get_rev_id_for_revno_vfs(revno, known_pair)
+        except errors.UnknownErrorFromSmartServer as e:
+            # Older versions of Bazaar/Breezy (<< 3.0.0) would raise a
+            # ValueError instead of returning revno-outofbounds
+            if len(e.error_tuple) < 3:
+                raise
+            if e.error_tuple[:2] != ('error', 'ValueError'):
+                raise
+            m = re.match(
+                r"requested revno \(([0-9]+)\) is later than given "
+                r"known revno \(([0-9]+)\)", e.error_tuple[2])
+            if not m:
+                raise
+            raise errors.RevnoOutOfBounds(
+                int(m.group(1)), (0, int(m.group(2))))
         if response[0] == b'ok':
             return True, response[1]
         elif response[0] == b'history-incomplete':
@@ -3873,7 +3888,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         with self.lock_read():
             last_revision_info = self.last_revision_info()
             if revno < 0:
-                raise _mod_repository.RevnoOutOfBounds(
+                raise errors.RevnoOutOfBounds(
                     revno, (0, last_revision_info[0]))
             ok, result = self.repository.get_rev_id_for_revno(
                 revno, last_revision_info)
@@ -4378,7 +4393,7 @@ error_translators.register(b'nosuchrevision',
                                find('repository'), err.error_args[0]))
 error_translators.register(
     b'revno-outofbounds',
-    lambda err, find, get_path: _mod_repository.RevnoOutOfBounds(
+    lambda err, find, get_path: errors.RevnoOutOfBounds(
         err.error_args[0], (err.error_args[1], err.error_args[2])))
 
 

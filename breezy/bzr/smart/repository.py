@@ -54,7 +54,6 @@ from .request import (
     SuccessfulSmartServerResponse,
     )
 from ...repository import (
-    RevnoOutOfBounds,
     _strip_NULL_ghosts,
     network_format_registry,
     )
@@ -339,7 +338,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
                     'non-initial revision: ' + err.revision)
             return FailedSmartServerResponse(
                 (b'nosuchrevision', err.revision))
-        except RevnoOutOfBounds as e:
+        except errors.RevnoOutOfBounds as e:
             return FailedSmartServerResponse(
                 (b'revno-outofbounds', e.revno, e.minimum, e.maximum))
         if found_flag:

@@ -66,16 +66,6 @@ class CannotSetRevisionId(errors.BzrError):
     _fmt = "Repository format does not support setting revision ids."
 
 
-class RevnoOutOfBounds(errors.InternalBzrError):
-
-    _fmt = ("The requested revision number %(revno)d is outside of the "
-            "expected boundaries (%(minimum)d <= %(maximum)d).")
-
-    def __init__(self, revno, bounds):
-        errors.InternalBzrError.__init__(
-            self, revno=revno, minimum=bounds[0], maximum=bounds[1])
-
-
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
@@ -933,7 +923,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         partial_history = [known_revid]
         distance_from_known = known_revno - revno
         if distance_from_known < 0:
-            raise RevnoOutOfBounds(revno, (0, known_revno))
+            raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)

@@ -422,7 +422,7 @@ class RevisionSpec_revno(RevisionSpec):
                     revno = last_revno + revno + 1
             try:
                 revision_id = branch.get_rev_id(revno)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return branch, revno, revision_id
 
