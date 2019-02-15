@@ -590,7 +590,7 @@ class RemoteGitDir(GitDir):
                         source, self.open_branch(name, nascent_ok=True))
             ret[refname] = new_sha
             if fetch_tags:
-                for name, revid in viewitems(source.tags.get_tag_dict()):
+                for tagname, revid in viewitems(source.tags.get_tag_dict()):
                     if lossy:
                         new_sha = source_store._lookup_revision_sha1(revid)
                     else:
@@ -598,7 +598,7 @@ class RemoteGitDir(GitDir):
                             new_sha = repo.lookup_bzr_revision_id(revid)[0]
                         except errors.NoSuchRevision:
                             continue
-                    ret[tag_name_to_ref(name)] = new_sha
+                    ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():
             if lossy:
