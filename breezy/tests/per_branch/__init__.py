@@ -155,6 +155,7 @@ def load_tests(loader, standard_tests, pattern):
         'create_clone',
         'commit',
         'dotted_revno_to_revision_id',
+        'get_rev_id',
         'get_revision_id_to_revno_map',
         'hooks',
         'http',

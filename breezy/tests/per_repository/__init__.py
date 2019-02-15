@@ -118,6 +118,7 @@ def load_tests(loader, standard_tests, pattern):
         'test_fetch',
         'test_file_graph',
         'test_get_parent_map',
+        'test_get_rev_id_for_revno',
         'test_has_same_location',
         'test_has_revisions',
         'test_locking',
