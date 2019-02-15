@@ -4226,13 +4226,9 @@ class RemoteBranchConfig(RemoteConfig):
             return self._set_config_option(value, name, section)
 
     def _set_config_option(self, value, name, section):
-        if isinstance(value, bool):
+        if isinstance(value, (bool, int)):
             value = str(value)
-        elif isinstance(value, int):
-            value = str(value)
-        elif isinstance(value, text_type):
-            value = value.encode('utf-8')
-        elif isinstance(value, bytes):
+        elif isinstance(value, (text_type, str)):
             pass
         else:
             raise TypeError(value)
@@ -4240,7 +4236,7 @@ class RemoteBranchConfig(RemoteConfig):
             path = self._branch._remote_path()
             response = self._branch._client.call(b'Branch.set_config_option',
                                                  path, self._branch._lock_token, self._branch._repo_lock_token,
-                                                 value, name.encode('utf-8'),
+                                                 value.encode('utf-8'), name.encode('utf-8'),
                                                  (section or '').encode('utf-8'))
         except errors.UnknownSmartMethod:
             medium = self._branch._client._medium
