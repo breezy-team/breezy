@@ -1495,6 +1495,7 @@ class Branch(controldir.ControlComponent):
         must_fetch = {self.last_revision()}
         if_present_fetch = set()
         if self.get_config_stack().get('branch.fetch_tags'):
+            import pdb; pdb.set_trace()
             try:
                 if_present_fetch = set(self.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
