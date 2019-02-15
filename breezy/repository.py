@@ -66,6 +66,16 @@ class CannotSetRevisionId(errors.BzrError):
     _fmt = "Repository format does not support setting revision ids."
 
 
+class RevnoOutOfBounds(errors.InternalBzrError):
+
+    _fmt = ("The requested revision number %(revno)d is outside of the "
+            "expected boundaries (%(minimum)d <= %(maximum)d).")
+
+    def __init__(self, revno, bounds):
+        errors.InternalBzrError.__init__(
+            self, revno=revno, minimum=bounds[0], maximum=bounds[1])
+
+
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
@@ -923,16 +933,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         partial_history = [known_revid]
         distance_from_known = known_revno - revno
         if distance_from_known < 0:
-            raise ValueError(
-                'requested revno (%d) is later than given known revno (%d)'
-                % (revno, known_revno))
+            raise RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise
+                raise errors.NoSuchRevision(self, known_revid)
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this

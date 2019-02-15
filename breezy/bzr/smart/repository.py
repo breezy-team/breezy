@@ -53,7 +53,11 @@ from .request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from ...repository import _strip_NULL_ghosts, network_format_registry
+from ...repository import (
+    RevnoOutOfBounds,
+    _strip_NULL_ghosts,
+    network_format_registry,
+    )
 from ... import revision as _mod_revision
 from ..versionedfile import (
     ChunkedContentFactory,
@@ -328,13 +332,16 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
         try:
             found_flag, result = repository.get_rev_id_for_revno(
                 revno, known_pair)
-        except errors.RevisionNotPresent as err:
-            if err.revision_id != known_pair[1]:
+        except errors.NoSuchRevision as err:
+            if err.revision != known_pair[1]:
                 raise AssertionError(
                     'get_rev_id_for_revno raised RevisionNotPresent for '
-                    'non-initial revision: ' + err.revision_id)
+                    'non-initial revision: ' + err.revision)
             return FailedSmartServerResponse(
-                (b'nosuchrevision', err.revision_id))
+                (b'nosuchrevision', err.revision))
+        except RevnoOutOfBounds as e:
+            return FailedSmartServerResponse(
+                (b'revno-outofbounds', e.revno, e.minimum, e.maximum))
         if found_flag:
             return SuccessfulSmartServerResponse((b'ok', result))
         else:

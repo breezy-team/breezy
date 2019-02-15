@@ -16,7 +16,7 @@
 
 """Tests for Branch.get_rev_id."""
 
-from breezy.errors import NoSuchRevision
+from breezy.repository import RevnoOutOfBounds
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestCaseWithTransport
 
@@ -27,8 +27,8 @@ class TestGetRevid(TestCaseWithTransport):
         # on an empty branch we want (0, NULL_REVISION)
         branch = self.make_branch('branch')
         self.assertEqual(NULL_REVISION, branch.get_rev_id(0))
-        self.assertRaises(NoSuchRevision, branch.get_rev_id, 1)
-        self.assertRaises(NoSuchRevision, branch.get_rev_id, -1)
+        self.assertRaises(RevnoOutOfBounds, branch.get_rev_id, 1)
+        self.assertRaises(RevnoOutOfBounds, branch.get_rev_id, -1)
 
     def test_non_empty_branch(self):
         # after the second commit we want (2, 'second-revid')
@@ -37,4 +37,4 @@ class TestGetRevid(TestCaseWithTransport):
         revid2 = tree.commit('2st post', allow_pointless=True)
         self.assertEqual(revid2, tree.branch.get_rev_id(2))
         self.assertEqual(revid1, tree.branch.get_rev_id(1))
-        self.assertRaises(NoSuchRevision, tree.branch.get_rev_id, 3)
+        self.assertRaises(RevnoOutOfBounds, tree.branch.get_rev_id, 3)

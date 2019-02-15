@@ -3872,6 +3872,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return _mod_revision.NULL_REVISION
         with self.lock_read():
             last_revision_info = self.last_revision_info()
+            if revno < 0:
+                raise _mod_repository.RevnoOutOfBounds(
+                    revno, (0, last_revision_info[0]))
             ok, result = self.repository.get_rev_id_for_revno(
                 revno, last_revision_info)
             if ok:
@@ -3883,7 +3886,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             parent_map = self.repository.get_parent_map([missing_parent])
             if missing_parent in parent_map:
                 missing_parent = parent_map[missing_parent]
-            raise errors.RevisionNotPresent(missing_parent, self.repository)
+            raise errors.NoSuchRevision(self, missing_parent)
 
     def _read_last_revision_info(self):
         response = self._call(
@@ -4373,6 +4376,10 @@ error_translators.register(b'NoSuchRevision',
 error_translators.register(b'nosuchrevision',
                            lambda err, find, get_path: NoSuchRevision(
                                find('repository'), err.error_args[0]))
+error_translators.register(
+    b'revno-outofbounds',
+    lambda err, find, get_path: _mod_repository.RevnoOutOfBounds(
+        err.error_args[0], (err.error_args[1], err.error_args[2])))
 
 
 def _translate_nobranch_error(err, find, get_path):

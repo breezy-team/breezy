@@ -50,6 +50,7 @@ from ..decorators import (
     only_raises,
     )
 from ..lock import _RelockDebugMixin, LogicalLockResult
+from ..repository import RevnoOutOfBounds
 from ..sixish import (
     BytesIO,
     text_type,
@@ -649,7 +650,7 @@ class BzrBranch8(BzrBranch):
         with self.lock_read():
             last_revno, last_revision_id = self.last_revision_info()
             if revno <= 0 or revno > last_revno:
-                raise errors.NoSuchRevision(self, revno)
+                raise RevnoOutOfBounds(revno, (0, last_revno))
 
             if history is not None:
                 return history[revno - 1]

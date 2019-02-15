@@ -230,6 +230,10 @@ Bug Fixes
 * Don't report .git files as unknown files.
   (Jelmer Vernooĳ, Debian Bug #921240)
 
+* Return consist errors from ``Branch.get_revid`` and
+  ``Repository.get_revid_for_revno`` when the revision
+  number is invalid. (Jelmer Vernooĳ, #701953)
+
 Documentation
 *************
 

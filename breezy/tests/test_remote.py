@@ -3918,6 +3918,12 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
 
+    def test_RevnoOutOfBounds(self):
+        translated_error = self.translateTuple(
+            ((b'revno-outofbounds', 5, 0, 3)), path=b'path')
+        expected_error = repository.RevnoOutOfBounds(5, (0, 3))
+        self.assertEqual(expected_error, translated_error)
+
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
     """Unit tests for breezy.bzr.remote._translate_error's robustness.

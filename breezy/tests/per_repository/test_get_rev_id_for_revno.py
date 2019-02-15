@@ -17,6 +17,7 @@
 """Tests for get_rev_id_for_revno."""
 
 from breezy import errors
+from breezy.repository import RevnoOutOfBounds
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -49,7 +50,7 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRaises(
-            errors.RevisionNotPresent,
+            errors.NoSuchRevision,
             repo.get_rev_id_for_revno, 1, (3, unknown_revid))
 
     def test_known_pair_is_after(self):
@@ -57,5 +58,5 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRaises(
-            ValueError,
+            RevnoOutOfBounds,
             repo.get_rev_id_for_revno, 3, (2, self.revid2))
