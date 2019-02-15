@@ -1,3 +1,9 @@
+breezy (3.0.0~bzr7286-2) UNRELEASED; urgency=medium
+
+  * Add patch 20_fix_stream_buffering: fix prompts.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 15 Feb 2019 02:09:00 +0000
+
 breezy (3.0.0~bzr7286-1) unstable; urgency=medium
 
   * Bump cython version to 0.29.1; older versions fail to generate C
