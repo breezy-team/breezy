@@ -257,7 +257,7 @@ $ brz uncommit --force tree
 ...
 The above revision(s) will be removed.
 You can restore the old tip by running:
-  brz pull -d tree . -r revid:a2
+  brz pull -d tree tree -r revid:a2
 """)
 
     def test_uncommit_octopus_merge(self):

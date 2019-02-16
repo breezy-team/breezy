@@ -5480,8 +5480,8 @@ class cmd_uncommit(Command):
         if location != '.':
             self.outf.write(
                 gettext('You can restore the old tip by running:\n'
-                        '  brz pull -d %s . -r revid:%s\n')
-                % (location, last_rev_id.decode('utf-8')))
+                        '  brz pull -d %s %s -r revid:%s\n')
+                % (location, location, last_rev_id.decode('utf-8')))
         else:
             self.outf.write(
                 gettext('You can restore the old tip by running:\n'
