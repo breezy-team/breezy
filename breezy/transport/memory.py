@@ -26,9 +26,10 @@ import contextlib
 from io import (
     BytesIO,
     )
+import itertools
 import os
 import errno
-from stat import S_IFREG, S_IFDIR, S_IFLNK
+from stat import S_IFREG, S_IFDIR, S_IFLNK, S_ISDIR
 
 from .. import (
     transport,
@@ -50,20 +51,16 @@ from ..transport import (
 
 class MemoryStat(object):
 
-    def __init__(self, size, kind, perms):
+    def __init__(self, size, kind, perms=None):
         self.st_size = size
-        if kind == 'file':
+        if not S_ISDIR(kind):
             if perms is None:
                 perms = 0o644
-            self.st_mode = S_IFREG | perms
-        elif kind == 'directory':
+            self.st_mode = kind | perms
+        else:
             if perms is None:
                 perms = 0o755
-            self.st_mode = S_IFDIR | perms
-        elif kind == 'symlink':
-            self.st_mode = S_IFLNK | 0o644
-        else:
-            raise AssertionError('unknown kind %r' % kind)
+            self.st_mode = kind | perms
 
 
 class MemoryTransport(transport.Transport):
@@ -80,7 +77,7 @@ class MemoryTransport(transport.Transport):
         self._scheme = url[:split]
         self._cwd = url[split:]
         # dictionaries from absolute path to file mode
-        self._dirs = {'/': None}
+        self._dirs = {'/':None}
         self._symlinks = {}
         self._files = {}
         self._locks = {}
@@ -95,6 +92,7 @@ class MemoryTransport(transport.Transport):
         result._dirs = self._dirs
         result._symlinks = self._symlinks
         result._files = self._files
+        result._symlinks = self._symlinks
         result._locks = self._locks
         return result
 
@@ -111,7 +109,7 @@ class MemoryTransport(transport.Transport):
 
     def append_file(self, relpath, f, mode=None):
         """See Transport.append_file()."""
-        _abspath = self._abspath(relpath)
+        _abspath = self._resolve_symlinks(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, (b"", None))
         if mode is None:
@@ -128,16 +126,20 @@ class MemoryTransport(transport.Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return ((_abspath in self._files)
-                or (_abspath in self._dirs)
-                or (_abspath in self._symlinks))
+        for container in (self._files, self._dirs, self._symlinks):
+            if _abspath in container.keys():
+                return True
+        return False
 
     def delete(self, relpath):
         """See Transport.delete()."""
         _abspath = self._abspath(relpath)
-        if _abspath not in self._files:
+        if _abspath in self._files:
+            del self._files[_abspath]
+        elif _abspath in self._symlinks:
+            del self._symlinks[_abspath]
+        else:
             raise NoSuchFile(relpath)
-        del self._files[_abspath]
 
     def external_url(self):
         """See breezy.transport.Transport.external_url."""
@@ -147,8 +149,8 @@ class MemoryTransport(transport.Transport):
 
     def get(self, relpath):
         """See Transport.get()."""
-        _abspath = self._abspath(relpath)
-        if _abspath not in self._files:
+        _abspath = self._resolve_symlinks(relpath)
+        if not _abspath in self._files:
             if _abspath in self._dirs:
                 return LateReadError(relpath)
             else:
@@ -157,15 +159,20 @@ class MemoryTransport(transport.Transport):
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
-        _abspath = self._abspath(relpath)
+        _abspath = self._resolve_symlinks(relpath)
         self._check_parent(_abspath)
         raw_bytes = f.read()
         self._files[_abspath] = (raw_bytes, mode)
         return len(raw_bytes)
 
+    def symlink(self, source, target):
+        _abspath = self._resolve_symlinks(target)
+        self._check_parent(_abspath)
+        self._symlinks[_abspath] = self._abspath(source)
+
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
-        _abspath = self._abspath(relpath)
+        _abspath = self._resolve_symlinks(relpath)
         self._check_parent(_abspath)
         if _abspath in self._dirs:
             raise FileExists(relpath)
@@ -183,13 +190,13 @@ class MemoryTransport(transport.Transport):
         return True
 
     def iter_files_recursive(self):
-        for file in self._files:
+        for file in itertools.chain(self._files, self._symlinks):
             if file.startswith(self._cwd):
                 yield urlutils.escape(file[len(self._cwd):])
 
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
-        _abspath = self._abspath(relpath)
+        _abspath = self._resolve_symlinks(relpath)
         if _abspath != '/' and _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         result = []
@@ -197,7 +204,7 @@ class MemoryTransport(transport.Transport):
         if not _abspath.endswith('/'):
             _abspath += '/'
 
-        for path_group in self._files, self._dirs:
+        for path_group in self._files, self._dirs, self._symlinks:
             for path in path_group:
                 if path.startswith(_abspath):
                     trailing = path[len(_abspath):]
@@ -207,8 +214,8 @@ class MemoryTransport(transport.Transport):
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory; fail if the destination exists"""
-        abs_from = self._abspath(rel_from)
-        abs_to = self._abspath(rel_to)
+        abs_from = self._resolve_symlinks(rel_from)
+        abs_to = self._resolve_symlinks(rel_to)
 
         def replace(x):
             if x == abs_from:
@@ -233,21 +240,25 @@ class MemoryTransport(transport.Transport):
         # fail differently depending on dict order. So work on copy, fail on
         # error on only replace dicts if all goes well.
         renamed_files = self._files.copy()
+        renamed_symlinks = self._symlinks.copy()
         renamed_dirs = self._dirs.copy()
         do_renames(renamed_files)
+        do_renames(renamed_symlinks)
         do_renames(renamed_dirs)
         # We may have been cloned so modify in place
         self._files.clear()
         self._files.update(renamed_files)
+        self._symlinks.clear()
+        self._symlinks.update(renamed_symlinks)
         self._dirs.clear()
         self._dirs.update(renamed_dirs)
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
-        _abspath = self._abspath(relpath)
+        _abspath = self._resolve_symlinks(relpath)
         if _abspath in self._files:
             self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
-        for path in self._files:
+        for path in itertools.chain(self._files, self._symlinks):
             if path.startswith(_abspath + '/'):
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath),
                                       relpath)
@@ -262,13 +273,13 @@ class MemoryTransport(transport.Transport):
     def stat(self, relpath):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
-        if _abspath in self._files:
-            return MemoryStat(len(self._files[_abspath][0]), 'file',
+        if _abspath in self._files.keys():
+            return MemoryStat(len(self._files[_abspath][0]), S_IFREG,
                               self._files[_abspath][1])
-        elif _abspath in self._dirs:
-            return MemoryStat(0, 'directory', self._dirs[_abspath])
-        elif _abspath in self._symlinks:
-            return MemoryStat(0, 'symlink', 0)
+        elif _abspath in self._dirs.keys():
+            return MemoryStat(0, S_IFDIR, self._dirs[_abspath])
+        elif _abspath in self._symlinks.keys():
+            return MemoryStat(0, S_IFLNK)
         else:
             raise NoSuchFile(_abspath)
 
@@ -279,6 +290,12 @@ class MemoryTransport(transport.Transport):
     def lock_write(self, relpath):
         """See Transport.lock_write()."""
         return _MemoryLock(self._abspath(relpath), self)
+
+    def _resolve_symlinks(self, relpath):
+        path = self._abspath(relpath)
+        while path in self._symlinks.keys():
+            path = self._symlinks[path]
+        return path
 
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
@@ -336,6 +353,7 @@ class MemoryServer(transport.Server):
     def start_server(self):
         self._dirs = {'/': None}
         self._files = {}
+        self._symlinks = {}
         self._locks = {}
         self._scheme = "memory+%s:///" % id(self)
 
@@ -344,6 +362,7 @@ class MemoryServer(transport.Server):
             result = memory.MemoryTransport(url)
             result._dirs = self._dirs
             result._files = self._files
+            result._symlinks = self._symlinks
             result._locks = self._locks
             return result
         self._memory_factory = memory_factory

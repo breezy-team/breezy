@@ -22,6 +22,7 @@ See MemoryTree for more details.
 from __future__ import absolute_import
 
 import os
+import stat
 
 from . import (
     errors,
@@ -62,7 +63,15 @@ class MemoryTree(MutableInventoryTree):
         with self.lock_tree_write():
             for f, file_id, kind in zip(files, ids, kinds):
                 if kind is None:
-                    kind = 'file'
+                    st_mode = self._file_transport.stat(f).st_mode
+                    if stat.S_ISREG(st_mode):
+                        kind = 'file'
+                    elif stat.S_ISLNK(st_mode):
+                        kind = 'symlink'
+                    elif stat.S_ISDIR(st_mode):
+                        kind = 'directory'
+                    else:
+                        raise AssertionError('Unknown file kind')
                 if file_id is None:
                     self._inventory.add_path(f, kind=kind)
                 else:
@@ -148,8 +157,7 @@ class MemoryTree(MutableInventoryTree):
         return self._inventory.get_entry_by_path(path).executable
 
     def kind(self, path):
-        file_id = self.path2id(path)
-        return self._inventory[file_id].kind
+        return self._inventory.get_entry_by_path(path).kind
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
@@ -303,6 +311,10 @@ class MemoryTree(MutableInventoryTree):
                     _mod_revision.NULL_REVISION)
             else:
                 raise
+
+    def get_symlink_target(self, path):
+        with self.lock_read():
+            return self._file_transport.readlink(path)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
