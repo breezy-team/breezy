@@ -230,6 +230,9 @@ Bug Fixes
 * Don't report .git files as unknown files.
   (Jelmer Vernooĳ, Debian Bug #921240)
 
+* Raise better error when path subsegments lack =.
+  (Jelmer Vernooĳ, #891483)
+
 Documentation
 *************
 
