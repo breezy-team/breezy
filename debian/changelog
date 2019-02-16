@@ -1,9 +1,9 @@
-breezy (3.0.0~bzr7290-1) UNRELEASED; urgency=medium
+breezy (3.0.0~bzr7290-1) unstable; urgency=medium
 
   * New upstream snapshot.
   * Drop patch 22_git_push_branch_tags: applied upstream.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 15 Feb 2019 19:36:05 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 15 Feb 2019 23:48:03 +0000
 
 breezy (3.0.0~bzr7286-2) unstable; urgency=medium
 
