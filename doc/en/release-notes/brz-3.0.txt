@@ -230,6 +230,10 @@ Bug Fixes
 * Don't report .git files as unknown files.
   (Jelmer Vernooĳ, Debian Bug #921240)
 
+* Display correct pull location argument in
+  output of ``brz uncommit``.
+  (Jelmer Vernooĳ, #386577)
+
 Documentation
 *************
 
