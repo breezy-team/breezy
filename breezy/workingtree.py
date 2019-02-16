@@ -32,28 +32,28 @@ from __future__ import absolute_import
 import errno
 import os
 import re
-import shutil
 import sys
 
 import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import shutil
 import stat
 
 from breezy import (
-    branch,
     conflicts as _mod_conflicts,
     controldir,
     errors,
     filters as _mod_filters,
-    generate_ids,
     merge,
     revision as _mod_revision,
     transform,
     transport,
-    ui,
     views,
+    )
+from breezy.bzr import (
+    generate_ids,
     )
 """)
 
@@ -62,9 +62,6 @@ from . import (
     )
 from .i18n import gettext
 from . import mutabletree
-from .sixish import (
-    text_type,
-    )
 from .trace import mutter, note
 
 
@@ -81,8 +78,7 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
-class WorkingTree(mutabletree.MutableTree,
-    controldir.ControlComponent):
+class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     """Working copy tree.
 
     :ivar basedir: The root of the tree on disk. This is a unicode path object
@@ -107,7 +103,7 @@ class WorkingTree(mutabletree.MutableTree,
         self.controldir = _controldir
         if not _internal:
             raise errors.BzrError("Please use controldir.open_workingtree or "
-                "WorkingTree.open() to obtain a WorkingTree.")
+                                  "WorkingTree.open() to obtain a WorkingTree.")
         basedir = osutils.safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
         if branch is not None:
@@ -279,7 +275,8 @@ class WorkingTree(mutabletree.MutableTree,
         # self.relpath exists as a "thunk" to osutils, but canonical_relpath
         # doesn't - fix that up here before we enter the loop.
         if canonicalize:
-            fixer = lambda p: osutils.canonical_relpath(self.basedir, p)
+            def fixer(p):
+                return osutils.canonical_relpath(self.basedir, p)
         else:
             fixer = self.relpath
         for filename in file_list:
@@ -302,6 +299,7 @@ class WorkingTree(mutabletree.MutableTree,
         def list_current(transport):
             return [d for d in transport.list_dir('')
                     if not controldir.is_control_filename(d)]
+
         def evaluate(controldir):
             try:
                 tree = controldir.open_workingtree()
@@ -311,7 +309,7 @@ class WorkingTree(mutabletree.MutableTree,
                 return True, tree
         t = transport.get_transport(location)
         iterator = controldir.ControlDir.find_controldirs(t, evaluate=evaluate,
-                                              list_current=list_current)
+                                                          list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 
     def __repr__(self):
@@ -335,7 +333,7 @@ class WorkingTree(mutabletree.MutableTree,
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
             return self.branch.repository.revision_tree(
-                       _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
         try:
             return self.revision_tree(revision_id)
         except errors.NoSuchRevision:
@@ -353,7 +351,7 @@ class WorkingTree(mutabletree.MutableTree,
                 raise
             # the basis tree is a ghost so return an empty tree.
             return self.branch.repository.revision_tree(
-                       _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
 
     def relpath(self, path):
         """Return the local path portion from a given path.
@@ -366,10 +364,10 @@ class WorkingTree(mutabletree.MutableTree,
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, path, file_id=None, filtered=True):
-        return self.get_file_with_stat(path, file_id, filtered=filtered)[0]
+    def get_file(self, path, filtered=True):
+        return self.get_file_with_stat(path, filtered=filtered)[0]
 
-    def get_file_with_stat(self, path, file_id=None, filtered=True,
+    def get_file_with_stat(self, path, filtered=True,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         abspath = self.abspath(path)
@@ -385,13 +383,13 @@ class WorkingTree(mutabletree.MutableTree,
             file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
-    def get_file_text(self, path, file_id=None, filtered=True):
-        with self.get_file(path, file_id, filtered=filtered) as my_file:
+    def get_file_text(self, path, filtered=True):
+        with self.get_file(path, filtered=filtered) as my_file:
             return my_file.read()
 
-    def get_file_lines(self, path, file_id=None, filtered=True):
+    def get_file_lines(self, path, filtered=True):
         """See Tree.get_file_lines()"""
-        with self.get_file(path, file_id, filtered=filtered) as file:
+        with self.get_file(path, filtered=filtered) as file:
             return file.readlines()
 
     def get_parent_ids(self):
@@ -451,7 +449,7 @@ class WorkingTree(mutabletree.MutableTree,
                     other_tree = self.revision_tree(revision_id)
                 except errors.NoSuchRevision:
                     other_tree = self.branch.repository.revision_tree(
-                            revision_id)
+                        revision_id)
 
                 merge.transform_tree(tree, other_tree)
                 if revision_id == _mod_revision.NULL_REVISION:
@@ -460,7 +458,7 @@ class WorkingTree(mutabletree.MutableTree,
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
 
-    def get_file_size(self, path, file_id=None):
+    def get_file_size(self, path):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
         # canonical size
@@ -498,7 +496,7 @@ class WorkingTree(mutabletree.MutableTree,
         with self.lock_write():
             parents = self.get_parent_ids() + [revision_id]
             self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1
-                or allow_leftmost_as_ghost)
+                                or allow_leftmost_as_ghost)
 
     def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
         """Add revision_id, tree tuple as a parent.
@@ -520,7 +518,7 @@ class WorkingTree(mutabletree.MutableTree,
                 # was.
                 allow_leftmost_as_ghost = True
             self.set_parent_ids(parent_ids,
-                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     def add_pending_merge(self, *revision_ids):
         with self.lock_tree_write():
@@ -537,7 +535,7 @@ class WorkingTree(mutabletree.MutableTree,
                 self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
     def path_content_summary(self, path, _lstat=os.lstat,
-        _mapper=osutils.file_kind_from_stat_mode):
+                             _mapper=osutils.file_kind_from_stat_mode):
         """See Tree.path_content_summary."""
         abspath = self.abspath(path)
         try:
@@ -579,13 +577,13 @@ class WorkingTree(mutabletree.MutableTree,
         if len(revision_ids) > 0:
             leftmost_id = revision_ids[0]
             if (not allow_leftmost_as_ghost and not
-                self.branch.repository.has_revision(leftmost_id)):
+                    self.branch.repository.has_revision(leftmost_id)):
                 raise errors.GhostRevisionUnusableHere(leftmost_id)
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
         self._transport.put_bytes('pending-merges', b'\n'.join(merges),
-            mode=self.controldir._get_file_mode())
+                                  mode=self.controldir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
         """Check that all merged revisions are proper 'heads'.
@@ -603,7 +601,7 @@ class WorkingTree(mutabletree.MutableTree,
                 new_revision_ids.append(revision_id)
         if new_revision_ids != revision_ids:
             mutter('requested to set revision_ids = %s,'
-                         ' but filtered to %s', revision_ids, new_revision_ids)
+                   ' but filtered to %s', revision_ids, new_revision_ids)
         return new_revision_ids
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -620,7 +618,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         with self.lock_tree_write():
             self._check_parents_for_ghosts(revision_ids,
-                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                                           allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             for revision_id in revision_ids:
                 _mod_revision.check_not_reserved_id(revision_id)
 
@@ -723,7 +721,7 @@ class WorkingTree(mutabletree.MutableTree,
             self.add(path, file_id, 'directory')
             return file_id
 
-    def get_symlink_target(self, path, file_id=None):
+    def get_symlink_target(self, path):
         abspath = self.abspath(path)
         target = osutils.readlink(abspath)
         return target
@@ -757,7 +755,7 @@ class WorkingTree(mutabletree.MutableTree,
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-    def extract(self, path, file_id=None, format=None):
+    def extract(self, path, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -768,7 +766,7 @@ class WorkingTree(mutabletree.MutableTree,
         """Write the in memory meta data to disk."""
         raise NotImplementedError(self.flush)
 
-    def kind(self, relpath, file_id=None):
+    def kind(self, relpath):
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -875,12 +873,12 @@ class WorkingTree(mutabletree.MutableTree,
                 with basis_tree.lock_read():
                     new_basis_tree = self.branch.basis_tree()
                     merge.merge_inner(
-                                self.branch,
-                                new_basis_tree,
-                                basis_tree,
-                                this_tree=self,
-                                change_reporter=change_reporter,
-                                show_base=show_base)
+                        self.branch,
+                        new_basis_tree,
+                        basis_tree,
+                        this_tree=self,
+                        change_reporter=change_reporter,
+                        show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if new_root_id is not None and basis_root_id != new_root_id:
@@ -900,21 +898,22 @@ class WorkingTree(mutabletree.MutableTree,
                 merges = self.get_parent_ids()[1:]
                 parent_trees.extend([
                     (parent, repository.revision_tree(parent)) for
-                     parent in merges])
+                    parent in merges])
                 self.set_parent_trees(parent_trees)
             return count
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         with self.lock_write(), open(self.abspath(path), 'wb') as stream:
-                stream.write(bytes)
+            stream.write(bytes)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
 
-        If there are any unversioned directories then only the directory is
-        returned, not all its children.  But if there are unversioned files
-        under a versioned subdirectory, they are returned.
+        If there are any unversioned directories and the file format
+        supports versioning directories, then only the directory is returned,
+        not all its children. But if there are unversioned files under a
+        versioned subdirectory, they are returned.
 
         Currently returned depth-first, sorted by name within directories.
         This is the same order used by 'osutils.walkdirs'.
@@ -933,7 +932,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.is_ignored)
 
-    def stored_kind(self, path, file_id=None):
+    def stored_kind(self, path):
         """See Tree.stored_kind"""
         raise NotImplementedError(self.stored_kind)
 
@@ -1085,7 +1084,7 @@ class WorkingTree(mutabletree.MutableTree,
         if not self.supports_setting_file_ids():
             raise SettingFileIdUnsupported()
         with self.lock_tree_write():
-            # for compatability
+            # for compatibility
             if file_id is None:
                 raise ValueError(
                     'WorkingTree.set_root_id with fileid=None')
@@ -1194,7 +1193,7 @@ class WorkingTree(mutabletree.MutableTree,
             if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
                 # the branch we are bound to was updated
                 # merge those changes in first
-                base_tree  = self.basis_tree()
+                base_tree = self.basis_tree()
                 other_tree = self.branch.repository.revision_tree(old_tip)
                 nb_conflicts = merge.merge_inner(self.branch, other_tree,
                                                  base_tree, this_tree=self,
@@ -1289,7 +1288,7 @@ class WorkingTree(mutabletree.MutableTree,
             for conflict in self.conflicts():
                 path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(path, conflict.file_id) != 'file'):
+                        self.kind(path) != 'file'):
                     un_resolved.append(conflict)
                     continue
                 with open(self.abspath(path), 'rb') as my_file:
@@ -1330,12 +1329,48 @@ class WorkingTree(mutabletree.MutableTree,
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
             self._rules_searcher = super(WorkingTree,
-                self)._get_rules_searcher(default_searcher)
+                                         self)._get_rules_searcher(default_searcher)
         return self._rules_searcher
 
     def get_shelf_manager(self):
         """Return the ShelfManager for this WorkingTree."""
         raise NotImplementedError(self.get_shelf_manager)
+
+    def get_canonical_paths(self, paths):
+        """Like get_canonical_path() but works on multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A list of paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
+        """
+        with self.lock_read():
+            for path in paths:
+                yield path
+
+    def get_canonical_path(self, path):
+        """Returns the first item in the tree that matches a path.
+
+        This is meant to allow case-insensitive path lookups on e.g.
+        FAT filesystems.
+
+        If a path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches according to the underlying file system,
+        it is implementation defined which is returned.
+
+        If no path matches according to the file system, the input path is
+        returned, but with as many path entries that do exist changed to their
+        canonical form.
+
+        If you need to resolve many names from the same tree, you should
+        use get_canonical_paths() to avoid O(N) behaviour.
+
+        :param path: A paths relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements
+        that match case insensitively.
+        """
+        with self.lock_read():
+            return next(self.get_canonical_paths([path]))
 
 
 class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
@@ -1349,7 +1384,7 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     def get_default(self):
         """Return the current default format."""
         if (self._default_format_key is not None and
-            self._default_format is None):
+                self._default_format is None):
             self._default_format = self.get(self._default_format_key)
         return self._default_format
 
@@ -1468,11 +1503,11 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
 
 format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
-    "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
 format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
-    "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
 format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
-    "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
 format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
-    "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
+                              "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
 format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")

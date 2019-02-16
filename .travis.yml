@@ -2,32 +2,28 @@ language: python
 addons:
   apt:
     update: true
-sudo: false
+sudo: true
 cache: pip
 
 python:
   - 3.5
   - 3.6
-  - 3.6-dev
-
-env:
-  - SELFTEST_OPTIONS="--load-list python3.passing"
-    EXTRA_MAKE_ARGS=""
 
 matrix:
   include:
     - python: 2.7
       env: SELFTEST_OPTIONS="--coverage"
-           EXTRA_MAKE_ARGS="extensions"
+    - python: 3.7
+      dist: xenial
 
 script:
-  - make docs $EXTRA_MAKE_ARGS
-  - BRZ_PLUGIN_PATH=-site:-user python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -Wignore::ResourceWarning ./brz selftest --parallel=fork $SELFTEST_OPTIONS
+  - make docs extensions
+  - BRZ_PLUGIN_PATH=-site:-user python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -Wignore::ResourceWarning -Wignore::UserWarning ./brz selftest --parallel=fork $SELFTEST_OPTIONS
 
 install:
   - sudo apt install python-all-dev python3-all-dev subunit
   - travis_retry pip install -U setuptools
-  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE
+  - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich $TEST_REQUIRE sphinx sphinx_epytext launchpadlib
 
 after_success:
   - codecov

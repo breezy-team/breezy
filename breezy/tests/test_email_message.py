@@ -15,14 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
-try:
-    from email.header import decode_header
-except ImportError:  # python < 3
-    from email.Header import decode_header
+from email.header import decode_header
 
 from .. import __version__ as _breezy_version
 from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
+from ..sixish import PY3, text_type
 from ..smtp_connection import SMTPConnection
 from .. import tests
 
@@ -67,14 +65,14 @@ Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
 
 body
-''' %  { 'version': _breezy_version, 'boundary': BOUNDARY }
+''' % {'version': _breezy_version, 'boundary': BOUNDARY}
 
 
 def final_newline_or_not(msg):
     if sys.version_info >= (2, 7, 6):
         # Some internals of python's email module changed in an (minor)
         # incompatible way: a final newline is appended in 2.7.6...
-       msg += '\n'
+        msg += '\n'
     return msg
 
 
@@ -97,7 +95,7 @@ c
 d
 e
 
---%(boundary)s--''' %  { 'boundary': BOUNDARY }
+--%(boundary)s--''' % {'boundary': BOUNDARY}
     msg = final_newline_or_not(msg)
     return msg % (typ,)
 
@@ -110,10 +108,10 @@ class TestEmailMessage(tests.TestCase):
 
     def test_simple_message(self):
         pairs = {
-            'body': SIMPLE_MESSAGE_ASCII,
+            b'body': SIMPLE_MESSAGE_ASCII,
             u'b\xf3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
-            'b\xf4dy': SIMPLE_MESSAGE_8BIT,
+            b'b\xc3\xb3dy': SIMPLE_MESSAGE_UTF8,
+            b'b\xf4dy': SIMPLE_MESSAGE_8BIT,
         }
         for body, expected in pairs.items():
             msg = EmailMessage('from@from.com', 'to@to.com', 'subject', body)
@@ -125,7 +123,6 @@ class TestEmailMessage(tests.TestCase):
         self.assertEqualDiff(simple_multipart_message(),
                              msg.as_string(BOUNDARY))
 
-
     def test_multipart_message_complex(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject', 'body')
         msg.add_inline_attachment(u'a\nb\nc\nd\ne\n', 'lines.txt', 'x-subtype')
@@ -133,30 +130,30 @@ class TestEmailMessage(tests.TestCase):
                              msg.as_string(BOUNDARY))
 
     def test_headers_accept_unicode_and_utf8(self):
-        for user in [ u'Pepe P\xe9rez <pperez@ejemplo.com>',
-                'Pepe P\xc3\xa9red <pperez@ejemplo.com>' ]:
-            msg = EmailMessage(user, user, user) # no exception raised
+        for user in [u'Pepe P\xe9rez <pperez@ejemplo.com>',
+                     'Pepe P\xc3\xa9red <pperez@ejemplo.com>']:
+            msg = EmailMessage(user, user, user)  # no exception raised
 
             for header in ['From', 'To', 'Subject']:
                 value = msg[header]
-                str(value).decode('ascii') # no UnicodeDecodeError
+                value.encode('ascii')  # no UnicodeDecodeError
 
     def test_headers_reject_8bit(self):
-        for i in range(3): # from_address, to_address, subject
-            x = [ '"J. Random Developer" <jrandom@example.com>' ] * 3
-            x[i] = 'Pepe P\xe9rez <pperez@ejemplo.com>'
+        for i in range(3):  # from_address, to_address, subject
+            x = [b'"J. Random Developer" <jrandom@example.com>'] * 3
+            x[i] = b'Pepe P\xe9rez <pperez@ejemplo.com>'
             self.assertRaises(BzrBadParameterNotUnicode, EmailMessage, *x)
 
     def test_multiple_destinations(self):
-        to_addresses = [ 'to1@to.com', 'to2@to.com', 'to3@to.com' ]
+        to_addresses = ['to1@to.com', 'to2@to.com', 'to3@to.com']
         msg = EmailMessage('from@from.com', to_addresses, 'subject')
-        self.assertContainsRe(msg.as_string(), 'To: ' +
-                ', '.join(to_addresses)) # re.M can't be passed, so no ^$
+        self.assertContainsRe(msg.as_string(), 'To: '
+                              + ', '.join(to_addresses))  # re.M can't be passed, so no ^$
 
     def test_retrieving_headers(self):
         msg = EmailMessage('from@from.com', 'to@to.com', 'subject')
         for header, value in [('From', 'from@from.com'), ('To', 'to@to.com'),
-                ('Subject', 'subject')]:
+                              ('Subject', 'subject')]:
             self.assertEqual(value, msg.get(header))
             self.assertEqual(value, msg[header])
         self.assertEqual(None, msg.get('Does-Not-Exist'))
@@ -173,8 +170,14 @@ class TestEmailMessage(tests.TestCase):
     def test_address_to_encoded_header(self):
         def decode(s):
             """Convert a RFC2047-encoded string to a unicode string."""
-            return ' '.join([chunk.decode(encoding or 'ascii')
-                             for chunk, encoding in decode_header(s)])
+            if PY3:
+                return ''.join([chunk.decode(encoding or 'ascii')
+                                for chunk, encoding in decode_header(s)])
+            else:
+                # Cope with python2 stripping whitespace.
+                # https://bugs.python.org/issue1467619
+                return ' '.join([chunk.decode(encoding or 'ascii')
+                                 for chunk, encoding in decode_header(s)])
 
         address = 'jrandom@example.com'
         encoded = EmailMessage.address_to_encoded_header(address)
@@ -188,27 +191,22 @@ class TestEmailMessage(tests.TestCase):
         encoded = EmailMessage.address_to_encoded_header(address)
         self.assertEqual(address, encoded)
 
-        address = u'Pepe P\xe9rez <pperez@ejemplo.com>' # unicode ok
+        address = u'Pepe P\xe9rez <pperez@ejemplo.com>'  # unicode ok
         encoded = EmailMessage.address_to_encoded_header(address)
-        self.assertTrue('pperez@ejemplo.com' in encoded) # addr must be unencoded
+        # addr must be unencoded
+        self.assertTrue('pperez@ejemplo.com' in encoded)
         self.assertEqual(address, decode(encoded))
 
-        address = 'Pepe P\xc3\xa9red <pperez@ejemplo.com>' # UTF-8 ok
-        encoded = EmailMessage.address_to_encoded_header(address)
-        self.assertTrue('pperez@ejemplo.com' in encoded)
-        self.assertEqual(address, decode(encoded).encode('utf-8'))
-
-        address = 'Pepe P\xe9rez <pperez@ejemplo.com>' # ISO-8859-1 not ok
+        address = b'Pepe P\xe9rez <pperez@ejemplo.com>'  # ISO-8859-1 not ok
         self.assertRaises(BzrBadParameterNotUnicode,
-                EmailMessage.address_to_encoded_header, address)
+                          EmailMessage.address_to_encoded_header, address)
 
     def test_string_with_encoding(self):
         pairs = {
-                u'Pepe':        (b'Pepe', 'ascii'),
-                u'P\xe9rez':    ('P\xc3\xa9rez', 'utf-8'),
-                'Perez':         ('Perez', 'ascii'), # u'Pepe' == 'Pepe'
-                'P\xc3\xa9rez': ('P\xc3\xa9rez', 'utf-8'),
-                'P\xe8rez':     ('P\xe8rez', '8-bit'),
+            u'Pepe': (b'Pepe', 'ascii'),
+            u'P\xe9rez': (b'P\xc3\xa9rez', 'utf-8'),
+            b'P\xc3\xa9rez': (b'P\xc3\xa9rez', 'utf-8'),
+            b'P\xe8rez': (b'P\xe8rez', '8-bit'),
         }
         for string_, pair in pairs.items():
             self.assertEqual(pair, EmailMessage.string_with_encoding(string_))
@@ -224,8 +222,6 @@ class TestSend(tests.TestCase):
             self.messages.append(msg.as_string(BOUNDARY))
 
         self.overrideAttr(SMTPConnection, 'send_email', send_as_append)
-
-
 
     def send_email(self, attachment=None, attachment_filename=None,
                    attachment_mime_subtype='plain'):
@@ -252,6 +248,5 @@ class TestSend(tests.TestCase):
         self.assertMessage(complex_multipart_message('x-patch'))
 
     def test_send_simple(self):
-          self.send_email()
-          self.assertMessage(SIMPLE_MESSAGE_ASCII)
-
+        self.send_email()
+        self.assertMessage(SIMPLE_MESSAGE_ASCII)

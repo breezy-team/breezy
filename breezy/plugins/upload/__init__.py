@@ -32,7 +32,7 @@ If you would like to upload a specific revision, you just do:
 
     brz upload -r X  sftp://user@host/location/on/webserver
 
-bzr-upload, just as brz does, will remember the location where you upload the 
+bzr-upload, just as brz does, will remember the location where you upload the
 first time, so you don't need to specify it every time.
 
 If you need to re-upload the whole working tree for some reason, you can:
@@ -107,7 +107,7 @@ Upload from Remote Location
 It is possible to upload to a remote location from another remote location by
 specifying it with the --directory option:
 
-    brz upload sftp://public.example.com --directory sftp://private.example.com 
+    brz upload sftp://public.example.com --directory sftp://private.example.com
 
 This, together with --auto, can be used to upload when you push to your
 central branch, rather than when you commit to your local branch.
@@ -121,16 +121,6 @@ Ignoring certain files
 If you want to version a file, but not upload it, you can create a file called
 .bzrignore-upload, which works in the same way as the regular .bzrignore file,
 but only applies to bzr-upload.
-
-
-Collaborating
--------------
-
-While we don't have any platform setup, you can branch from trunk:
-
-    brz branch lp:bzr-upload
-
-And change anything you'd like, and file a merge proposal on Launchpad.
 
 
 Known Issues
@@ -155,16 +145,14 @@ from __future__ import absolute_import
 # remote files...
 
 
-import breezy
 from ... import (
     commands,
     config,
     hooks,
     )
 
-from ...hooks import install_lazy_named_hook
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 
 def register_option(key, member):
@@ -234,5 +222,5 @@ def load_tests(loader, basic_tests, pattern):
         'tests',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests

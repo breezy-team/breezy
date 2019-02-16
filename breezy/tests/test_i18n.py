@@ -24,6 +24,7 @@ from .. import (
     errors,
     workingtree,
     )
+from ..sixish import PY3
 
 
 class ZzzTranslations(object):
@@ -39,6 +40,9 @@ class ZzzTranslations(object):
 
     def gettext(self, s):
         return self.zzz(self._null_translation.gettext(s))
+
+    def ngettext(self, s, p, n):
+        return self.zzz(self._null_translation.ngettext(s, p, n))
 
     def ugettext(self, s):
         return self.zzz(self._null_translation.ugettext(s))
@@ -59,16 +63,28 @@ class TestZzzTranslation(tests.TestCase):
         t = trans.zzz('msg')
         self._check_exact(u'zz\xe5{{msg}}', t)
 
-        t = trans.ugettext('msg')
-        self._check_exact(u'zz\xe5{{msg}}', t)
+        if PY3:
+            t = trans.gettext('msg')
+            self._check_exact(u'zz\xe5{{msg}}', t)
 
-        t = trans.ungettext('msg1', 'msg2', 0)
-        self._check_exact(u'zz\xe5{{msg2}}', t)
-        t = trans.ungettext('msg1', 'msg2', 2)
-        self._check_exact(u'zz\xe5{{msg2}}', t)
+            t = trans.ngettext('msg1', 'msg2', 0)
+            self._check_exact(u'zz\xe5{{msg2}}', t)
+            t = trans.ngettext('msg1', 'msg2', 2)
+            self._check_exact(u'zz\xe5{{msg2}}', t)
 
-        t = trans.ungettext('msg1', 'msg2', 1)
-        self._check_exact(u'zz\xe5{{msg1}}', t)
+            t = trans.ngettext('msg1', 'msg2', 1)
+            self._check_exact(u'zz\xe5{{msg1}}', t)
+        else:
+            t = trans.ugettext('msg')
+            self._check_exact(u'zz\xe5{{msg}}', t)
+
+            t = trans.ungettext('msg1', 'msg2', 0)
+            self._check_exact(u'zz\xe5{{msg2}}', t)
+            t = trans.ungettext('msg1', 'msg2', 2)
+            self._check_exact(u'zz\xe5{{msg2}}', t)
+
+            t = trans.ungettext('msg1', 'msg2', 1)
+            self._check_exact(u'zz\xe5{{msg1}}', t)
 
 
 class TestGetText(tests.TestCase):
@@ -148,15 +164,19 @@ class TestTranslate(tests.TestCaseWithTransport):
             workingtree.WorkingTree.open('./foo')
         except errors.NotBranchError as e:
             err = str(e)
-        self.assertContainsRe(err, 
-                              u"zz\xe5{{Not a branch: .*}}".encode("utf-8"))
+        if PY3:
+            self.assertContainsRe(err, u"zz\xe5{{Not a branch: .*}}")
+        else:
+            self.assertContainsRe(
+                err, u"zz\xe5{{Not a branch: .*}}".encode('utf-8'))
 
     def test_topic_help_translation(self):
         """does topic help get translated?"""
         from .. import help
         out = io.StringIO()
         help.help("authentication", out)
-        self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
+        self.assertContainsRe(
+            out.getvalue(), "zz\xe5{{Authentication Settings")
 
 
 class LoadPluginTranslations(tests.TestCase):

@@ -98,6 +98,7 @@ class TestScopeReplacer(TestCase):
         # These tests assume we will not be proxying, so make sure proxying is
         # disabled.
         orig_proxy = lazy_import.ScopeReplacer._should_proxy
+
         def restore():
             lazy_import.ScopeReplacer._should_proxy = orig_proxy
         lazy_import.ScopeReplacer._should_proxy = False
@@ -140,7 +141,7 @@ class TestScopeReplacer(TestCase):
                           'init',
                           ('foo', 1),
                           ('foo', 2),
-                         ], actions)
+                          ], actions)
 
     def test_setattr_replaces(self):
         """ScopeReplacer can create an instance in local scope.
@@ -150,6 +151,7 @@ class TestScopeReplacer(TestCase):
         """
         actions = []
         TestClass.use_actions(actions)
+
         def factory(replacer, scope, name):
             return TestClass()
         try:
@@ -235,7 +237,7 @@ class TestScopeReplacer(TestCase):
         self.assertEqual(test_class1, TestClass)
         self.assertEqual([('__getattribute__', 'class_member'),
                           'factory',
-                         ], actions)
+                          ], actions)
 
     def test_call_class(self):
         actions = []
@@ -265,7 +267,7 @@ class TestScopeReplacer(TestCase):
         self.assertEqual([('__call__', (), {}),
                           'factory',
                           'init',
-                         ], actions)
+                          ], actions)
 
     def test_call_func(self):
         actions = []
@@ -294,10 +296,10 @@ class TestScopeReplacer(TestCase):
         self.assertIs(test_func1, func)
 
         self.assertEqual((1, 2, '3'), val)
-        self.assertEqual([('__call__', (1, 2), {'c':'3'}),
+        self.assertEqual([('__call__', (1, 2), {'c': '3'}),
                           'factory',
                           'func',
-                         ], actions)
+                          ], actions)
 
     def test_other_variable(self):
         """Test when a ScopeReplacer is assigned to another variable.
@@ -362,7 +364,7 @@ class TestScopeReplacer(TestCase):
                           ('foo', 2),
                           ('foo', 3),
                           ('__getattribute__', 'foo'),
-                         ], actions)
+                          ], actions)
 
     def test_enable_proxying(self):
         """Test that we can allow ScopeReplacer to proxy."""
@@ -420,7 +422,7 @@ class TestScopeReplacer(TestCase):
                           ('foo', 3),
                           ('__getattribute__', 'foo'),
                           ('foo', 4),
-                         ], actions)
+                          ], actions)
 
     def test_replacing_from_own_scope_fails(self):
         """If a ScopeReplacer tries to replace itself a nice error is given"""
@@ -526,7 +528,7 @@ class TestImportReplacerHelper(ImportReplacerHelper):
     def test_basic_import(self):
         """Test that a real import of these modules works"""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
-                                  self.submoda_name])
+                                 self.submoda_name])
         root = lazy_import._builtin_import(sub_mod_path, {}, {}, [], 0)
         self.assertEqual(1, root.var1)
         self.assertEqual(3, getattr(root, self.sub_name).var3)
@@ -539,7 +541,7 @@ class TestImportReplacerHelper(ImportReplacerHelper):
 
         self.assertEqual([('import', sub_mod_path, [], 0),
                           ('import', mod_path, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
 
 class TestImportReplacer(ImportReplacerHelper):
@@ -567,7 +569,7 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root1'),
                           ('import', self.root_name, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_import_mod(self):
         """Test 'import root-XXX.mod-XXX as mod2'"""
@@ -592,7 +594,7 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual([('__getattribute__', 'var2'),
                           ('_import', 'mod1'),
                           ('import', mod_path, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_import_mod_from_root(self):
         """Test 'from root-XXX import mod-XXX as mod2'"""
@@ -616,7 +618,7 @@ class TestImportReplacer(ImportReplacerHelper):
         self.assertEqual([('__getattribute__', 'var2'),
                           ('_import', 'mod2'),
                           ('import', self.root_name, [self.mod_name], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_import_root_and_mod(self):
         """Test 'import root-XXX.mod-XXX' remapping both to root3.mod3"""
@@ -629,8 +631,8 @@ class TestImportReplacer(ImportReplacerHelper):
             self.fail('root3 was not supposed to exist yet')
 
         InstrumentedImportReplacer(scope=globals(),
-            name='root3', module_path=[self.root_name], member=None,
-            children={'mod3':([self.root_name, self.mod_name], None, {})})
+                                   name='root3', module_path=[self.root_name], member=None,
+                                   children={'mod3': ([self.root_name, self.mod_name], None, {})})
 
         # So 'root3' should be a lazy import
         # and once it is imported, mod3 should also be lazy until
@@ -651,7 +653,7 @@ class TestImportReplacer(ImportReplacerHelper):
                           ('__getattribute__', 'var2'),
                           ('_import', 'mod3'),
                           ('import', mod_path, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_import_root_and_root_mod(self):
         """Test that 'import root, root.mod' can be done.
@@ -668,8 +670,8 @@ class TestImportReplacer(ImportReplacerHelper):
             self.fail('root4 was not supposed to exist yet')
 
         InstrumentedImportReplacer(scope=globals(),
-            name='root4', module_path=[self.root_name], member=None,
-            children={})
+                                   name='root4', module_path=[self.root_name], member=None,
+                                   children={})
 
         # So 'root4' should be a lazy import
         self.assertEqual(InstrumentedImportReplacer,
@@ -693,7 +695,7 @@ class TestImportReplacer(ImportReplacerHelper):
                           ('__getattribute__', 'var2'),
                           ('_import', 'mod4'),
                           ('import', mod_path, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_import_root_sub_submod(self):
         """Test import root.mod, root.sub.submoda, root.sub.submodb
@@ -711,15 +713,15 @@ class TestImportReplacer(ImportReplacerHelper):
             self.fail('root5 was not supposed to exist yet')
 
         InstrumentedImportReplacer(scope=globals(),
-            name='root5', module_path=[self.root_name], member=None,
-            children={'mod5': ([self.root_name, self.mod_name], None, {}),
-                      'sub5': ([self.root_name, self.sub_name], None,
-                            {'submoda5':([self.root_name, self.sub_name,
-                                         self.submoda_name], None, {}),
-                             'submodb5':([self.root_name, self.sub_name,
-                                          self.submodb_name], None, {})
-                            }),
-                     })
+                                   name='root5', module_path=[self.root_name], member=None,
+                                   children={'mod5': ([self.root_name, self.mod_name], None, {}),
+                                             'sub5': ([self.root_name, self.sub_name], None,
+                                                      {'submoda5': ([self.root_name, self.sub_name,
+                                                                     self.submoda_name], None, {}),
+                                                       'submodb5': ([self.root_name, self.sub_name,
+                                                                     self.submodb_name], None, {})
+                                                       }),
+                                             })
 
         # So 'root5' should be a lazy import
         self.assertEqual(InstrumentedImportReplacer,
@@ -735,9 +737,9 @@ class TestImportReplacer(ImportReplacerHelper):
         # Accessing root5.sub5.submoda5 should import sub5, but not either
         # of the sub objects (they should be available as lazy objects
         self.assertEqual(InstrumentedImportReplacer,
-                     object.__getattribute__(root5.sub5.submoda5, '__class__'))
+                         object.__getattribute__(root5.sub5.submoda5, '__class__'))
         self.assertEqual(InstrumentedImportReplacer,
-                     object.__getattribute__(root5.sub5.submodb5, '__class__'))
+                         object.__getattribute__(root5.sub5.submodb5, '__class__'))
 
         # This should import mod5
         self.assertEqual(2, root5.mod5.var2)
@@ -765,7 +767,7 @@ class TestImportReplacer(ImportReplacerHelper):
                           ('__getattribute__', 'var5'),
                           ('_import', 'submodb5'),
                           ('import', submodb_path, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
 
 class TestConvertImportToMap(TestCase):
@@ -782,13 +784,13 @@ class TestConvertImportToMap(TestCase):
 
     def test_import_one(self):
         self.check({'one': (['one'], None, {}),
-                   }, ['import one'])
+                    }, ['import one'])
 
     def test_import_one_two(self):
         one_two_map = {'one': (['one'], None,
-                              {'two': (['one', 'two'], None, {}),
-                              }),
-                      }
+                               {'two': (['one', 'two'], None, {}),
+                                }),
+                       }
         self.check(one_two_map, ['import one.two'])
         self.check(one_two_map, ['import one, one.two'])
         self.check(one_two_map, ['import one', 'import one.two'])
@@ -797,38 +799,38 @@ class TestConvertImportToMap(TestCase):
     def test_import_one_two_three(self):
         one_two_three_map = {
             'one': (['one'], None,
-                   {'two': (['one', 'two'], None,
-                           {'three': (['one', 'two', 'three'], None, {}),
-                           }),
-                   }),
+                    {'two': (['one', 'two'], None,
+                             {'three': (['one', 'two', 'three'], None, {}),
+                              }),
+                     }),
         }
         self.check(one_two_three_map, ['import one.two.three'])
         self.check(one_two_three_map, ['import one, one.two.three'])
         self.check(one_two_three_map, ['import one',
-                                              'import one.two.three'])
+                                       'import one.two.three'])
         self.check(one_two_three_map, ['import one.two.three',
-                                              'import one'])
+                                       'import one'])
 
     def test_import_one_as_x(self):
         self.check({'x': (['one'], None, {}),
-                          }, ['import one as x'])
+                    }, ['import one as x'])
 
     def test_import_one_two_as_x(self):
         self.check({'x': (['one', 'two'], None, {}),
-                   }, ['import one.two as x'])
+                    }, ['import one.two as x'])
 
     def test_import_mixed(self):
         mixed = {'x': (['one', 'two'], None, {}),
                  'one': (['one'], None,
-                       {'two': (['one', 'two'], None, {}),
-                       }),
-                }
+                         {'two': (['one', 'two'], None, {}),
+                          }),
+                 }
         self.check(mixed, ['import one.two as x, one.two'])
         self.check(mixed, ['import one.two as x', 'import one.two'])
         self.check(mixed, ['import one.two', 'import one.two as x'])
 
     def test_import_with_as(self):
-        self.check({'fast':(['fast'], None, {})}, ['import fast'])
+        self.check({'fast': (['fast'], None, {})}, ['import fast'])
 
 
 class TestFromToMap(TestCase):
@@ -843,17 +845,17 @@ class TestFromToMap(TestCase):
                          ' %s != %s' % (from_strings, expected, proc.imports))
 
     def test_from_one_import_two(self):
-        self.check_result({'two':(['one'], 'two', {})},
+        self.check_result({'two': (['one'], 'two', {})},
                           ['from one import two'])
 
     def test_from_one_import_two_as_three(self):
-        self.check_result({'three':(['one'], 'two', {})},
+        self.check_result({'three': (['one'], 'two', {})},
                           ['from one import two as three'])
 
     def test_from_one_import_two_three(self):
         two_three_map = {'two': (['one'], 'two', {}),
                          'three': (['one'], 'three', {}),
-                        }
+                         }
         self.check_result(two_three_map,
                           ['from one import two, three'])
         self.check_result(two_three_map,
@@ -861,7 +863,7 @@ class TestFromToMap(TestCase):
                            'from one import three'])
 
     def test_from_one_two_import_three(self):
-        self.check_result({'three':(['one', 'two'], 'three', {})},
+        self.check_result({'three': (['one', 'two'], 'three', {})},
                           ['from one.two import three'])
 
 
@@ -892,7 +894,8 @@ class TestCanonicalize(TestCase):
         self.check(['from one import two'], 'from one import two')
         self.check(['from one import two'], '\nfrom one import two\n\n')
         self.check(['from one import two'], '\nfrom one import (two)\n')
-        self.check(['from one import  two '], '\nfrom one import (\n\ttwo\n)\n')
+        self.check(['from one import  two '],
+                   '\nfrom one import (\n\ttwo\n)\n')
 
     def test_multiple(self):
         self.check(['import one', 'import two, three', 'from one import four'],
@@ -930,32 +933,32 @@ class TestImportProcessor(TestCase):
                          % (text, expected, proc.imports))
 
     def test_import_one(self):
-        exp = {'one':(['one'], None, {})}
+        exp = {'one': (['one'], None, {})}
         self.check(exp, 'import one')
         self.check(exp, '\nimport one\n')
 
     def test_import_one_two(self):
         exp = {'one': (['one'], None,
-                      {'two': (['one', 'two'], None, {}),
-                      }),
-              }
+                       {'two': (['one', 'two'], None, {}),
+                        }),
+               }
         self.check(exp, 'import one.two')
         self.check(exp, 'import one, one.two')
         self.check(exp, 'import one\nimport one.two')
 
     def test_import_as(self):
-        exp = {'two':(['one'], None, {})}
+        exp = {'two': (['one'], None, {})}
         self.check(exp, 'import one as two')
 
     def test_import_many(self):
         exp = {'one': (['one'], None,
-                      {'two': (['one', 'two'], None,
-                              {'three': (['one', 'two', 'three'], None, {}),
-                              }),
-                       'four': (['one', 'four'], None, {}),
-                      }),
+                       {'two': (['one', 'two'], None,
+                                {'three': (['one', 'two', 'three'], None, {}),
+                                 }),
+                        'four': (['one', 'four'], None, {}),
+                        }),
                'five': (['one', 'five'], None, {}),
-              }
+               }
         self.check(exp, 'import one.two.three, one.four, one.five as five')
         self.check(exp, 'import one.five as five\n'
                         'import one\n'
@@ -963,14 +966,14 @@ class TestImportProcessor(TestCase):
                         'import one.four\n')
 
     def test_from_one_import_two(self):
-        exp = {'two':(['one'], 'two', {})}
+        exp = {'two': (['one'], 'two', {})}
         self.check(exp, 'from one import two\n')
         self.check(exp, 'from one import (\n'
                         '    two,\n'
                         '    )\n')
 
     def test_from_one_import_two(self):
-        exp = {'two':(['one'], 'two', {})}
+        exp = {'two': (['one'], 'two', {})}
         self.check(exp, 'from one import two\n')
         self.check(exp, 'from one import (two)\n')
         self.check(exp, 'from one import (two,)\n')
@@ -983,7 +986,7 @@ class TestImportProcessor(TestCase):
         exp = {'two': (['one'], 'two', {}),
                'three': (['one', 'two'], 'three', {}),
                'five': (['one', 'two'], 'four', {}),
-              }
+               }
         self.check(exp, 'from one import two\n'
                         'from one.two import three, four as five\n')
         self.check(exp, 'from one import two\n'
@@ -997,9 +1000,9 @@ class TestImportProcessor(TestCase):
                'three': (['one', 'two'], 'three', {}),
                'five': (['one', 'two'], 'four', {}),
                'one': (['one'], None,
-                      {'two': (['one', 'two'], None, {}),
-                      }),
-              }
+                       {'two': (['one', 'two'], None, {}),
+                        }),
+               }
         self.check(exp, 'from one import two\n'
                         'from one.two import three, four as five\n'
                         'import one.two')
@@ -1051,7 +1054,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         try:
             root6
         except NameError:
-            pass # root6 should not be defined yet
+            pass  # root6 should not be defined yet
         else:
             self.fail('root6 was not supposed to exist yet')
 
@@ -1069,7 +1072,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root6'),
                           ('import', self.root_name, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_import_deep(self):
         """Test import root.mod, root.sub.submoda, root.sub.submodb
@@ -1081,7 +1084,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
         try:
             submoda7
         except NameError:
-            pass # submoda7 should not be defined yet
+            pass  # submoda7 should not be defined yet
         else:
             self.fail('submoda7 was not supposed to exist yet')
 
@@ -1104,14 +1107,14 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         self.assertEqual([('__getattribute__', 'var4'),
                           ('_import', 'submoda7'),
                           ('import', submoda_path, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
     def test_lazy_import(self):
         """Smoke test that lazy_import() does the right thing"""
         try:
             root8
         except NameError:
-            pass # root8 should not be defined yet
+            pass  # root8 should not be defined yet
         else:
             self.fail('root8 was not supposed to exist yet')
         lazy_import.lazy_import(globals(),
@@ -1128,7 +1131,7 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
         self.assertEqual([('__getattribute__', 'var1'),
                           ('_import', 'root8'),
                           ('import', self.root_name, [], 0),
-                         ], self.actions)
+                          ], self.actions)
 
 
 class TestScopeReplacerReentrance(TestCase):
@@ -1154,8 +1157,8 @@ class TestScopeReplacerReentrance(TestCase):
         filename = re.sub(r'\.py[co]$', '.py', filename)
         function_name = code.co_name
         # If we're executing a line of code from the right module...
-        if (filename.endswith('lazy_import.py') and
-            function_name == self.method_to_trace):
+        if (filename.endswith('lazy_import.py')
+                and function_name == self.method_to_trace):
             # We don't need to trace any more.
             sys.settrace(None)
             # Run another racer.  This one will "win" the race.
@@ -1167,7 +1170,7 @@ class TestScopeReplacerReentrance(TestCase):
         self.racer = racer
         self.method_to_trace = method_to_trace
         sys.settrace(self.tracer)
-        self.racer() # Should not raise any exception
+        self.racer()  # Should not raise any exception
         # Make sure the tracer actually found the code it was
         # looking for.  If not, maybe the code was refactored in
         # such a way that these tests aren't needed any more.

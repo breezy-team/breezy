@@ -25,8 +25,8 @@ from .. import (
     workingtree,
     )
 from ..sixish import (
-    BytesIO,
     PY3,
+    StringIO,
     )
 from .scenarios import load_tests_apply_scenarios
 
@@ -53,9 +53,9 @@ class TestBzrlibVersioning(tests.TestCase):
 
     def test_python_binary_path(self):
         self.permit_source_tree_branch_repo()
-        sio = BytesIO()
+        sio = StringIO()
         version.show_version(show_config=False, show_copyright=False,
-            to_file=sio)
+                             to_file=sio)
         out = sio.getvalue()
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
         self.assertIsNot(m, None)
@@ -73,7 +73,8 @@ class TestPlatformUse(tests.TestCase):
 
     def test_platform(self):
         out = self.make_utf8_encoded_stringio()
-        self.overrideAttr(platform, 'platform', lambda **kwargs: self._platform)
+        self.overrideAttr(platform, 'platform', lambda **
+                          kwargs: self._platform)
         version.show_version(show_config=False, show_copyright=False,
                              to_file=out)
         expected = r'(?m)^  Platform: %s' % self._platform

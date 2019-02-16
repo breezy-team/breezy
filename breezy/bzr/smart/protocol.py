@@ -20,7 +20,11 @@ client and server.
 
 from __future__ import absolute_import
 
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
+
 import struct
 import sys
 try:
@@ -131,7 +135,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
 
     def __init__(self, backing_transport, write_func, root_client_path='/',
-            jail_root=None):
+                 jail_root=None):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._jail_root = jail_root
@@ -370,7 +374,7 @@ class _StatefulDecoder(object):
         # check if we can yield the bytes from just the first entry in our list
         if len(self._in_buffer_list) == 0:
             raise AssertionError('Callers must be sure we have buffered bytes'
-                ' before calling _get_in_bytes')
+                                 ' before calling _get_in_bytes')
         if len(self._in_buffer_list[0]) > count:
             return self._in_buffer_list[0][:count]
         # We can't yield it from the first buffer, so collapse all buffers, and
@@ -432,7 +436,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_header
         self.chunk_in_progress = None
-        self.chunks = collections.deque()
+        self.chunks = deque()
         self.error = False
         self.error_in_progress = None
 
@@ -474,7 +478,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
             raise _NeedMoreBytes(1)
         line = in_buf[:pos]
         # Trim the prefix (including '\n' delimiter) from the _in_buffer.
-        self._set_in_buffer(in_buf[pos+1:])
+        self._set_in_buffer(in_buf[pos + 1:])
         return line
 
     def _finished(self):
@@ -571,7 +575,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         if pos == -1:
             return
         self.bytes_left = int(in_buf[:pos])
-        self._set_in_buffer(in_buf[pos+1:])
+        self._set_in_buffer(in_buf[pos + 1:])
         self.state_accept = self._state_accept_reading_body
         self.state_read = self._state_read_body_buffer
 
@@ -648,7 +652,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/body: %s (%r...)', repr(args)[1:-1], body[:20])
             if getattr(self._request._medium, '_path', None) is not None:
-                mutter('                  (to %s)', self._request._medium._path)
+                mutter('                  (to %s)',
+                       self._request._medium._path)
             mutter('              %d bytes', len(body))
             self._request_start_time = osutils.timer_func()
             if 'hpssdetail' in debug.debug_flags:
@@ -668,7 +673,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
             if getattr(self._request._medium, '_path', None) is not None:
-                mutter('                  (to %s)', self._request._medium._path)
+                mutter('                  (to %s)',
+                       self._request._medium._path)
             self._request_start_time = osutils.timer_func()
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
@@ -759,9 +765,9 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         :raises: UnexpectedSmartServerResponse
         """
         if (result_tuple == (b'error', b"Generic bzr smart protocol error: "
-                b"bad request '" + self._last_verb + b"'") or
-              result_tuple == (b'error', b"Generic bzr smart protocol error: "
-                b"bad request u'%s'" % self._last_verb)):
+                             b"bad request '" + self._last_verb + b"'")
+            or result_tuple == (b'error', b"Generic bzr smart protocol error: "
+                                b"bad request u'%s'" % self._last_verb)):
             # The response will have no body, so we've finished reading.
             self._request.finished_reading()
             raise errors.UnknownSmartMethod(self._last_verb)
@@ -886,7 +892,8 @@ def build_server_protocol_three(backing_transport, write_func,
         backing_transport, commands=request.request_handlers,
         root_client_path=root_client_path, jail_root=jail_root)
     responder = ProtocolThreeResponder(write_func)
-    message_handler = message.ConventionalRequestHandler(request_handler, responder)
+    message_handler = message.ConventionalRequestHandler(
+        request_handler, responder)
     return ProtocolThreeDecoder(message_handler)
 
 
@@ -1082,7 +1089,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 class _ProtocolThreeEncoder(object):
 
     response_marker = request_marker = MESSAGE_VERSION_THREE
-    BUFFER_SIZE = 1024*1024 # 1 MiB buffer before flushing
+    BUFFER_SIZE = 1024 * 1024  # 1 MiB buffer before flushing
 
     def __init__(self, write_func):
         self._buf = []
@@ -1159,7 +1166,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         _ProtocolThreeEncoder.__init__(self, write_func)
         self.response_sent = False
         self._headers = {
-                b'Software version': breezy.__version__.encode('utf-8')}
+            b'Software version': breezy.__version__.encode('utf-8')}
         if 'hpss' in debug.debug_flags:
             self._thread_id = _thread.get_ident()
             self._response_start_time = None
@@ -1196,7 +1203,8 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_error_status()
-        self._write_structure((b'error', str(exception).encode('utf-8', 'replace')))
+        self._write_structure(
+            (b'error', str(exception).encode('utf-8', 'replace')))
         self._write_end()
 
     def send_response(self, response):
@@ -1394,4 +1402,3 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self.flush()
         self._write_end()
         self._medium_request.finished_writing()
-

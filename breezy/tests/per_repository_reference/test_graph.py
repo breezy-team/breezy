@@ -81,10 +81,10 @@ class TestGraph(TestCaseWithRepository):
             # this changes in the future, we can change this to:
             # if c.call.method != 'Repository.get_parent_map':
             #    continue
-            self.assertEqual('Repository.get_parent_map', c.call.method)
+            self.assertEqual(b'Repository.get_parent_map', c.call.method)
             args = c.call.args
             location = args[0]
-            self.assertEqual('include-missing:', args[1])
+            self.assertEqual(b'include-missing:', args[1])
             revisions = sorted(args[2:])
             get_parent_map_calls.append((location, revisions))
         self.assertEqual(expected, get_parent_map_calls)
@@ -101,18 +101,19 @@ class TestGraph(TestCaseWithRepository):
         self.addCleanup(target_b.lock_write().unlock)
         self.setup_smart_server_with_call_log()
         res = target_b.repository.search_missing_revision_ids(
-                stacked_b.repository, revision_ids=[b'F'],
-                find_ghosts=False)
+            stacked_b.repository, revision_ids=[b'F'],
+            find_ghosts=False)
         self.assertParentMapCalls([
             # One call to stacked to start, which returns F=>E, and that E
             # itself is missing, so when we step, we won't look for it.
-            ('extra/stacked/', [b'F']),
+            (b'extra/stacked/', [b'F']),
             # One fallback call to extra/master, which will return the rest of
             # the history.
-            ('extra/master/', [b'E']),
+            (b'extra/master/', [b'E']),
             # And then one get_parent_map call to the target, to see if it
             # already has any of these revisions.
-            ('extra/target_repo/branch/', [b'A', b'B', b'C', b'D', b'E', b'F']),
+            (b'extra/target_repo/branch/',
+             [b'A', b'B', b'C', b'D', b'E', b'F']),
             ])
         # Before bug #388269 was fixed, there would be a bunch of extra calls
         # to 'extra/stacked', ['D'] then ['C'], then ['B'], then ['A'].

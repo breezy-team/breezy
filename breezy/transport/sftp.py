@@ -42,12 +42,12 @@ from .. import (
     urlutils,
     )
 from ..errors import (FileExists,
-                           NoSuchFile,
-                           TransportError,
-                           LockError,
-                           PathError,
-                           ParamikoNotPresent,
-                           )
+                      NoSuchFile,
+                      TransportError,
+                      LockError,
+                      PathError,
+                      ParamikoNotPresent,
+                      )
 from ..osutils import fancy_rename
 from ..sixish import (
     zip,
@@ -69,9 +69,9 @@ from ..transport import (
 # /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
 #  self.packet.write(struct.pack('>I', n))
 warnings.filterwarnings('ignore',
-        'integer argument expected, got float',
-        category=DeprecationWarning,
-        module='paramiko.message')
+                        'integer argument expected, got float',
+                        category=DeprecationWarning,
+                        module='paramiko.message')
 
 try:
     import paramiko
@@ -80,7 +80,7 @@ except ImportError as e:
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
-                               SFTP_OK, CMD_HANDLE, CMD_OPEN)
+                               CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
 
@@ -193,7 +193,7 @@ class _SFTPReadvHelper(object):
         # as possible, so we don't issues requests <32kB
         sorted_offsets = sorted(self.original_offsets)
         coalesced = list(ConnectedTransport._coalesce_offsets(sorted_offsets,
-                                                        limit=0, fudge_factor=0))
+                                                              limit=0, fudge_factor=0))
         requests = []
         for c_offset in coalesced:
             start = c_offset.start
@@ -207,8 +207,8 @@ class _SFTPReadvHelper(object):
                 start += next_size
         if 'sftp' in debug.debug_flags:
             mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
-                self.relpath, len(sorted_offsets), len(coalesced),
-                len(requests))
+                   self.relpath, len(sorted_offsets), len(coalesced),
+                   len(requests))
         return requests
 
     def request_and_yield_offsets(self, fp):
@@ -241,10 +241,10 @@ class _SFTPReadvHelper(object):
             if data is None:
                 if cur_coalesced is not None:
                     raise errors.ShortReadvError(self.relpath,
-                        start, length, len(data))
+                                                 start, length, len(data))
             if len(data) != length:
                 raise errors.ShortReadvError(self.relpath,
-                    start, length, len(data))
+                                             start, length, len(data))
             self._report_activity(length, 'read')
             if last_end is None:
                 # This is the first request, just buffer it
@@ -294,7 +294,10 @@ class _SFTPReadvHelper(object):
                     input_start += cur_size
                     # Yield the requested data
                     yield cur_offset, cur_data
-                    cur_offset, cur_size = next(offset_iter)
+                    try:
+                        cur_offset, cur_size = next(offset_iter)
+                    except StopIteration:
+                        return
                 # at this point, we've consumed as much of buffered as we can,
                 # so break off the portion that we consumed
                 if buffered_offset == len(buffered_data):
@@ -314,7 +317,7 @@ class _SFTPReadvHelper(object):
         if data_chunks:
             if 'sftp' in debug.debug_flags:
                 mutter('SFTP readv left with %d out-of-order bytes',
-                    sum(len(x[1]) for x in data_chunks))
+                       sum(len(x[1]) for x in data_chunks))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
@@ -340,10 +343,13 @@ class _SFTPReadvHelper(object):
                     data = ''
                 if len(data) != cur_size:
                     raise AssertionError('We must have miscalulated.'
-                        ' We expected %d bytes, but only found %d'
-                        % (cur_size, len(data)))
+                                         ' We expected %d bytes, but only found %d'
+                                         % (cur_size, len(data)))
                 yield cur_offset, data
-                cur_offset, cur_size = next(offset_iter)
+                try:
+                    cur_offset, cur_size = next(offset_iter)
+                except StopIteration:
+                    return
 
 
 class SFTPTransport(ConnectedTransport):
@@ -405,9 +411,9 @@ class SFTPTransport(ConnectedTransport):
         if user is None:
             auth = config.AuthenticationConfig()
             user = auth.get_user('ssh', self._parsed_url.host,
-                self._parsed_url.port)
+                                 self._parsed_url.port)
         connection = vendor.connect_sftp(self._parsed_url.user, password,
-            self._parsed_url.host, self._parsed_url.port)
+                                         self._parsed_url.host, self._parsed_url.port)
         return connection, (user, password)
 
     def disconnect(self):
@@ -450,7 +456,7 @@ class SFTPTransport(ConnectedTransport):
             return f
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': error retrieving',
-                failure_exc=errors.ReadError)
+                                         failure_exc=errors.ReadError)
 
     def get_bytes(self, relpath):
         # reimplement this here so that we can report how many bytes came back
@@ -511,7 +517,7 @@ class SFTPTransport(ConnectedTransport):
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code"""
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
-                        os.getpid(), random.randint(0, 0x7FFFFFFF))
+                                             os.getpid(), random.randint(0, 0x7FFFFFFF))
         fout = self._sftp_open_exclusive(tmp_abspath, mode=mode)
         closed = False
         try:
@@ -647,7 +653,7 @@ class SFTPTransport(ConnectedTransport):
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 for i, basename in enumerate(self.list_dir(relpath)):
-                    queue.insert(i, relpath+'/'+basename)
+                    queue.insert(i, relpath + '/' + basename)
             else:
                 yield relpath
 
@@ -667,7 +673,7 @@ class SFTPTransport(ConnectedTransport):
                 # the sgid bit is set, report a warning to the user
                 # with the umask fix.
                 stat = self._get_sftp().lstat(abspath)
-                mode = mode & 0o777 # can't set special bits anyway
+                mode = mode & 0o777  # can't set special bits anyway
                 if mode != stat.st_mode & 0o777:
                     if stat.st_mode & 0o6000:
                         warning('About to chmod %s over sftp, which will result'
@@ -678,7 +684,7 @@ class SFTPTransport(ConnectedTransport):
                     self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError) as e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
-                failure_exc=FileExists)
+                                         failure_exc=FileExists)
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -724,10 +730,10 @@ class SFTPTransport(ConnectedTransport):
         self._translate_error(e, path, raise_generic=False)
         if getattr(e, 'args', None) is not None:
             if (e.args == ('No such file or directory',) or
-                e.args == ('No such file',)):
+                    e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
             if (e.args == ('mkdir failed',) or
-                e.args[0].startswith('syserr: File exists')):
+                    e.args[0].startswith('syserr: File exists')):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
@@ -736,7 +742,7 @@ class SFTPTransport(ConnectedTransport):
             # '/srv/bazaar.launchpad.net/blah...: '
             # [Errno 39] Directory not empty',)
             if (e.args[0].startswith('Directory not empty: ')
-                or getattr(e, 'errno', None) == errno.ENOTEMPTY):
+                    or getattr(e, 'errno', None) == errno.ENOTEMPTY):
                 raise errors.DirectoryNotEmpty(path, str(e))
             if e.args == ('Operation unsupported',):
                 raise errors.TransportNotPossible()
@@ -765,10 +771,10 @@ class SFTPTransport(ConnectedTransport):
         """Rename without special overwriting"""
         try:
             self._get_sftp().rename(self._remote_path(rel_from),
-                              self._remote_path(rel_to))
+                                    self._remote_path(rel_to))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, rel_from,
-                    ': unable to rename to %r' % (rel_to))
+                                         ': unable to rename to %r' % (rel_to))
 
     def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
@@ -843,7 +849,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.readlink."""
         path = self._remote_path(relpath)
         try:
-            return self._get_sftp().readlink(path)
+            return self._get_sftp().readlink(self._remote_path(path))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, path, ': unable to readlink')
 
@@ -851,12 +857,7 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.symlink."""
         try:
             conn = self._get_sftp()
-            sftp_retval = conn.symlink(source, link_name)
-            if SFTP_OK != sftp_retval:
-                raise TransportError(
-                    '%r: unable to create symlink to %r' % (link_name, source),
-                    sftp_retval
-                )
+            sftp_retval = conn.symlink(source, self._remote_path(link_name))
         except (IOError, paramiko.SSHException) as e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))
@@ -870,10 +871,13 @@ class SFTPTransport(ConnectedTransport):
         class BogusLock(object):
             def __init__(self, path):
                 self.path = path
+
             def unlock(self):
                 pass
+
             def __exit__(self, exc_type, exc_val, exc_tb):
                 return False
+
             def __enter__(self):
                 pass
         return BogusLock(relpath)
@@ -915,7 +919,7 @@ class SFTPTransport(ConnectedTransport):
         if mode is not None:
             attr.st_mode = mode
         omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE
-                | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
+                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
             t, msg = self._get_sftp()._request(CMD_OPEN, path, omode, attr)
             if t != CMD_HANDLE:
@@ -924,7 +928,7 @@ class SFTPTransport(ConnectedTransport):
             return SFTPFile(self._get_sftp(), handle, 'wb', -1)
         except (paramiko.SSHException, IOError) as e:
             self._translate_io_exception(e, abspath, ': unable to open',
-                failure_exc=FileExists)
+                                         failure_exc=FileExists)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':

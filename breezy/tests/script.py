@@ -22,14 +22,18 @@ See developers/testing.html for more explanations.
 import doctest
 import errno
 import glob
+import logging
 import os
 import shlex
+import sys
 import textwrap
 
 from .. import (
     osutils,
     tests,
+    trace,
     )
+from ..tests import ui_testing
 
 
 def split(s):
@@ -89,7 +93,7 @@ def _script_to_commands(text, file_name=None):
         lineno += 1
         # Keep a copy for error reporting
         orig = line
-        comment =  line.find('#')
+        comment = line.find('#')
         if comment >= 0:
             # Delete comments
             # NB: this syntax means comments are allowed inside output, which
@@ -138,7 +142,7 @@ def _scan_redirection_options(args):
 
     :param args: The command line arguments
 
-    :return: A tuple containing: 
+    :return: A tuple containing:
         - The file name redirected from or None
         - The file name redirected to or None
         - The mode to open the output file or None
@@ -174,7 +178,7 @@ def _scan_redirection_options(args):
 
 class ScriptRunner(object):
     """Run a shell-like script from a test.
-    
+
     Can be used as:
 
     from breezy.tests import script
@@ -232,8 +236,8 @@ class ScriptRunner(object):
         try:
             self._check_output(error, actual_error, test_case)
         except AssertionError as e:
-            raise AssertionError(str(e) +
-                " in stderr of running command %s" % cmd)
+            raise AssertionError(str(e)
+                                 + " in stderr of running command %s" % cmd)
         if retcode and not error and actual_error:
             test_case.fail('In \n\t%s\nUnexpected error: %s'
                            % (' '.join(cmd), actual_error))
@@ -247,7 +251,7 @@ class ScriptRunner(object):
                 return
             else:
                 test_case.fail('expected output: %r, but found nothing'
-                            % (expected,))
+                               % (expected,))
 
         null_output_matches_anything = getattr(
             self, 'null_output_matches_anything', False)
@@ -280,7 +284,7 @@ class ScriptRunner(object):
             # Strip the simple and double quotes since we don't care about
             # them.  We leave the backquotes in place though since they have a
             # different semantic.
-            if arg[0] in  ('"', "'") and arg[0] == arg[-1]:
+            if arg[0] in ('"', "'") and arg[0] == arg[-1]:
                 yield arg[1:-1]
             else:
                 if glob.has_magic(arg):
@@ -315,9 +319,32 @@ class ScriptRunner(object):
         return output
 
     def do_brz(self, test_case, input, args):
-        retcode, out, err = test_case._run_bzr_core(
-            args, retcode=None, encoding=None, stdin=input, working_dir=None)
-        return retcode, out, err
+        encoding = osutils.get_user_encoding()
+        if sys.version_info[0] == 2:
+            stdout = ui_testing.BytesIOWithEncoding()
+            stderr = ui_testing.BytesIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+
+            # FIXME: don't call into logging here
+            handler = trace.EncodedStreamHandler(
+                stderr, errors="replace")
+        else:
+            stdout = ui_testing.StringIOWithEncoding()
+            stderr = ui_testing.StringIOWithEncoding()
+            stdout.encoding = stderr.encoding = encoding
+            handler = logging.StreamHandler(stderr)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('')
+        logger.addHandler(handler)
+        try:
+            retcode = test_case._run_bzr_core(
+                args, encoding=encoding, stdin=input, stdout=stdout,
+                stderr=stderr, working_dir=None)
+        finally:
+            logger.removeHandler(handler)
+
+        return retcode, stdout.getvalue(), stderr.getvalue()
 
     def do_cat(self, test_case, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
@@ -404,7 +431,7 @@ class ScriptRunner(object):
         err = None
 
         def error(msg, path):
-            return  "rm: cannot remove '%s': %s\n" % (path, msg)
+            return "rm: cannot remove '%s': %s\n" % (path, msg)
 
         force, recursive = False, False
         opts = None
@@ -434,7 +461,7 @@ class ScriptRunner(object):
                         break
                 elif e.errno == errno.ENOENT:
                     if not force:
-                        err =  error('No such file or directory', p)
+                        err = error('No such file or directory', p)
                         break
                 else:
                     raise
@@ -446,6 +473,7 @@ class ScriptRunner(object):
 
     def do_mv(self, test_case, input, args):
         err = None
+
         def error(msg, src, dst):
             return "mv: cannot move %s to %s: %s\n" % (src, dst, msg)
 
@@ -469,7 +497,6 @@ class ScriptRunner(object):
         return retcode, None, err
 
 
-
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
     """Helper class to experiment shell-like test and memory fs.
 
@@ -487,8 +514,8 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
         self.overrideEnv('INSIDE_EMACS', '1')
 
     def run_script(self, script, null_output_matches_anything=False):
-        return self.script_runner.run_script(self, script, 
-                   null_output_matches_anything=null_output_matches_anything)
+        return self.script_runner.run_script(self, script,
+                                             null_output_matches_anything=null_output_matches_anything)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
@@ -522,7 +549,7 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 
     def run_script(self, script, null_output_matches_anything=False):
         return self.script_runner.run_script(self, script,
-                   null_output_matches_anything=null_output_matches_anything)
+                                             null_output_matches_anything=null_output_matches_anything)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
@@ -531,5 +558,4 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 def run_script(test_case, script_string, null_output_matches_anything=False):
     """Run the given script within a testcase"""
     return ScriptRunner().run_script(test_case, script_string,
-               null_output_matches_anything=null_output_matches_anything)
-
+                                     null_output_matches_anything=null_output_matches_anything)

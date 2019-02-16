@@ -105,9 +105,10 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = MemoryTree.create_on_branch(branch)
         with tree.lock_write():
             tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                      kinds=['directory', 'file'])
+                     kinds=['directory', 'file'])
             tree.put_file_bytes_non_atomic('foo', b'barshoom')
-            self.assertEqual(b'barshoom', tree.get_file('foo').read())
+            with tree.get_file('foo') as f:
+                self.assertEqual(b'barshoom', f.read())
 
     def test_put_existing_file(self):
         branch = self.make_branch('branch')

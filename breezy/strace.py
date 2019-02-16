@@ -44,7 +44,6 @@ def strace_detailed(function, args, kwargs, follow_children=True):
 
     # capture strace output to a file
     log_file = tempfile.NamedTemporaryFile()
-    log_file_fd = log_file.fileno()
     err_file = tempfile.NamedTemporaryFile()
     pid = os.getpid()
     # start strace
@@ -57,7 +56,7 @@ def strace_detailed(function, args, kwargs, follow_children=True):
                             stdout=subprocess.PIPE,
                             stderr=err_file.fileno())
     # Wait for strace to attach
-    attached_notice = proc.stdout.readline()
+    proc.stdout.readline()
     # Run the function to strace
     result = function(*args, **kwargs)
     # stop strace
@@ -78,7 +77,7 @@ def strace_detailed(function, args, kwargs, follow_children=True):
 
 
 class StraceError(errors.BzrError):
-    
+
     _fmt = "strace failed: %(err_messages)s"
 
 
@@ -92,5 +91,3 @@ class StraceResult(object):
         """
         self.raw_log = raw_log
         self.err_messages = err_messages
-
-

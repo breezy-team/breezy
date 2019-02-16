@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import base64
 from io import BytesIO
 
 try:
@@ -28,14 +27,15 @@ except ImportError:  # python < 3
         Transport,
         )
 
+from ...sixish import PY3
 from ...tests import TestCaseWithTransport
 
 # local import
 from .lp_registration import (
-        BaseRequest,
-        ResolveLaunchpadPathRequest,
-        LaunchpadService,
-        )
+    BaseRequest,
+    ResolveLaunchpadPathRequest,
+    LaunchpadService,
+    )
 
 
 # TODO: Test that the command-line client, making sure that it'll pass the
@@ -93,11 +93,11 @@ class InstrumentedXMLRPCConnection(object):
 </methodResponse>''')
 
 
-
 class InstrumentedXMLRPCTransport(Transport):
 
     # Python 2.5's xmlrpclib looks for this.
     _use_datetime = False
+    _use_builtin_types = False
 
     def __init__(self, testcase):
         self.testcase = testcase
@@ -111,10 +111,23 @@ class InstrumentedXMLRPCTransport(Transport):
             raise AssertionError()
         return InstrumentedXMLRPCConnection(test)
 
-    def send_request(self, connection, handler_path, request_body,
-                     verbose=None):
-        test = self.testcase
-        self.got_request = True
+    if PY3:
+        def send_request(self, host, handler_path, request_body,
+                         verbose=None):
+            self.connected_host = host
+            test = self.testcase
+            self.got_request = True
+            unpacked, method = xmlrpc_loads(request_body)
+            if None in unpacked:
+                raise AssertionError(
+                    "xmlrpc result %r shouldn't contain None" % (unpacked,))
+            self.sent_params = unpacked
+            return InstrumentedXMLRPCConnection(test)
+    else:
+        def send_request(self, connection, handler_path, request_body,
+                         verbose=None):
+            test = self.testcase
+            self.got_request = True
 
     def send_host(self, conn, host):
         pass
@@ -162,6 +175,7 @@ class TestResolveLaunchpadPathRequest(TestCaseWithTransport):
         """Define a new type of xmlrpc request"""
         class DummyRequest(BaseRequest):
             _methodname = 'dummy_request'
+
             def _request_params(self):
                 return (42,)
 
@@ -175,22 +189,23 @@ class TestResolveLaunchpadPathRequest(TestCaseWithTransport):
 
     def test_mock_resolve_lp_url(self):
         test_case = self
+
         class MockService(MockLaunchpadService):
             def send_request(self, method_name, method_params,
                              verbose=None):
                 test_case.assertEqual(method_name, "resolve_lp_path")
                 test_case.assertEqual(list(method_params), ['bzr'])
                 return dict(urls=[
-                        'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
-                        'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
-                        'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
-                        'http://bazaar.launchpad.net~bzr/bzr/trunk'])
+                    'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+                    'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+                    'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+                    'http://bazaar.launchpad.net~bzr/bzr/trunk'])
         service = MockService()
         resolve = ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)
         self.assertTrue('urls' in result)
         self.assertEqual(result['urls'], [
-                'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
-                'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
-                'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
-                'http://bazaar.launchpad.net~bzr/bzr/trunk'])
+            'bzr+ssh://bazaar.launchpad.net~bzr/bzr/trunk',
+            'sftp://bazaar.launchpad.net~bzr/bzr/trunk',
+            'bzr+http://bazaar.launchpad.net~bzr/bzr/trunk',
+            'http://bazaar.launchpad.net~bzr/bzr/trunk'])

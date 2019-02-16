@@ -28,7 +28,7 @@ class TestJoin(tests.TestCaseWithTransport):
 
     def make_trees(self):
         base_tree = self.make_branch_and_tree('tree',
-            format='development-subtree')
+                                              format='development-subtree')
         base_tree.commit('empty commit')
         self.build_tree(['tree/subtree/', 'tree/subtree/file1'])
         sub_tree = self.make_branch_and_tree('tree/subtree')
@@ -56,11 +56,11 @@ class TestJoin(tests.TestCaseWithTransport):
         osutils.rename('tree/subtree', 'tree/subtree2/subtree')
         self.run_bzr_error(
             ('Cannot join .*subtree.  Parent directory is not versioned',),
-             'join tree/subtree2/subtree')
+            'join tree/subtree2/subtree')
         # disabled because this gives an ugly error at present -- mbp 20070306
-        ## self.run_bzr_error(
+        # self.run_bzr_error(
         ##     ('Cannot join .*subtree.  Parent directory is not versioned',),
-        ##      'join', '--reference', 'tree/subtree2/subtree')
+        # 'join', '--reference', 'tree/subtree2/subtree')
         self.run_bzr_error(('Not a branch:.*subtree2',),
                            'join tree/subtree2')
 

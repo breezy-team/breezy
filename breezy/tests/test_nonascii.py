@@ -35,7 +35,8 @@ class NonAsciiTest(TestCaseWithTransport):
         except UnicodeEncodeError:
             raise TestSkipped("filesystem can't accomodate nonascii names")
             return
-        with open(pathjoin(br_dir, "a"), "w") as f: f.write("hello")
+        with open(pathjoin(br_dir, "a"), "w") as f:
+            f.write("hello")
         wt.add(["a"], [b"a-id"])
 
 
@@ -45,9 +46,9 @@ a_dots_c = u'\xe4'
 a_dots_d = u'a\u0308'
 z_umlat_c = u'\u017d'
 z_umlat_d = u'Z\u030c'
-squared_c = u'\xbc' # This gets mapped to '2' if we use NFK[CD]
+squared_c = u'\xbc'  # This gets mapped to '2' if we use NFK[CD]
 squared_d = u'\xbc'
-quarter_c = u'\xb2' # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
+quarter_c = u'\xb2'  # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
 quarter_d = u'\xb2'
 
 
@@ -115,14 +116,15 @@ class NormalizedFilename(TestCaseWithTransport):
         # a_circle_c and a_dots_c actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3']
+        files = [a_circle_c + '.1', a_dots_c + '.2', z_umlat_c + '.3']
         try:
             self.build_tree(files)
         except UnicodeError:
             raise TestSkipped("filesystem cannot create unicode files")
 
         if sys.platform == 'darwin':
-            expected = sorted([a_circle_d+'.1', a_dots_d+'.2', z_umlat_d+'.3'])
+            expected = sorted(
+                [a_circle_d + '.1', a_dots_d + '.2', z_umlat_d + '.3'])
         else:
             expected = sorted(files)
 
@@ -136,8 +138,8 @@ class NormalizedFilename(TestCaseWithTransport):
         # a_circle_c and a_dots_c actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3',
-                 squared_c+'.4', quarter_c+'.5']
+        files = [a_circle_c + '.1', a_dots_c + '.2', z_umlat_c + '.3',
+                 squared_c + '.4', quarter_c + '.5']
         try:
             self.build_tree(files, line_endings='native')
         except UnicodeError:
@@ -154,7 +156,7 @@ class NormalizedFilename(TestCaseWithTransport):
             with open(path, 'rb') as f:
                 # Check the contents
                 shouldbe = b'contents of %s%s' % (path.encode('utf8'),
-                                                  os.linesep)
+                                                  os.linesep.encode('utf-8'))
                 actual = f.read()
             self.assertEqual(shouldbe, actual,
                              'contents of %r is incorrect: %r != %r'
@@ -163,7 +165,7 @@ class NormalizedFilename(TestCaseWithTransport):
     def test_access_non_normalized(self):
         # Sometimes we can access non-normalized files by their normalized
         # path, verify that normalized_filename returns the right info
-        files = [a_circle_d+'.1', a_dots_d+'.2', z_umlat_d+'.3']
+        files = [a_circle_d + '.1', a_dots_d + '.2', z_umlat_d + '.3']
 
         try:
             self.build_tree(files)

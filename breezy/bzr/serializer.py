@@ -98,6 +98,6 @@ format_registry.register_lazy('6', 'breezy.bzr.xml6', 'serializer_v6')
 format_registry.register_lazy('7', 'breezy.bzr.xml7', 'serializer_v7')
 format_registry.register_lazy('8', 'breezy.bzr.xml8', 'serializer_v8')
 format_registry.register_lazy('9', 'breezy.bzr.chk_serializer',
-    'chk_serializer_255_bigpage')
+                              'chk_serializer_255_bigpage')
 format_registry.register_lazy('10', 'breezy.bzr.chk_serializer',
-    'chk_bencode_serializer')
+                              'chk_bencode_serializer')

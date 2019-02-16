@@ -58,7 +58,7 @@ class IncompatibleInventoryDelta(errors.BzrError):
 
 def _directory_content(entry):
     """Serialize the content component of entry which is a directory.
-    
+
     :param entry: An InventoryDirectory.
     """
     return b"dir"
@@ -66,7 +66,7 @@ def _directory_content(entry):
 
 def _file_content(entry):
     """Serialize the content component of entry which is a file.
-    
+
     :param entry: An InventoryFile.
     """
     if entry.executable:
@@ -82,7 +82,7 @@ def _file_content(entry):
 
 def _link_content(entry):
     """Serialize the content component of entry which is a symlink.
-    
+
     :param entry: An InventoryLink.
     """
     target = entry.symlink_target
@@ -94,7 +94,7 @@ def _link_content(entry):
 
 def _reference_content(entry):
     """Serialize the content component of entry which is a tree-reference.
-    
+
     :param entry: A TreeReference.
     """
     tree_revision = entry.reference_revision
@@ -105,7 +105,7 @@ def _reference_content(entry):
 
 
 def _dir_to_entry(content, name, parent_id, file_id, last_modified,
-    _type=inventory.InventoryDirectory):
+                  _type=inventory.InventoryDirectory):
     """Convert a dir content record to an InventoryDirectory."""
     result = _type(file_id, name, parent_id)
     result.revision = last_modified
@@ -113,7 +113,7 @@ def _dir_to_entry(content, name, parent_id, file_id, last_modified,
 
 
 def _file_to_entry(content, name, parent_id, file_id, last_modified,
-    _type=inventory.InventoryFile):
+                   _type=inventory.InventoryFile):
     """Convert a dir content record to an InventoryFile."""
     result = _type(file_id, name, parent_id)
     result.revision = last_modified
@@ -127,7 +127,7 @@ def _file_to_entry(content, name, parent_id, file_id, last_modified,
 
 
 def _link_to_entry(content, name, parent_id, file_id, last_modified,
-    _type=inventory.InventoryLink):
+                   _type=inventory.InventoryLink):
     """Convert a link content record to an InventoryLink."""
     result = _type(file_id, name, parent_id)
     result.revision = last_modified
@@ -136,7 +136,7 @@ def _link_to_entry(content, name, parent_id, file_id, last_modified,
 
 
 def _tree_to_entry(content, name, parent_id, file_id, last_modified,
-    _type=inventory.TreeReference):
+                   _type=inventory.TreeReference):
     """Convert a tree content record to a TreeReference."""
     result = _type(file_id, name, parent_id)
     result.revision = last_modified
@@ -252,8 +252,8 @@ class InventoryDeltaSerializer(object):
                     "no version for fileid %(fileid)r", fileid=file_id)
             content = self._entry_to_content[entry.kind](entry)
         return (b"%s\x00%s\x00%s\x00%s\x00%s\x00%s\n" %
-            (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
-                content))
+                (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
+                 content))
 
 
 class InventoryDeltaDeserializer(object):
@@ -293,7 +293,7 @@ class InventoryDeltaDeserializer(object):
             last_line = bytes.rsplit(b'\n', 1)[-1]
             raise InventoryDeltaError(
                 'last line not empty: %(line)r', line=last_line)
-        lines = bytes.split(b'\n')[:-1] # discard the last empty line
+        lines = bytes.split(b'\n')[:-1]  # discard the last empty line
         if not lines or lines[0] != b'format: %s' % FORMAT_1:
             raise InventoryDeltaError(
                 'unknown format %(line)r', line=lines[0:1])
@@ -325,11 +325,11 @@ class InventoryDeltaDeserializer(object):
                     "duplicate file id %(fileid)r", fileid=file_id)
             seen_ids.add(file_id)
             if (newpath_utf8 == b'/' and not delta_versioned_root and
-                last_modified != delta_version_id):
-                    # Delta claims to be not have a versioned root, yet here's
-                    # a root entry with a non-default version.
-                    raise InventoryDeltaError(
-                        "Versioned root found: %(line)r", line=line)
+                    last_modified != delta_version_id):
+                # Delta claims to be not have a versioned root, yet here's
+                # a root entry with a non-default version.
+                raise InventoryDeltaError(
+                    "Versioned root found: %(line)r", line=line)
             elif newpath_utf8 != b'None' and last_modified[-1:] == b':':
                 # Deletes have a last_modified of null:, but otherwise special
                 # revision ids should not occur.
@@ -338,8 +338,8 @@ class InventoryDeltaDeserializer(object):
             if content.startswith(b'tree\x00'):
                 if delta_tree_references is False:
                     raise InventoryDeltaError(
-                            "Tree reference found (but header said "
-                            "tree_references: false): %(line)r", line=line)
+                        "Tree reference found (but header said "
+                        "tree_references: false): %(line)r", line=line)
                 elif not self._allow_tree_references:
                     raise IncompatibleInventoryDelta(
                         "Tree reference not allowed")
@@ -386,6 +386,4 @@ def _parse_entry(path, file_id, parent_id, last_modified, content):
         raise AssertionError
     name = basename(path)
     return entry_factory[content[0]](
-            content, name, parent_id, file_id, last_modified)
-
-
+        content, name, parent_id, file_id, last_modified)

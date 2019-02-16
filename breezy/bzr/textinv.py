@@ -35,7 +35,6 @@ def escape(s):
             .replace('\n', r'\x0a'))
 
 
-
 def unescape(s):
     if s.find(' ') != -1:
         raise AssertionError()
@@ -47,8 +46,6 @@ def unescape(s):
     # TODO: What if there's anything else?
 
     return s
-
-
 
 
 def write_text_inventory(inv, outf):
@@ -86,7 +83,7 @@ def read_text_inventory(tf):
               'name': unescape(fields[1]),
               'kind': fields[2],
               'parent_id': fields[3]}
-        ##inv.add(ie)
+        # inv.add(ie)
 
     if l != END_MARK:
         raise BzrError("missing end mark")

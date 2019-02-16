@@ -51,13 +51,13 @@ compiled_dirstate_helpers_feature = features.ModuleAvailableFeature(
 # FIXME: we should also parametrize against SHA1Provider !
 
 ue_scenarios = [('dirstate_Python',
-    {'update_entry': dirstate.py_update_entry})]
+                 {'update_entry': dirstate.py_update_entry})]
 if compiled_dirstate_helpers_feature.available():
     update_entry = compiled_dirstate_helpers_feature.module.update_entry
     ue_scenarios.append(('dirstate_Pyrex', {'update_entry': update_entry}))
 
 pe_scenarios = [('dirstate_Python',
-    {'_process_entry': dirstate.ProcessEntryPython})]
+                 {'_process_entry': dirstate.ProcessEntryPython})]
 if compiled_dirstate_helpers_feature.available():
     process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
     pe_scenarios.append(('dirstate_Pyrex', {'_process_entry': process_entry}))
@@ -65,7 +65,7 @@ if compiled_dirstate_helpers_feature.available():
 helper_scenarios = [('dirstate_Python', {'helpers': _dirstate_helpers_py})]
 if compiled_dirstate_helpers_feature.available():
     helper_scenarios.append(('dirstate_Pyrex',
-        {'helpers': compiled_dirstate_helpers_feature.module}))
+                             {'helpers': compiled_dirstate_helpers_feature.module}))
 
 
 class TestBisectPathMixin(object):
@@ -120,7 +120,7 @@ class TestBisectPathMixin(object):
                             bisect_split_idx, bisect_path_idx, path)
                          )
         if exists:
-            self.assertEqual(path, paths[bisect_path_idx+offset])
+            self.assertEqual(path, paths[bisect_path_idx + offset])
 
     def split_for_dirblocks(self, paths):
         dir_split_paths = []
@@ -181,8 +181,8 @@ class TestBisectPathMixin(object):
         # children are mentioned.
         # So all the root-directory paths, then all the
         # first sub directory, etc.
-        paths = [# content of '/'
-                 b'', b'a', b'a-a', b'a-z', b'a=a', b'a=z',
+        paths = [  # content of '/'
+            b'', b'a', b'a-a', b'a-z', b'a=a', b'a=z',
                  # content of 'a/'
                  b'a/a', b'a/a-a', b'a/a-z',
                  b'a/a=a', b'a/a=z',
@@ -208,7 +208,7 @@ class TestBisectPathMixin(object):
                  b'a=a/a',
                  # content of 'a=z'
                  b'a=z/z',
-                ]
+            ]
         split_paths = self.split_for_dirblocks(paths)
         sorted_paths = []
         for dir_parts, basename in split_paths:
@@ -338,7 +338,7 @@ class TestBisectDirblock(tests.TestCase):
                  b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
                  b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
                  b'z-a', b'z-z',
-                ]
+                 ]
         dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
         for path in paths:
             self.assertBisect(dirblocks, split_dirblocks, path)
@@ -352,7 +352,7 @@ class TestBisectDirblock(tests.TestCase):
                  b'z', b'z/a/a', b'z/a/z', b'z/a-a', b'z/a-z',
                  b'z/z', b'z/z/a', b'z/z/z', b'z/z-a', b'z/z-z',
                  b'z-a', b'z-z',
-                ]
+                 ]
         cache = {}
         dirblocks, split_dirblocks = self.paths_to_dirblocks(paths)
         for path in paths:
@@ -437,8 +437,9 @@ class TestLtByDirs(tests.TestCase):
         self.assertCmpByDirs(0, b'abcdefg', b'abcdefg')
         self.assertCmpByDirs(0, b'abcdefgh', b'abcdefgh')
         self.assertCmpByDirs(0, b'abcdefghi', b'abcdefghi')
-        self.assertCmpByDirs(0, b'testing a long string', b'testing a long string')
-        self.assertCmpByDirs(0, b'x'*10000, b'x'*10000)
+        self.assertCmpByDirs(0, b'testing a long string',
+                             b'testing a long string')
+        self.assertCmpByDirs(0, b'x' * 10000, b'x' * 10000)
         self.assertCmpByDirs(0, b'a/b', b'a/b')
         self.assertCmpByDirs(0, b'a/b/c', b'a/b/c')
         self.assertCmpByDirs(0, b'a/b/c/d', b'a/b/c/d')
@@ -482,11 +483,11 @@ class TestLtByDirs(tests.TestCase):
         self.assertRaises(TypeError, lt_by_dirs, u'Unicode', u'Unicode')
 
     def test_cmp_non_ascii(self):
-        self.assertCmpByDirs(-1, b'\xc2\xb5', b'\xc3\xa5') # u'\xb5', u'\xe5'
-        self.assertCmpByDirs(-1, b'a', b'\xc3\xa5') # u'a', u'\xe5'
-        self.assertCmpByDirs(-1, b'b', b'\xc2\xb5') # u'b', u'\xb5'
-        self.assertCmpByDirs(-1, b'a/b', b'a/\xc3\xa5') # u'a/b', u'a/\xe5'
-        self.assertCmpByDirs(-1, b'b/a', b'b/\xc2\xb5') # u'b/a', u'b/\xb5'
+        self.assertCmpByDirs(-1, b'\xc2\xb5', b'\xc3\xa5')  # u'\xb5', u'\xe5'
+        self.assertCmpByDirs(-1, b'a', b'\xc3\xa5')  # u'a', u'\xe5'
+        self.assertCmpByDirs(-1, b'b', b'\xc2\xb5')  # u'b', u'\xb5'
+        self.assertCmpByDirs(-1, b'a/b', b'a/\xc3\xa5')  # u'a/b', u'a/\xe5'
+        self.assertCmpByDirs(-1, b'b/a', b'b/\xc2\xb5')  # u'b/a', u'b/\xb5'
 
 
 class TestCompiledLtByDirs(TestLtByDirs):
@@ -533,13 +534,14 @@ class TestLtPathByDirblock(tests.TestCase):
             for idx2, path2 in enumerate(paths):
                 lt_result = lt_path_by_dirblock(path1, path2)
                 self.assertEqual(idx1 < idx2, lt_result,
-                        '%s did not state that %r < %r, lt=%s'
-                        % (lt_path_by_dirblock.__name__,
-                           path1, path2, lt_result))
+                                 '%s did not state that %r < %r, lt=%s'
+                                 % (lt_path_by_dirblock.__name__,
+                                    path1, path2, lt_result))
 
     def test_cmp_simple_paths(self):
         """Compare against the empty string."""
-        self.assertLtPathByDirblock([b'', b'a', b'ab', b'abc', b'a/b/c', b'b/d/e'])
+        self.assertLtPathByDirblock(
+            [b'', b'a', b'ab', b'abc', b'a/b/c', b'b/d/e'])
         self.assertLtPathByDirblock([b'kl', b'ab/cd', b'ab/ef', b'gh/ij'])
 
     def test_tricky_paths(self):
@@ -572,8 +574,8 @@ class TestLtPathByDirblock(tests.TestCase):
             b'b/a', b'b/b',
             ])
         self.assertLtPathByDirblock([
-                 # content of '/'
-                 b'', b'a', b'a-a', b'a-z', b'a=a', b'a=z',
+            # content of '/'
+            b'', b'a', b'a-a', b'a-z', b'a=a', b'a=z',
                  # content of 'a/'
                  b'a/a', b'a/a-a', b'a/a-z',
                  b'a/a=a', b'a/a=z',
@@ -599,7 +601,7 @@ class TestLtPathByDirblock(tests.TestCase):
                  b'a=a/a',
                  # content of 'a=z'
                  b'a=z/z',
-                ])
+            ])
 
     def test_unicode_not_allowed(self):
         lt_path_by_dirblock = self.get_lt_path_by_dirblock()
@@ -649,37 +651,37 @@ class TestMemRChr(tests.TestCase):
         self.assertEqual(expected, _py_memrchr(s, c))
 
     def test_missing(self):
-        self.assertMemRChr(None, '', 'a')
-        self.assertMemRChr(None, '', 'c')
-        self.assertMemRChr(None, 'abcdefghijklm', 'q')
-        self.assertMemRChr(None, 'aaaaaaaaaaaaaaaaaaaaaaa', 'b')
+        self.assertMemRChr(None, b'', b'a')
+        self.assertMemRChr(None, b'', b'c')
+        self.assertMemRChr(None, b'abcdefghijklm', b'q')
+        self.assertMemRChr(None, b'aaaaaaaaaaaaaaaaaaaaaaa', b'b')
 
     def test_single_entry(self):
-        self.assertMemRChr(0, 'abcdefghijklm', 'a')
-        self.assertMemRChr(1, 'abcdefghijklm', 'b')
-        self.assertMemRChr(2, 'abcdefghijklm', 'c')
-        self.assertMemRChr(10, 'abcdefghijklm', 'k')
-        self.assertMemRChr(11, 'abcdefghijklm', 'l')
-        self.assertMemRChr(12, 'abcdefghijklm', 'm')
+        self.assertMemRChr(0, b'abcdefghijklm', b'a')
+        self.assertMemRChr(1, b'abcdefghijklm', b'b')
+        self.assertMemRChr(2, b'abcdefghijklm', b'c')
+        self.assertMemRChr(10, b'abcdefghijklm', b'k')
+        self.assertMemRChr(11, b'abcdefghijklm', b'l')
+        self.assertMemRChr(12, b'abcdefghijklm', b'm')
 
     def test_multiple(self):
-        self.assertMemRChr(10, 'abcdefjklmabcdefghijklm', 'a')
-        self.assertMemRChr(11, 'abcdefjklmabcdefghijklm', 'b')
-        self.assertMemRChr(12, 'abcdefjklmabcdefghijklm', 'c')
-        self.assertMemRChr(20, 'abcdefjklmabcdefghijklm', 'k')
-        self.assertMemRChr(21, 'abcdefjklmabcdefghijklm', 'l')
-        self.assertMemRChr(22, 'abcdefjklmabcdefghijklm', 'm')
-        self.assertMemRChr(22, 'aaaaaaaaaaaaaaaaaaaaaaa', 'a')
+        self.assertMemRChr(10, b'abcdefjklmabcdefghijklm', b'a')
+        self.assertMemRChr(11, b'abcdefjklmabcdefghijklm', b'b')
+        self.assertMemRChr(12, b'abcdefjklmabcdefghijklm', b'c')
+        self.assertMemRChr(20, b'abcdefjklmabcdefghijklm', b'k')
+        self.assertMemRChr(21, b'abcdefjklmabcdefghijklm', b'l')
+        self.assertMemRChr(22, b'abcdefjklmabcdefghijklm', b'm')
+        self.assertMemRChr(22, b'aaaaaaaaaaaaaaaaaaaaaaa', b'a')
 
     def test_with_nulls(self):
-        self.assertMemRChr(10, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'a')
-        self.assertMemRChr(11, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'b')
-        self.assertMemRChr(12, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'c')
-        self.assertMemRChr(20, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'k')
-        self.assertMemRChr(21, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'l')
-        self.assertMemRChr(22, 'abc\0\0\0jklmabc\0\0\0ghijklm', 'm')
-        self.assertMemRChr(22, 'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', 'a')
-        self.assertMemRChr(9, '\0\0\0\0\0\0\0\0\0\0', '\0')
+        self.assertMemRChr(10, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'a')
+        self.assertMemRChr(11, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'b')
+        self.assertMemRChr(12, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'c')
+        self.assertMemRChr(20, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'k')
+        self.assertMemRChr(21, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'l')
+        self.assertMemRChr(22, b'abc\0\0\0jklmabc\0\0\0ghijklm', b'm')
+        self.assertMemRChr(22, b'aaa\0\0\0aaaaaaa\0\0\0aaaaaaa', b'a')
+        self.assertMemRChr(9, b'\0\0\0\0\0\0\0\0\0\0', b'\0')
 
 
 class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
@@ -876,7 +878,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual(None, link_or_sha1)
 
         # The dirblock entry should not have computed or cached the file's
@@ -899,7 +901,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         del state._log[:]
 
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual(None, link_or_sha1)
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -913,7 +915,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state.adjust_time(+20)
         del state._log[:]
         link_or_sha1 = dirstate.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                             stat_value=stat_value)
         self.assertEqual(None, link_or_sha1)
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual((b'f', b'', 14, False, dirstate.DirState.NULLSTAT),
@@ -930,18 +932,18 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         entry = state._get_entry(0, path_utf8=b'a')
 
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual(b'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([('is_exec', mode, False), ('sha1', b'a')],
-                          state._log)
+                         state._log)
         self.assertEqual((b'f', link_or_sha1, 14, False, packed_stat),
                          entry[1][0])
 
         # Subsequent calls will just return the cached value
         del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual(b'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6',
                          link_or_sha1)
         self.assertEqual([], state._log)
@@ -957,11 +959,11 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                          state._dirblock_state)
         os.symlink('target', 'a')
 
-        state.adjust_time(-10) # Make the symlink look new
+        state.adjust_time(-10)  # Make the symlink look new
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual(b'target', link_or_sha1)
         self.assertEqual([('read_link', b'a', b'')], state._log)
         # Dirblock is not updated (the link is too new)
@@ -975,16 +977,16 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Because the stat_value looks new, we should re-read the target
         del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual(b'target', link_or_sha1)
         self.assertEqual([('read_link', b'a', b'')], state._log)
         self.assertEqual([(b'l', b'', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
         state.save()
-        state.adjust_time(+20) # Skip into the future, all files look old
+        state.adjust_time(+20)  # Skip into the future, all files look old
         del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         # The symlink stayed a symlink. So while it is new enough to cache, we
         # don't bother setting the flag, because it is not really worth saving
         # (when we stat the symlink, we'll have paged in the target.)
@@ -1000,7 +1002,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Another call won't re-read the link
         self.assertEqual([], state._log)
         link_or_sha1 = self.update_entry(state, entry, abspath=b'a',
-                                          stat_value=stat_value)
+                                         stat_value=stat_value)
         self.assertEqual(b'target', link_or_sha1)
         self.assertEqual([(b'l', b'target', 6, False, packed_stat)],
                          entry[1])
@@ -1208,7 +1210,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         stat_value = os.lstat('a')
         packed_stat = dirstate.pack_stat(stat_value)
 
-        state.adjust_time(-10) # Make sure everything is new
+        state.adjust_time(-10)  # Make sure everything is new
         self.update_entry(state, entry, abspath=b'a', stat_value=stat_value)
 
         # The row is updated, but the executable bit stays set.
@@ -1221,7 +1223,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         digest = b'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
         self.update_entry(state, entry, abspath=b'a', stat_value=stat_value)
         self.assertEqual([(b'f', b'', 14, True, dirstate.DirState.NULLSTAT)],
-            entry[1])
+                         entry[1])
 
     def _prepare_tree(self):
         # Create a tree
@@ -1237,7 +1239,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     def test_sha1provider_sha1_used(self):
         tree, text = self._prepare_tree()
         state = dirstate.DirState.from_tree(tree, 'dirstate',
-            UppercaseSHA1Provider())
+                                            UppercaseSHA1Provider())
         self.addCleanup(state.unlock)
         expected_sha = osutils.sha_string(text.upper() + b"foo")
         entry = state._get_entry(0, path_utf8=b'a file')
@@ -1307,6 +1309,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         basis_tree = tree.basis_tree()
+
         def is_inside_raises(*args, **kwargs):
             raise RuntimeError('stop this')
         self.overrideAttr(dirstate, 'is_inside', is_inside_raises)
@@ -1315,7 +1318,9 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         except ImportError:
             pass
         else:
-            self.overrideAttr(_dirstate_helpers_pyx, 'is_inside', is_inside_raises)
+            self.overrideAttr(_dirstate_helpers_pyx,
+                              'is_inside', is_inside_raises)
+        self.overrideAttr(osutils, 'is_inside', is_inside_raises)
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):
@@ -1352,7 +1357,7 @@ class TestPackStat(tests.TestCase):
 
     def test_result(self):
         self.assertEqual(b"AAAQAAAAABAAAAARAAAAAgAAAAEAAIHk",
-            self.pack((33252, 1, 2, 0, 0, 0, 4096, 15.5, 16.5, 17.5)))
+                         self.pack((33252, 1, 2, 0, 0, 0, 4096, 15.5, 16.5, 17.5)))
 
     def test_giant_inode(self):
         packed = self.pack((33252, 0xF80000ABC, 0, 0, 0, 0, 0, 0, 0, 0))

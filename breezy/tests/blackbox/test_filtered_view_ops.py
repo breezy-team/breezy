@@ -66,7 +66,8 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('diff', retcode=1)
-        self.assertEqual('*** Ignoring files outside view. View is a, b\n', err)
+        self.assertEqual(
+            '*** Ignoring files outside view. View is a, b\n', err)
 
     def test_view_on_diff_selected(self):
         wt = self.make_abc_tree_with_ab_view()
@@ -84,10 +85,12 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('commit -m "testing commit"')
         err_lines = err.splitlines()
-        self.assertEqual('Ignoring files outside view. View is a, b', err_lines[0])
+        self.assertEqual(
+            'Ignoring files outside view. View is a, b', err_lines[0])
         self.assertStartsWith(err_lines[1], 'Committing to:')
-        self.assertEqual('added a', err_lines[2])
-        self.assertEqual('added b', err_lines[3])
+        # TODO(jelmer): Should 'added ' output for commit be sorted?
+        self.assertIn('added a', [err_lines[2], err_lines[3]])
+        self.assertIn('added b', [err_lines[2], err_lines[3]])
         self.assertEqual('Committed revision 1.', err_lines[4])
         self.assertEqual('', out)
 
@@ -121,7 +124,8 @@ class TestViewFileOperations(tests.TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('revert')
         err_lines = err.splitlines()
-        self.assertEqual('Ignoring files outside view. View is a, b', err_lines[0])
+        self.assertEqual(
+            'Ignoring files outside view. View is a, b', err_lines[0])
         self.assertEqual('-   a', err_lines[1])
         self.assertEqual('-   b', err_lines[2])
         self.assertEqual('', out)

@@ -135,7 +135,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
     def list_folder(self, path):
         path = self._realpath(path)
         try:
-            out = [ ]
+            out = []
             # TODO: win32 incorrectly lists paths with non-ascii if path is not
             # unicode. However on unix the server should only deal with
             # bytestreams and posix.listdir does the right thing
@@ -216,6 +216,22 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
+    def symlink(self, target_path, path):
+        path = self._realpath(path)
+        try:
+            os.symlink(target_path, path)
+        except OSError as e:
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
+
+    def readlink(self, path):
+        path = self._realpath(path)
+        try:
+            target_path = os.readlink(path)
+        except OSError as e:
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return target_path
+
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
@@ -240,7 +256,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
             return paramiko.SFTPServer.convert_errno(e.errno)
         return paramiko.SFTP_OK
 
-    # removed: chattr, symlink, readlink
+    # removed: chattr
     # (nothing in bzr's sftp transport uses those)
 
 
@@ -380,15 +396,20 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
         # Re-import these as locals, so that they're still accessible during
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
+
         class FakeChannel(object):
             def get_transport(self):
                 return self
+
             def get_log_channel(self):
                 return 'brz.paramiko'
+
             def get_name(self):
                 return '1'
+
             def get_hexdump(self):
                 return False
+
             def close(self):
                 pass
 
@@ -397,7 +418,7 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             FakeChannel(), 'sftp', StubServer(tcs), StubSFTPServer,
             root=tcs._root, home=tcs._server_homedir)
         self.sftp_server = sftp_server
-        sys_stderr = sys.stderr # Used in error reporting during shutdown
+        sys_stderr = sys.stderr  # Used in error reporting during shutdown
         try:
             sftp_server.start_subsystem(
                 'sftp', None, ssh.SocketAsChannelAdapter(self.request))
@@ -477,8 +498,8 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
     def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
-        if not (backing_server is None or
-                isinstance(backing_server, test_server.LocalURLServer)):
+        if not (backing_server is None
+                or isinstance(backing_server, test_server.LocalURLServer)):
             raise AssertionError(
                 'backing_server should not be %r, because this can only serve '
                 'the local current working directory.' % (backing_server,))
@@ -568,4 +589,3 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
         server = super(SFTPSiblingAbsoluteServer, self).create_server()
         server._server_homedir = '/dev/noone/runs/tests/here'
         return server
-

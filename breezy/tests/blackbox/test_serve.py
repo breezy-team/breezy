@@ -84,6 +84,7 @@ class TestBzrServeBase(TestCaseWithTransport):
                 interrupt_main()
         # When the hook is fired, it just starts ``on_server_start_thread`` and
         # return
+
         def on_server_start(backing_urls, tcp_server):
             t = threading.Thread(
                 target=on_server_start_thread, args=(tcp_server,))
@@ -102,7 +103,7 @@ class TestBzrServeBase(TestCaseWithTransport):
                                     retcode=retcode)
         except KeyboardInterrupt as e:
             return (self._last_cmd_stdout.getvalue(),
-                self._last_cmd_stderr.getvalue())
+                    self._last_cmd_stderr.getvalue())
         return out, err
 
 
@@ -315,14 +316,14 @@ class TestBzrServe(TestBzrServeBase):
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_graceful_shutdown(self):
-        big_contents = b'a'*64*1024
+        big_contents = b'a' * 64 * 1024
         self.build_tree_contents([('bigfile', big_contents)])
         process, url = self.start_server_port(['--client-timeout=1.0'])
         t = transport.get_transport_from_url(url)
         m = t.get_smart_medium()
         c = client._SmartClient(m)
         # Start, but don't finish a response
-        resp, response_handler = c.call_expecting_body('get', 'bigfile')
+        resp, response_handler = c.call_expecting_body(b'get', b'bigfile')
         self.assertEqual((b'ok',), resp)
         # Note: process.send_signal is a Python 2.6ism
         process.send_signal(signal.SIGHUP)
@@ -331,8 +332,8 @@ class TestBzrServe(TestBzrServeBase):
         # request to finish
         self.assertEqual(b'Requested to stop gracefully\n',
                          process.stderr.readline())
-        self.assertEqual(b'Waiting for 1 client(s) to finish\n',
-                         process.stderr.readline())
+        self.assertIn(process.stderr.readline(),
+                      (b'', b'Waiting for 1 client(s) to finish\n'))
         body = response_handler.read_body_bytes()
         if body != big_contents:
             self.fail('Failed to properly read the contents of "bigfile"')
@@ -414,7 +415,8 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
 
     def test_bzr_serve_does_not_expand_userdir_outside_base(self):
         bzr_server = self.make_test_server('/foo')
-        self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
+        self.assertFalse(
+            bzr_server.smart_server.backing_transport.has('~user'))
 
     def test_get_base_path(self):
         """cmd_serve will turn the --directory option into a LocalTransport
@@ -426,6 +428,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         base_url = urlutils.local_path_to_url(base_dir) + '/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
+
         def capture_transport(transport, host, port, inet, timeout):
             self.bzr_serve_transport = transport
         cmd = builtins.cmd_serve()
@@ -438,11 +441,11 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport,
-            allow_writes=True)
+                allow_writes=True)
         server_maker = BzrServerFactory()
         self.assertEqual(base_url, self.bzr_serve_transport.base)
         self.assertEqual(base_dir,
-            server_maker.get_base_path(self.bzr_serve_transport))
+                         server_maker.get_base_path(self.bzr_serve_transport))
         # Read-only, from a URL
         cmd.run(directory=base_url, protocol=capture_transport)
         server_maker = BzrServerFactory()

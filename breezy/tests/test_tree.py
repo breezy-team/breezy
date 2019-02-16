@@ -29,6 +29,7 @@ from breezy.tree import (
     FileTimestampUnavailable,
     InterTree,
     find_previous_paths,
+    get_canonical_path,
     )
 
 
@@ -82,8 +83,8 @@ class RecordingOptimiser(InterTree):
     calls = []
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False, include_root=False,
-        want_unversioned=False):
+                extra_trees=None, require_versioned=False, include_root=False,
+                want_unversioned=False):
         self.calls.append(
             ('compare', self.source, self.target, want_unchanged,
              specific_files, extra_trees, require_versioned,
@@ -114,22 +115,23 @@ class TestTree(TestCaseWithTransport):
                               'require', True)
             # pass in all optional arguments by keyword
             tree.changes_from(tree2,
-                specific_files='specific',
-                want_unchanged='unchanged',
-                extra_trees='extra',
-                require_versioned='require',
-                include_root=True,
-                want_unversioned=True,
-                )
+                              specific_files='specific',
+                              want_unchanged='unchanged',
+                              extra_trees='extra',
+                              require_versioned='require',
+                              include_root=True,
+                              want_unversioned=True,
+                              )
         finally:
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-             ('compare', tree2, tree, False, None, None, False, False, False),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
-              'require', True, False),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
-              'require', True, True),
+                ('compare', tree2, tree, False, None, None, False, False,
+                    False),
+                ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
+                    'require', True, False),
+                ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
+                    'require', True, True),
             ], RecordingOptimiser.calls)
 
     def test_changes_from_with_root(self):
@@ -147,15 +149,17 @@ class TestTree(TestCaseWithTransport):
         self.build_tree(['known_file', 'unknown_file'])
         wt.add('known_file')
 
-        self.assertRaises(errors.PathsNotVersionedError,
-            wt.changes_from, wt.basis_tree(), wt, specific_files=['known_file',
-            'unknown_file'], require_versioned=True)
+        self.assertRaises(
+            errors.PathsNotVersionedError,
+            wt.changes_from, wt.basis_tree(), wt,
+            specific_files=['known_file', 'unknown_file'],
+            require_versioned=True)
 
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
         delta = wt.changes_from(wt.basis_tree(),
-            specific_files=['known_file', 'unknown_file'],
-            require_versioned=False)
+                                specific_files=['known_file', 'unknown_file'],
+                                require_versioned=False)
         self.assertEqual(len(delta.added), 1)
 
 
@@ -215,7 +219,7 @@ class TestMultiWalker(TestCaseWithTransport):
         else:
             self.assertIs(None, master_ie, 'master should not have an entry')
         self.assertEqual(len(exp_other_paths), len(other_values),
-                            'Wrong number of other entries')
+                         'Wrong number of other entries')
         other_paths = []
         other_file_ids = []
         for path, ie in other_values:
@@ -366,11 +370,16 @@ class TestMultiWalker(TestCaseWithTransport):
                                               second_tree])
         iterator = walker.iter_all()
         self.assertWalkerNext(u'', root_id, True, [u'', u'', u''], iterator)
-        self.assertWalkerNext(u'a', b'a-id', True, [u'a', u'a', u'a'], iterator)
-        self.assertWalkerNext(u'b', b'b-id', True, [u'b', u'b', u'b'], iterator)
-        self.assertWalkerNext(u'c', b'c-id', False, [u'c', u'c', u'c'], iterator)
-        self.assertWalkerNext(u'd', b'd-id', False, [None, u'd', u'd'], iterator)
-        self.assertWalkerNext(u'e', b'e-id', False, [None, u'e', None], iterator)
+        self.assertWalkerNext(u'a', b'a-id', True,
+                              [u'a', u'a', u'a'], iterator)
+        self.assertWalkerNext(u'b', b'b-id', True,
+                              [u'b', u'b', u'b'], iterator)
+        self.assertWalkerNext(u'c', b'c-id', False,
+                              [u'c', u'c', u'c'], iterator)
+        self.assertWalkerNext(u'd', b'd-id', False,
+                              [None, u'd', u'd'], iterator)
+        self.assertWalkerNext(u'e', b'e-id', False,
+                              [None, u'e', None], iterator)
         self.assertRaises(StopIteration, next, iterator)
 
     def test_different_file_id_in_others(self):
@@ -402,13 +411,13 @@ class TestMultiWalker(TestCaseWithTransport):
         self.assertRaises(StopIteration, next, iterator)
 
     def assertLtByDirblock(self, lt_val, path1, path2):
-        self.assertEqual(lt_val,
-            _mod_tree.MultiWalker._lt_path_by_dirblock(path1, path2))
+        self.assertEqual(
+            lt_val, _mod_tree.MultiWalker._lt_path_by_dirblock(path1, path2))
 
     def test__lt_path_by_dirblock(self):
         # We only support Unicode strings at this point
-        self.assertRaises(TypeError,
-            _mod_tree.MultiWalker._lt_path_by_dirblock, b'', b'b')
+        self.assertRaises(
+            TypeError, _mod_tree.MultiWalker._lt_path_by_dirblock, b'', b'b')
         self.assertLtByDirblock(False, u'', u'')
         self.assertLtByDirblock(False, u'a', u'a')
         self.assertLtByDirblock(False, u'a/b', u'a/b')
@@ -461,3 +470,44 @@ class FindPreviousPathsTests(TestCaseWithTransport):
 
         self.assertEqual({'c': 'b', 'b': None},
                          find_previous_paths(tree2, tree1, ['b', 'c']))
+
+
+class GetCanonicalPath(TestCaseWithTransport):
+
+    def test_existing_case(self):
+        # Test that we can find a file from a path with different case
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/b'])
+        tree.add(['b'])
+        self.assertEqual(
+            'b',
+            get_canonical_path(tree, 'b', lambda x: x.lower()))
+        self.assertEqual(
+            'b',
+            get_canonical_path(tree, 'B', lambda x: x.lower()))
+
+    def test_nonexistant_preserves_case(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertEqual(
+            'b',
+            get_canonical_path(tree, 'b', lambda x: x.lower()))
+        self.assertEqual(
+            'B',
+            get_canonical_path(tree, 'B', lambda x: x.lower()))
+
+    def test_in_directory_with_case(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a/', 'tree/a/b'])
+        tree.add(['a', 'a/b'])
+        self.assertEqual(
+            'a/b',
+            get_canonical_path(tree, 'a/b', lambda x: x.lower()))
+        self.assertEqual(
+            'a/b',
+            get_canonical_path(tree, 'A/B', lambda x: x.lower()))
+        self.assertEqual(
+            'a/b',
+            get_canonical_path(tree, 'A/b', lambda x: x.lower()))
+        self.assertEqual(
+            'a/C',
+            get_canonical_path(tree, 'A/C', lambda x: x.lower()))

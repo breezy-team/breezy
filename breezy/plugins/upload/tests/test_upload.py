@@ -47,6 +47,8 @@ def get_transport_scenarios():
     if features.paramiko.available():
         from ....transport import sftp
         usable_classes.add(sftp.SFTPTransport)
+    from ....transport import local
+    usable_classes.add(local.LocalTransport)
     for name, d in basis:
         t_class = d['transport_class']
         if t_class in usable_classes:
@@ -61,17 +63,17 @@ def load_tests(loader, standard_tests, pattern):
     # one for each transport implementation
     t_tests, remaining_tests = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance((
-                TestFullUpload,
-                TestIncrementalUpload,
-                TestUploadFromRemoteBranch,
-                )))
+            TestFullUpload,
+            TestIncrementalUpload,
+            TestUploadFromRemoteBranch,
+            )))
     tests.multiply_tests(t_tests, get_transport_scenarios(), result)
 
     # one for each branch format
     b_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
-                TestBranchUploadLocations,
-                )))
+            TestBranchUploadLocations,
+            )))
     tests.multiply_tests(b_tests, per_branch.branch_scenarios(),
                          result)
 
@@ -317,10 +319,10 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertUpFileEqual(b'qux', 'c')
 
     def test_upload_revision(self):
-        self.make_branch_and_working_tree() # rev1
+        self.make_branch_and_working_tree()  # rev1
         self.do_full_upload()
-        self.add_file('hello', b'foo') # rev2
-        self.modify_file('hello', b'bar') # rev3
+        self.add_file('hello', b'foo')  # rev2
+        self.modify_file('hello', b'bar')  # rev3
 
         self.assertUpPathDoesNotExist('hello')
 
@@ -411,19 +413,19 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.do_upload()
 
-        self.assertUpPathDoesNotExist('link')
+        self.assertUpPathExists('link')
 
     def test_rename_symlink(self):
         self.make_branch_and_working_tree()
         old_name, new_name = 'old-link', 'new-link'
         self.add_symlink(old_name, 'target')
         self.do_full_upload()
+
         self.rename_any(old_name, new_name)
 
         self.do_upload()
 
-        self.assertUpPathDoesNotExist(old_name)
-        self.assertUpPathDoesNotExist(new_name)
+        self.assertUpPathExists(new_name)
 
     def get_upload_auto(self):
         # We need a fresh branch to check what has been saved on disk
@@ -838,4 +840,3 @@ class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):
         # Make a change
         self.add_file('foo', b'bar\n')
         self.assertRaises(cmds.DivergedUploadedTree, self.do_full_upload)
-

@@ -22,7 +22,7 @@ import os
 
 from breezy import osutils
 from breezy.tests import TestCaseWithTransport
-from breezy.testament import (
+from breezy.bzr.testament import (
     Testament,
     StrictTestament,
     StrictTestament3,
@@ -42,24 +42,24 @@ class TestamentSetup(TestCaseWithTransport):
         b = self.b = self.wt.branch
         b.nick = "test branch"
         self.wt.commit(message='initial null commit',
-                 committer='test@user',
-                 timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
-                 timezone=0,
-                 rev_id=b'test@user-1')
+                       committer='test@user',
+                       timestamp=1129025423,  # 'Tue Oct 11 20:10:23 2005'
+                       timezone=0,
+                       rev_id=b'test@user-1')
         self.build_tree_contents([('hello', b'contents of hello file'),
-                             ('src/', ),
-                             ('src/foo.c', b'int main()\n{\n}\n')])
+                                  ('src/', ),
+                                  ('src/foo.c', b'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
-                             [b'hello-id', b'src-id', b'foo.c-id'])
+                    [b'hello-id', b'src-id', b'foo.c-id'])
         tt = TreeTransform(self.wt)
         trans_id = tt.trans_id_tree_path('hello')
         tt.set_executability(True, trans_id)
         tt.apply()
         self.wt.commit(message='add files and directories',
-                 timestamp=1129025483,
-                 timezone=36000,
-                 rev_id=b'test@user-2',
-                 committer='test@user')
+                       timestamp=1129025483,
+                       timezone=36000,
+                       rev_id=b'test@user-2',
+                       committer='test@user')
 
 
 class TestamentTests(TestamentSetup):
@@ -108,10 +108,10 @@ class TestamentTests(TestamentSetup):
         os.symlink('wibble/linktarget', 'link')
         self.wt.add(['link'], [b'link-id'])
         self.wt.commit(message='add symlink',
-                 timestamp=1129025493,
-                 timezone=36000,
-                 rev_id=b'test@user-3',
-                 committer='test@user')
+                       timestamp=1129025493,
+                       timezone=36000,
+                       rev_id=b'test@user-3',
+                       committer='test@user')
         t = self.from_revision(self.b.repository, b'test@user-3')
         self.assertEqualDiff(t.as_text(), self.expected('rev_3'))
 
@@ -122,11 +122,11 @@ class TestamentTests(TestamentSetup):
                  u'empty': '',
                  }
         self.wt.commit(message='revision with properties',
-                      timestamp=1129025493,
-                      timezone=36000,
-                      rev_id=b'test@user-3',
-                      committer='test@user',
-                      revprops=props)
+                       timestamp=1129025493,
+                       timezone=36000,
+                       rev_id=b'test@user-3',
+                       committer='test@user',
+                       revprops=props)
         t = self.from_revision(self.b.repository, b'test@user-3')
         self.assertEqualDiff(t.as_text(), self.expected('rev_props'))
 
@@ -137,7 +137,7 @@ class TestamentTests(TestamentSetup):
             timezone=36000,
             rev_id=b'test@user-3',
             committer=u'Erik B\xe5gfors <test@user>',
-            revprops={u'uni':u'\xb5'}
+            revprops={u'uni': u'\xb5'}
             )
         t = self.from_revision(self.b.repository, b'test@user-3')
         self.assertEqualDiff(
@@ -536,14 +536,14 @@ properties:
 
 
 texts = {
-    Testament: { 'rev_1': REV_1_TESTAMENT,
-                 'rev_1_short': REV_1_SHORT,
-                 'rev_2': REV_2_TESTAMENT,
-                 'rev_2_short': REV_2_SHORT,
-                 'rev_3': REV_3_TESTAMENT,
-                 'rev_props': REV_PROPS_TESTAMENT,
-                 'sample_unicode': SAMPLE_UNICODE_TESTAMENT,
-    },
+    Testament: {'rev_1': REV_1_TESTAMENT,
+                'rev_1_short': REV_1_SHORT,
+                'rev_2': REV_2_TESTAMENT,
+                'rev_2_short': REV_2_SHORT,
+                'rev_3': REV_3_TESTAMENT,
+                'rev_props': REV_PROPS_TESTAMENT,
+                'sample_unicode': SAMPLE_UNICODE_TESTAMENT,
+                },
     StrictTestament: {'rev_1': REV_1_STRICT_TESTAMENT,
                       'rev_1_short': REV_1_SHORT_STRICT,
                       'rev_2': REV_2_STRICT_TESTAMENT,
@@ -551,13 +551,13 @@ texts = {
                       'rev_3': REV_3_TESTAMENT_STRICT,
                       'rev_props': REV_PROPS_TESTAMENT_STRICT,
                       'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT,
-    },
+                      },
     StrictTestament3: {'rev_1': REV_1_STRICT_TESTAMENT3,
-                      'rev_1_short': REV_1_SHORT_STRICT3,
-                      'rev_2': REV_2_STRICT_TESTAMENT3,
-                      'rev_2_short': REV_2_SHORT_STRICT3,
-                      'rev_3': REV_3_TESTAMENT_STRICT3,
-                      'rev_props': REV_PROPS_TESTAMENT_STRICT3,
-                      'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT3,
-    },
+                       'rev_1_short': REV_1_SHORT_STRICT3,
+                       'rev_2': REV_2_STRICT_TESTAMENT3,
+                       'rev_2_short': REV_2_SHORT_STRICT3,
+                       'rev_3': REV_3_TESTAMENT_STRICT3,
+                       'rev_props': REV_PROPS_TESTAMENT_STRICT3,
+                       'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT3,
+                       },
 }

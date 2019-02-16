@@ -111,11 +111,13 @@ class KnitContentTestsMixin(object):
         content = self._make_content([])
         self.assertEqual(content.text(), [])
 
-        content = self._make_content([(b"origin1", b"text1"), (b"origin2", b"text2")])
+        content = self._make_content(
+            [(b"origin1", b"text1"), (b"origin2", b"text2")])
         self.assertEqual(content.text(), [b"text1", b"text2"])
 
     def test_copy(self):
-        content = self._make_content([(b"origin1", b"text1"), (b"origin2", b"text2")])
+        content = self._make_content(
+            [(b"origin1", b"text1"), (b"origin2", b"text2")])
         copy = content.copy()
         self.assertIsInstance(copy, content.__class__)
         self.assertEqual(copy.annotate(), content.annotate())
@@ -124,16 +126,19 @@ class KnitContentTestsMixin(object):
         """Assert that the derived matching blocks match real output"""
         source_lines = source.splitlines(True)
         target_lines = target.splitlines(True)
+
         def nl(line):
             if noeol and not line.endswith('\n'):
                 return line + '\n'
             else:
                 return line
-        source_content = self._make_content([(None, nl(l)) for l in source_lines])
-        target_content = self._make_content([(None, nl(l)) for l in target_lines])
+        source_content = self._make_content(
+            [(None, nl(l)) for l in source_lines])
+        target_content = self._make_content(
+            [(None, nl(l)) for l in target_lines])
         line_delta = source_content.line_delta(target_content)
         delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
-            source_lines, target_lines))
+                                                              source_lines, target_lines))
         matcher = PatienceSequenceMatcher(None, source_lines, target_lines)
         matcher_blocks = list(matcher.get_matching_blocks())
         self.assertEqual(matcher_blocks, delta_blocks)
@@ -220,15 +225,16 @@ class TestPlainKnitContent(TestCase, KnitContentTestsMixin):
         content = self._make_content([])
         self.assertEqual(content.annotate(), [])
 
-        content = self._make_content([("origin1", "text1"), ("origin2", "text2")])
+        content = self._make_content(
+            [("origin1", "text1"), ("origin2", "text2")])
         self.assertEqual(content.annotate(),
-            [("bogus", "text1"), ("bogus", "text2")])
+                         [("bogus", "text1"), ("bogus", "text2")])
 
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])
         content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
         self.assertEqual(content1.line_delta(content2),
-            [(1, 2, 2, ["a", "c"])])
+                         [(1, 2, 2, ["a", "c"])])
 
     def test_line_delta_iter(self):
         content1 = self._make_content([("", "a"), ("", "b")])
@@ -247,15 +253,16 @@ class TestAnnotatedKnitContent(TestCase, KnitContentTestsMixin):
         content = self._make_content([])
         self.assertEqual(content.annotate(), [])
 
-        content = self._make_content([(b"origin1", b"text1"), (b"origin2", b"text2")])
-        self.assertEqual(content.annotate(),
+        content = self._make_content(
             [(b"origin1", b"text1"), (b"origin2", b"text2")])
+        self.assertEqual(content.annotate(),
+                         [(b"origin1", b"text1"), (b"origin2", b"text2")])
 
     def test_line_delta(self):
         content1 = self._make_content([("", "a"), ("", "b")])
         content2 = self._make_content([("", "a"), ("", "a"), ("", "c")])
         self.assertEqual(content1.line_delta(content2),
-            [(1, 2, 2, [("", "a"), ("", "c")])])
+                         [(1, 2, 2, [("", "a"), ("", "c")])])
 
     def test_line_delta_iter(self):
         content1 = self._make_content([("", "a"), ("", "b")])
@@ -322,17 +329,17 @@ class KnitRecordAccessTestsMixin(object):
         """add_raw_records with many records and read some back."""
         access = self.get_access()
         memos = access.add_raw_records([(b'key', 10), (b'key2', 2), (b'key3', 5)],
-            b'12345678901234567')
+                                       b'12345678901234567')
         self.assertEqual([b'1234567890', b'12', b'34567'],
-            list(access.get_raw_records(memos)))
+                         list(access.get_raw_records(memos)))
         self.assertEqual([b'1234567890'],
-            list(access.get_raw_records(memos[0:1])))
+                         list(access.get_raw_records(memos[0:1])))
         self.assertEqual([b'12'],
-            list(access.get_raw_records(memos[1:2])))
+                         list(access.get_raw_records(memos[1:2])))
         self.assertEqual([b'34567'],
-            list(access.get_raw_records(memos[2:3])))
+                         list(access.get_raw_records(memos[2:3])))
         self.assertEqual([b'1234567890', b'34567'],
-            list(access.get_raw_records(memos[0:1] + memos[2:3])))
+                         list(access.get_raw_records(memos[0:1] + memos[2:3])))
 
 
 class TestKnitKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin):
@@ -357,6 +364,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def _get_access(self, packname='packfile', index='FOO'):
         transport = self.get_transport()
+
         def write_data(bytes):
             transport.append_bytes(packname, bytes)
         writer = pack.ContainerWriter(write_data)
@@ -443,6 +451,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         new_index = new_pack.revision_index
         access_tuple = new_pack.access_tuple()
         reload_counter = [0, 0, 0]
+
         def reload():
             reload_counter[0] += 1
             if reload_counter[1] > 0:
@@ -465,6 +474,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def make_reload_func(self, return_val=True):
         reload_called = [0]
+
         def reload():
             reload_called[0] += 1
             return return_val
@@ -493,19 +503,19 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos.extend(access.add_raw_records([(b'key', 5)], b'alpha'))
         writer.end()
         transport = self.get_transport()
-        access = pack_repo._DirectPackAccess({"FOO":(transport, 'packfile'),
-            "FOOBAR":(transport, 'pack2'),
-            "BAZ":(transport, 'pack3')})
+        access = pack_repo._DirectPackAccess({"FOO": (transport, 'packfile'),
+                                              "FOOBAR": (transport, 'pack2'),
+                                              "BAZ": (transport, 'pack3')})
         self.assertEqual([b'1234567890', b'12345', b'alpha'],
-            list(access.get_raw_records(memos)))
+                         list(access.get_raw_records(memos)))
         self.assertEqual([b'1234567890'],
-            list(access.get_raw_records(memos[0:1])))
+                         list(access.get_raw_records(memos[0:1])))
         self.assertEqual([b'12345'],
-            list(access.get_raw_records(memos[1:2])))
+                         list(access.get_raw_records(memos[1:2])))
         self.assertEqual([b'alpha'],
-            list(access.get_raw_records(memos[2:3])))
+                         list(access.get_raw_records(memos[2:3])))
         self.assertEqual([b'1234567890', b'alpha'],
-            list(access.get_raw_records(memos[0:1] + memos[2:3])))
+                         list(access.get_raw_records(memos[0:1] + memos[2:3])))
 
     def test_set_writer(self):
         """The writer should be settable post construction."""
@@ -513,6 +523,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         packname = 'packfile'
         index = 'foo'
+
         def write_data(bytes):
             transport.append_bytes(packname, bytes)
         writer = pack.ContainerWriter(write_data)
@@ -527,8 +538,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         reload_called, reload_func = self.make_reload_func()
         # Note that the index key has changed from 'foo' to 'bar'
-        access = pack_repo._DirectPackAccess({'bar':(transport, 'packname')},
-                                   reload_func=reload_func)
+        access = pack_repo._DirectPackAccess({'bar': (transport, 'packname')},
+                                             reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # Because a key was passed in which does not match our index list, we
@@ -542,7 +553,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         # Note that the index key has changed from 'foo' to 'bar'
-        access = pack_repo._DirectPackAccess({'bar':(transport, 'packname')})
+        access = pack_repo._DirectPackAccess({'bar': (transport, 'packname')})
         e = self.assertListRaises(KeyError, access.get_raw_records, memos)
 
     def test_missing_file_raises_retry(self):
@@ -551,7 +562,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         reload_called, reload_func = self.make_reload_func()
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess(
-            {'foo':(transport, 'different-packname')},
+            {'foo': (transport, 'different-packname')},
             reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
@@ -575,16 +586,16 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         failing_transport = MockReadvFailingTransport(
-                                [transport.get_bytes('packname')])
+            [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
         access = pack_repo._DirectPackAccess(
             {'foo': (failing_transport, 'packname')},
             reload_func=reload_func)
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual([b'1234567890'],
-            list(access.get_raw_records(memos[:1])))
+                         list(access.get_raw_records(memos[:1])))
         self.assertEqual([b'12345'],
-            list(access.get_raw_records(memos[1:2])))
+                         list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
@@ -599,15 +610,15 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         failing_transport = MockReadvFailingTransport(
-                                [transport.get_bytes('packname')])
+            [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
         access = pack_repo._DirectPackAccess(
-            {'foo':(failing_transport, 'packname')})
+            {'foo': (failing_transport, 'packname')})
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual([b'1234567890'],
-            list(access.get_raw_records(memos[:1])))
+                         list(access.get_raw_records(memos[:1])))
         self.assertEqual([b'12345'],
-            list(access.get_raw_records(memos[1:2])))
+                         list(access.get_raw_records(memos[1:2])))
         # A multiple offset readv() will fail mid-way through
         e = self.assertListRaises(errors.NoSuchFile,
                                   access.get_raw_records, memos)
@@ -624,7 +635,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         retry_exc = self.make_retry_exception()
         access.reload_or_raise(retry_exc)
         self.assertEqual([1], reload_called)
-        retry_exc.reload_occurred=True
+        retry_exc.reload_occurred = True
         access.reload_or_raise(retry_exc)
         self.assertEqual([2], reload_called)
 
@@ -636,7 +647,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # reload_func() return False (no changes).
         self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
         self.assertEqual([1], reload_called)
-        retry_exc.reload_occurred=True
+        retry_exc.reload_occurred = True
         # If reload_occurred is True, then we assume nothing changed because
         # it had changed earlier, but didn't change again
         access.reload_or_raise(retry_exc)
@@ -650,7 +661,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         reload_lines = vf.annotate(key)
         self.assertEqual([1, 1, 0], reload_counter)
         plain_lines = vf.annotate(key)
-        self.assertEqual([1, 1, 0], reload_counter) # No extra reloading
+        self.assertEqual([1, 1, 0], reload_counter)  # No extra reloading
         if reload_lines != plain_lines:
             self.fail('Annotation was not identical with reloading.')
         # Now delete the packs-in-use, which should trigger another reload, but
@@ -690,7 +701,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertListRaises(errors.NoSuchFile,
-            vf.get_record_stream, keys, 'topological', False)
+                              vf.get_record_stream, keys, 'topological', False)
 
     def test_iter_lines_added_or_present_in_keys_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
@@ -707,14 +718,14 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([1, 1, 0], reload_counter)
         # Now do it again, to make sure the result is equivalent
         plain_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
-        self.assertEqual([1, 1, 0], reload_counter) # No extra reloading
+        self.assertEqual([1, 1, 0], reload_counter)  # No extra reloading
         self.assertEqual(plain_lines, reload_lines)
         self.assertEqual(21, len(plain_lines))
         # Now delete all pack files, and see that we raise the right error
         for trans, name in vf._access._indices.values():
             trans.delete(name)
         self.assertListRaises(errors.NoSuchFile,
-            vf.iter_lines_added_or_present_in_keys, keys)
+                              vf.iter_lines_added_or_present_in_keys, keys)
         self.assertEqual([2, 1, 1], reload_counter)
 
     def test_get_record_stream_yields_disk_sorted_order(self):
@@ -798,7 +809,7 @@ class LowLevelKnitDataTests(TestCase):
 
         contents = list(knit._read_records_iter(records))
         self.assertEqual([((b'rev-id-1',), [b'foo\n', b'bar\n'],
-            b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021')], contents)
+                           b'4e48e2c9a3d2ca8a708cb0cc545700544efb5021')], contents)
 
         raw_contents = list(knit._read_records_iter_raw(records))
         self.assertEqual([((b'rev-id-1',), gz_txt, sha1sum)], raw_contents)
@@ -833,11 +844,11 @@ class LowLevelKnitDataTests(TestCase):
         knit = KnitVersionedFiles(None, access)
         records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter(records))
+                          knit._read_records_iter(records))
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(knit._read_records_iter_raw(records))
-        self.assertEqual([((b'rev-id-1',),  gz_txt, sha1sum)], raw_contents)
+        self.assertEqual([((b'rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
         sha1sum = osutils.sha_string(b'foo\nbar\n')
@@ -852,7 +863,7 @@ class LowLevelKnitDataTests(TestCase):
         knit = KnitVersionedFiles(None, access)
         records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter(records))
+                          knit._read_records_iter(records))
 
         # read_records_iter_raw won't detect that sort of mismatch/corruption
         raw_contents = list(knit._read_records_iter_raw(records))
@@ -871,11 +882,11 @@ class LowLevelKnitDataTests(TestCase):
         # We are asking for rev-id-2, but the data is rev-id-1
         records = [((b'rev-id-2',), ((b'rev-id-2',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter(records))
+                          knit._read_records_iter(records))
 
         # read_records_iter_raw detects mismatches in the header
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter_raw(records))
+                          knit._read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
         sha1sum = osutils.sha_string(b'foo\nbar\n')
@@ -891,11 +902,11 @@ class LowLevelKnitDataTests(TestCase):
 
         # We don't have valid gzip data ==> corrupt
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter(records))
+                          knit._read_records_iter(records))
 
         # read_records_iter_raw will notice the bad data
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter_raw(records))
+                          knit._read_records_iter_raw(records))
 
     def test_corrupted_data(self):
         sha1sum = osutils.sha_string(b'foo\nbar\n')
@@ -911,10 +922,10 @@ class LowLevelKnitDataTests(TestCase):
         knit = KnitVersionedFiles(None, access)
         records = [((b'rev-id-1',), ((b'rev-id-1',), 0, len(gz_txt)))]
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter(records))
+                          knit._read_records_iter(records))
         # read_records_iter_raw will barf on bad gz data
         self.assertRaises(KnitCorrupt, list,
-            knit._read_records_iter_raw(records))
+                          knit._read_records_iter_raw(records))
 
 
 class LowLevelKnitIndexTests(TestCase):
@@ -927,7 +938,9 @@ class LowLevelKnitIndexTests(TestCase):
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
         self.overrideAttr(knit, '_load_data', self._load_data)
-        allow_writes = lambda: 'w' in mode
+
+        def allow_writes():
+            return 'w' in mode
         return _KndxIndex(transport, mapper, lambda: None, allow_writes, lambda: True)
 
     def test_create_file(self):
@@ -940,7 +953,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
         self.assertEqual(_KndxIndex.HEADER,
-            call[1][1].getvalue())
+                         call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_read_utf8_version_id(self):
@@ -953,8 +966,8 @@ class LowLevelKnitIndexTests(TestCase):
         index = self.get_knit_index(transport, "filename", "r")
         # _KndxIndex is a private class, and deals in utf8 revision_ids, not
         # Unicode revision_ids.
-        self.assertEqual({(utf8_revision_id,):()},
-            index.get_parent_map(index.keys()))
+        self.assertEqual({(utf8_revision_id,): ()},
+                         index.get_parent_map(index.keys()))
         self.assertFalse((unicode_revision_id,) in index.keys())
 
     def test_read_utf8_parents(self):
@@ -966,7 +979,7 @@ class LowLevelKnitIndexTests(TestCase):
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({(b"version",): ((utf8_revision_id,),)},
-            index.get_parent_map(index.keys()))
+                         index.get_parent_map(index.keys()))
 
     def test_read_ignore_corrupted_lines(self):
         transport = MockTransport([
@@ -997,10 +1010,11 @@ class LowLevelKnitIndexTests(TestCase):
         # check that the index used is the first one written. (Specific
         # to KnitIndex style indices.
         self.assertEqual(b"1", index._dictionary_compress([(b"version",)]))
-        self.assertEqual(((b"version",), 3, 4), index.get_position((b"version",)))
+        self.assertEqual(((b"version",), 3, 4),
+                         index.get_position((b"version",)))
         self.assertEqual([b"options3"], index.get_options((b"version",)))
         self.assertEqual({(b"version",): ((b"parent",), (b"other",))},
-            index.get_parent_map([(b"version",)]))
+                         index.get_parent_map([(b"version",)]))
 
     def test_read_compressed_parents(self):
         transport = MockTransport([
@@ -1010,8 +1024,8 @@ class LowLevelKnitIndexTests(TestCase):
             b"c option 0 1 1 0 :",
             ])
         index = self.get_knit_index(transport, "filename", "r")
-        self.assertEqual({(b"b",):((b"a",),), (b"c",):((b"b",), (b"a",))},
-            index.get_parent_map([(b"b",), (b"c",)]))
+        self.assertEqual({(b"b",): ((b"a",),), (b"c",): ((b"b",), (b"a",))},
+                         index.get_parent_map([(b"b",), (b"c",)]))
 
     def test_write_utf8_version_id(self):
         unicode_revision_id = u"version-\N{CYRILLIC CAPITAL LETTER A}"
@@ -1028,8 +1042,8 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
         self.assertEqual(_KndxIndex.HEADER +
-            b"\n%s option 0 1  :" % (utf8_revision_id,),
-            call[1][1].getvalue())
+                         b"\n%s option 0 1  :" % (utf8_revision_id,),
+                         call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_write_utf8_parents(self):
@@ -1047,8 +1061,8 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertEqual('filename.kndx', call[1][0])
         # With no history, _KndxIndex writes a new index:
         self.assertEqual(_KndxIndex.HEADER +
-            b"\nversion option 0 1 .%s :" % (utf8_revision_id,),
-            call[1][1].getvalue())
+                         b"\nversion option 0 1 .%s :" % (utf8_revision_id,),
+                         call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
     def test_keys(self):
@@ -1123,8 +1137,8 @@ class LowLevelKnitIndexTests(TestCase):
         # dir_mode=0777)
         self.assertEqual([], transport.calls)
         self.add_a_b(index)
-        #self.assertEqual(
-        #[    {"dir_mode": 0777, "create_parent_dir": True, "mode": "wb"},
+        # self.assertEqual(
+        # [    {"dir_mode": 0777, "create_parent_dir": True, "mode": "wb"},
         #    kwargs)
         # Two calls: one during which we load the existing index (and when its
         # missing create it), then a second where we write the contents out.
@@ -1154,10 +1168,10 @@ class LowLevelKnitIndexTests(TestCase):
 
     def test__get_total_build_size(self):
         positions = {
-            (b'a',): ((b'fulltext', False), ((b'a',), 0, 100), None),
-            (b'b',): ((b'line-delta', False), ((b'b',), 100, 21), (b'a',)),
-            (b'c',): ((b'line-delta', False), ((b'c',), 121, 35), (b'b',)),
-            (b'd',): ((b'line-delta', False), ((b'd',), 156, 12), (b'b',)),
+            (b'a',): (('fulltext', False), ((b'a',), 0, 100), None),
+            (b'b',): (('line-delta', False), ((b'b',), 100, 21), (b'a',)),
+            (b'c',): (('line-delta', False), ((b'c',), 121, 35), (b'b',)),
+            (b'd',): (('line-delta', False), ((b'd',), 156, 12), (b'b',)),
             }
         self.assertTotalBuildSize(100, [(b'a',)], positions)
         self.assertTotalBuildSize(121, [(b'b',)], positions)
@@ -1233,7 +1247,7 @@ class LowLevelKnitIndexTests(TestCase):
             _KndxIndex.HEADER,
             b"a option 0 1 :",
             b"b option 0 1 :",
-            b"c option 0 1 1v :", # Can't have a parent of '1v'
+            b"c option 0 1 1v :",  # Can't have a parent of '1v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1243,7 +1257,7 @@ class LowLevelKnitIndexTests(TestCase):
             _KndxIndex.HEADER,
             b"a option 0 1 :",
             b"b option 0 1 :",
-            b"c option 0 1 1 v :", # Can't have a parent of 'v'
+            b"c option 0 1 1 v :",  # Can't have a parent of 'v'
             ])
         index = self.get_knit_index(transport, 'filename', 'r')
         self.assertRaises(KnitCorrupt, index.keys)
@@ -1277,7 +1291,7 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KndxIndex.HEADER,
             b"a option 0 10  :",
-            b"b option 10 10 0", # This line isn't terminated, ignored
+            b"b option 10 10 0",  # This line isn't terminated, ignored
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({(b'a',)}, index.keys())
@@ -1287,8 +1301,8 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KndxIndex.HEADER,
             b"a option 0 10  :",
-            b"b option 10 10 0", # This line isn't terminated, ignored
-            b"c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            b"b option 10 10 0",  # This line isn't terminated, ignored
+            b"c option 20 10 0 :",  # Properly terminated, and starts with '\n'
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({(b'a',), (b'c',)}, index.keys())
@@ -1298,8 +1312,8 @@ class LowLevelKnitIndexTests(TestCase):
         transport = MockTransport([
             _KndxIndex.HEADER,
             b"a option 0 10  :",
-            b"b option 10 10 0 :a", # This line has extra trailing characters
-            b"c option 20 10 0 :", # Properly terminated, and starts with '\n'
+            b"b option 10 10 0 :a",  # This line has extra trailing characters
+            b"c option 20 10 0 :",  # Properly terminated, and starts with '\n'
             ])
         index = self.get_knit_index(transport, "filename", "r")
         self.assertEqual({(b'a',), (b'c',)}, index.keys())
@@ -1327,7 +1341,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         rev_key = (b'rev-id',)
         ann._num_compression_children[rev_key] = 1
         res = ann._expand_record(rev_key, ((b'parent-id',),), None,
-                           [b'line1\n', b'line2\n'], (b'fulltext', True))
+                                 [b'line1\n', b'line2\n'], ('fulltext', True))
         # The content object and text lines should be cached appropriately
         self.assertEqual([b'line1\n', b'line2'], res)
         content_obj = ann._content_objects[rev_key]
@@ -1360,7 +1374,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         details = ('line-delta', False)
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None, [b'line1\n', b'line2\n'],
-                           (b'fulltext', False))
+                           ('fulltext', False))
         res = ann._expand_record(rev_key, (parent_key,), parent_key,
                                  record, details)
         self.assertEqual({parent_key: 1}, ann._num_compression_children)
@@ -1383,14 +1397,15 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann._num_compression_children[parent_key] = 2
         ann._expand_record(parent_key, (), None,
                            [b'line1\n', b'line2\n', b'line3\n'],
-                           (b'fulltext', False))
+                           ('fulltext', False))
         ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
         self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
                          ann._matching_blocks)
         rev2_key = (b'rev2-id',)
         record = [b'0,1,1\n', b'new-line\n']
         details = ('line-delta', False)
-        ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
+        ann._expand_record(rev2_key, (parent_key,),
+                           parent_key, record, details)
         self.assertEqual([(1, 1, 2), (3, 3, 0)],
                          ann._matching_blocks[(rev2_key, parent_key)])
 
@@ -1398,14 +1413,14 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         ann = self.make_annotator()
         rev_key = (b'rev-id',)
         parent_key = (b'parent-id',)
-        parent_ann = [(parent_key,)]*3
+        parent_ann = [(parent_key,)] * 3
         block_key = (rev_key, parent_key)
         ann._annotations_cache[parent_key] = parent_ann
         ann._matching_blocks[block_key] = [(0, 1, 1), (3, 3, 0)]
         # We should not try to access any parent_lines content, because we know
         # we already have the matching blocks
         par_ann, blocks = ann._get_parent_annotations_and_matches(rev_key,
-                                        [b'1\n', b'2\n', b'3\n'], parent_key)
+                                                                  [b'1\n', b'2\n', b'3\n'], parent_key)
         self.assertEqual(parent_ann, par_ann)
         self.assertEqual([(0, 1, 1), (3, 3, 0)], blocks)
         self.assertEqual({}, ann._matching_blocks)
@@ -1426,9 +1441,9 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({}, ann._pending_annotation)
         # Now insert p1, and we should be able to expand the delta
         res = ann._expand_record(p1_key, (), None, p1_record,
-                                 (b'fulltext', False))
+                                 ('fulltext', False))
         self.assertEqual(p1_record, res)
-        ann._annotations_cache[p1_key] = [(p1_key,)]*2
+        ann._annotations_cache[p1_key] = [(p1_key,)] * 2
         res = ann._process_pending(p1_key)
         self.assertEqual([], res)
         self.assertFalse(p1_key in ann._pending_deltas)
@@ -1436,7 +1451,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
                          ann._pending_annotation)
         # Now fill in parent 2, and pending annotation should be satisfied
-        res = ann._expand_record(p2_key, (), None, [], (b'fulltext', False))
+        res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
         ann._annotations_cache[p2_key] = []
         res = ann._process_pending(p2_key)
         self.assertEqual([rev_key], res)
@@ -1446,7 +1461,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
     def test_record_delta_removes_basis(self):
         ann = self.make_annotator()
         ann._expand_record((b'parent-id',), (), None,
-                           [b'line1\n', b'line2\n'], (b'fulltext', False))
+                           [b'line1\n', b'line2\n'], ('fulltext', False))
         ann._num_compression_children[b'parent-id'] = 2
 
     def test_annotate_special_text(self):
@@ -1473,7 +1488,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
                           (rev2_key, rev3_key),
                           (rev2_key,),
                           (rev3_key,),
-                         ], anns)
+                          ], anns)
         self.assertEqualDiff(spec_text, b''.join(lines))
 
 
@@ -1505,8 +1520,8 @@ class TestBadShaError(KnitTests):
         target.insert_record_stream(
             source.get_record_stream([broken], 'unordered', False))
         err = self.assertRaises(KnitCorrupt,
-            next(target.get_record_stream([broken], 'unordered', True
-            )).get_bytes_as, 'chunked')
+                                next(target.get_record_stream([broken], 'unordered', True
+                                                              )).get_bytes_as, 'chunked')
         self.assertEqual([b'gam\n', b'bar\n'], err.content)
         # Test for formatting with live data
         self.assertStartsWith(str(err), "Knit ")
@@ -1520,21 +1535,21 @@ class TestKnitIndex(KnitTests):
         idx = knit._index
         idx.add_records([((b'a-1',), [b'fulltext'], ((b'a-1',), 0, 0), [])])
         self.check_file_contents('test.kndx',
-            b'# bzr knit index 8\n'
-            b'\n'
-            b'a-1 fulltext 0 0  :'
-            )
+                                 b'# bzr knit index 8\n'
+                                 b'\n'
+                                 b'a-1 fulltext 0 0  :'
+                                 )
         idx.add_records([
             ((b'a-2',), [b'fulltext'], ((b'a-2',), 0, 0), [(b'a-1',)]),
             ((b'a-3',), [b'fulltext'], ((b'a-3',), 0, 0), [(b'a-2',)]),
             ])
         self.check_file_contents('test.kndx',
-            b'# bzr knit index 8\n'
-            b'\n'
-            b'a-1 fulltext 0 0  :\n'
-            b'a-2 fulltext 0 0 0 :\n'
-            b'a-3 fulltext 0 0 1 :'
-            )
+                                 b'# bzr knit index 8\n'
+                                 b'\n'
+                                 b'a-1 fulltext 0 0  :\n'
+                                 b'a-2 fulltext 0 0 0 :\n'
+                                 b'a-3 fulltext 0 0 1 :'
+                                 )
         self.assertEqual({(b'a-3',), (b'a-1',), (b'a-2',)}, idx.keys())
         self.assertEqual({
             (b'a-1',): (((b'a-1',), 0, 0), None, (), ('fulltext', False)),
@@ -1542,9 +1557,9 @@ class TestKnitIndex(KnitTests):
             (b'a-3',): (((b'a-3',), 0, 0), None, ((b'a-2',),), ('fulltext', False)),
             }, idx.get_build_details(idx.keys()))
         self.assertEqual({(b'a-1',): (),
-            (b'a-2',): ((b'a-1',),),
-            (b'a-3',): ((b'a-2',),),},
-            idx.get_parent_map(idx.keys()))
+                          (b'a-2',): ((b'a-1',),),
+                          (b'a-3',): ((b'a-2',),), },
+                         idx.get_parent_map(idx.keys()))
 
     def test_add_versions_fails_clean(self):
         """If add_versions fails in the middle, it restores a pristine state.
@@ -1577,7 +1592,7 @@ class TestKnitIndex(KnitTests):
             self.assertEqual(
                 {(b'a-1',): (((b'a-1',), 0, 0), None, (), ('fulltext', False))},
                 idx.get_build_details([(b'a-1',)]))
-            self.assertEqual({(b'a-1',):()}, idx.get_parent_map(idx.keys()))
+            self.assertEqual({(b'a-1',): ()}, idx.get_parent_map(idx.keys()))
 
         assertA1Only()
         self.assertRaises(StopEarly, idx.add_records, generate_failure())
@@ -1626,7 +1641,8 @@ class TestGraphIndexKnit(KnitTests):
                 ((b'tip', ), b'N0 100', ([(b'parent', )], [], )),
                 ((b'tail', ), b'', ([], []))])
             index2 = self.make_g_index('2', 2, [
-                ((b'parent', ), b' 100 78', ([(b'tail', ), (b'ghost', )], [(b'tail', )])),
+                ((b'parent', ), b' 100 78',
+                 ([(b'tail', ), (b'ghost', )], [(b'tail', )])),
                 ((b'separate', ), b'', ([], []))])
         else:
             # just blob location and graph in the index.
@@ -1643,18 +1659,20 @@ class TestGraphIndexKnit(KnitTests):
             add_callback = self.catch_add
         else:
             add_callback = None
-        return _KnitGraphIndex(combined_index, lambda:True, deltas=deltas,
-            add_callback=add_callback)
+        return _KnitGraphIndex(combined_index, lambda: True, deltas=deltas,
+                               add_callback=add_callback)
 
     def test_keys(self):
         index = self.two_graph_index()
         self.assertEqual({(b'tail',), (b'tip',), (b'parent',), (b'separate',)},
-            set(index.keys()))
+                         set(index.keys()))
 
     def test_get_position(self):
         index = self.two_graph_index()
-        self.assertEqual((index._graph_index._indices[0], 0, 100), index.get_position((b'tip',)))
-        self.assertEqual((index._graph_index._indices[1], 100, 78), index.get_position((b'parent',)))
+        self.assertEqual(
+            (index._graph_index._indices[0], 0, 100), index.get_position((b'tip',)))
+        self.assertEqual(
+            (index._graph_index._indices[1], 100, 78), index.get_position((b'parent',)))
 
     def test_get_method_deltas(self):
         index = self.two_graph_index(deltas=True)
@@ -1669,19 +1687,21 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_get_options_deltas(self):
         index = self.two_graph_index(deltas=True)
-        self.assertEqual([b'fulltext', b'no-eol'], index.get_options((b'tip',)))
+        self.assertEqual([b'fulltext', b'no-eol'],
+                         index.get_options((b'tip',)))
         self.assertEqual([b'line-delta'], index.get_options((b'parent',)))
 
     def test_get_options_no_deltas(self):
         # check that the parent-history lookup is ignored with deltas=False.
         index = self.two_graph_index(deltas=False)
-        self.assertEqual([b'fulltext', b'no-eol'], index.get_options((b'tip',)))
+        self.assertEqual([b'fulltext', b'no-eol'],
+                         index.get_options((b'tip',)))
         self.assertEqual([b'fulltext'], index.get_options((b'parent',)))
 
     def test_get_parent_map(self):
         index = self.two_graph_index()
-        self.assertEqual({(b'parent',):((b'tail',), (b'ghost',))},
-            index.get_parent_map([(b'parent',), (b'ghost',)]))
+        self.assertEqual({(b'parent',): ((b'tail',), (b'ghost',))},
+                         index.get_parent_map([(b'parent',), (b'ghost',)]))
 
     def catch_add(self, entries):
         self.caught_entries.append(entries)
@@ -1689,32 +1709,34 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(errors.ReadOnlyError, index.add_records,
-            [((b'new',), b'fulltext,no-eol', (None, 50, 60), [b'separate'])])
+                          [((b'new',), b'fulltext,no-eol', (None, 50, 60), [b'separate'])])
 
     def test_add_version_smoke(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([((b'new',), b'fulltext,no-eol', (None, 50, 60),
-            [(b'separate',)])])
+                            [(b'separate',)])])
         self.assertEqual([[((b'new', ), b'N50 60', (((b'separate',),),))]],
-            self.caught_entries)
+                         self.caught_entries)
 
     def test_add_version_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'new',), b'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
+                          [((b'new',), b'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_version_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)])])
-        index.add_records([((b'tip',), b'no-eol,fulltext', (None, 0, 100), [(b'parent',)])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)])])
+        index.add_records(
+            [((b'tip',), b'no-eol,fulltext', (None, 0, 100), [(b'parent',)])])
         # position/length are ignored (because each pack could have fulltext or
         # delta, and be at a different position.
         index.add_records([((b'tip',), b'fulltext,no-eol', (None, 50, 100),
-            [(b'parent',)])])
+                            [(b'parent',)])])
         index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 1000),
-            [(b'parent',)])])
+                            [(b'parent',)])])
         # but neither should have added data:
         self.assertEqual([[], [], [], []], self.caught_entries)
 
@@ -1722,40 +1744,40 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'line-delta', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'fulltext', (None, 0, 100), [(b'parent',)])])
         # parents
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
+                          [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_nodeltas(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
-                ((b'new',), b'fulltext,no-eol', (None, 50, 60), [(b'separate',)]),
-                ((b'new2',), b'fulltext', (None, 0, 6), [(b'new',)]),
-                ])
+            ((b'new',), b'fulltext,no-eol', (None, 50, 60), [(b'separate',)]),
+            ((b'new2',), b'fulltext', (None, 0, 6), [(b'new',)]),
+            ])
         self.assertEqual([((b'new', ), b'N50 60', (((b'separate',),),)),
-            ((b'new2', ), b' 0 6', (((b'new',),),))],
-            sorted(self.caught_entries[0]))
+                          ((b'new2', ), b' 0 6', (((b'new',),),))],
+                         sorted(self.caught_entries[0]))
         self.assertEqual(1, len(self.caught_entries))
 
     def test_add_versions_deltas(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         index.add_records([
-                ((b'new',), b'fulltext,no-eol', (None, 50, 60), [(b'separate',)]),
-                ((b'new2',), b'line-delta', (None, 0, 6), [(b'new',)]),
-                ])
+            ((b'new',), b'fulltext,no-eol', (None, 50, 60), [(b'separate',)]),
+            ((b'new2',), b'line-delta', (None, 0, 6), [(b'new',)]),
+            ])
         self.assertEqual([((b'new', ), b'N50 60', (((b'separate',),), ())),
-            ((b'new2', ), b' 0 6', (((b'new',),), ((b'new',),), ))],
-            sorted(self.caught_entries[0]))
+                          ((b'new2', ), b' 0 6', (((b'new',),), ((b'new',),), ))],
+                         sorted(self.caught_entries[0]))
         self.assertEqual(1, len(self.caught_entries))
 
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'new',), b'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
+                          [((b'new',), b'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_random_id_accepted(self):
@@ -1766,15 +1788,15 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
         index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 100),
-            [(b'parent',)])])
+                            [(b'parent',)])])
         index.add_records([((b'tip',), b'no-eol,fulltext', (None, 0, 100),
-            [(b'parent',)])])
+                            [(b'parent',)])])
         # position/length are ignored (because each pack could have fulltext or
         # delta, and be at a different position.
         index.add_records([((b'tip',), b'fulltext,no-eol', (None, 50, 100),
-            [(b'parent',)])])
+                            [(b'parent',)])])
         index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 1000),
-            [(b'parent',)])])
+                            [(b'parent',)])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
 
@@ -1782,36 +1804,36 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'line-delta', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'fulltext', (None, 0, 100), [(b'parent',)])])
         # parents
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
+                          [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
         # change options in the second record
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)]),
-             ((b'tip',), b'line-delta', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)]),
+                           ((b'tip',), b'line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def make_g_index_missing_compression_parent(self):
         graph_index = self.make_g_index('missing_comp', 2,
-            [((b'tip', ), b' 100 78',
-              ([(b'missing-parent', ), (b'ghost', )], [(b'missing-parent', )]))])
+                                        [((b'tip', ), b' 100 78',
+                                          ([(b'missing-parent', ), (b'ghost', )], [(b'missing-parent', )]))])
         return graph_index
 
     def make_g_index_missing_parent(self):
         graph_index = self.make_g_index('missing_parent', 2,
-            [((b'parent', ), b' 100 78', ([], [])),
-             ((b'tip', ), b' 100 78',
-              ([(b'parent', ), (b'missing-parent', )], [(b'parent', )])),
-              ])
+                                        [((b'parent', ), b' 100 78', ([], [])),
+                                         ((b'tip', ), b' 100 78',
+                                            ([(b'parent', ), (b'missing-parent', )], [(b'parent', )])),
+                                         ])
         return graph_index
 
     def make_g_index_no_external_refs(self):
         graph_index = self.make_g_index('no_external_refs', 2,
-            [((b'rev', ), b' 100 78',
-              ([(b'parent', ), (b'ghost', )], []))])
+                                        [((b'rev', ), b' 100 78',
+                                          ([(b'parent', ), (b'ghost', )], []))])
         return graph_index
 
     def test_add_good_unvalidated_index(self):
@@ -1837,7 +1859,7 @@ class TestGraphIndexKnit(KnitTests):
         unvalidated = self.make_g_index_missing_parent()
         combined = CombinedGraphIndex([unvalidated])
         index = _KnitGraphIndex(combined, lambda: True, deltas=True,
-            track_external_parent_refs=True)
+                                track_external_parent_refs=True)
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(
             frozenset([(b'missing-parent',)]), index.get_missing_parents())
@@ -1846,7 +1868,7 @@ class TestGraphIndexKnit(KnitTests):
         g_index = self.make_g_index('empty', 2, [])
         combined = CombinedGraphIndex([g_index])
         index = _KnitGraphIndex(combined, lambda: True, deltas=True,
-            add_callback=self.catch_add, track_external_parent_refs=True)
+                                add_callback=self.catch_add, track_external_parent_refs=True)
         self.caught_entries = []
         index.add_records([
             ((b'new-key',), b'fulltext,no-eol', (None, 50, 60),
@@ -1868,8 +1890,8 @@ class TestGraphIndexKnit(KnitTests):
     def make_new_missing_parent_g_index(self, name):
         missing_parent = name.encode('ascii') + b'-missing-parent'
         graph_index = self.make_g_index(name, 2,
-            [((name.encode('ascii') + b'tip', ), b' 100 78',
-              ([(missing_parent, ), (b'ghost', )], [(missing_parent, )]))])
+                                        [((name.encode('ascii') + b'tip', ), b' 100 78',
+                                          ([(missing_parent, ), (b'ghost', )], [(missing_parent, )]))])
         return graph_index
 
     def test_add_mulitiple_unvalidated_indices_with_missing_parents(self):
@@ -1885,13 +1907,13 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_add_mulitiple_unvalidated_indices_with_mutual_dependencies(self):
         graph_index_a = self.make_g_index('one', 2,
-            [((b'parent-one', ), b' 100 78', ([(b'non-compression-parent',)], [])),
-             ((b'child-of-two', ), b' 100 78',
-              ([(b'parent-two',)], [(b'parent-two',)]))])
+                                          [((b'parent-one', ), b' 100 78', ([(b'non-compression-parent',)], [])),
+                                           ((b'child-of-two', ), b' 100 78',
+                                              ([(b'parent-two',)], [(b'parent-two',)]))])
         graph_index_b = self.make_g_index('two', 2,
-            [((b'parent-two', ), b' 100 78', ([(b'non-compression-parent',)], [])),
-             ((b'child-of-one', ), b' 100 78',
-              ([(b'parent-one',)], [(b'parent-one',)]))])
+                                          [((b'parent-two', ), b' 100 78', ([(b'non-compression-parent',)], [])),
+                                           ((b'child-of-one', ), b' 100 78',
+                                              ([(b'parent-one',)], [(b'parent-one',)]))])
         combined = CombinedGraphIndex([graph_index_a, graph_index_b])
         index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(graph_index_a)
@@ -1918,12 +1940,12 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = _KnitGraphIndex(combined, lambda: True, parents=False)
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(frozenset(),
-            index.get_missing_compression_parents())
+                         index.get_missing_compression_parents())
 
     def test_parents_deltas_incompatible(self):
         index = CombinedGraphIndex([])
-        self.assertRaises(knit.KnitError, _KnitGraphIndex, lambda:True,
-            index, deltas=True, parents=False)
+        self.assertRaises(knit.KnitError, _KnitGraphIndex, lambda: True,
+                          index, deltas=True, parents=False)
 
     def two_graph_index(self, catch_adds=False):
         """Build a two-graph index.
@@ -1945,20 +1967,20 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             add_callback = self.catch_add
         else:
             add_callback = None
-        return _KnitGraphIndex(combined_index, lambda:True, parents=False,
-            add_callback=add_callback)
+        return _KnitGraphIndex(combined_index, lambda: True, parents=False,
+                               add_callback=add_callback)
 
     def test_keys(self):
         index = self.two_graph_index()
         self.assertEqual({(b'tail',), (b'tip',), (b'parent',), (b'separate',)},
-            set(index.keys()))
+                         set(index.keys()))
 
     def test_get_position(self):
         index = self.two_graph_index()
         self.assertEqual((index._graph_index._indices[0], 0, 100),
-            index.get_position((b'tip',)))
+                         index.get_position((b'tip',)))
         self.assertEqual((index._graph_index._indices[1], 100, 78),
-            index.get_position((b'parent',)))
+                         index.get_position((b'parent',)))
 
     def test_get_method(self):
         index = self.two_graph_index()
@@ -1967,13 +1989,14 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
     def test_get_options(self):
         index = self.two_graph_index()
-        self.assertEqual([b'fulltext', b'no-eol'], index.get_options((b'tip',)))
+        self.assertEqual([b'fulltext', b'no-eol'],
+                         index.get_options((b'tip',)))
         self.assertEqual([b'fulltext'], index.get_options((b'parent',)))
 
     def test_get_parent_map(self):
         index = self.two_graph_index()
-        self.assertEqual({(b'parent',):None},
-            index.get_parent_map([(b'parent',), (b'ghost',)]))
+        self.assertEqual({(b'parent',): None},
+                         index.get_parent_map([(b'parent',), (b'ghost',)]))
 
     def catch_add(self, entries):
         self.caught_entries.append(entries)
@@ -1981,29 +2004,34 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_no_callback_errors(self):
         index = self.two_graph_index()
         self.assertRaises(errors.ReadOnlyError, index.add_records,
-            [((b'new',), b'fulltext,no-eol', (None, 50, 60), [(b'separate',)])])
+                          [((b'new',), b'fulltext,no-eol', (None, 50, 60), [(b'separate',)])])
 
     def test_add_version_smoke(self):
         index = self.two_graph_index(catch_adds=True)
-        index.add_records([((b'new',), b'fulltext,no-eol', (None, 50, 60), [])])
+        index.add_records(
+            [((b'new',), b'fulltext,no-eol', (None, 50, 60), [])])
         self.assertEqual([[((b'new', ), b'N50 60')]],
-            self.caught_entries)
+                         self.caught_entries)
 
     def test_add_version_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'new',), b'no-eol,line-delta', (None, 0, 100), [])])
+                          [((b'new',), b'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_version_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
-        index.add_records([((b'tip',), b'no-eol,fulltext', (None, 0, 100), [])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
+        index.add_records(
+            [((b'tip',), b'no-eol,fulltext', (None, 0, 100), [])])
         # position/length are ignored (because each pack could have fulltext or
         # delta, and be at a different position.
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 50, 100), [])])
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 1000), [])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 50, 100), [])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
 
@@ -2011,36 +2039,36 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = self.two_graph_index(catch_adds=True)
         # change options
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'no-eol,line-delta', (None, 0, 100), [])])
+                          [((b'tip',), b'no-eol,line-delta', (None, 0, 100), [])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'line-delta,no-eol', (None, 0, 100), [])])
+                          [((b'tip',), b'line-delta,no-eol', (None, 0, 100), [])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext', (None, 0, 100), [])])
+                          [((b'tip',), b'fulltext', (None, 0, 100), [])])
         # parents
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
-                ((b'new',), b'fulltext,no-eol', (None, 50, 60), []),
-                ((b'new2',), b'fulltext', (None, 0, 6), []),
-                ])
+            ((b'new',), b'fulltext,no-eol', (None, 50, 60), []),
+            ((b'new2',), b'fulltext', (None, 0, 6), []),
+            ])
         self.assertEqual([((b'new', ), b'N50 60'), ((b'new2', ), b' 0 6')],
-            sorted(self.caught_entries[0]))
+                         sorted(self.caught_entries[0]))
         self.assertEqual(1, len(self.caught_entries))
 
     def test_add_versions_delta_not_delta_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'new',), b'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
+                          [((b'new',), b'no-eol,line-delta', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_parents_not_parents_index(self):
         index = self.two_graph_index(catch_adds=True)
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'new',), b'no-eol,fulltext', (None, 0, 100), [(b'parent',)])])
+                          [((b'new',), b'no-eol,fulltext', (None, 0, 100), [(b'parent',)])])
         self.assertEqual([], self.caught_entries)
 
     def test_add_versions_random_id_accepted(self):
@@ -2050,12 +2078,16 @@ class TestNoParentsGraphIndexKnit(KnitTests):
     def test_add_versions_same_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # options can be spelt two different ways
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
-        index.add_records([((b'tip',), b'no-eol,fulltext', (None, 0, 100), [])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [])])
+        index.add_records(
+            [((b'tip',), b'no-eol,fulltext', (None, 0, 100), [])])
         # position/length are ignored (because each pack could have fulltext or
         # delta, and be at a different position.
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 50, 100), [])])
-        index.add_records([((b'tip',), b'fulltext,no-eol', (None, 0, 1000), [])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 50, 100), [])])
+        index.add_records(
+            [((b'tip',), b'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
 
@@ -2063,18 +2095,18 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index = self.two_graph_index(catch_adds=True)
         # change options
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'no-eol,line-delta', (None, 0, 100), [])])
+                          [((b'tip',), b'no-eol,line-delta', (None, 0, 100), [])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'line-delta,no-eol', (None, 0, 100), [])])
+                          [((b'tip',), b'line-delta,no-eol', (None, 0, 100), [])])
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext', (None, 0, 100), [])])
+                          [((b'tip',), b'fulltext', (None, 0, 100), [])])
         # parents
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)])])
+                          [((b'tip',), b'fulltext,no-eol', (None, 0, 100), [(b'parent',)])])
         # change options in the second record
         self.assertRaises(KnitCorrupt, index.add_records,
-            [((b'tip',), b'fulltext,no-eol', (None, 0, 100), []),
-             ((b'tip',), b'no-eol,line-delta', (None, 0, 100), [])])
+                          [((b'tip',), b'fulltext,no-eol', (None, 0, 100), []),
+                           ((b'tip',), b'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
 
 
@@ -2086,8 +2118,8 @@ class TestKnitVersionedFiles(KnitTests):
         if _min_buffer_size is None:
             _min_buffer_size = knit._STREAM_MIN_BUFFER_SIZE
         self.assertEqual(exp_groups, kvf._group_keys_for_io(keys,
-                                        non_local_keys, positions,
-                                        _min_buffer_size=_min_buffer_size))
+                                                            non_local_keys, positions,
+                                                            _min_buffer_size=_min_buffer_size))
 
     def assertSplitByPrefix(self, expected_map, expected_prefix_order,
                             keys):
@@ -2096,8 +2128,8 @@ class TestKnitVersionedFiles(KnitTests):
         self.assertEqual(expected_prefix_order, prefix_order)
 
     def test__group_keys_for_io(self):
-        ft_detail = (b'fulltext', False)
-        ld_detail = (b'line-delta', False)
+        ft_detail = ('fulltext', False)
+        ld_detail = ('line-delta', False)
         f_a = (b'f', b'a')
         f_b = (b'f', b'b')
         f_c = (b'f', b'c')
@@ -2138,26 +2170,26 @@ class TestKnitVersionedFiles(KnitTests):
     def test__split_by_prefix(self):
         self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
                                   b'g': [(b'g', b'b'), (b'g', b'a')],
-                                 }, [b'f', b'g'],
+                                  }, [b'f', b'g'],
                                  [(b'f', b'a'), (b'g', b'b'),
                                   (b'g', b'a'), (b'f', b'b')])
 
         self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
                                   b'g': [(b'g', b'b'), (b'g', b'a')],
-                                 }, [b'f', b'g'],
+                                  }, [b'f', b'g'],
                                  [(b'f', b'a'), (b'f', b'b'),
                                   (b'g', b'b'), (b'g', b'a')])
 
         self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
                                   b'g': [(b'g', b'b'), (b'g', b'a')],
-                                 }, [b'f', b'g'],
+                                  }, [b'f', b'g'],
                                  [(b'f', b'a'), (b'f', b'b'),
                                   (b'g', b'b'), (b'g', b'a')])
 
         self.assertSplitByPrefix({b'f': [(b'f', b'a'), (b'f', b'b')],
                                   b'g': [(b'g', b'b'), (b'g', b'a')],
                                   b'': [(b'a',), (b'b',)]
-                                 }, [b'f', b'g', b''],
+                                  }, [b'f', b'g', b''],
                                  [(b'f', b'a'), (b'g', b'b'),
                                   (b'a',), (b'b',),
                                   (b'g', b'a'), (b'f', b'b')])
@@ -2208,7 +2240,6 @@ class TestStacking(KnitTests):
         basis, test = self.get_basis_and_test_knit()
         key = (b'foo',)
         key_basis = (b'bar',)
-        key_missing = (b'missing',)
         test.add_lines(key, (), [b'foo\n'])
         details = test.annotate(key)
         self.assertEqual([(key, b'foo\n')], details)
@@ -2218,13 +2249,14 @@ class TestStacking(KnitTests):
         basis.add_lines(key_basis, (), [b'foo\n', b'bar\n'])
         basis.calls = []
         details = test.annotate(key_basis)
-        self.assertEqual([(key_basis, b'foo\n'), (key_basis, b'bar\n')], details)
+        self.assertEqual(
+            [(key_basis, b'foo\n'), (key_basis, b'bar\n')], details)
         # Not optimised to date:
         # self.assertEqual([("annotate", key_basis)], basis.calls)
         self.assertEqual([('get_parent_map', {key_basis}),
-            ('get_parent_map', {key_basis}),
-            ('get_record_stream', [key_basis], 'topological', True)],
-            basis.calls)
+                          ('get_parent_map', {key_basis}),
+                          ('get_record_stream', [key_basis], 'topological', True)],
+                         basis.calls)
 
     def test_check(self):
         # At the moment checking a stacked knit does implicitly check the
@@ -2247,9 +2279,9 @@ class TestStacking(KnitTests):
         basis.calls = []
         parent_map = test.get_parent_map([key, key_basis, key_missing])
         self.assertEqual({key: (),
-            key_basis: ()}, parent_map)
+                          key_basis: ()}, parent_map)
         self.assertEqual([("get_parent_map", {key_basis, key_missing})],
-            basis.calls)
+                         basis.calls)
 
     def test_get_record_stream_unordered_fulltexts(self):
         # records from the test knit are answered without asking the basis:
@@ -2265,7 +2297,7 @@ class TestStacking(KnitTests):
         basis.add_lines(key_basis, (), [b'foo\n', b'bar\n'])
         basis.calls = []
         records = list(test.get_record_stream([key_basis, key_missing],
-            'unordered', True))
+                                              'unordered', True))
         self.assertEqual(2, len(records))
         calls = list(basis.calls)
         for record in records:
@@ -2274,14 +2306,14 @@ class TestStacking(KnitTests):
                 self.assertIsInstance(record, AbsentContentFactory)
             else:
                 reference = list(basis.get_record_stream([key_basis],
-                    'unordered', True))[0]
+                                                         'unordered', True))[0]
                 self.assertEqual(reference.key, record.key)
                 self.assertEqual(reference.sha1, record.sha1)
                 self.assertEqual(reference.storage_kind, record.storage_kind)
                 self.assertEqual(reference.get_bytes_as(reference.storage_kind),
-                    record.get_bytes_as(record.storage_kind))
+                                 record.get_bytes_as(record.storage_kind))
                 self.assertEqual(reference.get_bytes_as('fulltext'),
-                    record.get_bytes_as('fulltext'))
+                                 record.get_bytes_as('fulltext'))
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
@@ -2308,12 +2340,12 @@ class TestStacking(KnitTests):
         results = []
         for record in records:
             self.assertSubset([record.key],
-                (key_basis, key_missing, key_basis_2, key))
+                              (key_basis, key_missing, key_basis_2, key))
             if record.key == key_missing:
                 self.assertIsInstance(record, AbsentContentFactory)
             else:
                 results.append((record.key, record.sha1, record.storage_kind,
-                    record.get_bytes_as('fulltext')))
+                                record.get_bytes_as('fulltext')))
         calls = list(basis.calls)
         order = [record[0] for record in results]
         self.assertEqual([key_basis_2, key_basis, key], order)
@@ -2323,7 +2355,7 @@ class TestStacking(KnitTests):
             else:
                 source = basis
             record = next(source.get_record_stream([result[0]], 'unordered',
-                True))
+                                                   True))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
             # We used to check that the storage kind matched, but actually it
@@ -2335,13 +2367,14 @@ class TestStacking(KnitTests):
         # ask which fallbacks have which parents.
         self.assertEqual(2, len(calls))
         self.assertEqual(
-                ("get_parent_map", {key_basis, key_basis_2, key_missing}),
-                calls[0])
+            ("get_parent_map", {key_basis, key_basis_2, key_missing}),
+            calls[0])
         # topological is requested from the fallback, because that is what
         # was requested at the top level.
         self.assertIn(
-                calls[1], [
-                ("get_record_stream", [key_basis_2, key_basis], 'topological', True),
+            calls[1], [
+                ("get_record_stream", [key_basis_2,
+                                       key_basis], 'topological', True),
                 ("get_record_stream", [key_basis, key_basis_2], 'topological', True)])
 
     def test_get_record_stream_unordered_deltas(self):
@@ -2358,7 +2391,7 @@ class TestStacking(KnitTests):
         basis.add_lines(key_basis, (), [b'foo\n', b'bar\n'])
         basis.calls = []
         records = list(test.get_record_stream([key_basis, key_missing],
-            'unordered', False))
+                                              'unordered', False))
         self.assertEqual(2, len(records))
         calls = list(basis.calls)
         for record in records:
@@ -2367,12 +2400,12 @@ class TestStacking(KnitTests):
                 self.assertIsInstance(record, AbsentContentFactory)
             else:
                 reference = list(basis.get_record_stream([key_basis],
-                    'unordered', False))[0]
+                                                         'unordered', False))[0]
                 self.assertEqual(reference.key, record.key)
                 self.assertEqual(reference.sha1, record.sha1)
                 self.assertEqual(reference.storage_kind, record.storage_kind)
                 self.assertEqual(reference.get_bytes_as(reference.storage_kind),
-                    record.get_bytes_as(record.storage_kind))
+                                 record.get_bytes_as(record.storage_kind))
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
@@ -2399,12 +2432,12 @@ class TestStacking(KnitTests):
         results = []
         for record in records:
             self.assertSubset([record.key],
-                (key_basis, key_missing, key_basis_2, key))
+                              (key_basis, key_missing, key_basis_2, key))
             if record.key == key_missing:
                 self.assertIsInstance(record, AbsentContentFactory)
             else:
                 results.append((record.key, record.sha1, record.storage_kind,
-                    record.get_bytes_as(record.storage_kind)))
+                                record.get_bytes_as(record.storage_kind)))
         calls = list(basis.calls)
         order = [record[0] for record in results]
         self.assertEqual([key_basis_2, key_basis, key], order)
@@ -2414,11 +2447,12 @@ class TestStacking(KnitTests):
             else:
                 source = basis
             record = next(source.get_record_stream([result[0]], 'unordered',
-                False))
+                                                   False))
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
             self.assertEqual(record.storage_kind, result[2])
-            self.assertEqual(record.get_bytes_as(record.storage_kind), result[3])
+            self.assertEqual(record.get_bytes_as(
+                record.storage_kind), result[3])
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
         self.assertEqual([
@@ -2445,14 +2479,13 @@ class TestStacking(KnitTests):
         basis.calls = []
         sha1s = test.get_sha1s([key, key_missing, key_basis])
         self.assertEqual({key: key_sha1sum,
-            key_basis: basis_sha1sum}, sha1s)
+                          key_basis: basis_sha1sum}, sha1s)
         self.assertEqual([("get_sha1s", {key_basis, key_missing})],
-            basis.calls)
+                         basis.calls)
 
     def test_insert_record_stream(self):
         # records are inserted as normal; insert_record_stream builds on
         # add_lines, so a smoke test should be all that's needed:
-        key = (b'foo',)
         key_basis = (b'bar',)
         key_delta = (b'zaphod',)
         basis, test = self.get_basis_and_test_knit()
@@ -2466,13 +2499,13 @@ class TestStacking(KnitTests):
         # XXX: this does somewhat too many calls in making sure of whether it
         # has to recreate the full text.
         self.assertEqual([("get_parent_map", {key_basis}),
-             ('get_parent_map', {key_basis}),
-             ('get_record_stream', [key_basis], 'unordered', True)],
-            basis.calls)
-        self.assertEqual({key_delta:(key_basis,)},
-            test.get_parent_map([key_delta]))
+                          ('get_parent_map', {key_basis}),
+                          ('get_record_stream', [key_basis], 'unordered', True)],
+                         basis.calls)
+        self.assertEqual({key_delta: (key_basis,)},
+                         test.get_parent_map([key_delta]))
         self.assertEqual(b'bar\n', next(test.get_record_stream([key_delta],
-            'unordered', True)).get_bytes_as('fulltext'))
+                                                               'unordered', True)).get_bytes_as('fulltext'))
 
     def test_iter_lines_added_or_present_in_keys(self):
         # Lines from the basis are returned, and lines for a given key are only
@@ -2486,7 +2519,7 @@ class TestStacking(KnitTests):
         lines = list(test.iter_lines_added_or_present_in_keys([key1]))
         self.assertEqual([(b"foo\n", key1)], lines)
         self.assertEqual([("iter_lines_added_or_present_in_keys", {key1})],
-            basis.calls)
+                         basis.calls)
         # keys in both are not duplicated:
         test.add_lines(key2, (), [b"bar\n"])
         basis.add_lines(key2, (), [b"bar\n"])
@@ -2521,7 +2554,6 @@ class TestStacking(KnitTests):
     def test_add_mpdiffs(self):
         # records are inserted as normal; add_mpdiff builds on
         # add_lines, so a smoke test should be all that's needed:
-        key = (b'foo',)
         key_basis = (b'bar',)
         key_delta = (b'zaphod',)
         basis, test = self.get_basis_and_test_knit()
@@ -2532,14 +2564,14 @@ class TestStacking(KnitTests):
         source.add_lines(key_delta, (key_basis,), [b'bar\n'])
         diffs = source.make_mpdiffs([key_delta])
         test.add_mpdiffs([(key_delta, (key_basis,),
-            source.get_sha1s([key_delta])[key_delta], diffs[0])])
+                           source.get_sha1s([key_delta])[key_delta], diffs[0])])
         self.assertEqual([("get_parent_map", {key_basis}),
-            ('get_record_stream', [key_basis], 'unordered', True),],
-            basis.calls)
-        self.assertEqual({key_delta:(key_basis,)},
-            test.get_parent_map([key_delta]))
+                          ('get_record_stream', [key_basis], 'unordered', True), ],
+                         basis.calls)
+        self.assertEqual({key_delta: (key_basis,)},
+                         test.get_parent_map([key_delta]))
         self.assertEqual(b'bar\n', next(test.get_record_stream([key_delta],
-            'unordered', True)).get_bytes_as('fulltext'))
+                                                               'unordered', True)).get_bytes_as('fulltext'))
 
     def test_make_mpdiffs(self):
         # Generating an mpdiff across a stacking boundary should detect parent
@@ -2552,13 +2584,13 @@ class TestStacking(KnitTests):
         basis.add_lines(key_right, (), [b'zaphod\n'])
         basis.calls = []
         test.add_lines(key, (key_left, key_right),
-            [b'bar\n', b'foo\n', b'zaphod\n'])
+                       [b'bar\n', b'foo\n', b'zaphod\n'])
         diffs = test.make_mpdiffs([key])
         self.assertEqual([
             multiparent.MultiParent([multiparent.ParentText(0, 0, 0, 1),
-                multiparent.NewText([b'foo\n']),
-                multiparent.ParentText(1, 0, 2, 1)])],
-            diffs)
+                                     multiparent.NewText([b'foo\n']),
+                                     multiparent.ParentText(1, 0, 2, 1)])],
+                         diffs)
         self.assertEqual(3, len(basis.calls))
         self.assertEqual([
             ("get_parent_map", {key_left, key_right}),
@@ -2583,12 +2615,13 @@ class TestNetworkBehaviour(KnitTests):
         vf.add_lines((b'd2',), ((b'd1',),), [b'd2\n'])
         # But heuristics could interfere, so check what happened:
         self.assertEqual(['knit-ft-gz', 'knit-delta-gz', 'knit-delta-gz'],
-            [record.storage_kind for record in
-             vf.get_record_stream([(b'base',), (b'd1',), (b'd2',)],
-                'topological', False)])
+                         [record.storage_kind for record in
+                          vf.get_record_stream([(b'base',), (b'd1',), (b'd2',)],
+                                               'topological', False)])
         # generate a stream of just the deltas include_delta_closure=True,
         # serialise to the network, and check that we get a delta closure on the wire.
-        stream = vf.get_record_stream([(b'd1',), (b'd2',)], 'topological', True)
+        stream = vf.get_record_stream(
+            [(b'd1',), (b'd2',)], 'topological', True)
         netb = [record.get_bytes_as(record.storage_kind) for record in stream]
         # The first bytes should be a memo from _ContentMapGenerator, and the
         # second bytes should be empty (because its a API proxy not something
@@ -2610,7 +2643,7 @@ class TestContentMapGenerator(KnitTests):
         vf.add_lines((b'd2',), ((b'd1',),), [b'd2\n'])
         keys = [(b'd1',), (b'd2',)]
         generator = _VFContentMapGenerator(vf, keys,
-            global_map=vf.get_parent_map(keys))
+                                           global_map=vf.get_parent_map(keys))
         for record in generator.get_record_stream():
             if record.key == (b'd1',):
                 self.assertEqual(b'd1\n', record.get_bytes_as('fulltext'))
@@ -2625,10 +2658,10 @@ class TestContentMapGenerator(KnitTests):
         vf.add_lines((b'd2',), ((b'd1',),), [b'd2\n'])
         keys = [(b'base',), (b'd1',), (b'd2',)]
         generator = _VFContentMapGenerator(vf, keys,
-            global_map=vf.get_parent_map(keys))
+                                           global_map=vf.get_parent_map(keys))
         kinds = {(b'base',): 'knit-delta-closure',
-            (b'd1',): 'knit-delta-closure-ref',
-            (b'd2',): 'knit-delta-closure-ref',
-            }
+                 (b'd1',): 'knit-delta-closure-ref',
+                 (b'd2',): 'knit-delta-closure-ref',
+                 }
         for record in generator.get_record_stream():
             self.assertEqual(kinds[record.key], record.storage_kind)

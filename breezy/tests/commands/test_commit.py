@@ -24,7 +24,7 @@ from breezy.tests import transport_util
 
 
 class TestCommitWithBoundBranch(
-    transport_util.TestCaseWithConnectionHookedTransport):
+        transport_util.TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestCommitWithBoundBranch, self).setUp()
@@ -67,5 +67,5 @@ class TestCommitWithBoundBranch(
         os.chdir('local')
         commit.run(message=u'empty commit', unchanged=True, local=True)
 
-        #it shouldn't open any connections
+        # it shouldn't open any connections
         self.assertEqual(0, len(self.connections))

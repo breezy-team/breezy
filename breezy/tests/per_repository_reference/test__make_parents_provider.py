@@ -39,6 +39,5 @@ class Test_MakeParentsProvider(TestCaseWithRepository):
         fallback_repo = wt_a.branch.repository
         referring_repo.add_fallback_repository(fallback_repo)
         # Now revid1 appears in pp's results.
-        self.assertEqual((b'revid1',), pp.get_parent_map([b'revid2'])[b'revid2'])
-
-
+        self.assertEqual((b'revid1',), pp.get_parent_map(
+            [b'revid2'])[b'revid2'])

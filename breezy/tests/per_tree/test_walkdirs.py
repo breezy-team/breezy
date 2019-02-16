@@ -19,6 +19,7 @@
 import os
 
 from breezy import tests
+from breezy.mutabletree import MutableTree
 from breezy.osutils import has_symlinks
 from breezy.tests.per_tree import TestCaseWithTree
 
@@ -26,36 +27,43 @@ from breezy.tests.per_tree import TestCaseWithTree
 class TestWalkdirs(TestCaseWithTree):
 
     def get_all_subdirs_expected(self, tree, symlinks):
-        dirblocks = [
-            (('', tree.path2id('')),
-             [('0file', '0file', 'file', None, tree.path2id('0file'), 'file'),
-              ('1top-dir', '1top-dir', 'directory', None,
-               tree.path2id('1top-dir'), 'directory'),
-              (u'2utf\u1234file', u'2utf\u1234file', 'file', None,
-               tree.path2id(u'2utf\u1234file'), 'file'),
-              ]),
-            (('1top-dir', tree.path2id('1top-dir')),
-             [('1top-dir/0file-in-1topdir', '0file-in-1topdir',
-               'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file'),
-              ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir',
-               'directory',
-               None if tree.has_versioned_directories() else os.stat(tree.abspath('1top-dir/1dir-in-1topdir')),
-               tree.path2id('1top-dir/1dir-in-1topdir'),
-               'directory' if tree.has_versioned_directories() else None,
-              )]),
-            (('1top-dir/1dir-in-1topdir', tree.path2id('1top-dir/1dir-in-1topdir')),
-             []),
-            ]
+        empty_dirs_present = (tree.has_versioned_directories()
+                              or isinstance(tree, MutableTree))
+        empty_dirs_are_versioned = tree.has_versioned_directories()
+        dirblocks = {}
+
+        dirblocks[''] = [
+            ('0file', '0file', 'file', None,
+                tree.path2id('0file'), 'file'),
+            ('1top-dir', '1top-dir', 'directory', None,
+                tree.path2id('1top-dir'), 'directory'),
+            (u'2utf\u1234file', u'2utf\u1234file', 'file', None,
+                tree.path2id(u'2utf\u1234file'), 'file')]
+
+        dirblocks['1top-dir'] = [
+            ('1top-dir/0file-in-1topdir', '0file-in-1topdir',
+             'file', None, tree.path2id('1top-dir/0file-in-1topdir'), 'file')]
+        if empty_dirs_present:
+            dirblocks['1top-dir'].append(
+                ('1top-dir/1dir-in-1topdir', '1dir-in-1topdir', 'directory',
+                 None if empty_dirs_are_versioned else os.stat(
+                     tree.abspath('1top-dir/1dir-in-1topdir')),
+                 tree.path2id('1top-dir/1dir-in-1topdir'),
+                 'directory' if empty_dirs_are_versioned else None))
+            dirblocks['1top-dir/1dir-in-1topdir'] = []
         if symlinks:
-            dirblocks[0][1].append(('symlink', 'symlink', 'symlink', None,
-                                    tree.path2id('symlink'), 'symlink'))
-        return dirblocks
+            dirblocks[''].append(
+                ('symlink', 'symlink', 'symlink', None,
+                 tree.path2id('symlink'), 'symlink'))
+        return [((path, tree.path2id(path)), list(sorted(entries)))
+                for (path, entries) in sorted(dirblocks.items())]
 
     def test_walkdir_root(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(
             has_symlinks())
         tree.lock_read()
-        expected_dirblocks = self.get_all_subdirs_expected(tree, has_symlinks())
+        expected_dirblocks = self.get_all_subdirs_expected(
+            tree, has_symlinks())
         # test that its iterable by iterating
         result = []
         for dirinfo, block in tree.walkdirs():
@@ -74,12 +82,12 @@ class TestWalkdirs(TestCaseWithTree):
 
     def test_walkdir_subtree(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(
-                has_symlinks())
+            has_symlinks())
         # test that its iterable by iterating
         result = []
         tree.lock_read()
         expected_dirblocks = self.get_all_subdirs_expected(
-                tree, has_symlinks())[1:]
+            tree, has_symlinks())[1:]
         for dirinfo, block in tree.walkdirs('1top-dir'):
             newblock = []
             for row in block:

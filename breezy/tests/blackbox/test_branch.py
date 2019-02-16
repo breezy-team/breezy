@@ -98,13 +98,14 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_from_colocated(self):
         """Branch from a colocated branch into a regular branch."""
-        tree = self.example_branch('a', format='development-colo')
+        os.mkdir('b')
+        tree = self.example_branch('b/a', format='development-colo')
         tree.controldir.create_branch(name='somecolo')
         out, err = self.run_bzr('branch %s,branch=somecolo' %
-            local_path_to_url('a'))
+                                local_path_to_url('b/a'))
         self.assertEqual('', out)
         self.assertEqual('Branched 0 revisions.\n', err)
-        self.assertPathExists("somecolo")
+        self.assertPathExists('a')
 
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
@@ -120,12 +121,12 @@ class TestBranch(tests.TestCaseWithTransport):
             f.seek(-5, os.SEEK_END)
             # Make sure we inject a value different than the one we just read
             if c == b'\xFF':
-                corrupt = 'b\x00'
+                corrupt = b'\x00'
             else:
                 corrupt = b'\xFF'
-            f.write(corrupt) # make sure we corrupt something
+            f.write(corrupt)  # make sure we corrupt something
         self.run_bzr_error(['Corruption while decompressing repository file'],
-                            'branch a b', retcode=3)
+                           'branch a b', retcode=3)
 
     def test_branch_switch_no_branch(self):
         # No branch in the current directory:
@@ -133,7 +134,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.example_branch('a')
         self.make_repository('current')
         self.run_bzr_error(['No WorkingTree exists for'],
-            'branch --switch ../a ../b', working_dir='current')
+                           'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())
@@ -145,7 +146,7 @@ class TestBranch(tests.TestCaseWithTransport):
         self.example_branch('a')
         self.make_branch('current')
         self.run_bzr_error(['No WorkingTree exists for'],
-            'branch --switch ../a ../b', working_dir='current')
+                           'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())
@@ -160,7 +161,7 @@ class TestBranch(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('current')
         c1 = tree.commit('some diverged change')
         self.run_bzr_error(['Cannot switch a branch, only a checkout'],
-            'branch --switch ../a ../b', working_dir='current')
+                           'branch --switch ../a ../b', working_dir='current')
         a = branch.Branch.open('a')
         b = branch.Branch.open('b')
         self.assertEqual(a.last_revision(), b.last_revision())
@@ -280,7 +281,7 @@ class TestBranch(tests.TestCaseWithTransport):
         b = branch.Branch.open('repo/target')
         expected_repo_path = os.path.abspath('repo/target/.bzr/repository')
         self.assertEqual(strip_trailing_slash(b.repository.base),
-            strip_trailing_slash(local_path_to_url(expected_repo_path)))
+                         strip_trailing_slash(local_path_to_url(expected_repo_path)))
 
     def test_branch_no_tree(self):
         self.example_branch('source')
@@ -293,12 +294,12 @@ class TestBranch(tests.TestCaseWithTransport):
         # existing dir with similar files but no .brz dir
         self.build_tree_contents([('b/',)])
         self.build_tree_contents([('b/hello', b'bar')])  # different content
-        self.build_tree_contents([('b/goodbye', b'baz')])# same content
+        self.build_tree_contents([('b/goodbye', b'baz')])  # same content
         # fails without --use-existing-dir
         out, err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: Target directory "b" already exists.\n',
-            err)
+                         err)
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
         # check conflicts
@@ -319,7 +320,7 @@ class TestBranch(tests.TestCaseWithTransport):
     def test_branch_with_post_branch_init_hook(self):
         calls = []
         branch.Branch.hooks.install_named_hook('post_branch_init',
-            calls.append, None)
+                                               calls.append, None)
         self.assertLength(0, calls)
         self.example_branch('a')
         self.assertLength(1, calls)
@@ -329,7 +330,7 @@ class TestBranch(tests.TestCaseWithTransport):
     def test_checkout_with_post_branch_init_hook(self):
         calls = []
         branch.Branch.hooks.install_named_hook('post_branch_init',
-            calls.append, None)
+                                               calls.append, None)
         self.assertLength(0, calls)
         self.example_branch('a')
         self.assertLength(1, calls)
@@ -339,7 +340,7 @@ class TestBranch(tests.TestCaseWithTransport):
     def test_lightweight_checkout_with_post_branch_init_hook(self):
         calls = []
         branch.Branch.hooks.install_named_hook('post_branch_init',
-            calls.append, None)
+                                               calls.append, None)
         self.assertLength(0, calls)
         self.example_branch('a')
         self.assertLength(1, calls)
@@ -348,7 +349,8 @@ class TestBranch(tests.TestCaseWithTransport):
 
     def test_branch_fetches_all_tags(self):
         builder = self.make_branch_builder('source')
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
+            builder)
         source.tags.set_tag('tag-a', rev2)
         source.get_config_stack().set('branch.fetch_tags', True)
         # Now source has a tag not in its ancestry.  Make a branch from it.
@@ -375,20 +377,21 @@ class TestBranchStacked(tests.TestCaseWithTransport):
     def assertRevisionsInBranchRepository(self, revid_list, branch_path):
         repo = branch.Branch.open(branch_path).repository
         self.assertEqual(set(revid_list),
-            repo.has_revisions(revid_list))
+                         repo.has_revisions(revid_list))
 
     def test_branch_stacked_branch_not_stacked(self):
         """Branching a stacked branch is not stacked by default"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='1.9')
+                                               format='1.9')
         trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
-            format='1.9')
+                                                format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
-        work_tree = trunk_tree.branch.controldir.sprout('local').open_workingtree()
+        work_tree = trunk_tree.branch.controldir.sprout(
+            'local').open_workingtree()
         work_tree.commit('moar work plz')
         work_tree.branch.push(branch_tree.branch)
         # branching our local branch gives us a new stacked branch pointing at
@@ -396,34 +399,35 @@ class TestBranchStacked(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
         self.assertEqual('Branched 2 revisions.\n',
-            err)
+                         err)
         # it should have preserved the branch format, and so it should be
         # capable of supporting stacking, but not actually have a stacked_on
         # branch configured
         self.assertRaises(errors.NotStacked,
-            controldir.ControlDir.open('newbranch').open_branch().get_stacked_on_url)
+                          controldir.ControlDir.open('newbranch').open_branch().get_stacked_on_url)
 
     def test_branch_stacked_branch_stacked(self):
         """Asking to stack on a stacked branch does work"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='1.9')
+                                               format='1.9')
         trunk_revid = trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
-            format='1.9')
+                                                format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
-        work_tree = trunk_tree.branch.controldir.sprout('local').open_workingtree()
+        work_tree = trunk_tree.branch.controldir.sprout(
+            'local').open_workingtree()
         branch_revid = work_tree.commit('moar work plz')
         work_tree.branch.push(branch_tree.branch)
         # you can chain branches on from there
         out, err = self.run_bzr(['branch', 'branch', '--stacked', 'branch2'])
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            branch_tree.branch.base, err)
+                         branch_tree.branch.base, err)
         self.assertEqual(branch_tree.branch.base,
-            branch.Branch.open('branch2').get_stacked_on_url())
+                         branch.Branch.open('branch2').get_stacked_on_url())
         branch2_tree = WorkingTree.open('branch2')
         branch2_revid = work_tree.commit('work on second stacked branch')
         work_tree.branch.push(branch2_tree.branch)
@@ -435,15 +439,15 @@ class TestBranchStacked(tests.TestCaseWithTransport):
     def test_branch_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline',
-            format='1.9')
+                                               format='1.9')
         original_revid = trunk_tree.commit('mainline')
         self.assertRevisionInRepository('mainline', original_revid)
         # and a branch from it which is stacked
         out, err = self.run_bzr(['branch', '--stacked', 'mainline',
-            'newbranch'])
+                                 'newbranch'])
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, err)
+                         trunk_tree.branch.base, err)
         self.assertRevisionNotInRepository('newbranch', original_revid)
         new_branch = branch.Branch.open('newbranch')
         self.assertEqual(trunk_tree.branch.base,
@@ -498,7 +502,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
-            self.get_url('target')])
+                                 self.get_url('target')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -507,7 +511,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         self.assertLength(2, self.hpss_connections)
         self.assertLength(33, self.hpss_calls)
         self.expectFailure("branching to the same branch requires VFS access",
-            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+                           self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -516,7 +520,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
-            'local-target'])
+                                 'local-target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -532,13 +536,14 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         for count in range(8):
             t.commit(message='commit %d' % count)
         tree2 = t.branch.controldir.sprout('feature', stacked=True
-            ).open_workingtree()
-        local_tree = t.branch.controldir.sprout('local-working').open_workingtree()
+                                           ).open_workingtree()
+        local_tree = t.branch.controldir.sprout(
+            'local-working').open_workingtree()
         local_tree.commit('feature change')
         local_tree.branch.push(tree2.branch)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('feature'),
-            'local-target'])
+                                 'local-target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
@@ -551,7 +556,8 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
+            builder)
         source.get_config_stack().set('branch.fetch_tags', True)
         source.tags.set_tag('tag-a', rev2)
         source.tags.set_tag('tag-missing', b'missing-rev')
@@ -574,7 +580,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', '--stacked', self.get_url('from'),
-            'local-target'])
+                                 'local-target'])
         # XXX: the number of hpss calls for this case isn't deterministic yet,
         # so we can't easily assert about the number of calls.
         #self.assertLength(XXX, self.hpss_calls)
@@ -587,7 +593,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         self.assertLength(1, self.hpss_connections)
         self.assertLength(0, readvs_of_rix_files)
         self.expectFailure("branching to stacked requires VFS access",
-            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+                           self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_branch_with_ghosts(self):
         self.setup_smart_server_with_call_log()
@@ -598,7 +604,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         t.commit(message='add commit with parent')
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
-            'local-target'])
+                                 'local-target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

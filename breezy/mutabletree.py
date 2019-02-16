@@ -31,7 +31,6 @@ from . import (
 
 from .sixish import (
     text_type,
-    viewvalues,
     )
 
 
@@ -64,6 +63,7 @@ class MutableTree(tree.Tree):
     A mutable tree always has an associated Branch and ControlDir object - the
     branch and bzrdir attributes.
     """
+
     def __init__(self, *args, **kw):
         super(MutableTree, self).__init__(*args, **kw)
         # Is this tree on a case-insensitive or case-preserving file-system?
@@ -89,7 +89,7 @@ class MutableTree(tree.Tree):
         Note that the command line normally calls smart_add instead,
         which can automatically recurse.
 
-        This adds the files to the inventory, so that they will be
+        This adds the files to the tree, so that they will be
         recorded by the next commit.
 
         :param files: List of paths to add, relative to the base of the tree.
@@ -157,22 +157,22 @@ class MutableTree(tree.Tree):
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # avoid circular imports
         from breezy import commit
-        possible_master_transports=[]
+        possible_master_transports = []
         with self.lock_write():
             revprops = commit.Commit.update_revprops(
-                    revprops,
-                    self.branch,
-                    kwargs.pop('authors', None),
-                    kwargs.get('local', False),
-                    possible_master_transports)
+                revprops,
+                self.branch,
+                kwargs.pop('authors', None),
+                kwargs.get('local', False),
+                possible_master_transports)
             # args for wt.commit start at message from the Commit.commit method,
             args = (message, ) + args
             for hook in MutableTree.hooks['start_commit']:
                 hook(self)
             committed_id = commit.Commit().commit(working_tree=self,
-                revprops=revprops,
-                possible_master_transports=possible_master_transports,
-                *args, **kwargs)
+                                                  revprops=revprops,
+                                                  possible_master_transports=possible_master_transports,
+                                                  *args, **kwargs)
             post_hook_params = PostCommitHookParams(self)
             for hook in MutableTree.hooks['post_commit']:
                 hook(post_hook_params)
@@ -289,7 +289,7 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
-    def _observed_sha1(self, file_id, path, sha_and_stat):
+    def _observed_sha1(self, path, sha_and_stat):
         """Tell the tree we have observed a paths sha1.
 
         The intent of this function is to allow trees that have a hashcache to
@@ -299,13 +299,12 @@ class MutableTree(tree.Tree):
 
         The default implementation does nothing.
 
-        :param file_id: The file id
         :param path: The file path
         :param sha_and_stat: The sha 1 and stat result observed.
         :return: None
         """
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """Update the content of a file in the tree.
 
         Note that the file is written in-place rather than being
@@ -339,16 +338,16 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
-        :param file_list: List of zero or more paths.  *NB: these are 
-            interpreted relative to the process cwd, not relative to the 
+        :param file_list: List of zero or more paths.  *NB: these are
+            interpreted relative to the process cwd, not relative to the
             tree.*  (Add and most other tree methods use tree-relative
             paths.)
-        :param action: A reporter to be called with the inventory, parent_ie,
+        :param action: A reporter to be called with the working tree, parent_ie,
             path and kind of the path being added. It may return a file_id if
             a specific one should be used.
-        :param save: Save the inventory after completing the adds. If False
+        :param save: Save the changes after completing the adds. If False
             this provides dry-run functionality by doing the add and not saving
-            the inventory.
+            the changes.
         :return: A tuple - files_added, ignored_files. files_added is the count
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
@@ -399,27 +398,28 @@ class MutableTreeHooks(hooks.Hooks):
         """
         hooks.Hooks.__init__(self, "breezy.mutabletree", "MutableTree.hooks")
         self.add_hook('start_commit',
-            "Called before a commit is performed on a tree. The start commit "
-            "hook is able to change the tree before the commit takes place. "
-            "start_commit is called with the breezy.mutabletree.MutableTree "
-            "that the commit is being performed on.", (1, 4))
+                      "Called before a commit is performed on a tree. The start commit "
+                      "hook is able to change the tree before the commit takes place. "
+                      "start_commit is called with the breezy.mutabletree.MutableTree "
+                      "that the commit is being performed on.", (1, 4))
         self.add_hook('post_commit',
-            "Called after a commit is performed on a tree. The hook is "
-            "called with a breezy.mutabletree.PostCommitHookParams object. "
-            "The mutable tree the commit was performed on is available via "
-            "the mutable_tree attribute of that object.", (2, 0))
+                      "Called after a commit is performed on a tree. The hook is "
+                      "called with a breezy.mutabletree.PostCommitHookParams object. "
+                      "The mutable tree the commit was performed on is available via "
+                      "the mutable_tree attribute of that object.", (2, 0))
         self.add_hook('pre_transform',
-            "Called before a tree transform on this tree. The hook is called "
-            "with the tree that is being transformed and the transform.",
-            (2, 5))
+                      "Called before a tree transform on this tree. The hook is called "
+                      "with the tree that is being transformed and the transform.",
+                      (2, 5))
         self.add_hook('post_build_tree',
-            "Called after a completely new tree is built. The hook is "
-            "called with the tree as its only argument.", (2, 5))
+                      "Called after a completely new tree is built. The hook is "
+                      "called with the tree as its only argument.", (2, 5))
         self.add_hook('post_transform',
-            "Called after a tree transform has been performed on a tree. "
-            "The hook is called with the tree that is being transformed and "
-            "the transform.",
-            (2, 5))
+                      "Called after a tree transform has been performed on a tree. "
+                      "The hook is called with the tree that is being transformed and "
+                      "the transform.",
+                      (2, 5))
+
 
 # install the default hooks into the MutableTree class.
 MutableTree.hooks = MutableTreeHooks()
