@@ -1,6 +1,8 @@
 Git Limitations
 ===============
 
+Breezy's support for Git repositories currently has the following limitations:
+
 * No support for creating annotated tags. pad.lv/1758185
 * No support for gitattributes and the features that depend on it (lfs, eol, etc). pad.lv/1802797
 * Limited support for submodules. pad.lv/402814
