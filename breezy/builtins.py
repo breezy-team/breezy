@@ -1344,6 +1344,7 @@ class cmd_push(Command):
             use_existing_dir=False, directory=None, stacked_on=None,
             stacked=False, strict=None, no_tree=False,
             overwrite_tags=False, lossy=False):
+        from .location import location_to_url
         from .push import _show_push_branch
 
         if overwrite:
@@ -1371,6 +1372,7 @@ class cmd_push(Command):
                 more_warning='Uncommitted changes will not be pushed.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
+            stacked_on = location_to_url(stacked_on, 'read')
             stacked_on = urlutils.normalize_url(stacked_on)
         elif stacked:
             parent_url = br_from.get_parent()
