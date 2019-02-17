@@ -1,0 +1,19 @@
+Description: Actually send API call to Launchpad when updating description.
+Origin: commit, revision id: jelmer@jelmer.uk-20190217020036-9s928ro7xrax17np
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2019-02-17
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190217020036-9s928ro7xrax17np
+
+=== modified file 'breezy/plugins/propose/launchpad.py'
+--- old/breezy/plugins/propose/launchpad.py	2019-02-02 17:36:19 +0000
++++ new/breezy/plugins/propose/launchpad.py	2019-02-17 02:00:36 +0000
+@@ -140,6 +140,7 @@
+ 
+     def set_description(self, description):
+         self._mp.description = description
++        self._mp.lp_save()
+ 
+     def close(self):
+         self._mp.setStatus(status='Rejected')
+
