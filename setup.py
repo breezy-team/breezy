@@ -119,7 +119,7 @@ BREEZY['packages'] = get_breezy_packages()
 
 
 from distutils import log
-from distutils.core import setup
+from setuptools import setup
 from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
