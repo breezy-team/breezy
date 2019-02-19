@@ -16,6 +16,14 @@ if sys.version_info < (2, 7):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
+
+try:
+    import setuptools
+except ImportError:
+    sys.stderr.write("[ERROR] Please install setuptools\n")
+    sys.exit(1)
+
+
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
 # start of the path, so this should find the right one...
@@ -118,7 +126,6 @@ def get_breezy_packages():
 BREEZY['packages'] = get_breezy_packages()
 
 
-from distutils import log
 from setuptools import setup
 from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
