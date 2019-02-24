@@ -1,3 +1,10 @@
+breezy-debian (2.8.26) UNRELEASED; urgency=medium
+
+  * Add a 'vcs:' location resolver that uses the location provided by
+    the package in the current directory.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Feb 2019 02:59:47 +0000
+
 breezy-debian (2.8.25) unstable; urgency=medium
 
   * Support newer versions of Breezy where generate_ids has moved to

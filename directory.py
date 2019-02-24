@@ -92,7 +92,7 @@ def source_package_vcs_url(control):
         raise KeyError
 
 
-class VcsDirectory(object):
+class AptDirectory(object):
     """Simple Bazaar directory service which uses dpkg Vcs-* fields."""
 
     def look_up(self, name, url):
@@ -161,9 +161,9 @@ class DgitDirectory(object):
             # Try the latest version
             version = sorted(urls, key=Version)[-1]
 
-        if not version in urls:
-            raise urlutils.InvalidURL(path=url,
-                    extra='version %s not found' % version)
+        if version not in urls:
+            raise urlutils.InvalidURL(
+                path=url, extra='version %s not found' % version)
 
         if len(urls[version]) < 3:
             raise urlutils.InvalidURL(
@@ -177,6 +177,17 @@ class DgitDirectory(object):
         note("Resolved package URL from Debian package %s/%s: %s",
              name, version, url)
         return url
+
+
+class VcsDirectory(object):
+    """Use local Vcs Directory."""
+
+    def look_up(self, name, url):
+        from debian.deb822 import Deb822
+        with open('debian/control', 'r') as f:
+            source = Deb822(f)
+            vcs, url = source_package_vcs_url(source)
+            return url
 
 
 def upstream_branch_alias(b):

@@ -82,29 +82,36 @@ except ImportError:
         directories,
         )
 
-    directories.register_lazy("apt:", __name__ + '.directory',
-            'VcsDirectory',
-            "Directory that uses Debian Vcs-* control fields to look up branches")
-    directories.register_lazy("dgit:", __name__ + '.directory',
-            'DgitDirectory',
-            "Directory that uses Debian Dgit control fields to look up branches")
+    directories.register_lazy(
+        "apt:", __name__ + '.directory',
+        'AptDirectory',
+        "Directory that uses Vcs-* control fields in apt to look up branches")
+    directories.register_lazy(
+        "dgit:", __name__ + '.directory',
+        'DgitDirectory',
+        "Directory that uses Debian Dgit control fields to look up branches")
+    directories.register_lazy(
+        "vcs:", __name__ + '.directory',
+        'VcsDirectory',
+        "Directory that uses local Debian Vcs-* control fields to look up "
+        "branches")
 
     branch_aliases = getattr(AliasDirectory, "branch_aliases", None)
     if branch_aliases is not None:
-        branch_aliases.register_lazy("upstream",
-                __name__ + ".directory", "upstream_branch_alias",
-                help="upstream branch (for packaging branches)")
+        branch_aliases.register_lazy(
+            "upstream", __name__ + ".directory", "upstream_branch_alias",
+            help="upstream branch (for packaging branches)")
 
     from ...tag import tag_sort_methods
-    tag_sort_methods.register_lazy("debversion",
-        __name__ + ".tagging", "sort_debversion",
+    tag_sort_methods.register_lazy(
+        "debversion", __name__ + ".tagging", "sort_debversion",
         "Sort like Debian versions.")
 
     from ...revisionspec import revspec_registry
-    revspec_registry.register_lazy("package:",
-        __name__ + ".revspec", "RevisionSpec_package")
-    revspec_registry.register_lazy("upstream:",
-        __name__ + ".revspec", "RevisionSpec_upstream")
+    revspec_registry.register_lazy(
+        "package:", __name__ + ".revspec", "RevisionSpec_package")
+    revspec_registry.register_lazy(
+        "upstream:", __name__ + ".revspec", "RevisionSpec_upstream")
 else:
     register_lazy("breezy.directory", "directories", "apt:",
             __name__ + '.directory', 'VcsDirectory',
