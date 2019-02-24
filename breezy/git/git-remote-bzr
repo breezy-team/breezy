@@ -35,7 +35,7 @@ breezy.initialize()
 from breezy.plugin import load_plugins
 load_plugins()
 
-from breezy.plugins.git.git_remote_helper import (
+from breezy.git.git_remote_helper import (
     RemoteHelper,
     open_local_dir,
     open_remote_dir,
