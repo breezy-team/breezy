@@ -23,6 +23,7 @@ from __future__ import absolute_import
 
 from io import BytesIO
 import os
+import subprocess
 
 from dulwich.repo import Repo
 
@@ -88,6 +89,29 @@ class FetchTests(TestCaseWithTransport):
         self.assertTrue(git_sha1 in r.object_store)
         self.assertEqual({
             }, r.get_refs())
+
+
+class ExecuteRemoteHelperTests(TestCaseWithTransport):
+
+    def test_run(self):
+        local_dir = self.make_branch_and_tree('local', format='git').controldir
+        local_path = local_dir.control_transport.local_abspath('.')
+        remote_tree = self.make_branch_and_tree('remote')
+        remote_dir = remote_tree.controldir
+        shortname = 'bzr'
+        remote_helper_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..', 'git-remote-bzr'))
+        env = dict(os.environ)
+        env['GIT_DIR'] = local_path
+        p = subprocess.Popen(
+            ['git-remote-bzr', local_path, remote_dir.user_url],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env)
+        (out, err) = p.communicate(b'capabilities\n')
+        lines = out.splitlines()
+        self.assertIn(b'import', lines)
+        self.assertIn(b'export', lines)
+        self.assertEqual(b'', err)
 
 
 class RemoteHelperTests(TestCaseWithTransport):
