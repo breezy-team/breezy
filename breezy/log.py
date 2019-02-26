@@ -200,13 +200,13 @@ def show_log(branch,
     if isinstance(start_revision, int):
         try:
             start_revision = revisionspec.RevisionInfo(branch, start_revision)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
             raise errors.InvalidRevisionNumber(start_revision)
 
     if isinstance(end_revision, int):
         try:
             end_revision = revisionspec.RevisionInfo(branch, end_revision)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
             raise errors.InvalidRevisionNumber(end_revision)
 
     if end_revision is not None and end_revision.revno == 0:
