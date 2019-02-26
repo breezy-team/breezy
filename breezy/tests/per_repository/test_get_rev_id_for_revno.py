@@ -17,7 +17,6 @@
 """Tests for get_rev_id_for_revno."""
 
 from breezy import errors
-from breezy.repository import RevnoOutOfBounds
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -58,5 +57,5 @@ class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRaises(
-            RevnoOutOfBounds,
+            errors.RevnoOutOfBounds,
             repo.get_rev_id_for_revno, 3, (2, self.revid2))
