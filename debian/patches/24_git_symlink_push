@@ -1,0 +1,97 @@
+Description: Fix pushing of revisions from bzr to git that convert directories to symlinks.
+Origin: commit, revision id: jelmer@jelmer.uk-20190216212956-l1xmtzeawlnrgehd
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2019-02-16
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190216212956-l1xmtzeawlnrgehd
+
+=== modified file 'breezy/git/object_store.py'
+--- old/breezy/git/object_store.py	2019-01-01 21:23:40 +0000
++++ new/breezy/git/object_store.py	2019-02-16 21:29:56 +0000
+@@ -359,7 +359,7 @@
+             continue
+ 
+         if tree.kind(path) != 'directory':
+-            raise AssertionError
++            continue
+ 
+         obj = Tree()
+         for value in tree.iter_child_entries(path):
+@@ -589,7 +589,7 @@
+         for (file_id, revision, expected_sha), chunks in stream:
+             blob = Blob()
+             blob.chunked = chunks
+-            if blob.id != expected_sha and blob.data == "":
++            if blob.id != expected_sha and blob.data == b"":
+                 # Perhaps it's a symlink ?
+                 tree = self.tree_cache.revision_tree(revision)
+                 path = tree.id2path(file_id)
+
+=== modified file 'breezy/git/tests/test_object_store.py'
+--- old/breezy/git/tests/test_object_store.py	2018-11-11 04:08:32 +0000
++++ new/breezy/git/tests/test_object_store.py	2019-02-16 21:29:56 +0000
+@@ -18,6 +18,9 @@
+ 
+ from __future__ import absolute_import
+ 
++import os
++import shutil
++
+ from dulwich.objects import (
+     Blob,
+     Tree,
+@@ -144,11 +147,11 @@
+     def setUp(self):
+         super(BazaarObjectStoreTests, self).setUp()
+         self.branch = self.make_branch(".")
+-        self.branch.lock_write()
+-        self.addCleanup(self.branch.unlock)
+         self.store = BazaarObjectStore(self.branch.repository)
+ 
+     def test_get_blob(self):
++        self.branch.lock_write()
++        self.addCleanup(self.branch.unlock)
+         b = Blob()
+         b.data = b'a\nb\nc\nd\ne\n'
+         self.store.lock_read()
+@@ -167,7 +170,30 @@
+         self.store.lock_read()
+         self.assertEqual(b, self.store[b.id])
+ 
++    def test_directory_converted_to_symlink(self):
++        b = Blob()
++        b.data = b'trgt'
++        self.store.lock_read()
++        self.addCleanup(self.store.unlock)
++        self.assertRaises(KeyError, self.store.__getitem__, b.id)
++        tree = self.branch.controldir.create_workingtree()
++        self.build_tree_contents([
++            ('foo/', ),
++            ('foo/bar', b'a\nb\nc\nd\ne\n')])
++        tree.add(['foo', 'foo/bar'])
++        revid1 = tree.commit('commit 1')
++        shutil.rmtree('foo')
++        os.symlink('trgt', 'foo')
++        revid2 = tree.commit('commit 2')
++        # read locks cache
++        self.assertRaises(KeyError, self.store.__getitem__, b.id)
++        self.store.unlock()
++        self.store.lock_read()
++        self.assertEqual(b, self.store[b.id])
++
+     def test_get_raw(self):
++        self.branch.lock_write()
++        self.addCleanup(self.branch.unlock)
+         b = Blob()
+         b.data = b'a\nb\nc\nd\ne\n'
+         self.store.lock_read()
+@@ -187,6 +213,8 @@
+         self.assertEqual(b.as_raw_string(), self.store.get_raw(b.id)[1])
+ 
+     def test_contains(self):
++        self.branch.lock_write()
++        self.addCleanup(self.branch.unlock)
+         b = Blob()
+         b.data = b'a\nb\nc\nd\ne\n'
+         self.store.lock_read()
+

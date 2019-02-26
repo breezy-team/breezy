@@ -2,6 +2,23 @@ breezy (3.0.0~bzr7290-2) UNRELEASED; urgency=medium
 
   * Add patch 21_lp_set_description: fix setting of descriptions on
     Launchpad proposals.
+  * Add patch 22_print_warnings: cope with spurious warnings
+    during tests.
+  * Add patch 23_homedir_location: fix references to ~/.bazaar in
+    documentation.
+  * Add patch 24_git_symlink_push: support pushing directories
+    being converted to symlinks to Git.
+  * Add patch 24_revno_order: Raise proper error message
+    when passing in out of bounds revnos.
+  * Add patch 25_segmentsurl: print proper error when
+    segment paths without = is used.
+  * Add patch 27_pkgimport_conf: remove references to
+    deleted pkgimport.conf
+  * Add patch 28_cat_revision_git: print proper error
+    when attempting to use 'brz cat-revision' on git repositories.
+  * Add patch 29_stacked_on_location: Support directory references
+    in --stacked-on parameters.
+  * Add patch 30_git_fixes: fix git-remote-brz imports.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 17 Feb 2019 04:21:00 +0000
 

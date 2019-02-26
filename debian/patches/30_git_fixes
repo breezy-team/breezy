@@ -1,0 +1,78 @@
+Origin: commit, revision id: jelmer@jelmer.uk-20190224035622-1klmn7tnp45tisfx
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Last-Update: 2019-02-24
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190224035622-1klmn7tnp45tisfx
+
+=== modified file 'breezy/git/cache.py'
+--- old/breezy/git/cache.py	2018-11-12 01:41:38 +0000
++++ new/breezy/git/cache.py	2019-02-24 03:46:16 +0000
+@@ -613,11 +613,9 @@
+ 
+     def open(self, transport):
+         try:
+-            basepath = transport.local_abspath(".").encode(osutils._fs_enc)
++            basepath = transport.local_abspath(".")
+         except bzr_errors.NotLocalUrl:
+             basepath = get_cache_dir()
+-        if not isinstance(basepath, str):
+-            raise TypeError(basepath)
+         try:
+             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
+         except ImportError:
+
+=== modified file 'breezy/git/git-remote-bzr'
+--- old/breezy/git/git-remote-bzr	2018-03-26 22:28:24 +0000
++++ new/breezy/git/git-remote-bzr	2019-02-24 03:45:58 +0000
+@@ -35,7 +35,7 @@
+ from breezy.plugin import load_plugins
+ load_plugins()
+ 
+-from breezy.plugins.git.git_remote_helper import (
++from breezy.git.git_remote_helper import (
+     RemoteHelper,
+     open_local_dir,
+     open_remote_dir,
+
+=== modified file 'breezy/git/tests/test_git_remote_helper.py'
+--- old/breezy/git/tests/test_git_remote_helper.py	2018-11-21 03:39:28 +0000
++++ new/breezy/git/tests/test_git_remote_helper.py	2019-02-24 03:56:22 +0000
+@@ -23,6 +23,7 @@
+ 
+ from io import BytesIO
+ import os
++import subprocess
+ 
+ from dulwich.repo import Repo
+ 
+@@ -90,6 +91,29 @@
+             }, r.get_refs())
+ 
+ 
++class ExecuteRemoteHelperTests(TestCaseWithTransport):
++
++    def test_run(self):
++        local_dir = self.make_branch_and_tree('local', format='git').controldir
++        local_path = local_dir.control_transport.local_abspath('.')
++        remote_tree = self.make_branch_and_tree('remote')
++        remote_dir = remote_tree.controldir
++        shortname = 'bzr'
++        remote_helper_path = os.path.abspath(
++            os.path.join(os.path.dirname(__file__), '..', 'git-remote-bzr'))
++        env = dict(os.environ)
++        env['GIT_DIR'] = local_path
++        p = subprocess.Popen(
++            ['git-remote-bzr', local_path, remote_dir.user_url],
++            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
++            stderr=subprocess.PIPE, env=env)
++        (out, err) = p.communicate(b'capabilities\n')
++        lines = out.splitlines()
++        self.assertIn(b'import', lines)
++        self.assertIn(b'export', lines)
++        self.assertEqual(b'', err)
++
++
+ class RemoteHelperTests(TestCaseWithTransport):
+ 
+     def setUp(self):
+

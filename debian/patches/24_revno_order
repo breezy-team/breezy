@@ -1,0 +1,444 @@
+Origin: commit, https://code.launchpad.net/~jelmer/brz/revno-order, revision: 7299
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/701953
+Last-Update: 2019-02-26
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
+
+=== modified file 'breezy/bzr/branch.py'
+--- old/breezy/bzr/branch.py	2019-01-04 20:53:40 +0000
++++ new/breezy/bzr/branch.py	2019-02-15 18:57:38 +0000
+@@ -649,7 +649,7 @@
+         with self.lock_read():
+             last_revno, last_revision_id = self.last_revision_info()
+             if revno <= 0 or revno > last_revno:
+-                raise errors.NoSuchRevision(self, revno)
++                raise errors.RevnoOutOfBounds(revno, (0, last_revno))
+ 
+             if history is not None:
+                 return history[revno - 1]
+
+=== modified file 'breezy/bzr/remote.py'
+--- old/breezy/bzr/remote.py	2019-02-15 14:00:31 +0000
++++ new/breezy/bzr/remote.py	2019-02-15 19:10:32 +0000
+@@ -18,6 +18,7 @@
+ 
+ import bz2
+ import os
++import re
+ import sys
+ import zlib
+ 
+@@ -1379,6 +1380,20 @@
+         except errors.UnknownSmartMethod:
+             self._client._medium._remember_remote_is_before((1, 17))
+             return self._get_rev_id_for_revno_vfs(revno, known_pair)
++        except errors.UnknownErrorFromSmartServer as e:
++            # Older versions of Bazaar/Breezy (<< 3.0.0) would raise a
++            # ValueError instead of returning revno-outofbounds
++            if len(e.error_tuple) < 3:
++                raise
++            if e.error_tuple[:2] != (b'error', b'ValueError'):
++                raise
++            m = re.match(
++                b"requested revno \(([0-9]+)\) is later than given "
++                b"known revno \(([0-9]+)\)", e.error_tuple[2])
++            if not m:
++                raise
++            raise errors.RevnoOutOfBounds(
++                int(m.group(1)), (0, int(m.group(2))))
+         if response[0] == b'ok':
+             return True, response[1]
+         elif response[0] == b'history-incomplete':
+@@ -3872,6 +3887,9 @@
+             return _mod_revision.NULL_REVISION
+         with self.lock_read():
+             last_revision_info = self.last_revision_info()
++            if revno < 0:
++                raise errors.RevnoOutOfBounds(
++                    revno, (0, last_revision_info[0]))
+             ok, result = self.repository.get_rev_id_for_revno(
+                 revno, last_revision_info)
+             if ok:
+@@ -3883,7 +3901,7 @@
+             parent_map = self.repository.get_parent_map([missing_parent])
+             if missing_parent in parent_map:
+                 missing_parent = parent_map[missing_parent]
+-            raise errors.RevisionNotPresent(missing_parent, self.repository)
++            raise errors.NoSuchRevision(self, missing_parent)
+ 
+     def _read_last_revision_info(self):
+         response = self._call(
+@@ -4373,6 +4391,10 @@
+ error_translators.register(b'nosuchrevision',
+                            lambda err, find, get_path: NoSuchRevision(
+                                find('repository'), err.error_args[0]))
++error_translators.register(
++    b'revno-outofbounds',
++    lambda err, find, get_path: errors.RevnoOutOfBounds(
++        err.error_args[0], (err.error_args[1], err.error_args[2])))
+ 
+ 
+ def _translate_nobranch_error(err, find, get_path):
+
+=== modified file 'breezy/bzr/smart/repository.py'
+--- old/breezy/bzr/smart/repository.py	2018-11-16 18:33:17 +0000
++++ new/breezy/bzr/smart/repository.py	2019-02-15 18:57:38 +0000
+@@ -53,7 +53,10 @@
+     SmartServerRequest,
+     SuccessfulSmartServerResponse,
+     )
+-from ...repository import _strip_NULL_ghosts, network_format_registry
++from ...repository import (
++    _strip_NULL_ghosts,
++    network_format_registry,
++    )
+ from ... import revision as _mod_revision
+ from ..versionedfile import (
+     ChunkedContentFactory,
+@@ -328,13 +331,16 @@
+         try:
+             found_flag, result = repository.get_rev_id_for_revno(
+                 revno, known_pair)
+-        except errors.RevisionNotPresent as err:
+-            if err.revision_id != known_pair[1]:
++        except errors.NoSuchRevision as err:
++            if err.revision != known_pair[1]:
+                 raise AssertionError(
+                     'get_rev_id_for_revno raised RevisionNotPresent for '
+-                    'non-initial revision: ' + err.revision_id)
+-            return FailedSmartServerResponse(
+-                (b'nosuchrevision', err.revision_id))
++                    'non-initial revision: ' + err.revision)
++            return FailedSmartServerResponse(
++                (b'nosuchrevision', err.revision))
++        except errors.RevnoOutOfBounds as e:
++            return FailedSmartServerResponse(
++                (b'revno-outofbounds', e.revno, e.minimum, e.maximum))
+         if found_flag:
+             return SuccessfulSmartServerResponse((b'ok', result))
+         else:
+
+=== modified file 'breezy/errors.py'
+--- old/breezy/errors.py	2018-11-11 04:08:32 +0000
++++ new/breezy/errors.py	2019-02-15 18:57:38 +0000
+@@ -2452,3 +2452,13 @@
+ 
+     _fmt = ('Cannot store uncommitted changes because this branch already'
+             ' stores uncommitted changes.')
++
++
++class RevnoOutOfBounds(InternalBzrError):
++
++    _fmt = ("The requested revision number %(revno)d is outside of the "
++            "expected boundaries (%(minimum)d <= %(maximum)d).")
++
++    def __init__(self, revno, bounds):
++        InternalBzrError.__init__(
++            self, revno=revno, minimum=bounds[0], maximum=bounds[1])
+
+=== modified file 'breezy/git/revspec.py'
+--- old/breezy/git/revspec.py	2019-02-03 01:42:11 +0000
++++ new/breezy/git/revspec.py	2019-02-15 18:57:38 +0000
+@@ -107,7 +107,8 @@
+     def _match_on(self, branch, revs):
+         loc = self.spec.find(':')
+         git_sha1 = self.spec[loc + 1:].encode("utf-8")
+-        if len(git_sha1) > 40 or not valid_git_sha1(git_sha1):
++        if (len(git_sha1) > 40 or len(git_sha1) < 4 or
++                not valid_git_sha1(git_sha1)):
+             raise InvalidRevisionSpec(self.user_spec, branch)
+         from . import (
+             lazy_check_versions,
+
+=== modified file 'breezy/log.py'
+--- old/breezy/log.py	2018-11-17 16:43:29 +0000
++++ new/breezy/log.py	2019-02-26 09:04:28 +0000
+@@ -200,13 +200,13 @@
+     if isinstance(start_revision, int):
+         try:
+             start_revision = revisionspec.RevisionInfo(branch, start_revision)
+-        except errors.NoSuchRevision:
++        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+             raise errors.InvalidRevisionNumber(start_revision)
+ 
+     if isinstance(end_revision, int):
+         try:
+             end_revision = revisionspec.RevisionInfo(branch, end_revision)
+-        except errors.NoSuchRevision:
++        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+             raise errors.InvalidRevisionNumber(end_revision)
+ 
+     if end_revision is not None and end_revision.revno == 0:
+
+=== modified file 'breezy/repository.py'
+--- old/breezy/repository.py	2019-02-04 19:39:30 +0000
++++ new/breezy/repository.py	2019-02-15 18:57:38 +0000
+@@ -923,16 +923,14 @@
+         partial_history = [known_revid]
+         distance_from_known = known_revno - revno
+         if distance_from_known < 0:
+-            raise ValueError(
+-                'requested revno (%d) is later than given known revno (%d)'
+-                % (revno, known_revno))
++            raise errors.RevnoOutOfBounds(revno, (0, known_revno))
+         try:
+             _iter_for_revno(
+                 self, partial_history, stop_index=distance_from_known)
+         except errors.RevisionNotPresent as err:
+             if err.revision_id == known_revid:
+                 # The start revision (known_revid) wasn't found.
+-                raise
++                raise errors.NoSuchRevision(self, known_revid)
+             # This is a stacked repository with no fallbacks, or a there's a
+             # left-hand ghost.  Either way, even though the revision named in
+             # the error isn't in this repo, we know it's the next step in this
+
+=== modified file 'breezy/revisionspec.py'
+--- old/breezy/revisionspec.py	2018-11-11 04:08:32 +0000
++++ new/breezy/revisionspec.py	2019-02-26 08:09:10 +0000
+@@ -73,7 +73,7 @@
+         if not self._has_revno and self.rev_id is not None:
+             try:
+                 self._revno = self.branch.revision_id_to_revno(self.rev_id)
+-            except errors.NoSuchRevision:
++            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+                 self._revno = None
+             self._has_revno = True
+         return self._revno
+@@ -405,7 +405,7 @@
+             try:
+                 revision_id = branch.dotted_revno_to_revision_id(match_revno,
+                                                                  _cache_reverse=True)
+-            except errors.NoSuchRevision:
++            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
+             else:
+                 # there is no traditional 'revno' for dotted-decimal revnos.
+@@ -422,7 +422,7 @@
+                     revno = last_revno + revno + 1
+             try:
+                 revision_id = branch.get_rev_id(revno)
+-            except errors.NoSuchRevision:
++            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
+         return branch, revno, revision_id
+ 
+@@ -515,7 +515,7 @@
+         revno = last_revno - offset + 1
+         try:
+             revision_id = context_branch.get_rev_id(revno)
+-        except errors.NoSuchRevision:
++        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+             raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
+         return revno, revision_id
+ 
+@@ -567,7 +567,7 @@
+             revno = r.revno - 1
+             try:
+                 revision_id = branch.get_rev_id(revno, revs)
+-            except errors.NoSuchRevision:
++            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
+                 raise errors.InvalidRevisionSpec(self.user_spec,
+                                                  branch)
+         return RevisionInfo(branch, revno, revision_id)
+
+=== modified file 'breezy/tests/per_branch/__init__.py'
+--- old/breezy/tests/per_branch/__init__.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_branch/__init__.py	2019-02-15 18:22:39 +0000
+@@ -155,6 +155,7 @@
+         'create_clone',
+         'commit',
+         'dotted_revno_to_revision_id',
++        'get_rev_id',
+         'get_revision_id_to_revno_map',
+         'hooks',
+         'http',
+
+=== added file 'breezy/tests/per_branch/test_get_rev_id.py'
+--- old/breezy/tests/per_branch/test_get_rev_id.py	1970-01-01 00:00:00 +0000
++++ new/breezy/tests/per_branch/test_get_rev_id.py	2019-02-26 09:25:20 +0000
+@@ -0,0 +1,40 @@
++# Copyright (C) 2007, 2009-2012, 2016 Canonical Ltd
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++
++"""Tests for Branch.get_rev_id."""
++
++from breezy.errors import RevnoOutOfBounds
++from breezy.revision import NULL_REVISION
++from breezy.tests import TestCaseWithTransport
++
++
++class TestGetRevid(TestCaseWithTransport):
++
++    def test_empty_branch(self):
++        # on an empty branch we want (0, NULL_REVISION)
++        branch = self.make_branch('branch')
++        self.assertEqual(NULL_REVISION, branch.get_rev_id(0))
++        self.assertRaises(RevnoOutOfBounds, branch.get_rev_id, 1)
++        self.assertRaises(RevnoOutOfBounds, branch.get_rev_id, -1)
++
++    def test_non_empty_branch(self):
++        # after the second commit we want (2, 'second-revid')
++        tree = self.make_branch_and_tree('branch')
++        revid1 = tree.commit('1st post')
++        revid2 = tree.commit('2st post', allow_pointless=True)
++        self.assertEqual(revid2, tree.branch.get_rev_id(2))
++        self.assertEqual(revid1, tree.branch.get_rev_id(1))
++        self.assertRaises(RevnoOutOfBounds, tree.branch.get_rev_id, 3)
+
+=== modified file 'breezy/tests/per_repository/__init__.py'
+--- old/breezy/tests/per_repository/__init__.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/per_repository/__init__.py	2019-02-15 18:22:39 +0000
+@@ -118,6 +118,7 @@
+         'test_fetch',
+         'test_file_graph',
+         'test_get_parent_map',
++        'test_get_rev_id_for_revno',
+         'test_has_same_location',
+         'test_has_revisions',
+         'test_locking',
+
+=== added file 'breezy/tests/per_repository/test_get_rev_id_for_revno.py'
+--- old/breezy/tests/per_repository/test_get_rev_id_for_revno.py	1970-01-01 00:00:00 +0000
++++ new/breezy/tests/per_repository/test_get_rev_id_for_revno.py	2019-02-26 09:25:20 +0000
+@@ -0,0 +1,61 @@
++# Copyright (C) 2009 Canonical Ltd
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++
++"""Tests for get_rev_id_for_revno."""
++
++from breezy import errors
++from breezy.tests.per_repository_reference import (
++    TestCaseWithExternalReferenceRepository,
++    )
++
++
++class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
++
++    def setUp(self):
++        super(TestGetRevIdForRevno, self).setUp()
++        self.tree = self.make_branch_and_tree('base')
++        self.revid1 = self.tree.commit('one')
++        self.revid2 = self.tree.commit('two')
++        self.revid3 = self.tree.commit('three')
++
++    def test_success(self):
++        repo = self.tree.branch.repository
++        repo.lock_read()
++        self.addCleanup(repo.unlock)
++        self.assertEqual(
++            (True, self.revid1),
++            repo.get_rev_id_for_revno(1, (3, self.revid3)))
++        self.assertEqual(
++            (True, self.revid2),
++            repo.get_rev_id_for_revno(2, (3, self.revid3)))
++
++    def test_unknown_revision(self):
++        tree2 = self.make_branch_and_tree('other')
++        unknown_revid = tree2.commit('other')
++        repo = self.tree.branch.repository
++        repo.lock_read()
++        self.addCleanup(repo.unlock)
++        self.assertRaises(
++            errors.NoSuchRevision,
++            repo.get_rev_id_for_revno, 1, (3, unknown_revid))
++
++    def test_known_pair_is_after(self):
++        repo = self.tree.branch.repository
++        repo.lock_read()
++        self.addCleanup(repo.unlock)
++        self.assertRaises(
++            errors.RevnoOutOfBounds,
++            repo.get_rev_id_for_revno, 3, (2, self.revid2))
+
+=== modified file 'breezy/tests/test_remote.py'
+--- old/breezy/tests/test_remote.py	2019-02-15 14:00:31 +0000
++++ new/breezy/tests/test_remote.py	2019-02-26 08:08:16 +0000
+@@ -2991,6 +2991,31 @@
+             repo.get_rev_id_for_revno, 5, (42, b'rev-foo'))
+         self.assertFinished(client)
+ 
++    def test_outofbounds(self):
++        repo, client = self.setup_fake_client_and_repository('quack')
++        client.add_expected_call(
++            b'Repository.get_rev_id_for_revno', (b'quack/',
++                                                 43, (42, b'rev-foo')),
++            b'error', (b'revno-outofbounds', 43, 0, 42))
++        self.assertRaises(
++            errors.RevnoOutOfBounds,
++            repo.get_rev_id_for_revno, 43, (42, b'rev-foo'))
++        self.assertFinished(client)
++
++    def test_outofbounds_old(self):
++        # Older versions of bzr didn't support RevnoOutOfBounds
++        repo, client = self.setup_fake_client_and_repository('quack')
++        client.add_expected_call(
++            b'Repository.get_rev_id_for_revno', (b'quack/',
++                                                 43, (42, b'rev-foo')),
++            b'error', (
++                b'error', b'ValueError',
++                b'requested revno (43) is later than given known revno (42)'))
++        self.assertRaises(
++            errors.RevnoOutOfBounds,
++            repo.get_rev_id_for_revno, 43, (42, b'rev-foo'))
++        self.assertFinished(client)
++
+     def test_branch_fallback_locking(self):
+         """RemoteBranch.get_rev_id takes a read lock, and tries to call the
+         get_rev_id_for_revno verb.  If the verb is unknown the VFS fallback
+@@ -3918,6 +3943,12 @@
+         expected_error = errors.UnknownErrorFromSmartServer(err)
+         self.assertEqual(expected_error, translated_error)
+ 
++    def test_RevnoOutOfBounds(self):
++        translated_error = self.translateTuple(
++            ((b'revno-outofbounds', 5, 0, 3)), path=b'path')
++        expected_error = errors.RevnoOutOfBounds(5, (0, 3))
++        self.assertEqual(expected_error, translated_error)
++
+ 
+ class TestErrorTranslationRobustness(TestErrorTranslationBase):
+     """Unit tests for breezy.bzr.remote._translate_error's robustness.
+
+=== modified file 'doc/en/release-notes/brz-3.0.txt'
+--- old/doc/en/release-notes/brz-3.0.txt	2019-02-14 06:21:45 +0000
++++ new/doc/en/release-notes/brz-3.0.txt	2019-02-15 18:41:43 +0000
+@@ -230,6 +230,10 @@
+ * Don't report .git files as unknown files.
+   (Jelmer Vernooĳ, Debian Bug #921240)
+ 
++* Return consist errors from ``Branch.get_revid`` and
++  ``Repository.get_revid_for_revno`` when the revision
++  number is invalid. (Jelmer Vernooĳ, #701953)
++
+ Documentation
+ *************
+ 
+

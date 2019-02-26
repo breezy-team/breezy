@@ -1,0 +1,65 @@
+Origin: commit, revision id: jelmer@jelmer.uk-20190217044045-krri9hpdrgo3zx52
+Author: Jelmer Vernooĳ <jelmer@jelmer.uk>
+Bug: https://launchpad.net/bugs/296592
+Last-Update: 2019-02-17
+Applied-Upstream: no
+X-Bzr-Revision-Id: jelmer@jelmer.uk-20190217044045-krri9hpdrgo3zx52
+
+=== modified file 'breezy/builtins.py'
+--- old/breezy/builtins.py	2019-02-09 03:23:20 +0000
++++ new/breezy/builtins.py	2019-02-17 04:40:45 +0000
+@@ -1344,6 +1344,7 @@
+             use_existing_dir=False, directory=None, stacked_on=None,
+             stacked=False, strict=None, no_tree=False,
+             overwrite_tags=False, lossy=False):
++        from .location import location_to_url
+         from .push import _show_push_branch
+ 
+         if overwrite:
+@@ -1371,6 +1372,7 @@
+                 more_warning='Uncommitted changes will not be pushed.')
+         # Get the stacked_on branch, if any
+         if stacked_on is not None:
++            stacked_on = location_to_url(stacked_on, 'read')
+             stacked_on = urlutils.normalize_url(stacked_on)
+         elif stacked:
+             parent_url = br_from.get_parent()
+
+=== modified file 'breezy/tests/blackbox/test_push.py'
+--- old/breezy/tests/blackbox/test_push.py	2018-11-16 12:08:41 +0000
++++ new/breezy/tests/blackbox/test_push.py	2019-02-16 04:57:50 +0000
+@@ -22,6 +22,7 @@
+ from breezy import (
+     branch,
+     controldir,
++    directory_service,
+     errors,
+     osutils,
+     tests,
+@@ -498,6 +499,25 @@
+         self.assertPublished(branch_tree.last_revision(),
+                              trunk_tree.branch.base)
+ 
++    def test_push_new_branch_stacked_on(self):
++        """Pushing a new branch with --stacked-on can use directory URLs."""
++        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
++        class FooDirectory(object):
++            def look_up(self, name, url, purpose=None):
++                if url == 'foo:':
++                    return trunk_tree.branch.base
++                return url
++        directory_service.directories.register('foo:', FooDirectory, 'Foo directory')
++        self.addCleanup(directory_service.directories.remove, 'foo:')
++        # we publish branch_tree with a reference to the mainline.
++        out, err = self.run_bzr(['push', '--stacked-on', 'foo:',
++                                 self.get_url('published')], working_dir='branch')
++        self.assertEqual('', out)
++        self.assertEqual('Created new stacked branch referring to %s.\n' %
++                         trunk_tree.branch.base, err)
++        self.assertPublished(branch_tree.last_revision(),
++                             trunk_tree.branch.base)
++
+     def test_push_new_branch_stacked_uses_parent_when_no_public_url(self):
+         """When the parent has no public url the parent is used as-is."""
+         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+
