@@ -2,6 +2,7 @@ breezy-debian (2.8.26) UNRELEASED; urgency=medium
 
   * Add a 'vcs:' location resolver that uses the location provided by
     the package in the current directory.
+  * Bump bzr version to 3.0.0~bzr7290; required for MemoryTags class.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Feb 2019 02:59:47 +0000
 
