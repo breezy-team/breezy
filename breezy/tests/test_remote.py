@@ -3008,7 +3008,8 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         client.add_expected_call(
             b'Repository.get_rev_id_for_revno', (b'quack/',
                                                  43, (42, b'rev-foo')),
-            b'error', (b'error', b'ValueError',
+            b'error', (
+                b'error', b'ValueError',
                 b'requested revno (43) is later than given known revno (42)'))
         self.assertRaises(
             errors.RevnoOutOfBounds,
