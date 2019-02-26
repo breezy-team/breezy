@@ -73,7 +73,7 @@ class RevisionInfo(object):
         if not self._has_revno and self.rev_id is not None:
             try:
                 self._revno = self.branch.revision_id_to_revno(self.rev_id)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 self._revno = None
             self._has_revno = True
         return self._revno
@@ -405,7 +405,7 @@ class RevisionSpec_revno(RevisionSpec):
             try:
                 revision_id = branch.dotted_revno_to_revision_id(match_revno,
                                                                  _cache_reverse=True)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
@@ -515,7 +515,7 @@ class RevisionSpec_last(RevisionSpec):
         revno = last_revno - offset + 1
         try:
             revision_id = context_branch.get_rev_id(revno)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
         return revno, revision_id
 
@@ -567,7 +567,7 @@ class RevisionSpec_before(RevisionSpec):
             revno = r.revno - 1
             try:
                 revision_id = branch.get_rev_id(revno, revs)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
