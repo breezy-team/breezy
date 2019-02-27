@@ -14,7 +14,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190216025726-o88of3wtukmeou32
                            {"key2": "val2"}), split_segment_parameters(
              "foo/base,key1=val1/other/elements,key2=val2"))
 +        self.assertRaises(urlutils.InvalidURL, split_segment_parameters,
-+            "foo/base,key1")
++                          "foo/base,key1")
          # TODO: Check full URLs as well as relative references
  
      def test_win32_strip_local_trailing_slash(self):

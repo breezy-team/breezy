@@ -19,6 +19,7 @@ breezy (3.0.0~bzr7290-2) UNRELEASED; urgency=medium
   * Add patch 29_stacked_on_location: Support directory references
     in --stacked-on parameters.
   * Add patch 30_git_fixes: fix git-remote-brz imports.
+  * Drop patch 20_fix_stream_buffering: applied upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 17 Feb 2019 04:21:00 +0000
 
