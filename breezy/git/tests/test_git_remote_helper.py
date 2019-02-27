@@ -30,6 +30,7 @@ from dulwich.repo import Repo
 from ...tests import (
     TestCaseWithTransport,
     )
+from ...tests.features import PathFeature
 
 from ..object_store import get_object_store
 from ..git_remote_helper import (
@@ -45,6 +46,11 @@ def map_to_git_sha1(dir, bzr_revid):
     object_store = get_object_store(dir.open_repository())
     with object_store.lock_read():
         return object_store._lookup_revision_sha1(bzr_revid)
+
+
+git_remote_bzr_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'git-remote-bzr'))
+git_remote_bzr_feature = PathFeature(git_remote_bzr_path)
 
 
 class OpenLocalDirTests(TestCaseWithTransport):
@@ -94,23 +100,22 @@ class FetchTests(TestCaseWithTransport):
 class ExecuteRemoteHelperTests(TestCaseWithTransport):
 
     def test_run(self):
+        self.requireFeature(git_remote_bzr_feature)
         local_dir = self.make_branch_and_tree('local', format='git').controldir
         local_path = local_dir.control_transport.local_abspath('.')
         remote_tree = self.make_branch_and_tree('remote')
         remote_dir = remote_tree.controldir
         shortname = 'bzr'
-        remote_helper_path = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '..', 'git-remote-bzr'))
         env = dict(os.environ)
         env['GIT_DIR'] = local_path
         p = subprocess.Popen(
-            ['git-remote-bzr', local_path, remote_dir.user_url],
+            [git_remote_bzr_path, local_path, remote_dir.user_url],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=env)
         (out, err) = p.communicate(b'capabilities\n')
         lines = out.splitlines()
         self.assertIn(b'import', lines)
-        self.assertIn(b'export', lines)
+        self.assertIn(b'push', lines)
         self.assertEqual(b'', err)
 
 
