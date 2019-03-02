@@ -18,6 +18,8 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import patiencediff
+
 from breezy import (
     branch as _mod_branch,
     cleanup,
@@ -26,7 +28,6 @@ from breezy import (
     graph as _mod_graph,
     merge3,
     osutils,
-    patiencediff,
     revision as _mod_revision,
     textfile,
     trace,

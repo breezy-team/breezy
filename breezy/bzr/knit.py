@@ -58,12 +58,12 @@ import os
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import patiencediff
 import gzip
 
 from breezy import (
     debug,
     diff,
-    patiencediff,
     static_tuple,
     trace,
     tsort,

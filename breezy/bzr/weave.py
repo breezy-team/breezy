@@ -68,6 +68,7 @@ from __future__ import absolute_import
 
 from copy import copy
 import os
+import patiencediff
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
@@ -83,7 +84,6 @@ from ..errors import (
     UnavailableRepresentation,
     )
 from ..osutils import dirname, sha, sha_strings, split_lines
-from .. import patiencediff
 from ..revision import NULL_REVISION
 from ..sixish import (
     BytesIO,
