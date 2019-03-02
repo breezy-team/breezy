@@ -22,6 +22,7 @@ from ... import (
     errors,
     hooks,
     registry,
+    urlutils,
     )
 
 
@@ -77,6 +78,16 @@ class LabelsUnsupported(errors.BzrError):
 
 class PrerequisiteBranchUnsupported(errors.BzrError):
     """Prerequisite branch not supported by this hoster."""
+
+    def __init__(self, hoster):
+        errors.BzrError.__init__(self)
+        self.hoster = hoster
+
+
+class HosterLoginRequired(errors.BzrError):
+    """Action requires hoster login credentials."""
+
+    _fmt = "Action requires credentials for hosting site %(hoster)r."""
 
     def __init__(self, hoster):
         errors.BzrError.__init__(self)
@@ -175,6 +186,8 @@ class Hoster(object):
         :param base_branch: branch to derive the new branch from
         :param new_branch: branch to publish
         :return: resulting branch, public URL
+        :raise HosterLoginRequired: Action requires a hoster login, but none is
+            known.
         """
         raise NotImplementedError(self.publish)
 
@@ -213,9 +226,15 @@ class Hoster(object):
         raise NotImplementedError(self.hosts)
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_branch(cls, branch):
         """Create a Hoster object if this hoster knows about a branch."""
-        raise NotImplementedError(cls.probe)
+        url = urlutils.split_segment_parameters(branch.user_url)[0]
+        return cls.probe_from_url(url)
+
+    @classmethod
+    def probe_from_url(cls, url):
+        """Create a Hoster object if this hoster knows about a URL."""
+        raise NotImplementedError(cls.probe_from_url)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
 
@@ -225,6 +244,8 @@ class Hoster(object):
         :param status: Only yield proposals with this status
             (one of: 'open', 'closed', 'merged', 'all')
         :return: Iterator over MergeProposal objects
+        :raise HosterLoginRequired: Action requires a hoster login, but none is
+            known.
         """
         raise NotImplementedError(self.iter_my_proposals)
 
@@ -245,7 +266,7 @@ def get_hoster(branch, possible_hosters=None):
                 return hoster
     for name, hoster_cls in hosters.items():
         try:
-            hoster = hoster_cls.probe(branch)
+            hoster = hoster_cls.probe_from_branch(branch)
         except UnsupportedHoster:
             pass
         else:

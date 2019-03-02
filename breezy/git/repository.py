@@ -348,9 +348,9 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, roundtrip_revid, verifiers = mapping.import_commit(
-                o, mapping.revision_id_foreign_to_bzr)
-            yield o.id, rev.revision_id, roundtrip_revid
+            revid = mapping.revision_id_foreign_to_bzr(o)
+            roundtrip_revid = mapping.get_revision_id(o)
+            yield o.id, revid, (roundtrip_revid if revid != roundtrip_revid else None)
 
     def all_revision_ids(self):
         ret = set()
@@ -454,13 +454,9 @@ class LocalGitRepository(GitRepository):
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
-        rev, roundtrip_revid, verifiers = mapping.import_commit(
-            commit, mapping.revision_id_foreign_to_bzr)
+        revid = mapping.get_revision_id(commit)
         # FIXME: check testament before doing this?
-        if roundtrip_revid:
-            return roundtrip_revid
-        else:
-            return rev.revision_id
+        return revid
 
     def has_signature_for_revision_id(self, revision_id):
         """Check whether a GPG signature is present for this revision.

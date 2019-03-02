@@ -46,12 +46,14 @@ from breezy import (
     controldir,
     errors,
     filters as _mod_filters,
-    generate_ids,
     merge,
     revision as _mod_revision,
     transform,
     transport,
     views,
+    )
+from breezy.bzr import (
+    generate_ids,
     )
 """)
 
@@ -1082,7 +1084,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         if not self.supports_setting_file_ids():
             raise SettingFileIdUnsupported()
         with self.lock_tree_write():
-            # for compatability
+            # for compatibility
             if file_id is None:
                 raise ValueError(
                     'WorkingTree.set_root_id with fileid=None')

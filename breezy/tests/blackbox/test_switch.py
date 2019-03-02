@@ -347,7 +347,7 @@ class TestSwitch(TestCaseWithTransport):
         tree = branch.create_checkout('tree', lightweight=True)
 
         class FooLookup(object):
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 return 'foo-' + name
         directories.register('foo:', FooLookup, 'Create branches named foo-')
         self.addCleanup(directories.remove, 'foo:')

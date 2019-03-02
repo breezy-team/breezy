@@ -117,7 +117,7 @@ def _update_url_scheme(url):
 
 class LaunchpadDirectory(object):
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""
         return self._resolve(url)
 

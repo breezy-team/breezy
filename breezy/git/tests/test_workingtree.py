@@ -91,6 +91,29 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.tree._ignoremanager = None
         self.assertTrue(self.tree.is_ignored('a'))
 
+    def test_add_submodule_dir(self):
+        subtree = self.make_branch_and_tree('asub', format='git')
+        subtree.commit('Empty commit')
+        self.tree.add(['asub'])
+        with self.tree.lock_read():
+            entry = self.tree.index[b'asub']
+            self.assertEqual(entry.mode, S_IFGITLINK)
+        self.assertEqual([], list(subtree.unknowns()))
+
+    def test_add_submodule_file(self):
+        os.mkdir('.git/modules')
+        subbranch = self.make_branch('.git/modules/asub', format='git-bare')
+        os.mkdir('asub')
+        with open('asub/.git', 'w') as f:
+            f.write('gitdir: ../.git/modules/asub\n')
+        subtree = _mod_workingtree.WorkingTree.open('asub')
+        subtree.commit('Empty commit')
+        self.tree.add(['asub'])
+        with self.tree.lock_read():
+            entry = self.tree.index[b'asub']
+            self.assertEqual(entry.mode, S_IFGITLINK)
+        self.assertEqual([], list(subtree.unknowns()))
+
 
 class GitWorkingTreeFileTests(TestCaseWithTransport):
 

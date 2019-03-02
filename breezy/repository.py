@@ -24,7 +24,6 @@ from breezy import (
     config,
     controldir,
     debug,
-    generate_ids,
     graph,
     osutils,
     revision as _mod_revision,
@@ -182,10 +181,6 @@ class CommitBuilder(object):
             repository.get_inventory.
         """
         raise NotImplementedError(self.finish_inventory)
-
-    def _gen_revision_id(self):
-        """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
     def _generate_revision_if_needed(self, revision_id):
         """Create a revision id if None was supplied.

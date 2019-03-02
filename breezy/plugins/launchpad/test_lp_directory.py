@@ -397,7 +397,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         class FooService(object):
             """A directory service that maps the name to a FILE url"""
 
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 if 'lp:///apt' == url:
                     return target_branch.base.rstrip('/')
                 return '!unexpected look_up value!'

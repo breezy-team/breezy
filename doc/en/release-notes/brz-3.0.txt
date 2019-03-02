@@ -93,6 +93,9 @@ New Features
  * The 'fastimport' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
+ * The ``grep`` plugin has been merged into Breezy.
+   (Parth Malwankar, Martin Packman, Jelmer Vernooĳ)
+
  * The 'stats' plugin is now bundled with Breezy.
    (Jelmer Vernooĳ)
 
@@ -227,6 +230,9 @@ Bug Fixes
 * Restore absolute URLs in branch reference URLs. This is
   needed for backwards compatibility with Bazaar.
   (Jelmer Vernooĳ, #1803845)
+
+* Don't report .git files as unknown files.
+  (Jelmer Vernooĳ, Debian Bug #921240)
 
 Documentation
 *************

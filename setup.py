@@ -60,7 +60,7 @@ META_INFO = {
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'fastimport>=0.9.8',
-        'dulwich>=0.19.1',
+        'dulwich>=0.19.11',
         ],
     'extras_require': {
         'fastimport': [],
