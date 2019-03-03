@@ -92,7 +92,6 @@ class MemoryTransport(transport.Transport):
         result._dirs = self._dirs
         result._symlinks = self._symlinks
         result._files = self._files
-        result._symlinks = self._symlinks
         result._locks = self._locks
         return result
 
