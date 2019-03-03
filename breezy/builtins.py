@@ -454,11 +454,11 @@ class cmd_cat_revision(Command):
 
         b = controldir.ControlDir.open_containing_tree_or_branch(directory)[1]
 
-        revisions = b.repository.revisions
+        revisions = getattr(b.repository, "revisions", None)
         if revisions is None:
             raise errors.BzrCommandError(
                 gettext('Repository %r does not support '
-                        'access to raw revision texts'))
+                        'access to raw revision texts') % b.repository)
 
         with b.repository.lock_read():
             # TODO: jam 20060112 should cat-revision always output utf-8?
