@@ -599,7 +599,8 @@ class TestUrlToPath(TestCase):
         self.assertEqual(("foo/base,key1=val1/other/elements",
                           {"key2": "val2"}), split_segment_parameters(
             "foo/base,key1=val1/other/elements,key2=val2"))
-        self.assertRaises(urlutils.InvalidURL, split_segment_parameters,
+        self.assertRaises(
+            urlutils.InvalidURL, split_segment_parameters,
             "foo/base,key1")
         # TODO: Check full URLs as well as relative references
 
