@@ -5421,10 +5421,10 @@ class cmd_uncommit(Command):
         else:
             self.add_cleanup(b.lock_write().unlock)
         return self._run(b, tree, dry_run, verbose, revision, force,
-                         local, keep_tags)
+                         local, keep_tags, location)
 
     def _run(self, b, tree, dry_run, verbose, revision, force, local,
-             keep_tags):
+             keep_tags, location):
         from .log import log_formatter, show_log
         from .uncommit import uncommit
 
@@ -5478,10 +5478,16 @@ class cmd_uncommit(Command):
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
-        self.outf.write(
-            gettext('You can restore the old tip by running:\n'
-                    '  brz pull . -r revid:%s\n')
-            % last_rev_id.decode('utf-8'))
+        if location != '.':
+            self.outf.write(
+                gettext('You can restore the old tip by running:\n'
+                        '  brz pull -d %s %s -r revid:%s\n')
+                % (location, location, last_rev_id.decode('utf-8')))
+        else:
+            self.outf.write(
+                gettext('You can restore the old tip by running:\n'
+                        '  brz pull . -r revid:%s\n')
+                % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):

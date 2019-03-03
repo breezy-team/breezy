@@ -246,6 +246,20 @@ You can restore the old tip by running:
   brz pull . -r revid:a2
 """)
 
+    def test_uncommit_shows_pull_with_location(self):
+        wt = self.create_simple_tree()
+
+        script = ScriptRunner()
+        script.run_script(self, """
+$ brz uncommit --force tree
+    2 ...
+      second commit
+...
+The above revision(s) will be removed.
+You can restore the old tip by running:
+  brz pull -d tree tree -r revid:a2
+""")
+
     def test_uncommit_octopus_merge(self):
         # Check that uncommit keeps the pending merges in the same order
         # though it will also filter out ones in the ancestry
