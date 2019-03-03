@@ -119,11 +119,13 @@ class TestTransport(tests.TestCase):
         try:
             transport.get_transport_from_url('ssh://fooserver/foo')
         except errors.UnsupportedProtocol as e:
-            self.assertEqual('Unsupported protocol'
-                             ' for url "ssh://fooserver/foo":'
-                             ' bzr supports bzr+ssh to operate over ssh,'
-                             ' use "bzr+ssh://fooserver/foo".',
-                             str(e))
+            self.assertEqual(
+                'Unsupported protocol'
+                ' for url "ssh://fooserver/foo":'
+                ' Use bzr+ssh for Bazaar operations over SSH, '
+                'e.g. "bzr+ssh://fooserver/foo". Use git+ssh '
+                'for Git operations over SSH, e.g. "git+ssh://fooserver/foo".',
+                str(e))
         else:
             self.fail('Did not raise UnsupportedProtocol')
 
