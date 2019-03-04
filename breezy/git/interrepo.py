@@ -192,7 +192,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return False
         return self._commit_needs_fetching(sha_id)
 
-    def _missing_revisions(self, stop_revisions, depth=None):
+    def missing_revisions(self, stop_revisions, depth=None):
         """Find the revisions that are missing from the target repository.
 
         :param stop_revisions: Revisions to check for (tuples with
@@ -231,7 +231,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                             new_stop_revids[revid] = revid_depth
                 stop_revids = set()
                 parent_map = graph.get_parent_map(viewkeys(new_stop_revids))
-                for revid, parent_revids in viewvalues(parent_map):
+                for revid, parent_revids in viewitems(parent_map):
                     stop_revids.update(
                         [(parent_revid, new_stop_revids[revid] + 1)
                          for parent_revid in parent_revids])
@@ -305,7 +305,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     raise NoPushSupport(self.source, self.target, self.mapping,
                                         bzr_revid)
         with self.source_store.lock_read():
-            todo = list(self._missing_revisions(revs, depth=depth))[:limit]
+            todo = list(self.missing_revisions(revs, depth=depth))[:limit]
             revidmap = {}
             pb = ui.ui_factory.nested_progress_bar()
             try:
