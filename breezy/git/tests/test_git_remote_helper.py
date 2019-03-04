@@ -108,6 +108,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         shortname = 'bzr'
         env = dict(os.environ)
         env['GIT_DIR'] = local_path
+        env['PYTHONPATH'] = ':'.join(sys.path)
         p = subprocess.Popen(
             [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
