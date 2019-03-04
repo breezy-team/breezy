@@ -99,10 +99,9 @@ class TestTreeWithoutSymlinks(per_tree.TestCaseWithTree):
         result_tree = result_dir.open_workingtree()
         self.assertFalse(result_tree.supports_symlinks())
         self.assertPathDoesNotExist('b/symlink')
-        # Even though 'symlink' does not exist, the tree does not have any delta
         basis_tree = self.branch.basis_tree()
         self.assertTrue(basis_tree.has_filename('symlink'))
         with result_tree.lock_read():
             self.assertEqual(
-                [],
-                list(result_tree.iter_changes(basis_tree)))
+                [('symlink', 'symlink')],
+                [c[1] for c in result_tree.iter_changes(basis_tree)])

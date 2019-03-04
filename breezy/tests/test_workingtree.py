@@ -474,8 +474,7 @@ class TestAutoResolve(TestCaseWithTransport):
                 os.symlink = os_symlink
         self.assertContainsRe(
             log.getvalue(),
-            b'bzr: warning: Unable to create symlink "foo" '
-            b'on this platform')
+            b'Unable to create symlink "foo" on this filesystem')
 
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')

@@ -1600,24 +1600,18 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.build_tree(['foo'])
         wt.add(['foo'])
         wt.commit("one")
+        self.overrideAttr(osutils, 'supports_symlinks', lambda p: False)
         tt = TreeTransform(wt)
         self.addCleanup(tt.finalize)
         foo_trans_id = tt.trans_id_tree_path("foo")
         tt.delete_contents(foo_trans_id)
         log = BytesIO()
         trace.push_log_file(log)
-        os_symlink = getattr(os, 'symlink', None)
-        os.symlink = None
-        try:
-            tt.create_symlink("bar", foo_trans_id)
-            tt.apply()
-        finally:
-            if os_symlink:
-                os.symlink = os_symlink
+        tt.create_symlink("bar", foo_trans_id)
+        tt.apply()
         self.assertContainsRe(
             log.getvalue(),
-            'bzr: warning: Unable to create symlink "foo" '
-            'on this platform')
+            'Unable to create symlink "foo" on this filesystem')
 
     def test_dir_to_file(self):
         wt = self.make_branch_and_tree('.')
@@ -2857,8 +2851,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                 os.symlink = os_symlink
         self.assertContainsRe(
             log.getvalue(),
-            'bzr: warning: Ignoring "foo" as symlinks are not supported '
-            'on this platform')
+            'Ignoring "foo" as symlinks are not supported on this filesystem')
 
     def test_transform_conflicts(self):
         revision_tree = self.create_tree()

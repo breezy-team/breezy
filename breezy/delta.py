@@ -142,8 +142,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
                 delta.added.append((path[1], file_id, kind[1]))
             else:
                 if kind[0] == 'symlink' and not new_tree.supports_symlinks():
-                    trace.warning('bzr: warning: Ignoring "%s" as symlinks '
-                        'are not supported on this platform.' % (path[0],))
+                    trace.warning('Ignoring "%s" as symlinks '
+                        'are not supported on this filesystem.' % (path[0],))
                 else:
                     delta.removed.append((path[0], file_id, kind[0]))
         elif fully_present[0] is False:

@@ -1405,8 +1405,7 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'brz: warning: Unable to create symlink "%s" on '
-                'this filesystem.' % (path,))
+                'Unable to create symlink "%s" on this filesystem.' % (path,))
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
