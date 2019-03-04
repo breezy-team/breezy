@@ -2347,7 +2347,7 @@ class TestEnvironmentErrors(tests.TestCase):
 class SupportsExecutableTests(tests.TestCaseInTempDir):
 
     def test_returns_bool(self):
-        self.assertIsInstance(osutils.supports_executable(self.test_dir), bool)
+        self.assertIsInstance(osutils.fs_supports_executable(self.test_dir), bool)
 
 
 class GetFsTypeTests(tests.TestCaseInTempDir):

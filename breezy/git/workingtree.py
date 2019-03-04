@@ -214,7 +214,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         config_stack = self.repository._git.get_config_stack()
         self.trust_executable_bit = config_stack.get_boolean(('core', ), 'filemode', default=None)
         if self.trust_executable_bit is None:
-            self.trust_executable_bit = osutils.supports_executable(self.basedir)
+            self.trust_executable_bit = osutils.fs_supports_executable(self.basedir)
 
     def merge_modified(self):
         return {}

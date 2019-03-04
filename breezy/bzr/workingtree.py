@@ -167,7 +167,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         config_stack = self.get_config_stack()
         self.trust_executable_bit = config_stack.get('trust_executable_bit')
         if self.trust_executable_bit is None:
-            self.trust_executable_bit = osutils.supports_executable(self.basedir)
+            self.trust_executable_bit = osutils.fs_supports_executable(self.basedir)
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(
