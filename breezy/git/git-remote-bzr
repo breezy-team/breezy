@@ -32,6 +32,8 @@ signal.signal(signal.SIGINT, handle_sigint)
 import breezy
 breezy.initialize()
 
+from breezy.sixish import PY3
+
 from breezy.plugin import load_plugins
 load_plugins()
 
@@ -46,4 +48,7 @@ parser = optparse.OptionParser()
 (shortname, url) = args
 
 helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
-helper.process(sys.stdin, sys.stdout)
+if PY3:
+    helper.process(sys.stdin.buffer, sys.stdout.buffer)
+else:
+    helper.process(sys.stdin, sys.stdout)
