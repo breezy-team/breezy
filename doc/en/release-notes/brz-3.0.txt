@@ -85,6 +85,9 @@ External Compatibility Breaks
    longer performed, since there are no longer
    any automated imports. (Jelmer Vernooĳ)
 
+ * ``setuptools`` is now required to build and install Breezy.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 
