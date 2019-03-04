@@ -194,7 +194,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return False
         return self._commit_needs_fetching(sha_id)
 
-    def _missing_revisions(self, stop_revisions, depth=None):
+    def missing_revisions(self, stop_revisions, depth=None):
         """Find the revisions that are missing from the target repository.
 
         :param stop_revisions: Revisions to check for (tuples with
@@ -340,7 +340,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         self.source, self.target, self.mapping, bzr_revid
                     )
         with self.source_store.lock_read():
-            todo = list(self._missing_revisions(revs, depth=depth))[:limit]
+            todo = list(self.missing_revisions(revs, depth=depth))[:limit]
             revidmap = {}
             with ui.ui_factory.nested_progress_bar() as pb:
                 object_generator = MissingObjectsIterator(
