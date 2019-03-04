@@ -24,6 +24,7 @@ from __future__ import absolute_import
 from io import BytesIO
 import os
 import subprocess
+import sys
 
 from dulwich.repo import Repo
 
@@ -108,7 +109,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
         env = dict(os.environ)
         env['GIT_DIR'] = local_path
         p = subprocess.Popen(
-            [git_remote_bzr_path, local_path, remote_dir.user_url],
+            [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=env)
         (out, err) = p.communicate(b'capabilities\n')
