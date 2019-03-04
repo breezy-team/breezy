@@ -261,3 +261,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
     def kind(self, p):
         stat_value = self._file_transport.stat(p)
         return osutils.file_kind_from_stat_mode(stat_value.st_mode)
+
+    def get_symlink_target(self, path):
+        with self.lock_read():
+            return self._file_transport.readlink(path)

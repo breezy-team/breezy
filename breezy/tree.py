@@ -186,7 +186,8 @@ class Tree(object):
         """See InterTree.iter_changes"""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
-                                      extra_trees, require_versioned, want_unversioned=want_unversioned)
+                                      extra_trees, require_versioned,
+                                      want_unversioned=want_unversioned)
 
     def conflicts(self):
         """Get a list of the conflicts in the tree.

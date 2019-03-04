@@ -65,9 +65,6 @@ from . import mutabletree
 from .trace import mutter, note
 
 
-ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
-
-
 class SettingFileIdUnsupported(errors.BzrError):
 
     _fmt = "This format does not support setting file ids."
@@ -122,6 +119,9 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     @property
     def control_transport(self):
         return self._transport
+
+    def supports_symlinks(self):
+        return osutils.supports_symlinks(self.basedir)
 
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.

@@ -18,8 +18,10 @@
 
 
 from breezy import (
+    osutils,
     tests,
     )
+from breezy.git.branch import GitBranch
 from breezy.tests import (
     per_tree,
     )
@@ -33,6 +35,13 @@ from breezy.tests import (
 
 def get_entry(tree, path):
     return next(tree.iter_entries_by_dir(specific_files=[path]))[1]
+
+
+class TestSymlinkSupportFunction(per_tree.TestCaseWithTree):
+
+    def test_supports_symlinks(self):
+        self.tree = self.make_branch_and_tree('.')
+        self.assertIn(self.tree.supports_symlinks(), [True, False])
 
 
 class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
@@ -65,3 +74,35 @@ class TestTreeWithSymlinks(per_tree.TestCaseWithTree):
         entry = get_entry(self.tree, 'symlink')
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
+
+
+class TestTreeWithoutSymlinks(per_tree.TestCaseWithTree):
+
+    def setUp(self):
+        super(TestTreeWithoutSymlinks, self).setUp()
+        self.branch = self.make_branch('a')
+        mem_tree = self.branch.create_memorytree()
+        with mem_tree.lock_write():
+            mem_tree._file_transport.symlink('source', 'symlink')
+            mem_tree.add(['', 'symlink'])
+            rev1 = mem_tree.commit('rev1')
+        self.assertPathDoesNotExist('a/symlink')
+
+    def test_clone_skips_symlinks(self):
+        if isinstance(self.branch, (GitBranch,)):
+            # TODO(jelmer): Fix this test for git repositories
+            raise TestSkipped(
+                'git trees do not honor osutils.supports_symlinks yet')
+        self.overrideAttr(osutils, 'supports_symlinks', lambda p: False)
+        # This should not attempt to create any symlinks
+        result_dir = self.branch.controldir.sprout('b')
+        result_tree = result_dir.open_workingtree()
+        self.assertFalse(result_tree.supports_symlinks())
+        self.assertPathDoesNotExist('b/symlink')
+        # Even though 'symlink' does not exist, the tree does not have any delta
+        basis_tree = self.branch.basis_tree()
+        self.assertTrue(basis_tree.has_filename('symlink'))
+        with result_tree.lock_read():
+            self.assertEqual(
+                [],
+                list(result_tree.iter_changes(basis_tree)))

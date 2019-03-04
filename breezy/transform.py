@@ -1227,6 +1227,7 @@ class DiskTreeTransform(TreeTransformBase):
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
         self._creation_mtime = None
+        self._create_symlinks = osutils.supports_symlinks(self._limbodir)
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1396,7 +1397,7 @@ class DiskTreeTransform(TreeTransformBase):
         target is a bytestring.
         See also new_symlink.
         """
-        if osutils.supports_symlinks(self._limbodir):
+        if self._create_symlinks:
             os.symlink(target, self._limbo_name(trans_id))
         else:
             try:
@@ -1404,8 +1405,8 @@ class DiskTreeTransform(TreeTransformBase):
             except KeyError:
                 path = None
             trace.warning(
-                'bzr: warning: Unable to create symlink "%s" on '
-                'this platform/filesystem.' % (path,))
+                'brz: warning: Unable to create symlink "%s" on '
+                'this filesystem.' % (path,))
         # We add symlink to _new_contents even if they are unsupported
         # and not created. These entries are subsequently used to avoid
         # conflicts on platforms that don't support symlink
