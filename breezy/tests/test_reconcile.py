@@ -38,14 +38,14 @@ class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):
         child = bzrdir.BzrDirMetaFormat1().initialize('child')
         self.assertRaises(errors.NoRepositoryPresent, child.open_repository)
         reconciler = Reconciler(child)
-        reconciler.reconcile()
+        result = reconciler.reconcile()
         # smoke test for reconcile appears to work too.
         reconcile(child)
         # no inconsistent parents should have been found
         # but the values should have been set.
-        self.assertEqual(0, reconciler.inconsistent_parents)
+        self.assertEqual(0, result.inconsistent_parents)
         # and no garbage inventories
-        self.assertEqual(0, reconciler.garbage_inventories)
+        self.assertEqual(0, result.garbage_inventories)
 
 
 class TestReconciler(tests.TestCaseWithTransport):
@@ -53,20 +53,20 @@ class TestReconciler(tests.TestCaseWithTransport):
     def test_reconciler_with_no_branch(self):
         repo = self.make_repository('repo')
         reconciler = Reconciler(repo.controldir)
-        reconciler.reconcile()
+        result = reconciler.reconcile()
         # no inconsistent parents should have been found
         # but the values should have been set.
-        self.assertEqual(0, reconciler.inconsistent_parents)
+        self.assertEqual(0, result.inconsistent_parents)
         # and no garbage inventories
-        self.assertEqual(0, reconciler.garbage_inventories)
-        self.assertIs(None, reconciler.fixed_branch_history)
+        self.assertEqual(0, result.garbage_inventories)
+        self.assertIs(None, result.fixed_branch_history)
 
     def test_reconciler_finds_branch(self):
         a_branch = self.make_branch('a_branch')
         reconciler = Reconciler(a_branch.controldir)
-        reconciler.reconcile()
+        result = reconciler.reconcile()
 
         # It should have checked the repository, and the branch
-        self.assertEqual(0, reconciler.inconsistent_parents)
-        self.assertEqual(0, reconciler.garbage_inventories)
-        self.assertIs(False, reconciler.fixed_branch_history)
+        self.assertEqual(0, result.inconsistent_parents)
+        self.assertEqual(0, result.garbage_inventories)
+        self.assertIs(False, result.fixed_branch_history)

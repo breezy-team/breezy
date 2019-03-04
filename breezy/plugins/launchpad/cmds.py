@@ -85,7 +85,7 @@ class cmd_launchpad_open(Command):
         trace.note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
-                                # otherwise brz.exe lacks this module
+            # otherwise brz.exe lacks this module
             webbrowser.open(web_url)
 
 
@@ -140,7 +140,7 @@ class cmd_launchpad_login(Command):
             account.set_lp_login(name)
             if verbose:
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
-                                                                        (name,))
+                                (name,))
 
 
 class cmd_launchpad_logout(Command):
@@ -167,24 +167,6 @@ class cmd_launchpad_logout(Command):
                 old_username)
 
 
-# XXX: cmd_launchpad_mirror is untested
-class cmd_launchpad_mirror(Command):
-    __doc__ = """Ask Launchpad to mirror a branch now."""
-
-    aliases = ['lp-mirror']
-    takes_args = ['location?']
-
-    def run(self, location='.'):
-        from . import lp_api
-        from .lp_registration import LaunchpadService
-        branch, _ = _mod_branch.Branch.open_containing(location)
-        service = LaunchpadService()
-        launchpad = lp_api.login(service)
-        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
-                create_missing=False)
-        lp_branch.lp.requestMirror()
-
-
 class cmd_lp_propose_merge(Command):
     __doc__ = """Propose merging a branch on Launchpad.
 
@@ -206,6 +188,7 @@ class cmd_lp_propose_merge(Command):
     unspecified type, and request "review-team" to perform a "qa" review.
     """
 
+    hidden = True
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
                      Option('message', short_name='m', type=text_type,
@@ -215,7 +198,7 @@ class cmd_lp_propose_merge(Command):
                                   'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
                      ListOption('review', short_name='R', type=text_type,
-                            help='Requested reviewer and optional type.')]
+                                help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']
 
@@ -284,10 +267,11 @@ class cmd_lp_find_proposal(Command):
                 webbrowser.open(lp_api.canonical_url(mp))
 
     def _find_proposals(self, revision_id, pb):
-        from . import (lp_api, lp_registration)
+        from launchpadlib import uris
+        from . import lp_api
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
-        launchpad = lp_api.login(lp_registration.LaunchpadService(),
-                                 version='devel')
+        lp_base_url = uris.LPNET_SERVICE_ROOT
+        launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
         pb.update(gettext('Finding proposals'))
         return list(launchpad.branches.getMergeProposals(
-                    merged_revision=revision_id))
+                    merged_revision=revision_id.decode('utf-8')))

@@ -16,7 +16,12 @@
 
 """Tests for bzrdir implementations - push."""
 
-from ...errors import LossyPushToSameVCS
+from ...errors import (
+    LossyPushToSameVCS,
+    TagsNotSupported,
+    )
+from ...revision import NULL_REVISION
+from .. import TestNotApplicable
 
 from breezy.tests.per_controldir import (
     TestCaseWithControlDir,
@@ -39,7 +44,33 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(tree.branch, result.source_branch)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
         self.assertEqual(dir.open_branch().base,
-            tree.branch.get_push_location())
+                         tree.branch.get_push_location())
+
+    def test_push_new_branch_fetch_tags(self):
+        builder = self.make_branch_builder('from')
+        builder.start_series()
+        rev_1 = builder.build_snapshot(None, [
+            ('add', ('', None, 'directory', '')),
+            ('add', ('filename', None, 'file', b'content'))])
+        rev_2 = builder.build_snapshot(
+            [rev_1], [('modify', ('filename', b'new-content\n'))])
+        rev_3 = builder.build_snapshot(
+            [rev_1], [('modify', ('filename', b'new-new-content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        try:
+            branch.tags.set_tag('atag', rev_2)
+        except TagsNotSupported:
+            raise TestNotApplicable('source format does not support tags')
+
+        dir = self.make_repository('target').controldir
+        branch.get_config().set_user_option('branch.fetch_tags', True)
+        result = dir.push_branch(branch)
+        self.assertEqual(
+            set([rev_1, rev_2, rev_3]),
+            set(result.source_branch.repository.all_revision_ids()))
+        self.assertEqual(
+            {'atag': rev_2}, result.source_branch.tags.get_tag_dict())
 
     def test_push_new_branch_lossy(self):
         tree, rev_1 = self.create_simple_tree()
@@ -53,7 +84,7 @@ class TestPush(TestCaseWithControlDir):
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.branch.base, result.source_branch.base)
         self.assertEqual(dir.open_branch().base,
-            result.target_branch.base)
+                         result.target_branch.base)
 
     def test_push_incremental(self):
         tree, rev1 = self.create_simple_tree()
@@ -64,7 +95,7 @@ class TestPush(TestCaseWithControlDir):
         rev_2 = tree.commit('two')
         result = dir.push_branch(tree.branch)
         self.assertEqual(tree.last_revision(),
-            result.branch_push_result.new_revid)
+                         result.branch_push_result.new_revid)
         self.assertEqual(2, result.branch_push_result.new_revno)
         self.assertEqual(tree.branch.base, result.source_branch.base)
         self.assertEqual(dir.open_branch().base, result.target_branch.base)

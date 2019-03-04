@@ -58,6 +58,7 @@ class TreeDelta(object):
 
     The lists are normally sorted when the delta is created.
     """
+
     def __init__(self):
         self.added = []
         self.removed = []
@@ -72,12 +73,12 @@ class TreeDelta(object):
         if not isinstance(other, TreeDelta):
             return False
         return self.added == other.added \
-               and self.removed == other.removed \
-               and self.renamed == other.renamed \
-               and self.modified == other.modified \
-               and self.unchanged == other.unchanged \
-               and self.kind_changed == other.kind_changed \
-               and self.unversioned == other.unversioned
+            and self.removed == other.removed \
+            and self.renamed == other.renamed \
+            and self.modified == other.modified \
+            and self.unchanged == other.unchanged \
+            and self.kind_changed == other.kind_changed \
+            and self.unversioned == other.unversioned
 
     def __ne__(self, other):
         return not (self == other)
@@ -86,8 +87,8 @@ class TreeDelta(object):
         return "TreeDelta(added=%r, removed=%r, renamed=%r," \
             " kind_changed=%r, modified=%r, unchanged=%r," \
             " unversioned=%r)" % (self.added,
-            self.removed, self.renamed, self.kind_changed, self.modified,
-            self.unchanged, self.unversioned)
+                                  self.removed, self.renamed, self.kind_changed, self.modified,
+                                  self.unchanged, self.unversioned)
 
     def has_changed(self):
         return bool(self.modified
@@ -126,9 +127,9 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
 
     for (file_id, path, content_change, versioned, parent_id, name, kind,
          executable) in new_tree.iter_changes(old_tree, want_unchanged,
-            specific_files, extra_trees=extra_trees,
-            require_versioned=require_versioned,
-            want_unversioned=want_unversioned):
+                                              specific_files, extra_trees=extra_trees,
+                                              require_versioned=require_versioned,
+                                              want_unversioned=want_unversioned):
         if versioned == (False, False):
             delta.unversioned.append((path[1], None, kind[1]))
             continue
@@ -140,7 +141,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             if fully_present[1] is True:
                 delta.added.append((path[1], file_id, kind[1]))
             else:
-                if kind[0] == 'symlink' and not osutils.has_symlinks():
+                if kind[0] == 'symlink' and not new_tree.supports_symlinks():
                     trace.warning('bzr: warning: Ignoring "%s" as symlinks '
                         'are not supported on this platform.' % (path[0],))
                 else:
@@ -169,6 +170,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta.removed.sort()
     delta.added.sort()
     delta.renamed.sort()
+
     def missing_key(change):
         return (change[0] or '', change[1])
     delta.missing.sort(key=missing_key)
@@ -206,6 +208,7 @@ class _ChangeReporter(object):
         if output_file is not None:
             if output is not None:
                 raise BzrError('Cannot specify both output and output_file')
+
             def output(fmt, *args):
                 output_file.write((fmt % args) + '\n')
         self.output = output
@@ -220,10 +223,10 @@ class _ChangeReporter(object):
                              'deleted': 'D',
                              'missing': '!',
                              }
-        self.versioned_map = {'added': '+', # versioned target
-                              'unchanged': ' ', # versioned in both
-                              'removed': '-', # versioned in source
-                              'unversioned': '?', # versioned in neither
+        self.versioned_map = {'added': '+',  # versioned target
+                              'unchanged': ' ',  # versioned in both
+                              'removed': '-',  # versioned in source
+                              'unversioned': '?',  # versioned in neither
                               }
         self.unversioned_filter = unversioned_filter
         if classify:
@@ -259,7 +262,7 @@ class _ChangeReporter(object):
         if paths[1] == '' and versioned == 'added' and self.suppress_root_add:
             return
         if self.view_files and not osutils.is_inside_any(self.view_files,
-            paths[1]):
+                                                         paths[1]):
             return
         if versioned == 'unversioned':
             # skip ignored unversioned files if needed.
@@ -273,7 +276,7 @@ class _ChangeReporter(object):
         # ( the path is different OR
         #   the kind is different)
         if (versioned == 'unchanged' and
-            (renamed or modified == 'kind changed')):
+                (renamed or modified == 'kind changed')):
             if renamed:
                 # on a rename, we show old and new
                 old_path, path = paths
@@ -327,6 +330,7 @@ def report_changes(change_iterator, reporter):
         (False, True): 'added',
         (False, False): 'unversioned',
         }
+
     def path_key(change):
         if change[1][0] is not None:
             path = change[1][0]
@@ -339,7 +343,7 @@ def report_changes(change_iterator, reporter):
         # files are "renamed" if they are moved or if name changes, as long
         # as it had a value
         if None not in name and None not in parent_id and\
-            (name[0] != name[1] or parent_id[0] != parent_id[1]):
+                (name[0] != name[1] or parent_id[0] != parent_id[1]):
             renamed = True
         else:
             renamed = False
@@ -365,7 +369,7 @@ def report_changes(change_iterator, reporter):
 
 
 def report_delta(to_file, delta, short_status=False, show_ids=False,
-        show_unchanged=False, indent='', predicate=None, classify=True):
+                 show_unchanged=False, indent='', predicate=None, classify=True):
     """Output this delta in status-like form to to_file.
 
     :param to_file: A file-like object where the output is displayed.
@@ -458,7 +462,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
     # order for their 3 first fields and that they also begin like
     # the delta.modified tuples
     renamed = [(p, i, k, tm, mm, np)
-               for  p, np, i, k, tm, mm  in delta.renamed]
+               for p, np, i, k, tm, mm in delta.renamed]
     show_list(renamed, 'renamed', 'R', with_file_id_format='%s',
               show_more=show_more_renamed)
     show_list(delta.kind_changed, 'kind changed', 'K',
@@ -469,4 +473,3 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
         show_list(delta.unchanged, 'unchanged', 'S')
 
     show_list(delta.unversioned, 'unknown', ' ')
-

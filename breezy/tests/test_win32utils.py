@@ -20,7 +20,6 @@ import os
 
 from .. import (
     osutils,
-    symbol_versioning,
     tests,
     win32utils,
     )
@@ -39,7 +38,7 @@ from . import (
 Win32RegistryFeature = features.ModuleAvailableFeature('_winreg')
 CtypesFeature = features.ModuleAvailableFeature('ctypes')
 Win32comShellFeature = features.ModuleAvailableFeature('win32com.shell')
-Win32ApiFeature = features.ModuleAvailableFeature('win32api') 
+Win32ApiFeature = features.ModuleAvailableFeature('win32api')
 
 
 # Tests
@@ -75,7 +74,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
         self._run_testset([
             # no wildcards
             [[u'a'], [u'a']],
-            [[u'a', u'a' ], [u'a', u'a']],
+            [[u'a', u'a'], [u'a', u'a']],
 
             [[u'd'], [u'd']],
             [[u'd/'], [u'd/']],
@@ -228,7 +227,8 @@ class TestLocationsCtypes(TestCase):
         lad = win32utils.get_local_appdata_location()
         env = os.environ.get("LOCALAPPDATA")
         if env:
-            # XXX - See bug 262874, which asserts the correct encoding is 'mbcs'
+            # XXX - See bug 262874, which asserts the correct encoding is
+            # 'mbcs'
             encoding = osutils.get_user_encoding()
             self.assertPathsEqual(lad, env.decode(encoding))
 
@@ -265,13 +265,13 @@ class TestSetHidden(TestCaseInTempDir):
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
     def assertCommandLine(self, expected, line, argv=None,
-            single_quotes_allowed=False):
+                          single_quotes_allowed=False):
         # Strictly speaking we should respect parameter order versus glob
         # expansions, but it's not really worth the effort here
         if argv is None:
             argv = [line]
-        argv = win32utils._command_line_to_argv(line, argv,
-                single_quotes_allowed=single_quotes_allowed)
+        argv = win32utils._command_line_to_argv(
+            line, argv, single_quotes_allowed=single_quotes_allowed)
         self.assertEqual(expected, sorted(argv))
 
     def test_glob_paths(self):
@@ -289,13 +289,13 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine([u'a/*.c'], '"a/*.c"')
         self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
         self.assertCommandLine([u'a/*.c'], "'a/*.c'",
-            single_quotes_allowed=True)
+                               single_quotes_allowed=True)
 
     def test_slashes_changed(self):
         # Quoting doesn't change the supplied args
         self.assertCommandLine([u'a\\*.c'], '"a\\*.c"')
         self.assertCommandLine([u'a\\*.c'], "'a\\*.c'",
-            single_quotes_allowed=True)
+                               single_quotes_allowed=True)
         # Expands the glob, but nothing matches, swaps slashes
         self.assertCommandLine([u'a/*.c'], 'a\\*.c')
         self.assertCommandLine([u'a/?.c'], 'a\\?.c')
@@ -304,12 +304,13 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
     def test_single_quote_support(self):
         self.assertCommandLine(["add", "let's-do-it.txt"],
-            "add let's-do-it.txt",
-            ["add", "let's-do-it.txt"])
+                               "add let's-do-it.txt",
+                               ["add", "let's-do-it.txt"])
         self.expectFailure("Using single quotes breaks trimming from argv",
-            self.assertCommandLine, ["add", "lets do it.txt"],
-            "add 'lets do it.txt'", ["add", "'lets", "do", "it.txt'"],
-            single_quotes_allowed=True)
+                           self.assertCommandLine, ["add", "lets do it.txt"],
+                           "add 'lets do it.txt'", [
+                               "add", "'lets", "do", "it.txt'"],
+                           single_quotes_allowed=True)
 
     def test_case_insensitive_globs(self):
         if os.path.normcase("AbC") == "AbC":
@@ -328,7 +329,7 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.build_tree(['d/', 'd/f1', 'd/f2'])
         self.assertCommandLine([u"rm", u"x*"], "-m pdb rm x*", ["rm", u"x*"])
         self.assertCommandLine([u"add", u"d/f1", u"d/f2"], "-m pdb add d/*",
-            ["add", u"d/*"])
+                               ["add", u"d/*"])
 
 
 class TestGetEnvironUnicode(tests.TestCase):
@@ -356,7 +357,7 @@ class TestGetEnvironUnicode(tests.TestCase):
 
     def test_unicode(self):
         """A non-ascii variable is returned as unicode"""
-        unicode_val = u"\xa7" # non-ascii character present in many encodings
+        unicode_val = u"\xa7"  # non-ascii character present in many encodings
         try:
             bytes_val = unicode_val.encode(osutils.get_user_encoding())
         except UnicodeEncodeError:
@@ -366,7 +367,7 @@ class TestGetEnvironUnicode(tests.TestCase):
 
     def test_long(self):
         """A variable bigger than heuristic buffer size is still accessible"""
-        big_val = "x" * (2<<10)
+        big_val = "x" * (2 << 10)
         os.environ["TEST"] = big_val
         self.assertEqual(big_val, win32utils.get_environ_unicode("TEST"))
 
@@ -374,11 +375,12 @@ class TestGetEnvironUnicode(tests.TestCase):
         """An error from the underlying platform function is propogated"""
         ERROR_INVALID_PARAMETER = 87
         SetLastError = win32utils.ctypes.windll.kernel32.SetLastError
+
         def failer(*args, **kwargs):
             SetLastError(ERROR_INVALID_PARAMETER)
             return 0
         self.overrideAttr(win32utils.get_environ_unicode, "_c_function",
-            failer)
+                          failer)
         e = self.assertRaises(WindowsError,
-            win32utils.get_environ_unicode, "TEST")
+                              win32utils.get_environ_unicode, "TEST")
         self.assertEqual(e.winerror, ERROR_INVALID_PARAMETER)

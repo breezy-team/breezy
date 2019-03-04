@@ -41,7 +41,7 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
         the target is not a mergeable type.
     """
     child_transport = _mod_transport.get_transport(url,
-        possible_transports=possible_transports)
+                                                   possible_transports=possible_transports)
     transport = child_transport.clone('..')
     filename = transport.relpath(child_transport.base)
     mergeable, transport = read_mergeable_from_transport(transport, filename,

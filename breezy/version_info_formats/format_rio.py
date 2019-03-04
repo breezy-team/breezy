@@ -94,9 +94,9 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
         super(RioVersionInfoBuilderHooks, self).__init__(
             "breezy.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks")
         self.add_hook('revision',
-            "Invoked when adding information about a revision to the"
-            " RIO stanza that is printed. revision is called with a"
-            " revision object and a RIO stanza.", (1, 15))
+                      "Invoked when adding information about a revision to the"
+                      " RIO stanza that is printed. revision is called with a"
+                      " revision object and a RIO stanza.", (1, 15))
 
 
 RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()

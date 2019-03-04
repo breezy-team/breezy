@@ -48,9 +48,10 @@ class BashCompletionMixin(object):
         encoding = osutils.get_user_encoding()
         input = b'%s\n' % self.script.encode(encoding)
         input += (b'COMP_WORDS=( %s )\n' %
-                  b' '.join([b"'"+w.replace("'", "'\\''").encode(encoding)+b"'" for w in words]))
+                  b' '.join([b"'" + w.replace("'", "'\\''").encode(encoding) + b"'" for w in words]))
         input += b'COMP_CWORD=%d\n' % cword
-        input += b'%s\n' % getattr(self, 'script_name', '_brz').encode(encoding)
+        input += b'%s\n' % getattr(self, 'script_name',
+                                   '_brz').encode(encoding)
         input += b'echo ${#COMPREPLY[*]}\n'
         input += b"IFS=$'\\n'\n"
         input += b'echo "${COMPREPLY[*]}"\n'
@@ -291,31 +292,31 @@ class TestDataCollector(tests.TestCase):
         dc = DataCollector()
         dc.global_options()
         self.assertSubset(['--no-plugins', '--builtin'],
-                           dc.data.global_options)
+                          dc.data.global_options)
 
     def test_commands(self):
         dc = DataCollector()
         dc.commands()
         self.assertSubset(['init', 'init-repo', 'init-repository'],
-                           dc.data.all_command_aliases())
+                          dc.data.all_command_aliases())
 
     def test_commands_from_plugins(self):
         dc = DataCollector()
         dc.commands()
         self.assertSubset(['bash-completion'],
-                           dc.data.all_command_aliases())
+                          dc.data.all_command_aliases())
 
     def test_commit_dashm(self):
         dc = DataCollector()
         cmd = dc.command('commit')
         self.assertSubset(['-m'],
-                           [str(o) for o in cmd.options])
+                          [str(o) for o in cmd.options])
 
     def test_status_negated(self):
         dc = DataCollector()
         cmd = dc.command('status')
         self.assertSubset(['--no-versioned', '--no-verbose'],
-                           [str(o) for o in cmd.options])
+                          [str(o) for o in cmd.options])
 
     def test_init_format(self):
         dc = DataCollector()

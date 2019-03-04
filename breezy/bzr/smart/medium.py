@@ -32,12 +32,16 @@ import os
 import sys
 import time
 
+try:
+    import _thread
+except ImportError:
+    import thread as _thread
+
 import breezy
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 import select
 import socket
-import thread
 import weakref
 
 from breezy import (
@@ -122,8 +126,8 @@ def _get_line(read_bytes_func):
             # Ran out of bytes before receiving a complete line.
             return bytes, b''
         newline_pos = bytes.find(b'\n')
-    line = bytes[:newline_pos+1]
-    excess = bytes[newline_pos+1:]
+    line = bytes[:newline_pos + 1]
+    excess = bytes[newline_pos + 1:]
     return line, excess
 
 
@@ -324,7 +328,7 @@ class SmartServerStreamMedium(SmartMedium):
                     # select.error doesn't have 'errno', it just has args[0]
                     err = e.args[0]
                 if err in _bad_file_descriptor:
-                    return # Not a socket indicates read() will fail
+                    return  # Not a socket indicates read() will fail
                 elif err == errno.EINTR:
                     # Interrupted, keep looping.
                     continue
@@ -387,7 +391,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def __repr__(self):
         return '%s.%s(client=%s)' % (self.__module__, self.__class__.__name__,
-            self._client_info)
+                                     self._client_info)
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
@@ -429,13 +433,13 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
-        tstart = osutils.timer_func()
+        tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
-            thread_id = thread.get_ident()
+            thread_id = _thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
-                            osutils.timer_func() - tstart))
+                            osutils.perf_counter() - tstart))
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -448,7 +452,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param backing_transport: Transport for the directory served.
         """
         SmartServerStreamMedium.__init__(self, backing_transport,
-            timeout=timeout)
+                                         timeout=timeout)
         if sys.platform == 'win32':
             # force binary mode for files
             import msvcrt
@@ -504,7 +508,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             data is available.
         """
         if (getattr(self._in, 'fileno', None) is None
-            or sys.platform == 'win32'):
+                or sys.platform == 'win32'):
             # You can't select() file descriptors on Windows.
             return
         try:
@@ -739,6 +743,7 @@ class _DebugCounter(object):
         for ref in list(self.counts.keys()):
             self.done(ref)
 
+
 _debug_counter = None
 _vfs_refuser = None
 
@@ -796,15 +801,14 @@ class SmartClientMedium(SmartMedium):
         :seealso: _is_remote_before
         """
         if (self._remote_version_is_before is not None and
-            version_tuple > self._remote_version_is_before):
+                version_tuple > self._remote_version_is_before):
             # We have been told that the remote side is older than some version
             # which is newer than a previously supplied older-than version.
             # This indicates that some smart verb call is not guarded
             # appropriately (it should simply not have been tried).
             trace.mutter(
                 "_remember_remote_is_before(%r) called, but "
-                "_remember_remote_is_before(%r) was called previously."
-                , version_tuple, self._remote_version_is_before)
+                "_remember_remote_is_before(%r) was called previously.", version_tuple, self._remote_version_is_before)
             if 'hpss' in debug.debug_flags:
                 ui.ui_factory.show_warning(
                     "_remember_remote_is_before(%r) called, but "
@@ -822,7 +826,8 @@ class SmartClientMedium(SmartMedium):
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
-                client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
+                client_protocol = protocol.SmartClientRequestProtocolOne(
+                    medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
             except errors.SmartProtocolError as e:
@@ -954,7 +959,7 @@ class SSHParams(object):
     """A set of parameters for starting a remote bzr via SSH."""
 
     def __init__(self, host, port=None, username=None, password=None,
-            bzr_remote_path='bzr'):
+                 bzr_remote_path='bzr'):
         self.host = host
         self.port = port
         self.username = username
@@ -1027,10 +1032,10 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         else:
             vendor = self._vendor
         self._ssh_connection = vendor.connect_ssh(self._ssh_params.username,
-                self._ssh_params.password, self._ssh_params.host,
-                self._ssh_params.port,
-                command=[self._ssh_params.bzr_remote_path, 'serve', '--inet',
-                         '--directory=/', '--allow-writes'])
+                                                  self._ssh_params.password, self._ssh_params.host,
+                                                  self._ssh_params.port,
+                                                  command=[self._ssh_params.bzr_remote_path, 'serve', '--inet',
+                                                           '--directory=/', '--allow-writes'])
         io_kind, io_object = self._ssh_connection.get_sock_or_pipes()
         if io_kind == 'socket':
             self._real_medium = SmartClientAlreadyConnectedSocketMedium(
@@ -1125,11 +1130,11 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             port = int(self._port)
         try:
             sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
-                socket.SOCK_STREAM, 0, 0)
+                                           socket.SOCK_STREAM, 0, 0)
         except socket.gaierror as xxx_todo_changeme:
             (err_num, err_msg) = xxx_todo_changeme.args
             raise errors.ConnectionError("failed to lookup %s:%d: %s" %
-                    (self._host, port, err_msg))
+                                         (self._host, port, err_msg))
         # Initialize err in case there are no addresses returned:
         last_err = socket.error("no address found for %s" % self._host)
         for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
@@ -1153,7 +1158,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
             else:
                 err_msg = last_err.args[1]
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
-                    (self._host, port, err_msg))
+                                         (self._host, port, err_msg))
         self._connected = True
         for hook in transport.Transport.hooks["post_connect"]:
             hook(self)
@@ -1161,7 +1166,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
 
 class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):
     """A client medium for an already connected socket.
-    
+
     Note that this class will assume it "owns" the socket, so it will close it
     when its disconnect method is called.
     """

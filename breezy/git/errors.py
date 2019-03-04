@@ -22,10 +22,10 @@ from __future__ import absolute_import
 
 from dulwich import errors as git_errors
 
-from .. import errors as bzr_errors
+from .. import errors as brz_errors
 
 
-class BzrGitError(bzr_errors.BzrError):
+class BzrGitError(brz_errors.BzrError):
     """The base-level exception for bzr-git errors."""
 
 
@@ -44,12 +44,13 @@ def convert_dulwich_error(error):
     """Convert a Dulwich error to a Bazaar error."""
 
     if isinstance(error, git_errors.HangupException):
-        raise bzr_errors.ConnectionReset(error.msg, "")
+        raise brz_errors.ConnectionReset(error.msg, "")
     raise error
 
 
-class NoPushSupport(bzr_errors.BzrError):
-    _fmt = "Push is not yet supported from %(source)r to %(target)r using %(mapping)r for %(revision_id)r. Try dpush instead."
+class NoPushSupport(brz_errors.BzrError):
+    _fmt = ("Push is not yet supported from %(source)r to %(target)r "
+            "using %(mapping)r for %(revision_id)r. Try dpush instead.")
 
     def __init__(self, source, target, mapping, revision_id=None):
         self.source = source
@@ -58,23 +59,23 @@ class NoPushSupport(bzr_errors.BzrError):
         self.revision_id = revision_id
 
 
-class GitSmartRemoteNotSupported(bzr_errors.UnsupportedOperation):
+class GitSmartRemoteNotSupported(brz_errors.UnsupportedOperation):
     _fmt = "This operation is not supported by the Git smart server protocol."
 
 
-class UnknownCommitExtra(bzr_errors.BzrError):
+class UnknownCommitExtra(brz_errors.BzrError):
     _fmt = "Unknown extra fields in %(object)r: %(fields)r."
 
     def __init__(self, object, fields):
-        bzr_errors.BzrError.__init__(self)
+        brz_errors.BzrError.__init__(self)
         self.object = object
         self.fields = ",".join(fields)
 
 
-class UnknownMercurialCommitExtra(bzr_errors.BzrError):
+class UnknownMercurialCommitExtra(brz_errors.BzrError):
     _fmt = "Unknown mercurial extra fields in %(object)r: %(fields)r."
 
     def __init__(self, object, fields):
-        bzr_errors.BzrError.__init__(self)
+        brz_errors.BzrError.__init__(self)
         self.object = object
-        self.fields = ",".join(fields)
+        self.fields = b",".join(fields)

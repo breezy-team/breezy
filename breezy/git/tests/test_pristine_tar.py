@@ -45,7 +45,7 @@ class RevisionPristineTarDataTests(TestCase):
     def test_pristine_tar_delta_unknown(self):
         rev = Revision(b"myrevid")
         self.assertRaises(KeyError,
-            revision_pristine_tar_data, rev)
+                          revision_pristine_tar_data, rev)
 
     def test_pristine_tar_delta_gz(self):
         rev = Revision(b"myrevid")
@@ -58,7 +58,7 @@ class ReadPristineTarData(TestCase):
     def test_read_pristine_tar_data_no_branch(self):
         r = GitMemoryRepo()
         self.assertRaises(KeyError, read_git_pristine_tar_data,
-            r, b"foo")
+                          r, b"foo")
 
     def test_read_pristine_tar_data_no_file(self):
         r = GitMemoryRepo()
@@ -70,7 +70,7 @@ class ReadPristineTarData(TestCase):
         r.do_commit(b"Add README", tree=t.id,
                     ref=b'refs/heads/pristine-tar')
         self.assertRaises(KeyError, read_git_pristine_tar_data,
-            r, b"foo")
+                          r, b"foo")
 
     def test_read_pristine_tar_data(self):
         r = GitMemoryRepo()
@@ -103,4 +103,4 @@ class StoreGitPristineTarData(TestCase):
         self.assertEqual(r[tree[b"foo.id"][1]].data, b"myid")
 
         self.assertEqual((b"mydelta", b"myid"),
-            read_git_pristine_tar_data(r, b"foo"))
+                         read_git_pristine_tar_data(r, b"foo"))

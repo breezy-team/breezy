@@ -70,7 +70,8 @@ class CommitSupplement(object):
         self.verifiers = {}
 
     def __nonzero__(self):
-        return bool(self.revision_id or self.properties or self.explicit_parent_ids)
+        return bool(self.revision_id or self.properties or
+                    self.explicit_parent_ids)
 
 
 class TreeSupplement(object):
@@ -79,7 +80,6 @@ class TreeSupplement(object):
     This provides file ids (if they are different from the mapping default)
     and can provide text revisions.
     """
-
 
 
 def parse_roundtripping_metadata(text):
@@ -96,7 +96,7 @@ def parse_roundtripping_metadata(text):
             ret.verifiers[b"testament3-sha1"] = value.strip()
         elif key.startswith(b"property-"):
             name = key[len(b"property-"):]
-            if not name in ret.properties:
+            if name not in ret.properties:
                 ret.properties[name] = value[1:].rstrip(b"\n")
             else:
                 ret.properties[name] += b"\n" + value[1:].rstrip(b"\n")
@@ -115,7 +115,8 @@ def generate_roundtripping_metadata(metadata, encoding):
     if metadata.revision_id:
         lines.append(b"revision-id: %s\n" % metadata.revision_id)
     if metadata.explicit_parent_ids:
-        lines.append(b"parent-ids: %s\n" % b" ".join(metadata.explicit_parent_ids))
+        lines.append(b"parent-ids: %s\n" %
+                     b" ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         for l in metadata.properties[key].split(b"\n"):
             lines.append(b"property-%s: %s\n" % (key, osutils.safe_utf8(l)))

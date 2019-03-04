@@ -27,13 +27,11 @@ from __future__ import absolute_import
 import os
 import sys
 
-dulwich_minimum_version = (0, 19, 0)
+dulwich_minimum_version = (0, 19, 11)
 
-from breezy.i18n import gettext
-
-from .. import (
+from .. import (  # noqa: F401
     __version__ as breezy_version,
-    errors as bzr_errors,
+    errors as brz_errors,
     trace,
     version_info,
     )
@@ -65,16 +63,20 @@ def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
     except ImportError:
-        raise bzr_errors.DependencyNotPresent("dulwich",
+        raise brz_errors.DependencyNotPresent(
+            "dulwich",
             "bzr-git: Please install dulwich, https://www.dulwich.io/")
     else:
         if dulwich_version < dulwich_minimum_version:
-            raise bzr_errors.DependencyNotPresent("dulwich",
+            raise brz_errors.DependencyNotPresent(
+                "dulwich",
                 "bzr-git: Dulwich is too old; at least %d.%d.%d is required" %
-                    dulwich_minimum_version)
+                dulwich_minimum_version)
 
 
 _versions_checked = False
+
+
 def lazy_check_versions():
     global _versions_checked
     if _versions_checked:
@@ -82,20 +84,19 @@ def lazy_check_versions():
     import_dulwich()
     _versions_checked = True
 
-format_registry.register_lazy('git',
-    __name__ + ".dir", "LocalGitControlDirFormat",
-    help='GIT repository.', native=False, experimental=False,
-    )
 
-format_registry.register_lazy('git-bare',
-    __name__ + ".dir", "BareLocalGitControlDirFormat",
+format_registry.register_lazy(
+    'git', __name__ + ".dir", "LocalGitControlDirFormat",
+    help='GIT repository.', native=False, experimental=False)
+
+format_registry.register_lazy(
+    'git-bare', __name__ + ".dir", "BareLocalGitControlDirFormat",
     help='Bare GIT repository (no working tree).', native=False,
-    experimental=False,
-    )
+    experimental=False)
 
 from ..revisionspec import (RevisionSpec_dwim, revspec_registry)
 revspec_registry.register_lazy("git:", __name__ + ".revspec",
-    "RevisionSpec_git")
+                               "RevisionSpec_git")
 RevisionSpec_dwim.append_possible_lazy_revspec(
     __name__ + ".revspec", "RevisionSpec_git")
 
@@ -105,17 +106,17 @@ class LocalGitProber(Prober):
     def probe_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except bzr_errors.InProcessTransport:
-            raise bzr_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport:
+            raise brz_errors.NotBranchError(path=transport.base)
         if (external_url.startswith("http:") or
-            external_url.startswith("https:")):
+                external_url.startswith("https:")):
             # Already handled by RemoteGitProber
-            raise bzr_errors.NotBranchError(path=transport.base)
+            raise brz_errors.NotBranchError(path=transport.base)
         from .. import urlutils
         if urlutils.split(transport.base)[1] == ".git":
-            raise bzr_errors.NotBranchError(path=transport.base)
+            raise brz_errors.NotBranchError(path=transport.base)
         if not transport.has_any(['objects', '.git/objects', '.git']):
-            raise bzr_errors.NotBranchError(path=transport.base)
+            raise brz_errors.NotBranchError(path=transport.base)
         lazy_check_versions()
         from .dir import (
             BareLocalGitControlDirFormat,
@@ -125,7 +126,7 @@ class LocalGitProber(Prober):
             return LocalGitControlDirFormat()
         if transport.has('info') and transport.has('objects'):
             return BareLocalGitControlDirFormat()
-        raise bzr_errors.NotBranchError(path=transport.base)
+        raise brz_errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
@@ -144,29 +145,39 @@ def user_agent_for_github():
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
+        # This function intentionally doesn't use any of the support code under
+        # breezy.git, since it's called for every repository that's
+        # accessed over HTTP, whether it's Git, Bzr or something else.
+        # Importing Dulwich and the other support code adds unnecessray slowdowns.
         from .. import urlutils
-        base_url, _ = urlutils.split_segment_parameters(transport.external_url())
-        url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
+        base_url, _ = urlutils.split_segment_parameters(
+            transport.external_url())
+        url = urlutils.URL.from_string(base_url)
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
         from ..transport.http import Request
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
                    }
         req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
                       headers=headers)
-        (scheme, user, password, host, port, path) = urlutils.parse_url(req.get_full_url())
+        (scheme, user, password, host, port,
+         path) = urlutils.parse_url(req.get_full_url())
         if host == "github.com":
-            # GitHub requires we lie. https://github.com/dulwich/dulwich/issues/562
+            # GitHub requires we lie.
+            # https://github.com/dulwich/dulwich/issues/562
             req.add_header("User-Agent", user_agent_for_github())
         elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
-            raise bzr_errors.NotBranchError(transport.base)
+            raise brz_errors.NotBranchError(transport.base)
         resp = transport._perform(req)
         if resp.code in (404, 405):
-            raise bzr_errors.NotBranchError(transport.base)
+            raise brz_errors.NotBranchError(transport.base)
         headers = resp.headers
-        ct = headers.getheader("Content-Type")
+        ct = headers.get("Content-Type")
         if ct is None:
-            raise bzr_errors.NotBranchError(transport.base)
+            raise brz_errors.NotBranchError(transport.base)
         if ct.startswith("application/x-git"):
             from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
@@ -181,16 +192,16 @@ class RemoteGitProber(Prober):
     def probe_transport(self, transport):
         try:
             external_url = transport.external_url()
-        except bzr_errors.InProcessTransport:
-            raise bzr_errors.NotBranchError(path=transport.base)
+        except brz_errors.InProcessTransport:
+            raise brz_errors.NotBranchError(path=transport.base)
 
         if (external_url.startswith("http:") or
-            external_url.startswith("https:")):
+                external_url.startswith("https:")):
             return self.probe_http_transport(transport)
 
         if (not external_url.startswith("git://") and
-            not external_url.startswith("git+")):
-            raise bzr_errors.NotBranchError(transport.base)
+                not external_url.startswith("git+")):
+            raise brz_errors.NotBranchError(transport.base)
 
         # little ugly, but works
         from .remote import (
@@ -199,7 +210,7 @@ class RemoteGitProber(Prober):
             )
         if isinstance(transport, GitSmartTransport):
             return RemoteGitControlDirFormat()
-        raise bzr_errors.NotBranchError(path=transport.base)
+        raise brz_errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
@@ -210,10 +221,11 @@ class RemoteGitProber(Prober):
 ControlDirFormat.register_prober(LocalGitProber)
 ControlDirFormat._server_probers.append(RemoteGitProber)
 
-register_transport_proto('git://',
-        help="Access using the Git smart server protocol.")
-register_transport_proto('git+ssh://',
-        help="Access using the Git smart server protocol over SSH.")
+register_transport_proto(
+    'git://', help="Access using the Git smart server protocol.")
+register_transport_proto(
+    'git+ssh://',
+    help="Access using the Git smart server protocol over SSH.")
 
 register_lazy_transport("git://", __name__ + '.remote',
                         'TCPGitSmartTransport')
@@ -223,12 +235,13 @@ register_lazy_transport("git+ssh://", __name__ + '.remote',
 
 plugin_cmds.register_lazy("cmd_git_import", [], __name__ + ".commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
-    __name__ + ".commands")
+                          __name__ + ".commands")
 plugin_cmds.register_lazy("cmd_git_refs", [], __name__ + ".commands")
 plugin_cmds.register_lazy("cmd_git_apply", [], __name__ + ".commands")
 plugin_cmds.register_lazy("cmd_git_push_pristine_tar_deltas",
-        ['git-push-pristine-tar', 'git-push-pristine'],
-    __name__ + ".commands")
+                          ['git-push-pristine-tar', 'git-push-pristine'],
+                          __name__ + ".commands")
+
 
 def extract_git_foreign_revid(rev):
     try:
@@ -243,35 +256,34 @@ def extract_git_foreign_revid(rev):
         if rev.mapping.vcs == foreign_vcs_git:
             return foreign_revid
         else:
-            raise bzr_errors.InvalidRevisionId(rev.revision_id, None)
+            raise brz_errors.InvalidRevisionId(rev.revision_id, None)
 
 
 def update_stanza(rev, stanza):
-    mapping = getattr(rev, "mapping", None)
     try:
         git_commit = extract_git_foreign_revid(rev)
-    except bzr_errors.InvalidRevisionId:
+    except brz_errors.InvalidRevisionId:
         pass
     else:
         stanza.add("git-commit", git_commit)
 
+
 from ..hooks import install_lazy_named_hook
-install_lazy_named_hook("breezy.version_info_formats.format_rio",
+install_lazy_named_hook(
+    "breezy.version_info_formats.format_rio",
     "RioVersionInfoBuilder.hooks", "revision", update_stanza,
     "git commits")
 
-
-transport_server_registry.register_lazy('git',
-    __name__ + '.server',
-    'serve_git',
+transport_server_registry.register_lazy(
+    'git', __name__ + '.server', 'serve_git',
     'Git Smart server protocol over TCP. (default port: 9418)')
 
-transport_server_registry.register_lazy('git-receive-pack',
-    __name__ + '.server',
+transport_server_registry.register_lazy(
+    'git-receive-pack', __name__ + '.server',
     'serve_git_receive_pack',
     help='Git Smart server receive pack command. (inetd mode only)')
-transport_server_registry.register_lazy('git-upload-pack',
-    __name__ + 'git.server',
+transport_server_registry.register_lazy(
+    'git-upload-pack', __name__ + 'git.server',
     'serve_git_upload_pack',
     help='Git Smart server upload pack command. (inetd mode only)')
 
@@ -279,19 +291,19 @@ from ..repository import (
     format_registry as repository_format_registry,
     network_format_registry as repository_network_format_registry,
     )
-repository_network_format_registry.register_lazy(b'git',
-    __name__ + '.repository', 'GitRepositoryFormat')
+repository_network_format_registry.register_lazy(
+    b'git', __name__ + '.repository', 'GitRepositoryFormat')
 
 register_extra_lazy_repository_format = getattr(repository_format_registry,
-    "register_extra_lazy")
+                                                "register_extra_lazy")
 register_extra_lazy_repository_format(__name__ + '.repository',
-    'GitRepositoryFormat')
+                                      'GitRepositoryFormat')
 
 from ..branch import (
     network_format_registry as branch_network_format_registry,
     )
-branch_network_format_registry.register_lazy(b'git',
-    __name__ + '.branch', 'LocalGitBranchFormat')
+branch_network_format_registry.register_lazy(
+    b'git', __name__ + '.branch', 'LocalGitBranchFormat')
 
 
 from ..branch import (
@@ -315,74 +327,55 @@ workingtree_format_registry.register_extra_lazy(
     'GitWorkingTreeFormat',
     )
 
-controldir_network_format_registry.register_lazy(b'git',
-    __name__ + ".dir", "GitControlDirFormat")
+controldir_network_format_registry.register_lazy(
+    b'git', __name__ + ".dir", "GitControlDirFormat")
 
 
-try:
-    from ..registry import register_lazy
-except ImportError:
-    from ..diff import format_registry as diff_format_registry
-    diff_format_registry.register_lazy('git', __name__ + '.send',
-        'GitDiffTree', 'Git am-style diff format')
+from ..diff import format_registry as diff_format_registry
+diff_format_registry.register_lazy(
+    'git', __name__ + '.send',
+    'GitDiffTree', 'Git am-style diff format')
 
-    from ..send import (
-        format_registry as send_format_registry,
-        )
-    send_format_registry.register_lazy('git', __name__ + '.send',
-                                       'send_git', 'Git am-style diff format')
+from ..send import (
+    format_registry as send_format_registry,
+    )
+send_format_registry.register_lazy('git', __name__ + '.send',
+                                   'send_git', 'Git am-style diff format')
 
-    from ..directory_service import directories
-    directories.register_lazy('github:', __name__ + '.directory',
-                              'GitHubDirectory',
-                              'GitHub directory.')
-    directories.register_lazy('git@github.com:', __name__ + '.directory',
-                              'GitHubDirectory',
-                              'GitHub directory.')
+from ..directory_service import directories
+directories.register_lazy('github:', __name__ + '.directory',
+                          'GitHubDirectory',
+                          'GitHub directory.')
+directories.register_lazy('git@github.com:', __name__ + '.directory',
+                          'GitHubDirectory',
+                          'GitHub directory.')
 
-    from ..help_topics import (
-        topic_registry,
-        )
-    topic_registry.register_lazy('git', __name__ + '.help', 'help_git',
-        'Using Bazaar with Git')
+from ..help_topics import (
+    topic_registry,
+    )
+topic_registry.register_lazy(
+    'git', __name__ + '.help', 'help_git', 'Using Bazaar with Git')
 
-    from ..foreign import (
-        foreign_vcs_registry,
-        )
-    foreign_vcs_registry.register_lazy("git",
-        __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
-else:
-    register_lazy("breezy.diff", "format_registry",
-        'git', __name__ + '.send', 'GitDiffTree',
-        'Git am-style diff format')
-    register_lazy("breezy.send", "format_registry",
-        'git', __name__ + '.send', 'send_git',
-        'Git am-style diff format')
-    register_lazy('breezy.directory_service', 'directories', 'github:',
-            __name__ + '.directory', 'GitHubDirectory',
-            'GitHub directory.')
-    register_lazy('breezy.directory_service', 'directories',
-            'git@github.com:', __name__ + '.directory',
-            'GitHubDirectory', 'GitHub directory.')
-    register_lazy('breezy.help_topics', 'topic_registry',
-            'git', __name__ + '.help', 'help_git',
-            'Using Bazaar with Git')
-    register_lazy('breezy.foreign', 'foreign_vcs_registry', "git",
-        __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
+from ..foreign import (
+    foreign_vcs_registry,
+    )
+foreign_vcs_registry.register_lazy(
+    "git", __name__ + ".mapping", "foreign_vcs_git", "Stupid content tracker")
+
 
 def update_git_cache(repository, revid):
     """Update the git cache after a local commit."""
     if getattr(repository, "_git", None) is not None:
-        return # No need to update cache for git repositories
+        return  # No need to update cache for git repositories
 
     if not repository.control_transport.has("git"):
-        return # No existing cache, don't bother updating
+        return  # No existing cache, don't bother updating
     try:
         lazy_check_versions()
-    except bzr_errors.DependencyNotPresent as e:
+    except brz_errors.DependencyNotPresent as e:
         # dulwich is probably missing. silently ignore
         trace.mutter("not updating git map for %r: %s",
-            repository, e)
+                     repository, e)
 
     from .object_store import BazaarObjectStore
     store = BazaarObjectStore(repository)
@@ -390,7 +383,8 @@ def update_git_cache(repository, revid):
         try:
             parent_revisions = set(repository.get_parent_map([revid])[revid])
         except KeyError:
-            # Isn't this a bit odd - how can a revision that was just committed be missing?
+            # Isn't this a bit odd - how can a revision that was just committed
+            # be missing?
             return
         missing_revisions = store._missing_revisions(parent_revisions)
         if not missing_revisions:
@@ -406,7 +400,7 @@ def update_git_cache(repository, revid):
 
 
 def post_commit_update_cache(local_branch, master_branch, old_revno, old_revid,
-        new_revno, new_revid):
+                             new_revno, new_revid):
     if local_branch is not None:
         update_git_cache(local_branch.repository, new_revid)
     update_git_cache(master_branch.repository, new_revid)
@@ -419,14 +413,15 @@ def loggerhead_git_hook(branch_app, environ):
         return None
     from .server import git_http_hook
     return git_http_hook(branch, environ['REQUEST_METHOD'],
-        environ['PATH_INFO'])
+                         environ['PATH_INFO'])
+
 
 install_lazy_named_hook("breezy.branch",
-    "Branch.hooks", "post_commit", post_commit_update_cache,
-    "git cache")
+                        "Branch.hooks", "post_commit",
+                        post_commit_update_cache, "git cache")
 install_lazy_named_hook("breezy.plugins.loggerhead.apps.branch",
-    "BranchWSGIApp.hooks", "controller",
-    loggerhead_git_hook, "git support")
+                        "BranchWSGIApp.hooks", "controller",
+                        loggerhead_git_hook, "git support")
 
 
 from ..config import (
@@ -443,6 +438,7 @@ Allow fetching of Git packs over HTTP.
 
 This enables support for fetching Git packs over HTTP in Loggerhead.
 '''))
+
 
 def test_suite():
     from . import tests

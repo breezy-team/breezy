@@ -22,7 +22,9 @@ from __future__ import absolute_import
 import os
 import stat
 
+from dulwich.index import IndexEntry
 from dulwich.objects import (
+    S_IFGITLINK,
     Blob,
     Tree,
     ZERO_SHA,
@@ -30,6 +32,7 @@ from dulwich.objects import (
 
 from ... import (
     conflicts as _mod_conflicts,
+    workingtree as _mod_workingtree,
     )
 from ...delta import TreeDelta
 from ..mapping import (
@@ -57,14 +60,15 @@ class GitWorkingTreeTests(TestCaseWithTransport):
 
     def test_conflict_list(self):
         self.assertIsInstance(
-                self.tree.conflicts(),
-                _mod_conflicts.ConflictList)
+            self.tree.conflicts(),
+            _mod_conflicts.ConflictList)
 
     def test_add_conflict(self):
         self.build_tree(['conflicted'])
         self.tree.add(['conflicted'])
         with self.tree.lock_tree_write():
-            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + (FLAG_STAGEMASK, )
+            self.tree.index[b'conflicted'] = self.tree.index[b'conflicted'][:9] + \
+                (FLAG_STAGEMASK, )
             self.tree._index_dirty = True
         conflicts = self.tree.conflicts()
         self.assertEqual(1, len(conflicts))
@@ -87,6 +91,44 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.tree._ignoremanager = None
         self.assertTrue(self.tree.is_ignored('a'))
 
+    def test_add_submodule_dir(self):
+        subtree = self.make_branch_and_tree('asub', format='git')
+        subtree.commit('Empty commit')
+        self.tree.add(['asub'])
+        with self.tree.lock_read():
+            entry = self.tree.index[b'asub']
+            self.assertEqual(entry.mode, S_IFGITLINK)
+        self.assertEqual([], list(subtree.unknowns()))
+
+    def test_add_submodule_file(self):
+        os.mkdir('.git/modules')
+        subbranch = self.make_branch('.git/modules/asub', format='git-bare')
+        os.mkdir('asub')
+        with open('asub/.git', 'w') as f:
+            f.write('gitdir: ../.git/modules/asub\n')
+        subtree = _mod_workingtree.WorkingTree.open('asub')
+        subtree.commit('Empty commit')
+        self.tree.add(['asub'])
+        with self.tree.lock_read():
+            entry = self.tree.index[b'asub']
+            self.assertEqual(entry.mode, S_IFGITLINK)
+        self.assertEqual([], list(subtree.unknowns()))
+
+
+class GitWorkingTreeFileTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(GitWorkingTreeFileTests, self).setUp()
+        self.tree = self.make_branch_and_tree('actual', format="git")
+        self.build_tree_contents(
+            [('linked/',), ('linked/.git', 'gitdir: ../actual/.git')])
+        self.wt = _mod_workingtree.WorkingTree.open('linked')
+
+    def test_add(self):
+        self.build_tree(['linked/somefile'])
+        self.wt.add(["somefile"])
+        self.wt.commit("Add somefile")
+
 
 class TreeDeltaFromGitChangesTests(TestCase):
 
@@ -96,18 +138,19 @@ class TreeDeltaFromGitChangesTests(TestCase):
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, default_mapping,
-                (GitFileIdMap({}, default_mapping),
-                 GitFileIdMap({}, default_mapping))))
+                                        (GitFileIdMap({}, default_mapping),
+                                         GitFileIdMap({}, default_mapping))))
 
     def test_missing(self):
         delta = TreeDelta()
         delta.removed.append(('a', b'a-id', 'file'))
-        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0), (b'a' * 40, b'a' * 40))]
+        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0),
+                    (b'a' * 40, b'a' * 40))]
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, default_mapping,
-                (GitFileIdMap({u'a': b'a-id'}, default_mapping),
-                 GitFileIdMap({u'a': b'a-id'}, default_mapping))))
+                                        (GitFileIdMap({u'a': b'a-id'}, default_mapping),
+                                         GitFileIdMap({u'a': b'a-id'}, default_mapping))))
 
 
 class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
@@ -115,17 +158,19 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
     def setUp(self):
         super(ChangesBetweenGitTreeAndWorkingCopyTests, self).setUp()
         self.wt = self.make_branch_and_tree('.', format='git')
+        self.store = self.wt.branch.repository._git.object_store
 
     def expectDelta(self, expected_changes,
-                    expected_extras=None, want_unversioned=False):
-        store = self.wt.branch.repository._git.object_store
-        try:
-            tree_id = store[self.wt.branch.repository._git.head()].tree
-        except KeyError:
-            tree_id = None
+                    expected_extras=None, want_unversioned=False,
+                    tree_id=None):
+        if tree_id is None:
+            try:
+                tree_id = self.store[self.wt.branch.repository._git.head()].tree
+            except KeyError:
+                tree_id = None
         with self.wt.lock_read():
             changes, extras = changes_between_git_tree_and_working_copy(
-                store, tree_id, self.wt, want_unversioned=want_unversioned)
+                self.store, tree_id, self.wt, want_unversioned=want_unversioned)
             self.assertEqual(expected_changes, list(changes))
         if expected_extras is None:
             expected_extras = set()
@@ -182,8 +227,8 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt = Tree()
         newt.add(b"a", 0, ZERO_SHA)
         self.expectDelta(
-                [((b'', b''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
-                 ((b'a', b'a'), (stat.S_IFREG|0o644, 0), (a.id, ZERO_SHA))])
+            [((b'', b''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
+             ((b'a', b'a'), (stat.S_IFREG | 0o644, 0), (a.id, ZERO_SHA))])
 
     def test_versioned_replace_by_dir(self):
         self.build_tree(['a'])
@@ -199,14 +244,14 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt.add(b"a", stat.S_IFDIR, newa.id)
         self.expectDelta([
             ((b'', b''),
-            (stat.S_IFDIR, stat.S_IFDIR),
-            (oldt.id, newt.id)),
+             (stat.S_IFDIR, stat.S_IFDIR),
+             (oldt.id, newt.id)),
             ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
             ], want_unversioned=False)
         self.expectDelta([
             ((b'', b''),
-            (stat.S_IFDIR, stat.S_IFDIR),
-            (oldt.id, newt.id)),
+             (stat.S_IFDIR, stat.S_IFDIR),
+             (oldt.id, newt.id)),
             ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
             ], want_unversioned=True)
 
@@ -217,7 +262,19 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt.add(b"a", stat.S_IFREG | 0o644, newa.id)
         self.expectDelta([
             ((None, b''),
-            (None, stat.S_IFDIR),
-            (None, newt.id)),
+             (None, stat.S_IFDIR),
+             (None, newt.id)),
             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, newa.id))
             ], [b'a'], want_unversioned=True)
+
+    def test_submodule(self):
+        self.build_tree(['a/'])
+        a = Blob.from_string(b'irrelevant\n')
+        with self.wt.lock_tree_write():
+            (index, index_path) = self.wt._lookup_index(b'a')
+            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
+            self.wt._index_dirty = True
+        t = Tree()
+        t.add(b"a", S_IFGITLINK, a.id)
+        self.store.add_object(t)
+        self.expectDelta([], tree_id=t.id)

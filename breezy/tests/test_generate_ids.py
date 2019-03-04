@@ -17,8 +17,10 @@
 """Tests for breezy/generate_ids.py"""
 
 from .. import (
-    generate_ids,
     tests,
+    )
+from ..bzr import (
+    generate_ids,
     )
 
 
@@ -31,7 +33,7 @@ class TestFileIds(tests.TestCase):
         The file id should be ascii, and should be an 8-bit string
         """
         file_id = generate_ids.gen_file_id(filename)
-        self.assertContainsRe(file_id, b'^'+regex+b'$')
+        self.assertContainsRe(file_id, b'^' + regex + b'$')
         # It should be a utf8 file_id, not a unicode one
         self.assertIsInstance(file_id, bytes)
         # gen_file_id should always return ascii file ids.
@@ -60,8 +62,8 @@ class TestFileIds(tests.TestCase):
         # be <= 20 characters, so the maximum length should now be approx < 60
 
         # Test both case squashing and length restriction
-        fid = gen_file_id('A'*50 + '.txt')
-        self.assertStartsWith(fid, b'a'*20 + b'-')
+        fid = gen_file_id('A' * 50 + '.txt')
+        self.assertStartsWith(fid, b'a' * 20 + b'-')
         self.assertTrue(len(fid) < 60)
 
         # restricting length happens after the other actions, so
@@ -113,7 +115,7 @@ class TestGenRevisionId(tests.TestCase):
     def assertGenRevisionId(self, regex, username, timestamp=None):
         """gen_revision_id should create a revision id matching the regex"""
         revision_id = generate_ids.gen_revision_id(username, timestamp)
-        self.assertContainsRe(revision_id, b'^'+regex+b'$')
+        self.assertContainsRe(revision_id, b'^' + regex + b'$')
         # It should be a utf8 revision_id, not a unicode one
         self.assertIsInstance(revision_id, bytes)
         # gen_revision_id should always return ascii revision ids.
@@ -121,7 +123,8 @@ class TestGenRevisionId(tests.TestCase):
 
     def test_timestamp(self):
         """passing a timestamp should cause it to be used"""
-        self.assertGenRevisionId(br'user@host-\d{14}-[a-z0-9]{16}', 'user@host')
+        self.assertGenRevisionId(
+            br'user@host-\d{14}-[a-z0-9]{16}', 'user@host')
         self.assertGenRevisionId(b'user@host-20061102205056-[a-z0-9]{16}',
                                  'user@host', 1162500656.688)
         self.assertGenRevisionId(br'user@host-20061102205024-[a-z0-9]{16}',
@@ -134,7 +137,8 @@ class TestGenRevisionId(tests.TestCase):
         self.assertGenRevisionId(regex, '<user+joe_bar@foo-bar.com>')
         self.assertGenRevisionId(regex, 'Joe Bar <user+joe_bar@foo-bar.com>')
         self.assertGenRevisionId(regex, 'Joe Bar <user+Joe_Bar@Foo-Bar.com>')
-        self.assertGenRevisionId(regex, u'Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>')
+        self.assertGenRevisionId(
+            regex, u'Joe B\xe5r <user+Joe_Bar@Foo-Bar.com>')
 
     def test_gen_revision_id_user(self):
         """If there is no email, fall back to the whole username"""

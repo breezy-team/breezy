@@ -44,7 +44,8 @@ from breezy.transport.memory import MemoryTransport
 from .mapping import GitFileIdMap
 from .tree import MutableGitIndexTree
 
-class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
+
+class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
     """A Git memory tree."""
 
     def __init__(self, branch, store, head):
@@ -75,7 +76,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
                 if kinds[pos] is None:
                     kinds[pos] = self.kind(f)
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         self._file_transport.put_bytes(path, bytes)
 
@@ -105,7 +106,8 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
                     self._file_transport.mkdir(subpath)
                     trees.append((subpath, self.store[sha]))
                 elif stat.S_ISREG(mode):
-                    self._file_transport.put_bytes(subpath, self.store[sha].data)
+                    self._file_transport.put_bytes(
+                        subpath, self.store[sha].data)
                     self._index_add_entry(subpath, 'file')
                 else:
                     raise NotImplementedError(self._populate_from_branch)
@@ -122,7 +124,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
                 self._lock_mode = "r"
                 self._populate_from_branch()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -136,7 +138,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
                 self._populate_from_branch()
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
         return lock.LogicalLockResult(self.unlock)
@@ -152,7 +154,7 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -185,21 +187,22 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         if stat.S_ISDIR(stat_val.st_mode):
             return None
         elif stat.S_ISLNK(stat_val.st_mode):
-            blob = Blob.from_string(self._file_transport.readlink(path).encode('utf-8'))
+            blob = Blob.from_string(
+                self._file_transport.readlink(path).encode('utf-8'))
         elif stat.S_ISREG(stat_val.st_mode):
             blob = Blob.from_string(self._file_transport.get_bytes(path))
         else:
             raise AssertionError('unknown type %d' % stat_val.st_mode)
         return index_entry_from_stat(stat_val, blob.id, 0)
 
-    def get_file_with_stat(self, path, file_id=None):
-        return (self.get_file(path, file_id), self._lstat(path))
+    def get_file_with_stat(self, path):
+        return (self.get_file(path), self._lstat(path))
 
-    def get_file(self, path, file_id=None):
+    def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         """See Tree.get_file_sha1()."""
         stream = self._file_transport.get(path)
         return osutils.sha_file(stream)
@@ -218,7 +221,8 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
         with self.lock_read():
             if self.branch.head is None:
                 return _mod_revision.NULL_REVISION
-            return self.branch.repository.lookup_foreign_revision_id(self.branch.head)
+            return self.branch.repository.lookup_foreign_revision_id(
+                self.branch.head)
 
     def basis_tree(self):
         """See Tree.basis_tree()."""
@@ -243,7 +247,8 @@ class GitMemoryTree(MutableGitIndexTree,_mod_tree.Tree):
             self.branch.head = None
         else:
             self._parent_ids = parent_ids
-            self.branch.head = self.branch.repository.lookup_bzr_revision_id(parent_ids[0])[0]
+            self.branch.head = self.branch.repository.lookup_bzr_revision_id(
+                parent_ids[0])[0]
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""

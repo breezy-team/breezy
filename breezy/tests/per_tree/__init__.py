@@ -263,18 +263,18 @@ class TestCaseWithTree(TestCaseWithControlDir):
         self.requireFeature(features.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
-            '1top-dir/',
-            u'2utf\u1234file',
-            '1top-dir/0file-in-1topdir',
-            '1top-dir/1dir-in-1topdir/'
-            ]
+                 '1top-dir/',
+                 u'2utf\u1234file',
+                 '1top-dir/0file-in-1topdir',
+                 '1top-dir/1dir-in-1topdir/'
+                 ]
         self.build_tree(paths)
         tree.add(paths)
         tt = transform.TreeTransform(tree)
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
             tt.new_symlink('symlink',
-                root_transaction_id, 'link-target', b'symlink')
+                           root_transaction_id, 'link-target', b'symlink')
         tt.apply()
         return self.workingtree_to_test_tree(tree)
 
@@ -289,7 +289,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     # TODO(jelmer): Test MemoryTree here
     # TODO(jelmer): Test GitMemoryTree here
     scenarios = wt_make_scenarios(transport_server, transport_readonly_server,
-        formats)
+                                  formats)
     # now adjust the scenarios and add the non-working-tree tree scenarios.
     for scenario in scenarios:
         # for working tree format tests, preserve the tree
@@ -297,30 +297,30 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     # add RevisionTree scenario
     workingtree_format = format_registry.get_default()
     scenarios.append((RevisionTree.__name__,
-        create_tree_scenario(transport_server, transport_readonly_server,
-        workingtree_format, revision_tree_from_workingtree,)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           workingtree_format, revision_tree_from_workingtree,)))
     scenarios.append((GitRevisionTree.__name__,
-        create_tree_scenario(transport_server, transport_readonly_server,
-        GitWorkingTreeFormat(), revision_tree_from_workingtree,)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           GitWorkingTreeFormat(), revision_tree_from_workingtree,)))
 
     # also test WorkingTree4/5's RevisionTree implementation which is
     # specialised.
     # XXX: Ask igc if WT5 revision tree actually is different.
     scenarios.append((DirStateRevisionTree.__name__ + ",WT4",
-        create_tree_scenario(transport_server, transport_readonly_server,
-        WorkingTreeFormat4(), _dirstate_tree_from_workingtree)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           WorkingTreeFormat4(), _dirstate_tree_from_workingtree)))
     scenarios.append((DirStateRevisionTree.__name__ + ",WT5",
-        create_tree_scenario(transport_server, transport_readonly_server,
-        WorkingTreeFormat5(), _dirstate_tree_from_workingtree)))
+                      create_tree_scenario(transport_server, transport_readonly_server,
+                                           WorkingTreeFormat5(), _dirstate_tree_from_workingtree)))
     scenarios.append(("PreviewTree", create_tree_scenario(transport_server,
-        transport_readonly_server, workingtree_format, preview_tree_pre)))
+                                                          transport_readonly_server, workingtree_format, preview_tree_pre)))
     scenarios.append(("PreviewTreePost", create_tree_scenario(transport_server,
-        transport_readonly_server, workingtree_format, preview_tree_post)))
+                                                              transport_readonly_server, workingtree_format, preview_tree_post)))
     return scenarios
 
 
 def create_tree_scenario(transport_server, transport_readonly_server,
-    workingtree_format, converter):
+                         workingtree_format, converter):
     """Create a scenario for the specified converter
 
     :param converter: A function that converts a workingtree into the
@@ -347,13 +347,13 @@ def load_tests(loader, standard_tests, pattern):
         'get_root_id',
         'get_symlink_target',
         'ids',
-        'inv',
         'iter_search_rules',
         'is_executable',
         'list_files',
         'locking',
         'path_content_summary',
         'revision_tree',
+        'symlinks',
         'test_trees',
         'tree',
         'walkdirs',

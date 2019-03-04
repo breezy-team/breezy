@@ -54,11 +54,11 @@ class TestErrors(tests.TestCase):
                 else:
                     args = inspect.getargspec(init)[0]
                 self.assertFalse('message' in args,
-                    ('Argument name "message" not allowed for '
-                    '"errors.%s.__init__"' % c.__name__))
+                                 ('Argument name "message" not allowed for '
+                                  '"errors.%s.__init__"' % c.__name__))
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(True, ('"message" not allowed in '
-                    '"errors.%s._fmt"' % c.__name__))
+                                        '"errors.%s._fmt"' % c.__name__))
 
     def test_bad_filename_encoding(self):
         error = errors.BadFilenameEncoding(b'bad/filen\xe5me', 'UTF-8')
@@ -75,7 +75,7 @@ class TestErrors(tests.TestCase):
     def test_duplicate_help_prefix(self):
         error = errors.DuplicateHelpPrefix('foo')
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
-            str(error))
+                             str(error))
 
     def test_ghost_revisions_have_no_revno(self):
         error = errors.GhostRevisionsHaveNoRevno('target', 'ghost_rev')
@@ -85,7 +85,7 @@ class TestErrors(tests.TestCase):
 
     def test_incompatibleVersion(self):
         error = errors.IncompatibleVersion("module", [(4, 5, 6), (7, 8, 9)],
-                (1, 2, 3))
+                                           (1, 2, 3))
         self.assertEqualDiff(
             'API module is not compatible; one of versions '
             '[(4, 5, 6), (7, 8, 9)] is required, but current version is '
@@ -128,28 +128,28 @@ class TestErrors(tests.TestCase):
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
-            "be repred' has been modified, so a clean inventory cannot be "
-            "read without data loss.",
-            str(error))
+                             "be repred' has been modified, so a clean inventory cannot be "
+                             "read without data loss.",
+                             str(error))
 
     def test_jail_break(self):
         error = errors.JailBreak("some url")
         self.assertEqualDiff("An attempt to access a url outside the server"
-            " jail was made: 'some url'.",
-            str(error))
+                             " jail was made: 'some url'.",
+                             str(error))
 
     def test_lock_active(self):
         error = errors.LockActive("lock description")
         self.assertEqualDiff("The lock for 'lock description' is in use and "
-            "cannot be broken.",
-            str(error))
+                             "cannot be broken.",
+                             str(error))
 
     def test_lock_corrupt(self):
         error = errors.LockCorrupt("corruption info")
         self.assertEqualDiff("Lock is apparently held, but corrupted: "
-            "corruption info\n"
-            "Use 'brz break-lock' to clear it",
-            str(error))
+                             "corruption info\n"
+                             "Use 'brz break-lock' to clear it",
+                             str(error))
 
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
@@ -159,14 +159,14 @@ class TestErrors(tests.TestCase):
     def test_no_smart_medium(self):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
-            "smart protocol.",
-            str(error))
+                             "smart protocol.",
+                             str(error))
 
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id \"anid\" is not present in the tree "
-            "atree.",
-            str(error))
+                             "atree.",
+                             str(error))
 
     def test_no_such_revision_in_tree(self):
         error = errors.NoSuchRevisionInTree("atree", "anid")
@@ -177,37 +177,39 @@ class TestErrors(tests.TestCase):
     def test_not_stacked(self):
         error = errors.NotStacked('a branch')
         self.assertEqualDiff("The branch 'a branch' is not stacked.",
-            str(error))
+                             str(error))
 
     def test_not_write_locked(self):
         error = errors.NotWriteLocked('a thing to repr')
         self.assertEqualDiff("'a thing to repr' is not write locked but needs "
-            "to be.",
-            str(error))
+                             "to be.",
+                             str(error))
 
     def test_lock_failed(self):
-        error = errors.LockFailed('http://canonical.com/', 'readonly transport')
+        error = errors.LockFailed(
+            'http://canonical.com/', 'readonly transport')
         self.assertEqualDiff("Cannot lock http://canonical.com/: readonly transport",
-            str(error))
+                             str(error))
         self.assertFalse(error.internal_error)
 
     def test_too_many_concurrent_requests(self):
         error = errors.TooManyConcurrentRequests("a medium")
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
-            "request limit. Be sure to finish_writing and finish_reading on "
-            "the currently open request.",
-            str(error))
+                             "request limit. Be sure to finish_writing and finish_reading on "
+                             "the currently open request.",
+                             str(error))
 
     def test_unavailable_representation(self):
-        error = errors.UnavailableRepresentation(('key',), "mpdiff", "fulltext")
+        error = errors.UnavailableRepresentation(
+            ('key',), "mpdiff", "fulltext")
         self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
-            "('key',) which is encoded as 'fulltext'.",
-            str(error))
+                             "('key',) which is encoded as 'fulltext'.",
+                             str(error))
 
     def test_unstackable_location(self):
         error = errors.UnstackableLocationError('foo', 'bar')
         self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
-            str(error))
+                             str(error))
 
     def test_unstackable_repository_format(self):
         format = u'foo'
@@ -243,28 +245,28 @@ class TestErrors(tests.TestCase):
     def test_reading_completed(self):
         error = errors.ReadingCompleted("a request")
         self.assertEqualDiff("The MediumRequest 'a request' has already had "
-            "finish_reading called upon it - the request has been completed and"
-            " no more data may be read.",
-            str(error))
+                             "finish_reading called upon it - the request has been completed and"
+                             " no more data may be read.",
+                             str(error))
 
     def test_writing_completed(self):
         error = errors.WritingCompleted("a request")
         self.assertEqualDiff("The MediumRequest 'a request' has already had "
-            "finish_writing called upon it - accept bytes may not be called "
-            "anymore.",
-            str(error))
+                             "finish_writing called upon it - accept bytes may not be called "
+                             "anymore.",
+                             str(error))
 
     def test_writing_not_completed(self):
         error = errors.WritingNotComplete("a request")
         self.assertEqualDiff("The MediumRequest 'a request' has not has "
-            "finish_writing called upon it - until the write phase is complete"
-            " no data may be read.",
-            str(error))
+                             "finish_writing called upon it - until the write phase is complete"
+                             " no data may be read.",
+                             str(error))
 
     def test_transport_not_possible(self):
         error = errors.TransportNotPossible('readonly', 'original error')
         self.assertEqualDiff('Transport operation not possible:'
-                         ' readonly original error', str(error))
+                             ' readonly original error', str(error))
 
     def assertSocketConnectionError(self, expected, *args, **kwargs):
         """Check the formatting of a SocketConnectionError exception"""
@@ -467,7 +469,7 @@ class TestErrors(tests.TestCase):
     def test_recursive_bind(self):
         error = errors.RecursiveBind('foo_bar_branch')
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
-            'Please use `brz unbind` to fix.')
+               'Please use `brz unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
 
     def test_retry_with_new_packs(self):
@@ -552,7 +554,8 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
     def test_no_repo(self):
         dir = controldir.ControlDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
-        self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
+        self.assertNotEqual(-1,
+                            str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
 
     def test_corrupt_repository(self):
@@ -576,9 +579,11 @@ class TestErrorsUsingTransport(tests.TestCaseWithMemoryTransport):
 
     def test_not_branch_laziness(self):
         real_bzrdir = self.make_controldir('path')
+
         class FakeBzrDir(object):
             def __init__(self):
                 self.calls = []
+
             def open_repository(self):
                 self.calls.append('open_repository')
                 raise errors.NoRepositoryPresent(real_bzrdir)

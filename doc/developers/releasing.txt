@@ -4,7 +4,7 @@ Releasing Breezy
 This document describes the processes for making and announcing a Breezy
 release, and managing the release process.  This is just one phase of the
 `overall development cycle
-<http://doc.bazaar.canonical.com/developers/cycle.html>`_, (go re-read this
+<https://www.breezy-vcs.org/developers/cycle.html>`_, (go re-read this
 document to ensure it hasn't been updated since you last read it) but it's
 the most complex part.
 
@@ -183,7 +183,7 @@ The process for releasing an alpha release is therefore:
 - upload a tarball to launchpad,
 - upload a tarball to pypi,
 - mail bazaar@lists.canonical.com,
-- post an annoucement on the home page.  
+- post an announcement on the home page.  
 
 Uploading tarballs are described below, just use alpha versions (3, 0, 0,
 'alpha', 1) in ``./breezy/__init__.py``
@@ -518,7 +518,7 @@ available to the world.
 #. Announce on the Breezy website.
 
 #. Check that the documentation for this release is available in
-   <http://doc.bazaar.canonical.com>.  It should be automatically build when
+   <https://www.breezy-vcs.org/doc/en/>.  It should be automatically build when
    the branch is created, by a cron script ``update-brz-docs`` on
    ``escudero``. When the first release is created in a new series, a branch
    needs to be created on ``escudero``::

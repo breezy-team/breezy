@@ -100,7 +100,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         """
         err = err.decode('utf-8')
         self.addDetail('subprocess_stderr',
-            content.text_content(err))
+                       content.text_content(err))
 
         bad_modules = []
         for module_name in forbidden_imports:
@@ -113,10 +113,10 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         if bad_modules:
             self.fail("command loaded forbidden modules %r"
-                % (bad_modules,))
+                      % (bad_modules,))
 
     def finish_bzr_subprocess_with_import_check(self, process,
-            args, forbidden_imports):
+                                                args, forbidden_imports):
         """Finish subprocess and check specific modules have not been
         imported.
 
@@ -124,7 +124,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
             that should not be loaded while running this command.
         """
         (out, err) = self.finish_bzr_subprocess(process,
-            universal_newlines=False, process_args=args)
+                                                universal_newlines=False, process_args=args)
         self.check_forbidden_modules(err, forbidden_imports)
         return out, err
 
@@ -139,7 +139,7 @@ class ImportTariffTestCase(TestCaseWithTransport):
         """
         process = self.start_bzr_subprocess_with_import_check(args)
         self.finish_bzr_subprocess_with_import_check(process, args,
-            forbidden_imports)
+                                                     forbidden_imports)
 
 
 class TestImportTariffs(ImportTariffTestCase):
@@ -150,11 +150,11 @@ class TestImportTariffs(ImportTariffTestCase):
         # measuring correctly
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'],
-            ['nonexistentmodulename', 'anothernonexistentmodule'])
+                                       ['nonexistentmodulename', 'anothernonexistentmodule'])
         self.assertRaises(AssertionError,
-            self.run_command_check_imports,
-            ['st'],
-            ['breezy.tree'])
+                          self.run_command_check_imports,
+                          ['st'],
+                          ['breezy.tree'])
 
     def test_simple_local(self):
         # 'st' in a default format working tree shouldn't need many modules
@@ -168,7 +168,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.externalcommand',
             'breezy.filters',
             'breezy.hashcache',
-            # foreign branch plugins import the foreign_vcs_registry from 
+            # foreign branch plugins import the foreign_vcs_registry from
             # breezy.foreign so it can't be blacklisted
             'breezy.gpg',
             'breezy.info',
@@ -217,7 +217,7 @@ class TestImportTariffs(ImportTariffTestCase):
         # while the smart client interacts with it.
         stderr_file = open('bzr-serve.stderr', 'w')
         process = self.start_bzr_subprocess_with_import_check(['serve',
-            '--inet', '-d', tree.basedir], stderr_file=stderr_file)
+                                                               '--inet', '-d', tree.basedir], stderr_file=stderr_file)
         url = 'bzr://localhost/'
         self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
@@ -228,45 +228,45 @@ class TestImportTariffs(ImportTariffTestCase):
         # Hide stdin from the subprocess module, so it won't fail to close it.
         process.stdin = None
         (out, err) = self.finish_bzr_subprocess(process,
-            universal_newlines=False)
+                                                universal_newlines=False)
         stderr_file.close()
         with open('bzr-serve.stderr', 'rb') as stderr_file:
             err = stderr_file.read()
         self.check_forbidden_modules(err,
-            ['breezy.annotate',
-            'breezy.atomicfile',
-            'breezy.bugtracker',
-            'breezy.bundle.commands',
-            'breezy.cmd_version_info',
-            'breezy.bzr.dirstate',
-            'breezy.bzr._dirstate_helpers_py',
-            'breezy.bzr._dirstate_helpers_pyx',
-            'breezy.externalcommand',
-            'breezy.filters',
-            'breezy.hashcache',
-            # foreign branch plugins import the foreign_vcs_registry from 
-            # breezy.foreign so it can't be blacklisted
-            'breezy.gpg',
-            'breezy.info',
-            'breezy.bzr.knit',
-            'breezy.merge3',
-            'breezy.merge_directive',
-            'breezy.msgeditor',
-            'breezy.patiencediff',
-            'breezy.bzr.remote',
-            'breezy.rules',
-            'breezy.sign_my_commits',
-            'breezy.bzr.smart.client',
-            'breezy.transform',
-            'breezy.version_info_formats.format_rio',
-            'breezy.bzr.workingtree_4',
-            'breezy.bzr.xml_serializer',
-            'breezy.bzr.xml8',
-            'getpass',
-            'kerberos',
-            'smtplib',
-            'tarfile',
-            'tempfile',
-            'termios',
-            'tty',
-            ] + old_format_modules)
+                                     ['breezy.annotate',
+                                      'breezy.atomicfile',
+                                      'breezy.bugtracker',
+                                      'breezy.bundle.commands',
+                                      'breezy.cmd_version_info',
+                                      'breezy.bzr.dirstate',
+                                      'breezy.bzr._dirstate_helpers_py',
+                                      'breezy.bzr._dirstate_helpers_pyx',
+                                      'breezy.externalcommand',
+                                      'breezy.filters',
+                                      'breezy.hashcache',
+                                      # foreign branch plugins import the foreign_vcs_registry from
+                                      # breezy.foreign so it can't be blacklisted
+                                      'breezy.gpg',
+                                      'breezy.info',
+                                      'breezy.bzr.knit',
+                                      'breezy.merge3',
+                                      'breezy.merge_directive',
+                                      'breezy.msgeditor',
+                                      'breezy.patiencediff',
+                                      'breezy.bzr.remote',
+                                      'breezy.rules',
+                                      'breezy.sign_my_commits',
+                                      'breezy.bzr.smart.client',
+                                      'breezy.transform',
+                                      'breezy.version_info_formats.format_rio',
+                                      'breezy.bzr.workingtree_4',
+                                      'breezy.bzr.xml_serializer',
+                                      'breezy.bzr.xml8',
+                                      'getpass',
+                                      'kerberos',
+                                      'smtplib',
+                                      'tarfile',
+                                      'tempfile',
+                                      'termios',
+                                      'tty',
+                                      ] + old_format_modules)

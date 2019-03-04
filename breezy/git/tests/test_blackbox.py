@@ -25,18 +25,17 @@ from dulwich.repo import (
 
 import os
 
-from ... import (
-    version_info as breezy_version,
-    )
 from ...controldir import (
     ControlDir,
     )
 
 from ...tests.blackbox import ExternalBase
+from ...workingtree import WorkingTree
 
 from .. import (
     tests,
     )
+from ...tests.features import PluginLoadedFeature
 
 
 class TestGitBlackBox(ExternalBase):
@@ -65,7 +64,19 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone tree (format: git)" in output)
+        self.assertEqual(
+            output,
+            'Standalone tree (format: git)\n'
+            'Location:\n'
+            '            light checkout root: .\n'
+            '  checkout of co-located branch: master\n')
+
+    def test_ignore(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['ignore', 'foo'])
+        self.assertEqual(error, '')
+        self.assertEqual(output, '')
+        self.assertFileEqual("foo\n", ".gitignore")
 
     def test_branch(self):
         os.mkdir("gitbranch")
@@ -95,8 +106,8 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['checkout', 'gitbranch', 'bzrbranch'])
         self.assertEqual(error,
-                'Fetching from Git to Bazaar repository. '
-                'For better performance, fetch into a Git repository.\n')
+                         'Fetching from Git to Bazaar repository. '
+                         'For better performance, fetch into a Git repository.\n')
         self.assertEqual(output, '')
 
     def test_branch_ls(self):
@@ -177,40 +188,46 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         self.assertEqual(output,
-            'diff --git /dev/null b/a\n'
-            'old mode 0\n'
-            'new mode 100644\n'
-            'index 0000000..c197bd8 100644\n'
-            '--- /dev/null\n'
-            '+++ b/a\n'
-            '@@ -0,0 +1 @@\n'
-            '+contents of a\n')
+                         'diff --git /dev/null b/a\n'
+                         'old mode 0\n'
+                         'new mode 100644\n'
+                         'index 0000000..c197bd8 100644\n'
+                         '--- /dev/null\n'
+                         '+++ b/a\n'
+                         '@@ -0,0 +1 @@\n'
+                         '+contents of a\n')
 
     def test_git_import_uncolocated(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
-        r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
-        r.do_commit(ref=b"refs/heads/bbranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/abranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/bbranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.run_bzr(["git-import", "a", "b"])
-        self.assertEqual(set([".bzr", "abranch", "bbranch"]), set(os.listdir("b")))
+        self.assertEqual(
+            set([".bzr", "abranch", "bbranch"]), set(os.listdir("b")))
 
     def test_git_import(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
-        r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
-        r.do_commit(ref=b"refs/heads/bbranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/abranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/bbranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         self.assertEqual(set(["abranch", "bbranch"]),
-                set(ControlDir.open("b").get_branches().keys()))
+                         set(ControlDir.open("b").get_branches().keys()))
 
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
-        r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/abranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
@@ -221,21 +238,24 @@ class TestGitBlackBox(ExternalBase):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
-        cid = r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
+        cid = r.do_commit(ref=b"refs/heads/abranch",
+                          committer=b"Joe <joe@example.com>", message=b"Dummy")
         r[b"refs/tags/atag"] = cid
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
         self.assertEqual(["abranch"], list(b.get_branches().keys()))
         self.assertEqual(["atag"],
-                list(b.open_branch("abranch").tags.get_tag_dict().keys()))
+                         list(b.open_branch("abranch").tags.get_tag_dict().keys()))
 
     def test_git_import_colo(self):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
-        r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
-        r.do_commit(ref=b"refs/heads/bbranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/abranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
+        r.do_commit(ref=b"refs/heads/bbranch",
+                    committer=b"Joe <joe@example.com>", message=b"Dummy")
         self.make_controldir("b", format="development-colo")
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(
@@ -246,19 +266,21 @@ class TestGitBlackBox(ExternalBase):
         r = GitRepo.init("a", mkdir=True)
         self.build_tree(["a/file"])
         r.stage("file")
-        cid = r.do_commit(ref=b"refs/heads/abranch", committer=b"Joe <joe@example.com>", message=b"Dummy")
+        cid = r.do_commit(ref=b"refs/heads/abranch",
+                          committer=b"Joe <joe@example.com>", message=b"Dummy")
         r[b"refs/tags/atag"] = cid
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
         self.assertEqual(stderr, "")
         self.assertEqual(stdout,
-            'refs/heads/abranch -> ' + cid.decode('ascii') + '\n'
-            'refs/tags/atag -> ' + cid.decode('ascii') + '\n')
+                         'refs/heads/abranch -> ' + cid.decode('ascii') + '\n'
+                         'refs/tags/atag -> ' + cid.decode('ascii') + '\n')
 
     def test_git_refs_from_bzr(self):
         tree = self.make_branch_and_tree('a')
         self.build_tree(["a/file"])
         tree.add(["file"])
-        revid = tree.commit(committer=b"Joe <joe@example.com>", message=b"Dummy")
+        revid = tree.commit(
+            committer=b"Joe <joe@example.com>", message=b"Dummy")
         tree.branch.tags.set_tag("atag", revid)
         (stdout, stderr) = self.run_bzr(["git-refs", "a"])
         self.assertEqual(stderr, "")
@@ -285,23 +307,25 @@ class ShallowTests(ExternalBase):
         self.build_tree_contents([("gitr/foo", b"hello from git")])
         self.repo.stage("foo")
         self.repo.do_commit(
-                b"message", committer=b"Somebody <user@example.com>",
-                commit_timestamp=1526330165, commit_timezone=0,
-                author_timestamp=1526330165, author_timezone=0,
-                merge_heads=[b'aa' * 20])
+            b"message", committer=b"Somebody <user@example.com>",
+            author=b"Somebody <user@example.com>",
+            commit_timestamp=1526330165, commit_timezone=0,
+            author_timestamp=1526330165, author_timezone=0,
+            merge_heads=[b'aa' * 20])
 
     def test_log_shallow(self):
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log', 'gitr'], retcode=3)
-        self.assertEqual(error, 'brz: ERROR: Further revision history missing.\n')
+        self.assertEqual(
+            error, 'brz: ERROR: Further revision history missing.\n')
         self.assertEqual(output,
-                '------------------------------------------------------------\n'
-                'revision-id: git-v1:' + self.repo.head().decode('ascii') + '\n'
-                'git commit: ' + self.repo.head().decode('ascii') + '\n'
-                'committer: Somebody <user@example.com>\n'
-                'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
-                'message:\n'
-                '  message\n')
+                         '------------------------------------------------------------\n'
+                         'revision-id: git-v1:' + self.repo.head().decode('ascii') + '\n'
+                         'git commit: ' + self.repo.head().decode('ascii') + '\n'
+                         'committer: Somebody <user@example.com>\n'
+                         'timestamp: Mon 2018-05-14 20:36:05 +0000\n'
+                         'message:\n'
+                         '  message\n')
 
     def test_version_info_rio(self):
         output, error = self.run_bzr(['version-info', '--rio', 'gitr'])
@@ -315,14 +339,153 @@ class ShallowTests(ExternalBase):
 
     def test_version_info_custom_with_revno(self):
         output, error = self.run_bzr(
-                ['version-info', '--custom',
-                 '--template=VERSION_INFO r{revno})\n', 'gitr'], retcode=3)
-        self.assertEqual(error, 'brz: ERROR: Variable {revno} is not available.\n')
+            ['version-info', '--custom',
+             '--template=VERSION_INFO r{revno})\n', 'gitr'], retcode=3)
+        self.assertEqual(
+            error, 'brz: ERROR: Variable {revno} is not available.\n')
         self.assertEqual(output, 'VERSION_INFO r')
 
     def test_version_info_custom_without_revno(self):
         output, error = self.run_bzr(
-                ['version-info', '--custom', '--template=VERSION_INFO \n',
-                 'gitr'])
+            ['version-info', '--custom', '--template=VERSION_INFO \n',
+             'gitr'])
         self.assertEqual(error, '')
         self.assertEqual(output, 'VERSION_INFO \n')
+
+
+class SwitchTests(ExternalBase):
+
+    def test_switch_branch(self):
+        # Create a git repository with a revision.
+        repo = GitRepo.init(self.test_dir)
+        builder = tests.GitBranchBuilder()
+        builder.set_branch(b'refs/heads/oldbranch')
+        builder.set_file('a', b'text for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.set_branch(b'refs/heads/newbranch')
+        builder.reset()
+        builder.set_file('a', b'text for new a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.finish()
+
+        repo.refs.set_symbolic_ref(b'HEAD', b'refs/heads/newbranch')
+
+        repo.reset_index()
+
+        output, error = self.run_bzr('switch oldbranch')
+        self.assertEqual(output, '')
+        self.assertTrue(error.startswith('Updated to revision 1.\n'), error)
+
+        self.assertFileEqual("text for a\n", 'a')
+        tree = WorkingTree.open('.')
+        with tree.lock_read():
+            basis_tree = tree.basis_tree()
+            with basis_tree.lock_read():
+                self.assertEqual([], list(tree.iter_changes(basis_tree)))
+
+
+class GrepTests(ExternalBase):
+
+    def test_simple_grep(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        output, error = self.run_bzr('grep text')
+        self.assertEqual(output, 'a:text for a\n')
+        self.assertEqual(error, '')
+
+
+class ReconcileTests(ExternalBase):
+
+    def test_simple_reconcile(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        output, error = self.run_bzr('reconcile')
+        self.assertContainsRe(
+            output,
+            'Reconciling branch file://.*\n'
+            'Reconciling repository file://.*\n'
+            'Reconciliation complete.\n')
+        self.assertEqual(error, '')
+
+
+class StatusTests(ExternalBase):
+
+    def test_empty_dir(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree(['a/', 'a/foo'])
+        self.build_tree_contents([('.gitignore', 'foo\n')])
+        tree.add(['.gitignore'])
+        tree.commit('add ignore')
+        output, error = self.run_bzr('st')
+        self.assertEqual(output, '')
+        self.assertEqual(error, '')
+
+
+class StatsTests(ExternalBase):
+
+    def test_simple_stats(self):
+        self.requireFeature(PluginLoadedFeature('stats'))
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        tree.commit('a commit', committer='Somebody <somebody@example.com>')
+        output, error = self.run_bzr('stats')
+        self.assertEqual(output, '   1 Somebody <somebody@example.com>\n')
+
+
+class GitObjectsTests(ExternalBase):
+
+    def run_simple(self, format):
+        tree = self.make_branch_and_tree('.', format=format)
+        self.build_tree(['a/', 'a/foo'])
+        tree.add(['a'])
+        tree.commit('add a')
+        output, error = self.run_bzr('git-objects')
+        shas = list(output.splitlines())
+        self.assertEqual([40, 40], [len(s) for s in shas])
+        self.assertEqual(error, '')
+
+        output, error = self.run_bzr('git-object %s' % shas[0])
+        self.assertEqual('', error)
+
+    def test_in_native(self):
+        self.run_simple(format='git')
+
+    def test_in_bzr(self):
+        self.run_simple(format='2a')
+
+
+class GitApplyTests(ExternalBase):
+
+    def test_apply(self):
+        b = self.make_branch_and_tree('.')
+
+        with open('foo.patch', 'w') as f:
+            f.write("""\
+From bdefb25fab801e6af0a70e965f60cb48f2b759fa Mon Sep 17 00:00:00 2001
+From: Dmitry Bogatov <KAction@debian.org>
+Date: Fri, 8 Feb 2019 23:28:30 +0000
+Subject: [PATCH] Add fixed for out-of-date-standards-version
+
+---
+ message           | 3 +++
+ 1 files changed, 14 insertions(+)
+ create mode 100644 message
+
+diff --git a/message b/message
+new file mode 100644
+index 0000000..05ec0b1
+--- /dev/null
++++ b/message
+@@ -0,0 +1,3 @@
++Update standards version, no changes needed.
++Certainty: certain
++Fixed-Lintian-Tags: out-of-date-standards-version
+""")
+        output, error = self.run_bzr('git-apply foo.patch')
+        self.assertContainsRe(
+            error,
+            'Committing to: .*\n'
+            'Committed revision 1.\n')
