@@ -93,8 +93,7 @@ class FetchTests(TestCaseWithTransport):
         self.assertEqual(out, b"\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
-        self.assertEqual({
-            }, r.get_refs())
+        self.assertEqual({}, r.get_refs())
 
 
 class ExecuteRemoteHelperTests(TestCaseWithTransport):
@@ -114,8 +113,7 @@ class ExecuteRemoteHelperTests(TestCaseWithTransport):
             stderr=subprocess.PIPE, env=env)
         (out, err) = p.communicate(b'capabilities\n')
         lines = out.splitlines()
-        self.assertIn(b'import', lines)
-        self.assertIn(b'push', lines)
+        self.assertIn(b'push', lines, "no 'push' in %r, error: %r" % (lines, err))
         self.assertEqual(b'', err)
 
 
