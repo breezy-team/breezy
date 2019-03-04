@@ -18,7 +18,10 @@
 
 from __future__ import absolute_import
 
-from breezy.urlutils import URL, quote
+from .. import urlutils
+from .refs import (
+    ref_to_branch_name,
+    )
 
 from dulwich.client import parse_rsync_url
 
@@ -26,22 +29,46 @@ from dulwich.client import parse_rsync_url
 KNOWN_GIT_SCHEMES = ['git+ssh', 'git', 'http', 'https', 'ftp']
 
 
-def git_url_to_bzr_url(location):
-    url = URL.from_string(location)
-    if (url.scheme not in KNOWN_GIT_SCHEMES
-            and not url.scheme.startswith('chroot-')):
+def git_url_to_bzr_url(location, branch=None, ref=None):
+    if branch is not None and ref is not None:
+        raise ValueError('only specify one of branch or ref')
+    url = urlutils.URL.from_string(location)
+    if (url.scheme not in KNOWN_GIT_SCHEMES and
+            not url.scheme.startswith('chroot-')):
         try:
             (username, host, path) = parse_rsync_url(location)
         except ValueError:
             return location
         else:
-            url = URL(
+            url = urlutils.URL(
                 scheme='git+ssh',
-                quoted_user=(quote(username) if username else None),
+                quoted_user=(urlutils.quote(username) if username else None),
                 quoted_password=None,
-                quoted_host=quote(host),
+                quoted_host=urlutils.quote(host),
                 port=None,
-                quoted_path=quote(path, safe="/~"))
-        return str(url)
-    else:
-        return location
+                quoted_path=urlutils.quote(path, safe="/~"))
+        location = str(url)
+    if ref == b'HEAD':
+        ref = branch = None
+    if ref:
+        try:
+            branch = ref_to_branch_name(ref)
+        except ValueError:
+            branch = None
+        else:
+            ref = None
+    if ref or branch:
+        params = {}
+        if ref:
+            params['ref'] = urlutils.quote_from_bytes(ref, safe='')
+        if branch:
+            params['branch'] = urlutils.escape(branch, safe='')
+        location = urlutils.join_segment_parameters(location, params)
+    return location
+
+
+def bzr_url_to_git_url(location):
+    target_url, target_params = urlutils.split_segment_parameters(location)
+    branch = target_params.get('branch')
+    ref = target_params.get('ref')
+    return target_url, branch, ref
