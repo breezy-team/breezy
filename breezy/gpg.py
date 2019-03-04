@@ -55,7 +55,8 @@ MODE_CLEAR = 2
 
 class GpgNotInstalled(errors.DependencyNotPresent):
 
-    _fmt = 'python-gpg is not installed, it is needed to verify signatures'
+    _fmt = ('python-gpg is not installed, it is needed to create or '
+            'verify signatures. %(error)s')
 
     def __init__(self, error):
         errors.DependencyNotPresent.__init__(self, 'gpg', error)
@@ -199,17 +200,23 @@ class GPGStrategy(object):
     def _get_signing_keys(self):
         import gpg
         keyname = self._config_stack.get('gpg_signing_key')
+        if keyname == 'default':
+            # Leave things to gpg
+            return []
+
         if keyname:
             try:
                 return [self.context.get_key(keyname)]
             except gpg.errors.KeyNotFound:
                 pass
 
-        if keyname is None or keyname == 'default':
-            # 'default' or not setting gpg_signing_key at all means we should
+        if keyname is None:
+            # not setting gpg_signing_key at all means we should
             # use the user email address
             keyname = config.extract_email_address(
                 self._config_stack.get('email'))
+        if keyname == 'default':
+            return []
         possible_keys = self.context.keylist(keyname, secret=True)
         try:
             return [next(possible_keys)]
@@ -230,7 +237,12 @@ class GPGStrategy(object):
             return False
 
     def sign(self, content, mode):
-        import gpg
+        try:
+            import gpg
+        except ImportError as error:
+            raise GpgNotInstalled(
+                'Set create_signatures=no to disable creating signatures.')
+
         if isinstance(content, text_type):
             raise errors.BzrBadParameterUnicode('content')
 
@@ -258,7 +270,8 @@ class GPGStrategy(object):
         try:
             import gpg
         except ImportError as error:
-            raise errors.GpgNotInstalled(error)
+            raise GpgNotInstalled(
+                'Set check_signatures=ignore to disable verifying signatures.')
 
         signed_data = gpg.Data(signed_data)
         if signature:
@@ -306,11 +319,12 @@ class GPGStrategy(object):
         if result.signatures[0].summary & gpg.constants.SIGSUM_VALID:
             key = self.context.get_key(fingerprint)
             name = key.uids[0].name
+            if isinstance(name, bytes):
+                name = name.decode('utf-8')
             email = key.uids[0].email
-            return (
-                SIGNATURE_VALID,
-                name.decode('utf-8') + u" <" + email.decode('utf-8') + u">",
-                plain_output)
+            if isinstance(email, bytes):
+                email = email.decode('utf-8')
+            return (SIGNATURE_VALID, name + u" <" + email + u">", plain_output)
         # Sigsum_red indicates a problem, unfortunatly I have not been able
         # to write any tests which actually set this.
         if result.signatures[0].summary & gpg.constants.SIGSUM_RED:

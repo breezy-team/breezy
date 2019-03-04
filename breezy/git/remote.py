@@ -48,7 +48,10 @@ from ..errors import (
     UninitializableFormat,
     )
 from ..revisiontree import RevisionTree
-from ..sixish import text_type
+from ..sixish import (
+    text_type,
+    viewitems,
+    )
 from ..transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -476,8 +479,8 @@ class RemoteGitDir(GitDir):
         refname = self._get_selected_ref(name)
 
         def get_changed_refs(old_refs):
-            ret = dict(old_refs)
-            if refname not in ret:
+            ret = {}
+            if refname not in old_refs:
                 raise NotBranchError(self.user_url)
             ret[refname] = dulwich.client.ZERO_SHA
             return ret
@@ -566,27 +569,38 @@ class RemoteGitDir(GitDir):
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
+        fetch_tags = source.get_config_stack().get('branch.fetch_tags')
+        def get_changed_refs(refs):
+            self._refs = remote_refs_dict_to_container(refs)
+            ret = {}
+            # TODO(jelmer): Unpeel if necessary
+            push_result.new_original_revid = revision_id
+            if lossy:
+                new_sha = source_store._lookup_revision_sha1(revision_id)
+            else:
+                try:
+                    new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+                except errors.NoSuchRevision:
+                    raise errors.NoRoundtrippingSupport(
+                        source, self.open_branch(name=name, nascent_ok=True))
+            if not overwrite:
+                if remote_divergence(ret.get(refname), new_sha,
+                                     source_store):
+                    raise DivergedBranches(
+                        source, self.open_branch(name, nascent_ok=True))
+            ret[refname] = new_sha
+            if fetch_tags:
+                for tagname, revid in viewitems(source.tags.get_tag_dict()):
+                    if lossy:
+                        new_sha = source_store._lookup_revision_sha1(revid)
+                    else:
+                        try:
+                            new_sha = repo.lookup_bzr_revision_id(revid)[0]
+                        except errors.NoSuchRevision:
+                            continue
+                    ret[tag_name_to_ref(tagname)] = new_sha
+            return ret
         with source_store.lock_read():
-            def get_changed_refs(refs):
-                self._refs = remote_refs_dict_to_container(refs)
-                ret = dict(refs)
-                # TODO(jelmer): Unpeel if necessary
-                push_result.new_original_revid = revision_id
-                if lossy:
-                    new_sha = source_store._lookup_revision_sha1(revision_id)
-                else:
-                    try:
-                        new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
-                    except errors.NoSuchRevision:
-                        raise errors.NoRoundtrippingSupport(
-                            source, self.open_branch(name=name, nascent_ok=True))
-                if not overwrite:
-                    if remote_divergence(ret.get(refname), new_sha,
-                                         source_store):
-                        raise DivergedBranches(
-                            source, self.open_branch(name, nascent_ok=True))
-                ret[refname] = new_sha
-                return ret
             if lossy:
                 generate_pack_data = source_store.generate_lossy_pack_data
             else:
@@ -660,8 +674,10 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
-        super(BzrGitHttpClient, self).__init__(
-            transport.external_url(), *args, **kwargs)
+        url = urlutils.URL.from_string(transport.external_url())
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        super(BzrGitHttpClient, self).__init__(str(url), *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
@@ -816,17 +832,19 @@ class GitRemoteRevisionTree(RevisionTree):
         f.seek(0)
         return osutils.file_iterator(f)
 
-    def is_versioned(self, path, file_id=None):
+    def is_versioned(self, path):
         raise GitSmartRemoteNotSupported(self.is_versioned, self)
 
     def has_filename(self, path):
         raise GitSmartRemoteNotSupported(self.has_filename, self)
 
-    def get_file_text(self, path, file_id=None):
+    def get_file_text(self, path):
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
 
 
 class RemoteGitRepository(GitRepository):
+
+    supports_random_access = False
 
     @property
     def user_url(self):
@@ -898,8 +916,8 @@ class RemoteGitTagDict(GitTags):
         ref = tag_name_to_ref(name)
 
         def get_changed_refs(old_refs):
-            ret = dict(old_refs)
-            if sha == dulwich.client.ZERO_SHA and ref not in ret:
+            ret = {}
+            if sha == dulwich.client.ZERO_SHA and ref not in old_refs:
                 raise NoSuchTag(name)
             ret[ref] = sha
             return ret

@@ -121,9 +121,9 @@ def open_destination_directory(location, format=None, verbose=True):
 
 def kind_to_mode(kind, executable):
     if kind == "file":
-        if executable == True:
+        if executable is True:
             return stat.S_IFREG | 0o755
-        elif executable == False:
+        elif executable is False:
             return stat.S_IFREG | 0o644
         else:
             raise AssertionError("Executable %r invalid" % executable)

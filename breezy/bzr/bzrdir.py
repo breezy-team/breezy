@@ -669,7 +669,7 @@ class BzrDir(controldir.ControlDir):
 
         This is true IF and ONLY IF the filename is part of the namespace
         reserved for bzr control dirs. Currently this is the '.bzr' directory
-        in the root of the root_transport. 
+        in the root of the root_transport.
         """
         # this might be better on the BzrDirFormat class because it refers to
         # all the possible bzrdir disk formats.

@@ -37,12 +37,12 @@ Client
 Clients can access the branches using URLs with the ``bzr+ssh://`` prefix.  For
 example, to get a local copy of the ProjectX trunk, a developer could do::
 
-  $ bzr branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk projectx
+  $ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk projectx
 
 If the developers have write access to the ``/srv/bzr/projectx`` directory, then
 they can create new branches themselves using::
   
-  $ bzr branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk \
+  $ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk \
   bzr+ssh://server.example.com/srv/bzr/projectx/feature-gui
 
 Of course, if this isn't desired, then developers should not have write access
@@ -55,7 +55,7 @@ For a project with multiple branches that are all related, it is best to use a
 shared repository to hold all of the branches.  To set this up, do::
 
   $ cd /srv/bzr
-  $ bzr init-repo --no-trees projectx
+  $ brz init-repo --no-trees projectx
 
 The ``--no-trees`` option saves space by not creating a copy of the working
 files on the server's filesystem.  Then, any branch created under
@@ -69,7 +69,7 @@ configuration, then a path can be specified from the client with the
 ``BZR_REMOTE_PATH`` environment variable.  For example, if the Bazaar executable
 is installed in ``/usr/local/bzr-2.0/bin/bzr``, then a developer could use::
 
-  $ BZR_REMOTE_PATH=/usr/local/bzr-2.0/bin/bzr bzr info \
+  $ brz_REMOTE_PATH=/usr/local/bzr-2.0/bin/bzr bzr info \
   bzr+ssh://server.example.com/srv/bzr/proectx/trunk
 
 to get information about the trunk branch.  The remote path can also be
@@ -81,11 +81,11 @@ URLs to refer to their home directory.  They can also use ``/~username/`` to
 refer to the home directory of user ``username``.  For example, if there are two
 developers ``alice`` and ``bob``, then Bob could use::
 
-  $ bzr log bzr+ssh://server.example.com/~/fix-1023
+  $ brz log bzr+ssh://server.example.com/~/fix-1023
 
 to refer to one of his bug fix branches and::
 
-  $ bzr log bzr+ssh://server.example.com/~alice/fix-2047
+  $ brz log bzr+ssh://server.example.com/~alice/fix-2047
   
 to refer to one of Alice's branches. [#]_
 
@@ -133,10 +133,10 @@ serving using ``bzr serve`` and the ``--directory`` option.
 
 If Alice logs in she uses the following command for her fix-1023 branch::
 
-  $ bzr log bzr+ssh://bzruser@server.example.com/fix-1023
+  $ brz log bzr+ssh://bzruser@server.example.com/fix-1023
 
 If Repo Manager logs in he uses the following command to access Alice's
 fix-1023::
 
-  $ bzr log bzr+ssh://bzruser@server.example.com/alice/fix-1023
+  $ brz log bzr+ssh://bzruser@server.example.com/alice/fix-1023
 

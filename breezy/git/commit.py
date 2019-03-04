@@ -25,6 +25,7 @@ from dulwich.index import (
 import stat
 
 from .. import (
+    bugtracker,
     config as _mod_config,
     gpg,
     osutils,
@@ -141,7 +142,7 @@ class GitCommitBuilder(CommitBuilder):
             encoded_new_path = path[1].encode("utf-8")
             self._blobs[encoded_new_path] = (mode, sha)
             if st is not None:
-                yield file_id, path[1], (entry.text_sha1, st)
+                yield path[1], (entry.text_sha1, st)
             if self._mapping.generate_file_id(encoded_new_path) != file_id:
                 self._override_fileids[encoded_new_path] = file_id
             else:
@@ -227,6 +228,16 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     author = authors[0]
         c.author = fix_person_identifier(author.encode(encoding))
+        bugstext = self._revprops.pop('bugs', None)
+        if bugstext is not None:
+            message += "\n"
+            for url, status in bugtracker.decode_bug_urls(bugstext):
+                if status == bugtracker.FIXED:
+                    message += "Fixes: %s\n" % url
+                elif status == bugtracker.RELATED:
+                    message += "Bug: %s\n" % url
+                else:
+                    raise bugtracker.InvalidBugStatus(status)
         if self._revprops:
             raise NotImplementedError(self._revprops)
         c.commit_time = int(self._timestamp)

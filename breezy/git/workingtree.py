@@ -83,8 +83,6 @@ from .mapping import (
     mode_kind,
     )
 
-IGNORE_FILENAME = ".gitignore"
-
 
 class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     """A Git working tree."""
@@ -535,27 +533,29 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     except UnicodeDecodeError:
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
-                if not self._has_dir(relpath):
-                    dirnames.remove(name)
+                    if not self._has_dir(relpath):
+                        dirnames.remove(name)
             for name in filenames:
-                if not self.mapping.is_special_file(name):
-                    yp = os.path.join(dir_relpath, name)
-                    try:
-                        yield yp.decode(osutils._fs_enc)
-                    except UnicodeDecodeError:
-                        raise errors.BadFilenameEncoding(
-                            yp, osutils._fs_enc)
+                if self.mapping.is_special_file(name):
+                    continue
+                if self.controldir.is_control_filename(
+                        name.decode(osutils._fs_enc, 'replace')):
+                    continue
+                yp = os.path.join(dir_relpath, name)
+                try:
+                    yield yp.decode(osutils._fs_enc)
+                except UnicodeDecodeError:
+                    raise errors.BadFilenameEncoding(
+                        yp, osutils._fs_enc)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
         with self.lock_read():
-            index_paths = set([p.decode('utf-8')
-                               for p, i in self._recurse_index_entries()])
-            all_paths = set(self._iter_files_recursive(include_dirs=True))
-            for p in (all_paths - index_paths):
-                if not self._has_dir(p.encode('utf-8')):
-                    yield p
+            index_paths = set(
+                [p.decode('utf-8') for p, i in self._recurse_index_entries()])
+            all_paths = set(self._iter_files_recursive(include_dirs=False))
+            return iter(all_paths - index_paths)
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds."""
@@ -774,7 +774,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         with self.lock_read():
             root_ie = self._get_dir_ie(u"", None)
             if include_root and not from_dir:
-                yield "", "V", root_ie.kind, root_ie.file_id, root_ie
+                yield "", "V", root_ie.kind, root_ie
             dir_ids[u""] = root_ie.file_id
             if recursive:
                 path_iterator = sorted(
@@ -810,40 +810,25 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         if self._has_dir(encoded_path):
                             ie = self._get_dir_ie(path, self.path2id(path))
                             status = "V"
-                            file_id = ie.file_id
                         elif self.is_ignored(path):
                             status = "I"
                             ie = fk_entries[kind]()
-                            file_id = None
                         else:
                             status = "?"
                             ie = fk_entries[kind]()
-                            file_id = None
-                        yield (
-                            posixpath.relpath(path, from_dir), status, kind,
-                            file_id, ie)
+                        yield (posixpath.relpath(path, from_dir), status, kind,
+                               ie)
                     continue
                 if value is not None:
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
-                    yield (posixpath.relpath(path, from_dir), "V", ie.kind,
-                           ie.file_id, ie)
+                    yield (posixpath.relpath(path, from_dir), "V", ie.kind, ie)
                 else:
                     ie = fk_entries[kind]()
-                    yield (posixpath.relpath(path, from_dir), ("I" if
-                                                               self.is_ignored(path) else "?"), kind, None, ie)
+                    yield (posixpath.relpath(path, from_dir),
+                           ("I" if self.is_ignored(path) else "?"), kind, ie)
 
     def all_file_ids(self):
-        with self.lock_read():
-            ids = {u"": self.path2id("")}
-            for path in self.index:
-                if self.mapping.is_special_file(path):
-                    continue
-                path = path.decode("utf-8")
-                parent = posixpath.dirname(path).strip("/")
-                for e in self._add_missing_parent_ids(parent, ids):
-                    pass
-                ids[path] = self.path2id(path)
-            return set(ids.values())
+        raise errors.UnsupportedOperation(self.all_file_ids, self)
 
     def all_versioned_paths(self):
         with self.lock_read():
@@ -1359,6 +1344,8 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
     requires_normalized_unicode_filenames = True
 
     supports_merge_modified = False
+
+    ignore_filename = ".gitignore"
 
     @property
     def _matchingcontroldir(self):

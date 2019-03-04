@@ -593,14 +593,14 @@ class BundleTester(object):
         for base_file, to_file in zip(base_files, to_files):
             self.assertEqual(base_file, to_file)
 
-        for path, status, kind, fileid, entry in base_files:
+        for path, status, kind, entry in base_files:
             # Check that the meta information is the same
             self.assertEqual(
                 base_tree.get_file_size(path),
-                to_tree.get_file_size(to_tree.id2path(fileid)))
+                to_tree.get_file_size(to_tree.id2path(entry.file_id)))
             self.assertEqual(
-                base_tree.get_file_sha1(path),
-                to_tree.get_file_sha1(to_tree.id2path(fileid)))
+                base_tree.get_file_sha1(path, entry.file_id),
+                to_tree.get_file_sha1(to_tree.id2path(entry.file_id)))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),
@@ -1447,7 +1447,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree_a.commit("base", allow_pointless=True, rev_id=b'A')
         self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
-            from ..testament import Testament
+            from ..bzr.testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()
@@ -1848,7 +1848,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         class FooService(object):
             """A directory service that always returns source"""
 
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
         self.addCleanup(directories.remove, 'foo:')

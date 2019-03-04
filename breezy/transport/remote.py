@@ -602,11 +602,15 @@ class RemoteHTTPTransport(RemoteTransport):
 
 
 class HintingSSHTransport(transport.Transport):
-    """Simple transport that handles ssh:// and points out bzr+ssh://."""
+    """Simple transport that handles ssh:// and points out bzr+ssh:// and git+ssh://."""
+
+    # TODO(jelmer): Implement support for detecting whether the repository at the
+    # other end is a git or bzr repository.
 
     def __init__(self, url):
-        raise errors.UnsupportedProtocol(url,
-                                         'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
+        raise errors.UnsupportedProtocol(
+            url, 'Use bzr+ssh for Bazaar operations over SSH, e.g. "bzr+%s". '
+            'Use git+ssh for Git operations over SSH, e.g. "git+%s".' % (url, url))
 
 
 def get_test_permutations():

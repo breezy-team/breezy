@@ -268,7 +268,7 @@ class VersionedFileCheck(Check):
         self.ghosts.discard(rev_id)
         # Count all parents as ghosts if we haven't seen them yet.
         for parent in rev.parent_ids:
-            if not parent in self.planned_revisions:
+            if parent not in self.planned_revisions:
                 self.ghosts.add(parent)
 
         self.ancestors[rev_id] = tuple(rev.parent_ids) or (NULL_REVISION,)

@@ -17,6 +17,8 @@
 
 from __future__ import absolute_import
 
+import operator
+
 from ... import (
     branch,
     commands,
@@ -59,7 +61,7 @@ def collapse_by_person(revisions, canonical_committer):
             info[2][username] = info[2].setdefault(username, 0) + 1
     res = [(len(revs), revs, emails, fnames)
            for revs, emails, fnames in committer_to_info.values()]
-    res.sort(reverse=True)
+    res.sort(reverse=True, key=operator.itemgetter(0))
     return res
 
 
@@ -279,6 +281,8 @@ class cmd_ancestor_growth(commands.Command):
 
     encoding_type = 'replace'
 
+    hidden = True
+
     def run(self, location='.'):
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
@@ -311,7 +315,7 @@ def gather_class_stats(repository, revs):
             for delta in repository.get_deltas_for_revisions(revs):
                 pb.update("classifying commits", i, len(revs))
                 for c in classify_delta(delta):
-                    if not c in ret:
+                    if c not in ret:
                         ret[c] = 0
                     ret[c] += 1
                     total += 1
@@ -365,7 +369,7 @@ def find_credits(repository, revid):
                     continue
                 for c in set(classify_delta(delta)):
                     for author in rev.get_apparent_authors():
-                        if not author in ret[c]:
+                        if author not in ret[c]:
                             ret[c][author] = 0
                         ret[c][author] += 1
 

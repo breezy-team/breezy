@@ -29,6 +29,7 @@ from .. import (
     plugin,
     tests,
     )
+from ..tests.features import pkg_resources_feature
 from ..sixish import (
     StringIO,
     viewkeys,
@@ -593,6 +594,7 @@ class TestEnvPluginPath(tests.TestCase):
     user = "USER"
     core = "CORE"
     site = "SITE"
+    entrypoints = "ENTRYPOINTS"
 
     def check_path(self, expected_dirs, setting_dirs):
         if setting_dirs is None:
@@ -604,70 +606,72 @@ class TestEnvPluginPath(tests.TestCase):
         self.assertEqual(expected_dirs, actual)
 
     def test_default(self):
-        self.check_path([self.user, self.core, self.site],
+        self.check_path([self.user, self.core, self.entrypoints, self.site],
                         None)
 
     def test_adhoc_policy(self):
-        self.check_path([self.user, self.core, self.site],
+        self.check_path([self.user, self.core, self.site, self.entrypoints],
                         ['+user', '+core', '+site'])
 
     def test_fallback_policy(self):
-        self.check_path([self.core, self.site, self.user],
+        self.check_path([self.core, self.site, self.user, self.entrypoints],
                         ['+core', '+site', '+user'])
 
     def test_override_policy(self):
-        self.check_path([self.user, self.site, self.core],
+        self.check_path([self.user, self.site, self.core, self.entrypoints],
                         ['+user', '+site', '+core'])
 
     def test_disable_user(self):
-        self.check_path([self.core, self.site], ['-user'])
+        self.check_path([self.core, self.entrypoints, self.site], ['-user'])
 
     def test_disable_user_twice(self):
         # Ensures multiple removals don't left cruft
-        self.check_path([self.core, self.site], ['-user', '-user'])
+        self.check_path([self.core, self.entrypoints, self.site], ['-user', '-user'])
 
     def test_duplicates_are_removed(self):
-        self.check_path([self.user, self.core, self.site],
+        self.check_path([self.user, self.core, self.entrypoints, self.site],
                         ['+user', '+user'])
         # And only the first reference is kept (since the later references will
         # only produce '<plugin> already loaded' mutters)
-        self.check_path([self.user, self.core, self.site],
+        self.check_path([self.user, self.core, self.site, self.entrypoints],
                         ['+user', '+user', '+core',
                          '+user', '+site', '+site',
                          '+core'])
 
     def test_disable_overrides_enable(self):
-        self.check_path([self.core, self.site], ['-user', '+user'])
+        self.check_path([self.core, self.entrypoints, self.site], ['-user', '+user'])
 
     def test_disable_core(self):
-        self.check_path([self.site], ['-core'])
-        self.check_path([self.user, self.site], ['+user', '-core'])
+        self.check_path([self.entrypoints, self.site], ['-core'])
+        self.check_path([self.user, self.entrypoints, self.site], ['+user', '-core'])
 
     def test_disable_site(self):
-        self.check_path([self.core], ['-site'])
-        self.check_path([self.user, self.core], ['-site', '+user'])
+        self.check_path([self.core, self.entrypoints], ['-site'])
+        self.check_path([self.user, self.core, self.entrypoints], ['-site', '+user'])
 
     def test_override_site(self):
-        self.check_path(['mysite', self.user, self.core],
+        self.check_path(['mysite', self.user, self.core, self.entrypoints],
                         ['mysite', '-site', '+user'])
-        self.check_path(['mysite', self.core],
+        self.check_path(['mysite', self.core, self.entrypoints],
                         ['mysite', '-site'])
 
     def test_override_core(self):
-        self.check_path(['mycore', self.user, self.site],
+        self.check_path(['mycore', self.user, self.site, self.entrypoints],
                         ['mycore', '-core', '+user', '+site'])
-        self.check_path(['mycore', self.site],
+        self.check_path(['mycore', self.entrypoints, self.site],
                         ['mycore', '-core'])
 
     def test_my_plugin_only(self):
-        self.check_path(['myplugin'], ['myplugin', '-user', '-core', '-site'])
+        self.check_path(
+            ['myplugin'],
+            ['myplugin', '-user', '-core', '-site', '-entrypoints'])
 
     def test_my_plugin_first(self):
-        self.check_path(['myplugin', self.core, self.site, self.user],
+        self.check_path(['myplugin', self.core, self.site, self.user, self.entrypoints],
                         ['myplugin', '+core', '+site', '+user'])
 
     def test_bogus_references(self):
-        self.check_path(['+foo', '-bar', self.core, self.site],
+        self.check_path(['+foo', '-bar', self.core, self.entrypoints, self.site],
                         ['+foo', '-bar'])
 
 
@@ -891,3 +895,41 @@ good 0.1.0
   Hi there
 
 """, ''.join(plugin.describe_plugins(state=self)))
+
+
+class DummyPlugin(object):
+    """Plugin."""
+
+
+class TestLoadEnvPlugin(BaseTestPlugins):
+
+    _test_needs_features = [pkg_resources_feature]
+
+    def setup_plugin(self, source=""):
+        # This test tests a new plugin appears in breezy.plugin.plugins().
+        # check the plugin is not loaded already
+        self.assertPluginUnknown('plugin')
+        # write a plugin that _cannot_ fail to load.
+        import pkg_resources
+        d = pkg_resources.Distribution(__file__)
+        ep = pkg_resources.EntryPoint.parse(
+            'plugin = ' + __name__ + ':DummyPlugin', dist=d)
+        d._ep_map = {'breezy.plugin': {'plugin': ep}}
+        pkg_resources.working_set.add(d, 'plugin', replace=True)
+        eps = list(pkg_resources.iter_entry_points('breezy.plugin'))
+        self.assertEqual(['plugin'], [ep.name for ep in eps])
+        self.load_with_paths(['.'])
+        self.addCleanup(d._ep_map.clear)
+
+    def test_plugin_loaded(self):
+        self.assertPluginUnknown('plugin')
+        self.setup_plugin()
+        p = self.plugins['plugin']
+        self.assertIsInstance(p, breezy.plugin.PlugIn)
+        self.assertIs(p.module, sys.modules[self.module_prefix + 'plugin'])
+
+    def test_plugin_loaded_disabled(self):
+        self.assertPluginUnknown('plugin')
+        self.overrideEnv('BRZ_DISABLE_PLUGINS', 'plugin')
+        self.setup_plugin()
+        self.assertNotIn('plugin', self.plugins)

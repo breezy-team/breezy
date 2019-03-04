@@ -98,12 +98,12 @@ Key features of Breezy
 While Breezy is not the only distributed VCS tool around, it does have some
 notable features that make it an excellent choice for many teams and
 communities. A summary of these and comparisons with other VCS tools
-can be found on the Breezy Wiki, http://wiki.bazaar.canonical.com.
+can be found on the Bazaar Wiki, http://wiki.bazaar.canonical.com.
 
 Of the many features, one in particular is worth highlighting:
 Breezy is completely free software written in Python. As a result,
 it is easy to contribute improvements. If you wish to get involved,
-please see http://wiki.bazaar.canonical.com/BzrSupport.
+please see https://www.breezy-vcs.org/pages/support.html.
 
 
 Learning more

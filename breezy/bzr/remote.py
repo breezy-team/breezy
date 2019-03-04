@@ -37,13 +37,13 @@ from .. import (
     registry,
     repository as _mod_repository,
     revision as _mod_revision,
-    testament as _mod_testament,
     urlutils,
     )
 from . import (
     branch as bzrbranch,
     bzrdir as _mod_bzrdir,
     inventory_delta,
+    testament as _mod_testament,
     vf_repository,
     vf_search,
     )
@@ -961,23 +961,23 @@ class RemoteInventoryTree(InventoryRevisionTree):
                 format, name, root, subdir, force_mtime=force_mtime)
         return ret
 
-    def annotate_iter(self, path, file_id=None,
+    def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """Return an iterator of revision_id, line tuples.
 
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.
-        :param file_id: The file to produce an annotated version from
         :param default_revision: For lines that don't match a basis, mark them
             with this revision id. Not all implementations will make use of
             this value.
         """
         ret = self._repository._annotate_file_revision(
-            self.get_revision_id(), path, file_id, default_revision)
+            self.get_revision_id(), path, file_id=None,
+            default_revision=default_revision)
         if ret is None:
             return super(RemoteInventoryTree, self).annotate_iter(
-                path, file_id, default_revision=default_revision)
+                path, default_revision=default_revision)
         return ret
 
 
@@ -2268,7 +2268,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             unused.append(decompressor.unused_data)
         unused = b""
         while True:
-            while not b"\n" in unused:
+            while b"\n" not in unused:
                 try:
                     unused += next(byte_stream)
                 except StopIteration:
@@ -2474,7 +2474,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
-        from ..reconcile import RepoReconciler
+        from ..reconcile import ReconcileResult
         with self.lock_write():
             path = self.controldir._path_for_remote_call(self._client)
             try:
@@ -2486,7 +2486,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             if response != (b'ok', ):
                 raise errors.UnexpectedSmartServerResponse(response)
             body = handler.read_body_bytes()
-            result = RepoReconciler(self)
+            result = ReconcileResult()
+            result.garbage_inventories = None
+            result.inconsistent_parents = None
+            result.aborted = None
             for line in body.split(b'\n'):
                 if not line:
                     continue
@@ -4139,6 +4142,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch.heads_to_fetch()
 
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from .reconcile import BranchReconciler
+        with self.lock_write():
+            reconciler = BranchReconciler(self, thorough=thorough)
+            return reconciler.reconcile()
+
 
 class RemoteConfig(object):
     """A Config that reads and writes from smart verbs.
@@ -4216,12 +4226,17 @@ class RemoteBranchConfig(RemoteConfig):
             return self._set_config_option(value, name, section)
 
     def _set_config_option(self, value, name, section):
+        if isinstance(value, (bool, int)):
+            value = str(value)
+        elif isinstance(value, (text_type, str)):
+            pass
+        else:
+            raise TypeError(value)
         try:
             path = self._branch._remote_path()
             response = self._branch._client.call(b'Branch.set_config_option',
                                                  path, self._branch._lock_token, self._branch._repo_lock_token,
-                                                 value.encode(
-                                                     'utf8'), name.encode('utf-8'),
+                                                 value.encode('utf-8'), name.encode('utf-8'),
                                                  (section or '').encode('utf-8'))
         except errors.UnknownSmartMethod:
             medium = self._branch._client._medium

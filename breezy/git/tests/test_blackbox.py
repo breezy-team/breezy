@@ -30,10 +30,12 @@ from ...controldir import (
     )
 
 from ...tests.blackbox import ExternalBase
+from ...workingtree import WorkingTree
 
 from .. import (
     tests,
     )
+from ...tests.features import PluginLoadedFeature
 
 
 class TestGitBlackBox(ExternalBase):
@@ -62,7 +64,19 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone tree (format: git)" in output)
+        self.assertEqual(
+            output,
+            'Standalone tree (format: git)\n'
+            'Location:\n'
+            '            light checkout root: .\n'
+            '  checkout of co-located branch: master\n')
+
+    def test_ignore(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['ignore', 'foo'])
+        self.assertEqual(error, '')
+        self.assertEqual(output, '')
+        self.assertFileEqual("foo\n", ".gitignore")
 
     def test_branch(self):
         os.mkdir("gitbranch")
@@ -294,6 +308,7 @@ class ShallowTests(ExternalBase):
         self.repo.stage("foo")
         self.repo.do_commit(
             b"message", committer=b"Somebody <user@example.com>",
+            author=b"Somebody <user@example.com>",
             commit_timestamp=1526330165, commit_timezone=0,
             author_timestamp=1526330165, author_timezone=0,
             merge_heads=[b'aa' * 20])
@@ -338,6 +353,37 @@ class ShallowTests(ExternalBase):
         self.assertEqual(output, 'VERSION_INFO \n')
 
 
+class SwitchTests(ExternalBase):
+
+    def test_switch_branch(self):
+        # Create a git repository with a revision.
+        repo = GitRepo.init(self.test_dir)
+        builder = tests.GitBranchBuilder()
+        builder.set_branch(b'refs/heads/oldbranch')
+        builder.set_file('a', b'text for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.set_branch(b'refs/heads/newbranch')
+        builder.reset()
+        builder.set_file('a', b'text for new a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.finish()
+
+        repo.refs.set_symbolic_ref(b'HEAD', b'refs/heads/newbranch')
+
+        repo.reset_index()
+
+        output, error = self.run_bzr('switch oldbranch')
+        self.assertEqual(output, '')
+        self.assertTrue(error.startswith('Updated to revision 1.\n'), error)
+
+        self.assertFileEqual("text for a\n", 'a')
+        tree = WorkingTree.open('.')
+        with tree.lock_read():
+            basis_tree = tree.basis_tree()
+            with basis_tree.lock_read():
+                self.assertEqual([], list(tree.iter_changes(basis_tree)))
+
+
 class GrepTests(ExternalBase):
 
     def test_simple_grep(self):
@@ -347,3 +393,99 @@ class GrepTests(ExternalBase):
         output, error = self.run_bzr('grep text')
         self.assertEqual(output, 'a:text for a\n')
         self.assertEqual(error, '')
+
+
+class ReconcileTests(ExternalBase):
+
+    def test_simple_reconcile(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        output, error = self.run_bzr('reconcile')
+        self.assertContainsRe(
+            output,
+            'Reconciling branch file://.*\n'
+            'Reconciling repository file://.*\n'
+            'Reconciliation complete.\n')
+        self.assertEqual(error, '')
+
+
+class StatusTests(ExternalBase):
+
+    def test_empty_dir(self):
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree(['a/', 'a/foo'])
+        self.build_tree_contents([('.gitignore', 'foo\n')])
+        tree.add(['.gitignore'])
+        tree.commit('add ignore')
+        output, error = self.run_bzr('st')
+        self.assertEqual(output, '')
+        self.assertEqual(error, '')
+
+
+class StatsTests(ExternalBase):
+
+    def test_simple_stats(self):
+        self.requireFeature(PluginLoadedFeature('stats'))
+        tree = self.make_branch_and_tree('.', format='git')
+        self.build_tree_contents([('a', 'text for a\n')])
+        tree.add(['a'])
+        tree.commit('a commit', committer='Somebody <somebody@example.com>')
+        output, error = self.run_bzr('stats')
+        self.assertEqual(output, '   1 Somebody <somebody@example.com>\n')
+
+
+class GitObjectsTests(ExternalBase):
+
+    def run_simple(self, format):
+        tree = self.make_branch_and_tree('.', format=format)
+        self.build_tree(['a/', 'a/foo'])
+        tree.add(['a'])
+        tree.commit('add a')
+        output, error = self.run_bzr('git-objects')
+        shas = list(output.splitlines())
+        self.assertEqual([40, 40], [len(s) for s in shas])
+        self.assertEqual(error, '')
+
+        output, error = self.run_bzr('git-object %s' % shas[0])
+        self.assertEqual('', error)
+
+    def test_in_native(self):
+        self.run_simple(format='git')
+
+    def test_in_bzr(self):
+        self.run_simple(format='2a')
+
+
+class GitApplyTests(ExternalBase):
+
+    def test_apply(self):
+        b = self.make_branch_and_tree('.')
+
+        with open('foo.patch', 'w') as f:
+            f.write("""\
+From bdefb25fab801e6af0a70e965f60cb48f2b759fa Mon Sep 17 00:00:00 2001
+From: Dmitry Bogatov <KAction@debian.org>
+Date: Fri, 8 Feb 2019 23:28:30 +0000
+Subject: [PATCH] Add fixed for out-of-date-standards-version
+
+---
+ message           | 3 +++
+ 1 files changed, 14 insertions(+)
+ create mode 100644 message
+
+diff --git a/message b/message
+new file mode 100644
+index 0000000..05ec0b1
+--- /dev/null
++++ b/message
+@@ -0,0 +1,3 @@
++Update standards version, no changes needed.
++Certainty: certain
++Fixed-Lintian-Tags: out-of-date-standards-version
+""")
+        output, error = self.run_bzr('git-apply foo.patch')
+        self.assertContainsRe(
+            error,
+            'Committing to: .*\n'
+            'Committed revision 1.\n')

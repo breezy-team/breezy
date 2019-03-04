@@ -1,7 +1,7 @@
-Reviewing proposed changes to Bazaar
+Reviewing proposed changes to Breezy
 ####################################
 
-All non-trivial code changes coming in to Bazaar are reviewed by someone else.
+All non-trivial code changes coming in to Breezy are reviewed by someone else.
 
 Anyone is welcome to review any patch.  You don't need to have a full
 understanding of the codebase to find problems in the code, the documentation,
@@ -13,11 +13,8 @@ developers.  Use intelligent discretion about whether the patch is trivial.
 
 No one likes their merge requests sitting in a queue going nowhere: this
 is pure waste.  We prioritize reviewing existing proposals.
-Canonical dedicates some staff time to providing prompt helpful reviews.
-(See <http://wiki.bazaar.canonical.com/PatchPilot/>.)
 
-From late 2009 on, we do all our code reviews through Launchpad's
-merge proposal interface.
+We do all our code reviews through Launchpad's merge proposal interface.
 
 
 Reviewing proposed changes
@@ -48,9 +45,8 @@ fixed but those things should not hold up the original fix being accepted.
 New things can easily be recorded in the bug tracker instead.
 
 It's normally much easier to review several smaller patches than one large
-one.  You might want to use ``bzr-loom`` to maintain threads of related
-work, or submit a preparatory patch that will make your "real" change
-easier.
+one.  You might want to submit a preparatory patch that will make your "real"
+change easier.
 
 
 Checklist for reviewers
@@ -98,7 +94,6 @@ ready to merge.
 Landing approved changes
 ========================
 
-Once a merge proposal is approved and finished, it's sent to PQM (the patch
-queue manager) which will automatically test and integrate it.  The recommended
-way to start this off is by running the ``feed-pqm`` script from
-<https://launchpad.net/hydrazine/>.
+Once a merge proposal is approved and finished, it's marked as
+Approved and picked up by the CI (https://ci.breezy-vcs.org/),
+which will automatically test and integrate it.

@@ -48,15 +48,12 @@ else:
 
 cmd = 'from setuptools.command.easy_install import main; main()'
 ws = pkg_resources.working_set
+env = dict(
+    os.environ,
+    PYTHONPATH=ws.find(pkg_resources.Requirement.parse('setuptools')).location)
 
 if is_jython:
     import subprocess
-
-    env = dict(
-        os.environ,
-        PYTHONPATH=ws.find(
-            pkg_resources.Requirement.parse('setuptools')).location
-        )
 
     assert subprocess.Popen(
         [sys.executable] +
@@ -66,12 +63,7 @@ if is_jython:
 else:
     assert os.spawnle(
         os.P_WAIT, sys.executable, quote(sys.executable),
-        '-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout',
-        dict(
-            os.environ,
-            PYTHONPATH=
-            ws.find(pkg_resources.Requirement.parse('setuptools')).location
-            ),
+        '-c', quote(cmd), '-mqNxd', quote(tmpeggs), 'zc.buildout', env,
         ) == 0
 
 ws.add_entry(tmpeggs)

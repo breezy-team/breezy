@@ -562,9 +562,9 @@ class Commit(object):
         #       to local.
 
         # Make sure the local branch is identical to the master
-        master_info = self.master_branch.last_revision_info()
-        local_info = self.branch.last_revision_info()
-        if local_info != master_info:
+        master_revid = self.master_branch.last_revision()
+        local_revid = self.branch.last_revision()
+        if local_revid != master_revid:
             raise errors.BoundBranchOutOfDate(self.branch,
                                               self.master_branch)
 
@@ -588,7 +588,11 @@ class Commit(object):
             # - in a checkout scenario the tree may have no
             # parents but the branch may do.
             first_tree_parent = breezy.revision.NULL_REVISION
-        old_revno, master_last = self.master_branch.last_revision_info()
+        try:
+            old_revno, master_last = self.master_branch.last_revision_info()
+        except errors.UnsupportedOperation:
+            master_last = self.master_branch.last_revision()
+            old_revno = self.branch.revision_id_to_revno(master_last)
         if master_last != first_tree_parent:
             if master_last != breezy.revision.NULL_REVISION:
                 raise errors.OutOfDateTree(self.work_tree)
@@ -677,7 +681,7 @@ class Commit(object):
         if self.exclude:
             iter_changes = filter_excluded(iter_changes, self.exclude)
         iter_changes = self._filter_iter_changes(iter_changes)
-        for file_id, path, fs_hash in self.builder.record_iter_changes(
+        for path, fs_hash in self.builder.record_iter_changes(
                 self.work_tree, self.basis_revid, iter_changes):
             self.work_tree._observed_sha1(path, fs_hash)
 

@@ -46,9 +46,9 @@ def vfs_enabled():
 
     the VFS is disabled when the BRZ_NO_SMART_VFS environment variable is set.
 
-    :return: True if it is enabled.
+    :return: ``True`` if it is enabled.
     """
-    return not 'BRZ_NO_SMART_VFS' in os.environ
+    return 'BRZ_NO_SMART_VFS' not in os.environ
 
 
 class VfsRequest(request.SmartServerRequest):

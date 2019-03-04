@@ -50,42 +50,74 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
     :param store_uncommitted: If True, store uncommitted changes in the
         branch.
     """
-    _check_pending_merges(control_dir, force)
     try:
-        source_repository = control_dir.open_branch().repository
-    except errors.NotBranchError:
-        source_repository = to_branch.repository
-    if store_uncommitted:
-        with lock.write_locked(control_dir.open_workingtree()) as tree:
-            tree.store_uncommitted()
-    with to_branch.lock_read():
-        _set_branch_location(control_dir, to_branch, force)
-    tree = control_dir.open_workingtree()
-    _update(tree, source_repository, quiet, revision_id, store_uncommitted)
-    _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
-
-
-def _check_pending_merges(control, force=False):
-    """Check that there are no outstanding pending merges before switching.
-
-    :param control: ControlDir of the branch to check
-    """
-    try:
-        tree = control.open_workingtree()
+        tree = control_dir.open_workingtree()
     except errors.NotBranchError as ex:
         # Lightweight checkout and branch is no longer there
-        if force:
-            return
-        else:
+        if not force or store_uncommitted:
             raise ex
-    # XXX: Should the tree be locked for get_parent_ids?
-    existing_pending_merges = tree.get_parent_ids()[1:]
-    if len(existing_pending_merges) > 0:
-        raise errors.BzrCommandError(gettext('Pending merges must be '
-                                             'committed or reverted before using switch.'))
+        else:
+            tree = None
+    else:
+        if store_uncommitted or tree.branch.get_bound_location():
+            tree.lock_write()
+        else:
+            tree.lock_tree_write()
+    try:
+        if tree is not None:
+            parent_ids = tree.get_parent_ids()
+            if len(parent_ids) > 1:
+                raise errors.BzrCommandError(
+                    gettext('Pending merges must be '
+                            'committed or reverted before using switch.'))
+
+        if store_uncommitted:
+            tree.store_uncommitted()
+        if tree is None:
+            source_repository = to_branch.repository
+            base_revision_id = None
+        else:
+            source_repository = tree.branch.repository
+            # Attempt to retrieve the base_revision_id now, since some
+            # working tree formats (i.e. git) don't have their own
+            # last_revision but just use that of the currently active branch.
+            base_revision_id = tree.last_revision()
+    finally:
+        if tree is not None:
+            tree.unlock()
+    with to_branch.lock_read():
+        _set_branch_location(control_dir, to_branch, tree.branch if tree else None, force)
+    tree = control_dir.open_workingtree()
+    if store_uncommitted:
+        tree.lock_write()
+    else:
+        tree.lock_tree_write()
+    try:
+        if base_revision_id is None:
+            # If we couldn't get to the tree's last_revision earlier, perhaps
+            # we can now.
+            base_revision_id = tree.last_revision()
+        if revision_id is None:
+            revision_id = to_branch.last_revision()
+        if base_revision_id == revision_id:
+            if not quiet:
+                note(gettext("Tree is up to date at revision %d."),
+                     to_branch.revno())
+        else:
+            base_tree = source_repository.revision_tree(base_revision_id)
+            target_tree = to_branch.repository.revision_tree(revision_id)
+            merge.Merge3Merger(tree, tree, base_tree, target_tree)
+            tree.set_last_revision(revision_id)
+            if not quiet:
+                note(gettext('Updated to revision %d.') % to_branch.revno())
+        if store_uncommitted:
+            tree.restore_uncommitted()
+        _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
+    finally:
+        tree.unlock()
 
 
-def _set_branch_location(control, to_branch, force=False):
+def _set_branch_location(control, to_branch, current_branch, force=False):
     """Set location value of a branch reference.
 
     :param control: ControlDir of the checkout to change
@@ -97,7 +129,7 @@ def _set_branch_location(control, to_branch, force=False):
         # Lightweight checkout: update the branch reference
         branch_format.set_reference(control, None, to_branch)
     else:
-        b = control.open_branch()
+        b = current_branch
         bound_branch = b.get_bound_location()
         if bound_branch is not None:
             # Heavyweight checkout: check all local commits
@@ -152,36 +184,3 @@ def _any_local_commits(this_branch, possible_transports):
             if not graph.is_ancestor(last_rev, other_last_rev):
                 return True
     return False
-
-
-def _update(tree, source_repository, quiet=False, revision_id=None,
-            restore_uncommitted=False):
-    """Update a working tree to the latest revision of its branch.
-
-    :param tree: the working tree
-    :param source_repository: repository holding the revisions
-    :param restore_uncommitted: restore any uncommitted changes in the branch.
-    """
-    if restore_uncommitted:
-        tree.lock_write()
-    else:
-        tree.lock_tree_write()
-    try:
-        to_branch = tree.branch
-        if revision_id is None:
-            revision_id = to_branch.last_revision()
-        if tree.last_revision() == revision_id:
-            if not quiet:
-                note(gettext("Tree is up to date at revision %d."),
-                     to_branch.revno())
-        else:
-            base_tree = source_repository.revision_tree(tree.last_revision())
-            merge.Merge3Merger(tree, tree, base_tree,
-                               to_branch.repository.revision_tree(revision_id))
-            tree.set_last_revision(to_branch.last_revision())
-            if not quiet:
-                note(gettext('Updated to revision %d.') % to_branch.revno())
-        if restore_uncommitted:
-            tree.restore_uncommitted()
-    finally:
-        tree.unlock()

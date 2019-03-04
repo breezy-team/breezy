@@ -2,12 +2,12 @@
 
 
 # \subsection{Example usage}
-# 
-# \textbf{XXX:} Move these to object serialization code. 
+#
+# \textbf{XXX:} Move these to object serialization code.
 
 def write_revision(writer, revision):
     s = Stanza(revision=revision.revision_id,
-               committer=revision.committer, 
+               committer=revision.committer,
                timezone=long(revision.timezone),
                timestamp=long(revision.timestamp),
                inventory_sha1=revision.inventory_sha1,

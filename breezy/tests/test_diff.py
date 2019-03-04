@@ -699,7 +699,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
 
 class DiffWasIs(diff.DiffPath):
 
-    def diff(self, file_id, old_path, new_path, old_kind, new_kind):
+    def diff(self, old_path, new_path, old_kind, new_kind):
         self.to_file.write(b'was: ')
         self.to_file.write(self.old_tree.get_file(old_path).read())
         self.to_file.write(b'is: ')
@@ -728,20 +728,19 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', b'file-id')
         differ = diff.DiffText(self.old_tree, self.new_tree, BytesIO())
-        differ.diff_text('olddir/oldfile', None, 'old label',
-                         'new label', b'file-id', None)
+        differ.diff_text('olddir/oldfile', None, 'old label', 'new label')
         self.assertEqual(
             b'--- old label\n+++ new label\n@@ -1,1 +0,0 @@\n-old\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
         differ.diff_text(None, 'newdir/newfile',
-                         'old label', 'new label', None, b'file-id')
+                         'old label', 'new label')
         self.assertEqual(
             b'--- old label\n+++ new label\n@@ -0,0 +1,1 @@\n+new\n\n',
             differ.to_file.getvalue())
         differ.to_file.seek(0)
         differ.diff_text('olddir/oldfile', 'newdir/newfile',
-                         'old label', 'new label', b'file-id', b'file-id')
+                         'old label', 'new label')
         self.assertEqual(
             b'--- old label\n+++ new label\n@@ -1,1 +1,1 @@\n-old\n+new\n\n',
             differ.to_file.getvalue())
@@ -789,7 +788,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
                                   ('new-tree/newdir/newfile', b'new\n')])
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', b'file-id')
-        self.differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
+        self.differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -805,7 +804,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         os.symlink('new', 'new-tree/newdir/newfile')
         self.new_tree.add('newdir')
         self.new_tree.add('newdir/newfile', b'file-id')
-        self.differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
+        self.differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
             br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
@@ -816,7 +815,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
     def test_diff_directory(self):
         self.build_tree(['new-tree/new-dir/'])
         self.new_tree.add('new-dir', b'new-dir-id')
-        self.differ.diff(b'new-dir-id', None, 'new-dir')
+        self.differ.diff(None, 'new-dir')
         self.assertEqual(self.differ.to_file.getvalue(), b'')
 
     def create_old_new(self):
@@ -838,7 +837,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
             differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO())
         finally:
             diff.DiffTree.diff_factories = old_diff_factories
-        differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
+        differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -850,7 +849,7 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.create_old_new()
         differ = diff.DiffTree(self.old_tree, self.new_tree, BytesIO(),
                                extra_factories=[DiffWasIs.from_diff_tree])
-        differ.diff(b'file-id', 'olddir/oldfile', 'newdir/newfile')
+        differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertNotContainsRe(
             differ.to_file.getvalue(),
             br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+1,1'
@@ -1492,7 +1491,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
         old_path, new_path = diff_obj._prepare_files(
-            'oldname', 'newname', file_id=b'file-id')
+            'oldname', 'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
@@ -1501,7 +1500,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
-        diff_obj._prepare_files('oldname2', 'newname2', file_id=b'file2-id')
+        diff_obj._prepare_files('oldname2', 'newname2')
 
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):

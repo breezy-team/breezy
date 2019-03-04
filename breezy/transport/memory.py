@@ -122,7 +122,7 @@ class MemoryTransport(transport.Transport):
     def _check_parent(self, _abspath):
         dir = os.path.dirname(_abspath)
         if dir != '/':
-            if not dir in self._dirs:
+            if dir not in self._dirs:
                 raise NoSuchFile(_abspath)
 
     def has(self, relpath):
@@ -135,7 +135,7 @@ class MemoryTransport(transport.Transport):
     def delete(self, relpath):
         """See Transport.delete()."""
         _abspath = self._abspath(relpath)
-        if not _abspath in self._files:
+        if _abspath not in self._files:
             raise NoSuchFile(relpath)
         del self._files[_abspath]
 
@@ -148,7 +148,7 @@ class MemoryTransport(transport.Transport):
     def get(self, relpath):
         """See Transport.get()."""
         _abspath = self._abspath(relpath)
-        if not _abspath in self._files:
+        if _abspath not in self._files:
             if _abspath in self._dirs:
                 return LateReadError(relpath)
             else:
@@ -255,7 +255,7 @@ class MemoryTransport(transport.Transport):
             if path.startswith(_abspath + '/') and path != _abspath:
                 self._translate_error(
                     IOError(errno.ENOTEMPTY, relpath), relpath)
-        if not _abspath in self._dirs:
+        if _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         del self._dirs[_abspath]
 

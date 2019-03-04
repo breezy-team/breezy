@@ -48,6 +48,12 @@ from ... import (
     )
 from ...transport.http import _urllib2_wrappers
 
+from .lp_api import (
+    DEFAULT_INSTANCE,
+    LAUNCHPAD_DOMAINS,
+    LAUNCHPAD_BAZAAR_DOMAINS,
+    )
+
 
 # for testing, do
 '''
@@ -105,23 +111,12 @@ class LaunchpadService(object):
     can call.
     """
 
-    LAUNCHPAD_DOMAINS = {
-        'production': 'launchpad.net',
-        'staging': 'staging.launchpad.net',
-        'qastaging': 'qastaging.launchpad.net',
-        'demo': 'demo.launchpad.net',
-        'dev': 'launchpad.dev',
-        }
-
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     LAUNCHPAD_INSTANCE = {}
     for instance, domain in LAUNCHPAD_DOMAINS.items():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
-    # We use production as the default because edge has been deprecated circa
-    # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-    DEFAULT_INSTANCE = 'production'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None
@@ -198,10 +193,10 @@ class LaunchpadService(object):
     @property
     def domain(self):
         if self._lp_instance is None:
-            instance = self.DEFAULT_INSTANCE
+            instance = DEFAULT_INSTANCE
         else:
             instance = self._lp_instance
-        return self.LAUNCHPAD_DOMAINS[instance]
+        return LAUNCHPAD_DOMAINS[instance]
 
     def _guess_branch_path(self, branch_url, _request_factory=None):
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
@@ -216,10 +211,7 @@ class LaunchpadService(object):
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]
         else:
-            domains = (
-                'bazaar.%s' % domain
-                for domain in self.LAUNCHPAD_DOMAINS.values())
-            if hostinfo not in domains:
+            if hostinfo not in LAUNCHPAD_BAZAAR_DOMAINS:
                 raise NotLaunchpadBranch(branch_url)
         return path.lstrip('/')
 

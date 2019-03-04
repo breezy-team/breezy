@@ -142,14 +142,14 @@ class GitTags(tag.BasicTags):
             if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
             elif overwrite or ref_name not in target_repo._git.refs:
-                target_repo._git.refs[ref_name] = unpeeled or peeled
                 try:
                     updates[tag_name] = (
-                        self.repository.lookup_foreign_revision_id(peeled))
+                        target_repo.lookup_foreign_revision_id(peeled))
                 except KeyError:
                     trace.warning('%s does not point to a valid object',
                                   tag_name)
                     continue
+                target_repo._git.refs[ref_name] = unpeeled or peeled
             else:
                 try:
                     source_revid = self.repository.lookup_foreign_revision_id(
@@ -624,6 +624,32 @@ class GitBranch(ForeignBranch):
             if self._tag_refs is None:
                 self._tag_refs = list(self._iter_tag_refs())
             return self._tag_refs
+
+    def import_last_revision_info_and_tags(self, source, revno, revid,
+                                           lossy=False):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+        Revisions referenced by source's tags are also transferred.
+
+        :param source: Source branch to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        :param lossy: Whether to discard metadata that can not be
+            natively represented
+        :return: Tuple with the new revision number and revision id
+            (should only be different from the arguments when lossy=True)
+        """
+        push_result = source.push(
+            self, stop_revision=revid, lossy=lossy, _stop_revno=revno)
+        return (push_result.new_revno, push_result.new_revid)
+
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from ..reconcile import ReconcileResult
+        # Nothing to do here
+        return ReconcileResult()
 
 
 class LocalGitBranch(GitBranch):
@@ -1221,12 +1247,13 @@ class InterToGitBranch(branch.GenericInterBranch):
         return (not isinstance(source, GitBranch) and
                 isinstance(target, GitBranch))
 
-    def _get_new_refs(self, stop_revision=None, fetch_tags=None):
+    def _get_new_refs(self, stop_revision=None, fetch_tags=None,
+                      stop_revno=None):
         if not self.source.is_locked():
             raise errors.ObjectNotLocked(self.source)
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
-        else:
+        elif stop_revno is None:
             stop_revno = self.source.revision_id_to_revno(stop_revision)
         if not isinstance(stop_revision, bytes):
             raise TypeError(stop_revision)
@@ -1318,13 +1345,13 @@ class InterToGitBranch(branch.GenericInterBranch):
             raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
-             possible_transports=None, run_hooks=True):
+             possible_transports=None, run_hooks=True, _stop_revno=None):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
         with self.source.lock_read(), self.target.lock_write():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(
-                stop_revision)
+                stop_revision, stop_revno=_stop_revno)
 
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
@@ -1347,7 +1374,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         return result
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None):
+             _override_hook_source_branch=None, _stop_revno=None):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1355,7 +1382,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.master_branch = result.target_branch
         with self.source.lock_read(), self.target.lock_write():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(
-                stop_revision)
+                stop_revision, stop_revno=_stop_revno)
 
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)

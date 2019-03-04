@@ -44,7 +44,7 @@ from ..revision import Revision, NULL_REVISION
 from ..sixish import (
     viewitems,
     )
-from ..testament import StrictTestament
+from ..bzr.testament import StrictTestament
 from ..trace import mutter, warning
 from ..tree import Tree
 from ..bzr.xml5 import serializer_v5
@@ -682,7 +682,7 @@ class BundleTree(Tree):
         old_path = self.old_path(path)
         return self.base_tree.get_file_revision(old_path)
 
-    def get_size_and_sha1(self, new_path, file_id=None):
+    def get_size_and_sha1(self, new_path):
         """Return the size and sha1 hash of the given file id.
         If the file was not locally modified, this is extracted
         from the base_tree. Rather than re-reading the file.
@@ -769,10 +769,10 @@ class BundleTree(Tree):
                 return
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
-            # skip the root for compatability with the current apis.
+            # skip the root for compatibility with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def sorted_path_id(self):
         paths = []

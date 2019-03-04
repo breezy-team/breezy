@@ -442,16 +442,15 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 self._repository = tree.branch.repository
                 self._inventory = shape
 
-            def get_file_text(self, path, file_id=None):
-                if file_id is None:
-                    file_id = self.path2id(path)
+            def get_file_text(self, path):
+                file_id = self.path2id(path)
                 ie = self.root_inventory.get_entry(file_id)
                 if ie.kind != "file":
                     return b""
                 return b'a' * ie.text_size
 
-            def get_file(self, path, file_id=None):
-                return BytesIO(self.get_file_text(path, file_id))
+            def get_file(self, path):
+                return BytesIO(self.get_file_text(path))
 
         with tree.lock_write():
             if shape.root.revision is None:
@@ -467,8 +466,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 _mod_revision.NULL_REVISION)
             changes = shape_tree.iter_changes(
                 base_tree)
-            list(builder.record_iter_changes(shape_tree,
-                                             base_tree.get_revision_id(), changes))
+            list(builder.record_iter_changes(
+                shape_tree, base_tree.get_revision_id(), changes))
             builder.finish_inventory()
             builder.commit("Message")
 

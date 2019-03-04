@@ -78,4 +78,4 @@ class UnknownMercurialCommitExtra(brz_errors.BzrError):
     def __init__(self, object, fields):
         brz_errors.BzrError.__init__(self)
         self.object = object
-        self.fields = ",".join(fields)
+        self.fields = b",".join(fields)

@@ -604,7 +604,7 @@ class TreeTransformBase(object):
 
         :param name: The basename of the file.
 
-        :param target_id: The directory trans_id where the backup should 
+        :param target_id: The directory trans_id where the backup should
             be placed.
         """
         known_children = self.by_parent().get(target_id, [])
@@ -720,9 +720,13 @@ class TreeTransformBase(object):
     def _duplicate_ids(self):
         """Each inventory id may only be used once"""
         conflicts = []
+        try:
+            all_ids = self._tree.all_file_ids()
+        except errors.UnsupportedOperation:
+            # it's okay for non-file-id trees to raise UnsupportedOperation.
+            return []
         removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
                                 self._removed_id))
-        all_ids = self._tree.all_file_ids()
         active_tree_ids = all_ids.difference(removed_tree_ids)
         for trans_id, file_id in viewitems(self._new_id):
             if file_id in active_tree_ids:
@@ -1792,8 +1796,7 @@ class TreeTransform(DiskTreeTransform):
                     continue
                 kind = self.final_kind(trans_id)
                 if kind is None:
-                    kind = self._tree.stored_kind(
-                        self._tree.id2path(file_id), file_id)
+                    kind = self._tree.stored_kind(self._tree.id2path(file_id))
                 parent_trans_id = self.final_parent(trans_id)
                 parent_file_id = new_path_file_ids.get(parent_trans_id)
                 if parent_file_id is None:
@@ -2064,7 +2067,17 @@ class _PreviewTree(inventorytree.InventoryTree):
         return tree_ids
 
     def all_versioned_paths(self):
-        return {self.id2path(fid) for fid in self.all_file_ids()}
+        tree_paths = set(self._transform._tree.all_versioned_paths())
+
+        tree_paths.difference_update(
+            self._transform.trans_id_tree_path(t)
+            for t in self._transform._removed_id)
+
+        tree_paths.update(
+            self._final_paths._determine_path(t)
+            for t in self._transform._new_id)
+
+        return tree_paths
 
     def _has_id(self, file_id, fallback_check):
         if file_id in self._transform._r_new_id:
@@ -2153,8 +2166,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             kind = self._transform.final_kind(trans_id)
             if kind is None:
                 kind = self._transform._tree.stored_kind(
-                    self._transform._tree.id2path(file_id),
-                    file_id)
+                    self._transform._tree.id2path(file_id))
             new_entry = inventory.make_entry(
                 kind,
                 self._transform.final_name(trans_id),
@@ -2226,15 +2238,15 @@ class _PreviewTree(inventorytree.InventoryTree):
                     if not path.startswith(prefix):
                         continue
                     path = path[len(prefix):]
-                yield path, 'V', entry.kind, entry.file_id, entry
+                yield path, 'V', entry.kind, entry
         else:
             if from_dir is None and include_root is True:
-                root_entry = inventory.make_entry('directory', '',
-                                                  ROOT_PARENT, self.get_root_id())
-                yield '', 'V', 'directory', root_entry.file_id, root_entry
+                root_entry = inventory.make_entry(
+                    'directory', '', ROOT_PARENT, self.get_root_id())
+                yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:
-                yield path, 'V', entry.kind, entry.file_id, entry
+                yield path, 'V', entry.kind, entry
 
     def kind(self, path):
         trans_id = self._path2trans_id(path)
@@ -2695,7 +2707,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                 tt.create_hardlink(accelerator_tree.abspath(accelerator_path),
                                    trans_id)
             else:
-                with accelerator_tree.get_file(accelerator_path, file_id) as f:
+                with accelerator_tree.get_file(accelerator_path) as f:
                     chunks = osutils.file_iterator(f)
                     if wt.supports_content_filtering():
                         filters = wt._content_filter_stack(tree_path)
@@ -3110,7 +3122,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
             file_id = tt.inactive_file_id(conflict[1])
             # special-case the other tree root (move its children instead)
             if path_tree and path_tree.path2id('') == file_id:
-                    # This is the root entry, skip it
+                # This is the root entry, skip it
                 continue
             tt.version_file(file_id, conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

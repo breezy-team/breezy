@@ -40,4 +40,3 @@ epydoc.uid.ObjectUID = ObjectUID
 
 
 _ScopeReplacer._should_proxy = True
-

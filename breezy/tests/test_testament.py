@@ -22,7 +22,7 @@ import os
 
 from breezy import osutils
 from breezy.tests import TestCaseWithTransport
-from breezy.testament import (
+from breezy.bzr.testament import (
     Testament,
     StrictTestament,
     StrictTestament3,

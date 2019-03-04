@@ -328,7 +328,7 @@ command.  (e.g. ``brz --profile help``).
                the duration of the command.  This can be used multiple times if
                several options need to be overridden.
 
-See http://doc.bazaar.canonical.com/developers/profiling.html for more
+See https://www.breezy-vcs.org/developers/profiling.html for more
 information on profiling.
 
 A number of debug flags are also available to assist troubleshooting and
@@ -526,10 +526,10 @@ branch history is stored), but multiple branches may share the same
 repository (a shared repository). Branches can be copied and merged.
 
 In addition, one branch may be bound to another one.  Binding to another
-branch indicates that commits which happen in this branch must also 
-happen in the other branch.  Breezy ensures consistency by not allowing 
-commits when the two branches are out of date.  In order for a commit 
-to succeed, it may be necessary to update the current branch using 
+branch indicates that commits which happen in this branch must also
+happen in the other branch.  Breezy ensures consistency by not allowing
+commits when the two branches are out of date.  In order for a commit
+to succeed, it may be necessary to update the current branch using
 ``brz update``.
 
 Related commands::
@@ -796,6 +796,7 @@ topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
+topic_registry.register('glossary', _load_from_file, 'Glossary')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
 topic_registry.register('missing-extensions', _load_from_file,

@@ -91,6 +91,29 @@ class GitWorkingTreeTests(TestCaseWithTransport):
         self.tree._ignoremanager = None
         self.assertTrue(self.tree.is_ignored('a'))
 
+    def test_add_submodule_dir(self):
+        subtree = self.make_branch_and_tree('asub', format='git')
+        subtree.commit('Empty commit')
+        self.tree.add(['asub'])
+        with self.tree.lock_read():
+            entry = self.tree.index[b'asub']
+            self.assertEqual(entry.mode, S_IFGITLINK)
+        self.assertEqual([], list(subtree.unknowns()))
+
+    def test_add_submodule_file(self):
+        os.mkdir('.git/modules')
+        subbranch = self.make_branch('.git/modules/asub', format='git-bare')
+        os.mkdir('asub')
+        with open('asub/.git', 'w') as f:
+            f.write('gitdir: ../.git/modules/asub\n')
+        subtree = _mod_workingtree.WorkingTree.open('asub')
+        subtree.commit('Empty commit')
+        self.tree.add(['asub'])
+        with self.tree.lock_read():
+            entry = self.tree.index[b'asub']
+            self.assertEqual(entry.mode, S_IFGITLINK)
+        self.assertEqual([], list(subtree.unknowns()))
+
 
 class GitWorkingTreeFileTests(TestCaseWithTransport):
 
@@ -249,10 +272,9 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         a = Blob.from_string(b'irrelevant\n')
         with self.wt.lock_tree_write():
             (index, index_path) = self.wt._lookup_index(b'a')
-            index[b'a'] = IndexEntry(
-                    0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
+            index[b'a'] = IndexEntry(0, 0, 0, 0, S_IFGITLINK, 0, 0, 0, a.id, 0)
             self.wt._index_dirty = True
         t = Tree()
-        t.add(b"a", S_IFGITLINK , a.id)
+        t.add(b"a", S_IFGITLINK, a.id)
         self.store.add_object(t)
         self.expectDelta([], tree_id=t.id)

@@ -23,7 +23,7 @@ from breezy import (
     urlutils,
     )
 
-from breezy.testament import Testament
+from breezy.bzr.testament import Testament
 from breezy.tests import per_repository
 
 

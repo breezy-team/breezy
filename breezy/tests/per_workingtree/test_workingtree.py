@@ -90,21 +90,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         files = list(tree.list_files())
         tree.unlock()
         self.assertEqual(
-            files.pop(0), ('dir', '?', 'directory', None, TreeDirectory()))
-        self.assertEqual(files.pop(0), ('file', '?', 'file', None, TreeFile()))
+            files.pop(0), ('dir', '?', 'directory', TreeDirectory()))
+        self.assertEqual(files.pop(0), ('file', '?', 'file', TreeFile()))
         if has_symlinks():
-            self.assertEqual(files.pop(0), ('symlink', '?',
-                                            'symlink', None, TreeLink()))
+            self.assertEqual(
+                files.pop(0), ('symlink', '?', 'symlink', TreeLink()))
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'file', 'dir/file', 'dir/b',
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])
-        tree.lock_read()
-        files = [(path, kind) for (path, v, kind, file_id, entry)
-                 in tree.list_files()]
-        tree.unlock()
+        with tree.lock_read():
+            files = [(path, kind) for (path, v, kind, entry)
+                     in tree.list_files()]
         self.assertEqual([
             ('a', 'file'),
             ('dir', 'directory'),
@@ -115,7 +114,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         with tree.lock_write():
             if tree.has_versioned_directories():
                 tree.add(['dir', 'zz_dir'])
-                files = [(path, kind) for (path, v, kind, file_id, entry)
+                files = [(path, kind) for (path, v, kind, entry)
                          in tree.list_files()]
                 self.assertEqual([
                     ('a', 'file'),
@@ -130,7 +129,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     ], files)
             else:
                 tree.add(['dir/b'])
-                files = [(path, kind) for (path, v, kind, file_id, entry)
+                files = [(path, kind) for (path, v, kind, entry)
                          in tree.list_files()]
                 self.assertEqual([
                     ('a', 'file'),
@@ -156,11 +155,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.has_versioned_directories():
             self.assertEqual(
                 ('filename', 'V', 'directory', tree.path2id('filename')),
-                result[0][:4])
+                (result[0][0], result[0][1], result[0][2],
+                    getattr(result[0][3], 'file_id', None)))
         else:
             self.assertEqual(
                 ('filename', '?', 'directory', None),
-                result[0][:4])
+                (result[0][0], result[0][1], result[0][2],
+                    getattr(result[0][3], 'file_id', None)))
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config
@@ -283,6 +284,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add('.bzrignore')
         self.assertEqual(list(tree.unknowns()),
                          ['hello.txt'])
+
+    def test_unknowns_empty_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['subdir/', 'subdir/somefile'])
+        if tree.has_versioned_directories():
+            self.assertEqual(list(tree.unknowns()), ['subdir'])
+        else:
+            self.assertEqual(list(tree.unknowns()), ['subdir/somefile'])
 
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
@@ -856,8 +865,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_read()
         files = sorted(list(tree.list_files()))
         tree.unlock()
-        self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
-        self.assertEqual((u'foo.pyc', 'V', 'file', anid), files[1][:-1])
+        self.assertEqual(
+            (u'.bzrignore', '?', 'file', None),
+            (files[0][0], files[0][1], files[0][2],
+                getattr(files[0][3], 'file_id', None)))
+        self.assertEqual(
+            (u'foo.pyc', 'V', 'file', anid),
+            (files[1][0], files[1][1], files[1][2], files[1][3].file_id))
         self.assertEqual(2, len(files))
 
     def test_non_normalized_add_accessible(self):
@@ -870,11 +884,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             tree.add([u'a\u030a'])
-            tree.lock_read()
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                             [(path, ie.kind) for path, ie in
-                              tree.iter_entries_by_dir()])
-            tree.unlock()
+            with tree.lock_read():
+                self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                                 [(path, ie.kind) for path, ie in
+                                  tree.iter_entries_by_dir()])
         finally:
             osutils.normalized_filename = orig
 
@@ -893,7 +906,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             osutils.normalized_filename = orig
 
     def test__write_inventory(self):
-        # The private interface _write_inventory is currently used by transform.
+        # The private interface _write_inventory is currently used by
+        # transform.
         tree = self.make_branch_and_tree('.')
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable("_write_inventory does not exist on "
@@ -909,8 +923,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.lock_write()
         tree._write_inventory(inventory)
         tree.unlock()
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
@@ -922,8 +935,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                   ]
                  )]
             self.assertEqual(expected_results, list(tree.walkdirs()))
-        finally:
-            tree.unlock()
 
     def test_path2id(self):
         # smoke test for path2id
@@ -932,7 +943,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.supports_setting_file_ids():
             tree.add(['foo'], [b'foo-id'])
             self.assertEqual(b'foo-id', tree.path2id('foo'))
-            # the next assertion is for backwards compatability with
+            # the next assertion is for backwards compatibility with
             # WorkingTree3, though its probably a bad idea, it makes things
             # work. Perhaps it should raise a deprecation warning?
             self.assertEqual(b'foo-id', tree.path2id('foo/'))
@@ -1075,9 +1086,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['tree/a', 'tree/b'])
         tree.add(['a', 'b'])
         os.unlink('tree/a')
-        self.assertEqual(
-            {'a', 'b', ''},
-            set(tree.all_versioned_paths()))
+        try:
+            self.assertEqual(
+                {'a', 'b', ''},
+                set(tree.all_versioned_paths()))
+        except errors.UnsupportedOperation:
+            raise TestNotApplicable('tree does not support all_file_ids')
 
     def test_sprout_hardlink(self):
         real_os_link = getattr(os, 'link', None)

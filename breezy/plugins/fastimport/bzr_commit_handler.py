@@ -20,11 +20,11 @@ from __future__ import absolute_import
 from ... import (
     debug,
     errors,
-    generate_ids,
     osutils,
     revision,
     )
 from ...bzr import (
+    generate_ids,
     inventory,
     serializer,
     )

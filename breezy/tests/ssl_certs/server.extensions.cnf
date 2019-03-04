@@ -1,0 +1,9 @@
+basicConstraints=CA:FALSE
+subjectAltName=@my_subject_alt_names
+subjectKeyIdentifier = hash
+
+[ my_subject_alt_names ]
+IP.1 = 127.0.0.1
+IP.2 = ::1
+DNS.1 = 127.0.0.1   # to keep python 2.7 happy
+DNS.2 = localhost

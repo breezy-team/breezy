@@ -84,8 +84,8 @@ from fastimport import commands
 
 def _get_output_stream(destination):
     if destination is None or destination == '-':
-        return helpers.binary_stream(sys.stdout)
-    elif destination.endswith('gz'):
+        return helpers.binary_stream(getattr(sys.stdout, "buffer", sys.stdout))
+    elif destination.endswith('.gz'):
         import gzip
         return gzip.open(destination, 'wb')
     else:
@@ -333,6 +333,7 @@ class BzrFastExporter(object):
         self.revid_to_mark[revid] = mark
         file_cmds = self._get_filecommands(
             breezy.revision.NULL_REVISION, revid)
+        self.print_cmd(commands.ResetCommand(ref, None))
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
     def emit_commit(self, revid, ref):
@@ -355,15 +356,14 @@ class BzrFastExporter(object):
         ncommits = len(self.revid_to_mark)
         nparents = len(revobj.parent_ids)
         if nparents == 0:
-            if ncommits:
-                # This is a parentless commit but it's not the first one
-                # output. We need to create a new temporary branch for it
-                # otherwise git-fast-import will assume the previous commit
-                # was this one's parent
-                ref = self._next_tmp_ref()
             parent = breezy.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
+
+        # For parentless commits we need to issue reset command first, otherwise
+        # git-fast-import will assume previous commit was this one's parent
+        if nparents == 0:
+            self.print_cmd(commands.ResetCommand(ref, None))
 
         # Print the commit
         mark = ncommits + 1
@@ -452,7 +452,7 @@ class BzrFastExporter(object):
         # Build and return the result
         return commands.CommitCommand(git_ref, mark, author_info,
                                       committer_info, revobj.message.encode(
-                                          "utf-8"), from_, merges, iter(file_cmds),
+                                          "utf-8"), from_, merges, file_cmds,
                                       more_authors=more_author_info, properties=properties)
 
     def _get_revision_trees(self, parent, revision_id):
@@ -477,7 +477,7 @@ class BzrFastExporter(object):
         tree_old, tree_new = self._get_revision_trees(parent, revision_id)
         if not(tree_old and tree_new):
             # Something is wrong with this revision - ignore the filecommands
-            return []
+            return
 
         changes = tree_new.changes_from(tree_old)
 
@@ -489,39 +489,44 @@ class BzrFastExporter(object):
         file_cmds, rd_modifies, renamed = self._process_renames_and_deletes(
             changes.renamed, changes.removed, revision_id, tree_old)
 
+        for cmd in file_cmds:
+            yield cmd
+
         # Map kind changes to a delete followed by an add
         for path, id_, kind1, kind2 in changes.kind_changed:
             path = self._adjust_path_for_renames(path, renamed, revision_id)
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
-            # file_cmds.append(commands.FileDeleteCommand(path))
+            # yield commands.FileDeleteCommand(path)
             my_modified.append((path, id_, kind2))
 
         # Record modifications
+        files_to_get = []
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
-                text = tree_new.get_file_text(path)
-                file_cmds.append(commands.FileModifyCommand(
-                    path.encode("utf-8"),
-                    helpers.kind_to_mode('file', tree_new.is_executable(path)),
-                    None, text))
+                files_to_get.append(
+                    (path,
+                     (path, helpers.kind_to_mode(
+                         'file', tree_new.is_executable(path)))))
             elif kind == 'symlink':
-                file_cmds.append(commands.FileModifyCommand(
+                yield commands.FileModifyCommand(
                     path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(path)))
+                    None, tree_new.get_symlink_target(path))
             elif kind == 'directory':
                 if not self.plain_format:
-                    file_cmds.append(
-                        commands.FileModifyCommand(
-                            path.encode("utf-8"),
-                            helpers.kind_to_mode('directory', False), None,
-                            None))
+                    yield commands.FileModifyCommand(
+                        path.encode("utf-8"),
+                        helpers.kind_to_mode('directory', False), None,
+                        None)
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                              (path, kind))
-        return file_cmds
+        for (path, mode), chunks in tree_new.iter_files_bytes(
+                files_to_get):
+            yield commands.FileModifyCommand(
+                path.encode("utf-8"), mode, None, b''.join(chunks))
 
     def _process_renames_and_deletes(self, renames, deletes,
                                      revision_id, tree_old):
@@ -576,8 +581,8 @@ class BzrFastExporter(object):
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if kind == 'directory' and tree_old.kind(oldpath, id_) == 'directory':
-                for p, e in tree_old.inventory.iter_entries_by_dir(from_dir=id_):
+            if kind == 'directory' and tree_old.kind(oldpath) == 'directory':
+                for p, e in tree_old.iter_entries_by_dir(specific_files=[oldpath]):
                     if e.kind == 'directory' and self.plain_format:
                         continue
                     old_child_path = osutils.pathjoin(oldpath, p)
@@ -640,13 +645,3 @@ class BzrFastExporter(object):
                                      'valid in git.', git_ref)
                         continue
                 self.print_cmd(commands.ResetCommand(git_ref, b":%d" % mark))
-
-    def _next_tmp_ref(self):
-        """Return a unique branch name. The name will start with "tmp"."""
-        prefix = 'tmp'
-        if prefix not in self.branch_names:
-            self.branch_names[prefix] = 0
-        else:
-            self.branch_names[prefix] += 1
-            prefix = '%s.%d' % (prefix, self.branch_names[prefix])
-        return 'refs/heads/%s' % prefix

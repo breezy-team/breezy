@@ -85,7 +85,7 @@ class cmd_fast_import(Command):
       bzr fast-import project.fi project.bzr
 
     Numerous commands are provided for generating a fast-import file
-    to use as input. 
+    to use as input.
     To specify standard input as the input stream, use a
     source name of '-' (instead of project.fi). If the source name
     ends in '.gz', it is assumed to be compressed in gzip format.
@@ -497,9 +497,11 @@ class cmd_fast_export(Command):
             source = "."
         branch = Branch.open_containing(source)[0]
         outf = exporter._get_output_stream(destination)
-        exporter = exporter.BzrFastExporter(branch,
-                                            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'), checkpoint=checkpoint,
-                                            import_marks_file=import_marks, export_marks_file=export_marks,
-                                            revision=revision, verbose=verbose, plain_format=plain,
-                                            rewrite_tags=rewrite_tag_names, no_tags=no_tags, baseline=baseline)
+        exporter = exporter.BzrFastExporter(
+            branch,
+            outf=outf, ref=b"refs/heads/%s" % git_branch.encode('utf-8'),
+            checkpoint=checkpoint, import_marks_file=import_marks,
+            export_marks_file=export_marks, revision=revision, verbose=verbose,
+            plain_format=plain, rewrite_tags=rewrite_tag_names,
+            no_tags=no_tags, baseline=baseline)
         return exporter.run()

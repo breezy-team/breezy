@@ -265,3 +265,16 @@ class TestAdd(tests.TestCaseWithTransport):
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEqual(['adding big.txt'], results)
+
+    def test_add_backslash(self):
+        # pad.lv/165151
+        if os.path.sep == '\\':
+            # TODO(jelmer): Test that backslashes are appropriately
+            # ignored?
+            raise tests.TestNotApplicable(
+                'unable to add filenames with backslashes where '
+                ' it is the path separator')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['\\'])
+        self.assertEqual('adding \\\n', self.run_bzr('add \\\\')[0])
+        self.assertEqual('\\\n', self.run_bzr('ls --versioned')[0])

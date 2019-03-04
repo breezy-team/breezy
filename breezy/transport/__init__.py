@@ -37,6 +37,7 @@ from stat import S_ISDIR
 
 from breezy import (
     errors,
+    location as _mod_location,
     osutils,
     ui,
     urlutils,
@@ -134,14 +135,14 @@ def register_transport_proto(prefix, help=None, info=None,
 
 
 def register_lazy_transport(prefix, module, classname):
-    if not prefix in transport_list_registry:
+    if prefix not in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_lazy_transport_provider(
         prefix, module, classname)
 
 
 def register_transport(prefix, klass):
-    if not prefix in transport_list_registry:
+    if prefix not in transport_list_registry:
         register_transport_proto(prefix)
     transport_list_registry.register_transport_provider(prefix, klass)
 
@@ -265,7 +266,7 @@ class FileStream(object):
     def fdatasync(self):
         """Force data out to physical disk if possible.
 
-        :raises TransportNotPossible: If this transport has no way to 
+        :raises TransportNotPossible: If this transport has no way to
             flush to disk.
         """
         raise errors.TransportNotPossible(
@@ -1507,42 +1508,6 @@ class ConnectedTransport(Transport):
         raise NotImplementedError(self.disconnect)
 
 
-def location_to_url(location):
-    """Determine a fully qualified URL from a location string.
-
-    This will try to interpret location as both a URL and a directory path. It
-    will also lookup the location in directories.
-
-    :param location: Unicode or byte string object with a location
-    :raise InvalidURL: If the location is already a URL, but not valid.
-    :return: Byte string with resulting URL
-    """
-    if not isinstance(location, string_types):
-        raise AssertionError("location not a byte or unicode string")
-    from breezy.directory_service import directories
-    location = directories.dereference(location)
-
-    # Catch any URLs which are passing Unicode rather than ASCII
-    try:
-        location = location.encode('ascii')
-    except UnicodeError:
-        if urlutils.is_url(location):
-            raise urlutils.InvalidURL(path=location,
-                                      extra='URLs must be properly escaped')
-        location = urlutils.local_path_to_url(location)
-    else:
-        if PY3:
-            location = location.decode('ascii')
-
-    if location.startswith("file:") and not location.startswith("file://"):
-        return urlutils.join(urlutils.local_path_to_url("."), location[5:])
-
-    if not urlutils.is_url(location):
-        return urlutils.local_path_to_url(location)
-
-    return location
-
-
 def get_transport_from_path(path, possible_transports=None):
     """Open a transport for a local path.
 
@@ -1588,7 +1553,7 @@ def get_transport_from_url(url, possible_transports=None):
     raise errors.UnsupportedProtocol(url, last_err)
 
 
-def get_transport(base, possible_transports=None):
+def get_transport(base, possible_transports=None, purpose=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
@@ -1596,12 +1561,17 @@ def get_transport(base, possible_transports=None):
     :param transports: optional reusable transports list. If not None, created
         transports will be added to the list.
 
+    :param purpose: Purpose for which the transport will be used
+        (e.g. 'read', 'write' or None)
+
     :return: A new transport optionally sharing its connection with one of
         possible_transports.
     """
     if base is None:
         base = '.'
-    return get_transport_from_url(location_to_url(base), possible_transports)
+    return get_transport_from_url(
+        _mod_location.location_to_url(base, purpose=purpose),
+        possible_transports)
 
 
 def _try_transport_factories(base, factory_list):
