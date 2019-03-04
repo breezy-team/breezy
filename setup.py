@@ -61,6 +61,8 @@ META_INFO = {
         # no way to enable them by default and let users opt out.
         'fastimport>=0.9.8',
         'dulwich>=0.19.1',
+        # Used for getting filesystem information
+        'psutil',
         ],
     'extras_require': {
         'fastimport': [],
