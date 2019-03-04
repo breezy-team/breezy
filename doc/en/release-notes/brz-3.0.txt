@@ -85,6 +85,9 @@ External Compatibility Breaks
    longer performed, since there are no longer
    any automated imports. (Jelmer Vernooĳ)
 
+ * ``setuptools`` is now required to build and install Breezy.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 
@@ -232,6 +235,10 @@ Bug Fixes
 
 * Raise better error when path subsegments lack =.
   (Jelmer Vernooĳ, #891483)
+
+* Display correct pull location argument in
+  output of ``brz uncommit``.
+  (Jelmer Vernooĳ, #386577)
 
 Documentation
 *************

@@ -56,7 +56,7 @@ recommended directory structure: ``/tags/``, ``/branches/`` and ``/trunk/``.
 This command has flexible ways to specify what paths within the Subversion
 repository contain branches and which contain tags.  For example, the
 recommended layout for Subversion projects (called ``trunk`` by the svn
-plugin) could be specified in ``~/.bazaar/subversion.conf`` as
+plugin) could be specified in ``~/.config/breezy/subversion.conf`` as
 
 ::
 

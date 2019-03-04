@@ -18,6 +18,9 @@
 
 from __future__ import absolute_import
 
+import os
+import shutil
+
 from dulwich.objects import (
     Blob,
     Tree,
@@ -144,11 +147,11 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
     def setUp(self):
         super(BazaarObjectStoreTests, self).setUp()
         self.branch = self.make_branch(".")
-        self.branch.lock_write()
-        self.addCleanup(self.branch.unlock)
         self.store = BazaarObjectStore(self.branch.repository)
 
     def test_get_blob(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
         b = Blob()
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
@@ -167,7 +170,30 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.store.lock_read()
         self.assertEqual(b, self.store[b.id])
 
+    def test_directory_converted_to_symlink(self):
+        b = Blob()
+        b.data = b'trgt'
+        self.store.lock_read()
+        self.addCleanup(self.store.unlock)
+        self.assertRaises(KeyError, self.store.__getitem__, b.id)
+        tree = self.branch.controldir.create_workingtree()
+        self.build_tree_contents([
+            ('foo/', ),
+            ('foo/bar', b'a\nb\nc\nd\ne\n')])
+        tree.add(['foo', 'foo/bar'])
+        revid1 = tree.commit('commit 1')
+        shutil.rmtree('foo')
+        os.symlink('trgt', 'foo')
+        revid2 = tree.commit('commit 2')
+        # read locks cache
+        self.assertRaises(KeyError, self.store.__getitem__, b.id)
+        self.store.unlock()
+        self.store.lock_read()
+        self.assertEqual(b, self.store[b.id])
+
     def test_get_raw(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
         b = Blob()
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
@@ -187,6 +213,8 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertEqual(b.as_raw_string(), self.store.get_raw(b.id)[1])
 
     def test_contains(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
         b = Blob()
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()

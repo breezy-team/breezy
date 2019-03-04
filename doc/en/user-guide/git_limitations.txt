@@ -1,0 +1,18 @@
+Git Limitations
+===============
+
+Breezy's support for Git repositories currently has the following limitations:
+
+* No support for creating annotated tags. pad.lv/1758185
+* No support for gitattributes and the features that depend on it (lfs, eol, etc). pad.lv/1802797
+* Limited support for submodules. pad.lv/402814
+* No rename/copy inference. pad.lv/1760740
+* No support for creating shallow branches (pad.lv/1760151)
+* No good way to refer to git remotes from the command-line (pad.lv/1702283)
+* No mailmap support (pad.lv/544031)
+
+Functionality similar to git that's missing:
+
+* No rebase command. pad.lv/1708046
+* No --amend option for commit. pad.lv/507529
+* No clone/fetch commands. pad.lv/831939
