@@ -274,7 +274,7 @@ class TestPull(tests.TestCaseWithTransport):
                          branch_b.get_parent())
 
     def test_pull_bundle(self):
-        from breezy.testament import Testament
+        from breezy.bzr.testament import Testament
         # Build up 2 trees and prepare for a pull
         tree_a = self.make_branch_and_tree('branch_a')
         with open('branch_a/a', 'wb') as f:
@@ -353,7 +353,7 @@ class TestPull(tests.TestCaseWithTransport):
         class FooService(object):
             """A directory service that always returns source"""
 
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
         self.addCleanup(directories.remove, 'foo:')

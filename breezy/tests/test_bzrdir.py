@@ -1477,6 +1477,18 @@ class TestMeta1DirColoFormat(TestCaseWithTransport):
             errors.AlreadyBranchError, tree.controldir.create_branch,
             name='foo')
 
+    def test_supports_relative_reference(self):
+        tree = self.make_branch_and_tree('.', format='development-colo')
+        target1 = tree.controldir.create_branch(name='target1')
+        target2 = tree.controldir.create_branch(name='target2')
+        source = tree.controldir.set_branch_reference(target1, name='source')
+        self.assertEqual(
+            target1.user_url, tree.controldir.open_branch('source').user_url)
+        source.controldir.get_branch_transport(None, 'source').put_bytes(
+            'location', b'file:,branch=target2')
+        self.assertEqual(
+            target2.user_url, tree.controldir.open_branch('source').user_url)
+
 
 class SampleBzrFormat(bzrdir.BzrFormat):
 

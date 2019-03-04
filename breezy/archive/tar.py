@@ -137,8 +137,7 @@ def tgz_generator(tree, dest, root, subdir, force_mtime=None):
         buf = BytesIO()
         zipstream = gzip.GzipFile(basename, 'w', fileobj=buf,
                                   mtime=root_mtime)
-        for chunk in tarball_generator(
-                tree, root, subdir, force_mtime):
+        for chunk in tarball_generator(tree, root, subdir, force_mtime):
             zipstream.write(chunk)
             # Yield the data that was written so far, rinse, repeat.
             yield buf.getvalue()

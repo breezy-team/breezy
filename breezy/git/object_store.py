@@ -47,7 +47,7 @@ from ..revision import (
     NULL_REVISION,
     )
 from ..sixish import viewitems
-from ..testament import (
+from ..bzr.testament import (
     StrictTestament3,
     )
 

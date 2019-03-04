@@ -139,14 +139,14 @@ class GitTags(tag.BasicTags):
             if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
             elif overwrite or ref_name not in target_repo._git.refs:
-                target_repo._git.refs[ref_name] = unpeeled or peeled
                 try:
                     updates[tag_name] = (
-                        self.repository.lookup_foreign_revision_id(peeled))
+                        target_repo.lookup_foreign_revision_id(peeled))
                 except KeyError:
                     trace.warning('%s does not point to a valid object',
                                   tag_name)
                     continue
+                target_repo._git.refs[ref_name] = unpeeled or peeled
             else:
                 try:
                     source_revid = self.repository.lookup_foreign_revision_id(
@@ -614,6 +614,12 @@ class GitBranch(ForeignBranch):
         push_result = source.push(
             self, stop_revision=revid, lossy=lossy, _stop_revno=revno)
         return (push_result.new_revno, push_result.new_revid)
+
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from ..reconcile import ReconcileResult
+        # Nothing to do here
+        return ReconcileResult()
 
 
 class LocalGitBranch(GitBranch):

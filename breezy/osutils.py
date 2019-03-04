@@ -70,15 +70,6 @@ from . import (
     )
 
 
-# Cross platform wall-clock time functionality with decent resolution.
-# On Linux ``time.clock`` returns only CPU time. On Windows, ``time.time()``
-# only has a resolution of ~15ms. Note that ``time.clock()`` is not
-# synchronized with ``time.time()``, this is only meant to be used to find
-# delta times by subtracting from another call to this function.
-timer_func = time.time
-if sys.platform == 'win32':
-    timer_func = time.clock
-
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
@@ -2650,3 +2641,9 @@ def get_fs_type(path):
             return part.fstype
     # Unable to parse the file? Since otherwise at least the entry for / should match..
     return None
+
+
+if PY3:
+    perf_counter = time.perf_counter
+else:
+    perf_counter = time.clock

@@ -369,9 +369,9 @@ class BzrUploader(object):
                     if not self.quiet:
                         self.outf.write('Ignoring %s\n' % path)
                     continue
-                if kind is 'file':
+                if kind == 'file':
                     self.delete_remote_file(path)
-                elif kind is 'directory':
+                elif kind == 'directory':
                     self.delete_remote_dir_maybe(path)
                 elif kind == 'symlink':
                     self.delete_remote_file(path)
@@ -410,7 +410,7 @@ class BzrUploader(object):
                 elif new_kind == 'symlink':
                     target = self.tree.get_symlink_target(path)
                     self.upload_symlink(path, target)
-                elif new_kind is 'directory':
+                elif new_kind == 'directory':
                     self.make_remote_dir(path)
                 else:
                     raise NotImplementedError

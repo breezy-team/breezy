@@ -326,8 +326,8 @@ class InventoryDeltaDeserializer(object):
             seen_ids.add(file_id)
             if (newpath_utf8 == b'/' and not delta_versioned_root and
                     last_modified != delta_version_id):
-                    # Delta claims to be not have a versioned root, yet here's
-                    # a root entry with a non-default version.
+                # Delta claims to be not have a versioned root, yet here's
+                # a root entry with a non-default version.
                 raise InventoryDeltaError(
                     "Versioned root found: %(line)r", line=line)
             elif newpath_utf8 != b'None' and last_modified[-1:] == b':':

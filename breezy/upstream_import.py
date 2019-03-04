@@ -28,7 +28,8 @@ import stat
 import tarfile
 import zipfile
 
-from . import generate_ids, urlutils
+from . import urlutils
+from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,

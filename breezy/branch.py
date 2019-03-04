@@ -1414,12 +1414,11 @@ class Branch(controldir.ControlComponent):
         return tree
 
     def reconcile(self, thorough=True):
-        """Make sure the data stored in this branch is consistent."""
-        from breezy.reconcile import BranchReconciler
-        with self.lock_write():
-            reconciler = BranchReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+        """Make sure the data stored in this branch is consistent.
+
+        :return: A `ReconcileResult` object.
+        """
+        raise NotImplementedError(self.reconcile)
 
     def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id

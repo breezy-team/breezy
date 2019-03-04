@@ -1447,7 +1447,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree_a.commit("base", allow_pointless=True, rev_id=b'A')
         self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
-            from ..testament import Testament
+            from ..bzr.testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()
@@ -1848,7 +1848,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         class FooService(object):
             """A directory service that always returns source"""
 
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
         self.addCleanup(directories.remove, 'foo:')

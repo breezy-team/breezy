@@ -466,8 +466,8 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                 _mod_revision.NULL_REVISION)
             changes = shape_tree.iter_changes(
                 base_tree)
-            list(builder.record_iter_changes(shape_tree,
-                                             base_tree.get_revision_id(), changes))
+            list(builder.record_iter_changes(
+                shape_tree, base_tree.get_revision_id(), changes))
             builder.finish_inventory()
             builder.commit("Message")
 
