@@ -66,6 +66,8 @@ install:
 
   # Install setuptools/wheel so that we can e.g. use bdist_wheel
   - "pip install setuptools wheel"
+  # Install cython so we can build C extensions
+  - "pip install cython"
 
   - "build.cmd %PYTHON%\\python.exe setup.py develop"
 
