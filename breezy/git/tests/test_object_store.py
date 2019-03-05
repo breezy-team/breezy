@@ -44,6 +44,7 @@ from ...tests import (
     TestCase,
     TestCaseWithTransport,
     )
+from ...tests.features import SymlinkFeature
 
 from ..cache import (
     DictGitShaMap,
@@ -171,6 +172,7 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertEqual(b, self.store[b.id])
 
     def test_directory_converted_to_symlink(self):
+        self.requireFeature(SymlinkFeature)
         b = Blob()
         b.data = b'trgt'
         self.store.lock_read()
