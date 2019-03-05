@@ -71,6 +71,8 @@ install:
 
   - "build.cmd %PYTHON%\\python.exe setup.py develop"
 
+  - "pip install launchpadlib"
+
 build_script:
   # Build the compiled extension
   - "build.cmd %PYTHON%\\python.exe setup.py build"
