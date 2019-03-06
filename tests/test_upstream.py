@@ -661,6 +661,9 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
     def revision_id_to_revno(self, revid):
         return self.revnos[revid]
 
+    def revision_id_to_dotted_revno(self, revid):
+        return (self.revnos[revid], )
+
     def get_revision(self, revid):
         rev = Revision(revid)
         if revid in self.svn_revnos:

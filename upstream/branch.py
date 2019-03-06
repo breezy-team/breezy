@@ -153,10 +153,11 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     :param revid: Revision id of the revision
     """
     revno = upstream_branch.revision_id_to_dotted_revno(revid)
+    revno_str = '.'.join(map(str, revno))
 
     m = re.match(r"^(.*)([\+~])bzr(\d+)$", version_string)
     if m:
-        return "%s%sbzr%s" % (m.group(1), m.group(2), '.'.join(map(str, revno)))
+        return "%s%sbzr%s" % (m.group(1), m.group(2), revno_str)
 
     rev = upstream_branch.repository.get_revision(revid)
     gitid = extract_gitid(rev)
@@ -181,7 +182,7 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     elif gitid:
         return "%s+git%s.%s" % (version_string, gitdate, gitid)
     else:
-        return "%s+bzr%d" % (version_string, revno)
+        return "%s+bzr%s" % (version_string, revno_str)
 
 
 def get_snapshot_revision(upstream_version):
@@ -283,6 +284,9 @@ class MinimalMemoryBranch(bzr_branch.Branch, _RelockDebugMixin):
             self.tags = DisabledTags(self)
         self._partial_revision_history_cache = []
         self._last_revision_info_cache = None
+        self._revision_id_to_revno_cache = None
+        self._partial_revision_id_to_revno_cache = {}
+        self._partial_revision_history_cache = []
 
     def lock_read(self):
         self.repository.lock_read()
