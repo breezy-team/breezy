@@ -1,3 +1,9 @@
+breezy-debian (2.8.27) UNRELEASED; urgency=medium
+
+  * Support dotted revnos when referencing upstream revisions.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:35:13 +0000
+
 breezy-debian (2.8.26) unstable; urgency=medium
 
   * Add a 'vcs:' location resolver that uses the location provided by

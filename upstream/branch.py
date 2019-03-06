@@ -152,11 +152,11 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     :param version_string: Original version string
     :param revid: Revision id of the revision
     """
-    revno = upstream_branch.revision_id_to_revno(revid)
+    revno = upstream_branch.revision_id_to_dotted_revno(revid)
 
     m = re.match(r"^(.*)([\+~])bzr(\d+)$", version_string)
     if m:
-        return "%s%sbzr%d" % (m.group(1), m.group(2), revno)
+        return "%s%sbzr%s" % (m.group(1), m.group(2), '.'.join(map(str, revno)))
 
     rev = upstream_branch.repository.get_revision(revid)
     gitid = extract_gitid(rev)
