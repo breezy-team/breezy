@@ -612,11 +612,11 @@ class Graph(object):
         # In the common case, we don't need to spider out far here, so
         # avoid doing extra work.
         if step_all_unique:
-            tstart = time.clock()
+            tstart = osutils.perf_counter()
             nodes = all_unique_searcher.step()
             common_to_all_unique_nodes.update(nodes)
             if 'graph' in debug.debug_flags:
-                tdelta = time.clock() - tstart
+                tdelta = osutils.perf_counter() - tstart
                 trace.mutter('all_unique_searcher step() took %.3fs'
                              'for %d nodes (%d total), iteration: %s',
                              tdelta, len(nodes), len(all_unique_searcher.seen),
