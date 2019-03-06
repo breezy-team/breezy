@@ -5,15 +5,15 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
-brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
-information, see our release announcement on the Bazaar mailing list and
-README.
-
 brz 3.0.0
 #########
 
 :Codename: Pelican
-:3.0.0: NOT RELEASED YET
+:3.0.0: 2019-03-06
+
+brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.
 
 External Compatibility Breaks
 *****************************
@@ -84,6 +84,9 @@ External Compatibility Breaks
  * Up-to-date checking for Bazaar packaging branches is no
    longer performed, since there are no longer
    any automated imports. (Jelmer Vernooĳ)
+
+ * ``setuptools`` is now required to build and install Breezy.
+   (Jelmer Vernooĳ)
 
 New Features
 ************
@@ -233,6 +236,13 @@ Bug Fixes
 
 * Don't report .git files as unknown files.
   (Jelmer Vernooĳ, Debian Bug #921240)
+
+* Raise better error when path subsegments lack =.
+  (Jelmer Vernooĳ, #891483)
+
+* Display correct pull location argument in
+  output of ``brz uncommit``.
+  (Jelmer Vernooĳ, #386577)
 
 Documentation
 *************

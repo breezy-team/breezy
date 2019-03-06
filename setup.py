@@ -16,6 +16,14 @@ if sys.version_info < (2, 7):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
+
+try:
+    import setuptools
+except ImportError:
+    sys.stderr.write("[ERROR] Please install setuptools\n")
+    sys.exit(1)
+
+
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
 # start of the path, so this should find the right one...
@@ -118,8 +126,7 @@ def get_breezy_packages():
 BREEZY['packages'] = get_breezy_packages()
 
 
-from distutils import log
-from distutils.core import setup
+from setuptools import setup
 from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -211,8 +218,17 @@ except ImportError:
     print("")
     from distutils.command.build_ext import build_ext
 else:
-    have_cython = True
+    minimum_cython_version = '0.29'
     cython_version_info = LooseVersion(cython_version)
+    if cython_version_info < LooseVersion(minimum_cython_version):
+        print("Version of Cython is too old. "
+              "Current is %s, need at least %s."
+              % (cython_version, minimum_cython_version))
+        print("If the .c files are available, they will be built,"
+              " but modifying the .pyx files will not rebuild them.")
+        have_cython = False
+    else:
+        have_cython = True
 
 
 class build_ext_if_possible(build_ext):

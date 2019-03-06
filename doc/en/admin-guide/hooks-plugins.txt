@@ -25,10 +25,10 @@ Information on the whole range of Bazaar plugins is available at
 http://doc.bazaar.canonical.com/plugins/en/.  For purposes of installation,
 plugins are simply python packages.  They can be installed alongside Bazaar in
 the ``bzrlib.plugins`` package using each plugin's ``setup.py``.  They can
-also be installed in the plugin path which is the user's ``~/.bazaar/plugins``
-directory or can be specified with the ``BZR_PLUGIN_PATH`` environment
-variable.  See ``bzr help configuration`` for more on specifying the location
-of plugins.
+also be installed in the plugin path which is the user's
+``~/.config/breezy/plugins`` directory or can be specified with the
+``BZR_PLUGIN_PATH`` environment variable.  See ``bzr help configuration`` for
+more on specifying the location of plugins.
 
 
 Email Notification
