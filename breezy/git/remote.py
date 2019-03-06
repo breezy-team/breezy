@@ -89,6 +89,7 @@ from .push import (
     )
 from .repository import (
     GitRepository,
+    GitRepositoryFormat,
     )
 from .refs import (
     branch_name_to_ref,
@@ -752,6 +753,10 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
     def get_branch_format(self):
         return RemoteGitBranchFormat()
+
+    @property
+    def repository_format(self):
+        return GitRepositoryFormat()
 
     def is_initializable(self):
         return False

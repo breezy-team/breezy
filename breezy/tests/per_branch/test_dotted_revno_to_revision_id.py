@@ -17,6 +17,7 @@
 """Tests for Branch.dotted_revno_to_revision_id()"""
 
 from breezy import errors
+from breezy.bzr.fullhistory import FullHistoryBzrBranch
 from breezy.tests import TestNotApplicable
 
 from breezy.tests.per_branch import TestCaseWithBranch
@@ -66,5 +67,7 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
         finally:
             builder.finish_series()
         b = builder.get_branch()
+        if isinstance(b, FullHistoryBzrBranch):
+            raise TestNotApplicable("branch format stores full history")
         b.set_last_revision_info(4, revid1)
         self.assertRaises(errors.GhostRevisionsHaveNoRevno, b.dotted_revno_to_revision_id, (2,))

@@ -364,7 +364,10 @@ class Branch(controldir.ControlComponent):
         provide a more efficient implementation.
         """
         if len(revno) == 1:
-            return self.get_rev_id(revno[0])
+            try:
+                return self.get_rev_id(revno[0])
+            except errors.RevisionNotPresent as e:
+                raise errors.GhostRevisionsHaveNoRevno(revno[0], e.revision_id)
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [revision_id for revision_id, this_revno
                         in viewitems(revision_id_to_revno)
