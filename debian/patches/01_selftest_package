@@ -7,7 +7,7 @@ Index: unstable/breezy/builtins.py
 ===================================================================
 --- unstable.orig/breezy/builtins.py
 +++ unstable/breezy/builtins.py
-@@ -4155,7 +4155,8 @@ class cmd_selftest(Command):
+@@ -4158,7 +4158,8 @@ class cmd_selftest(Command):
              from . import tests
          except ImportError:
              raise errors.BzrCommandError("tests not available. Install the "

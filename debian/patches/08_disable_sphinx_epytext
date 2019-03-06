@@ -1,7 +1,9 @@
 === modified file 'breezy/doc_generate/conf.py'
---- old/breezy/doc_generate/conf.py	2018-11-18 21:24:22 +0000
-+++ new/breezy/doc_generate/conf.py	2018-11-20 01:09:01 +0000
-@@ -25,7 +25,6 @@
+Index: unstable/breezy/doc_generate/conf.py
+===================================================================
+--- unstable.orig/breezy/doc_generate/conf.py
++++ unstable/breezy/doc_generate/conf.py
+@@ -25,7 +25,6 @@ extensions = [
      'sphinx.ext.ifconfig',
      'sphinx.ext.autodoc',
      'sphinx.ext.intersphinx',
@@ -9,4 +11,3 @@
      # 'sphinxcontrib.napoleon', # TODO: for Google docstrings
      ]
  
-

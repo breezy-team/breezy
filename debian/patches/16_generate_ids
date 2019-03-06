@@ -1,5 +1,7 @@
---- old/breezy/generate_ids.py	2019-02-13 13:02:58.423999264 +0000
-+++ new/breezy/generate_ids.py	2019-02-14 23:58:18.016423837 +0000
+Index: unstable/breezy/generate_ids.py
+===================================================================
+--- /dev/null
++++ unstable/breezy/generate_ids.py
 @@ -0,0 +1,19 @@
 +# Copyright (C) 2007-2011 Canonical Ltd
 +#

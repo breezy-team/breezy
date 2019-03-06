@@ -6,9 +6,11 @@ Applied-Upstream: no
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
 
 === modified file 'breezy/bzr/branch.py'
---- old/breezy/bzr/branch.py	2019-01-04 20:53:40 +0000
-+++ new/breezy/bzr/branch.py	2019-02-15 18:57:38 +0000
-@@ -649,7 +649,7 @@
+Index: unstable/breezy/bzr/branch.py
+===================================================================
+--- unstable.orig/breezy/bzr/branch.py
++++ unstable/breezy/bzr/branch.py
+@@ -649,7 +649,7 @@ class BzrBranch8(BzrBranch):
          with self.lock_read():
              last_revno, last_revision_id = self.last_revision_info()
              if revno <= 0 or revno > last_revno:
@@ -17,11 +19,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  
              if history is not None:
                  return history[revno - 1]
-
-=== modified file 'breezy/bzr/remote.py'
---- old/breezy/bzr/remote.py	2019-02-15 14:00:31 +0000
-+++ new/breezy/bzr/remote.py	2019-02-15 19:10:32 +0000
-@@ -18,6 +18,7 @@
+Index: unstable/breezy/bzr/remote.py
+===================================================================
+--- unstable.orig/breezy/bzr/remote.py
++++ unstable/breezy/bzr/remote.py
+@@ -18,6 +18,7 @@ from __future__ import absolute_import
  
  import bz2
  import os
@@ -29,7 +31,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  import sys
  import zlib
  
-@@ -1379,6 +1380,20 @@
+@@ -1379,6 +1380,20 @@ class RemoteRepository(_mod_repository.R
          except errors.UnknownSmartMethod:
              self._client._medium._remember_remote_is_before((1, 17))
              return self._get_rev_id_for_revno_vfs(revno, known_pair)
@@ -50,7 +52,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
          if response[0] == b'ok':
              return True, response[1]
          elif response[0] == b'history-incomplete':
-@@ -3872,6 +3887,9 @@
+@@ -3872,6 +3887,9 @@ class RemoteBranch(branch.Branch, _RpcHe
              return _mod_revision.NULL_REVISION
          with self.lock_read():
              last_revision_info = self.last_revision_info()
@@ -60,7 +62,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
              ok, result = self.repository.get_rev_id_for_revno(
                  revno, last_revision_info)
              if ok:
-@@ -3883,7 +3901,7 @@
+@@ -3883,7 +3901,7 @@ class RemoteBranch(branch.Branch, _RpcHe
              parent_map = self.repository.get_parent_map([missing_parent])
              if missing_parent in parent_map:
                  missing_parent = parent_map[missing_parent]
@@ -69,7 +71,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  
      def _read_last_revision_info(self):
          response = self._call(
-@@ -4373,6 +4391,10 @@
+@@ -4373,6 +4391,10 @@ error_translators.register(b'NoSuchRevis
  error_translators.register(b'nosuchrevision',
                             lambda err, find, get_path: NoSuchRevision(
                                 find('repository'), err.error_args[0]))
@@ -80,11 +82,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  
  
  def _translate_nobranch_error(err, find, get_path):
-
-=== modified file 'breezy/bzr/smart/repository.py'
---- old/breezy/bzr/smart/repository.py	2018-11-16 18:33:17 +0000
-+++ new/breezy/bzr/smart/repository.py	2019-02-15 18:57:38 +0000
-@@ -53,7 +53,10 @@
+Index: unstable/breezy/bzr/smart/repository.py
+===================================================================
+--- unstable.orig/breezy/bzr/smart/repository.py
++++ unstable/breezy/bzr/smart/repository.py
+@@ -53,7 +53,10 @@ from .request import (
      SmartServerRequest,
      SuccessfulSmartServerResponse,
      )
@@ -96,7 +98,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  from ... import revision as _mod_revision
  from ..versionedfile import (
      ChunkedContentFactory,
-@@ -328,13 +331,16 @@
+@@ -328,13 +331,16 @@ class SmartServerRepositoryGetRevIdForRe
          try:
              found_flag, result = repository.get_rev_id_for_revno(
                  revno, known_pair)
@@ -107,22 +109,21 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
                  raise AssertionError(
                      'get_rev_id_for_revno raised RevisionNotPresent for '
 -                    'non-initial revision: ' + err.revision_id)
--            return FailedSmartServerResponse(
--                (b'nosuchrevision', err.revision_id))
 +                    'non-initial revision: ' + err.revision)
 +            return FailedSmartServerResponse(
 +                (b'nosuchrevision', err.revision))
 +        except errors.RevnoOutOfBounds as e:
-+            return FailedSmartServerResponse(
+             return FailedSmartServerResponse(
+-                (b'nosuchrevision', err.revision_id))
 +                (b'revno-outofbounds', e.revno, e.minimum, e.maximum))
          if found_flag:
              return SuccessfulSmartServerResponse((b'ok', result))
          else:
-
-=== modified file 'breezy/errors.py'
---- old/breezy/errors.py	2018-11-11 04:08:32 +0000
-+++ new/breezy/errors.py	2019-02-15 18:57:38 +0000
-@@ -2452,3 +2452,13 @@
+Index: unstable/breezy/errors.py
+===================================================================
+--- unstable.orig/breezy/errors.py
++++ unstable/breezy/errors.py
+@@ -2452,3 +2452,13 @@ class ChangesAlreadyStored(BzrCommandErr
  
      _fmt = ('Cannot store uncommitted changes because this branch already'
              ' stores uncommitted changes.')
@@ -136,11 +137,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
 +    def __init__(self, revno, bounds):
 +        InternalBzrError.__init__(
 +            self, revno=revno, minimum=bounds[0], maximum=bounds[1])
-
-=== modified file 'breezy/git/revspec.py'
---- old/breezy/git/revspec.py	2019-02-03 01:42:11 +0000
-+++ new/breezy/git/revspec.py	2019-02-15 18:57:38 +0000
-@@ -107,7 +107,8 @@
+Index: unstable/breezy/git/revspec.py
+===================================================================
+--- unstable.orig/breezy/git/revspec.py
++++ unstable/breezy/git/revspec.py
+@@ -107,7 +107,8 @@ class RevisionSpec_git(RevisionSpec):
      def _match_on(self, branch, revs):
          loc = self.spec.find(':')
          git_sha1 = self.spec[loc + 1:].encode("utf-8")
@@ -150,11 +151,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
              raise InvalidRevisionSpec(self.user_spec, branch)
          from . import (
              lazy_check_versions,
-
-=== modified file 'breezy/log.py'
---- old/breezy/log.py	2018-11-17 16:43:29 +0000
-+++ new/breezy/log.py	2019-02-26 09:04:28 +0000
-@@ -200,13 +200,13 @@
+Index: unstable/breezy/log.py
+===================================================================
+--- unstable.orig/breezy/log.py
++++ unstable/breezy/log.py
+@@ -200,13 +200,13 @@ def show_log(branch,
      if isinstance(start_revision, int):
          try:
              start_revision = revisionspec.RevisionInfo(branch, start_revision)
@@ -170,11 +171,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
              raise errors.InvalidRevisionNumber(end_revision)
  
      if end_revision is not None and end_revision.revno == 0:
-
-=== modified file 'breezy/repository.py'
---- old/breezy/repository.py	2019-02-04 19:39:30 +0000
-+++ new/breezy/repository.py	2019-02-15 18:57:38 +0000
-@@ -923,16 +923,14 @@
+Index: unstable/breezy/repository.py
+===================================================================
+--- unstable.orig/breezy/repository.py
++++ unstable/breezy/repository.py
+@@ -923,16 +923,14 @@ class Repository(controldir.ControlCompo
          partial_history = [known_revid]
          distance_from_known = known_revno - revno
          if distance_from_known < 0:
@@ -193,11 +194,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
              # This is a stacked repository with no fallbacks, or a there's a
              # left-hand ghost.  Either way, even though the revision named in
              # the error isn't in this repo, we know it's the next step in this
-
-=== modified file 'breezy/revisionspec.py'
---- old/breezy/revisionspec.py	2018-11-11 04:08:32 +0000
-+++ new/breezy/revisionspec.py	2019-02-26 08:09:10 +0000
-@@ -73,7 +73,7 @@
+Index: unstable/breezy/revisionspec.py
+===================================================================
+--- unstable.orig/breezy/revisionspec.py
++++ unstable/breezy/revisionspec.py
+@@ -73,7 +73,7 @@ class RevisionInfo(object):
          if not self._has_revno and self.rev_id is not None:
              try:
                  self._revno = self.branch.revision_id_to_revno(self.rev_id)
@@ -206,7 +207,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
                  self._revno = None
              self._has_revno = True
          return self._revno
-@@ -405,7 +405,7 @@
+@@ -405,7 +405,7 @@ class RevisionSpec_revno(RevisionSpec):
              try:
                  revision_id = branch.dotted_revno_to_revision_id(match_revno,
                                                                   _cache_reverse=True)
@@ -215,7 +216,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
                  raise errors.InvalidRevisionSpec(self.user_spec, branch)
              else:
                  # there is no traditional 'revno' for dotted-decimal revnos.
-@@ -422,7 +422,7 @@
+@@ -422,7 +422,7 @@ class RevisionSpec_revno(RevisionSpec):
                      revno = last_revno + revno + 1
              try:
                  revision_id = branch.get_rev_id(revno)
@@ -224,7 +225,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
                  raise errors.InvalidRevisionSpec(self.user_spec, branch)
          return branch, revno, revision_id
  
-@@ -515,7 +515,7 @@
+@@ -515,7 +515,7 @@ class RevisionSpec_last(RevisionSpec):
          revno = last_revno - offset + 1
          try:
              revision_id = context_branch.get_rev_id(revno)
@@ -233,7 +234,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
              raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
          return revno, revision_id
  
-@@ -567,7 +567,7 @@
+@@ -567,7 +567,7 @@ class RevisionSpec_before(RevisionSpec):
              revno = r.revno - 1
              try:
                  revision_id = branch.get_rev_id(revno, revs)
@@ -242,11 +243,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
                  raise errors.InvalidRevisionSpec(self.user_spec,
                                                   branch)
          return RevisionInfo(branch, revno, revision_id)
-
-=== modified file 'breezy/tests/per_branch/__init__.py'
---- old/breezy/tests/per_branch/__init__.py	2018-11-11 04:08:32 +0000
-+++ new/breezy/tests/per_branch/__init__.py	2019-02-15 18:22:39 +0000
-@@ -155,6 +155,7 @@
+Index: unstable/breezy/tests/per_branch/__init__.py
+===================================================================
+--- unstable.orig/breezy/tests/per_branch/__init__.py
++++ unstable/breezy/tests/per_branch/__init__.py
+@@ -155,6 +155,7 @@ def load_tests(loader, standard_tests, p
          'create_clone',
          'commit',
          'dotted_revno_to_revision_id',
@@ -254,10 +255,10 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
          'get_revision_id_to_revno_map',
          'hooks',
          'http',
-
-=== added file 'breezy/tests/per_branch/test_get_rev_id.py'
---- old/breezy/tests/per_branch/test_get_rev_id.py	1970-01-01 00:00:00 +0000
-+++ new/breezy/tests/per_branch/test_get_rev_id.py	2019-02-26 09:25:20 +0000
+Index: unstable/breezy/tests/per_branch/test_get_rev_id.py
+===================================================================
+--- /dev/null
++++ unstable/breezy/tests/per_branch/test_get_rev_id.py
 @@ -0,0 +1,40 @@
 +# Copyright (C) 2007, 2009-2012, 2016 Canonical Ltd
 +#
@@ -299,11 +300,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
 +        self.assertEqual(revid2, tree.branch.get_rev_id(2))
 +        self.assertEqual(revid1, tree.branch.get_rev_id(1))
 +        self.assertRaises(RevnoOutOfBounds, tree.branch.get_rev_id, 3)
-
-=== modified file 'breezy/tests/per_repository/__init__.py'
---- old/breezy/tests/per_repository/__init__.py	2018-11-11 04:08:32 +0000
-+++ new/breezy/tests/per_repository/__init__.py	2019-02-15 18:22:39 +0000
-@@ -118,6 +118,7 @@
+Index: unstable/breezy/tests/per_repository/__init__.py
+===================================================================
+--- unstable.orig/breezy/tests/per_repository/__init__.py
++++ unstable/breezy/tests/per_repository/__init__.py
+@@ -118,6 +118,7 @@ def load_tests(loader, standard_tests, p
          'test_fetch',
          'test_file_graph',
          'test_get_parent_map',
@@ -311,10 +312,10 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
          'test_has_same_location',
          'test_has_revisions',
          'test_locking',
-
-=== added file 'breezy/tests/per_repository/test_get_rev_id_for_revno.py'
---- old/breezy/tests/per_repository/test_get_rev_id_for_revno.py	1970-01-01 00:00:00 +0000
-+++ new/breezy/tests/per_repository/test_get_rev_id_for_revno.py	2019-02-26 09:25:20 +0000
+Index: unstable/breezy/tests/per_repository/test_get_rev_id_for_revno.py
+===================================================================
+--- /dev/null
++++ unstable/breezy/tests/per_repository/test_get_rev_id_for_revno.py
 @@ -0,0 +1,61 @@
 +# Copyright (C) 2009 Canonical Ltd
 +#
@@ -377,11 +378,11 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
 +        self.assertRaises(
 +            errors.RevnoOutOfBounds,
 +            repo.get_rev_id_for_revno, 3, (2, self.revid2))
-
-=== modified file 'breezy/tests/test_remote.py'
---- old/breezy/tests/test_remote.py	2019-02-15 14:00:31 +0000
-+++ new/breezy/tests/test_remote.py	2019-02-26 08:08:16 +0000
-@@ -2991,6 +2991,31 @@
+Index: unstable/breezy/tests/test_remote.py
+===================================================================
+--- unstable.orig/breezy/tests/test_remote.py
++++ unstable/breezy/tests/test_remote.py
+@@ -2991,6 +2991,31 @@ class TestRepositoryGetRevIdForRevno(Tes
              repo.get_rev_id_for_revno, 5, (42, b'rev-foo'))
          self.assertFinished(client)
  
@@ -413,7 +414,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
      def test_branch_fallback_locking(self):
          """RemoteBranch.get_rev_id takes a read lock, and tries to call the
          get_rev_id_for_revno verb.  If the verb is unknown the VFS fallback
-@@ -3918,6 +3943,12 @@
+@@ -3918,6 +3943,12 @@ class TestErrorTranslationSuccess(TestEr
          expected_error = errors.UnknownErrorFromSmartServer(err)
          self.assertEqual(expected_error, translated_error)
  
@@ -426,13 +427,13 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  
  class TestErrorTranslationRobustness(TestErrorTranslationBase):
      """Unit tests for breezy.bzr.remote._translate_error's robustness.
-
-=== modified file 'doc/en/release-notes/brz-3.0.txt'
---- old/doc/en/release-notes/brz-3.0.txt	2019-02-14 06:21:45 +0000
-+++ new/doc/en/release-notes/brz-3.0.txt	2019-02-15 18:41:43 +0000
-@@ -230,6 +230,10 @@
- * Don't report .git files as unknown files.
-   (Jelmer Vernooĳ, Debian Bug #921240)
+Index: unstable/doc/en/release-notes/brz-3.0.txt
+===================================================================
+--- unstable.orig/doc/en/release-notes/brz-3.0.txt
++++ unstable/doc/en/release-notes/brz-3.0.txt
+@@ -240,6 +240,10 @@ Bug Fixes
+   output of ``brz uncommit``.
+   (Jelmer Vernooĳ, #386577)
  
 +* Return consist errors from ``Branch.get_revid`` and
 +  ``Repository.get_revid_for_revno`` when the revision
@@ -441,4 +442,3 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190226092520-7mqrnf8eq4z1rdl2
  Documentation
  *************
  
-

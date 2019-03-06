@@ -4,9 +4,11 @@ Last-Update: 2019-02-04
 X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204175806-0l7t993om14cb2ds
 
 === modified file 'breezy/diff.py'
---- old/breezy/diff.py	2018-11-25 21:48:55 +0000
-+++ new/breezy/diff.py	2019-02-04 17:58:06 +0000
-@@ -570,6 +570,21 @@
+Index: unstable/breezy/diff.py
+===================================================================
+--- unstable.orig/breezy/diff.py
++++ unstable/breezy/diff.py
+@@ -570,6 +570,21 @@ class DiffKindChange(object):
              self.differs, old_path, new_path, None, new_kind)
  
  
@@ -28,7 +30,7 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204175806-0l7t993om14cb2ds
  class DiffDirectory(DiffPath):
  
      def diff(self, old_path, new_path, old_kind, new_kind):
-@@ -880,7 +895,8 @@
+@@ -880,7 +895,8 @@ class DiffTree(object):
      # list of factories that can provide instances of DiffPath objects
      # may be extended by plugins.
      diff_factories = [DiffSymlink.from_diff_tree,
@@ -38,4 +40,3 @@ X-Bzr-Revision-Id: jelmer@jelmer.uk-20190204175806-0l7t993om14cb2ds
  
      def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                   diff_text=None, extra_factories=None):
-
