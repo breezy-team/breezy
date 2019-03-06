@@ -5,15 +5,15 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
-brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
-information, see our release announcement on the Bazaar mailing list and
-README.
-
 brz 3.0.0
 #########
 
 :Codename: Pelican
-:3.0.0: NOT RELEASED YET
+:3.0.0: 2019-03-06
+
+brz 3.0.0 is the first release of ``Breezy``, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.
 
 External Compatibility Breaks
 *****************************
