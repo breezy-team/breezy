@@ -433,13 +433,13 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
-        tstart = osutils.timer_func()
+        tstart = osutils.perf_counter()
         osutils.send_all(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
             thread_id = _thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
-                            osutils.timer_func() - tstart))
+                            osutils.perf_counter() - tstart))
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
